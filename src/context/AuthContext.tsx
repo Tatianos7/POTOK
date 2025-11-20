@@ -7,6 +7,7 @@ import {
   ResetPasswordPayload,
 } from '../types';
 import { authService } from '../services/authService';
+import { useTheme } from './ThemeContext';
 
 interface AuthContextType {
   user: User | null;
@@ -25,6 +26,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { setThemeExplicit } = useTheme();
 
   useEffect(() => {
     // Проверяем наличие сохраненного пользователя при загрузке
@@ -76,6 +78,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user) return;
     authService.deleteAccount(user.id);
     setUser(null);
+    setThemeExplicit('light');
   };
 
   return (
