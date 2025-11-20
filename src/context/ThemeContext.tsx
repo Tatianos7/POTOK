@@ -10,8 +10,21 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+const isAuthenticated = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const token = localStorage.getItem('potok_token');
+  const user = localStorage.getItem('potok_user');
+  return !!(token && user);
+};
+
 const getInitialTheme = (): Theme => {
   if (typeof window === 'undefined') return 'light';
+  
+  // Если пользователь не авторизован, всегда используем светлую тему
+  if (!isAuthenticated()) {
+    return 'light';
+  }
+  
   const stored = localStorage.getItem('potok_theme');
   if (stored === 'light' || stored === 'dark') {
     return stored;
@@ -33,9 +46,50 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('potok_theme', theme);
   }, [theme]);
 
+  // Следим за изменением авторизации и обновляем тему
   useEffect(() => {
+    if (!isAuthenticated()) {
+      // Если пользователь не авторизован, принудительно устанавливаем светлую тему
+      setTheme('light');
+    }
+  }, []);
+
+  // Следим за изменениями в localStorage для отслеживания авторизации
+  useEffect(() => {
+    const handleStorageChange = () => {
+      if (!isAuthenticated()) {
+        setTheme('light');
+      }
+    };
+
+    // Слушаем изменения localStorage (срабатывает в других вкладках)
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Также слушаем кастомное событие для отслеживания изменений в текущей вкладке
+    const handleAuthChange = () => {
+      if (!isAuthenticated()) {
+        setTheme('light');
+      }
+    };
+    
+    window.addEventListener('auth-change', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-change', handleAuthChange);
+    };
+  }, []);
+
+  // Слушаем изменения системной темы только для авторизованных пользователей
+  useEffect(() => {
+    if (!isAuthenticated()) return;
+    
     const handler = (e: MediaQueryListEvent) => {
-      setTheme(e.matches ? 'dark' : 'light');
+      // Обновляем тему только если нет сохраненной темы
+      const stored = localStorage.getItem('potok_theme');
+      if (!stored) {
+        setTheme(e.matches ? 'dark' : 'light');
+      }
     };
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', handler);
