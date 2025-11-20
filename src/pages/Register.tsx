@@ -78,7 +78,7 @@ const Register = () => {
                 onChange={handleChange('firstName')}
                 required
                 className="input-field text-gray-900"
-                placeholder="Татьяна"
+                placeholder="Иван"
               />
             </div>
 
@@ -92,7 +92,7 @@ const Register = () => {
                 value={form.lastName}
                 onChange={handleChange('lastName')}
                 className="input-field text-gray-900"
-                placeholder="Балан"
+                placeholder="Иванов"
               />
             </div>
 
@@ -106,7 +106,7 @@ const Register = () => {
                 value={form.middleName}
                 onChange={handleChange('middleName')}
                 className="input-field text-gray-900"
-                placeholder="Владимировна"
+                placeholder="Иванович"
               />
             </div>
 
