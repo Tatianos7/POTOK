@@ -1,5 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, LoginCredentials, RegisterCredentials } from '../types';
+import {
+  User,
+  LoginCredentials,
+  RegisterCredentials,
+  ProfileUpdatePayload,
+  ResetPasswordPayload,
+} from '../types';
 import { authService } from '../services/authService';
 
 interface AuthContextType {
@@ -7,6 +13,9 @@ interface AuthContextType {
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
+  updateProfile: (data: ProfileUpdatePayload) => Promise<void>;
+  resetPassword: (payload: ResetPasswordPayload) => Promise<void>;
+  deleteAccount: () => void;
   logout: () => void;
   isAuthenticated: boolean;
 }
@@ -44,8 +53,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateProfile = async (data: ProfileUpdatePayload) => {
+    if (!user) return;
+    try {
+      const updatedUser = authService.updateProfile(user.id, data);
+      setUser(updatedUser);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const resetPassword = async (payload: ResetPasswordPayload) => {
+    await authService.resetPassword(payload);
+  };
+
   const logout = () => {
     authService.logout();
+    setUser(null);
+  };
+
+  const deleteAccount = () => {
+    if (!user) return;
+    authService.deleteAccount(user.id);
     setUser(null);
   };
 
@@ -56,6 +85,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         isLoading,
         login,
         register,
+        updateProfile,
+        resetPassword,
+        deleteAccount,
         logout,
         isAuthenticated: !!user,
       }}
