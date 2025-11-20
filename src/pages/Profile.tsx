@@ -1,10 +1,12 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Camera, Moon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
+import { X, Camera, Moon, Sun } from 'lucide-react';
 
 const Profile = () => {
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatar, setAvatar] = useState<string | null>(
@@ -34,9 +36,31 @@ const Profile = () => {
     navigate('/');
   };
 
+  const profile = user?.profile;
+
+  const formatAge = (value?: number) => {
+    if (!value) return '';
+    const lastDigit = value % 10;
+    const lastTwoDigits = value % 100;
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+      return `${value} лет`;
+    }
+    if (lastDigit === 1) {
+      return `${value} год`;
+    }
+    if (lastDigit >= 2 && lastDigit <= 4) {
+      return `${value} года`;
+    }
+    return `${value} лет`;
+  };
+
+  const handleEdit = () => {
+    navigate('/profile/edit');
+  };
+
   const profileMenuItems = [
-    { id: 'edit', label: 'РЕДАКТИРОВАТЬ ПРОФИЛЬ' },
-    { id: 'theme', label: 'СМЕНИТЬ ТЕМУ', icon: Moon },
+    { id: 'edit', label: 'РЕДАКТИРОВАТЬ ПРОФИЛЬ', action: handleEdit },
+    { id: 'theme', label: 'СМЕНИТЬ ТЕМУ', icon: theme === 'dark' ? Sun : Moon, action: toggleTheme },
     { id: 'password', label: 'СМЕНИТЬ ПАРОЛЬ' },
     { id: 'subscription', label: 'УПРАВЛЕНИЕ ПОДПИСКОЙ', isActive: true },
     { id: 'history', label: 'ИСТОРИЯ ОПЛАТЫ' },
@@ -106,13 +130,33 @@ const Profile = () => {
             {/* User Info */}
             <div className="flex-1">
               <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                {user?.name || 'Пользователь'}
+                {profile?.lastName && `${profile.lastName} `}
+                {profile?.firstName || user?.name || 'Пользователь'}
+                {profile?.middleName && ` ${profile.middleName}`}
               </h2>
-              <div className="space-y-1 text-sm text-gray-600">
-                <p>20 мая 1987</p>
-                <p>Рост: 165 см</p>
-                <p>Возраст: 38 лет</p>
-                <p>Цель: похудеть</p>
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  {profile?.birthDate && (
+                    <span className="px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-700">
+                      {new Date(profile.birthDate).toLocaleDateString('ru-RU')}
+                    </span>
+                  )}
+                  {profile?.age && (
+                    <span className="px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-700">
+                      {formatAge(profile.age)}
+                    </span>
+                  )}
+                  {profile?.height && (
+                    <span className="px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-700">
+                      {profile.height} см
+                    </span>
+                  )}
+                  {profile?.goal && (
+                    <span className="px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-700">
+                      Цель: {profile.goal}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -125,22 +169,35 @@ const Profile = () => {
                 {user?.hasPremium ? 'PREMIUM' : 'FREE'}
               </span>
             </p>
-            <p className="text-gray-600">{user?.email}</p>
-            <p className="text-gray-600">+79775067847</p>
+            <p className="text-gray-600">{profile?.email || 'Email не указан'}</p>
+            <p className="text-gray-600">{profile?.phone || 'Телефон не указан'}</p>
           </div>
 
           {/* Menu Items */}
           <div className="space-y-2">
             {profileMenuItems.map((item) => {
               const IconComponent = item.icon;
+              const isThemeButton = item.id === 'theme';
+              const baseClasses =
+                'w-full py-3 px-4 rounded-[13px] text-center font-semibold text-sm uppercase transition-colors flex items-center justify-center gap-2';
+              let variantClasses = '';
+
+              if (isThemeButton) {
+                variantClasses =
+                  theme === 'light'
+                    ? 'bg-gray-900 text-white border border-gray-900 hover:bg-gray-800'
+                    : 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50';
+              } else if (item.isActive) {
+                variantClasses = 'bg-gray-900 text-white';
+              } else {
+                variantClasses = 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50';
+              }
+
               return (
                 <button
                   key={item.id}
-                  className={`w-full py-3 px-4 rounded-[13px] text-center font-semibold text-sm uppercase transition-colors flex items-center justify-center gap-2 ${
-                    item.isActive
-                      ? 'bg-gray-900 text-white'
-                      : 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50'
-                  }`}
+                  className={`${baseClasses} ${variantClasses}`}
+                  onClick={item.action ? () => item.action?.() : undefined}
                 >
                   <span>{item.label}</span>
                   {IconComponent && (

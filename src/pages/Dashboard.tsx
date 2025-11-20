@@ -16,13 +16,15 @@ const Dashboard = () => {
     navigate('/login');
   };
 
+  const displayName = user?.profile?.firstName || user?.name || 'Пользователь';
+
   return (
     <div className="min-h-screen bg-white" style={{ minWidth: '360px' }}>
       <div className="max-w-[1024px] mx-auto relative">
         {/* Header */}
         <header className="px-4 py-4 flex items-center justify-center relative border-b border-gray-200">
           <h1 className="text-lg font-semibold text-gray-900">
-            Привет, {user?.name || 'Пользователь'}
+            Привет, {displayName}
           </h1>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -38,7 +40,7 @@ const Dashboard = () => {
           isOpen={isMenuOpen}
           onClose={() => setIsMenuOpen(false)}
           onLogout={handleLogout}
-          userEmail={user?.email}
+          userEmail={user?.profile?.email || user?.email}
         />
 
         {/* Main Content */}

@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +16,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      await login({ email, password });
+      await login({ identifier, password });
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка входа');
@@ -42,17 +42,17 @@ const Login = () => {
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+            <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-1">
+              Email или телефон
             </label>
             <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="identifier"
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               required
               className="input-field"
-              placeholder="your@email.com"
+              placeholder="your@email.com или +7 999 000 00 00"
             />
           </div>
 
@@ -78,6 +78,11 @@ const Login = () => {
           >
             {isLoading ? 'Вход...' : 'Войти'}
           </button>
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-sm text-primary-600 font-semibold hover:underline">
+              Забыли пароль?
+            </Link>
+          </div>
 
           <div className="text-center text-sm text-gray-600">
             Нет аккаунта?{' '}

@@ -3,21 +3,45 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const Register = () => {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    contact: '',
+    password: '',
+  });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+
+  const handleChange = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
+    if (!form.contact.trim()) {
+      setError('Укажите email или номер телефона');
+      setIsLoading(false);
+      return;
+    }
+
+    const contactValue = form.contact.trim();
+    const isEmail = contactValue.includes('@');
+
     try {
-      await register({ name, email, password });
+      await register({
+        firstName: form.firstName,
+        lastName: form.lastName || undefined,
+        middleName: form.middleName || undefined,
+        email: isEmail ? contactValue : undefined,
+        phone: !isEmail ? contactValue : undefined,
+        password: form.password,
+      });
       navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка регистрации');
@@ -42,50 +66,80 @@ const Register = () => {
             </div>
           )}
 
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Имя
-            </label>
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="input-field"
-              placeholder="Ваше имя"
-            />
-          </div>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
+                Имя <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="firstName"
+                type="text"
+                value={form.firstName}
+                onChange={handleChange('firstName')}
+                required
+                className="input-field"
+                placeholder="Татьяна"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="input-field"
-              placeholder="your@email.com"
-            />
-          </div>
+            <div>
+              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">
+                Фамилия
+              </label>
+              <input
+                id="lastName"
+                type="text"
+                value={form.lastName}
+                onChange={handleChange('lastName')}
+                className="input-field"
+                placeholder="Балан"
+              />
+            </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Пароль
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="input-field"
-              placeholder="••••••••"
-            />
+            <div>
+              <label htmlFor="middleName" className="block text-sm font-medium text-gray-700 mb-1">
+                Отчество
+              </label>
+              <input
+                id="middleName"
+                type="text"
+                value={form.middleName}
+                onChange={handleChange('middleName')}
+                className="input-field"
+                placeholder="Владимировна"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="contact" className="block text-sm font-medium text-gray-700 mb-1">
+                Email или телефон <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="contact"
+                type="text"
+                value={form.contact}
+                onChange={handleChange('contact')}
+                required
+                className="input-field"
+                placeholder="your@email.com или +7 999 000 00 00"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Пароль <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={form.password}
+                onChange={handleChange('password')}
+                required
+                minLength={6}
+                className="input-field"
+                placeholder="••••••••"
+              />
+            </div>
           </div>
 
           <button
