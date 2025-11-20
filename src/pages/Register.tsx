@@ -77,7 +77,7 @@ const Register = () => {
                 value={form.firstName}
                 onChange={handleChange('firstName')}
                 required
-                className="input-field"
+                className="input-field text-gray-900"
                 placeholder="Татьяна"
               />
             </div>
@@ -91,7 +91,7 @@ const Register = () => {
                 type="text"
                 value={form.lastName}
                 onChange={handleChange('lastName')}
-                className="input-field"
+                className="input-field text-gray-900"
                 placeholder="Балан"
               />
             </div>
@@ -105,7 +105,7 @@ const Register = () => {
                 type="text"
                 value={form.middleName}
                 onChange={handleChange('middleName')}
-                className="input-field"
+                className="input-field text-gray-900"
                 placeholder="Владимировна"
               />
             </div>
@@ -120,7 +120,7 @@ const Register = () => {
                 value={form.contact}
                 onChange={handleChange('contact')}
                 required
-                className="input-field"
+                className="input-field text-gray-900"
                 placeholder="your@email.com или +7 999 000 00 00"
               />
             </div>
@@ -136,7 +136,7 @@ const Register = () => {
                 onChange={handleChange('password')}
                 required
                 minLength={6}
-                className="input-field"
+                className="input-field text-gray-900"
                 placeholder="••••••••"
               />
             </div>
