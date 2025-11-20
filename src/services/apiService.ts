@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { authService } from './authService';
 
 // Базовый URL для API (в продакшене заменить на реальный)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.potok-fitness.com';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://api.potok-fitness.com';
 
 class ApiService {
   private api: AxiosInstance;

@@ -1,8 +1,8 @@
-import { useAuthStore } from '../store/authStore'
+import { useAuth } from '../context/AuthContext'
 import Icon from './Icon'
 
 export default function Header() {
-  const { user } = useAuthStore()
+  const { user } = useAuth()
 
   return (
     <header className="flex items-center justify-between px-4 py-4 bg-white border-b border-gray-100">
