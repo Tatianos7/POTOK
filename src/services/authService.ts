@@ -173,6 +173,8 @@ class AuthService {
     };
 
     existingUsers.push(newUser);
+    // Создаем резервную копию перед сохранением
+    this.createBackup();
     localStorage.setItem('potok_users', JSON.stringify(existingUsers));
     
     // Отправляем событие об изменении данных пользователей для обновления админ-панели
@@ -211,10 +213,90 @@ class AuthService {
 
   private getStoredUsers(): User[] {
     const usersStr = localStorage.getItem('potok_users');
-    if (!usersStr) return [];
+    if (!usersStr) {
+      // Если основных данных нет, пытаемся восстановить из резервной копии
+      const backup = localStorage.getItem('potok_users_backup');
+      if (backup) {
+        try {
+          const backupUsers: User[] = JSON.parse(backup);
+          if (Array.isArray(backupUsers) && backupUsers.length > 0) {
+            console.warn('Восстановление пользователей из резервной копии (основные данные отсутствуют)');
+            localStorage.setItem('potok_users', backup);
+            return backupUsers.map((u) =>
+              this.ensureProfile({
+                ...u,
+                profile: u.profile ?? {
+                  firstName: u.name,
+                  email: u.email,
+                  phone: u.phone,
+                },
+              })
+            );
+          }
+        } catch (backupError) {
+          console.error('Ошибка восстановления из резервной копии:', backupError);
+        }
+      }
+      return [];
+    }
 
     try {
       const users: User[] = JSON.parse(usersStr);
+      // Проверяем, что это массив
+      if (!Array.isArray(users)) {
+        console.error('potok_users не является массивом, пытаемся восстановить из резервной копии');
+        // Пытаемся восстановить из резервной копии
+        const backup = localStorage.getItem('potok_users_backup');
+        if (backup) {
+          try {
+            const backupUsers: User[] = JSON.parse(backup);
+            if (Array.isArray(backupUsers) && backupUsers.length > 0) {
+              console.warn('Восстановление пользователей из резервной копии (данные повреждены)');
+              localStorage.setItem('potok_users', backup);
+              return backupUsers.map((u) =>
+                this.ensureProfile({
+                  ...u,
+                  profile: u.profile ?? {
+                    firstName: u.name,
+                    email: u.email,
+                    phone: u.phone,
+                  },
+                })
+              );
+            }
+          } catch (backupError) {
+            console.error('Ошибка восстановления из резервной копии:', backupError);
+          }
+        }
+        return [];
+      }
+      
+      // Проверяем, что массив не пустой (может быть потеря данных)
+      if (users.length === 0) {
+        const backup = localStorage.getItem('potok_users_backup');
+        if (backup) {
+          try {
+            const backupUsers: User[] = JSON.parse(backup);
+            if (Array.isArray(backupUsers) && backupUsers.length > 0) {
+              console.warn('Восстановление пользователей из резервной копии (массив пустой)');
+              localStorage.setItem('potok_users', backup);
+              return backupUsers.map((u) =>
+                this.ensureProfile({
+                  ...u,
+                  profile: u.profile ?? {
+                    firstName: u.name,
+                    email: u.email,
+                    phone: u.phone,
+                  },
+                })
+              );
+            }
+          } catch (backupError) {
+            console.error('Ошибка восстановления из резервной копии:', backupError);
+          }
+        }
+      }
+      
       return users.map((u) =>
         this.ensureProfile({
           ...u,
@@ -225,7 +307,31 @@ class AuthService {
           },
         })
       );
-    } catch {
+    } catch (error) {
+      console.error('Ошибка парсинга potok_users:', error);
+      // Пытаемся восстановить из резервной копии
+      const backup = localStorage.getItem('potok_users_backup');
+      if (backup) {
+        try {
+          const backupUsers: User[] = JSON.parse(backup);
+          if (Array.isArray(backupUsers) && backupUsers.length > 0) {
+            console.warn('Восстановление пользователей из резервной копии (ошибка парсинга)');
+            localStorage.setItem('potok_users', backup);
+            return backupUsers.map((u) =>
+              this.ensureProfile({
+                ...u,
+                profile: u.profile ?? {
+                  firstName: u.name,
+                  email: u.email,
+                  phone: u.phone,
+                },
+              })
+            );
+          }
+        } catch (backupError) {
+          console.error('Ошибка восстановления из резервной копии:', backupError);
+        }
+      }
       return [];
     }
   }
@@ -233,6 +339,35 @@ class AuthService {
   // Получить всех пользователей (для админ-панели)
   getAllUsers(): User[] {
     return this.getStoredUsers();
+  }
+
+  // Восстановить пользователей из резервной копии
+  restoreUsersFromBackup(): boolean {
+    try {
+      const backup = localStorage.getItem('potok_users_backup');
+      if (!backup) {
+        console.warn('Резервная копия не найдена');
+        return false;
+      }
+
+      const backupUsers: User[] = JSON.parse(backup);
+      if (!Array.isArray(backupUsers) || backupUsers.length === 0) {
+        console.warn('Резервная копия пуста или повреждена');
+        return false;
+      }
+
+      // Восстанавливаем пользователей
+      localStorage.setItem('potok_users', backup);
+      console.log(`Восстановлено ${backupUsers.length} пользователей из резервной копии`);
+      
+      // Отправляем событие для обновления
+      window.dispatchEvent(new Event('user-data-changed'));
+      
+      return true;
+    } catch (error) {
+      console.error('Ошибка восстановления из резервной копии:', error);
+      return false;
+    }
   }
 
   // Назначить/снять права администратора
@@ -247,6 +382,8 @@ class AuthService {
     }
 
     users[index].isAdmin = isAdmin;
+    // Создаем резервную копию перед сохранением
+    this.createBackup();
     localStorage.setItem('potok_users', JSON.stringify(users));
     
     // Отправляем событие об изменении данных пользователей для обновления админ-панели
@@ -288,6 +425,8 @@ class AuthService {
     });
 
     users[index] = updatedUser;
+    // Создаем резервную копию перед сохранением
+    this.createBackup();
     localStorage.setItem('potok_users', JSON.stringify(users));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
     
@@ -314,6 +453,8 @@ class AuthService {
     }
 
     users[index].password = payload.newPassword;
+    // Создаем резервную копию перед сохранением
+    this.createBackup();
     localStorage.setItem('potok_users', JSON.stringify(users));
 
     const currentUser = this.getCurrentUser();
@@ -329,9 +470,107 @@ class AuthService {
 
   deleteAccount(userId: string) {
     const users = this.getStoredUsers().filter((u) => u.id !== userId);
+    // Создаем резервную копию перед сохранением
+    this.createBackup();
     localStorage.setItem('potok_users', JSON.stringify(users));
     if (this.getCurrentUser()?.id === userId) {
       this.logout();
+    }
+  }
+
+  // Обновить статус подписки пользователя
+  updateUserSubscription(userId: string, hasPremium: boolean, subscriptionType?: 'monthly' | 'yearly'): User {
+    const users = this.getStoredUsers();
+    const index = users.findIndex((u) => u.id === userId);
+    
+    if (index === -1) {
+      throw new Error('Пользователь не найден');
+    }
+
+    // Создаем резервную копию перед изменением
+    this.createBackup();
+
+    // Обновляем подписку
+    users[index].hasPremium = hasPremium;
+    if (subscriptionType !== undefined) {
+      (users[index] as any).subscriptionType = subscriptionType;
+    }
+
+    // Безопасно сохраняем
+    try {
+      localStorage.setItem('potok_users', JSON.stringify(users));
+    } catch (storageError) {
+      console.error('Ошибка сохранения пользователей:', storageError);
+      // Восстанавливаем из резервной копии при ошибке
+      const backup = localStorage.getItem('potok_users_backup');
+      if (backup) {
+        localStorage.setItem('potok_users', backup);
+      }
+      throw new Error('Не удалось сохранить изменения');
+    }
+
+    // Обновляем текущего пользователя, если это он
+    const currentUser = this.getCurrentUser();
+    if (currentUser?.id === userId) {
+      const updatedUser = { ...currentUser, hasPremium, subscriptionType };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
+      // Отправляем событие для обновления
+      window.dispatchEvent(new Event('user-data-changed'));
+      return updatedUser;
+    }
+
+    // Отправляем событие для обновления
+    window.dispatchEvent(new Event('user-data-changed'));
+    return users[index];
+  }
+
+  // Создать резервную копию пользователей
+  private createBackup(): void {
+    try {
+      const usersStr = localStorage.getItem('potok_users');
+      if (usersStr) {
+        // Проверяем, что данные валидны перед созданием резервной копии
+        try {
+          const users = JSON.parse(usersStr);
+          if (Array.isArray(users) && users.length > 0) {
+            localStorage.setItem('potok_users_backup', usersStr);
+            // Также создаем дополнительную резервную копию с timestamp
+            const timestamp = new Date().toISOString();
+            localStorage.setItem(`potok_users_backup_${timestamp}`, usersStr);
+            // Храним только последние 5 резервных копий
+            this.cleanupOldBackups();
+          }
+        } catch (parseError) {
+          console.warn('Не удалось создать резервную копию: данные повреждены', parseError);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка создания резервной копии:', error);
+    }
+  }
+
+  // Очистить старые резервные копии, оставить только последние 5
+  private cleanupOldBackups(): void {
+    try {
+      const backupKeys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('potok_users_backup_') && key !== 'potok_users_backup') {
+          backupKeys.push(key);
+        }
+      }
+      
+      // Сортируем по timestamp (в имени ключа)
+      backupKeys.sort().reverse();
+      
+      // Удаляем все кроме последних 5
+      if (backupKeys.length > 5) {
+        for (let i = 5; i < backupKeys.length; i++) {
+          localStorage.removeItem(backupKeys[i]);
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка очистки старых резервных копий:', error);
     }
   }
 
