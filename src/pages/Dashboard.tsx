@@ -1,15 +1,39 @@
 import { useAuth } from '../context/AuthContext';
 import { FEATURE_CARDS, ICON_MAP } from '../utils/constants';
 import { Menu as MenuIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FeatureCard from '../components/FeatureCard';
 import Menu from '../components/Menu';
+import { activityService } from '../services/activityService';
 
 const Dashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Перенаправляем админа в админ-панель
+  useEffect(() => {
+    if (user?.isAdmin) {
+      navigate('/admin');
+    }
+  }, [user, navigate]);
+
+  // Обновляем активность пользователя
+  useEffect(() => {
+    if (user?.id) {
+      activityService.updateActivity(user.id);
+      
+      // Обновляем активность каждую минуту
+      const interval = setInterval(() => {
+        if (user?.id) {
+          activityService.updateActivity(user.id);
+        }
+      }, 60000); // Каждую минуту
+
+      return () => clearInterval(interval);
+    }
+  }, [user]);
 
   const handleLogout = () => {
     logout();
@@ -44,21 +68,21 @@ const Dashboard = () => {
         />
 
         {/* Main Content */}
-        <main className="px-4 py-6">
-          <div className="space-y-3">
+      <main className="px-4 py-6">
+        <div className="space-y-3">
             {FEATURE_CARDS.map((card) => {
               const IconComponent = ICON_MAP[card.icon];
               return (
-                <FeatureCard
+            <FeatureCard
                   key={card.id}
                   card={card}
                   icon={IconComponent}
                   hasPremium={user?.hasPremium || false}
-                />
+            />
               );
             })}
-          </div>
-        </main>
+        </div>
+      </main>
       </div>
     </div>
   );
