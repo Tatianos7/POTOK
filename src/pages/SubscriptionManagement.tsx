@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { authService } from '../services/authService';
 import { X } from 'lucide-react';
 import DeleteSubscriptionModal from '../components/DeleteSubscriptionModal';
 import ChangeSubscriptionModal from '../components/ChangeSubscriptionModal';
@@ -39,36 +40,21 @@ const SubscriptionManagement = ({ onClose }: SubscriptionManagementProps) => {
     setStatus('');
 
     try {
-      // Обновляем статус подписки в authService
-      const users = JSON.parse(localStorage.getItem('potok_users') || '[]');
-      const userIndex = users.findIndex((u: any) => u.id === user.id);
-      if (userIndex !== -1) {
-        // Активируем PREMIUM подписку
-        users[userIndex].hasPremium = true;
-        // Сохраняем тип подписки (месячная/годовая)
-        users[userIndex].subscriptionType = planType;
-        localStorage.setItem('potok_users', JSON.stringify(users));
-        
-        // Обновляем текущего пользователя
-        const updatedUser = { ...user, hasPremium: true, subscriptionType: planType };
-        localStorage.setItem('potok_user', JSON.stringify(updatedUser));
-        
-        setCurrentUser(updatedUser);
-        
-        // Отправляем событие для обновления
-        window.dispatchEvent(new Event('user-data-changed'));
-        
-        setStatus(`Подписка PREMIUM успешно активирована!`);
-        
-        // Закрываем модальное окно выбора тарифа
-        setIsChangeModalOpen(false);
-        
-        setTimeout(() => {
-          onClose();
-          // Перезагружаем страницу для обновления контекста
-          window.location.reload();
-        }, 2000);
-      }
+      // Используем безопасный метод из authService
+      const updatedUser = authService.updateUserSubscription(user.id, true, planType);
+      
+      setCurrentUser(updatedUser);
+      
+      setStatus(`Подписка PREMIUM успешно активирована!`);
+      
+      // Закрываем модальное окно выбора тарифа
+      setIsChangeModalOpen(false);
+      
+      setTimeout(() => {
+        onClose();
+        // Перезагружаем страницу для обновления контекста
+        window.location.reload();
+      }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка смены подписки');
     } finally {
@@ -84,25 +70,13 @@ const SubscriptionManagement = ({ onClose }: SubscriptionManagementProps) => {
     setStatus('');
 
     try {
-      // Отменяем подписку (возвращаемся к FREE)
-      const users = JSON.parse(localStorage.getItem('potok_users') || '[]');
-      const userIndex = users.findIndex((u: any) => u.id === user.id);
-      if (userIndex !== -1) {
-        users[userIndex].hasPremium = false;
-        localStorage.setItem('potok_users', JSON.stringify(users));
-        
-        // Обновляем текущего пользователя
-        const updatedUser = { ...user, hasPremium: false };
-        localStorage.setItem('potok_user', JSON.stringify(updatedUser));
-        
-        setCurrentUser(updatedUser);
-        
-        // Отправляем событие для обновления
-        window.dispatchEvent(new Event('user-data-changed'));
-        
-        // Показываем модальное окно с подтверждением удаления
-        setIsDeleteModalOpen(true);
-      }
+      // Используем безопасный метод из authService
+      const updatedUser = authService.updateUserSubscription(user.id, false);
+      
+      setCurrentUser(updatedUser);
+      
+      // Показываем модальное окно с подтверждением удаления
+      setIsDeleteModalOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка отмены подписки');
     } finally {

@@ -32,6 +32,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { setThemeExplicit } = useTheme();
 
   useEffect(() => {
+    // Проверяем целостность данных пользователей при загрузке
+    const users = authService.getAllUsers();
+    if (users.length === 0) {
+      // Если пользователей нет, пытаемся восстановить из резервной копии
+      const restored = authService.restoreUsersFromBackup();
+      if (restored) {
+        console.log('Пользователи восстановлены из резервной копии');
+      }
+    }
+    
     // Проверяем наличие сохраненного пользователя при загрузке
     const savedUser = authService.getCurrentUser();
     if (savedUser) {
