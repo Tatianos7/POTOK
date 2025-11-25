@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - feature/profile-enhancements
   workflow_dispatch:
 
 permissions:
