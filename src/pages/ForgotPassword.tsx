@@ -1,16 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 const ForgotPassword = () => {
   const { resetPassword } = useAuth();
   const navigate = useNavigate();
+  const { setThemeExplicit } = useTheme();
   const [identifier, setIdentifier] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Принудительно устанавливаем светлую тему для неавторизованных пользователей
+  useEffect(() => {
+    setThemeExplicit('light');
+  }, [setThemeExplicit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

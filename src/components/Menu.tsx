@@ -1,5 +1,9 @@
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import SupportForm from './SupportForm';
+import { notificationService } from '../services/notificationService';
 
 interface MenuProps {
   isOpen: boolean;
@@ -10,24 +14,70 @@ interface MenuProps {
 
 const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [isSupportFormOpen, setIsSupportFormOpen] = useState(false);
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
-  const menuItems = [
-    { id: 'profile', label: 'ПРОФИЛЬ', isActive: true },
-    { id: 'notifications', label: 'УВЕДОМЛЕНИЯ', hasNotification: true },
-    { id: 'settings', label: 'ОБЩИЕ НАСТРОЙКИ' },
-    { id: 'support', label: 'ПОДДЕРЖКА' },
-    { id: 'feedback', label: 'ОБРАТНАЯ СВЯЗЬ' },
-  ];
+  const refreshNotificationsIndicator = () => {
+    if (!user?.id) {
+      setHasUnreadNotifications(false);
+      return;
+    }
+    const notifications = notificationService.getNotifications(user.id);
+    setHasUnreadNotifications(
+      notifications.some((item) => !item.isRead && !item.isDeleted && !item.isArchived)
+    );
+  };
+
+  useEffect(() => {
+    refreshNotificationsIndicator();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<{ userId: string }>;
+      if (customEvent.detail?.userId === user?.id) {
+        refreshNotificationsIndicator();
+      }
+    };
+    window.addEventListener('notifications-updated', handler as EventListener);
+    return () => window.removeEventListener('notifications-updated', handler as EventListener);
+  }, [user?.id]);
+
 
   const handleMenuItemClick = (itemId: string) => {
     if (itemId === 'profile') {
       onClose();
       navigate('/profile');
+    } else if (itemId === 'support') {
+      onClose();
+      setIsSupportFormOpen(true);
+    } else if (itemId === 'admin' && user?.isAdmin) {
+      onClose();
+      navigate('/admin');
+    } else if (itemId === 'notifications') {
+      onClose();
+      navigate('/notifications');
     }
   };
 
+  const menuItems = [
+    { id: 'profile', label: 'ПРОФИЛЬ', isActive: true },
+    ...(user?.isAdmin ? [{ id: 'admin', label: 'АДМИН-ПАНЕЛЬ', isActive: false }] : []),
+    {
+      id: 'notifications',
+      label: 'УВЕДОМЛЕНИЯ',
+      indicator: hasUnreadNotifications ? 'unread' : 'read',
+    },
+    { id: 'settings', label: 'ОБЩИЕ НАСТРОЙКИ' },
+    { id: 'support', label: 'ПОДДЕРЖКА' },
+    { id: 'feedback', label: 'ОБРАТНАЯ СВЯЗЬ' },
+  ];
+
   return (
     <>
+      <SupportForm isOpen={isSupportFormOpen} onClose={() => setIsSupportFormOpen(false)} />
+      
       {/* Backdrop */}
       {isOpen && (
         <div 
@@ -72,8 +122,12 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
             >
               <div className="flex items-center justify-center gap-2">
                 <span>{item.label}</span>
-                {item.hasNotification && (
-                  <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                {item.indicator && (
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      item.indicator === 'unread' ? 'bg-red-500' : 'bg-green-500'
+                    }`}
+                  ></span>
                 )}
               </div>
             </button>

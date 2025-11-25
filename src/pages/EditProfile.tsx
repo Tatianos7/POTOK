@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { X } from 'lucide-react';
 
 const EditProfile = () => {
   const { user, updateProfile, deleteAccount } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const [form, setForm] = useState({
     firstName: user?.profile.firstName || '',
@@ -30,19 +32,53 @@ const EditProfile = () => {
   useEffect(() => {
     if (!user) {
       navigate('/login');
+      return;
+    }
+    
+    // Инициализируем форму с данными пользователя
+    if (user.profile) {
+      const initialAge = user.profile.age?.toString() || 
+        (user.profile.birthDate ? calculateAge(user.profile.birthDate) : '');
+      
+      setForm({
+        firstName: user.profile.firstName || '',
+        lastName: user.profile.lastName || '',
+        middleName: user.profile.middleName || '',
+        birthDate: user.profile.birthDate || '',
+        age: initialAge,
+        height: user.profile.height?.toString() || '',
+        goal: user.profile.goal || '',
+        email: user.profile.email || user.email || '',
+        phone: user.profile.phone || user.phone || '',
+      });
     }
   }, [user, navigate]);
 
   const calculateAge = (birthDate: string) => {
     if (!birthDate) return '';
-    const today = new Date();
-    const birth = new Date(birthDate);
-    let age = today.getFullYear() - birth.getFullYear();
-    const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--;
+    try {
+      const today = new Date();
+      const birth = new Date(birthDate);
+      
+      // Проверяем, что дата валидна
+      if (isNaN(birth.getTime())) {
+        return '';
+      }
+      
+      let age = today.getFullYear() - birth.getFullYear();
+      const monthDiff = today.getMonth() - birth.getMonth();
+      const dayDiff = today.getDate() - birth.getDate();
+      
+      // Если день рождения еще не наступил в этом году, уменьшаем возраст
+      if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+        age--;
+      }
+      
+      return age > 0 ? String(age) : '';
+    } catch (error) {
+      console.error('Ошибка расчета возраста:', error);
+      return '';
     }
-    return age > 0 ? String(age) : '';
   };
 
   const handleChange =
@@ -50,7 +86,8 @@ const EditProfile = () => {
       const value = e.target.value;
       setForm((prev) => {
         if (field === 'birthDate') {
-          return { ...prev, birthDate: value, age: calculateAge(value) };
+          const calculatedAge = calculateAge(value);
+          return { ...prev, birthDate: value, age: calculatedAge };
         }
         return { ...prev, [field]: value };
       });
@@ -98,10 +135,10 @@ const EditProfile = () => {
 
   const handleBack = () => navigate('/profile');
 
-  const fieldClasses = 'input-field rounded-[13px] bg-gray-100 text-gray-800 placeholder:text-gray-500';
+  const fieldClasses = 'input-field rounded-[13px] bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400';
 
   return (
-    <div className="min-h-screen bg-white" style={{ minWidth: '360px' }}>
+    <div className="min-h-screen bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
       <div className="max-w-[1024px] mx-auto">
         <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200">
           <div className="flex-1"></div>
@@ -134,7 +171,7 @@ const EditProfile = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Имя</label>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Имя</label>
                 <input
                   type="text"
                   className={fieldClasses}
@@ -253,7 +290,11 @@ const EditProfile = () => {
             <div className="pt-4 space-y-3">
               <button
                 type="submit"
-                className="w-full px-6 py-3 rounded-[13px] font-semibold transition-colors disabled:opacity-60 bg-black text-white dark:bg-white dark:text-gray-900"
+                className={`w-full px-6 py-3 rounded-[13px] font-semibold transition-colors disabled:opacity-60 ${
+                  theme === 'dark'
+                    ? 'bg-white text-black hover:bg-gray-100'
+                    : 'bg-gray-900 text-white hover:bg-gray-800'
+                }`}
                 disabled={isSaving}
               >
                 {isSaving ? 'Сохранение...' : 'Подтвердить изменения'}
@@ -261,7 +302,11 @@ const EditProfile = () => {
               <button
                 type="button"
                 onClick={() => setIsDeleteConfirmOpen(true)}
-                className="w-full border border-gray-300 text-gray-800 px-6 py-3 rounded-[13px] font-semibold hover:bg-gray-50 transition-colors dark:bg-transparent dark:text-gray-100 dark:border-gray-400"
+                className={`w-full px-6 py-3 rounded-[13px] font-semibold transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-transparent text-white border-2 border-gray-300 hover:bg-gray-800'
+                    : 'bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-50'
+                }`}
               >
                 Удалить профиль
               </button>

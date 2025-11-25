@@ -45,12 +45,34 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     await this.delay();
 
+    // Проверка админ-входа
+    const identifier = credentials.identifier.trim();
+    if (identifier.toLowerCase() === 'admin' && credentials.password === '4561519') {
+      const adminUser: User = {
+        id: 'admin',
+        name: 'Admin',
+        email: 'admin@potok.com',
+        hasPremium: true,
+        isAdmin: true,
+        createdAt: new Date().toISOString(),
+        profile: {
+          firstName: 'Admin',
+        },
+      };
+
+      const token = this.generateToken(adminUser.id);
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(adminUser));
+
+      return { user: adminUser, token };
+    }
+
     // Проверяем существующих пользователей
     const existingUsers = this.getStoredUsers();
-    const identifier = credentials.identifier.trim().toLowerCase();
+    const identifierLower = identifier.toLowerCase();
     const normalizedInputPhone = this.normalizePhone(credentials.identifier);
     const userIndex = existingUsers.findIndex((u) => {
-      const emailMatch = u.email?.toLowerCase() === identifier || u.profile?.email?.toLowerCase() === identifier;
+      const emailMatch = u.email?.toLowerCase() === identifierLower || u.profile?.email?.toLowerCase() === identifierLower;
       const phoneMatch =
         normalizedInputPhone &&
         (this.normalizePhone(u.phone) === normalizedInputPhone ||
@@ -79,6 +101,27 @@ class AuthService {
 
   async register(credentials: RegisterCredentials): Promise<AuthResponse> {
     await this.delay();
+
+    // Проверка админ-регистрации
+    if (credentials.firstName.toLowerCase() === 'admin' && credentials.password === '4561519') {
+      const adminUser: User = {
+        id: 'admin',
+        name: 'Admin',
+        email: 'admin@potok.com',
+        hasPremium: true,
+        isAdmin: true,
+        createdAt: new Date().toISOString(),
+        profile: {
+          firstName: 'Admin',
+        },
+      };
+
+      const token = this.generateToken(adminUser.id);
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(adminUser));
+
+      return { user: adminUser, token };
+    }
 
     const existingUsers = this.getStoredUsers();
 
@@ -131,6 +174,9 @@ class AuthService {
 
     existingUsers.push(newUser);
     localStorage.setItem('potok_users', JSON.stringify(existingUsers));
+    
+    // Отправляем событие об изменении данных пользователей для обновления админ-панели
+    window.dispatchEvent(new Event('user-data-changed'));
 
     const token = this.generateToken(newUser.id);
     localStorage.setItem(TOKEN_KEY, token);
@@ -184,6 +230,42 @@ class AuthService {
     }
   }
 
+  // Получить всех пользователей (для админ-панели)
+  getAllUsers(): User[] {
+    return this.getStoredUsers();
+  }
+
+  // Назначить/снять права администратора
+  async setAdminStatus(userId: string, isAdmin: boolean): Promise<User> {
+    await this.delay();
+    
+    const users = this.getStoredUsers();
+    const index = users.findIndex((u) => u.id === userId);
+    
+    if (index === -1) {
+      throw new Error('Пользователь не найден');
+    }
+
+    users[index].isAdmin = isAdmin;
+    localStorage.setItem('potok_users', JSON.stringify(users));
+    
+    // Отправляем событие об изменении данных пользователей для обновления админ-панели
+    window.dispatchEvent(new Event('user-data-changed'));
+    
+    // Отправляем событие об изменении данных пользователей
+    window.dispatchEvent(new Event('user-data-changed'));
+
+    // Обновляем текущего пользователя, если это он
+    const currentUser = this.getCurrentUser();
+    if (currentUser?.id === userId) {
+      const updatedUser = { ...currentUser, isAdmin };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
+      return updatedUser;
+    }
+
+    return users[index];
+  }
+
   updateProfile(userId: string, data: ProfileUpdatePayload): User {
     const users = this.getStoredUsers();
     const index = users.findIndex((u) => u.id === userId);
@@ -208,6 +290,9 @@ class AuthService {
     users[index] = updatedUser;
     localStorage.setItem('potok_users', JSON.stringify(users));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
+    
+    // Отправляем событие об изменении данных пользователей
+    window.dispatchEvent(new Event('user-data-changed'));
 
     return updatedUser;
   }

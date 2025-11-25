@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 const Register = () => {
   const [form, setForm] = useState({
@@ -14,6 +15,12 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+  const { setThemeExplicit } = useTheme();
+
+  // Принудительно устанавливаем светлую тему для неавторизованных пользователей
+  useEffect(() => {
+    setThemeExplicit('light');
+  }, [setThemeExplicit]);
 
   const handleChange = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -78,7 +85,7 @@ const Register = () => {
                 onChange={handleChange('firstName')}
                 required
                 className="input-field text-gray-900"
-                placeholder="Татьяна"
+                placeholder="Иван"
               />
             </div>
 
@@ -92,7 +99,7 @@ const Register = () => {
                 value={form.lastName}
                 onChange={handleChange('lastName')}
                 className="input-field text-gray-900"
-                placeholder="Балан"
+                placeholder="Иванов"
               />
             </div>
 
@@ -106,7 +113,7 @@ const Register = () => {
                 value={form.middleName}
                 onChange={handleChange('middleName')}
                 className="input-field text-gray-900"
-                placeholder="Владимировна"
+                placeholder="Иванович"
               />
             </div>
 

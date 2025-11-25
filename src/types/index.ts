@@ -19,6 +19,7 @@ export interface User {
   hasPremium: boolean;
   createdAt: string;
   profile: ProfileDetails;
+  isAdmin?: boolean;
 }
 
 export interface AuthResponse {
@@ -50,4 +51,25 @@ export interface FeatureCard {
   isPremium: boolean;
   premiumColor?: 'green' | 'yellow';
   route: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail?: string;
+  userPhone?: string;
+  subject: string;
+  message: string;
+  status: 'new' | 'in_progress' | 'resolved';
+  createdAt: string;
+  responses?: MessageResponse[];
+}
+
+export interface MessageResponse {
+  id: string;
+  messageId: string;
+  fromAdmin: boolean;
+  text: string;
+  createdAt: string;
 }

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 const Login = () => {
   const [identifier, setIdentifier] = useState('');
@@ -9,6 +10,12 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { setThemeExplicit } = useTheme();
+
+  // Принудительно устанавливаем светлую тему для неавторизованных пользователей
+  useEffect(() => {
+    setThemeExplicit('light');
+  }, [setThemeExplicit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -7,6 +7,7 @@ import {
   ResetPasswordPayload,
 } from '../types';
 import { authService } from '../services/authService';
+import { activityService } from '../services/activityService';
 import { useTheme } from './ThemeContext';
 
 interface AuthContextType {
@@ -19,6 +20,8 @@ interface AuthContextType {
   deleteAccount: () => void;
   logout: () => void;
   isAuthenticated: boolean;
+  getAllUsers: () => User[];
+  setAdminStatus: (userId: string, isAdmin: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,6 +36,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const savedUser = authService.getCurrentUser();
     if (savedUser) {
       setUser(savedUser);
+      // Обновляем активность при загрузке
+      activityService.updateActivity(savedUser.id);
     }
     setIsLoading(false);
   }, []);
@@ -41,6 +46,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await authService.login(credentials);
       setUser(response.user);
+      // Обновляем активность при входе
+      activityService.updateActivity(response.user.id);
     } catch (error) {
       throw error;
     }
@@ -50,6 +57,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await authService.register(credentials);
       setUser(response.user);
+      // Обновляем активность при регистрации
+      activityService.updateActivity(response.user.id);
     } catch (error) {
       throw error;
     }
@@ -81,23 +90,37 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setThemeExplicit('light');
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isLoading,
-        login,
-        register,
-        updateProfile,
-        resetPassword,
-        deleteAccount,
-        logout,
-        isAuthenticated: !!user,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+      const getAllUsers = () => {
+        return authService.getAllUsers();
+      };
+
+      const setAdminStatus = async (userId: string, isAdmin: boolean) => {
+        const updatedUser = await authService.setAdminStatus(userId, isAdmin);
+        // Если обновляем текущего пользователя, обновляем состояние
+        if (user?.id === userId) {
+          setUser(updatedUser);
+        }
+      };
+
+      return (
+        <AuthContext.Provider
+          value={{
+            user,
+            isLoading,
+            login,
+            register,
+            updateProfile,
+            resetPassword,
+            deleteAccount,
+            logout,
+            isAuthenticated: !!user,
+            getAllUsers,
+            setAdminStatus,
+          }}
+        >
+          {children}
+        </AuthContext.Provider>
+      );
 };
 
 export const useAuth = () => {

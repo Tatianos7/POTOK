@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { X, Camera, Moon, Sun } from 'lucide-react';
+import ChangePasswordModal from '../components/ChangePasswordModal';
+import SubscriptionManagement from '../pages/SubscriptionManagement';
+import PaymentHistoryModal from '../components/PaymentHistoryModal';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -12,6 +15,7 @@ const Profile = () => {
   const [avatar, setAvatar] = useState<string | null>(
     localStorage.getItem(`avatar_${user?.id}`) || null
   );
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -58,12 +62,27 @@ const Profile = () => {
     navigate('/profile/edit');
   };
 
+  const handleChangePassword = () => {
+    setIsChangePasswordOpen(true);
+  };
+
+  const [isSubscriptionOpen, setIsSubscriptionOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  const handleSubscription = () => {
+    setIsSubscriptionOpen(true);
+  };
+
+  const handleHistory = () => {
+    setIsHistoryOpen(true);
+  };
+
   const profileMenuItems = [
     { id: 'edit', label: 'РЕДАКТИРОВАТЬ ПРОФИЛЬ', action: handleEdit },
     { id: 'theme', label: 'СМЕНИТЬ ТЕМУ', icon: theme === 'dark' ? Sun : Moon, action: toggleTheme },
-    { id: 'password', label: 'СМЕНИТЬ ПАРОЛЬ' },
-    { id: 'subscription', label: 'УПРАВЛЕНИЕ ПОДПИСКОЙ', isActive: true },
-    { id: 'history', label: 'ИСТОРИЯ ОПЛАТЫ' },
+    { id: 'password', label: 'СМЕНИТЬ ПАРОЛЬ', action: handleChangePassword },
+    { id: 'subscription', label: 'УПРАВЛЕНИЕ ПОДПИСКОЙ', isActive: true, action: handleSubscription },
+    { id: 'history', label: 'ИСТОРИЯ ОПЛАТЫ', action: handleHistory },
     { id: 'terms', label: 'УСЛОВИЯ ИСПОЛЬЗОВАНИЯ' },
     { id: 'offer', label: 'ОФЕРТА' },
     { id: 'privacy', label: 'ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ' },
@@ -209,6 +228,25 @@ const Profile = () => {
           </div>
         </main>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
+
+      {/* Subscription Management Modal */}
+      {isSubscriptionOpen && (
+        <SubscriptionManagement onClose={() => setIsSubscriptionOpen(false)} />
+      )}
+
+      {isHistoryOpen && (
+        <PaymentHistoryModal
+          isOpen={isHistoryOpen}
+          onClose={() => setIsHistoryOpen(false)}
+          userId={user?.id}
+        />
+      )}
     </div>
   );
 };
