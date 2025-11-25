@@ -52,9 +52,6 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
     } else if (itemId === 'support') {
       onClose();
       setIsSupportFormOpen(true);
-    } else if (itemId === 'admin' && user?.isAdmin) {
-      onClose();
-      navigate('/admin');
     } else if (itemId === 'notifications') {
       onClose();
       navigate('/notifications');
@@ -63,7 +60,6 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
 
   const menuItems = [
     { id: 'profile', label: 'ПРОФИЛЬ', isActive: true },
-    ...(user?.isAdmin ? [{ id: 'admin', label: 'АДМИН-ПАНЕЛЬ', isActive: false }] : []),
     {
       id: 'notifications',
       label: 'УВЕДОМЛЕНИЯ',

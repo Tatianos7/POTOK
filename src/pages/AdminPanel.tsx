@@ -24,7 +24,9 @@ const AdminPanel = () => {
       navigate('/login');
       return;
     }
-    if (!user.isAdmin) {
+    // Доступ к админ-панели только для специального админ-аккаунта (id === 'admin')
+    // Обычные пользователи с правами админа не могут заходить в админ-панель
+    if (!user.isAdmin || user.id !== 'admin') {
       navigate('/');
       return;
     }
@@ -345,6 +347,9 @@ const AdminPanel = () => {
                           <span className="text-sm font-semibold text-gray-900 dark:text-white">
                             {message.userName}
                           </span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500">
+                            (ID: {message.userId.substring(0, 8)}...)
+                          </span>
                           {getStatusBadge(message.status)}
                         </div>
                         {message.subject && (
@@ -482,9 +487,14 @@ const AdminPanel = () => {
                 {/* Original Message */}
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                   <div className="flex items-center justify-between mb-2 flex-wrap gap-1.5">
-                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {selectedMessage.userName}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        {selectedMessage.userName}
+                      </span>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                        (ID: {selectedMessage.userId.substring(0, 8)}...)
+                      </span>
+                    </div>
                     {getStatusBadge(selectedMessage.status)}
                   </div>
                   {selectedMessage.subject && (
@@ -495,8 +505,11 @@ const AdminPanel = () => {
                   <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                     {selectedMessage.message}
                   </p>
-                  <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                    {new Date(selectedMessage.createdAt).toLocaleString('ru-RU')}
+                  <div className="mt-2 space-y-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    <div>{new Date(selectedMessage.createdAt).toLocaleString('ru-RU')}</div>
+                    {selectedMessage.userEmail && <div>Email: {selectedMessage.userEmail}</div>}
+                    {selectedMessage.userPhone && <div>Телефон: {selectedMessage.userPhone}</div>}
+                    <div>User ID: {selectedMessage.userId}</div>
                   </div>
                 </div>
 

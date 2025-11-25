@@ -196,6 +196,9 @@ const Notifications = () => {
                         <button
                           className="text-left flex-1"
                           onClick={() => {
+                            if (!notification.isRead) {
+                              toggleRead(notification.id);
+                            }
                             setSelectedNews(notification);
                             setIsNewsModalOpen(true);
                           }}

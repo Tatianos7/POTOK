@@ -23,12 +23,17 @@ const SupportForm = ({ isOpen, onClose }: SupportFormProps) => {
     setStatus('idle');
 
     try {
+      const userName =
+        user.profile?.firstName || user.name
+          ? `${user.profile?.firstName || user.name} ${user.profile?.lastName || ''}`.trim()
+          : 'Пользователь';
+      
       await supportService.createMessage(
         user.id,
-        user.name,
+        userName,
         message.trim(),
-        user.email,
-        user.phone,
+        user.profile?.email || user.email,
+        user.profile?.phone || user.phone,
         subject.trim()
       );
       setStatus('success');
