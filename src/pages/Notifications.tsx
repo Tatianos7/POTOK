@@ -26,7 +26,18 @@ const Notifications = () => {
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
 
   const loadNotifications = () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setNotifications([]);
+      return;
+    }
+    
+    // Дополнительная проверка userId
+    if (user.id === 'undefined' || user.id === 'null' || user.id.trim() === '') {
+      console.warn('Некорректный userId при загрузке уведомлений:', user.id);
+      setNotifications([]);
+      return;
+    }
+    
     const data = notificationService.getNotifications(user.id);
     data
       .filter((item) => item.category === 'support')
@@ -66,7 +77,17 @@ const Notifications = () => {
   }, [notifications, activeTab, view]);
 
   const saveNotifications = (items: AppNotification[]) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.warn('Попытка сохранить уведомления без userId');
+      return;
+    }
+    
+    // Дополнительная проверка userId
+    if (user.id === 'undefined' || user.id === 'null' || user.id.trim() === '') {
+      console.warn('Некорректный userId при сохранении уведомлений:', user.id);
+      return;
+    }
+    
     notificationService.saveNotifications(user.id, items);
     setNotifications(items);
   };

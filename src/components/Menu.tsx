@@ -23,6 +23,13 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
       setHasUnreadNotifications(false);
       return;
     }
+    
+    // Дополнительная проверка userId
+    if (user.id === 'undefined' || user.id === 'null' || user.id.trim() === '') {
+      setHasUnreadNotifications(false);
+      return;
+    }
+    
     const notifications = notificationService.getNotifications(user.id);
     setHasUnreadNotifications(
       notifications.some((item) => !item.isRead && !item.isDeleted && !item.isArchived)

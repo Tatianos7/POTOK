@@ -50,7 +50,17 @@ const PaymentModal = ({ isOpen, onClose, planType, onPaymentSuccess }: PaymentMo
   const period = planType === 'monthly' ? 'месяц' : 'год';
 
   const savePaymentRecord = () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.error('Не удалось сохранить запись об оплате: userId отсутствует');
+      return;
+    }
+    
+    // Дополнительная проверка userId
+    if (user.id === 'undefined' || user.id === 'null' || user.id.trim() === '') {
+      console.error('Некорректный userId при сохранении оплаты:', user.id);
+      return;
+    }
+    
     const key = `payment_history_${user.id}`;
     const history = JSON.parse(localStorage.getItem(key) || '[]');
     const record = {
@@ -65,6 +75,7 @@ const PaymentModal = ({ isOpen, onClose, planType, onPaymentSuccess }: PaymentMo
       new CustomEvent('payment-history-updated', { detail: { userId: user.id } })
     );
 
+    // Создаем уведомление только для текущего пользователя
     notificationService.addNotification(user.id, {
       title: 'Оплата прошла успешно',
       message: `Подписка PREMIUM на ${period} активирована. Сумма: ${price.toLocaleString('ru-RU')} ₽`,

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supportService } from '../services/supportService';
 import { activityService } from '../services/activityService';
+import { notificationService } from '../services/notificationService';
 import { SupportMessage, User } from '../types';
 import { X, MessageSquare, Users, UserCheck, UserX, Mail, CheckCircle, Clock, AlertCircle, Shield, ShieldOff, Wifi } from 'lucide-react';
 
@@ -127,6 +128,14 @@ const AdminPanel = () => {
     setIsResponding(true);
     try {
       await supportService.addResponse(selectedMessage.id, true, responseText.trim());
+      
+      // Создаем уведомление для пользователя, которому адресован ответ
+      notificationService.addNotification(selectedMessage.userId, {
+        title: 'Ответ на обращение',
+        message: 'Мы ответили на вашу заявку в поддержку.',
+        category: 'support',
+      });
+      
       setResponseText('');
       const data = await loadData({ silent: true });
       const updated = data?.messages.find(m => m.id === selectedMessage.id);

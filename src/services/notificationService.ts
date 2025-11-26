@@ -25,69 +25,6 @@ const getStorageKey = (userId: string) => `${STORAGE_PREFIX}${userId}`;
 const getThreadKey = (userId: string, notificationId: string) =>
   `${THREAD_PREFIX}${userId}_${notificationId}`;
 
-const createMockNotifications = (): AppNotification[] => [
-  {
-    id: 'n1',
-    date: new Date().toISOString(),
-    title: 'Ответ на обращение',
-    message: 'Мы ответили на вашу заявку в поддержку.',
-    category: 'support',
-    isRead: false,
-    isArchived: false,
-    isDeleted: false,
-  },
-  {
-    id: 'n2',
-    date: new Date(Date.now() - 86400000).toISOString(),
-    title: 'Подписка продлена',
-    message: 'Ваша подписка PREMIUM успешно продлена на месяц.',
-    category: 'messages',
-    isRead: true,
-    isArchived: false,
-    isDeleted: false,
-  },
-  {
-    id: 'n5',
-    date: new Date(Date.now() - 345600000).toISOString(),
-    title: 'Подписка приобретена',
-    message: 'Вы успешно приобрели подписку PREMIUM на год.',
-    category: 'messages',
-    isRead: true,
-    isArchived: false,
-    isDeleted: false,
-  },
-  {
-    id: 'n6',
-    date: new Date(Date.now() - 432000000).toISOString(),
-    title: 'Оплата прошла',
-    message: 'Оплата в размере 499 ₽ успешно обработана.',
-    category: 'messages',
-    isRead: false,
-    isArchived: false,
-    isDeleted: false,
-  },
-  {
-    id: 'n3',
-    date: new Date(Date.now() - 172800000).toISOString(),
-    title: 'Новости ПОТОК',
-    message: 'Добавлены новые тренировки в разделе PREMIUM.',
-    category: 'news',
-    isRead: true,
-    isArchived: false,
-    isDeleted: false,
-  },
-  {
-    id: 'n4',
-    date: new Date(Date.now() - 259200000).toISOString(),
-    title: 'Акция на годовую подписку',
-    message: 'Скидка 20% до конца месяца.',
-    category: 'news',
-    isRead: false,
-    isArchived: false,
-    isDeleted: false,
-  },
-];
-
 const notifyChange = (userId: string) => {
   window.dispatchEvent(
     new CustomEvent('notifications-updated', {
@@ -97,14 +34,36 @@ const notifyChange = (userId: string) => {
 };
 
 const getNotifications = (userId: string): AppNotification[] => {
+  if (!userId || userId.trim() === '') {
+    console.warn('Попытка получить уведомления без userId');
+    return [];
+  }
+  
+  // Дополнительная проверка: userId должен быть валидным
+  if (userId === 'undefined' || userId === 'null') {
+    console.warn('Некорректный userId для получения уведомлений:', userId);
+    return [];
+  }
+  
   const key = getStorageKey(userId);
   const stored = localStorage.getItem(key);
   if (!stored) {
-    const mock = createMockNotifications();
-    localStorage.setItem(key, JSON.stringify(mock));
-    return mock;
+    // Не создаем моковые уведомления для новых пользователей
+    // Уведомления будут создаваться только при реальных действиях (оплата, ответы поддержки и т.д.)
+    return [];
   }
-  return JSON.parse(stored);
+  try {
+    const notifications = JSON.parse(stored);
+    // Проверяем, что это массив
+    if (!Array.isArray(notifications)) {
+      console.error('Уведомления не являются массивом для userId:', userId);
+      return [];
+    }
+    return notifications;
+  } catch (error) {
+    console.error('Ошибка парсинга уведомлений для userId:', userId, error);
+    return [];
+  }
 };
 
 const saveNotifications = (userId: string, notifications: AppNotification[]) => {
@@ -117,9 +76,20 @@ const addNotification = (
   userId: string,
   notification: Omit<AppNotification, 'id' | 'date' | 'isRead' | 'isArchived' | 'isDeleted'>
 ) => {
+  if (!userId || userId.trim() === '') {
+    console.error('Не указан userId для уведомления');
+    return;
+  }
+  
+  // Дополнительная проверка: userId должен быть валидным
+  if (userId === 'undefined' || userId === 'null') {
+    console.error('Некорректный userId для уведомления:', userId);
+    return;
+  }
+  
   const notifications = getNotifications(userId);
   const newNotification: AppNotification = {
-    id: `notif_${Date.now()}_${Math.random()}`,
+    id: `notif_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     date: new Date().toISOString(),
     isRead: false,
     isArchived: false,
