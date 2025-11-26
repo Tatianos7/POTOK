@@ -1,4 +1,4 @@
-import { X } from 'lucide-react';
+import { X, Circle, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -40,10 +40,20 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
     refreshNotificationsIndicator();
   }, [user?.id]);
 
+  // Обновляем индикатор при открытии меню
   useEffect(() => {
+    if (isOpen) {
+      refreshNotificationsIndicator();
+    }
+  }, [isOpen, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    
     const handler = (event: Event) => {
-      const customEvent = event as CustomEvent<{ userId: string }>;
-      if (customEvent.detail?.userId === user?.id) {
+      const customEvent = event as CustomEvent<{ userId?: string }>;
+      // Обновляем индикатор если событие для текущего пользователя или userId не указан (глобальное обновление)
+      if (!customEvent.detail?.userId || customEvent.detail.userId === user.id) {
         refreshNotificationsIndicator();
       }
     };
@@ -126,11 +136,11 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
               <div className="flex items-center justify-center gap-2">
                 <span>{item.label}</span>
                 {item.indicator && (
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      item.indicator === 'unread' ? 'bg-red-500' : 'bg-green-500'
-                    }`}
-                  ></span>
+                  item.indicator === 'unread' ? (
+                    <Circle className="w-3 h-3 fill-red-500 text-red-500" />
+                  ) : (
+                    <Check className="w-3 h-3 text-green-500" />
+                  )
                 )}
               </div>
             </button>

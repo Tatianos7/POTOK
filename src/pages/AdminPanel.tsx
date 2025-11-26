@@ -151,6 +151,14 @@ const AdminPanel = () => {
         if (existingSupportNotification) {
           // Используем существующее уведомление
           notificationId = existingSupportNotification.id;
+          
+          // Помечаем уведомление как непрочитанное, если оно было прочитано
+          if (existingSupportNotification.isRead) {
+            const updatedNotifications = userNotifications.map(n => 
+              n.id === notificationId ? { ...n, isRead: false } : n
+            );
+            notificationService.saveNotifications(selectedMessage.userId, updatedNotifications);
+          }
         } else {
           // Создаем новое уведомление
           const newNotification = notificationService.addNotification(selectedMessage.userId, {
@@ -172,6 +180,13 @@ const AdminPanel = () => {
           notificationId,
           responseText.trim(),
           false // false = от поддержки (не от пользователя)
+        );
+        
+        // Отправляем событие обновления уведомлений для обновления индикатора
+        window.dispatchEvent(
+          new CustomEvent('notifications-updated', {
+            detail: { userId: selectedMessage.userId },
+          })
         );
       } catch (notifError) {
         console.error('Ошибка создания уведомления:', notifError);

@@ -9,7 +9,7 @@ interface FeatureCardProps {
 
 const FeatureCard: React.FC<FeatureCardProps> = ({ card, icon: Icon, hasPremium }) => {
   const showPremium = card.isPremium && !hasPremium;
-  
+
   const getPremiumStyles = () => {
     if (card.premiumColor === 'green') {
       return 'text-primary-600 bg-primary-50';
@@ -25,17 +25,17 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ card, icon: Icon, hasPremium 
         {/* Icon */}
         <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
           <Icon className="w-7 h-7 text-gray-700" />
-        </div>
-
+      </div>
+      
         {/* Content */}
-        <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
             <h3 className="text-base font-semibold text-gray-900">
               {card.title}
-            </h3>
-            {showPremium && (
+        </h3>
+      {showPremium && (
               <span className={`flex-shrink-0 px-2 py-1 text-xs font-semibold rounded ${getPremiumStyles()}`}>
-                PREMIUM
+          PREMIUM
               </span>
             )}
           </div>
