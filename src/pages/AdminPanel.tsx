@@ -127,23 +127,76 @@ const AdminPanel = () => {
 
     setIsResponding(true);
     try {
+      // Проверяем валидность userId перед отправкой
+      if (!selectedMessage.userId || selectedMessage.userId.trim() === '') {
+        console.error('Некорректный userId для отправки ответа:', selectedMessage.userId);
+        alert('Ошибка: не удалось определить пользователя для отправки ответа');
+        setIsResponding(false);
+        return;
+      }
+
+      // Отправляем ответ
       await supportService.addResponse(selectedMessage.id, true, responseText.trim());
       
       // Создаем уведомление для пользователя, которому адресован ответ
-      notificationService.addNotification(selectedMessage.userId, {
-        title: 'Ответ на обращение',
-        message: 'Мы ответили на вашу заявку в поддержку.',
-        category: 'support',
-      });
+      try {
+        // Ищем существующее уведомление поддержки для этого пользователя
+        const userNotifications = notificationService.getNotifications(selectedMessage.userId);
+        const existingSupportNotification = userNotifications.find(
+          (n) => n.category === 'support' && !n.isDeleted
+        );
+        
+        let notificationId: string;
+        
+        if (existingSupportNotification) {
+          // Используем существующее уведомление
+          notificationId = existingSupportNotification.id;
+        } else {
+          // Создаем новое уведомление
+          const newNotification = notificationService.addNotification(selectedMessage.userId, {
+            title: 'Ответ на обращение',
+            message: 'Мы ответили на вашу заявку в поддержку.',
+            category: 'support',
+          });
+          
+          if (!newNotification || !newNotification.id) {
+            throw new Error('Не удалось создать уведомление');
+          }
+          
+          notificationId = newNotification.id;
+        }
+        
+        // Добавляем ответ админа в тред уведомления
+        notificationService.addThreadMessage(
+          selectedMessage.userId,
+          notificationId,
+          responseText.trim(),
+          false // false = от поддержки (не от пользователя)
+        );
+      } catch (notifError) {
+        console.error('Ошибка создания уведомления:', notifError);
+        // Продолжаем выполнение, даже если уведомление не создалось
+      }
       
+      // Очищаем поле ввода
       setResponseText('');
-      const data = await loadData({ silent: true });
-      const updated = data?.messages.find(m => m.id === selectedMessage.id);
-      if (updated) {
-        setSelectedMessage(updated);
+      
+      // Обновляем данные без блокировки UI
+      try {
+        const messagesData = await supportService.getAllMessages();
+        const updated = messagesData.find(m => m.id === selectedMessage.id);
+        if (updated) {
+          setSelectedMessage(updated);
+        }
+        // Обновляем список сообщений
+        setMessages(messagesData);
+      } catch (loadError) {
+        console.error('Ошибка обновления данных:', loadError);
+        // Продолжаем выполнение, данные обновятся при следующей загрузке
       }
     } catch (error) {
       console.error('Ошибка отправки ответа:', error);
+      alert('Не удалось отправить ответ. Попробуйте еще раз.');
     } finally {
       setIsResponding(false);
     }

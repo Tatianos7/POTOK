@@ -75,16 +75,16 @@ const saveNotifications = (userId: string, notifications: AppNotification[]) => 
 const addNotification = (
   userId: string,
   notification: Omit<AppNotification, 'id' | 'date' | 'isRead' | 'isArchived' | 'isDeleted'>
-) => {
+): AppNotification | undefined => {
   if (!userId || userId.trim() === '') {
     console.error('Не указан userId для уведомления');
-    return;
+    return undefined;
   }
   
   // Дополнительная проверка: userId должен быть валидным
   if (userId === 'undefined' || userId === 'null') {
     console.error('Некорректный userId для уведомления:', userId);
-    return;
+    return undefined;
   }
   
   const notifications = getNotifications(userId);
@@ -97,6 +97,7 @@ const addNotification = (
     ...notification,
   };
   saveNotifications(userId, [newNotification, ...notifications]);
+  return newNotification;
 };
 
 const seedThreadIfNeeded = (
@@ -148,7 +149,10 @@ const addThreadMessage = (
 export const notificationService = {
   getNotifications,
   saveNotifications,
-  addNotification,
+  addNotification: addNotification as (
+    userId: string,
+    notification: Omit<AppNotification, 'id' | 'date' | 'isRead' | 'isArchived' | 'isDeleted'>
+  ) => AppNotification | undefined,
   getThread,
   addThreadMessage,
   seedThreadIfNeeded,
