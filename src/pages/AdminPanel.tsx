@@ -152,13 +152,12 @@ const AdminPanel = () => {
           // Используем существующее уведомление
           notificationId = existingSupportNotification.id;
           
-          // Помечаем уведомление как непрочитанное, если оно было прочитано
-          if (existingSupportNotification.isRead) {
-            const updatedNotifications = userNotifications.map(n => 
-              n.id === notificationId ? { ...n, isRead: false } : n
-            );
-            notificationService.saveNotifications(selectedMessage.userId, updatedNotifications);
-          }
+          // ВСЕГДА помечаем уведомление как непрочитанное при получении нового ответа от админа
+          // Это гарантирует, что пользователь увидит красный индикатор
+          const updatedNotifications = userNotifications.map(n => 
+            n.id === notificationId ? { ...n, isRead: false } : n
+          );
+          notificationService.saveNotifications(selectedMessage.userId, updatedNotifications);
         } else {
           // Создаем новое уведомление
           const newNotification = notificationService.addNotification(selectedMessage.userId, {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Check, RotateCcw } from 'lucide-react';
+import { Trash2, Check, RotateCcw, Circle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AppNotification, notificationService, NotificationCategory } from '../services/notificationService';
 import NotificationThreadModal from '../components/NotificationThreadModal';
@@ -191,13 +191,14 @@ const Notifications = () => {
                         {notification.isRead ? (
                           <Check className="w-4 h-4 text-green-500" />
                         ) : (
-                          <span className="w-3 h-3 rounded-full bg-red-500 block"></span>
+                          <Circle className="w-4 h-4 fill-red-500 text-red-500" />
                         )}
                       </button>
                       {notification.category === 'support' ? (
                         <button
                           className="text-left flex-1"
                           onClick={() => {
+                            // Помечаем уведомление как прочитанное при открытии треда
                             if (!notification.isRead) {
                               toggleRead(notification.id);
                             }
@@ -288,6 +289,13 @@ const Notifications = () => {
         notificationId={selectedNotification?.id || null}
         notificationTitle={selectedNotification?.title || ''}
         onClose={() => setIsThreadOpen(false)}
+        onMarkAsRead={(id) => {
+          // Помечаем уведомление как прочитанное при открытии треда
+          const notification = notifications.find(n => n.id === id);
+          if (notification && !notification.isRead) {
+            toggleRead(id);
+          }
+        }}
       />
       <NotificationDetailsModal
         isOpen={isNewsModalOpen}
