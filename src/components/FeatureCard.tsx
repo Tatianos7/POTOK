@@ -28,7 +28,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ card, icon: Icon, hasPremium 
   };
 
   return (
-    <div className="card relative cursor-pointer" onClick={handleClick}>
+    <div className={`card relative ${card.route ? 'cursor-pointer' : ''}`} onClick={handleClick}>
       <div className="flex items-center gap-4">
         {/* Icon */}
         <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
