@@ -111,10 +111,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
               </div>
               <button
                 onClick={() => handleToggle(setting.key)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors outline-none focus:outline-none active:outline-none ${
                   setting.value
-                    ? 'bg-green-500 focus:ring-green-500'
-                    : 'bg-red-500 focus:ring-red-500'
+                    ? 'bg-green-500'
+                    : 'bg-red-500'
                 }`}
                 role="switch"
                 aria-checked={setting.value}
