@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Check, XCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface SettingsModalProps {
@@ -105,34 +105,26 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
               }`}
             >
               <div className="flex items-center gap-3 flex-1">
-                {setting.value ? (
-                  <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-                ) : null}
                 <span className="text-base font-medium text-gray-900 dark:text-white">
                   {setting.label}
                 </span>
               </div>
-              <div className="flex items-center gap-3">
-                <button
+              <button
                 onClick={() => handleToggle(setting.key)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                   setting.value
                     ? 'bg-green-500 focus:ring-green-500'
-                    : 'bg-gray-300 dark:bg-gray-600 focus:ring-gray-500'
+                    : 'bg-red-500 focus:ring-red-500'
                 }`}
                 role="switch"
                 aria-checked={setting.value}
               >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      setting.value ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
-                </button>
-                {!setting.value ? (
-                  <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                ) : null}
-              </div>
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    setting.value ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
           ))}
         </div>
