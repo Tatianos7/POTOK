@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import SupportForm from './SupportForm';
+import SettingsModal from './SettingsModal';
 import { notificationService } from '../services/notificationService';
 
 interface MenuProps {
@@ -16,6 +17,7 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isSupportFormOpen, setIsSupportFormOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   const refreshNotificationsIndicator = () => {
@@ -72,6 +74,9 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
     } else if (itemId === 'notifications') {
       onClose();
       navigate('/notifications');
+    } else if (itemId === 'settings') {
+      onClose();
+      setIsSettingsOpen(true);
     }
   };
 
@@ -89,6 +94,7 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
   return (
     <>
       <SupportForm isOpen={isSupportFormOpen} onClose={() => setIsSupportFormOpen(false)} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       
       {/* Backdrop */}
       {isOpen && (
