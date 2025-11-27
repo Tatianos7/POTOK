@@ -1,5 +1,6 @@
 import { FeatureCard as FeatureCardType } from '../types';
 import { ComponentType } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface FeatureCardProps {
   card: FeatureCardType;
@@ -8,6 +9,7 @@ interface FeatureCardProps {
 }
 
 const FeatureCard: React.FC<FeatureCardProps> = ({ card, icon: Icon, hasPremium }) => {
+  const navigate = useNavigate();
   const showPremium = card.isPremium && !hasPremium;
 
   const getPremiumStyles = () => {
@@ -19,8 +21,14 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ card, icon: Icon, hasPremium 
     return 'text-primary-600 bg-primary-50';
   };
 
+  const handleClick = () => {
+    if (card.route) {
+      navigate(card.route);
+    }
+  };
+
   return (
-    <div className="card relative">
+    <div className="card relative cursor-pointer" onClick={handleClick}>
       <div className="flex items-center gap-4">
         {/* Icon */}
         <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
