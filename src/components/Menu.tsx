@@ -84,7 +84,6 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
     },
     { id: 'settings', label: 'ОБЩИЕ НАСТРОЙКИ' },
     { id: 'support', label: 'ПОДДЕРЖКА' },
-    { id: 'feedback', label: 'ОБРАТНАЯ СВЯЗЬ' },
   ];
 
   return (
