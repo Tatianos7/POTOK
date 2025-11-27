@@ -98,10 +98,10 @@ const SettingsModal = ({ isOpen, onClose }: SettingsModalProps) => {
           {settingsList.map((setting) => (
             <div
               key={setting.key}
-              className={`flex items-center justify-between p-4 rounded-xl border-2 ${
+              className={`flex items-center justify-between p-4 rounded-xl border-2 bg-white dark:bg-gray-800 ${
                 setting.value
-                  ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                  : 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                  ? 'border-green-500'
+                  : 'border-red-500'
               }`}
             >
               <div className="flex items-center gap-3 flex-1">
