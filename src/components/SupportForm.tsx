@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supportService } from '../services/supportService';
+import { notificationService } from '../services/notificationService';
 import { X } from 'lucide-react';
 
 interface SupportFormProps {
@@ -36,6 +37,35 @@ const SupportForm = ({ isOpen, onClose }: SupportFormProps) => {
         user.profile?.phone || user.phone,
         subject.trim()
       );
+      
+      // Используем одно уведомление поддержки для всех сообщений от этого пользователя
+      const userNotifications = notificationService.getNotifications(user.id);
+      let supportNotification = userNotifications.find(
+        (n) => n.category === 'support' && !n.isDeleted
+      );
+      
+      if (!supportNotification) {
+        // Создаем новое уведомление только если его еще нет
+        const newNotification = notificationService.addNotification(user.id, {
+          title: 'Обращение в поддержку',
+          message: 'Ваше обращение получено. Мы ответим в ближайшее время.',
+          category: 'support',
+        });
+        if (newNotification) {
+          supportNotification = newNotification;
+        }
+      }
+      
+      // Добавляем сообщение пользователя в тред уведомления
+      if (supportNotification) {
+        notificationService.addThreadMessage(
+          user.id,
+          supportNotification.id,
+          message.trim(),
+          true // true = от пользователя
+        );
+      }
+      
       setStatus('success');
       setSubject('');
       setMessage('');

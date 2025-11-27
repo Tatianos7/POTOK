@@ -67,6 +67,9 @@ const NotificationThreadModal = ({
         user.profile?.phone || user.phone,
         `Ответ на уведомление: ${notificationTitle}`
       );
+      
+      // Сообщение уже добавлено в тред выше, не нужно создавать новое уведомление
+      // Используем существующее уведомление поддержки
     } catch (error) {
       console.error('Не удалось отправить сообщение в поддержку', error);
     }

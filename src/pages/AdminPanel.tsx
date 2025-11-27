@@ -11,7 +11,7 @@ const AdminPanel = () => {
   const { user, logout, getAllUsers, setAdminStatus } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
-  const [selectedMessage, setSelectedMessage] = useState<SupportMessage | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [responseText, setResponseText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [usersStats, setUsersStats] = useState({ total: 0, withPremium: 0, withoutPremium: 0, online: 0 });
@@ -19,6 +19,40 @@ const AdminPanel = () => {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [activeTab, setActiveTab] = useState<'stats' | 'messages' | 'users'>('stats');
   const [isResponding, setIsResponding] = useState(false);
+  
+  // Группируем сообщения по userId
+  const messagesByUser = messages.reduce((acc, message) => {
+    if (!acc[message.userId]) {
+      acc[message.userId] = [];
+    }
+    acc[message.userId].push(message);
+    return acc;
+  }, {} as Record<string, SupportMessage[]>);
+  
+  // Получаем все сообщения выбранного пользователя в хронологическом порядке
+  const selectedUserMessages = selectedUserId ? messagesByUser[selectedUserId] || [] : [];
+  const allUserMessages = selectedUserMessages.flatMap(msg => {
+    const responses = (msg.responses || []).map(r => ({
+      id: r.id,
+      text: r.text,
+      fromAdmin: r.fromAdmin,
+      createdAt: r.createdAt,
+      messageId: msg.id,
+    }));
+    return [
+      { ...msg, isOriginal: true },
+      ...responses,
+    ];
+  }).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  
+  // Получаем информацию о выбранном пользователе
+  const selectedUserInfo = selectedUserId && selectedUserMessages.length > 0 
+    ? {
+        userName: selectedUserMessages[0].userName,
+        userEmail: selectedUserMessages[0].userEmail,
+        userPhone: selectedUserMessages[0].userPhone,
+      }
+    : null;
 
   useEffect(() => {
     if (!user) {
@@ -123,25 +157,28 @@ const AdminPanel = () => {
   };
 
   const handleSendResponse = async () => {
-    if (!selectedMessage || !responseText.trim()) return;
+    if (!selectedUserId || !responseText.trim() || selectedUserMessages.length === 0) return;
 
     setIsResponding(true);
     try {
       // Проверяем валидность userId перед отправкой
-      if (!selectedMessage.userId || selectedMessage.userId.trim() === '') {
-        console.error('Некорректный userId для отправки ответа:', selectedMessage.userId);
+      if (!selectedUserId || selectedUserId.trim() === '') {
+        console.error('Некорректный userId для отправки ответа:', selectedUserId);
         alert('Ошибка: не удалось определить пользователя для отправки ответа');
         setIsResponding(false);
         return;
       }
 
-      // Отправляем ответ
-      await supportService.addResponse(selectedMessage.id, true, responseText.trim());
+      // Находим последнее сообщение пользователя для ответа
+      const lastMessage = selectedUserMessages[selectedUserMessages.length - 1];
+      
+      // Отправляем ответ на последнее сообщение пользователя
+      await supportService.addResponse(lastMessage.id, true, responseText.trim());
       
       // Создаем уведомление для пользователя, которому адресован ответ
       try {
         // Ищем существующее уведомление поддержки для этого пользователя
-        const userNotifications = notificationService.getNotifications(selectedMessage.userId);
+        const userNotifications = notificationService.getNotifications(selectedUserId);
         const existingSupportNotification = userNotifications.find(
           (n) => n.category === 'support' && !n.isDeleted
         );
@@ -157,10 +194,10 @@ const AdminPanel = () => {
           const updatedNotifications = userNotifications.map(n => 
             n.id === notificationId ? { ...n, isRead: false } : n
           );
-          notificationService.saveNotifications(selectedMessage.userId, updatedNotifications);
+          notificationService.saveNotifications(selectedUserId, updatedNotifications);
         } else {
-          // Создаем новое уведомление
-          const newNotification = notificationService.addNotification(selectedMessage.userId, {
+          // Создаем новое уведомление только если его еще нет
+          const newNotification = notificationService.addNotification(selectedUserId, {
             title: 'Ответ на обращение',
             message: 'Мы ответили на вашу заявку в поддержку.',
             category: 'support',
@@ -175,7 +212,7 @@ const AdminPanel = () => {
         
         // Добавляем ответ админа в тред уведомления
         notificationService.addThreadMessage(
-          selectedMessage.userId,
+          selectedUserId,
           notificationId,
           responseText.trim(),
           false // false = от поддержки (не от пользователя)
@@ -184,7 +221,7 @@ const AdminPanel = () => {
         // Отправляем событие обновления уведомлений для обновления индикатора
         window.dispatchEvent(
           new CustomEvent('notifications-updated', {
-            detail: { userId: selectedMessage.userId },
+            detail: { userId: selectedUserId },
           })
         );
       } catch (notifError) {
@@ -198,10 +235,6 @@ const AdminPanel = () => {
       // Обновляем данные без блокировки UI
       try {
         const messagesData = await supportService.getAllMessages();
-        const updated = messagesData.find(m => m.id === selectedMessage.id);
-        if (updated) {
-          setSelectedMessage(updated);
-        }
         // Обновляем список сообщений
         setMessages(messagesData);
       } catch (loadError) {
@@ -220,12 +253,7 @@ const AdminPanel = () => {
     setIsLoading(true);
     try {
       await supportService.updateMessageStatus(messageId, status);
-      await loadData();
-      if (selectedMessage?.id === messageId) {
-        const updatedMessages = await supportService.getAllMessages();
-        const updated = updatedMessages.find(m => m.id === messageId);
-        if (updated) setSelectedMessage(updated);
-      }
+      await loadData({ silent: true });
     } catch (error) {
       console.error('Ошибка обновления статуса:', error);
     } finally {
@@ -403,60 +431,66 @@ const AdminPanel = () => {
             <>
               <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Сообщения от пользователей</h2>
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {messages.length === 0 ? (
-                <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                  Нет сообщений
-                </div>
-              ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                      selectedMessage?.id === message.id ? 'bg-blue-50 dark:bg-blue-900' : ''
-                    }`}
-                    onClick={() => setSelectedMessage(message)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                          <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {message.userName}
-                          </span>
-                          <span className="text-xs text-gray-400 dark:text-gray-500">
-                            (ID: {message.userId.substring(0, 8)}...)
-                          </span>
-                          {getStatusBadge(message.status)}
-                        </div>
-                        {message.subject && (
-                          <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            {message.subject}
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-1.5">
-                          {message.message}
-                        </p>
-                        <div className="flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400">
-                          <span>{new Date(message.createdAt).toLocaleString('ru-RU')}</span>
-                          {message.userEmail && <span className="truncate">{message.userEmail}</span>}
-                          {message.userPhone && <span>{message.userPhone}</span>}
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        {message.responses && message.responses.length > 0 && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {message.responses.length}
-                          </span>
-                        )}
-                        <MessageSquare className="w-4 h-4 text-gray-400" />
-                      </div>
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {Object.keys(messagesByUser).length === 0 ? (
+                    <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                      Нет сообщений
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-          </>
+                  ) : (
+                    Object.entries(messagesByUser).map(([userId, userMessages]) => {
+                      const user = allUsers.find(u => u.id === userId);
+                      const userName = userMessages[0]?.userName || user?.profile?.firstName || user?.name || 'Пользователь';
+                      const unreadCount = userMessages.filter(m => m.status === 'new').length;
+                      const lastMessage = userMessages.sort((a, b) => 
+                        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                      )[0];
+                      const totalMessages = userMessages.length;
+                      const totalResponses = userMessages.reduce((sum, m) => sum + (m.responses?.length || 0), 0);
+                      
+                      return (
+                        <div
+                          key={userId}
+                          className={`p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                            selectedUserId === userId ? 'bg-blue-50 dark:bg-blue-900' : ''
+                          }`}
+                          onClick={() => setSelectedUserId(userId)}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {userName}
+                                </span>
+                                {unreadCount > 0 && (
+                                  <span className="px-1.5 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                                    {unreadCount} новых
+                                  </span>
+                                )}
+                                {getStatusBadge(lastMessage.status)}
+                              </div>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                Сообщений: {totalMessages} | Ответов: {totalResponses}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
+                                Последнее: {lastMessage.subject || lastMessage.message.substring(0, 50)}
+                              </p>
+                              <div className="flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                <span>{new Date(lastMessage.createdAt).toLocaleString('ru-RU')}</span>
+                                {lastMessage.userEmail && <span className="truncate">{lastMessage.userEmail}</span>}
+                                {lastMessage.userPhone && <span>{lastMessage.userPhone}</span>}
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                              <MessageSquare className="w-4 h-4 text-gray-400" />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </>
           )}
 
           {activeTab === 'users' && (
@@ -543,101 +577,122 @@ const AdminPanel = () => {
           )}
         </div>
 
-        {/* Message Detail Sidebar */}
-        {selectedMessage && (
+        {/* Chat Modal */}
+        {selectedUserId && selectedUserInfo && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-3">
             <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col">
               <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate flex-1 mr-2">
-                  {selectedMessage.userName}
-                </h3>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                    {selectedUserInfo.userName}
+                  </h3>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {selectedUserInfo.userEmail && <div className="truncate">{selectedUserInfo.userEmail}</div>}
+                    {selectedUserInfo.userPhone && <div>{selectedUserInfo.userPhone}</div>}
+                    <div>ID: {selectedUserId.substring(0, 8)}...</div>
+                  </div>
+                </div>
                 <button
-                  onClick={() => setSelectedMessage(null)}
-                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+                  onClick={() => {
+                    setSelectedUserId(null);
+                    setResponseText('');
+                  }}
+                  className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0 ml-2"
                 >
                   <X className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-3 space-y-3">
-                {/* Original Message */}
-                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2 flex-wrap gap-1.5">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        {selectedMessage.userName}
-                      </span>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
-                        (ID: {selectedMessage.userId.substring(0, 8)}...)
-                      </span>
-                    </div>
-                    {getStatusBadge(selectedMessage.status)}
-                  </div>
-                  {selectedMessage.subject && (
-                    <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      {selectedMessage.subject}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                    {selectedMessage.message}
-                  </p>
-                  <div className="mt-2 space-y-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    <div>{new Date(selectedMessage.createdAt).toLocaleString('ru-RU')}</div>
-                    {selectedMessage.userEmail && <div>Email: {selectedMessage.userEmail}</div>}
-                    {selectedMessage.userPhone && <div>Телефон: {selectedMessage.userPhone}</div>}
-                    <div>User ID: {selectedMessage.userId}</div>
-                  </div>
-                </div>
-
-                {/* Responses */}
-                {selectedMessage.responses && selectedMessage.responses.length > 0 && (
-                  <div className="space-y-2">
-                    {selectedMessage.responses.map((response) => (
-                      <div
-                        key={response.id}
-                        className={`rounded-lg p-3 ${
-                          response.fromAdmin
-                            ? 'bg-blue-50 dark:bg-blue-900 ml-4'
-                            : 'bg-gray-50 dark:bg-gray-700 mr-4'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
-                          <span className="text-xs font-semibold text-gray-900 dark:text-white">
-                            {response.fromAdmin ? 'Администратор' : selectedMessage.userName}
-                          </span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(response.createdAt).toLocaleString('ru-RU')}
-                          </span>
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-gray-50 dark:bg-gray-900">
+                {/* All Messages in Chronological Order */}
+                {allUserMessages.map((item) => {
+                  if ('isOriginal' in item) {
+                    // Это оригинальное сообщение пользователя
+                    const msg = item as SupportMessage;
+                    return (
+                      <div key={msg.id} className="flex justify-start">
+                        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 max-w-[85%] border border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center justify-between mb-2 flex-wrap gap-1.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                                {msg.userName}
+                              </span>
+                              {getStatusBadge(msg.status)}
+                            </div>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(msg.createdAt).toLocaleString('ru-RU')}
+                            </span>
+                          </div>
+                          {msg.subject && (
+                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              {msg.subject}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                            {msg.message}
+                          </p>
                         </div>
-                        <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                          {response.text}
-                        </p>
                       </div>
-                    ))}
+                    );
+                  } else {
+                    // Это ответ
+                    const response = item as { id: string; text: string; fromAdmin: boolean; createdAt: string; messageId: string };
+                    return (
+                      <div key={response.id} className={`flex ${response.fromAdmin ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`rounded-lg p-3 max-w-[85%] ${
+                          response.fromAdmin
+                            ? 'bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-800'
+                            : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
+                        }`}>
+                          <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                            <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                              {response.fromAdmin ? 'Администратор' : selectedUserInfo.userName}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              {new Date(response.createdAt).toLocaleString('ru-RU')}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                            {response.text}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                })}
+                
+                {allUserMessages.length === 0 && (
+                  <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
+                    Нет сообщений
                   </div>
                 )}
+              </div>
 
-                {/* Response Form */}
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
-                  <textarea
-                    value={responseText}
-                    onChange={(e) => setResponseText(e.target.value)}
-                    placeholder="Введите ответ..."
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                  />
-                  <div className="flex flex-col gap-2 mt-2">
-                    <button
-                      onClick={handleSendResponse}
-                      disabled={!responseText.trim() || isResponding}
-                      className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isResponding ? 'Отправка...' : 'Отправить ответ'}
-                    </button>
+              {/* Response Form */}
+              <div className="border-t border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-800">
+                <textarea
+                  value={responseText}
+                  onChange={(e) => setResponseText(e.target.value)}
+                  placeholder="Введите ответ..."
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                />
+                <div className="flex flex-col gap-2 mt-2">
+                  <button
+                    onClick={handleSendResponse}
+                    disabled={!responseText.trim() || isResponding}
+                    className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isResponding ? 'Отправка...' : 'Отправить ответ'}
+                  </button>
+                  {selectedUserMessages.length > 0 && (
                     <select
-                      value={selectedMessage.status}
+                      value={selectedUserMessages[selectedUserMessages.length - 1].status}
                       onChange={(e) =>
-                        handleStatusChange(selectedMessage.id, e.target.value as SupportMessage['status'])
+                        handleStatusChange(
+                          selectedUserMessages[selectedUserMessages.length - 1].id,
+                          e.target.value as SupportMessage['status']
+                        )
                       }
                       className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
@@ -645,7 +700,7 @@ const AdminPanel = () => {
                       <option value="in_progress">В работе</option>
                       <option value="resolved">Решено</option>
                     </select>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
