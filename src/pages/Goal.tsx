@@ -82,8 +82,8 @@ const Goal = () => {
   const fieldClasses = 'w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500';
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 flex flex-col" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto flex flex-col flex-1 w-full">
+    <div className="h-screen bg-white dark:bg-gray-900 flex flex-col overflow-hidden" style={{ minWidth: '360px' }}>
+      <div className="max-w-[1024px] mx-auto flex flex-col flex-1 w-full h-full overflow-hidden">
         {/* Header */}
         <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex-1"></div>
@@ -101,7 +101,7 @@ const Goal = () => {
           </div>
         </header>
 
-        <main className="px-4 py-6 flex-1 overflow-y-auto">
+        <main className="px-4 py-6 flex-1 overflow-y-auto min-h-0">
           {!isEditing ? (
             <>
               {/* Set Goal Button */}
