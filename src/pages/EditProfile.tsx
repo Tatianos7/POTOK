@@ -14,7 +14,6 @@ const EditProfile = () => {
     middleName: user?.profile.middleName || '',
     birthDate: user?.profile.birthDate || '',
     age: user?.profile.age?.toString() || '',
-    height: user?.profile.height?.toString() || '',
     goal: user?.profile.goal || '',
     email: user?.profile.email || user?.email || '',
     phone: user?.profile.phone || user?.phone || '',
@@ -46,7 +45,6 @@ const EditProfile = () => {
         middleName: user.profile.middleName || '',
         birthDate: user.profile.birthDate || '',
         age: initialAge,
-        height: user.profile.height?.toString() || '',
         goal: user.profile.goal || '',
         email: user.profile.email || user.email || '',
         phone: user.profile.phone || user.phone || '',
@@ -106,7 +104,6 @@ const EditProfile = () => {
         middleName: form.middleName || undefined,
         birthDate: form.birthDate || undefined,
         age: form.age ? Number(form.age) : undefined,
-        height: form.height ? Number(form.height) : undefined,
         goal: form.goal || undefined,
         email: form.email || undefined,
         phone: form.phone || undefined,
@@ -228,27 +225,15 @@ const EditProfile = () => {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Лет</label>
-                  <input
-                    type="number"
-                    className={`${fieldClasses} text-center`}
-                    value={form.age}
-                    onChange={handleChange('age')}
-                    min={0}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Рост (см)</label>
-                  <input
-                    type="number"
-                    className={`${fieldClasses} text-center`}
-                    value={form.height}
-                    onChange={handleChange('height')}
-                    min={0}
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Лет</label>
+                <input
+                  type="number"
+                  className={`${fieldClasses} text-center`}
+                  value={form.age}
+                  onChange={handleChange('age')}
+                  min={0}
+                />
               </div>
             </div>
 
