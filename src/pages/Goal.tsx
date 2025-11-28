@@ -16,7 +16,6 @@ interface GoalData {
 const Goal = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [isEditing, setIsEditing] = useState(false);
   const [goalData, setGoalData] = useState<GoalData>({
     goalType: '',
     targetWeight: '',
@@ -39,36 +38,14 @@ const Goal = () => {
       try {
         const parsed = JSON.parse(savedGoal);
         setGoalData(parsed);
-        setIsEditing(false);
       } catch (error) {
         console.error('Ошибка загрузки цели:', error);
       }
     }
   }, [user, navigate]);
 
-  const handleChange = (field: keyof GoalData) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    setGoalData((prev) => ({
-      ...prev,
-      [field]: e.target.value,
-    }));
-  };
-
   const handleSetGoal = () => {
-    setIsEditing(true);
-  };
-
-  const handleSave = () => {
-    if (!user?.id) return;
-    
-    // Сохраняем цель в localStorage
-    localStorage.setItem(`goal_${user.id}`, JSON.stringify(goalData));
-    setIsEditing(false);
-  };
-
-  const handleEdit = () => {
-    setIsEditing(true);
+    // Пока ничего не делаем
   };
 
   const handleClose = () => {
@@ -98,234 +75,111 @@ const Goal = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto min-h-0 px-4 py-6">
-          {!isEditing ? (
-            <>
-              {/* Set Goal Button */}
-              {!goalData.goalType && (
-                <button
-                  onClick={handleSetGoal}
-                  className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-6"
-                >
-                  ЗАДАТЬ ЦЕЛЬ
-                </button>
-              )}
-
-              {/* Goal Summary Section */}
-              <div className="space-y-4 mb-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Цель:</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-white">
-                      {goalData.goalType || '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">До цели:</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Вес:</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-white">
-                      {goalData.targetWeight || '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Осталось:</p>
-                    <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Начало:</p>
-                  <p className="text-base font-medium text-gray-900 dark:text-white">
-                    {goalData.startDate || '-'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Daily Calorie and Macronutrient Section */}
-              <div className="mb-6">
-                <h2 className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                  Суточный калораж для достижения цели:
-                </h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      калории
-                    </label>
-                    <div className={`${fieldClasses} ${!goalData.calories ? 'text-gray-400' : ''}`}>
-                      {goalData.calories || '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      белки
-                    </label>
-                    <div className={`${fieldClasses} ${!goalData.proteins ? 'text-gray-400' : ''}`}>
-                      {goalData.proteins || '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      жиры
-                    </label>
-                    <div className={`${fieldClasses} ${!goalData.fats ? 'text-gray-400' : ''}`}>
-                      {goalData.fats || '-'}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      углеводы
-                    </label>
-                    <div className={`${fieldClasses} ${!goalData.carbs ? 'text-gray-400' : ''}`}>
-                      {goalData.carbs || '-'}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tips Section */}
-              <div className="mb-6">
-                <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
-                  Советы
-                </h2>
-              </div>
-
-              {/* Edit Button */}
-              {goalData.goalType && (
-                <div className="pt-6 pb-6">
-                  <button
-                    onClick={handleEdit}
-                    className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    РЕДАКТИРОВАТЬ ЦЕЛЬ
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Goal Form */}
-              <form className="space-y-6 pb-6">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    Цель
-                  </label>
-                  <select
-                    className={fieldClasses}
-                    value={goalData.goalType}
-                    onChange={handleChange('goalType')}
-                  >
-                    <option value="">Выберите цель</option>
-                    <option value="Похудение">Похудение</option>
-                    <option value="Поддержание формы">Поддержание формы</option>
-                    <option value="Набор массы">Набор массы</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    Вес (кг)
-                  </label>
-                  <input
-                    type="number"
-                    className={fieldClasses}
-                    value={goalData.targetWeight}
-                    onChange={handleChange('targetWeight')}
-                    placeholder="0"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    Начало
-                  </label>
-                  <input
-                    type="date"
-                    className={fieldClasses}
-                    value={goalData.startDate}
-                    onChange={handleChange('startDate')}
-                  />
-                </div>
-
-                {/* Daily Calorie Intake */}
-                <div>
-                  <h2 className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Суточный калораж для достижения цели:
-                  </h2>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        калории
-                      </label>
-                      <input
-                        type="number"
-                        className={fieldClasses}
-                        value={goalData.calories}
-                        onChange={handleChange('calories')}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        белки
-                      </label>
-                      <input
-                        type="number"
-                        className={fieldClasses}
-                        value={goalData.proteins}
-                        onChange={handleChange('proteins')}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        жиры
-                      </label>
-                      <input
-                        type="number"
-                        className={fieldClasses}
-                        value={goalData.fats}
-                        onChange={handleChange('fats')}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                        углеводы
-                      </label>
-                      <input
-                        type="number"
-                        className={fieldClasses}
-                        value={goalData.carbs}
-                        onChange={handleChange('carbs')}
-                        placeholder="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Tips Section */}
-                <div>
-                  <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
-                    Советы
-                  </h2>
-                </div>
-
-                {/* Save Button */}
-                <div className="pt-6">
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
-                  >
-                    СОХРАНИТЬ
-                  </button>
-                </div>
-              </form>
-            </>
+          {/* Set Goal Button */}
+          {!goalData.goalType && (
+            <button
+              onClick={handleSetGoal}
+              className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-6"
+            >
+              ЗАДАТЬ ЦЕЛЬ
+            </button>
           )}
+
+          {/* Goal Summary Section */}
+          <div className="space-y-4 mb-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Цель:</p>
+                <p className="text-base font-medium text-gray-900 dark:text-white">
+                  {goalData.goalType || '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">До цели:</p>
+                <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Вес:</p>
+                <p className="text-base font-medium text-gray-900 dark:text-white">
+                  {goalData.targetWeight || '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Осталось:</p>
+                <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Начало:</p>
+              <p className="text-base font-medium text-gray-900 dark:text-white">
+                {goalData.startDate || '-'}
+              </p>
+            </div>
+          </div>
+
+          {/* Daily Calorie and Macronutrient Section */}
+          <div className="mb-6">
+            <h2 className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Суточный калораж для достижения цели:
+            </h2>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  калории
+                </label>
+                <div className={`${fieldClasses} ${!goalData.calories ? 'text-gray-400' : ''}`}>
+                  {goalData.calories || '-'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  белки
+                </label>
+                <div className={`${fieldClasses} ${!goalData.proteins ? 'text-gray-400' : ''}`}>
+                  {goalData.proteins || '-'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  жиры
+                </label>
+                <div className={`${fieldClasses} ${!goalData.fats ? 'text-gray-400' : ''}`}>
+                  {goalData.fats || '-'}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  углеводы
+                </label>
+                <div className={`${fieldClasses} ${!goalData.carbs ? 'text-gray-400' : ''}`}>
+                  {goalData.carbs || '-'}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tips Section */}
+          <div className="mb-6">
+            <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
+              Советы
+            </h2>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="pt-6 pb-6">
+            <button
+              className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-3"
+            >
+              РЕДАКТИРОВАТЬ ЦЕЛЬ
+            </button>
+            <button
+              className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+            >
+              СОХРАНИТЬ
+            </button>
+          </div>
         </main>
       </div>
     </div>
