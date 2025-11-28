@@ -99,23 +99,23 @@ const Goal = () => {
                 <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
               </div>
             </div>
+            <div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Вес:</p>
+              <p className="text-base font-medium text-gray-900 dark:text-white">
+                {goalData.targetWeight || '-'}
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Вес:</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Начало:</p>
                 <p className="text-base font-medium text-gray-900 dark:text-white">
-                  {goalData.targetWeight || '-'}
+                  {goalData.startDate || '-'}
                 </p>
               </div>
               <div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Осталось:</p>
                 <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
               </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Начало:</p>
-              <p className="text-base font-medium text-gray-900 dark:text-white">
-                {goalData.startDate || '-'}
-              </p>
             </div>
           </div>
 
