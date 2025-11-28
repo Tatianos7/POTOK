@@ -37,7 +37,7 @@ const Login = () => {
       <div className="w-full max-w-[1024px] flex justify-center">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">POTOK</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">ПОТОК</h1>
           <p className="text-gray-600">Войдите в свой аккаунт</p>
         </div>
 
