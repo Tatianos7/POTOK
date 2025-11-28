@@ -6,8 +6,6 @@ import { X } from 'lucide-react';
 interface GoalData {
   goalType: string;
   targetWeight: string;
-  targetWaist: string;
-  targetHips: string;
   startDate: string;
   calories: string;
   proteins: string;
@@ -22,8 +20,6 @@ const Goal = () => {
   const [goalData, setGoalData] = useState<GoalData>({
     goalType: '',
     targetWeight: '',
-    targetWaist: '',
-    targetHips: '',
     startDate: '',
     calories: '',
     proteins: '',
@@ -114,43 +110,41 @@ const Goal = () => {
                 </button>
               )}
 
-              {/* Goal Details Display */}
-              {goalData.goalType && (
-                <div className="space-y-4 mb-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Цель:</p>
-                      <p className="text-base font-medium text-gray-900 dark:text-white">
-                        {goalData.goalType || '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">До цели:</p>
-                      <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Вес:</p>
-                      <p className="text-base font-medium text-gray-900 dark:text-white">
-                        {goalData.targetWeight || '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Осталось:</p>
-                      <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
-                    </div>
-                  </div>
+              {/* Goal Summary Section */}
+              <div className="space-y-4 mb-6">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Начало:</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Цель:</p>
                     <p className="text-base font-medium text-gray-900 dark:text-white">
-                      {goalData.startDate || '-'}
+                      {goalData.goalType || '-'}
                     </p>
                   </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">До цели:</p>
+                    <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
+                  </div>
                 </div>
-              )}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Вес:</p>
+                    <p className="text-base font-medium text-gray-900 dark:text-white">
+                      {goalData.targetWeight || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Осталось:</p>
+                    <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Начало:</p>
+                  <p className="text-base font-medium text-gray-900 dark:text-white">
+                    {goalData.startDate || '-'}
+                  </p>
+                </div>
+              </div>
 
-              {/* Daily Calorie Intake Display */}
+              {/* Daily Calorie and Macronutrient Section */}
               <div className="mb-6">
                 <h2 className="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   Суточный калораж для достижения цели:
@@ -196,7 +190,6 @@ const Goal = () => {
                 <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
                   Советы
                 </h2>
-                {/* Tips content can be added here */}
               </div>
 
               {/* Edit Button */}
@@ -231,42 +224,15 @@ const Goal = () => {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      Вес (кг)
-                    </label>
-                    <input
-                      type="number"
-                      className={fieldClasses}
-                      value={goalData.targetWeight}
-                      onChange={handleChange('targetWeight')}
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                      Талия (см)
-                    </label>
-                    <input
-                      type="number"
-                      className={fieldClasses}
-                      value={goalData.targetWaist}
-                      onChange={handleChange('targetWaist')}
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
                 <div>
                   <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                    Бедра (см)
+                    Вес (кг)
                   </label>
                   <input
                     type="number"
                     className={fieldClasses}
-                    value={goalData.targetHips}
-                    onChange={handleChange('targetHips')}
+                    value={goalData.targetWeight}
+                    onChange={handleChange('targetWeight')}
                     placeholder="0"
                   />
                 </div>
@@ -345,7 +311,6 @@ const Goal = () => {
                   <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">
                     Советы
                   </h2>
-                  {/* Tips content can be added here */}
                 </div>
 
                 {/* Save Button */}
