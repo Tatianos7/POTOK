@@ -24,7 +24,6 @@ export const FEATURE_CARDS: FeatureCard[] = [
     title: 'ЦЕЛЬ',
     subtitle: 'Создай свою цель',
     isPremium: false,
-    route: '/goals',
   },
   {
     id: '3',
