@@ -162,18 +162,18 @@ const Goal = () => {
             {!goalData.goalType && (
               <button
                 onClick={handleSetGoal}
-                className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-3"
+                className="w-full mx-1 py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-3"
               >
                 ЗАДАТЬ ЦЕЛЬ
               </button>
             )}
             <button
-              className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-3"
+              className="w-full mx-1 py-4 rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-3"
             >
               РЕДАКТИРОВАТЬ ЦЕЛЬ
             </button>
             <button
-              className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="w-full mx-1 py-4 rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               СОХРАНИТЬ
             </button>
