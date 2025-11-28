@@ -78,10 +78,10 @@ const Goal = () => {
   const fieldClasses = 'w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500';
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto">
+    <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden" style={{ minWidth: '360px' }}>
+      <div className="max-w-[1024px] mx-auto w-full flex flex-col h-full">
         {/* Header */}
-        <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+        <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex-1"></div>
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase">
             ТВОЯ ЦЕЛЬ
@@ -97,7 +97,7 @@ const Goal = () => {
           </div>
         </header>
 
-        <main className="px-4 py-6">
+        <main className="flex-1 overflow-y-auto min-h-0 px-4 py-6">
           {!isEditing ? (
             <>
               {/* Set Goal Button */}
@@ -194,10 +194,10 @@ const Goal = () => {
 
               {/* Edit Button */}
               {goalData.goalType && (
-                <div className="pb-6">
+                <div className="pt-6 pb-6">
                   <button
                     onClick={handleEdit}
-                    className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-3"
+                    className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     РЕДАКТИРОВАТЬ ЦЕЛЬ
                   </button>
@@ -314,13 +314,15 @@ const Goal = () => {
                 </div>
 
                 {/* Save Button */}
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
-                >
-                  СОХРАНИТЬ
-                </button>
+                <div className="pt-6">
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+                  >
+                    СОХРАНИТЬ
+                  </button>
+                </div>
               </form>
             </>
           )}
