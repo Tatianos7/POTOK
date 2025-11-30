@@ -297,11 +297,30 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                   max="150"
                   value={formData.targetWeight}
                   onChange={handleSliderChange}
-                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
                   style={{
                     background: `linear-gradient(to right, #10b981 0%, #10b981 ${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}%, #e5e7eb ${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}%, #e5e7eb 100%)`
                   }}
                 />
+                <style>{`
+                  input[type="range"]::-webkit-slider-thumb {
+                    appearance: none;
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    background: #10b981;
+                    cursor: pointer;
+                    border: 2px solid #10b981;
+                  }
+                  input[type="range"]::-moz-range-thumb {
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    background: #10b981;
+                    cursor: pointer;
+                    border: 2px solid #10b981;
+                  }
+                `}</style>
                 <div
                   className="absolute top-[-20px] text-sm font-medium text-gray-900 dark:text-white"
                   style={{
