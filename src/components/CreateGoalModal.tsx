@@ -248,30 +248,33 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                 { value: 'weight-loss', label: 'Похудение' },
                 { value: 'maintain', label: 'Поддержка формы' },
                 { value: 'gain', label: 'Набор' },
-              ].map((option) => (
-                <label key={option.value} className="flex items-center cursor-pointer">
-                  <input
-                    type="radio"
-                    name="goal"
-                    value={option.value}
-                    checked={formData.goal === option.value}
-                    onChange={handleChange('goal')}
-                    className="sr-only"
-                  />
-                  <div className={`flex items-center gap-2 w-full p-3 rounded-lg border-2 transition-colors ${
-                    formData.goal === option.value
-                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                      : 'border-gray-300 dark:border-gray-600'
-                  }`}>
-                    {formData.goal === option.value && (
-                      <Check className="w-5 h-5 text-green-500" />
-                    )}
+              ].map((option) => {
+                const isChecked = formData.goal === option.value;
+                return (
+                  <label key={option.value} className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="goal"
+                      value={option.value}
+                      checked={isChecked}
+                      onChange={handleChange('goal')}
+                      className="sr-only"
+                    />
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                      isChecked
+                        ? 'border-green-500 bg-green-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}>
+                      {isChecked && (
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                      )}
+                    </div>
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {option.label}
                     </span>
-                  </div>
-                </label>
-              ))}
+                  </label>
+                );
+              })}
             </div>
           </div>
 
