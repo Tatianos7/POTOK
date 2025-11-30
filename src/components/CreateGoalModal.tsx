@@ -89,7 +89,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
         {/* Header */}
         <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10">
           <div className="flex-1"></div>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase">
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase whitespace-nowrap">
             ЗАДАЙ ЦЕЛЬ
           </h1>
           <div className="flex-1 flex justify-end">
