@@ -138,8 +138,8 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
           </div>
 
           {/* Personal Data */}
-          <div className="grid grid-cols-3 gap-4">
-            <div>
+          <div className="flex gap-4">
+            <div className="flex-1">
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Возраст
               </label>
@@ -155,7 +155,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                 placeholder="0"
               />
             </div>
-            <div>
+            <div className="flex-1">
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Вес, кг
               </label>
@@ -171,7 +171,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                 placeholder="0"
               />
             </div>
-            <div>
+            <div className="flex-1">
               <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Рост, см
               </label>
