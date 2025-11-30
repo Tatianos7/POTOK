@@ -345,7 +345,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                   }
                 `}</style>
                 <div
-                  className="absolute top-[-20px] text-sm font-medium text-gray-900 dark:text-white"
+                  className="absolute top-[100%] mt-2 text-sm font-medium text-gray-900 dark:text-white"
                   style={{
                     left: `calc(${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}% - 12px)`,
                     transform: 'translateX(0)'
