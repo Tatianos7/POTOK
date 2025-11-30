@@ -220,7 +220,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
               ].map((option) => {
                 const isChecked = formData.lifestyle.includes(option.value);
                 return (
-                  <label key={option.value} className="flex items-start cursor-pointer">
+                  <label key={option.value} className="flex items-start gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       value={option.value}
@@ -228,24 +228,24 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                       onChange={() => handleLifestyleChange(option.value)}
                       className="sr-only"
                     />
-                    <div className={`flex items-start gap-2 w-full p-3 rounded-lg border-2 transition-colors ${
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
                       isChecked
-                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                        ? 'border-green-500 bg-green-500'
                         : 'border-gray-300 dark:border-gray-600'
                     }`}>
                       {isChecked && (
-                        <Check className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
                       )}
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {option.label}
-                        </div>
-                        {option.desc && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {option.desc}
-                          </div>
-                        )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {option.label}
                       </div>
+                      {option.desc && (
+                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                          {option.desc}
+                        </div>
+                      )}
                     </div>
                   </label>
                 );
