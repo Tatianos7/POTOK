@@ -304,6 +304,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                 />
                 <style>{`
                   input[type="range"]::-webkit-slider-thumb {
+                    -webkit-appearance: none;
                     appearance: none;
                     width: 20px;
                     height: 20px;
@@ -311,8 +312,24 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                     background: #10b981;
                     cursor: pointer;
                     border: 2px solid #10b981;
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3);
+                  }
+                  input[type="range"]::-webkit-slider-thumb:hover {
+                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
                   }
                   input[type="range"]::-moz-range-thumb {
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 50%;
+                    background: #10b981;
+                    cursor: pointer;
+                    border: 2px solid #10b981;
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3);
+                  }
+                  input[type="range"]::-moz-range-thumb:hover {
+                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+                  }
+                  input[type="range"]::-ms-thumb {
                     width: 20px;
                     height: 20px;
                     border-radius: 50%;
