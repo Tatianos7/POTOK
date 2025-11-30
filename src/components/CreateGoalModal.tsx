@@ -12,7 +12,7 @@ export interface GoalFormData {
   age: string;
   weight: string;
   height: string;
-  lifestyle: string[];
+  lifestyle: string;
   goal: string;
   targetWeight: string;
   intensity: string;
@@ -24,7 +24,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
     age: '',
     weight: '',
     height: '',
-    lifestyle: [],
+    lifestyle: '',
     goal: '',
     targetWeight: '55',
     intensity: '10',
@@ -59,22 +59,6 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
     }));
   };
 
-  const handleLifestyleChange = (value: string) => {
-    setFormData((prev) => {
-      const currentLifestyle = prev.lifestyle || [];
-      if (currentLifestyle.includes(value)) {
-        return {
-          ...prev,
-          lifestyle: currentLifestyle.filter((item) => item !== value),
-        };
-      } else {
-        return {
-          ...prev,
-          lifestyle: [...currentLifestyle, value],
-        };
-      }
-    });
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,14 +202,15 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                 { value: 'high', label: 'Высокая активность', desc: '6-7 раз в неделю физическая нагрузка' },
                 { value: 'very-high', label: 'Очень высокая активность', desc: 'постоянная физическая нагрузка' },
               ].map((option) => {
-                const isChecked = formData.lifestyle.includes(option.value);
+                const isChecked = formData.lifestyle === option.value;
                 return (
                   <label key={option.value} className="flex items-start gap-2 cursor-pointer">
                     <input
-                      type="checkbox"
+                      type="radio"
+                      name="lifestyle"
                       value={option.value}
                       checked={isChecked}
-                      onChange={() => handleLifestyleChange(option.value)}
+                      onChange={handleChange('lifestyle')}
                       className="sr-only"
                     />
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
