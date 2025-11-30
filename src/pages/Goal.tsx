@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
+import CreateGoalModal, { GoalFormData } from '../components/CreateGoalModal';
 
 interface GoalData {
   goalType: string;
@@ -16,6 +17,7 @@ interface GoalData {
 const Goal = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [isCreateGoalModalOpen, setIsCreateGoalModalOpen] = useState(false);
   const [goalData, setGoalData] = useState<GoalData>({
     goalType: '',
     targetWeight: '',
@@ -45,7 +47,34 @@ const Goal = () => {
   }, [user, navigate]);
 
   const handleSetGoal = () => {
-    // Пока ничего не делаем
+    setIsCreateGoalModalOpen(true);
+  };
+
+  const handleCalculate = (formData: GoalFormData) => {
+    // Здесь будет логика расчета калорий и макронутриентов
+    // Пока просто сохраняем данные формы
+    const goalTypeMap: Record<string, string> = {
+      'weight-loss': 'Похудение',
+      'maintain': 'Поддержка формы',
+      'gain': 'Набор массы',
+    };
+
+    const newGoalData: GoalData = {
+      goalType: goalTypeMap[formData.goal] || formData.goal,
+      targetWeight: formData.targetWeight || formData.weight,
+      startDate: new Date().toISOString().split('T')[0],
+      calories: '', // Будет рассчитано
+      proteins: '', // Будет рассчитано
+      fats: '', // Будет рассчитано
+      carbs: '', // Будет рассчитано
+    };
+
+    if (user?.id) {
+      localStorage.setItem(`goal_${user.id}`, JSON.stringify(newGoalData));
+      setGoalData(newGoalData);
+    }
+
+    setIsCreateGoalModalOpen(false);
   };
 
   const handleClose = () => {
@@ -176,6 +205,13 @@ const Goal = () => {
           </div>
         </main>
       </div>
+
+      {/* Create Goal Modal */}
+      <CreateGoalModal
+        isOpen={isCreateGoalModalOpen}
+        onClose={() => setIsCreateGoalModalOpen(false)}
+        onCalculate={handleCalculate}
+      />
     </div>
   );
 };
