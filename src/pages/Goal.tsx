@@ -181,15 +181,13 @@ const Goal = () => {
 
           {/* Action Buttons */}
           <div className="pt-6 pb-6">
-            {!goalData.goalType && (
-              <button
-                onClick={handleSetGoal}
-                style={{ height: '45px', minHeight: '45px', maxHeight: '45px' }}
-                className="w-full mx-1 px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-3"
-              >
-                ЗАДАТЬ ЦЕЛЬ
-              </button>
-            )}
+            <button
+              onClick={handleSetGoal}
+              style={{ height: '45px', minHeight: '45px', maxHeight: '45px' }}
+              className="w-full mx-1 px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-3"
+            >
+              ЗАДАТЬ ЦЕЛЬ
+            </button>
             <button
               style={{ height: '45px', minHeight: '45px', maxHeight: '45px' }}
               className="w-full mx-1 px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-3"
