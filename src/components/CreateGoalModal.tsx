@@ -270,7 +270,13 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                       )}
                     </div>
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {option.label}
+                      {option.value === 'maintain' ? (
+                        <>
+                          Поддержка<br />формы
+                        </>
+                      ) : (
+                        option.label
+                      )}
                     </span>
                   </label>
                 );
