@@ -288,19 +288,30 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
           {formData.goal === 'weight-loss' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Похудеть до, кг: {formData.targetWeight}
+                Похудеть до, кг
               </label>
-              <input
-                type="range"
-                min="40"
-                max="150"
-                value={formData.targetWeight}
-                onChange={handleSliderChange}
-                className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500"
-                style={{
-                  background: `linear-gradient(to right, #10b981 0%, #10b981 ${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}%, #e5e7eb ${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}%, #e5e7eb 100%)`
-                }}
-              />
+              <div className="relative">
+                <input
+                  type="range"
+                  min="40"
+                  max="150"
+                  value={formData.targetWeight}
+                  onChange={handleSliderChange}
+                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                  style={{
+                    background: `linear-gradient(to right, #10b981 0%, #10b981 ${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}%, #e5e7eb ${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}%, #e5e7eb 100%)`
+                  }}
+                />
+                <div
+                  className="absolute top-[-20px] text-sm font-medium text-gray-900 dark:text-white"
+                  style={{
+                    left: `calc(${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}% - 12px)`,
+                    transform: 'translateX(0)'
+                  }}
+                >
+                  {formData.targetWeight}
+                </div>
+              </div>
             </div>
           )}
 
