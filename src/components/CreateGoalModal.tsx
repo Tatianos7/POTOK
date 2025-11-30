@@ -243,7 +243,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
               Цель:
             </label>
-            <div className="space-y-2">
+            <div className="flex gap-4 flex-wrap">
               {[
                 { value: 'weight-loss', label: 'Похудение' },
                 { value: 'maintain', label: 'Поддержка формы' },
