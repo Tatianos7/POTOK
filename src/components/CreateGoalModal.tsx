@@ -297,45 +297,51 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                   max="150"
                   value={formData.targetWeight}
                   onChange={handleSliderChange}
-                  className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                  className="weight-slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
                   style={{
                     background: `linear-gradient(to right, #10b981 0%, #10b981 ${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}%, #e5e7eb ${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}%, #e5e7eb 100%)`
                   }}
                 />
                 <style>{`
-                  input[type="range"]::-webkit-slider-thumb {
-                    -webkit-appearance: none;
-                    appearance: none;
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    background: #10b981;
-                    cursor: pointer;
-                    border: 2px solid #10b981;
-                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3);
+                  .weight-slider::-webkit-slider-thumb {
+                    -webkit-appearance: none !important;
+                    appearance: none !important;
+                    width: 20px !important;
+                    height: 20px !important;
+                    border-radius: 50% !important;
+                    background: #10b981 !important;
+                    cursor: pointer !important;
+                    border: 2px solid #10b981 !important;
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3) !important;
                   }
-                  input[type="range"]::-webkit-slider-thumb:hover {
-                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+                  .weight-slider::-webkit-slider-thumb:hover {
+                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2) !important;
                   }
-                  input[type="range"]::-moz-range-thumb {
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    background: #10b981;
-                    cursor: pointer;
-                    border: 2px solid #10b981;
-                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3);
+                  .weight-slider::-moz-range-thumb {
+                    width: 20px !important;
+                    height: 20px !important;
+                    border-radius: 50% !important;
+                    background: #10b981 !important;
+                    cursor: pointer !important;
+                    border: 2px solid #10b981 !important;
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3) !important;
+                    -moz-appearance: none !important;
                   }
-                  input[type="range"]::-moz-range-thumb:hover {
-                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2);
+                  .weight-slider::-moz-range-thumb:hover {
+                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2) !important;
                   }
-                  input[type="range"]::-ms-thumb {
-                    width: 20px;
-                    height: 20px;
-                    border-radius: 50%;
-                    background: #10b981;
-                    cursor: pointer;
-                    border: 2px solid #10b981;
+                  .weight-slider::-ms-thumb {
+                    width: 20px !important;
+                    height: 20px !important;
+                    border-radius: 50% !important;
+                    background: #10b981 !important;
+                    cursor: pointer !important;
+                    border: 2px solid #10b981 !important;
+                  }
+                  .weight-slider::-ms-track {
+                    background: transparent;
+                    border-color: transparent;
+                    color: transparent;
                   }
                 `}</style>
                 <div
