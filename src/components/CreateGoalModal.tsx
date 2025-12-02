@@ -359,7 +359,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
 
           {/* Intensity (only if weight loss is selected) */}
           {formData.goal === 'weight-loss' && (
-            <div style={{ marginTop: '15px' }}>
+            <div style={{ marginTop: '25px' }}>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                 Интенсивность похудения:
               </label>
