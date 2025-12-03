@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, Check, RotateCcw } from 'lucide-react';
+import { Trash2, Check, RotateCcw, Circle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AppNotification, notificationService, NotificationCategory } from '../services/notificationService';
 import NotificationThreadModal from '../components/NotificationThreadModal';
@@ -26,7 +26,18 @@ const Notifications = () => {
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
 
   const loadNotifications = () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      setNotifications([]);
+      return;
+    }
+    
+    // Дополнительная проверка userId
+    if (user.id === 'undefined' || user.id === 'null' || user.id.trim() === '') {
+      console.warn('Некорректный userId при загрузке уведомлений:', user.id);
+      setNotifications([]);
+      return;
+    }
+    
     const data = notificationService.getNotifications(user.id);
     data
       .filter((item) => item.category === 'support')
@@ -66,7 +77,17 @@ const Notifications = () => {
   }, [notifications, activeTab, view]);
 
   const saveNotifications = (items: AppNotification[]) => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.warn('Попытка сохранить уведомления без userId');
+      return;
+    }
+    
+    // Дополнительная проверка userId
+    if (user.id === 'undefined' || user.id === 'null' || user.id.trim() === '') {
+      console.warn('Некорректный userId при сохранении уведомлений:', user.id);
+      return;
+    }
+    
     notificationService.saveNotifications(user.id, items);
     setNotifications(items);
   };
@@ -170,13 +191,14 @@ const Notifications = () => {
                         {notification.isRead ? (
                           <Check className="w-4 h-4 text-green-500" />
                         ) : (
-                          <span className="w-3 h-3 rounded-full bg-red-500 block"></span>
+                          <Circle className="w-4 h-4 fill-red-500 text-red-500" />
                         )}
                       </button>
                       {notification.category === 'support' ? (
                         <button
                           className="text-left flex-1"
                           onClick={() => {
+                            // Помечаем уведомление как прочитанное при открытии треда
                             if (!notification.isRead) {
                               toggleRead(notification.id);
                             }
@@ -196,6 +218,9 @@ const Notifications = () => {
                         <button
                           className="text-left flex-1"
                           onClick={() => {
+                            if (!notification.isRead) {
+                              toggleRead(notification.id);
+                            }
                             setSelectedNews(notification);
                             setIsNewsModalOpen(true);
                           }}
@@ -264,6 +289,13 @@ const Notifications = () => {
         notificationId={selectedNotification?.id || null}
         notificationTitle={selectedNotification?.title || ''}
         onClose={() => setIsThreadOpen(false)}
+        onMarkAsRead={(id) => {
+          // Помечаем уведомление как прочитанное при открытии треда
+          const notification = notifications.find(n => n.id === id);
+          if (notification && !notification.isRead) {
+            toggleRead(id);
+          }
+        }}
       />
       <NotificationDetailsModal
         isOpen={isNewsModalOpen}

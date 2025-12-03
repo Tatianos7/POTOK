@@ -50,7 +50,7 @@ export interface FeatureCard {
   subtitle: string;
   isPremium: boolean;
   premiumColor?: 'green' | 'yellow';
-  route: string;
+  route?: string;
 }
 
 export interface SupportMessage {

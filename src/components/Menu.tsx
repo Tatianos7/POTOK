@@ -1,8 +1,9 @@
-import { X } from 'lucide-react';
+import { X, Circle, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import SupportForm from './SupportForm';
+import SettingsModal from './SettingsModal';
 import { notificationService } from '../services/notificationService';
 
 interface MenuProps {
@@ -16,6 +17,7 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isSupportFormOpen, setIsSupportFormOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   const refreshNotificationsIndicator = () => {
@@ -23,6 +25,13 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
       setHasUnreadNotifications(false);
       return;
     }
+    
+    // Дополнительная проверка userId
+    if (user.id === 'undefined' || user.id === 'null' || user.id.trim() === '') {
+      setHasUnreadNotifications(false);
+      return;
+    }
+    
     const notifications = notificationService.getNotifications(user.id);
     setHasUnreadNotifications(
       notifications.some((item) => !item.isRead && !item.isDeleted && !item.isArchived)
@@ -33,10 +42,20 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
     refreshNotificationsIndicator();
   }, [user?.id]);
 
+  // Обновляем индикатор при открытии меню
   useEffect(() => {
+    if (isOpen) {
+      refreshNotificationsIndicator();
+    }
+  }, [isOpen, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    
     const handler = (event: Event) => {
-      const customEvent = event as CustomEvent<{ userId: string }>;
-      if (customEvent.detail?.userId === user?.id) {
+      const customEvent = event as CustomEvent<{ userId?: string }>;
+      // Обновляем индикатор если событие для текущего пользователя или userId не указан (глобальное обновление)
+      if (!customEvent.detail?.userId || customEvent.detail.userId === user.id) {
         refreshNotificationsIndicator();
       }
     };
@@ -52,18 +71,17 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
     } else if (itemId === 'support') {
       onClose();
       setIsSupportFormOpen(true);
-    } else if (itemId === 'admin' && user?.isAdmin) {
-      onClose();
-      navigate('/admin');
     } else if (itemId === 'notifications') {
       onClose();
       navigate('/notifications');
+    } else if (itemId === 'settings') {
+      onClose();
+      setIsSettingsOpen(true);
     }
   };
 
   const menuItems = [
     { id: 'profile', label: 'ПРОФИЛЬ', isActive: true },
-    ...(user?.isAdmin ? [{ id: 'admin', label: 'АДМИН-ПАНЕЛЬ', isActive: false }] : []),
     {
       id: 'notifications',
       label: 'УВЕДОМЛЕНИЯ',
@@ -71,12 +89,12 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
     },
     { id: 'settings', label: 'ОБЩИЕ НАСТРОЙКИ' },
     { id: 'support', label: 'ПОДДЕРЖКА' },
-    { id: 'feedback', label: 'ОБРАТНАЯ СВЯЗЬ' },
   ];
 
   return (
     <>
       <SupportForm isOpen={isSupportFormOpen} onClose={() => setIsSupportFormOpen(false)} />
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       
       {/* Backdrop */}
       {isOpen && (
@@ -123,11 +141,11 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
               <div className="flex items-center justify-center gap-2">
                 <span>{item.label}</span>
                 {item.indicator && (
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      item.indicator === 'unread' ? 'bg-red-500' : 'bg-green-500'
-                    }`}
-                  ></span>
+                  item.indicator === 'unread' ? (
+                    <Circle className="w-3 h-3 fill-red-500 text-red-500" />
+                  ) : (
+                    <Check className="w-3 h-3 text-green-500" />
+                  )
                 )}
               </div>
             </button>

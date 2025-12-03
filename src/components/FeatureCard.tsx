@@ -1,5 +1,6 @@
 import { FeatureCard as FeatureCardType } from '../types';
 import { ComponentType } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface FeatureCardProps {
   card: FeatureCardType;
@@ -8,8 +9,9 @@ interface FeatureCardProps {
 }
 
 const FeatureCard: React.FC<FeatureCardProps> = ({ card, icon: Icon, hasPremium }) => {
+  const navigate = useNavigate();
   const showPremium = card.isPremium && !hasPremium;
-  
+
   const getPremiumStyles = () => {
     if (card.premiumColor === 'green') {
       return 'text-primary-600 bg-primary-50';
@@ -19,23 +21,29 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ card, icon: Icon, hasPremium 
     return 'text-primary-600 bg-primary-50';
   };
 
+  const handleClick = () => {
+    if (card.route) {
+      navigate(card.route);
+    }
+  };
+
   return (
-    <div className="card relative">
+    <div className={`card relative ${card.route ? 'cursor-pointer' : ''}`} onClick={handleClick}>
       <div className="flex items-center gap-4">
         {/* Icon */}
         <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
           <Icon className="w-7 h-7 text-gray-700" />
-        </div>
-
+      </div>
+      
         {/* Content */}
-        <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
             <h3 className="text-base font-semibold text-gray-900">
               {card.title}
-            </h3>
-            {showPremium && (
+        </h3>
+      {showPremium && (
               <span className={`flex-shrink-0 px-2 py-1 text-xs font-semibold rounded ${getPremiumStyles()}`}>
-                PREMIUM
+          PREMIUM
               </span>
             )}
           </div>

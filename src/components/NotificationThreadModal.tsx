@@ -12,6 +12,7 @@ interface NotificationThreadModalProps {
   notificationId: string | null;
   notificationTitle: string;
   onClose: () => void;
+  onMarkAsRead?: (notificationId: string) => void;
 }
 
 const NotificationThreadModal = ({
@@ -19,6 +20,7 @@ const NotificationThreadModal = ({
   notificationId,
   notificationTitle,
   onClose,
+  onMarkAsRead,
 }: NotificationThreadModalProps) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<NotificationMessage[]>([]);
@@ -29,8 +31,13 @@ const NotificationThreadModal = ({
     if (isOpen && user?.id && notificationId) {
       const thread = notificationService.getThread(user.id, notificationId);
       setMessages(thread);
+      
+      // Помечаем уведомление как прочитанное при открытии модального окна
+      if (onMarkAsRead) {
+        onMarkAsRead(notificationId);
+      }
     }
-  }, [isOpen, user?.id, notificationId]);
+  }, [isOpen, user?.id, notificationId, onMarkAsRead]);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -60,6 +67,9 @@ const NotificationThreadModal = ({
         user.profile?.phone || user.phone,
         `Ответ на уведомление: ${notificationTitle}`
       );
+      
+      // Сообщение уже добавлено в тред выше, не нужно создавать новое уведомление
+      // Используем существующее уведомление поддержки
     } catch (error) {
       console.error('Не удалось отправить сообщение в поддержку', error);
     }

@@ -7,7 +7,7 @@ class SupportService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // Получить все сообщения
+  // Получить все сообщения (для админ-панели)
   async getAllMessages(): Promise<SupportMessage[]> {
     await this.delay();
     const messagesStr = localStorage.getItem(MESSAGES_KEY);
@@ -16,6 +16,24 @@ class SupportService {
     try {
       const messages: SupportMessage[] = JSON.parse(messagesStr);
       return messages.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    } catch {
+      return [];
+    }
+  }
+
+  // Получить сообщения конкретного пользователя
+  async getUserMessages(userId: string): Promise<SupportMessage[]> {
+    await this.delay();
+    const messagesStr = localStorage.getItem(MESSAGES_KEY);
+    if (!messagesStr) return [];
+    
+    try {
+      const messages: SupportMessage[] = JSON.parse(messagesStr);
+      // Фильтруем только сообщения этого пользователя
+      const userMessages = messages.filter(m => m.userId === userId);
+      return userMessages.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
     } catch {

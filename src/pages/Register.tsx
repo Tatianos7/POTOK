@@ -60,11 +60,11 @@ const Register = () => {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
       <div className="w-full max-w-[1024px] flex justify-center">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">POTOK</h1>
-            <p className="text-gray-600">Создайте новый аккаунт</p>
-          </div>
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">ПОТОК</h1>
+          <p className="text-gray-600">Создайте новый аккаунт</p>
+        </div>
 
           <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-md p-6 space-y-4">
           {error && (
@@ -74,16 +74,16 @@ const Register = () => {
           )}
 
           <div className="grid grid-cols-1 gap-4">
-            <div>
+          <div>
               <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">
                 Имя <span className="text-red-500">*</span>
-              </label>
-              <input
+            </label>
+            <input
                 id="firstName"
-                type="text"
+              type="text"
                 value={form.firstName}
                 onChange={handleChange('firstName')}
-                required
+              required
                 className="input-field text-gray-900"
                 placeholder="Иван"
               />
@@ -100,52 +100,52 @@ const Register = () => {
                 onChange={handleChange('lastName')}
                 className="input-field text-gray-900"
                 placeholder="Иванов"
-              />
-            </div>
+            />
+          </div>
 
-            <div>
+          <div>
               <label htmlFor="middleName" className="block text-sm font-medium text-gray-700 mb-1">
                 Отчество
-              </label>
-              <input
+            </label>
+            <input
                 id="middleName"
                 type="text"
                 value={form.middleName}
                 onChange={handleChange('middleName')}
                 className="input-field text-gray-900"
                 placeholder="Иванович"
-              />
-            </div>
+            />
+          </div>
 
-            <div>
+          <div>
               <label htmlFor="contact" className="block text-sm font-medium text-gray-700 mb-1">
                 Email или телефон <span className="text-red-500">*</span>
-              </label>
-              <input
+            </label>
+            <input
                 id="contact"
                 type="text"
                 value={form.contact}
                 onChange={handleChange('contact')}
-                required
+              required
                 className="input-field text-gray-900"
                 placeholder="your@email.com или +7 999 000 00 00"
-              />
-            </div>
+            />
+          </div>
 
-            <div>
+          <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                 Пароль <span className="text-red-500">*</span>
-              </label>
-              <input
+            </label>
+            <input
                 id="password"
-                type="password"
+              type="password"
                 value={form.password}
                 onChange={handleChange('password')}
-                required
-                minLength={6}
+              required
+              minLength={6}
                 className="input-field text-gray-900"
                 placeholder="••••••••"
-              />
+            />
             </div>
           </div>
 
