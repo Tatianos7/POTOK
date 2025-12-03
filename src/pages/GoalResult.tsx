@@ -105,12 +105,8 @@ const calculateMacros = (weight: number, totalCalories: number): { proteins: num
     carbs = carbsCeil;
   }
   
-  // Финальная проверка суммы
-  const finalTotal = caloriesProtein + caloriesFat + (carbs * 4);
-  const finalDiff = totalCalories - finalTotal;
-  
-  // Если разница все еще есть и она не равна нулю, пытаемся скорректировать
-  // Но при работе с целыми граммами точное совпадение не всегда возможно
+  // Финальная проверка суммы (для отладки, если нужно)
+  // При работе с целыми граммами точное совпадение не всегда возможно
   // (например, если остаток 515 ккал, то 515/4 = 128.75, и любое округление даст погрешность)
 
   return {
