@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
 import CreateGoalModal, { GoalFormData } from '../components/CreateGoalModal';
+import EditGoalModal from '../components/EditGoalModal';
 
 interface GoalData {
   goalType: string;
+  currentWeight?: string;
   targetWeight: string;
   startDate: string;
+  endDate?: string;
+  monthsToGoal?: number;
   calories: string;
   proteins: string;
   fats: string;
@@ -18,6 +22,7 @@ const Goal = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isCreateGoalModalOpen, setIsCreateGoalModalOpen] = useState(false);
+  const [isEditGoalModalOpen, setIsEditGoalModalOpen] = useState(false);
   const [goalData, setGoalData] = useState<GoalData>({
     goalType: '',
     targetWeight: '',
@@ -51,34 +56,109 @@ const Goal = () => {
   };
 
   const handleCalculate = (formData: GoalFormData) => {
-    // Здесь будет логика расчета калорий и макронутриентов
-    // Пока просто сохраняем данные формы
-    const goalTypeMap: Record<string, string> = {
-      'weight-loss': 'Похудение',
-      'maintain': 'Поддержка формы',
-      'gain': 'Набор массы',
-    };
-
-    const newGoalData: GoalData = {
-      goalType: goalTypeMap[formData.goal] || formData.goal,
-      targetWeight: formData.targetWeight || formData.weight,
-      startDate: new Date().toISOString().split('T')[0],
-      calories: '', // Будет рассчитано
-      proteins: '', // Будет рассчитано
-      fats: '', // Будет рассчитано
-      carbs: '', // Будет рассчитано
-    };
-
-    if (user?.id) {
-      localStorage.setItem(`goal_${user.id}`, JSON.stringify(newGoalData));
-      setGoalData(newGoalData);
-    }
-
+    // Перенаправляем на страницу результатов с данными формы
     setIsCreateGoalModalOpen(false);
+    navigate('/goal/result', { state: { formData } });
+  };
+
+  const handleEditGoal = () => {
+    // Проверяем, есть ли сохраненная цель
+    if (!goalData.calories && !goalData.proteins && !goalData.fats && !goalData.carbs) {
+      // Если цели нет, можно показать сообщение или открыть модальное окно создания цели
+      return;
+    }
+    setIsEditGoalModalOpen(true);
+  };
+
+  const handleSaveEdit = (data: { calories: string; proteins: string; fats: string; carbs: string }) => {
+    if (!user?.id) return;
+
+    // Обновляем данные цели
+    const updatedGoalData = {
+      ...goalData,
+      calories: data.calories,
+      proteins: data.proteins,
+      fats: data.fats,
+      carbs: data.carbs,
+    };
+
+    // Сохраняем в localStorage
+    localStorage.setItem(`goal_${user.id}`, JSON.stringify(updatedGoalData));
+    setGoalData(updatedGoalData);
+    setIsEditGoalModalOpen(false);
   };
 
   const handleClose = () => {
     navigate('/');
+  };
+
+  // Расчет оставшихся дней до цели
+  const calculateDaysRemaining = (): number => {
+    if (!goalData.endDate) return 0;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Сбрасываем время для точного сравнения дней
+    
+    const endDate = new Date(goalData.endDate);
+    endDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = endDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return Math.max(0, diffDays); // Не показываем отрицательные значения
+  };
+
+  const daysRemaining = calculateDaysRemaining();
+
+  // Форматирование дней с правильным склонением
+  const formatDays = (days: number): string => {
+    if (days === 0) return '0 дней';
+    
+    const lastDigit = days % 10;
+    const lastTwoDigits = days % 100;
+    
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+      return `${days} дней`;
+    }
+    if (lastDigit === 1) {
+      return `${days} день`;
+    }
+    if (lastDigit >= 2 && lastDigit <= 4) {
+      return `${days} дня`;
+    }
+    return `${days} дней`;
+  };
+
+  // Расчет разницы в весе до цели
+  const calculateWeightDifference = (): string => {
+    if (!goalData.currentWeight || !goalData.targetWeight) return '-';
+    
+    const current = parseFloat(goalData.currentWeight);
+    const target = parseFloat(goalData.targetWeight);
+    
+    if (isNaN(current) || isNaN(target)) return '-';
+    
+    const difference = Math.abs(current - target);
+    
+    // Округляем до одного знака после запятой
+    return difference.toFixed(1);
+  };
+
+  const weightDifference = calculateWeightDifference();
+
+  // Форматирование даты из YYYY-MM-DD в DD.MM.YYYY
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return '-';
+    
+    try {
+      const [year, month, day] = dateString.split('-');
+      if (year && month && day) {
+        return `${day}.${month}.${year}`;
+      }
+      return dateString;
+    } catch (error) {
+      return dateString;
+    }
   };
 
   const fieldClasses = 'w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500';
@@ -106,34 +186,38 @@ const Goal = () => {
         <main className="flex-1 overflow-y-auto min-h-0 px-4 py-6">
           {/* Goal Summary Section */}
           <div className="space-y-4 mb-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Цель:</p>
-                <p className="text-base font-medium text-gray-900 dark:text-white">
-                  {goalData.goalType || '-'}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">До цели:</p>
-                <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Вес:</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm text-gray-600 dark:text-gray-400">Цель:</p>
               <p className="text-base font-medium text-gray-900 dark:text-white">
-                {goalData.targetWeight || '-'}
+                {goalData.goalType || '-'}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Начало:</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Вес:</p>
                 <p className="text-base font-medium text-gray-900 dark:text-white">
-                  {goalData.startDate || '-'}
+                  {goalData.targetWeight || '-'}
                 </p>
               </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Осталось:</p>
-                <p className="text-base font-medium text-gray-900 dark:text-white">-</p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600 dark:text-gray-400">До цели:</p>
+                <p className="text-base font-medium text-gray-900 dark:text-white">
+                  {weightDifference !== '-' ? `${weightDifference} кг` : '-'}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Начало:</p>
+                <p className="text-base font-medium text-gray-900 dark:text-white">
+                  {formatDate(goalData.startDate)}
+                </p>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Осталось:</p>
+                <p className="text-base font-medium text-gray-900 dark:text-white">
+                  {goalData.endDate ? formatDays(daysRemaining) : '-'}
+                </p>
               </div>
             </div>
           </div>
@@ -189,6 +273,7 @@ const Goal = () => {
               ЗАДАТЬ ЦЕЛЬ
             </button>
             <button
+              onClick={handleEditGoal}
               style={{ height: '45px', minHeight: '45px', maxHeight: '45px' }}
               className="w-full mx-1 px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-3"
             >
@@ -209,6 +294,19 @@ const Goal = () => {
         isOpen={isCreateGoalModalOpen}
         onClose={() => setIsCreateGoalModalOpen(false)}
         onCalculate={handleCalculate}
+      />
+
+      {/* Edit Goal Modal */}
+      <EditGoalModal
+        isOpen={isEditGoalModalOpen}
+        onClose={() => setIsEditGoalModalOpen(false)}
+        onSave={handleSaveEdit}
+        initialData={{
+          calories: goalData.calories || '',
+          proteins: goalData.proteins || '',
+          fats: goalData.fats || '',
+          carbs: goalData.carbs || '',
+        }}
       />
     </div>
   );

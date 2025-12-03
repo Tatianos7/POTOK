@@ -10,6 +10,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import AdminPanel from './pages/AdminPanel';
 import Notifications from './pages/Notifications';
 import Goal from './pages/Goal';
+import GoalResult from './pages/GoalResult';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function AppRoutes() {
@@ -82,6 +83,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Goal />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/goal"
+        element={
+          <ProtectedRoute>
+            <Goal />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/goal/result"
+        element={
+          <ProtectedRoute>
+            <GoalResult />
           </ProtectedRoute>
         }
       />
