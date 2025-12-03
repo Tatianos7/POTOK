@@ -25,12 +25,15 @@ const getInitialTheme = (): Theme => {
     return 'light';
   }
   
+  // Для авторизованных пользователей проверяем сохраненную тему
   const stored = localStorage.getItem('potok_theme');
   if (stored === 'light' || stored === 'dark') {
     return stored;
   }
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return prefersDark ? 'dark' : 'light';
+  
+  // Для новых пользователей (без сохраненной темы) всегда используем светлую тему
+  // Не используем системную тему устройства, чтобы не удивлять пользователей
+  return 'light';
 };
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
@@ -80,21 +83,8 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     };
   }, []);
 
-  // Слушаем изменения системной темы только для авторизованных пользователей
-  useEffect(() => {
-    if (!isAuthenticated()) return;
-    
-    const handler = (e: MediaQueryListEvent) => {
-      // Обновляем тему только если нет сохраненной темы
-      const stored = localStorage.getItem('potok_theme');
-      if (!stored) {
-        setTheme(e.matches ? 'dark' : 'light');
-      }
-    };
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, []);
+  // Не слушаем изменения системной темы - пользователь должен явно выбрать тему в профиле
+  // Это предотвращает неожиданные изменения темы при смене системных настроек
 
   const value = useMemo(
     () => ({

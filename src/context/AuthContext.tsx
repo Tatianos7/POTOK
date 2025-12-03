@@ -67,6 +67,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await authService.register(credentials);
       setUser(response.user);
+      // Устанавливаем светлую тему для нового пользователя
+      setThemeExplicit('light');
       // Обновляем активность при регистрации
       activityService.updateActivity(response.user.id);
     } catch (error) {
