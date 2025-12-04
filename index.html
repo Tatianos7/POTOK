@@ -1,10 +1,20 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" class="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="description" content="ПОТОК - Фитнес приложение для достижения ваших целей" />
     <title>ПОТОК - Фитнес приложение</title>
+    <script>
+      // Предотвращаем применение системной темы до загрузки JavaScript
+      (function() {
+        const theme = localStorage.getItem('potok_theme') || 'light';
+        document.documentElement.classList.remove('dark');
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

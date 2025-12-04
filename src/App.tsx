@@ -11,6 +11,8 @@ import AdminPanel from './pages/AdminPanel';
 import Notifications from './pages/Notifications';
 import Goal from './pages/Goal';
 import GoalResult from './pages/GoalResult';
+import Measurements from './pages/Measurements';
+import FoodDiary from './pages/FoodDiary';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function AppRoutes() {
@@ -99,6 +101,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <GoalResult />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/measurements"
+        element={
+          <ProtectedRoute>
+            <Measurements />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition"
+        element={
+          <ProtectedRoute>
+            <FoodDiary />
           </ProtectedRoute>
         }
       />
