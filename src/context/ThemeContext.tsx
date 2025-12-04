@@ -39,8 +39,12 @@ const getInitialTheme = (): Theme => {
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
 
+  // Устанавливаем тему сразу при монтировании, чтобы предотвратить мигание
   useEffect(() => {
     const root = document.documentElement;
+    // Сначала убираем класс dark, чтобы предотвратить применение системной темы
+    root.classList.remove('dark');
+    // Затем применяем правильную тему
     if (theme === 'dark') {
       root.classList.add('dark');
     } else {
@@ -48,6 +52,21 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     }
     localStorage.setItem('potok_theme', theme);
   }, [theme]);
+
+  // Принудительно устанавливаем светлую тему при первой загрузке, если тема не сохранена
+  useEffect(() => {
+    const root = document.documentElement;
+    // Убираем класс dark сразу, чтобы предотвратить применение системной темы
+    root.classList.remove('dark');
+    
+    // Проверяем, есть ли сохраненная тема
+    const stored = localStorage.getItem('potok_theme');
+    if (!stored || (stored !== 'light' && stored !== 'dark')) {
+      // Если темы нет, принудительно устанавливаем светлую
+      setTheme('light');
+      root.classList.remove('dark');
+    }
+  }, []);
 
   // Следим за изменением авторизации и обновляем тему
   useEffect(() => {

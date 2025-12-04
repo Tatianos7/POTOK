@@ -124,7 +124,7 @@ const FoodDiary = () => {
                 {/* Main container with rounded left and semi-circular right */}
                 <div className="flex items-center border border-gray-900 dark:border-gray-300 rounded-[15px] bg-white dark:bg-gray-800 overflow-hidden" style={{ borderWidth: '0.5px' }}>
                   {/* Left part with icon and text */}
-                  <div className="flex items-center gap-4 px-4 py-4 flex-1">
+                  <div className="flex items-center gap-4 px-4 py-[10px] flex-1">
                     <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
                       <meal.icon className="w-7 h-7 text-gray-700 dark:text-gray-300" />
                     </div>
