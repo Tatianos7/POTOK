@@ -23,6 +23,9 @@ const ScanConfirmBottomSheet = ({ food, isOpen, onConfirm, onReject }: ScanConfi
     }
   }, [isOpen, food]);
 
+  // Не рендерим, если нет продукта
+  if (!food) return null;
+
   const meals = [
     { id: 'breakfast' as const, name: 'Завтрак' },
     { id: 'lunch' as const, name: 'Обед' },

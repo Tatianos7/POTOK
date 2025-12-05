@@ -1,4 +1,5 @@
 import { Food, UserCustomFood, FoodSource } from '../types';
+import { FOODS_DATABASE, FoodDatabaseItem } from '../data/foodsDatabase';
 
 // OpenFoodFacts API types
 interface OpenFoodFactsProduct {
@@ -26,12 +27,71 @@ interface OpenFoodFactsSearchResponse {
 class FoodService {
   private readonly FOODS_STORAGE_KEY = 'potok_foods';
   private readonly USER_CUSTOM_FOODS_STORAGE_KEY = 'potok_user_custom_foods';
+  private readonly FOODS_DB_INITIALIZED_KEY = 'potok_foods_db_initialized';
+
+  // Initialize database from FOODS_DATABASE if not already done
+  private initializeDatabase(): void {
+    try {
+      const initialized = localStorage.getItem(this.FOODS_DB_INITIALIZED_KEY);
+      if (initialized === 'true') return;
+
+      const existingFoods = this.getAllFoods();
+      const existingIds = new Set(existingFoods.map(f => f.id));
+
+      // Convert database items to Food format
+      const dbFoods: Food[] = FOODS_DATABASE.filter((item: FoodDatabaseItem) => {
+        // Skip if already exists
+        return !existingIds.has(item.id);
+      }).map((item: FoodDatabaseItem) => {
+        return {
+          id: item.id,
+          name: item.name_ru, // Use Russian name as primary
+          name_ru: item.name_ru,
+          name_en: item.name_en,
+          brand: null,
+          calories: Number(item.calories) || 0,
+          protein: Number(item.protein) || 0,
+          fat: Number(item.fat) || 0,
+          carbs: Number(item.carbs) || 0,
+          barcode: null,
+          image: null,
+          source: 'local' as FoodSource,
+          category: item.category,
+          aliases: item.aliases || [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      });
+
+      // Merge with existing foods
+      const allFoods = [...existingFoods, ...dbFoods];
+      this.saveFoods(allFoods);
+      localStorage.setItem(this.FOODS_DB_INITIALIZED_KEY, 'true');
+    } catch (error) {
+      console.error('Error initializing database:', error);
+    }
+  }
 
   // Get all foods from localStorage
   private getAllFoods(): Food[] {
     try {
+      // Initialize database on first access
+      this.initializeDatabase();
+      
       const stored = localStorage.getItem(this.FOODS_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
+      if (!stored) return [];
+      
+      const foods: Food[] = JSON.parse(stored);
+      
+      // Normalize and fix all foods - ensure numbers are numbers, not strings
+      return foods.map(food => ({
+        ...food,
+        calories: Number(food.calories) || 0,
+        protein: Number(food.protein) || 0,
+        fat: Number(food.fat) || 0,
+        carbs: Number(food.carbs) || 0,
+        aliases: food.aliases || [],
+      }));
     } catch (error) {
       console.error('Error loading foods:', error);
       return [];
@@ -73,44 +133,58 @@ class FoodService {
 
     const nutriments = product.nutriments || {};
     
+    // Normalize values - convert to numbers, use 0 as default
+    const calories = Number(nutriments['energy-kcal_100g']) || 0;
+    const protein = Number(nutriments.proteins_100g) || 0;
+    const fat = Number(nutriments.fat_100g) || 0;
+    const carbs = Number(nutriments.carbohydrates_100g) || 0;
+    
     return {
       id: `food_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: product.product_name.trim(),
       brand: product.brands?.trim() || null,
-      calories: nutriments['energy-kcal_100g'] || 0,
-      protein: nutriments.proteins_100g || 0,
-      fat: nutriments.fat_100g || 0,
-      carbs: nutriments.carbohydrates_100g || 0,
+      calories,
+      protein,
+      fat,
+      carbs,
       barcode: product.code || null,
       image: product.image_front_small_url || null,
       source,
+      aliases: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
   }
 
-  // Search in local database
+  // Search in local database - improved with aliases and multiple name fields
   searchLocal(query: string, userId?: string): Food[] {
     const allFoods = this.getAllFoods();
     const queryLower = query.toLowerCase().trim();
 
     if (!queryLower) return [];
 
-    // Search in all foods
-    let results = allFoods.filter(
-      (food) =>
-        food.name.toLowerCase().includes(queryLower) ||
-        (food.brand && food.brand.toLowerCase().includes(queryLower))
-    );
+    // Search function that checks all possible fields
+    const matchesQuery = (food: Food): boolean => {
+      const searchFields: string[] = [];
+      
+      if (food.name) searchFields.push(food.name.toLowerCase());
+      if (food.name_ru) searchFields.push(food.name_ru.toLowerCase());
+      if (food.name_en) searchFields.push(food.name_en.toLowerCase());
+      if (food.brand) searchFields.push(food.brand.toLowerCase());
+      if (food.aliases) {
+        searchFields.push(...food.aliases.map(a => a.toLowerCase()));
+      }
+
+      return searchFields.some(field => field.includes(queryLower));
+    };
+
+    // Search in all foods - NO FILTERING BY CALORIES
+    let results = allFoods.filter(matchesQuery);
 
     // Add user custom foods if userId provided
     if (userId) {
       const customFoods = this.getUserCustomFoods(userId);
-      const customResults = customFoods.filter(
-        (food) =>
-          food.name.toLowerCase().includes(queryLower) ||
-          (food.brand && food.brand.toLowerCase().includes(queryLower))
-      );
+      const customResults = customFoods.filter(matchesQuery);
       results = [...results, ...customResults];
     }
 
@@ -120,11 +194,29 @@ class FoodService {
     );
 
     return uniqueResults.sort((a, b) => {
-      const aNameMatch = a.name.toLowerCase().startsWith(queryLower);
-      const bNameMatch = b.name.toLowerCase().startsWith(queryLower);
-      if (aNameMatch && !bNameMatch) return -1;
-      if (!aNameMatch && bNameMatch) return 1;
-      return a.name.localeCompare(b.name);
+      // Prioritize exact matches
+      const aExact = a.name?.toLowerCase() === queryLower || 
+                     a.name_ru?.toLowerCase() === queryLower ||
+                     a.name_en?.toLowerCase() === queryLower;
+      const bExact = b.name?.toLowerCase() === queryLower || 
+                     b.name_ru?.toLowerCase() === queryLower ||
+                     b.name_en?.toLowerCase() === queryLower;
+      
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+      
+      // Then prioritize starts with
+      const aStarts = a.name?.toLowerCase().startsWith(queryLower) ||
+                      a.name_ru?.toLowerCase().startsWith(queryLower) ||
+                      a.name_en?.toLowerCase().startsWith(queryLower);
+      const bStarts = b.name?.toLowerCase().startsWith(queryLower) ||
+                      b.name_ru?.toLowerCase().startsWith(queryLower) ||
+                      b.name_en?.toLowerCase().startsWith(queryLower);
+      
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      
+      return (a.name || '').localeCompare(b.name || '');
     });
   }
 
@@ -252,12 +344,23 @@ class FoodService {
   // Save food to local database
   saveFood(food: Food): void {
     const foods = this.getAllFoods();
-    const existingIndex = foods.findIndex((f) => f.id === food.id);
+    
+    // Normalize food values before saving
+    const normalizedFood: Food = {
+      ...food,
+      calories: Number(food.calories) || 0,
+      protein: Number(food.protein) || 0,
+      fat: Number(food.fat) || 0,
+      carbs: Number(food.carbs) || 0,
+      aliases: food.aliases || [],
+    };
+    
+    const existingIndex = foods.findIndex((f) => f.id === normalizedFood.id);
     
     if (existingIndex >= 0) {
-      foods[existingIndex] = { ...food, updatedAt: new Date().toISOString() };
+      foods[existingIndex] = { ...normalizedFood, updatedAt: new Date().toISOString() };
     } else {
-      foods.push(food);
+      foods.push(normalizedFood);
     }
     
     this.saveFoods(foods);

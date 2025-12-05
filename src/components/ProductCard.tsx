@@ -41,16 +41,16 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
         )}
         <div className="flex items-center gap-3 mt-1">
           <span className="text-xs text-gray-600 dark:text-gray-300">
-            {Math.round(food.calories)} ккал
+            {Math.round(food.calories || 0)} ккал
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            Б: {food.protein.toFixed(1)}г
+            Б: {(food.protein || 0).toFixed(1)}г
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            Ж: {food.fat.toFixed(1)}г
+            Ж: {(food.fat || 0).toFixed(1)}г
           </span>
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            У: {food.carbs.toFixed(1)}г
+            У: {(food.carbs || 0).toFixed(1)}г
           </span>
         </div>
       </div>

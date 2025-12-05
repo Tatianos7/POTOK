@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { X, Loader2 } from 'lucide-react';
 
@@ -9,11 +9,49 @@ interface CameraBarcodeScannerProps {
 
 const CameraBarcodeScanner = ({ onScan, onClose }: CameraBarcodeScannerProps) => {
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const isMountedRef = useRef(true);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isProcessingRef = useRef(false);
+
+  // Мемоизируем обработчик сканирования
+  const handleScan = useCallback((decodedText: string) => {
+    // Предотвращаем множественные вызовы
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
+
+    if (!isMountedRef.current) return;
+
+    const stopCamera = async () => {
+      try {
+        if (scannerRef.current) {
+          await scannerRef.current.stop();
+        }
+      } catch (err) {
+        console.error('Error stopping camera:', err);
+      } finally {
+        if (isMountedRef.current) {
+          setIsScanning(false);
+          // Вызываем onScan только после полной остановки камеры
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              onScan(decodedText);
+            }
+          }, 100);
+        }
+      }
+    };
+
+    stopCamera();
+  }, [onScan]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+    isProcessingRef.current = false;
+
     const startScanning = async () => {
+      if (!isMountedRef.current) return;
+
       try {
         const html5QrCode = new Html5Qrcode('reader');
         scannerRef.current = html5QrCode;
@@ -29,48 +67,68 @@ const CameraBarcodeScanner = ({ onScan, onClose }: CameraBarcodeScannerProps) =>
           { facingMode: 'environment' }, // Используем заднюю камеру
           config,
           (decodedText) => {
-            // Успешно отсканировано
-            html5QrCode.stop().then(() => {
-              setIsScanning(false);
-              onScan(decodedText);
-            }).catch(() => {
-              setIsScanning(false);
-            });
+            if (isMountedRef.current && !isProcessingRef.current) {
+              handleScan(decodedText);
+            }
           },
           (_errorMessage) => {
             // Игнорируем ошибки сканирования (они нормальны при поиске кода)
           }
         );
 
-        setIsScanning(true);
-        setError(null);
+        if (isMountedRef.current) {
+          setIsScanning(true);
+          setError(null);
+        }
       } catch (err: any) {
         console.error('Error starting camera:', err);
-        setError('Не удалось открыть камеру. Проверьте разрешения.');
-        setIsScanning(false);
+        if (isMountedRef.current) {
+          setError('Не удалось открыть камеру. Проверьте разрешения.');
+          setIsScanning(false);
+        }
       }
     };
 
     startScanning();
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {
-          // Игнорируем ошибки при остановке
-        });
-      }
+      isMountedRef.current = false;
+      isProcessingRef.current = false;
+      
+      const stopCamera = async () => {
+        if (scannerRef.current) {
+          try {
+            await scannerRef.current.stop();
+            scannerRef.current.clear();
+          } catch (err) {
+            // Игнорируем ошибки при остановке
+            console.error('Error in cleanup:', err);
+          } finally {
+            scannerRef.current = null;
+          }
+        }
+      };
+      
+      stopCamera();
     };
-  }, [onScan]);
+  }, [handleScan]);
 
   const handleStop = async () => {
+    isProcessingRef.current = true;
+    isMountedRef.current = false;
+    
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
-        setIsScanning(false);
+        scannerRef.current.clear();
       } catch (err) {
         console.error('Error stopping camera:', err);
+      } finally {
+        scannerRef.current = null;
       }
     }
+    
+    setIsScanning(false);
     onClose();
   };
 
