@@ -80,6 +80,8 @@ export type FoodSource = 'local' | 'api' | 'custom';
 export interface Food {
   id: string;
   name: string;
+  name_ru?: string; // Russian name
+  name_en?: string; // English name
   brand: string | null;
   calories: number; // per 100g
   protein: number; // per 100g
@@ -88,6 +90,8 @@ export interface Food {
   barcode: string | null;
   image: string | null;
   source: FoodSource;
+  category?: string;
+  aliases?: string[]; // Alternative names for search
   createdAt: string;
   updatedAt: string;
 }

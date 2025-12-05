@@ -69,28 +69,41 @@ const FoodDiary = () => {
   // Calculate totals
   const dayTotals = dailyMeals ? mealService.calculateDayTotals(dailyMeals) : { calories: 0, protein: 0, fat: 0, carbs: 0 };
   
-  // Get goal data (if exists)
+  // Get goal data (if exists) - используем правильный ключ
   const goalData = user?.id ? (() => {
     try {
-      const stored = localStorage.getItem(`goal_data_${user.id}`);
-      return stored ? JSON.parse(stored) : null;
+      const stored = localStorage.getItem(`goal_${user.id}`);
+      if (!stored) return null;
+      const parsed = JSON.parse(stored);
+      // Преобразуем строки в числа
+      return {
+        calories: parseFloat(parsed.calories) || 0,
+        proteins: parseFloat(parsed.proteins) || 0,
+        fats: parseFloat(parsed.fats) || 0,
+        carbs: parseFloat(parsed.carbs) || 0,
+      };
     } catch {
       return null;
     }
   })() : null;
 
-  const goalCalories = goalData?.calories || 2000;
-  const goalProtein = goalData?.protein || 100;
-  const goalFat = goalData?.fat || 70;
-  const goalCarbs = goalData?.carbs || 250;
+  // Дневные нормы из целей (значения по умолчанию, если цели нет)
+  const dailyCalories = goalData?.calories || 2000;
+  const dailyProtein = goalData?.proteins || 100;
+  const dailyFat = goalData?.fats || 70;
+  const dailyCarbs = goalData?.carbs || 250;
 
-  // Calculate percentages
-  const percentages = {
-    calories: goalCalories > 0 ? Math.min(100, Math.round((dayTotals.calories / goalCalories) * 100)) : 0,
-    protein: goalProtein > 0 ? Math.min(100, Math.round((dayTotals.protein / goalProtein) * 100)) : 0,
-    fat: goalFat > 0 ? Math.min(100, Math.round((dayTotals.fat / goalFat) * 100)) : 0,
-    carbs: goalCarbs > 0 ? Math.min(100, Math.round((dayTotals.carbs / goalCarbs) * 100)) : 0,
-  };
+  // Съедено за день
+  const consumedCalories = Math.round(dayTotals.calories);
+  const consumedProtein = Math.round(dayTotals.protein * 10) / 10;
+  const consumedFat = Math.round(dayTotals.fat * 10) / 10;
+  const consumedCarbs = Math.round(dayTotals.carbs * 10) / 10;
+
+  // Осталось съесть (в цифрах, не в процентах)
+  const remainingCalories = Math.max(0, Math.round(dailyCalories - consumedCalories));
+  const remainingProtein = Math.max(0, Math.round((dailyProtein - consumedProtein) * 10) / 10);
+  const remainingFat = Math.max(0, Math.round((dailyFat - consumedFat) * 10) / 10);
+  const remainingCarbs = Math.max(0, Math.round((dailyCarbs - consumedCarbs) * 10) / 10);
 
   const handleMealClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
     setSelectedMealType(mealType);
@@ -386,54 +399,30 @@ const FoodDiary = () => {
               <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase">
                 ОСТАЛОСЬ
               </h2>
-              <div className="flex gap-3">
+              <div className="flex gap-4">
                 <div className="text-center">
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Белки</p>
-                  <div className="w-14 h-3 bg-orange-200 dark:bg-orange-900 rounded-full relative overflow-hidden">
-                    <div
-                      className="absolute inset-0 bg-orange-500 dark:bg-orange-600 transition-all"
-                      style={{ width: `${percentages.protein}%` }}
-                    ></div>
-                    <div className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-700 dark:text-gray-300">
-                      {percentages.protein}%
-                    </div>
-                  </div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {remainingProtein} г
+                  </p>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Жиры</p>
-                  <div className="w-14 h-3 bg-yellow-200 dark:bg-yellow-900 rounded-full relative overflow-hidden">
-                    <div
-                      className="absolute inset-0 bg-yellow-500 dark:bg-yellow-600 transition-all"
-                      style={{ width: `${percentages.fat}%` }}
-                    ></div>
-                    <div className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-700 dark:text-gray-300">
-                      {percentages.fat}%
-                    </div>
-                  </div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {remainingFat} г
+                  </p>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Углеводы</p>
-                  <div className="w-14 h-3 bg-green-200 dark:bg-green-900 rounded-full relative overflow-hidden">
-                    <div
-                      className="absolute inset-0 bg-green-500 dark:bg-green-600 transition-all"
-                      style={{ width: `${percentages.carbs}%` }}
-                    ></div>
-                    <div className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-700 dark:text-gray-300">
-                      {percentages.carbs}%
-                    </div>
-                  </div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {remainingCarbs} г
+                  </p>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Калории</p>
-                  <div className="w-14 h-3 bg-blue-200 dark:bg-blue-900 rounded-full relative overflow-hidden">
-                    <div
-                      className="absolute inset-0 bg-blue-500 dark:bg-blue-600 transition-all"
-                      style={{ width: `${percentages.calories}%` }}
-                    ></div>
-                    <div className="absolute inset-0 flex items-center justify-center text-[10px] font-medium text-gray-700 dark:text-gray-300">
-                      {percentages.calories}%
-                    </div>
-                  </div>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {remainingCalories} ккал
+                  </p>
                 </div>
               </div>
             </div>
