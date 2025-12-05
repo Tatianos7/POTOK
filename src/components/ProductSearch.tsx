@@ -1,0 +1,93 @@
+import { useState, useEffect } from 'react';
+import { Food } from '../types';
+import { foodService } from '../services/foodService';
+import ProductCard from './ProductCard';
+import { Search, Loader2 } from 'lucide-react';
+
+interface ProductSearchProps {
+  onSelect: (food: Food) => void;
+  userId?: string;
+}
+
+const ProductSearch = ({ onSelect, userId }: ProductSearchProps) => {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Food[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      setHasSearched(false);
+      return;
+    }
+
+    const searchProducts = async () => {
+      setIsLoading(true);
+      setHasSearched(true);
+      
+      try {
+        const searchResults = await foodService.search(query, userId);
+        setResults(searchResults);
+      } catch (error) {
+        console.error('Error searching products:', error);
+        setResults([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Debounce search
+    const timeoutId = setTimeout(searchProducts, 300);
+    return () => clearTimeout(timeoutId);
+  }, [query, userId]);
+
+  return (
+    <div className="w-full">
+      {/* Search Input */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Поиск продуктов..."
+          className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+        {isLoading && (
+          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+          </div>
+        )}
+      </div>
+
+      {/* Results */}
+      {hasSearched && !isLoading && (
+        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+          {results.length > 0 ? (
+            results.map((food) => (
+              <ProductCard
+                key={food.id}
+                food={food}
+                onClick={() => onSelect(food)}
+              />
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <p>Продукты не найдены</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!hasSearched && query.trim() && (
+        <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+          Введите название продукта для поиска
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProductSearch;
+

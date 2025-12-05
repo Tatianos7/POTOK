@@ -73,3 +73,46 @@ export interface MessageResponse {
   text: string;
   createdAt: string;
 }
+
+// Food types
+export type FoodSource = 'local' | 'api' | 'custom';
+
+export interface Food {
+  id: string;
+  name: string;
+  brand: string | null;
+  calories: number; // per 100g
+  protein: number; // per 100g
+  fat: number; // per 100g
+  carbs: number; // per 100g
+  barcode: string | null;
+  image: string | null;
+  source: FoodSource;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserCustomFood extends Omit<Food, 'source'> {
+  userId: string;
+  source: 'custom';
+}
+
+export interface MealEntry {
+  id: string;
+  foodId: string;
+  food: Food;
+  weight: number; // in grams
+  calories: number; // calculated: calories_100g * (weight / 100)
+  protein: number; // calculated
+  fat: number; // calculated
+  carbs: number; // calculated
+}
+
+export interface DailyMeals {
+  date: string; // YYYY-MM-DD
+  breakfast: MealEntry[];
+  lunch: MealEntry[];
+  dinner: MealEntry[];
+  snack: MealEntry[];
+  water: number; // glasses
+}
