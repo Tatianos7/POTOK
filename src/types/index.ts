@@ -75,7 +75,7 @@ export interface MessageResponse {
 }
 
 // Food types
-export type FoodSource = 'local' | 'api' | 'custom';
+export type FoodSource = 'local' | 'api' | 'custom' | 'openfoodfacts';
 
 export interface Food {
   id: string;
@@ -92,6 +92,7 @@ export interface Food {
   source: FoodSource;
   category?: string;
   aliases?: string[]; // Alternative names for search
+  serving_size?: number; // Typical serving size in grams
   createdAt: string;
   updatedAt: string;
 }
