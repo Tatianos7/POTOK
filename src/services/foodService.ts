@@ -131,11 +131,14 @@ class FoodService {
   // Find by barcode in local database
   findByBarcodeLocal(barcode: string, userId?: string): Food | null {
     const allFoods = this.getAllFoods();
-    let found = allFoods.find((food) => food.barcode === barcode);
+    let found: Food | undefined = allFoods.find((food) => food.barcode === barcode);
 
     if (!found && userId) {
       const customFoods = this.getUserCustomFoods(userId);
-      found = customFoods.find((food) => food.barcode === barcode) || null;
+      const customFound = customFoods.find((food) => food.barcode === barcode);
+      if (customFound) {
+        found = customFound as Food;
+      }
     }
 
     return found || null;
@@ -281,11 +284,14 @@ class FoodService {
   // Get food by ID
   getFoodById(foodId: string, userId?: string): Food | null {
     const allFoods = this.getAllFoods();
-    let found = allFoods.find((food) => food.id === foodId);
+    let found: Food | undefined = allFoods.find((food) => food.id === foodId);
 
     if (!found && userId) {
       const customFoods = this.getUserCustomFoods(userId);
-      found = customFoods.find((food) => food.id === foodId) || null;
+      const customFound = customFoods.find((food) => food.id === foodId);
+      if (customFound) {
+        found = customFound as Food;
+      }
     }
 
     return found || null;

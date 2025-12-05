@@ -37,7 +37,7 @@ const CameraBarcodeScanner = ({ onScan, onClose }: CameraBarcodeScannerProps) =>
               setIsScanning(false);
             });
           },
-          (errorMessage) => {
+          (_errorMessage) => {
             // Игнорируем ошибки сканирования (они нормальны при поиске кода)
           }
         );
