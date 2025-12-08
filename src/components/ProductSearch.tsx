@@ -27,7 +27,7 @@ const ProductSearch = ({ onSelect, userId }: ProductSearchProps) => {
       setHasSearched(true);
       
       try {
-        const searchResults = await foodService.search(query, userId);
+        const searchResults = await foodService.search(query);
         setResults(searchResults);
       } catch (error) {
         console.error('Error searching products:', error);

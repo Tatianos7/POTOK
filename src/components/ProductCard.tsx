@@ -14,9 +14,9 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
     >
       {/* Image */}
       <div className="flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-        {food.image ? (
+        {food.photo ? (
           <img
-            src={food.image}
+            src={food.photo}
             alt={food.name}
             className="w-full h-full object-cover"
             onError={(e) => {
@@ -56,10 +56,10 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
       </div>
 
       {/* Source badge */}
-      {food.source === 'api' && (
+      {food.source && food.source !== 'local' && (
         <div className="flex-shrink-0">
-          <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
-            API
+          <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 uppercase">
+            {food.source}
           </span>
         </div>
       )}

@@ -435,9 +435,9 @@ const FoodDiary = () => {
                 <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-1">
                   ВОДА
                 </h2>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {dailyMeals?.water || 0} стакан(ов) · {(dailyMeals?.water || 0) * 0.3} л
-                </p>
+                       <p className="text-xs text-gray-500 dark:text-gray-400">
+                         {dailyMeals?.water || 0} стакан(ов) · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
+                       </p>
               </div>
               <div className="flex gap-1">
                 {Array.from({ length: 10 }).map((_, index) => (

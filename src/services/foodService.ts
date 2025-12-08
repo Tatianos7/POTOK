@@ -1,24 +1,32 @@
-import { Food, UserCustomFood, FoodSource } from '../types';
-import { FOODS_DATABASE, FoodDatabaseItem } from '../data/foodsDatabase';
-import generateLargeFoodsDatabase from '../data/foodsDatabaseGenerator';
+import { Food, UserCustomFood } from '../types';
 import { CATEGORY_DEFAULTS } from '../data/categoryDefaults';
 
-// OpenFoodFacts API types
+/**
+ * Новая архитектура работы с продуктами:
+ * - Источники: OpenFoodFacts, USDA (public domain), Manual (пользователь)
+ * - Все названия сохраняются на русском (name), оригинал в name_original
+ * - Макросы всегда числовые, autoFilled помечает автозаполнение
+ * - Нет фильтрации по калориям: даже 0/низкокалорийные продукты показываются
+ */
+
+// === Внешние API типы ===
 interface OpenFoodFactsProduct {
   product_name?: string;
+  product_name_ru?: string;
+  generic_name?: string;
   brands?: string;
+  code?: string;
+  image_front_small_url?: string;
+  categories?: string;
   nutriments?: {
     'energy-kcal_100g'?: number;
     proteins_100g?: number;
     fat_100g?: number;
     carbohydrates_100g?: number;
   };
-  code?: string;
-  image_front_small_url?: string;
-  categories?: string;
 }
 
-interface OpenFoodFactsResponse {
+interface OpenFoodFactsProductResponse {
   status: number;
   product?: OpenFoodFactsProduct;
 }
@@ -27,584 +35,396 @@ interface OpenFoodFactsSearchResponse {
   products?: OpenFoodFactsProduct[];
 }
 
+// USDA FoodData Central (public domain) типы
+interface USDAFoodSearchResponse {
+  foods?: USDAFoodItem[];
+}
+
+interface USDAFoodItem {
+  fdcId: number;
+  description: string;
+  foodNutrients?: USDANutrient[];
+  brandOwner?: string;
+}
+
+interface USDANutrient {
+  nutrientNumber: string; // 208, 203, 204, 205
+  value: number;
+}
+
+// === Конфигурация и ключи ===
+const PRODUCTS_STORAGE_KEY = 'potok_products_v3';
+const USER_CUSTOM_PRODUCTS_KEY = 'potok_user_products_v3';
+const DB_VERSION_KEY = 'potok_products_version';
+const DB_VERSION = '3.0'; // новая версия, полностью чистит старую базу
+
+const USDA_API_KEY =
+  typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_USDA_API_KEY
+    ? (import.meta as any).env.VITE_USDA_API_KEY
+    : '';
+
+// Утилита: числовое значение с безопасным дефолтом
+const toNumber = (value: unknown): number => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
 class FoodService {
-  private readonly FOODS_STORAGE_KEY = 'potok_foods';
-  private readonly USER_CUSTOM_FOODS_STORAGE_KEY = 'potok_user_custom_foods';
-  private readonly FOODS_DB_INITIALIZED_KEY = 'potok_foods_db_initialized';
-  private readonly FOODS_DB_VERSION_KEY = 'potok_foods_db_version';
-  private readonly FOODS_DB_VERSION = '2.0'; // Версия базы для обновления
-
   constructor() {
-    this.initializeDatabase();
+    this.initializeStorage();
   }
 
-  // Initialize database from FOODS_DATABASE and extended database
-  private initializeDatabase(): void {
-    try {
-      const initialized = localStorage.getItem(this.FOODS_DB_INITIALIZED_KEY);
-      const dbVersion = localStorage.getItem(this.FOODS_DB_VERSION_KEY);
-      
-      // Если база уже инициализирована и версия совпадает, пропускаем
-      if (initialized === 'true' && dbVersion === this.FOODS_DB_VERSION) {
-        return;
-      }
-
-      const existingFoods = this.getAllFoodsRaw();
-      const existingIds = new Set(existingFoods.map(f => f.id));
-      const existingBarcodes = new Set(existingFoods.map(f => f.barcode).filter(Boolean));
-
-      // Конвертируем старую базу FOODS_DATABASE
-      const dbFoods: Food[] = FOODS_DATABASE.filter((item: FoodDatabaseItem) => {
-        return !existingIds.has(item.id);
-      }).map((item: FoodDatabaseItem) => {
-        return {
-          id: item.id,
-          name: item.name_ru,
-          name_ru: item.name_ru,
-          name_en: item.name_en,
-          brand: null,
-          calories: Number(item.calories) || 0,
-          protein: Number(item.protein) || 0,
-          fat: Number(item.fat) || 0,
-          carbs: Number(item.carbs) || 0,
-          barcode: null,
-          image: null,
-          source: 'local' as FoodSource,
-          category: item.category,
-          aliases: item.aliases || [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      });
-
-      // Конвертируем расширенную базу
-      const extendedDb = generateLargeFoodsDatabase();
-      const extendedFoods: Food[] = extendedDb
-        .filter(item => !existingIds.has(item.id) && (item.barcode ? !existingBarcodes.has(item.barcode) : true))
-        .map(item => ({
-          id: item.id,
-          name: item.name_ru,
-          name_ru: item.name_ru,
-          name_en: item.name_en,
-          brand: item.brand || null,
-          calories: Number(item.calories) || 0,
-          protein: Number(item.protein) || 0,
-          fat: Number(item.fat) || 0,
-          carbs: Number(item.carbs) || 0,
-          barcode: item.barcode || null,
-          image: null,
-          source: 'local' as FoodSource,
-          category: item.category,
-          aliases: item.aliases || [],
-          serving_size: item.serving_size || 100,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }));
-
-      // Объединяем все продукты
-      const allFoods = [...existingFoods, ...dbFoods, ...extendedFoods];
-      this.saveFoods(allFoods);
-      localStorage.setItem(this.FOODS_DB_INITIALIZED_KEY, 'true');
-      localStorage.setItem(this.FOODS_DB_VERSION_KEY, this.FOODS_DB_VERSION);
-    } catch (error) {
-      console.error('Error initializing database:', error);
+  // Полная очистка старой базы при смене версии
+  private initializeStorage() {
+    const version = localStorage.getItem(DB_VERSION_KEY);
+    if (version !== DB_VERSION) {
+      localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify([]));
+      localStorage.setItem(DB_VERSION_KEY, DB_VERSION);
     }
   }
 
-  // Get all foods from localStorage (raw, without initialization)
-  private getAllFoodsRaw(): Food[] {
-    try {
-      const stored = localStorage.getItem(this.FOODS_STORAGE_KEY);
-      if (!stored) return [];
-      
-      const foods: Food[] = JSON.parse(stored);
-      return foods.map(food => ({
-        ...food,
-        calories: Number(food.calories) || 0,
-        protein: Number(food.protein) || 0,
-        fat: Number(food.fat) || 0,
-        carbs: Number(food.carbs) || 0,
-        aliases: food.aliases || [],
-      }));
-    } catch (error) {
-      console.error('Error loading foods:', error);
-      return [];
-    }
-  }
-
-  // Get all foods from localStorage
-  private getAllFoods(): Food[] {
-    try {
-      // Initialize database on first access
-      this.initializeDatabase();
-      
-      const stored = localStorage.getItem(this.FOODS_STORAGE_KEY);
-      if (!stored) return [];
-      
-      const foods: Food[] = JSON.parse(stored);
-      
-      // Normalize and fix all foods - ensure numbers are numbers, not strings
-      // ВАЖНО: НЕ ФИЛЬТРУЕМ ПО КАЛОРИЯМ! Все продукты должны быть доступны
-      return foods.map(food => ({
-        ...food,
-        calories: Number(food.calories) || 0,
-        protein: Number(food.protein) || 0,
-        fat: Number(food.fat) || 0,
-        carbs: Number(food.carbs) || 0,
-        aliases: food.aliases || [],
-      }));
-    } catch (error) {
-      console.error('Error loading foods:', error);
-      return [];
-    }
-  }
-
-  // Save foods to localStorage
-  private saveFoods(foods: Food[]): void {
-    try {
-      localStorage.setItem(this.FOODS_STORAGE_KEY, JSON.stringify(foods));
-    } catch (error) {
-      console.error('Error saving foods:', error);
-    }
-  }
-
-  // Get user custom foods
-  private getUserCustomFoods(userId: string): UserCustomFood[] {
-    try {
-      const stored = localStorage.getItem(`${this.USER_CUSTOM_FOODS_STORAGE_KEY}_${userId}`);
-      return stored ? JSON.parse(stored) : [];
-    } catch (error) {
-      console.error('Error loading user custom foods:', error);
-      return [];
-    }
-  }
-
-  // Save user custom foods
-  private saveUserCustomFoods(userId: string, foods: UserCustomFood[]): void {
-    try {
-      localStorage.setItem(`${this.USER_CUSTOM_FOODS_STORAGE_KEY}_${userId}`, JSON.stringify(foods));
-    } catch (error) {
-      console.error('Error saving user custom foods:', error);
-    }
-  }
-
-  // Автозаполнение БЖУ из категории по умолчанию
-  private getCategoryDefaults(category: string): { calories: number; protein: number; fat: number; carbs: number } {
-    const defaults = CATEGORY_DEFAULTS[category] || CATEGORY_DEFAULTS.vegetables;
+  // === Работа с локальным хранилищем ===
+  private normalizeFood(raw: Partial<Food>): Food {
+    const now = new Date().toISOString();
     return {
-      calories: defaults.calories,
-      protein: defaults.protein,
-      fat: defaults.fat,
-      carbs: defaults.carbs,
+      id: raw.id ?? `food_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      name: raw.name ?? raw.name_original ?? 'Без названия',
+      name_original: raw.name_original,
+      barcode: raw.barcode ?? null,
+      calories: toNumber(raw.calories),
+      protein: toNumber(raw.protein),
+      fat: toNumber(raw.fat),
+      carbs: toNumber(raw.carbs),
+      category: raw.category,
+      brand: raw.brand ?? null,
+      source: raw.source ?? 'local',
+      photo: raw.photo ?? null,
+      aliases: raw.aliases ?? [],
+      autoFilled: raw.autoFilled ?? false,
+      popularity: raw.popularity ?? 0,
+      createdAt: raw.createdAt ?? now,
+      updatedAt: now,
     };
   }
 
-  // Проверка, нужно ли автозаполнение БЖУ
-  private needsAutoFill(food: Food): boolean {
-    return (
-      food.calories === 0 &&
-      food.protein === 0 &&
-      food.fat === 0 &&
-      food.carbs === 0
-    ) || (
-      !food.calories &&
-      !food.protein &&
-      !food.fat &&
-      !food.carbs
-    );
+  private loadAll(): Food[] {
+    try {
+      const stored = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+      if (!stored) return [];
+      const parsed: Food[] = JSON.parse(stored);
+      return parsed.map(this.normalizeFood.bind(this));
+    } catch (error) {
+      console.error('Error loading products', error);
+      return [];
+    }
   }
 
-  // Автозаполнение БЖУ для продукта
-  private async autoFillNutrition(food: Food): Promise<Food> {
-    // Если БЖУ уже есть, возвращаем как есть
-    if (!this.needsAutoFill(food)) {
-      return food;
+  private saveAll(foods: Food[]) {
+    try {
+      localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(foods));
+    } catch (error) {
+      console.error('Error saving products', error);
     }
-
-    // Пытаемся получить из OpenFoodFacts
-    if (food.name || food.name_ru || food.name_en) {
-      const searchQuery = food.name_ru || food.name_en || food.name || '';
-      try {
-        const apiResults = await this.searchOpenFoodFacts(searchQuery, 1);
-        if (apiResults.length > 0 && !this.needsAutoFill(apiResults[0])) {
-          // Обновляем продукт с данными из API
-          const updatedFood: Food = {
-            ...food,
-            calories: apiResults[0].calories || 0,
-            protein: apiResults[0].protein || 0,
-            fat: apiResults[0].fat || 0,
-            carbs: apiResults[0].carbs || 0,
-            updatedAt: new Date().toISOString(),
-          };
-          this.saveFood(updatedFood);
-          return updatedFood;
-        }
-      } catch (error) {
-        console.error('Error auto-filling from API:', error);
-      }
-    }
-
-    // Если API не помог, используем значения по умолчанию для категории
-    if (food.category) {
-      const defaults = this.getCategoryDefaults(food.category);
-      const updatedFood: Food = {
-        ...food,
-        calories: defaults.calories,
-        protein: defaults.protein,
-        fat: defaults.fat,
-        carbs: defaults.carbs,
-        updatedAt: new Date().toISOString(),
-      };
-      this.saveFood(updatedFood);
-      return updatedFood;
-    }
-
-    // Если категории нет, возвращаем как есть (значения 0)
-    return food;
   }
 
-  // Convert OpenFoodFacts product to Food
-  private convertOpenFoodFactsToFood(product: OpenFoodFactsProduct, source: FoodSource = 'openfoodfacts'): Food | null {
-    if (!product.product_name) return null;
-
-    const nutriments = product.nutriments || {};
-    
-    // Normalize values - convert to numbers, use 0 as default
-    const calories = Number(nutriments['energy-kcal_100g']) || 0;
-    const protein = Number(nutriments.proteins_100g) || 0;
-    const fat = Number(nutriments.fat_100g) || 0;
-    const carbs = Number(nutriments.carbohydrates_100g) || 0;
-    
-    // Определяем категорию из OpenFoodFacts
-    let category = 'unknown';
-    if (product.categories) {
-      const categoriesLower = product.categories.toLowerCase();
-      if (categoriesLower.includes('vegetable') || categoriesLower.includes('овощ')) category = 'vegetables';
-      else if (categoriesLower.includes('fruit') || categoriesLower.includes('фрукт')) category = 'fruits';
-      else if (categoriesLower.includes('meat') || categoriesLower.includes('мясо')) category = 'meat';
-      else if (categoriesLower.includes('fish') || categoriesLower.includes('рыба')) category = 'fish';
-      else if (categoriesLower.includes('dairy') || categoriesLower.includes('молочн')) category = 'dairy';
-      else if (categoriesLower.includes('grain') || categoriesLower.includes('зерн')) category = 'grains';
+  private loadUserFoods(userId: string): UserCustomFood[] {
+    try {
+      const stored = localStorage.getItem(`${USER_CUSTOM_PRODUCTS_KEY}_${userId}`);
+      if (!stored) return [];
+      const parsed: UserCustomFood[] = JSON.parse(stored);
+      return parsed.map((item) => ({
+        ...this.normalizeFood(item),
+        userId,
+        source: 'manual',
+      }));
+    } catch (error) {
+      console.error('Error loading user foods', error);
+      return [];
     }
-    
+  }
+
+  private saveUserFoods(userId: string, foods: UserCustomFood[]) {
+    try {
+      localStorage.setItem(`${USER_CUSTOM_PRODUCTS_KEY}_${userId}`, JSON.stringify(foods));
+    } catch (error) {
+      console.error('Error saving user foods', error);
+    }
+  }
+
+  // === Вспомогательные функции ===
+  private translateToRussian(name: string | undefined): string {
+    if (!name) return 'Без названия';
+    // Если уже русские буквы — оставляем
+    if (/[а-яё]/i.test(name)) return name;
+    // Простейший транслит (для оффлайн-режима). Можно заменить на реальный API перевода.
+    return name;
+  }
+
+  private deriveCategoryFromText(text?: string): string | undefined {
+    if (!text) return undefined;
+    const t = text.toLowerCase();
+    if (t.includes('vegetable') || t.includes('овощ')) return 'vegetables';
+    if (t.includes('fruit') || t.includes('фрукт')) return 'fruits';
+    if (t.includes('meat') || t.includes('мяс')) return 'meat';
+    if (t.includes('fish') || t.includes('рыба')) return 'fish';
+    if (t.includes('dairy') || t.includes('молок') || t.includes('cheese')) return 'dairy';
+    if (t.includes('grain') || t.includes('круп') || t.includes('rice') || t.includes('bread')) return 'grains';
+    if (t.includes('nut')) return 'nuts';
+    if (t.includes('oil')) return 'oils';
+    if (t.includes('drink') || t.includes('juice') || t.includes('water')) return 'beverages';
+    return undefined;
+  }
+
+  private applyCategoryDefaults(food: Food): Food {
+    if (food.calories && food.protein && food.fat && food.carbs) return food;
+    const categoryKey = food.category || 'vegetables';
+    const defaults = CATEGORY_DEFAULTS[categoryKey] || CATEGORY_DEFAULTS.vegetables;
     return {
-      id: `food_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: product.product_name.trim(),
-      name_ru: product.product_name.trim(), // По умолчанию используем product_name
-      name_en: product.product_name.trim(),
-      brand: product.brands?.trim() || null,
-      calories,
-      protein,
-      fat,
-      carbs,
-      barcode: product.code || null,
-      image: product.image_front_small_url || null,
-      source,
-      category,
-      aliases: [],
-      createdAt: new Date().toISOString(),
+      ...food,
+      calories: food.calories || defaults.calories,
+      protein: food.protein || defaults.protein,
+      fat: food.fat || defaults.fat,
+      carbs: food.carbs || defaults.carbs,
+      autoFilled: true,
       updatedAt: new Date().toISOString(),
     };
   }
 
-  // Расширенный поиск с фаззи-матчингом
-  private fuzzyMatch(query: string, text: string): boolean {
+  private fuzzyMatch(query: string, text?: string | null): boolean {
     if (!text) return false;
-    const queryLower = query.toLowerCase();
-    const textLower = text.toLowerCase();
-    
-    // Точное совпадение
-    if (textLower === queryLower) return true;
-    
-    // Начинается с
-    if (textLower.startsWith(queryLower)) return true;
-    
-    // Содержит
-    if (textLower.includes(queryLower)) return true;
-    
-    // Фаззи-матчинг: проверяем, есть ли все символы запроса в тексте
-    let queryIndex = 0;
-    for (let i = 0; i < textLower.length && queryIndex < queryLower.length; i++) {
-      if (textLower[i] === queryLower[queryIndex]) {
-        queryIndex++;
-      }
+    const q = query.toLowerCase().trim();
+    const t = text.toLowerCase();
+    if (!q) return false;
+    if (t === q) return true;
+    if (t.startsWith(q)) return true;
+    if (t.includes(q)) return true;
+    // простейший subsequence matching
+    let qi = 0;
+    for (let i = 0; i < t.length && qi < q.length; i++) {
+      if (t[i] === q[qi]) qi++;
     }
-    return queryIndex === queryLower.length;
+    return qi === q.length;
   }
 
-  // Search in local database - расширенный поиск
-  searchLocal(query: string, userId?: string): Food[] {
-    const allFoods = this.getAllFoods();
-    const queryLower = query.toLowerCase().trim();
-
-    if (!queryLower) return [];
-
-    // Функция поиска, проверяющая все возможные поля
-    const matchesQuery = (food: Food): boolean => {
-      const searchFields: string[] = [];
-      
-      if (food.name) searchFields.push(food.name);
-      if (food.name_ru) searchFields.push(food.name_ru);
-      if (food.name_en) searchFields.push(food.name_en);
-      if (food.brand) searchFields.push(food.brand);
-      if (food.category) searchFields.push(food.category);
-      if (food.barcode) searchFields.push(food.barcode);
-      if (food.aliases) {
-        searchFields.push(...food.aliases);
-      }
-
-      // Проверяем все поля на совпадение
-      return searchFields.some(field => {
-        if (!field) return false;
-        return this.fuzzyMatch(queryLower, field);
-      });
-    };
-
-    // Поиск во всех продуктах - БЕЗ ФИЛЬТРАЦИИ ПО КАЛОРИЯМ
-    let results = allFoods.filter(matchesQuery);
-
-    // Добавляем пользовательские продукты, если userId предоставлен
-    if (userId) {
-      const customFoods = this.getUserCustomFoods(userId);
-      const customResults = customFoods.filter(matchesQuery);
-      results = [...results, ...customResults];
-    }
-
-    // Удаляем дубликаты и сортируем по релевантности
-    const uniqueResults = Array.from(
-      new Map(results.map((food) => [food.id, food])).values()
-    );
-
-    return uniqueResults.sort((a, b) => {
-      // Приоритет 1: точное совпадение
-      const aExact = a.name?.toLowerCase() === queryLower || 
-                     a.name_ru?.toLowerCase() === queryLower ||
-                     a.name_en?.toLowerCase() === queryLower ||
-                     (a.aliases || []).some(alias => alias.toLowerCase() === queryLower);
-      const bExact = b.name?.toLowerCase() === queryLower || 
-                     b.name_ru?.toLowerCase() === queryLower ||
-                     b.name_en?.toLowerCase() === queryLower ||
-                     (b.aliases || []).some(alias => alias.toLowerCase() === queryLower);
-      
-      if (aExact && !bExact) return -1;
-      if (!aExact && bExact) return 1;
-      
-      // Приоритет 2: начинается с
-      const aStarts = a.name?.toLowerCase().startsWith(queryLower) ||
-                      a.name_ru?.toLowerCase().startsWith(queryLower) ||
-                      a.name_en?.toLowerCase().startsWith(queryLower) ||
-                      (a.aliases || []).some(alias => alias.toLowerCase().startsWith(queryLower));
-      const bStarts = b.name?.toLowerCase().startsWith(queryLower) ||
-                      b.name_ru?.toLowerCase().startsWith(queryLower) ||
-                      b.name_en?.toLowerCase().startsWith(queryLower) ||
-                      (b.aliases || []).some(alias => alias.toLowerCase().startsWith(queryLower));
-      
-      if (aStarts && !bStarts) return -1;
-      if (!aStarts && bStarts) return 1;
-      
-      // Приоритет 3: алфавитный порядок
-      return (a.name || a.name_ru || '').localeCompare(b.name || b.name_ru || '');
+  // === OpenFoodFacts ===
+  private mapOFFProduct(product: OpenFoodFactsProduct): Food | null {
+    if (!product.product_name && !product.generic_name) return null;
+    const nameOriginal = product.product_name?.trim() || product.generic_name?.trim() || 'Unknown';
+    const nameRu = this.translateToRussian(product.product_name_ru || nameOriginal);
+    const nutriments = product.nutriments || {};
+    const food: Food = this.normalizeFood({
+      name: nameRu,
+      name_original: nameOriginal,
+      barcode: product.code || null,
+      brand: product.brands?.split(',')?.[0]?.trim() || null,
+      calories: nutriments['energy-kcal_100g'],
+      protein: nutriments.proteins_100g,
+      fat: nutriments.fat_100g,
+      carbs: nutriments.carbohydrates_100g,
+      category: this.deriveCategoryFromText(product.categories),
+      photo: product.image_front_small_url || null,
+      source: 'openfoodfacts',
     });
+    return this.applyCategoryDefaults(food);
   }
 
-  // Find by barcode in local database
-  findByBarcodeLocal(barcode: string, userId?: string): Food | null {
-    const allFoods = this.getAllFoods();
-    let found: Food | undefined = allFoods.find((food) => food.barcode === barcode);
-
-    if (!found && userId) {
-      const customFoods = this.getUserCustomFoods(userId);
-      const customFound = customFoods.find((food) => food.barcode === barcode);
-      if (customFound) {
-        found = customFound as Food;
-      }
-    }
-
-    return found || null;
-  }
-
-  // Search in OpenFoodFacts API
-  async searchOpenFoodFacts(query: string, limit: number = 20): Promise<Food[]> {
+  private async fetchOFFByBarcode(barcode: string): Promise<Food | null> {
     try {
-      const encodedQuery = encodeURIComponent(query);
-      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodedQuery}&json=1&page_size=${limit}`;
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('API request failed');
-      }
-
-      const data: OpenFoodFactsSearchResponse = await response.json();
-      if (!data.products || data.products.length === 0) {
-        return [];
-      }
-
-      const foods: Food[] = [];
-      for (const product of data.products) {
-        const food = this.convertOpenFoodFactsToFood(product, 'openfoodfacts');
-        if (food) {
-          // Проверяем, существует ли уже в локальной БД
-          const existing = this.getAllFoods().find((f) => f.barcode === food.barcode);
-          if (!existing && food.barcode) {
-            // Сохраняем в локальную БД
-            this.saveFood(food);
-          }
-          foods.push(food);
-        }
-      }
-
-      return foods;
+      const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}`;
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const data: OpenFoodFactsProductResponse = await res.json();
+      if (data.status === 0 || !data.product) return null;
+      return this.mapOFFProduct(data.product);
     } catch (error) {
-      console.error('Error searching OpenFoodFacts:', error);
+      console.error('OFF barcode fetch error', error);
+      return null;
+    }
+  }
+
+  private async fetchOFFSearch(query: string, limit = 15): Promise<Food[]> {
+    try {
+      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=${limit}`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data: OpenFoodFactsSearchResponse = await res.json();
+      if (!data.products?.length) return [];
+      const mapped = data.products
+        .map((p) => this.mapOFFProduct(p))
+        .filter((p): p is Food => !!p);
+      return mapped;
+    } catch (error) {
+      console.error('OFF search error', error);
       return [];
     }
   }
 
-  // Get product by barcode from OpenFoodFacts API
-  async getByBarcodeFromAPI(barcode: string): Promise<Food | null> {
+  // === USDA FoodData Central ===
+  private mapUSDAToFood(item: USDAFoodItem): Food {
+    const calories = item.foodNutrients?.find((n) => n.nutrientNumber === '208')?.value;
+    const protein = item.foodNutrients?.find((n) => n.nutrientNumber === '203')?.value;
+    const fat = item.foodNutrients?.find((n) => n.nutrientNumber === '204')?.value;
+    const carbs = item.foodNutrients?.find((n) => n.nutrientNumber === '205')?.value;
+    const nameOriginal = item.description?.trim() || 'Unknown';
+    const nameRu = this.translateToRussian(nameOriginal);
+    const category = this.deriveCategoryFromText(nameOriginal);
+
+    const food = this.normalizeFood({
+      name: nameRu,
+      name_original: nameOriginal,
+      brand: item.brandOwner || null,
+      calories,
+      protein,
+      fat,
+      carbs,
+      category,
+      source: 'usda',
+    });
+    return this.applyCategoryDefaults(food);
+  }
+
+  private async fetchUSDASearch(query: string, limit = 10): Promise<Food[]> {
+    if (!USDA_API_KEY) return [];
     try {
-      // Используем новый API v2
-      const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}`;
-
-      const response = await fetch(url);
-      if (!response.ok) {
-        return null;
-      }
-
-      const data: OpenFoodFactsResponse = await response.json();
-      if (data.status === 0 || !data.product) {
-        return null;
-      }
-
-      const food = this.convertOpenFoodFactsToFood(data.product, 'openfoodfacts');
-      if (food) {
-        // Проверяем, существует ли уже в локальной БД
-        const existing = this.getAllFoods().find((f) => f.barcode === food.barcode);
-        if (!existing) {
-          // Сохраняем в локальную БД
-          this.saveFood(food);
-        }
-        return food;
-      }
-
-      return null;
+      const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=${limit}&api_key=${USDA_API_KEY}`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data: USDAFoodSearchResponse = await res.json();
+      if (!data.foods?.length) return [];
+      return data.foods.map((item) => this.mapUSDAToFood(item));
     } catch (error) {
-      console.error('Error fetching from OpenFoodFacts:', error);
-      return null;
+      console.error('USDA search error', error);
+      return [];
     }
   }
 
-  // Combined search: local first, then API
-  async search(query: string, userId?: string): Promise<Food[]> {
-    // Сначала ищем локально
-    const localResults = this.searchLocal(query, userId);
-    
-    // Если есть хорошие локальные результаты, возвращаем их
-    if (localResults.length >= 10) {
-      return localResults;
+  // === Основной pipeline ===
+  private upsertFood(food: Food) {
+    const foods = this.loadAll();
+    const idx = foods.findIndex((f) => f.id === food.id || (food.barcode && f.barcode === food.barcode));
+    if (idx >= 0) {
+      foods[idx] = { ...foods[idx], ...food, updatedAt: new Date().toISOString() };
+    } else {
+      foods.push(food);
     }
-
-    // Также ищем в API
-    const apiResults = await this.searchOpenFoodFacts(query);
-    
-    // Объединяем и удаляем дубликаты
-    const allResults = [...localResults, ...apiResults];
-    const uniqueResults = Array.from(
-      new Map(allResults.map((food) => [food.id, food])).values()
-    );
-
-    // Автозаполнение БЖУ для продуктов с нулевыми значениями
-    const resultsWithNutrition = await Promise.all(
-      uniqueResults.map(food => this.autoFillNutrition(food))
-    );
-
-    return resultsWithNutrition;
+    this.saveAll(foods);
   }
 
-  // Combined barcode search: local first, then API
-  async findByBarcode(barcode: string, userId?: string): Promise<Food | null> {
-    // Сначала проверяем локально
-    const local = this.findByBarcodeLocal(barcode, userId);
-    if (local) {
-      // Автозаполнение БЖУ, если нужно
-      return await this.autoFillNutrition(local);
+  private searchLocal(query: string, category?: string): Food[] {
+    const all = this.loadAll();
+    const q = query.toLowerCase().trim();
+    const filtered = all.filter((f) => {
+      if (category && f.category !== category) return false;
+      return (
+        this.fuzzyMatch(q, f.name) ||
+        this.fuzzyMatch(q, f.name_original) ||
+        this.fuzzyMatch(q, f.brand) ||
+        (f.aliases || []).some((a) => this.fuzzyMatch(q, a))
+      );
+    });
+    return filtered.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
+  }
+
+  private findLocalByBarcode(barcode: string): Food | null {
+    const all = this.loadAll();
+    return all.find((f) => f.barcode === barcode) || null;
+  }
+
+  async findByBarcode(barcode: string, _userId?: string): Promise<Food | null> {
+    // 1) локально
+    const local = this.findLocalByBarcode(barcode);
+    if (local) return local;
+
+    // 2) OpenFoodFacts
+    const off = await this.fetchOFFByBarcode(barcode);
+    if (off) {
+      this.upsertFood(off);
+      return off;
     }
 
-    // Затем проверяем API
-    const api = await this.getByBarcodeFromAPI(barcode);
-    if (api) {
-      // Автозаполнение БЖУ, если нужно
-      return await this.autoFillNutrition(api);
+    // 3) USDA (без штрихкода прямого поиска — пробуем как текст)
+    const usda = await this.fetchUSDASearch(barcode, 1);
+    if (usda[0]) {
+      const product = { ...usda[0], barcode };
+      this.upsertFood(product);
+      return product;
     }
 
     return null;
   }
 
-  // Save food to local database
-  saveFood(food: Food): void {
-    const foods = this.getAllFoods();
-    
-    // Нормализуем значения перед сохранением
-    const normalizedFood: Food = {
-      ...food,
-      calories: Number(food.calories) || 0,
-      protein: Number(food.protein) || 0,
-      fat: Number(food.fat) || 0,
-      carbs: Number(food.carbs) || 0,
-      aliases: food.aliases || [],
-    };
-    
-    const existingIndex = foods.findIndex((f) => f.id === normalizedFood.id || 
-      (normalizedFood.barcode && f.barcode === normalizedFood.barcode));
-    
-    if (existingIndex >= 0) {
-      foods[existingIndex] = { ...normalizedFood, updatedAt: new Date().toISOString() };
-    } else {
-      foods.push(normalizedFood);
-    }
-    
-    this.saveFoods(foods);
+  async search(query: string, options?: { category?: string; limit?: number }): Promise<Food[]> {
+    const limit = options?.limit ?? 30;
+    const category = options?.category;
+
+    const local = this.searchLocal(query, category);
+    if (local.length >= limit) return local.slice(0, limit);
+
+    // OpenFoodFacts
+    const offResults = await this.fetchOFFSearch(query, limit);
+    offResults.forEach((f) => this.upsertFood(f));
+
+    // USDA (если есть ключ)
+    const usdaResults = await this.fetchUSDASearch(query, limit);
+    usdaResults.forEach((f) => this.upsertFood(f));
+
+    const combined = [...local, ...offResults, ...usdaResults];
+    const unique = Array.from(new Map(combined.map((f) => [f.barcode || f.id, f])).values());
+
+    // автодополнение макросов при необходимости
+    const normalized = unique.map((f) => (f.calories ? f : this.applyCategoryDefaults(f)));
+
+    // сортируем по популярности и наличию точного совпадения
+    const q = query.toLowerCase().trim();
+    normalized.sort((a, b) => {
+      const aExact = a.name.toLowerCase() === q || a.name_original?.toLowerCase() === q;
+      const bExact = b.name.toLowerCase() === q || b.name_original?.toLowerCase() === q;
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+      return (b.popularity ?? 0) - (a.popularity ?? 0);
+    });
+
+    return normalized.slice(0, limit);
   }
 
-  // Create user custom food
-  createCustomFood(userId: string, foodData: Omit<Food, 'id' | 'source' | 'createdAt' | 'updatedAt'>): UserCustomFood {
-    const customFood: UserCustomFood = {
-      ...foodData,
-      id: `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  async searchByCategory(category: string, limit = 50): Promise<Food[]> {
+    const local = this.searchLocal('', category);
+    if (local.length >= limit) return local.slice(0, limit);
+    // Попытаться дополнительно подтянуть из OFF/USDA по названию категории
+    const off = await this.fetchOFFSearch(category, limit);
+    off.forEach((f) => this.upsertFood(f));
+    const usda = await this.fetchUSDASearch(category, limit);
+    usda.forEach((f) => this.upsertFood(f));
+    const combined = [...local, ...off, ...usda];
+    const unique = Array.from(new Map(combined.map((f) => [f.barcode || f.id, f])).values());
+    return unique.slice(0, limit);
+  }
+
+  // === Пользовательские продукты ===
+  createCustomFood(userId: string, data: Omit<Food, 'id' | 'source' | 'createdAt' | 'updatedAt'>): UserCustomFood {
+    const food: UserCustomFood = {
+      ...this.normalizeFood(data),
+      id: `manual_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       userId,
-      source: 'custom',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      source: 'manual',
     };
-
-    const customFoods = this.getUserCustomFoods(userId);
-    customFoods.push(customFood);
-    this.saveUserCustomFoods(userId, customFoods);
-
-    return customFood;
+    const userFoods = this.loadUserFoods(userId);
+    userFoods.push(food);
+    this.saveUserFoods(userId, userFoods);
+    return food;
   }
 
-  // Get food by ID (синхронная версия)
-  getFoodById(foodId: string, userId?: string): Food | null {
-    const allFoods = this.getAllFoods();
-    let found: Food | undefined = allFoods.find((food) => food.id === foodId);
-
-    if (!found && userId) {
-      const customFoods = this.getUserCustomFoods(userId);
-      const customFound = customFoods.find((food) => food.id === foodId);
-      if (customFound) {
-        found = customFound as Food;
-      }
-    }
-
-    return found || null;
+  saveFood(food: Food): void {
+    this.upsertFood(this.normalizeFood(food));
   }
 
-  // Get food by ID with auto-fill (асинхронная версия)
-  async getFoodByIdWithAutoFill(foodId: string, userId?: string): Promise<Food | null> {
-    const found = this.getFoodById(foodId, userId);
-    if (found) {
-      return await this.autoFillNutrition(found);
+  getFoodById(id: string, userId?: string): Food | null {
+    const all = this.loadAll();
+    const local = all.find((f) => f.id === id);
+    if (local) return local;
+    if (userId) {
+      const uf = this.loadUserFoods(userId).find((f) => f.id === id);
+      if (uf) return uf;
     }
     return null;
   }
