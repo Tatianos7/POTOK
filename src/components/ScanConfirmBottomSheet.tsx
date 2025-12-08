@@ -122,9 +122,9 @@ const ScanConfirmBottomSheet = ({ food, isOpen, onConfirm, onReject }: ScanConfi
           {/* Product Info */}
           <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
             <div className="flex items-start gap-4">
-              {food.image && (
+              {food.photo && (
                 <img
-                  src={food.image}
+                  src={food.photo}
                   alt={food.name}
                   className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
                   onError={(e) => {

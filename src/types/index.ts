@@ -74,31 +74,32 @@ export interface MessageResponse {
   createdAt: string;
 }
 
-// Food types
-export type FoodSource = 'local' | 'api' | 'custom';
+// Food types (новая архитектура)
+export type FoodSource = 'openfoodfacts' | 'usda' | 'manual' | 'local';
 
 export interface Food {
   id: string;
-  name: string;
-  name_ru?: string; // Russian name
-  name_en?: string; // English name
-  brand: string | null;
-  calories: number; // per 100g
-  protein: number; // per 100g
-  fat: number; // per 100g
-  carbs: number; // per 100g
-  barcode: string | null;
-  image: string | null;
-  source: FoodSource;
+  name: string; // Русское название (основное отображение)
+  name_original?: string; // Оригинальное/английское название
+  barcode?: string | null;
+  calories: number; // на 100 г
+  protein: number;  // на 100 г
+  fat: number;      // на 100 г
+  carbs: number;    // на 100 г
   category?: string;
-  aliases?: string[]; // Alternative names for search
+  brand?: string | null;
+  source: FoodSource;
+  photo?: string | null;
+  aliases?: string[]; // синонимы для поиска
+  autoFilled?: boolean; // были ли БЖУ автозаполнены
+  popularity?: number; // используется для сортировки
   createdAt: string;
   updatedAt: string;
 }
 
 export interface UserCustomFood extends Omit<Food, 'source'> {
   userId: string;
-  source: 'custom';
+  source: 'manual';
 }
 
 export interface MealEntry {

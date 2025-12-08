@@ -89,9 +89,9 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd }: AddFoodToMealModal
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Food Info */}
           <div className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-            {food.image && (
+            {food.photo && (
               <img
-                src={food.image}
+                src={food.photo}
                 alt={food.name}
                 className="w-16 h-16 rounded-lg object-cover"
                 onError={(e) => {

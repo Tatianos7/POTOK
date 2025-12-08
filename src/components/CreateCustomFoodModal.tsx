@@ -31,7 +31,7 @@ const CreateCustomFoodModal = ({ isOpen, onClose, onCreated, userId }: CreateCus
       fat: parseFloat(formData.fat) || 0,
       carbs: parseFloat(formData.carbs) || 0,
       barcode: null,
-      image: null,
+      photo: null,
     });
 
     onCreated(food);
