@@ -11,6 +11,10 @@ import CameraBarcodeScanner from '../components/CameraBarcodeScanner';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
 import CreateCustomFoodModal from '../components/CreateCustomFoodModal';
 import ScanConfirmBottomSheet from '../components/ScanConfirmBottomSheet';
+import AddProductModal from '../components/AddProductModal';
+import RecipeAnalyzePicker from '../components/RecipeAnalyzePicker';
+import RecipeAnalyzeResultSheet from '../components/RecipeAnalyzeResultSheet';
+import { localAIFoodAnalyzer, LocalIngredient } from '../services/localAIFoodAnalyzer';
 
 const FoodDiary = () => {
   const navigate = useNavigate();
@@ -26,6 +30,10 @@ const FoodDiary = () => {
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
   const [isCreateCustomFoodModalOpen, setIsCreateCustomFoodModalOpen] = useState(false);
   const [isConfirmScannedFoodModalOpen, setIsConfirmScannedFoodModalOpen] = useState(false);
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [showRecipePicker, setShowRecipePicker] = useState(false);
+  const [analyzedIngredients, setAnalyzedIngredients] = useState<LocalIngredient[]>([]);
+  const [isRecipeResultOpen, setIsRecipeResultOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [scannedFood, setScannedFood] = useState<Food | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
@@ -468,14 +476,14 @@ const FoodDiary = () => {
             <button
               onClick={() => {
                 setSelectedMealType('snack');
-                setIsSearchModalOpen(true);
+                setShowAddProductModal(true);
               }}
               className="flex-1 py-3 px-4 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold text-sm uppercase hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
             >
               ДОБАВИТЬ ПРОДУКТ
             </button>
             <button
-              onClick={() => setIsCreateCustomFoodModalOpen(true)}
+              onClick={() => setShowRecipePicker(true)}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             >
               <Camera className="w-6 h-6 text-gray-700 dark:text-gray-300" />
@@ -488,6 +496,24 @@ const FoodDiary = () => {
       </div>
 
       {/* Modals */}
+      {showAddProductModal && (
+        <AddProductModal
+          onClose={() => setShowAddProductModal(false)}
+          onBrandInput={() => {
+            setShowAddProductModal(false);
+            setIsSearchModalOpen(true);
+          }}
+          onCustomInput={() => {
+            setShowAddProductModal(false);
+            setIsCreateCustomFoodModalOpen(true);
+          }}
+          onRecipeAnalyzer={() => {
+            setShowAddProductModal(false);
+            setIsSearchModalOpen(true);
+          }}
+        />
+      )}
+
       {isSearchModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
@@ -498,7 +524,9 @@ const FoodDiary = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <ProductSearch
-              onSelect={handleFoodSelect}
+              onSelect={(food) => {
+                handleFoodSelect(food);
+              }}
               userId={user.id}
             />
           </div>
@@ -557,6 +585,79 @@ const FoodDiary = () => {
         onCreated={handleCreateCustomFood}
         userId={user.id}
       />
+
+      {showAddProductModal && (
+        <AddProductModal
+          onClose={() => setShowAddProductModal(false)}
+          onBrandInput={() => {
+            setShowAddProductModal(false);
+            setIsSearchModalOpen(true);
+          }}
+          onCustomInput={() => {
+            setShowAddProductModal(false);
+            setIsCreateCustomFoodModalOpen(true);
+          }}
+          onRecipeAnalyzer={() => {
+            setShowAddProductModal(false);
+            setShowRecipePicker(true);
+          }}
+        />
+      )}
+
+      {showRecipePicker && (
+        <RecipeAnalyzePicker
+          onClose={() => setShowRecipePicker(false)}
+          onSelectFile={async (file) => {
+            setShowRecipePicker(false);
+            try {
+              const result = await localAIFoodAnalyzer.analyzeImageLocal(file);
+              setAnalyzedIngredients(result.ingredients);
+              setIsRecipeResultOpen(true);
+            } catch (error) {
+              console.error(error);
+              alert('Не удалось определить ингредиенты. Попробуйте другое фото.');
+            }
+          }}
+        />
+      )}
+
+      {isRecipeResultOpen && (
+        <RecipeAnalyzeResultSheet
+          isOpen={isRecipeResultOpen}
+          ingredients={analyzedIngredients}
+          onChange={(ings) => setAnalyzedIngredients(ings)}
+          onReject={() => {
+            setIsRecipeResultOpen(false);
+            setAnalyzedIngredients([]);
+          }}
+          onConfirm={(ings) => {
+            if (!user?.id || !selectedMealType || !dailyMeals) {
+              setIsRecipeResultOpen(false);
+              return;
+            }
+            ings.forEach((ing) => {
+              const food = localAIFoodAnalyzer.toFood(ing);
+              const grams = ing.grams ?? 100;
+              const k = grams / 100;
+              const entry: MealEntry = {
+                id: `meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                foodId: food.id,
+                food,
+                weight: grams,
+                calories: food.calories * k,
+                protein: food.protein * k,
+                fat: food.fat * k,
+                carbs: food.carbs * k,
+              };
+              mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
+            });
+            const updated = mealService.getMealsForDate(user.id, selectedDate);
+            setDailyMeals(updated);
+            setIsRecipeResultOpen(false);
+            setAnalyzedIngredients([]);
+          }}
+        />
+      )}
     </div>
   );
 };
