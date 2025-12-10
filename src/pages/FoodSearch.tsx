@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, ScanLine } from 'lucide-react';
+import { ArrowLeft, Mic, ScanLine, ArrowRight } from 'lucide-react';
 import ProductSearch from '../components/ProductSearch';
 import BarcodeScanner from '../components/BarcodeScanner';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
@@ -19,6 +19,8 @@ const FoodSearch = () => {
   const { user } = useAuth();
   const state = location.state as LocationState | undefined;
 
+  const [query, setQuery] = useState('');
+  const [recent, setRecent] = useState<string[]>([]);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
@@ -63,6 +65,26 @@ const FoodSearch = () => {
     }
   }, [selectedMealType]);
 
+  useEffect(() => {
+    if (user?.id) {
+      try {
+        const stored = localStorage.getItem(`recent_food_searches_${user.id}`);
+        if (stored) setRecent(JSON.parse(stored));
+      } catch {
+        setRecent([]);
+      }
+    }
+  }, [user?.id]);
+
+  const addRecent = (q: string) => {
+    if (!user?.id) return;
+    const trimmed = q.trim();
+    if (!trimmed) return;
+    const updated = [trimmed, ...recent.filter((r) => r !== trimmed)].slice(0, 10);
+    setRecent(updated);
+    localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(updated));
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Header */}
@@ -91,9 +113,55 @@ const FoodSearch = () => {
         </div>
       </header>
 
-      {/* Search results with built-in input */}
+      {/* Search results with custom bar + recent */}
       <main className="px-4 py-4 space-y-4">
-        <ProductSearch onSelect={handleSelect} userId={user?.id || ''} />
+        <div className="flex items-center gap-2 border border-gray-300 dark:border-gray-700 rounded-full px-4 py-3 bg-white dark:bg-gray-900">
+          <span className="text-gray-500">🔍</span>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Поиск еды"
+            className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white"
+          />
+          <button
+            onClick={() => setQuery(query.trim())}
+            className="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <ArrowRight className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+          </button>
+        </div>
+
+        {recent.length > 0 && (
+          <div className="space-y-2">
+            {recent.map((item) => (
+              <button
+                key={item}
+                onClick={() => {
+                  setQuery(item);
+                  addRecent(item);
+                }}
+                className="w-full flex items-center gap-2 text-left text-sm text-gray-800 dark:text-gray-200 py-2"
+              >
+                <ArrowRight className="w-4 h-4 text-gray-500" />
+                <span>{item}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <ProductSearch
+            onSelect={(food) => {
+              handleSelect(food);
+              addRecent(food.name);
+            }}
+            userId={user?.id || ''}
+            value={query}
+            onChangeQuery={(q) => setQuery(q)}
+            hideInput
+          />
+        </div>
       </main>
 
       {/* Bottom bar */}
