@@ -121,9 +121,20 @@ class LocalAIFoodAnalyzer {
     if (this.yoloSession || this.yoloLoading) return;
     this.yoloLoading = true;
     try {
-      this.yoloSession = await ort.InferenceSession.create('/models/yolo/yolov8-food.onnx', {
-        executionProviders: ['wasm'],
-      });
+      const candidates = ['/models/yolo/yolov8-food.onnx', '/models/yolo/yolov8n-food.onnx', '/models/yolo/yolov8n.onnx'];
+      let session: ort.InferenceSession | null = null;
+      for (const path of candidates) {
+        try {
+          session = await ort.InferenceSession.create(path, { executionProviders: ['wasm'] });
+          break;
+        } catch {
+          // try next
+        }
+      }
+      this.yoloSession = session;
+      if (!this.yoloSession) {
+        throw new Error('YOLO model not found in candidates');
+      }
     } catch (err) {
       console.warn('[local-ai] YOLO model not loaded. Using fallback.', err);
       this.yoloSession = null;
