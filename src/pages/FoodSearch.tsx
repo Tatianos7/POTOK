@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, Search as SearchIcon, ArrowRight, ScanLine } from 'lucide-react';
+import { ArrowLeft, Mic, ScanLine } from 'lucide-react';
 import ProductSearch from '../components/ProductSearch';
 import BarcodeScanner from '../components/BarcodeScanner';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
@@ -13,16 +13,12 @@ interface LocationState {
   selectedDate?: string;
 }
 
-const RECENTS_KEY = (userId: string) => `recent_food_searches_${userId}`;
-
 const FoodSearch = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const state = location.state as LocationState | undefined;
 
-  const [query, setQuery] = useState('');
-  const [recent, setRecent] = useState<string[]>([]);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
@@ -32,30 +28,9 @@ const FoodSearch = () => {
     [state?.selectedDate]
   );
 
-  useEffect(() => {
-    if (user?.id) {
-      try {
-        const stored = localStorage.getItem(RECENTS_KEY(user.id));
-        if (stored) setRecent(JSON.parse(stored));
-      } catch {
-        setRecent([]);
-      }
-    }
-  }, [user?.id]);
-
-  const addRecent = (q: string) => {
-    if (!user?.id) return;
-    const trimmed = q.trim();
-    if (!trimmed) return;
-    const updated = [trimmed, ...recent.filter((r) => r !== trimmed)].slice(0, 10);
-    setRecent(updated);
-    localStorage.setItem(RECENTS_KEY(user.id), JSON.stringify(updated));
-  };
-
   const handleSelect = (food: Food | UserCustomFood) => {
     setSelectedFood(food);
     setIsAddFoodModalOpen(true);
-    addRecent(food.name);
   };
 
   const handleAdd = (entry: MealEntry) => {
@@ -116,48 +91,9 @@ const FoodSearch = () => {
         </div>
       </header>
 
-      {/* Search */}
+      {/* Search results with built-in input */}
       <main className="px-4 py-4 space-y-4">
-        <div className="flex items-center gap-2 border border-gray-300 rounded-full px-3 py-2 bg-white dark:bg-gray-900">
-          <SearchIcon className="w-5 h-5 text-gray-500" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск еды"
-            className="flex-1 bg-transparent outline-none text-sm text-gray-900 dark:text-white"
-          />
-          <button
-            onClick={() => setQuery(query.trim())}
-            className="w-9 h-9 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800"
-          >
-            <ArrowRight className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-          </button>
-        </div>
-
-        {/* Recent searches */}
-        {recent.length > 0 && (
-          <div className="space-y-2">
-            {recent.map((item) => (
-              <button
-                key={item}
-                onClick={() => {
-                  setQuery(item);
-                  addRecent(item);
-                }}
-                className="w-full flex items-center gap-2 text-left text-sm text-gray-800 dark:text-gray-200 py-2"
-              >
-                <ArrowRight className="w-4 h-4 text-gray-500" />
-                <span>{item}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Search results */}
-        <div className="space-y-2">
-          <ProductSearch onSelect={handleSelect} userId={user?.id || ''} />
-        </div>
+        <ProductSearch onSelect={handleSelect} userId={user?.id || ''} />
       </main>
 
       {/* Bottom bar */}
