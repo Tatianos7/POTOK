@@ -611,12 +611,8 @@ const FoodDiary = () => {
             setShowRecipePicker(false);
             try {
               const result = await localAIFoodAnalyzer.analyzeImageLocal(file);
-              if (!result.ingredients || result.ingredients.length === 0) {
-                alert('Не удалось определить ингредиенты. Попробуйте другое фото.');
-              } else {
-                setAnalyzedIngredients(result.ingredients);
-                setIsRecipeResultOpen(true);
-              }
+              setAnalyzedIngredients(result.ingredients || []);
+              setIsRecipeResultOpen(true); // покажем лист даже с пустым списком, чтобы видеть сообщение
             } catch (error) {
               console.error(error);
               alert('Не удалось определить ингредиенты. Попробуйте другое фото.');
