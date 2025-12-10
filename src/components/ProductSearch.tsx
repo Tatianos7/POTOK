@@ -18,18 +18,15 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput }: Pr
   const query = isControlled ? value || '' : internalQuery;
   const [results, setResults] = useState<Food[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
-      setHasSearched(false);
       return;
     }
 
     const searchProducts = async () => {
       setIsLoading(true);
-      setHasSearched(true);
       
       try {
         const searchResults = await foodService.search(query);
@@ -69,7 +66,7 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput }: Pr
       )}
 
       {/* Results */}
-      {hasSearched && !isLoading && (
+      {query.trim() && !isLoading && (
         <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {results.length > 0 ? (
             results.map((food) => (
@@ -87,9 +84,9 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput }: Pr
         </div>
       )}
 
-      {!hasSearched && query.trim() && (
+      {query.trim() && isLoading && (
         <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
-          Введите название продукта для поиска
+          Ищем продукты...
         </div>
       )}
     </div>
