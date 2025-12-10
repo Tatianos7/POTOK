@@ -13,6 +13,7 @@ import Goal from './pages/Goal';
 import GoalResult from './pages/GoalResult';
 import Measurements from './pages/Measurements';
 import FoodDiary from './pages/FoodDiary';
+import FoodSearch from './pages/FoodSearch';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function AppRoutes() {
@@ -117,6 +118,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <FoodDiary />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/search"
+        element={
+          <ProtectedRoute>
+            <FoodSearch />
           </ProtectedRoute>
         }
       />
