@@ -235,8 +235,18 @@ class LocalAIFoodAnalyzer {
       const scale = Math.min(size / bitmap.width, size / bitmap.height, 1);
       const targetW = Math.round(bitmap.width * scale);
       const targetH = Math.round(bitmap.height * scale);
-      const canvas = new OffscreenCanvas(targetW, targetH);
-      const ctx = canvas.getContext('2d');
+      const canvas: HTMLCanvasElement | OffscreenCanvas =
+        typeof OffscreenCanvas !== 'undefined'
+          ? new OffscreenCanvas(targetW, targetH)
+          : (() => {
+              const c = document.createElement('canvas');
+              c.width = targetW;
+              c.height = targetH;
+              return c;
+            })();
+      const ctx = (canvas as OffscreenCanvas).getContext
+        ? (canvas as OffscreenCanvas).getContext('2d')
+        : (canvas as HTMLCanvasElement).getContext('2d');
       if (!ctx) return null;
       ctx.drawImage(bitmap, 0, 0, targetW, targetH);
       const imageData = ctx.getImageData(0, 0, targetW, targetH);
