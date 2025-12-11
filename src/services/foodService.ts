@@ -76,17 +76,6 @@ class FoodService {
     }
   }
 
-  private loadEanIndex() {
-    try {
-      const stored = localStorage.getItem(EAN_INDEX_STORAGE_KEY);
-      if (!stored) return EAN_INDEX_SEED;
-      return JSON.parse(stored);
-    } catch (error) {
-      console.error('Error loading EAN index', error);
-      return EAN_INDEX_SEED;
-    }
-  }
-
   private saveAll(foods: Food[]) {
     try {
       localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(foods));
@@ -120,46 +109,6 @@ class FoodService {
   }
 
   // === Вспомогательные функции ===
-  private normalizeRuName(name?: string): string {
-    if (!name) return 'Без названия';
-    let n = name.trim();
-    // Заменяем украинские буквы на русские аналоги для отображения
-    const map: Record<string, string> = {
-      і: 'и',
-      І: 'И',
-      ї: 'и',
-      Ї: 'И',
-      є: 'е',
-      Є: 'Е',
-      ґ: 'г',
-      Ґ: 'Г',
-      '’': "'",
-      'ʼ': "'",
-    };
-    n = n
-      .split('')
-      .map((ch) => map[ch] ?? ch)
-      .join('');
-    // Если уже есть русские буквы — ок
-    if (/[а-яё]/i.test(n)) return n;
-    // Иначе оставляем как есть (без внешнего перевода)
-    return n;
-  }
-
-  private deriveCategoryFromText(text?: string): string | undefined {
-    if (!text) return undefined;
-    const t = text.toLowerCase();
-    if (t.includes('vegetable') || t.includes('овощ')) return 'vegetables';
-    if (t.includes('fruit') || t.includes('фрукт')) return 'fruits';
-    if (t.includes('meat') || t.includes('мяс')) return 'meat';
-    if (t.includes('fish') || t.includes('рыба')) return 'fish';
-    if (t.includes('dairy') || t.includes('молок') || t.includes('cheese')) return 'dairy';
-    if (t.includes('grain') || t.includes('круп') || t.includes('rice') || t.includes('bread')) return 'grains';
-    if (t.includes('nut')) return 'nuts';
-    if (t.includes('oil')) return 'oils';
-    if (t.includes('drink') || t.includes('juice') || t.includes('water')) return 'beverages';
-    return undefined;
-  }
 
   private applyCategoryDefaults(food: Food): Food {
     if (food.calories && food.protein && food.fat && food.carbs) return food;
