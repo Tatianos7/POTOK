@@ -165,3 +165,32 @@
   border-color: transparent;
   color: transparent;
 }
+
+/* Modal animations */
+@keyframes modal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-slide {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-modal-fade {
+  animation: modal-fade 0.18s ease-out forwards;
+}
+
+.animate-modal-slide {
+  animation: modal-slide 0.2s ease-out forwards;
+}

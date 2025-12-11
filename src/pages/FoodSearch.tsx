@@ -7,6 +7,7 @@ import AddFoodToMealModal from '../components/AddFoodToMealModal';
 import { Food, MealEntry, UserCustomFood } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { mealService } from '../services/mealService';
+import { favoritesService } from '../services/favoritesService';
 
 interface LocationState {
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -21,7 +22,6 @@ const FoodSearch = () => {
 
   const [query, setQuery] = useState('');
   const [recent, setRecent] = useState<string[]>([]);
-  const [forceSearch, setForceSearch] = useState(0);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
@@ -32,7 +32,11 @@ const FoodSearch = () => {
   );
 
   const handleSelect = (food: Food | UserCustomFood) => {
-    setSelectedFood(food);
+    if (user?.id && favoritesService.isFavorite(user.id, food.id)) {
+      navigate('/nutrition/favorites', { state: { mealType: selectedMealType, selectedDate, preselectName: food.name } });
+      return;
+    }
+    setSelectedFood(food as Food);
     setIsAddFoodModalOpen(true);
   };
 
@@ -108,7 +112,10 @@ const FoodSearch = () => {
         <div className="flex text-[11px] uppercase text-gray-600 dark:text-gray-300 gap-4">
           <button className="pb-2 border-b-2 border-transparent">Анализатор рецептов</button>
           <button className="pb-2 border-b-2 border-transparent">Рецепты</button>
-          <button className="pb-2 border-b-2 border-black dark:border-white font-semibold">
+          <button
+            className="pb-2 border-b-2 border-transparent text-gray-800 dark:text-gray-200 font-normal"
+            onClick={() => navigate('/nutrition/favorites', { state: { mealType: selectedMealType, selectedDate } })}
+          >
             Избранное
           </button>
         </div>
@@ -139,9 +146,7 @@ const FoodSearch = () => {
               <button
                 key={item}
                 onClick={() => {
-                  setQuery(item);
-                  addRecent(item);
-                  setForceSearch((v) => v + 1);
+                  navigate('/nutrition/favorites', { state: { mealType: selectedMealType, selectedDate, preselectName: item } });
                 }}
                 className="w-full flex items-center gap-2 text-left text-sm text-gray-800 dark:text-gray-200 py-2"
               >
@@ -162,7 +167,6 @@ const FoodSearch = () => {
             value={query}
             onChangeQuery={(q) => setQuery(q)}
             hideInput
-            forceTrigger={forceSearch}
           />
         </div>
       </main>
