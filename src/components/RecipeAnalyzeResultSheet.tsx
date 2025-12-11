@@ -56,7 +56,7 @@ const RecipeAnalyzeResultSheet = ({
         <div className="max-h-[60vh] overflow-y-auto space-y-3">
           {localIngs.length === 0 && (
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Не удалось определить ингредиенты. Попробуйте другое фото.
+              Не удалось определить ингредиенты. Попробуйте другое фото или выберите другое изображение.
             </p>
           )}
           {localIngs.map((ing) => (

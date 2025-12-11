@@ -102,6 +102,7 @@ class LocalAIFoodAnalyzer {
   private foodSession: ort.InferenceSession | null = null;
   private llavaSession: ort.InferenceSession | null = null;
   private foodClasses: string[] = [];
+  private yoloClasses: string[] = [];
   private yoloLoading = false;
   private foodLoading = false;
   private llavaLoading = false;
@@ -121,6 +122,10 @@ class LocalAIFoodAnalyzer {
     if (this.yoloSession || this.yoloLoading) return;
     this.yoloLoading = true;
     try {
+      // загрузим классы
+      const classes = await this.loadJSON('/models/yolo/classes.json');
+      this.yoloClasses = Array.isArray(classes) ? classes : [];
+
       const candidates = ['/models/yolo/yolov8-food.onnx', '/models/yolo/yolov8n-food.onnx', '/models/yolo/yolov8n.onnx'];
       let session: ort.InferenceSession | null = null;
       for (const path of candidates) {
@@ -232,11 +237,21 @@ class LocalAIFoodAnalyzer {
   private async imageToTensor(file: File, size = 640): Promise<ort.Tensor | null> {
     try {
       const bitmap = await createImageBitmap(file);
-      const scale = Math.min(size / bitmap.width, size / bitmap.height, 1);
-      const targetW = Math.round(bitmap.width * scale);
-      const targetH = Math.round(bitmap.height * scale);
-      const canvas = new OffscreenCanvas(targetW, targetH);
-      const ctx = canvas.getContext('2d');
+      // Жёсткое приведение к size x size (простая ресайз без letterbox)
+      const targetW = size;
+      const targetH = size;
+      const canvas: HTMLCanvasElement | OffscreenCanvas =
+        typeof OffscreenCanvas !== 'undefined'
+          ? new OffscreenCanvas(targetW, targetH)
+          : (() => {
+              const c = document.createElement('canvas');
+              c.width = targetW;
+              c.height = targetH;
+              return c;
+            })();
+      const ctx = (canvas as OffscreenCanvas).getContext
+        ? (canvas as OffscreenCanvas).getContext('2d')
+        : (canvas as HTMLCanvasElement).getContext('2d');
       if (!ctx) return null;
       ctx.drawImage(bitmap, 0, 0, targetW, targetH);
       const imageData = ctx.getImageData(0, 0, targetW, targetH);
@@ -259,17 +274,84 @@ class LocalAIFoodAnalyzer {
    */
   private async detectObjectsLocal(file: File): Promise<string[]> {
     await this.loadYoloModel();
-    if (!this.yoloSession) {
+    if (!this.yoloSession || this.yoloClasses.length === 0) {
       console.warn('[local-ai] YOLO not available, fallback empty');
       return [];
     }
     const inputTensor = await this.imageToTensor(file, 640);
     if (!inputTensor) return [];
     try {
-      await this.yoloSession.run({ images: inputTensor });
-      // TODO: распарсить выход YOLO (n x 84). Здесь оставляем заглушку.
-      // Вернём пустой список — постпроцесс можно подключить позже.
-      return [];
+      const outputs = await this.yoloSession.run({ images: inputTensor });
+      const first = outputs[Object.keys(outputs)[0]] as ort.Tensor;
+      const data = first.data as Float32Array;
+      const dims = (first as any).dims as number[] | undefined; // ожидаем [1, anchors, classes+4] или [1, classes+4, anchors]
+      const results: { label: string; score: number; box: [number, number, number, number] }[] = [];
+      if (!dims || dims.length !== 3) return [];
+
+      const [, c, a] = dims[0] === 1 ? dims : [1, dims[1], dims[2]];
+      let anchors = a;
+      let strideC = c;
+      let channelFirst = true;
+
+      // Ултраликс: [1, 84, 8400] -> нужно транспонировать
+      if (dims[1] < dims[2]) {
+        anchors = dims[2];
+        strideC = dims[1];
+        channelFirst = false;
+      }
+
+      const numClasses = strideC - 4;
+      const confThresh = 0.25;
+
+      for (let i = 0; i < anchors; i++) {
+        const offset = channelFirst ? i : i * strideC;
+          const cx = channelFirst ? data[offset] : data[offset];
+          const cy = channelFirst ? data[anchors + i] : data[offset + 1];
+          const w = channelFirst ? data[anchors * 2 + i] : data[offset + 2];
+          const h = channelFirst ? data[anchors * 3 + i] : data[offset + 3];
+
+        let maxScore = -Infinity;
+        let clsIdx = -1;
+        for (let cIdx = 0; cIdx < numClasses; cIdx++) {
+          const val = channelFirst
+            ? data[anchors * (4 + cIdx) + i]
+            : data[offset + 4 + cIdx];
+          if (val > maxScore) {
+            maxScore = val;
+            clsIdx = cIdx;
+          }
+        }
+
+        if (maxScore >= confThresh && clsIdx >= 0) {
+          // Перевод из (cx, cy, w, h) в xyxy; здесь предполагаем нормализацию под 640
+          const x1 = Math.max(0, cx - w / 2);
+          const y1 = Math.max(0, cy - h / 2);
+          const x2 = Math.min(640, cx + w / 2);
+          const y2 = Math.min(640, cy + h / 2);
+          const label = this.yoloClasses[clsIdx] || `cls_${clsIdx}`;
+          results.push({ label, score: maxScore, box: [x1, y1, x2, y2] });
+        }
+      }
+
+      // Простая NMS (жадная)
+      const nms = (boxes: typeof results, iouThresh = 0.45) => {
+        const keep: typeof results = [];
+        const sorted = [...boxes].sort((a, b) => b.score - a.score);
+        while (sorted.length) {
+          const first = sorted.shift()!;
+          keep.push(first);
+          const rest: typeof results = [];
+          for (const b of sorted) {
+            const iou = this.iou(first.box, b.box);
+            if (iou < iouThresh) rest.push(b);
+          }
+          sorted.splice(0, sorted.length, ...rest);
+        }
+        return keep;
+      };
+
+      const kept = nms(results);
+      return kept.map((r) => r.label);
     } catch (err) {
       console.warn('[local-ai] YOLO inference failed', err);
       return [];
@@ -341,10 +423,10 @@ class LocalAIFoodAnalyzer {
         };
         return withCategoryDefaults({ ...base, ...mapped.macros });
       }
-      // Fallback
+      // Если нет в словаре, оставляем исходное имя
       return withCategoryDefaults({
         id: `ing_${crypto.randomUUID()}`,
-        name: key.charAt(0).toUpperCase() + key.slice(1),
+        name: label,
         category: 'vegetables',
         grams: undefined,
       });
@@ -399,6 +481,19 @@ class LocalAIFoodAnalyzer {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  // IoU для NMS
+  private iou(a: [number, number, number, number], b: [number, number, number, number]) {
+    const area = (box: [number, number, number, number]) =>
+      Math.max(0, box[2] - box[0]) * Math.max(0, box[3] - box[1]);
+    const interX1 = Math.max(a[0], b[0]);
+    const interY1 = Math.max(a[1], b[1]);
+    const interX2 = Math.min(a[2], b[2]);
+    const interY2 = Math.min(a[3], b[3]);
+    const interArea = Math.max(0, interX2 - interX1) * Math.max(0, interY2 - interY1);
+    const union = area(a) + area(b) - interArea;
+    return union > 0 ? interArea / union : 0;
   }
 }
 

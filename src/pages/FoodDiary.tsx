@@ -115,7 +115,7 @@ const FoodDiary = () => {
 
   const handleMealClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
     setSelectedMealType(mealType);
-    setIsSearchModalOpen(true);
+    navigate('/nutrition/search', { state: { mealType, selectedDate } });
   };
 
   const handleFoodSelect = (food: Food) => {
@@ -476,7 +476,7 @@ const FoodDiary = () => {
             <button
               onClick={() => {
                 setSelectedMealType('snack');
-                setShowAddProductModal(true);
+                navigate('/nutrition/search', { state: { mealType: 'snack', selectedDate } });
               }}
               className="flex-1 py-3 px-4 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold text-sm uppercase hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
             >
@@ -611,8 +611,8 @@ const FoodDiary = () => {
             setShowRecipePicker(false);
             try {
               const result = await localAIFoodAnalyzer.analyzeImageLocal(file);
-              setAnalyzedIngredients(result.ingredients);
-              setIsRecipeResultOpen(true);
+              setAnalyzedIngredients(result.ingredients || []);
+              setIsRecipeResultOpen(true); // покажем лист даже с пустым списком, чтобы видеть сообщение
             } catch (error) {
               console.error(error);
               alert('Не удалось определить ингредиенты. Попробуйте другое фото.');

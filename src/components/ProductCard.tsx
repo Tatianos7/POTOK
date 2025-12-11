@@ -55,14 +55,6 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
         </div>
       </div>
 
-      {/* Source badge */}
-      {food.source && food.source !== 'local' && (
-        <div className="flex-shrink-0">
-          <span className="text-[10px] px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 uppercase">
-            {food.source}
-          </span>
-        </div>
-      )}
     </button>
   );
 };
