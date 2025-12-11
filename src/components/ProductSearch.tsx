@@ -10,9 +10,10 @@ interface ProductSearchProps {
   value?: string; // контролируемый запрос
   onChangeQuery?: (q: string) => void;
   hideInput?: boolean; // спрятать инпут, если родитель рисует свой
+  forceTrigger?: number; // менять число, чтобы форсировать повторный поиск даже с тем же запросом
 }
 
-const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput }: ProductSearchProps) => {
+const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forceTrigger }: ProductSearchProps) => {
   const isControlled = typeof value === 'string';
   const [internalQuery, setInternalQuery] = useState('');
   const query = isControlled ? value || '' : internalQuery;
@@ -42,7 +43,7 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput }: Pr
     // Debounce search
     const timeoutId = setTimeout(searchProducts, 300);
     return () => clearTimeout(timeoutId);
-  }, [query, userId]);
+  }, [query, userId, forceTrigger]);
 
   return (
     <div className="w-full">

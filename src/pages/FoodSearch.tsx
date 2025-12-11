@@ -21,6 +21,7 @@ const FoodSearch = () => {
 
   const [query, setQuery] = useState('');
   const [recent, setRecent] = useState<string[]>([]);
+  const [forceSearch, setForceSearch] = useState(0);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
@@ -140,6 +141,7 @@ const FoodSearch = () => {
                 onClick={() => {
                   setQuery(item);
                   addRecent(item);
+                  setForceSearch((v) => v + 1);
                 }}
                 className="w-full flex items-center gap-2 text-left text-sm text-gray-800 dark:text-gray-200 py-2"
               >
@@ -160,6 +162,7 @@ const FoodSearch = () => {
             value={query}
             onChangeQuery={(q) => setQuery(q)}
             hideInput
+            forceTrigger={forceSearch}
           />
         </div>
       </main>
