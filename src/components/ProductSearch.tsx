@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Food } from '../types';
 import { foodService } from '../services/foodService';
 import ProductCard from './ProductCard';
@@ -19,30 +19,44 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
   const query = isControlled ? value || '' : internalQuery;
   const [results, setResults] = useState<Food[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const lastSearched = useRef<string>('');
 
   useEffect(() => {
     if (!query.trim()) {
       setResults([]);
+      setIsLoading(false);
       return;
     }
 
-    const searchProducts = async () => {
-      setIsLoading(true);
-      
-      try {
-        const searchResults = await foodService.search(query);
-        setResults(searchResults);
-      } catch (error) {
-        console.error('Error searching products:', error);
-        setResults([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    const t = query.trim();
+    let cancelled = false;
+    setIsLoading(true);
 
-    // Debounce search
-    const timeoutId = setTimeout(searchProducts, 300);
-    return () => clearTimeout(timeoutId);
+    const timeoutId = setTimeout(() => {
+      (async () => {
+        try {
+          const searchResults = await foodService.search(t);
+          if (!cancelled) {
+            setResults(searchResults);
+          }
+        } catch (error) {
+          if (!cancelled) {
+            console.error('Error searching products:', error);
+            setResults([]);
+          }
+        } finally {
+          if (!cancelled) {
+            lastSearched.current = t;
+            setIsLoading(false);
+          }
+        }
+      })();
+    }, 80); // быстрее отклик
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [query, userId, forceTrigger]);
 
   return (
