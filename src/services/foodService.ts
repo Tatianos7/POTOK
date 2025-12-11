@@ -152,12 +152,30 @@ class FoodService {
   }
 
   // === Вспомогательные функции ===
-  private translateToRussian(name: string | undefined): string {
+  private normalizeRuName(name?: string): string {
     if (!name) return 'Без названия';
-    // Если уже русские буквы — оставляем
-    if (/[а-яё]/i.test(name)) return name;
-    // Простейший транслит (для оффлайн-режима). Можно заменить на реальный API перевода.
-    return name;
+    let n = name.trim();
+    // Заменяем украинские буквы на русские аналоги для отображения
+    const map: Record<string, string> = {
+      і: 'и',
+      І: 'И',
+      ї: 'и',
+      Ї: 'И',
+      є: 'е',
+      Є: 'Е',
+      ґ: 'г',
+      Ґ: 'Г',
+      '’': "'",
+      'ʼ': "'",
+    };
+    n = n
+      .split('')
+      .map((ch) => map[ch] ?? ch)
+      .join('');
+    // Если уже есть русские буквы — ок
+    if (/[а-яё]/i.test(n)) return n;
+    // Иначе оставляем как есть (без внешнего перевода)
+    return n;
   }
 
   private deriveCategoryFromText(text?: string): string | undefined {
@@ -210,11 +228,18 @@ class FoodService {
   private mapOFFProduct(product: OpenFoodFactsProduct): Food | null {
     if (!product.product_name && !product.generic_name) return null;
     const nameOriginal = product.product_name?.trim() || product.generic_name?.trim() || 'Unknown';
-    const nameRu = this.translateToRussian(product.product_name_ru || nameOriginal);
+    const ruCandidate =
+      (product as any).product_name_ru?.trim() ||
+      (product as any).generic_name_ru?.trim() ||
+      product.product_name?.trim() ||
+      product.generic_name?.trim();
+    const nameRu = this.normalizeRuName(ruCandidate || nameOriginal);
     const nutriments = product.nutriments || {};
     const food: Food = this.normalizeFood({
       name: nameRu,
       name_original: nameOriginal,
+      // @ts-ignore сохраняем русское имя для отображения
+      name_ru: nameRu,
       barcode: product.code || null,
       brand: product.brands?.split(',')?.[0]?.trim() || null,
       calories: nutriments['energy-kcal_100g'],
@@ -266,7 +291,7 @@ class FoodService {
     const fat = item.foodNutrients?.find((n) => n.nutrientNumber === '204')?.value;
     const carbs = item.foodNutrients?.find((n) => n.nutrientNumber === '205')?.value;
     const nameOriginal = item.description?.trim() || 'Unknown';
-    const nameRu = this.translateToRussian(nameOriginal);
+    const nameRu = this.normalizeRuName(nameOriginal);
     const category = this.deriveCategoryFromText(nameOriginal);
 
     const food = this.normalizeFood({
