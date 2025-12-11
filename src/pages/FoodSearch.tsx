@@ -123,18 +123,25 @@ const FoodSearch = () => {
 
       {/* Search results with custom bar + recent */}
       <main className="px-4 py-4 space-y-4">
-        <div className="flex items-center gap-2 border border-gray-300 dark:border-gray-700 rounded-full px-4 py-3 bg-white dark:bg-gray-900">
+        <div className="flex items-center bg-white dark:bg-gray-900 px-3" style={{ border: '1px solid #c9d0d9', borderRadius: '10px', height: '50px' }}>
           <span className="text-gray-500">🔍</span>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск еды"
-            className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white"
+            className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white ml-2"
+            style={{ height: '100%' }}
           />
           <button
             onClick={() => setQuery(query.trim())}
-            className="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="flex items-center justify-center ml-3"
+            style={{
+              height: '100%',
+              width: '50px',
+              borderRadius: '10px',
+              border: '1px solid #c9d0d9',
+            }}
           >
             <ArrowRight className="w-4 h-4 text-gray-700 dark:text-gray-300" />
           </button>
