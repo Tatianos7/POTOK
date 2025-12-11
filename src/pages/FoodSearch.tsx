@@ -124,7 +124,7 @@ const FoodSearch = () => {
       {/* Search results with custom bar + recent */}
       <main className="px-4 py-4 space-y-4">
         <div
-          className="flex items-center bg-white dark:bg-gray-900 px-3"
+          className="flex items-center bg-white dark:bg-gray-900 pl-3 pr-0 w-full"
           style={{ border: '1px solid #c9d0d9', borderRadius: '10px', height: '50px' }}
         >
           <span className="text-gray-500">🔍</span>
@@ -145,6 +145,7 @@ const FoodSearch = () => {
               borderRadius: '10px',
               border: '1px solid #c9d0d9',
               marginLeft: 'auto',
+              marginRight: 0,
             }}
           >
             <ArrowRight className="w-4 h-4 text-gray-700 dark:text-gray-300" />
