@@ -7,6 +7,8 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ food, onClick }: ProductCardProps) => {
+  // Предпочитаем русское имя, если есть
+  const displayName = (food as any).name_ru || food.name || 'Продукт';
   return (
     <button
       onClick={onClick}
@@ -32,7 +34,7 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
       {/* Info */}
       <div className="flex-1 min-w-0">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-          {food.name}
+          {displayName}
         </h3>
         {food.brand && (
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate">

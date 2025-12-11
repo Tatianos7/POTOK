@@ -1,67 +1,23 @@
 import { Food, UserCustomFood } from '../types';
 import { CATEGORY_DEFAULTS } from '../data/categoryDefaults';
+import { RUS_PRODUCTS_SEED } from '../data/rusProductsSeed';
+import { EAN_INDEX_SEED } from '../data/eanIndexSeed';
+import { barcodeLookupService } from './barcodeLookupService';
 
 /**
- * Новая архитектура работы с продуктами:
- * - Источники: OpenFoodFacts, USDA (public domain), Manual (пользователь)
- * - Все названия сохраняются на русском (name), оригинал в name_original
- * - Макросы всегда числовые, autoFilled помечает автозаполнение
- * - Нет фильтрации по калориям: даже 0/низкокалорийные продукты показываются
+ * Архитектура работы с продуктами (РОССИЙСКАЯ БАЗА):
+ * - Источник по умолчанию: Росстат / Скурихин (seed в проекте)
+ * - Дополнительно: пользовательские продукты и ручные добавления (moderation)
+ * - Полный оффлайн: без внешних запросов, все данные локально
+ * - Поиск по штрих-коду: ean_index, при отсутствии — возврат not_found
  */
 
-// === Внешние API типы ===
-interface OpenFoodFactsProduct {
-  product_name?: string;
-  product_name_ru?: string;
-  generic_name?: string;
-  brands?: string;
-  code?: string;
-  image_front_small_url?: string;
-  categories?: string;
-  nutriments?: {
-    'energy-kcal_100g'?: number;
-    proteins_100g?: number;
-    fat_100g?: number;
-    carbohydrates_100g?: number;
-  };
-}
-
-interface OpenFoodFactsProductResponse {
-  status: number;
-  product?: OpenFoodFactsProduct;
-}
-
-interface OpenFoodFactsSearchResponse {
-  products?: OpenFoodFactsProduct[];
-}
-
-// USDA FoodData Central (public domain) типы
-interface USDAFoodSearchResponse {
-  foods?: USDAFoodItem[];
-}
-
-interface USDAFoodItem {
-  fdcId: number;
-  description: string;
-  foodNutrients?: USDANutrient[];
-  brandOwner?: string;
-}
-
-interface USDANutrient {
-  nutrientNumber: string; // 208, 203, 204, 205
-  value: number;
-}
-
 // === Конфигурация и ключи ===
-const PRODUCTS_STORAGE_KEY = 'potok_products_v3';
-const USER_CUSTOM_PRODUCTS_KEY = 'potok_user_products_v3';
+const PRODUCTS_STORAGE_KEY = 'potok_products_russia_v1';
+const EAN_INDEX_STORAGE_KEY = 'potok_ean_index_v1';
+const USER_CUSTOM_PRODUCTS_KEY = 'potok_user_products_v1';
 const DB_VERSION_KEY = 'potok_products_version';
-const DB_VERSION = '3.0'; // новая версия, полностью чистит старую базу
-
-const USDA_API_KEY =
-  typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_USDA_API_KEY
-    ? (import.meta as any).env.VITE_USDA_API_KEY
-    : '';
+const DB_VERSION = 'rus-1.0'; // полная смена базы на российскую
 
 // Утилита: числовое значение с безопасным дефолтом
 const toNumber = (value: unknown): number => {
@@ -78,7 +34,8 @@ class FoodService {
   private initializeStorage() {
     const version = localStorage.getItem(DB_VERSION_KEY);
     if (version !== DB_VERSION) {
-      localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify([]));
+      localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(RUS_PRODUCTS_SEED));
+      localStorage.setItem(EAN_INDEX_STORAGE_KEY, JSON.stringify(EAN_INDEX_SEED));
       localStorage.setItem(DB_VERSION_KEY, DB_VERSION);
     }
   }
@@ -119,6 +76,17 @@ class FoodService {
     }
   }
 
+  private loadEanIndex() {
+    try {
+      const stored = localStorage.getItem(EAN_INDEX_STORAGE_KEY);
+      if (!stored) return EAN_INDEX_SEED;
+      return JSON.parse(stored);
+    } catch (error) {
+      console.error('Error loading EAN index', error);
+      return EAN_INDEX_SEED;
+    }
+  }
+
   private saveAll(foods: Food[]) {
     try {
       localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(foods));
@@ -152,12 +120,30 @@ class FoodService {
   }
 
   // === Вспомогательные функции ===
-  private translateToRussian(name: string | undefined): string {
+  private normalizeRuName(name?: string): string {
     if (!name) return 'Без названия';
-    // Если уже русские буквы — оставляем
-    if (/[а-яё]/i.test(name)) return name;
-    // Простейший транслит (для оффлайн-режима). Можно заменить на реальный API перевода.
-    return name;
+    let n = name.trim();
+    // Заменяем украинские буквы на русские аналоги для отображения
+    const map: Record<string, string> = {
+      і: 'и',
+      І: 'И',
+      ї: 'и',
+      Ї: 'И',
+      є: 'е',
+      Є: 'Е',
+      ґ: 'г',
+      Ґ: 'Г',
+      '’': "'",
+      'ʼ': "'",
+    };
+    n = n
+      .split('')
+      .map((ch) => map[ch] ?? ch)
+      .join('');
+    // Если уже есть русские буквы — ок
+    if (/[а-яё]/i.test(n)) return n;
+    // Иначе оставляем как есть (без внешнего перевода)
+    return n;
   }
 
   private deriveCategoryFromText(text?: string): string | undefined {
@@ -190,112 +176,34 @@ class FoodService {
     };
   }
 
+  private normalizeText(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/ё/g, 'е')
+      .replace(/й/g, 'и')
+      .replace(/[^a-zа-я0-9\s]/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private stemRu(word: string): string {
+    return word.replace(/(ами|ями|ов|ев|ей|ой|ий|ый|ая|яя|ое|ее|ам|ям|ах|ях|ом|ем|ю|а|я|ы|и|ь)$/i, '');
+  }
+
   private fuzzyMatch(query: string, text?: string | null): boolean {
     if (!text) return false;
-    const q = query.toLowerCase().trim();
-    const t = text.toLowerCase();
+    const q = this.stemRu(this.normalizeText(query));
+    const t = this.stemRu(this.normalizeText(text));
     if (!q) return false;
     if (t === q) return true;
     if (t.startsWith(q)) return true;
     if (t.includes(q)) return true;
-    // простейший subsequence matching
+    // subsequence
     let qi = 0;
     for (let i = 0; i < t.length && qi < q.length; i++) {
       if (t[i] === q[qi]) qi++;
     }
     return qi === q.length;
-  }
-
-  // === OpenFoodFacts ===
-  private mapOFFProduct(product: OpenFoodFactsProduct): Food | null {
-    if (!product.product_name && !product.generic_name) return null;
-    const nameOriginal = product.product_name?.trim() || product.generic_name?.trim() || 'Unknown';
-    const nameRu = this.translateToRussian(product.product_name_ru || nameOriginal);
-    const nutriments = product.nutriments || {};
-    const food: Food = this.normalizeFood({
-      name: nameRu,
-      name_original: nameOriginal,
-      barcode: product.code || null,
-      brand: product.brands?.split(',')?.[0]?.trim() || null,
-      calories: nutriments['energy-kcal_100g'],
-      protein: nutriments.proteins_100g,
-      fat: nutriments.fat_100g,
-      carbs: nutriments.carbohydrates_100g,
-      category: this.deriveCategoryFromText(product.categories),
-      photo: product.image_front_small_url || null,
-      source: 'openfoodfacts',
-    });
-    return this.applyCategoryDefaults(food);
-  }
-
-  private async fetchOFFByBarcode(barcode: string): Promise<Food | null> {
-    try {
-      const url = `https://world.openfoodfacts.org/api/v2/product/${barcode}`;
-      const res = await fetch(url);
-      if (!res.ok) return null;
-      const data: OpenFoodFactsProductResponse = await res.json();
-      if (data.status === 0 || !data.product) return null;
-      return this.mapOFFProduct(data.product);
-    } catch (error) {
-      console.error('OFF barcode fetch error', error);
-      return null;
-    }
-  }
-
-  private async fetchOFFSearch(query: string, limit = 15): Promise<Food[]> {
-    try {
-      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&json=1&page_size=${limit}`;
-      const res = await fetch(url);
-      if (!res.ok) return [];
-      const data: OpenFoodFactsSearchResponse = await res.json();
-      if (!data.products?.length) return [];
-      const mapped = data.products
-        .map((p) => this.mapOFFProduct(p))
-        .filter((p): p is Food => !!p);
-      return mapped;
-    } catch (error) {
-      console.error('OFF search error', error);
-      return [];
-    }
-  }
-
-  // === USDA FoodData Central ===
-  private mapUSDAToFood(item: USDAFoodItem): Food {
-    const calories = item.foodNutrients?.find((n) => n.nutrientNumber === '208')?.value;
-    const protein = item.foodNutrients?.find((n) => n.nutrientNumber === '203')?.value;
-    const fat = item.foodNutrients?.find((n) => n.nutrientNumber === '204')?.value;
-    const carbs = item.foodNutrients?.find((n) => n.nutrientNumber === '205')?.value;
-    const nameOriginal = item.description?.trim() || 'Unknown';
-    const nameRu = this.translateToRussian(nameOriginal);
-    const category = this.deriveCategoryFromText(nameOriginal);
-
-    const food = this.normalizeFood({
-      name: nameRu,
-      name_original: nameOriginal,
-      brand: item.brandOwner || null,
-      calories,
-      protein,
-      fat,
-      carbs,
-      category,
-      source: 'usda',
-    });
-    return this.applyCategoryDefaults(food);
-  }
-
-  private async fetchUSDASearch(query: string, limit = 10): Promise<Food[]> {
-    if (!USDA_API_KEY) return [];
-    try {
-      const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=${limit}&api_key=${USDA_API_KEY}`;
-      const res = await fetch(url);
-      if (!res.ok) return [];
-      const data: USDAFoodSearchResponse = await res.json();
-      if (!data.foods?.length) return [];
-      return data.foods.map((item) => this.mapUSDAToFood(item));
-    } catch (error) {
-      console.error('USDA search error', error);
-      return [];
-    }
   }
 
   // === Основной pipeline ===
@@ -315,11 +223,13 @@ class FoodService {
     const q = query.toLowerCase().trim();
     const filtered = all.filter((f) => {
       if (category && f.category !== category) return false;
+      if (!q) return true;
+      const aliases = f.aliases || (f as any).synonyms || [];
       return (
         this.fuzzyMatch(q, f.name) ||
         this.fuzzyMatch(q, f.name_original) ||
         this.fuzzyMatch(q, f.brand) ||
-        (f.aliases || []).some((a) => this.fuzzyMatch(q, a))
+        aliases.some((a: string) => this.fuzzyMatch(q, a))
       );
     });
     return filtered.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
@@ -331,25 +241,21 @@ class FoodService {
   }
 
   async findByBarcode(barcode: string, _userId?: string): Promise<Food | null> {
-    // 1) локально
-    const local = this.findLocalByBarcode(barcode);
+    const cleaned = barcode?.trim();
+    if (!cleaned) return null;
+
+    // 1) прямое попадание в ean_index
+    const eanEntry = barcodeLookupService.findProductId(cleaned);
+    if (eanEntry?.productId) {
+      const product = this.getFoodById(eanEntry.productId);
+      if (product) return product;
+    }
+
+    // 2) локальный поиск по полю barcode
+    const local = this.findLocalByBarcode(cleaned);
     if (local) return local;
 
-    // 2) OpenFoodFacts
-    const off = await this.fetchOFFByBarcode(barcode);
-    if (off) {
-      this.upsertFood(off);
-      return off;
-    }
-
-    // 3) USDA (без штрихкода прямого поиска — пробуем как текст)
-    const usda = await this.fetchUSDASearch(barcode, 1);
-    if (usda[0]) {
-      const product = { ...usda[0], barcode };
-      this.upsertFood(product);
-      return product;
-    }
-
+    // 3) not found — вернуть null (UI может показать форму добавления)
     return null;
   }
 
@@ -358,18 +264,7 @@ class FoodService {
     const category = options?.category;
 
     const local = this.searchLocal(query, category);
-    if (local.length >= limit) return local.slice(0, limit);
-
-    // OpenFoodFacts
-    const offResults = await this.fetchOFFSearch(query, limit);
-    offResults.forEach((f) => this.upsertFood(f));
-
-    // USDA (если есть ключ)
-    const usdaResults = await this.fetchUSDASearch(query, limit);
-    usdaResults.forEach((f) => this.upsertFood(f));
-
-    const combined = [...local, ...offResults, ...usdaResults];
-    const unique = Array.from(new Map(combined.map((f) => [f.barcode || f.id, f])).values());
+    const unique = Array.from(new Map(local.map((f) => [f.barcode || f.id, f])).values());
 
     // автодополнение макросов при необходимости
     const normalized = unique.map((f) => (f.calories ? f : this.applyCategoryDefaults(f)));
@@ -389,15 +284,7 @@ class FoodService {
 
   async searchByCategory(category: string, limit = 50): Promise<Food[]> {
     const local = this.searchLocal('', category);
-    if (local.length >= limit) return local.slice(0, limit);
-    // Попытаться дополнительно подтянуть из OFF/USDA по названию категории
-    const off = await this.fetchOFFSearch(category, limit);
-    off.forEach((f) => this.upsertFood(f));
-    const usda = await this.fetchUSDASearch(category, limit);
-    usda.forEach((f) => this.upsertFood(f));
-    const combined = [...local, ...off, ...usda];
-    const unique = Array.from(new Map(combined.map((f) => [f.barcode || f.id, f])).values());
-    return unique.slice(0, limit);
+    return local.slice(0, limit);
   }
 
   // === Пользовательские продукты ===
