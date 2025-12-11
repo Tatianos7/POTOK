@@ -83,8 +83,8 @@ const FavoritesProductsPage = () => {
         </div>
 
         <div
-          className="flex items-center bg-white rounded-full overflow-hidden"
-          style={{ border: '0.5px solid #424242', height: '38px' }}
+          className="flex items-center bg-white overflow-hidden"
+          style={{ border: '0.5px solid #424242', height: '38px', borderRadius: '15px' }}
         >
           <div className="flex items-center justify-center w-10 text-gray-700">
             <span className="text-lg leading-none">🔍</span>
@@ -98,7 +98,14 @@ const FavoritesProductsPage = () => {
           />
           <button
             onClick={() => setQuery(query.trim())}
-            className="w-11 h-full border-l border-gray-600 flex items-center justify-center"
+            className="w-11 h-full flex items-center justify-center border-l"
+            style={{
+              borderColor: '#424242',
+              borderTopRightRadius: '15px',
+              borderBottomRightRadius: '15px',
+              borderTopLeftRadius: '15px',
+              borderBottomLeftRadius: '0px',
+            }}
           >
             <ArrowRight className="w-4 h-4 text-gray-700" />
           </button>
