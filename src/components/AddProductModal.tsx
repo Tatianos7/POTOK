@@ -15,11 +15,11 @@ const AddProductModal = ({
 }: AddProductModalProps) => {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4 py-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 px-4 py-6 animate-modal-fade"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xs bg-white rounded-2xl shadow-2xl transform transition-all duration-200 ease-out translate-y-0 opacity-100"
+        className="w-full max-w-xs bg-white rounded-2xl shadow-2xl transform transition-all duration-200 ease-out translate-y-0 opacity-100 animate-modal-slide"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
