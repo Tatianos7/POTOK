@@ -55,11 +55,14 @@ export function parseIngredientLine(line: string): ParsedIngredient | null {
   }
 
   const tokens = normalize(working).split(' ');
+  const rawTokens = normalize(raw).split(' ');
   // ищем число
   let numIdx = tokens.findIndex((t) => parseNumber(t) !== null);
   let value = 1;
+  let valueDisplay = '';
   if (numIdx >= 0) {
     value = parseNumber(tokens[numIdx]) ?? 1;
+    valueDisplay = rawTokens[numIdx] || tokens[numIdx];
     tokens.splice(numIdx, 1);
   }
 
@@ -80,11 +83,16 @@ export function parseIngredientLine(line: string): ParsedIngredient | null {
     }
   }
 
+  const displayValue = rangeMatch
+    ? `${rangeMatch[1]}–${rangeMatch[2]}`
+    : valueDisplay || value.toString();
+  const amountText = `${displayValue} ${unit || 'шт'}`.trim();
+
   return {
     raw,
     name: name || raw,
     amountGrams: grams,
-    amountText: `${value} ${unit || 'шт'}`.trim(),
+    amountText,
   };
 }
 

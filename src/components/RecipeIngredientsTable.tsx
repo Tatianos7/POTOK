@@ -21,7 +21,7 @@ const RecipeIngredientsTable: React.FC<Props> = ({ items }) => {
         {items.map((i, idx) => (
           <div key={idx} className="grid grid-cols-6 px-2 py-2 text-sm">
             <div className="col-span-2 text-gray-900">{i.name}</div>
-            <div className="text-right text-green-600 text-xs">{`${Math.round(i.amountGrams)} г`}</div>
+            <div className="text-right text-green-600 text-xs">{i.amountText}</div>
             <div className="text-right text-gray-800 text-xs">{(Math.round(i.proteins * 100) / 100).toFixed(2)}</div>
             <div className="text-right text-gray-800 text-xs">{(Math.round(i.fats * 100) / 100).toFixed(2)}</div>
             <div className="text-right text-gray-800 text-xs">{(Math.round(i.carbs * 100) / 100).toFixed(2)}</div>
