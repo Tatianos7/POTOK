@@ -83,34 +83,31 @@ const FavoritesProductsPage = () => {
         </div>
 
         <div
-          className="flex items-center bg-white px-4"
-          style={{
-            border: '1px solid #c9d0d9',
-            height: '58px',
-            borderRadius: '30px',
-          }}
+          className="flex items-center bg-white dark:bg-gray-900 pl-3 pr-0 w-full"
+          style={{ border: '1px solid #c9d0d9', borderRadius: '10px', height: '50px' }}
         >
-          <div className="flex items-center justify-center w-8 text-gray-600">
-            <span className="text-lg leading-none">🔍</span>
-          </div>
+          <span className="text-gray-500">🔍</span>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск избранного"
-            className="flex-1 bg-transparent outline-none text-base text-gray-700 placeholder:text-gray-500 ml-2"
+            className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white ml-2"
+            style={{ height: '100%' }}
           />
           <button
             onClick={() => setQuery(query.trim())}
-            className="ml-3 flex items-center justify-center"
+            className="flex items-center justify-center"
             style={{
               height: '100%',
-              width: '58px',
-              borderRadius: '30px',
+              width: '50px',
+              borderRadius: '10px',
               border: '1px solid #c9d0d9',
+              marginLeft: 'auto',
+              marginRight: 0,
             }}
           >
-            <ArrowRight className="w-4 h-4 text-gray-700" />
+            <ArrowRight className="w-4 h-4 text-gray-700 dark:text-gray-300" />
           </button>
         </div>
       </header>

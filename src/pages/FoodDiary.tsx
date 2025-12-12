@@ -469,15 +469,12 @@ const FoodDiary = () => {
           <div className="max-w-[1024px] mx-auto flex items-center justify-between gap-3">
             <button
               onClick={() => setIsBarcodeModalOpen(true)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover-bg-gray-800 rounded-lg transition-colors"
             >
               <ScanLine className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </button>
             <button
-              onClick={() => {
-                setSelectedMealType('snack');
-                navigate('/nutrition/search', { state: { mealType: 'snack', selectedDate } });
-              }}
+              onClick={() => setShowAddProductModal(true)}
               className="flex-1 py-3 px-4 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold text-sm uppercase hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
             >
               ДОБАВИТЬ ПРОДУКТ
@@ -496,24 +493,6 @@ const FoodDiary = () => {
       </div>
 
       {/* Modals */}
-      {showAddProductModal && (
-        <AddProductModal
-          onClose={() => setShowAddProductModal(false)}
-          onBrandInput={() => {
-            setShowAddProductModal(false);
-            setIsSearchModalOpen(true);
-          }}
-          onCustomInput={() => {
-            setShowAddProductModal(false);
-            setIsCreateCustomFoodModalOpen(true);
-          }}
-          onRecipeAnalyzer={() => {
-            setShowAddProductModal(false);
-            setIsSearchModalOpen(true);
-          }}
-        />
-      )}
-
       {isSearchModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
