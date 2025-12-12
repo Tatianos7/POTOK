@@ -106,19 +106,6 @@ const UNIT_DEFINITIONS: UnitDefinition[] = [
   },
 ];
 
-// Слова, которые нужно удалить из названия продукта
-const UNITS_TO_REMOVE_FROM_NAME = [
-  'г', 'гр', 'грамм', 'грамма', 'граммов',
-  'кг', 'килограмм', 'килограммов',
-  'мл', 'миллилитр', 'миллилитров',
-  'л', 'литр', 'литра', 'литров',
-  'шт', 'штук', 'штуки', 'штука', 'куск', 'кусок', 'кусочка',
-  'долька', 'дольки', 'долей',
-  'зубчик', 'зубчика', 'зубчиков',
-  'ч.л.', 'ч. л.', 'ч л', 'чайная ложка', 'чайные ложки',
-  'ст.л.', 'ст. л.', 'ст л', 'столовая ложка', 'столовые ложки',
-];
-
 // ============================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================
@@ -202,18 +189,66 @@ function findUnitNearNumber(
 
 /**
  * Очищает название продукта от единиц измерения и чисел
+ * Удаляет ВСЕ варианты единиц, включая с точками и пробелами
  */
 function cleanProductName(text: string): string {
   let cleaned = text;
 
-  // Удаляем все единицы измерения (регистронезависимо)
-  for (const unit of UNITS_TO_REMOVE_FROM_NAME) {
-    const regex = new RegExp(`\\b${unit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-    cleaned = cleaned.replace(regex, ' ');
+  // Удаляем все варианты единиц измерения (регистронезависимо)
+  // Используем более агрессивное удаление для ложек и других единиц с точками
+  // БЕЗ границ слов для ложек, чтобы гарантировать удаление
+  const unitPatterns = [
+    // Ложки (разные варианты написания) - БЕЗ границ слов для более агрессивного удаления
+    /ч\.?\s*л\.?/gi,
+    /ч\s*л\b/gi,
+    /чайная\s+ложка/gi,
+    /чайные\s+ложки/gi,
+    /чайн\.?\s*ложка/gi,
+    /ст\.?\s*л\.?/gi,
+    /ст\s*л\b/gi,
+    /столовая\s+ложка/gi,
+    /столовые\s+ложки/gi,
+    /ст\.?\s*ложка/gi,
+    // Масса
+    /\bкг\b/gi,
+    /\bкилограмм\b/gi,
+    /\bкилограммов\b/gi,
+    /\bгр?\b/gi,
+    /\bграмм\b/gi,
+    /\bграмма\b/gi,
+    /\bграммов\b/gi,
+    // Объём
+    /\bл\b(?!\w)/gi, // "л" не должен быть частью слова (например, "молока")
+    /\bлитр\b/gi,
+    /\bлитра\b/gi,
+    /\bлитров\b/gi,
+    /\bмл\b/gi,
+    /\bмиллилитр\b/gi,
+    /\bмиллилитров\b/gi,
+    // Штучные
+    /\bшт\b/gi,
+    /\bштук\b/gi,
+    /\bштуки\b/gi,
+    /\bштука\b/gi,
+    /\bкуск\b/gi,
+    /\bкусок\b/gi,
+    /\bкусочка\b/gi,
+    // Дольки/зубчики
+    /\bдольк\w*\b/gi,
+    /\bдолей\b/gi,
+    /\bзубчик\w*\b/gi,
+  ];
+
+  // Удаляем все единицы несколько раз для гарантии
+  for (let i = 0; i < 3; i++) {
+    for (const pattern of unitPatterns) {
+      cleaned = cleaned.replace(pattern, ' ');
+    }
   }
 
-  // Удаляем числа
+  // Удаляем числа (включая диапазоны)
   cleaned = cleaned.replace(/\d+[.,]?\d*/g, ' ');
+  cleaned = cleaned.replace(/\d+\s*[–-]\s*\d+/g, ' ');
 
   // Удаляем лишние символы и пробелы
   cleaned = cleaned.replace(/[,;]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -357,19 +392,67 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   }
 
   // ШАГ 3: Удаляем число и единицу из строки, чтобы получить название продукта
+  // Используем регулярные выражения для более точного удаления
   let name = original;
 
   if (unitInfo) {
-    // Удаляем единицу
-    const beforeUnit = name.substring(0, unitInfo.matchStart);
-    const afterUnit = name.substring(unitInfo.matchEnd);
-    name = (beforeUnit + ' ' + afterUnit).replace(/\s+/g, ' ').trim();
+    // Создаём паттерн для удаления единицы (экранируем спецсимволы)
+    const unitMatchEscaped = unitInfo.match.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const numberEscaped = amountDisplay.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    
+    // Удаляем паттерн "число единица" или "единица число" (с пробелами и без)
+    // Для ложек используем более агрессивное удаление без границ слов
+    const isSpoon = unitInfo.unit.display.includes('ч.л.') || unitInfo.unit.display.includes('ст.л.');
+    const unitPatternForRemoval = isSpoon 
+      ? unitMatchEscaped.replace(/\\b/g, '') // Убираем границы слов для ложек
+      : unitMatchEscaped;
+    
+    const patterns = [
+      // "число единица" (с пробелами)
+      new RegExp(`\\b${numberEscaped}\\s+${unitPatternForRemoval}${isSpoon ? '' : '\\b'}`, 'gi'),
+      // "единица число" (с пробелами)
+      new RegExp(`${isSpoon ? '' : '\\b'}${unitPatternForRemoval}\\s+${numberEscaped}\\b`, 'gi'),
+      // "числоединица" или "единицачисло" (без пробелов)
+      new RegExp(`${numberEscaped}${unitPatternForRemoval}|${unitPatternForRemoval}${numberEscaped}`, 'gi'),
+    ];
 
-    // Удаляем число
-    name = name.replace(amountDisplay, ' ').replace(/\s+/g, ' ').trim();
+    let removed = false;
+    for (const pattern of patterns) {
+      if (pattern.test(name)) {
+        name = name.replace(pattern, ' ').replace(/\s+/g, ' ').trim();
+        removed = true;
+        break;
+      }
+    }
+
+    // Если не удалось удалить вместе, удаляем по отдельности
+    if (!removed) {
+      // Удаляем единицу (используем все варианты паттернов единицы из определения)
+      // Для ложек используем более агрессивное удаление без границ слов
+      for (const pattern of unitInfo.unit.patterns) {
+        // Для ложек убираем границы слов для более агрессивного удаления
+        if (unitInfo.unit.display.includes('ч.л.') || unitInfo.unit.display.includes('ст.л.')) {
+          // Удаляем без границ слов
+          const patternStr = pattern.source;
+          const patternWithoutBoundaries = patternStr.replace(/\\b/g, '');
+          name = name.replace(new RegExp(patternWithoutBoundaries, 'gi'), ' ');
+        } else {
+          name = name.replace(pattern, ' ');
+        }
+      }
+      
+      // Также удаляем по точному совпадению единицы
+      name = name.replace(new RegExp(unitMatchEscaped.replace(/\\b/g, ''), 'gi'), ' ');
+      
+      // Удаляем число
+      name = name.replace(new RegExp(`\\b${numberEscaped}\\b`, 'gi'), ' ');
+      name = name.replace(/\s+/g, ' ').trim();
+    }
   } else {
     // Если единица не найдена, удаляем только число
-    name = name.replace(amountDisplay, ' ').replace(/\s+/g, ' ').trim();
+    const numberEscaped = amountDisplay.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    name = name.replace(new RegExp(`\\b${numberEscaped}\\b`, 'gi'), ' ');
+    name = name.replace(/\s+/g, ' ').trim();
   }
 
   // ШАГ 4: Очищаем название от всех единиц измерения
