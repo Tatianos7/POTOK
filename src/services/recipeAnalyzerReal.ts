@@ -1,11 +1,11 @@
-import { parseIngredients } from '../utils/ingredientParser';
+import { parseRecipeText } from '../utils/recipeParser';
 import { foodService } from './foodService';
 import { CalculatedIngredient } from '../utils/nutritionCalculator';
 
 // Заготовка под реальную базу (Росстат/Скурихин/EAN)
 // Сейчас просто возвращает пустые макросы, но структура готова
 export async function analyzeRecipeTextReal(text: string): Promise<CalculatedIngredient[]> {
-  const parsed = parseIngredients(text);
+  const parsed = parseRecipeText(text);
   const results: CalculatedIngredient[] = [];
 
   for (const p of parsed) {
