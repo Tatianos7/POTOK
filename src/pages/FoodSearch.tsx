@@ -110,7 +110,12 @@ const FoodSearch = () => {
 
         {/* Tabs mock */}
         <div className="flex justify-center text-[11px] uppercase text-gray-600 dark:text-gray-300 gap-4 mt-4">
-          <button className="pb-2 border-b-2 border-transparent">Анализатор рецептов</button>
+          <button
+            className="pb-2 border-b-2 border-transparent"
+            onClick={() => navigate('/nutrition/recipe-analyzer', { state: { mealType: selectedMealType, selectedDate } })}
+          >
+            Анализатор рецептов
+          </button>
           <button className="pb-2 border-b-2 border-transparent">Рецепты</button>
           <button
             className="pb-2 border-b-2 border-transparent text-gray-800 dark:text-gray-200 font-normal"
