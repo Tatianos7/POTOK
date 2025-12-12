@@ -30,6 +30,14 @@ const parseNumber = (token: string): number | null => {
 const resolveUnit = (tokens: string[]): { unit?: string; rest: string[] } => {
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
+    // биграмы после нормализации (ч л, ст л)
+    if (i + 1 < tokens.length) {
+      const bigram = `${t} ${tokens[i + 1]}`;
+      if (unitConversions[bigram] !== undefined) {
+        const rest = [...tokens.slice(0, i), ...tokens.slice(i + 2)];
+        return { unit: bigram, rest };
+      }
+    }
     if (unitConversions[t] !== undefined) {
       return { unit: t, rest: [...tokens.slice(0, i), ...tokens.slice(i + 1)] };
     }
