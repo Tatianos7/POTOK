@@ -27,7 +27,10 @@ const parseNumber = (token: string): number | null => {
   return isFinite(n) ? n : null;
 };
 
-const resolveUnit = (tokens: string[]): { unit?: string; rest: string[] } => {
+const resolveUnit = (
+  tokens: string[],
+  rawTokens: string[]
+): { unit?: string; unitDisplay?: string; rest: string[] } => {
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
     // биграмы после нормализации (ч л, ст л)
@@ -35,11 +38,14 @@ const resolveUnit = (tokens: string[]): { unit?: string; rest: string[] } => {
       const bigram = `${t} ${tokens[i + 1]}`;
       if (unitConversions[bigram] !== undefined) {
         const rest = [...tokens.slice(0, i), ...tokens.slice(i + 2)];
-        return { unit: bigram, rest };
+        const unitDisplay = `${rawTokens[i]} ${rawTokens[i + 1]}`;
+        return { unit: bigram, unitDisplay, rest };
       }
     }
     if (unitConversions[t] !== undefined) {
-      return { unit: t, rest: [...tokens.slice(0, i), ...tokens.slice(i + 1)] };
+      const rest = [...tokens.slice(0, i), ...tokens.slice(i + 1)];
+      const unitDisplay = rawTokens[i];
+      return { unit: t, unitDisplay, rest };
     }
   }
   return { rest: tokens };
@@ -74,7 +80,7 @@ export function parseIngredientLine(line: string): ParsedIngredient | null {
     tokens.splice(numIdx, 1);
   }
 
-  const { unit, rest } = resolveUnit(tokens);
+  const { unit, unitDisplay, rest } = resolveUnit(tokens, rawTokens);
   const name = rest.join(' ').trim();
 
   // конвертация
@@ -94,7 +100,7 @@ export function parseIngredientLine(line: string): ParsedIngredient | null {
   const displayValue = rangeMatch
     ? `${rangeMatch[1]}–${rangeMatch[2]}`
     : valueDisplay || value.toString();
-  const amountText = `${displayValue} ${unit || 'шт'}`.trim();
+  const amountText = `${displayValue} ${unitDisplay || unit || 'шт'}`.trim();
 
   return {
     raw,
