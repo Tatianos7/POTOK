@@ -5,288 +5,422 @@ export type NormalizedUnit = 'g' | 'ml' | 'pcs' | null;
 export interface ParsedRecipeIngredient {
   original: string;
   name: string;
-  amount: number | null; // в базовых единицах (g/ml/pcs)
+  amount: number | null; // в базовых единицах (g/ml/pcs) ПОСЛЕ преобразования по правилам
   unit: NormalizedUnit;
   amountText: string; // для отображения (с исходной единицей)
   amountGrams: number; // для расчётов (всегда в граммах)
 }
 
-// Регулярные выражения для поиска
+// ============================================
+// РЕГУЛЯРНЫЕ ВЫРАЖЕНИЯ
+// ============================================
+
+// Диапазон: "1–2", "2-3"
 const RANGE_REGEX = /(\d+[.,]?\d*)\s*[–-]\s*(\d+[.,]?\d*)/;
-const FRACTION_REGEX = /(\d+)\s*\/\s*(\d+)/;
+
+// Обычное число: "250", "0.5", "1,5"
 const NUMBER_REGEX = /\d+[.,]?\d*/;
 
-// Карта единиц измерения с приоритетом (длинные единицы проверяются первыми)
-// Используем границы слов (\b) где возможно, чтобы не путать с частями других слов
-const UNIT_PATTERNS: Array<{
-  pattern: RegExp;
-  norm: NormalizedUnit;
-  factor: number; // множитель для конвертации в базовую единицу
-  display: string; // для отображения
-}> = [
-  // Ложки (ВАЖНО: проверяем ДО "л", чтобы не путать "ч.л." с "л")
-  { pattern: /\bч\.?\s*л\.?\b/i, norm: 'ml', factor: 5, display: 'ч.л.' },
-  { pattern: /\bчайная\s+ложка\b/i, norm: 'ml', factor: 5, display: 'ч.л.' },
-  { pattern: /\bчайные\s+ложки\b/i, norm: 'ml', factor: 5, display: 'ч.л.' },
-  { pattern: /\bчайн\.?\s*ложка\b/i, norm: 'ml', factor: 5, display: 'ч.л.' },
-  { pattern: /\bст\.?\s*л\.?\b/i, norm: 'ml', factor: 15, display: 'ст.л.' },
-  { pattern: /\bстоловая\s+ложка\b/i, norm: 'ml', factor: 15, display: 'ст.л.' },
-  { pattern: /\bстоловые\s+ложки\b/i, norm: 'ml', factor: 15, display: 'ст.л.' },
-  { pattern: /\bст\.?\s*ложка\b/i, norm: 'ml', factor: 15, display: 'ст.л.' },
-  // Вес
-  { pattern: /\bкг\b|\bкилограмм\b/i, norm: 'g', factor: 1000, display: 'кг' },
-  { pattern: /\bгр?\b/i, norm: 'g', factor: 1, display: 'г' },
-  { pattern: /\bграмм\b/i, norm: 'g', factor: 1, display: 'г' },
-  { pattern: /\bграмма\b/i, norm: 'g', factor: 1, display: 'г' },
-  { pattern: /\bграммов\b/i, norm: 'g', factor: 1, display: 'г' },
-  // Объём (проверяем ПОСЛЕ ложок)
-  // "л" проверяем только если он не является частью слова (используем проверку в findUnit)
-  { pattern: /\bл\b/i, norm: 'ml', factor: 1000, display: 'л' },
-  { pattern: /\bлитр\b/i, norm: 'ml', factor: 1000, display: 'л' },
-  { pattern: /\bлитра\b/i, norm: 'ml', factor: 1000, display: 'л' },
-  { pattern: /\bлитров\b/i, norm: 'ml', factor: 1000, display: 'л' },
-  { pattern: /\bмл\b/i, norm: 'ml', factor: 1, display: 'мл' },
-  { pattern: /\bмиллилитр\b/i, norm: 'ml', factor: 1, display: 'мл' },
-  { pattern: /\bмиллилитров\b/i, norm: 'ml', factor: 1, display: 'мл' },
-  // Штучные
-  { pattern: /\bшт\b/i, norm: 'pcs', factor: 1, display: 'шт' },
-  { pattern: /\bштук\b/i, norm: 'pcs', factor: 1, display: 'шт' },
-  { pattern: /\bштуки\b/i, norm: 'pcs', factor: 1, display: 'шт' },
-  { pattern: /\bштука\b/i, norm: 'pcs', factor: 1, display: 'шт' },
-  { pattern: /\bкуск\b/i, norm: 'pcs', factor: 1, display: 'шт' },
-  { pattern: /\bкусок\b/i, norm: 'pcs', factor: 1, display: 'шт' },
-  { pattern: /\bкусочка\b/i, norm: 'pcs', factor: 1, display: 'шт' },
-  // Дольки/зубчики
-  { pattern: /\bдольк\w*\b/i, norm: 'pcs', factor: 1, display: 'шт' },
-  { pattern: /\bдолей\b/i, norm: 'pcs', factor: 1, display: 'шт' },
-  { pattern: /\bзубчик\w*\b/i, norm: 'pcs', factor: 1, display: 'шт' },
+// ============================================
+// СЛОВАРЬ ЕДИНИЦ ИЗМЕРЕНИЯ
+// ============================================
+
+interface UnitDefinition {
+  patterns: RegExp[]; // Регулярные выражения для поиска
+  norm: NormalizedUnit; // Нормализованная единица
+  factor: number; // Множитель для преобразования в базовую единицу
+  display: string; // Для отображения
+}
+
+// ВАЖНО: Порядок имеет значение! Ложки проверяются ПЕРВЫМИ, чтобы не путать с "л"
+const UNIT_DEFINITIONS: UnitDefinition[] = [
+  // ЛОЖКИ (приоритет 1 - проверяем ДО "л")
+  {
+    patterns: [
+      /\bч\.?\s*л\.?\b/i,
+      /\bч\s*л\b/i,
+      /\bчайная\s+ложка\b/i,
+      /\bчайные\s+ложки\b/i,
+      /\bчайн\.?\s*ложка\b/i,
+    ],
+    norm: 'ml',
+    factor: 5, // 1 ч.л. = 5 мл
+    display: 'ч.л.',
+  },
+  {
+    patterns: [
+      /\bст\.?\s*л\.?\b/i,
+      /\bст\s*л\b/i,
+      /\bстоловая\s+ложка\b/i,
+      /\bстоловые\s+ложки\b/i,
+      /\bст\.?\s*ложка\b/i,
+    ],
+    norm: 'ml',
+    factor: 15, // 1 ст.л. = 15 мл
+    display: 'ст.л.',
+  },
+  // МАССА
+  {
+    patterns: [/\bкг\b/i, /\bкилограмм\b/i, /\bкилограммов\b/i],
+    norm: 'g',
+    factor: 1000, // 1 кг = 1000 г
+    display: 'кг',
+  },
+  {
+    patterns: [/\bгр?\b/i, /\bграмм\b/i, /\bграмма\b/i, /\bграммов\b/i],
+    norm: 'g',
+    factor: 1, // 1 г = 1 г
+    display: 'г',
+  },
+  // ОБЪЁМ (проверяем ПОСЛЕ ложок, чтобы не путать "ч.л." с "л")
+  {
+    patterns: [/\bл\b/i, /\bлитр\b/i, /\bлитра\b/i, /\bлитров\b/i],
+    norm: 'ml',
+    factor: 1000, // 1 л = 1000 мл
+    display: 'л',
+  },
+  {
+    patterns: [/\bмл\b/i, /\bмиллилитр\b/i, /\bмиллилитров\b/i],
+    norm: 'ml',
+    factor: 1, // 1 мл = 1 мл
+    display: 'мл',
+  },
+  // ШТУЧНЫЕ
+  {
+    patterns: [/\bшт\b/i, /\bштук\b/i, /\bштуки\b/i, /\bштука\b/i, /\bкуск\b/i, /\bкусок\b/i, /\bкусочка\b/i],
+    norm: 'pcs',
+    factor: 1,
+    display: 'шт',
+  },
+  {
+    patterns: [/\bдольк\w*\b/i, /\bдолей\b/i],
+    norm: 'pcs',
+    factor: 1,
+    display: 'шт',
+  },
+  {
+    patterns: [/\bзубчик\w*\b/i],
+    norm: 'pcs',
+    factor: 1,
+    display: 'шт',
+  },
 ];
 
-// Определение единицы по ключевым словам в названии продукта
-const defaultUnitByKeyword: Array<{ keys: string[]; unit: NormalizedUnit }> = [
-  { keys: ['морков'], unit: 'pcs' },
-  { keys: ['лук', 'луковиц'], unit: 'pcs' },
-  { keys: ['чеснок', 'зубчик', 'дольк'], unit: 'pcs' },
-  { keys: ['молоко', 'сливк'], unit: 'ml' },
-  { keys: ['вода'], unit: 'ml' },
-  { keys: ['масло'], unit: 'ml' },
-  { keys: ['соль'], unit: 'g' },
-  { keys: ['сахар'], unit: 'g' },
-  { keys: ['сыр'], unit: 'g' },
+// Слова, которые нужно удалить из названия продукта
+const UNITS_TO_REMOVE_FROM_NAME = [
+  'г', 'гр', 'грамм', 'грамма', 'граммов',
+  'кг', 'килограмм', 'килограммов',
+  'мл', 'миллилитр', 'миллилитров',
+  'л', 'литр', 'литра', 'литров',
+  'шт', 'штук', 'штуки', 'штука', 'куск', 'кусок', 'кусочка',
+  'долька', 'дольки', 'долей',
+  'зубчик', 'зубчика', 'зубчиков',
+  'ч.л.', 'ч. л.', 'ч л', 'чайная ложка', 'чайные ложки',
+  'ст.л.', 'ст. л.', 'ст л', 'столовая ложка', 'столовые ложки',
 ];
+
+// ============================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ============================================
 
 /**
- * Парсит число из строки (поддерживает запятые, точки, дроби, диапазоны)
+ * Парсит число из строки (поддерживает диапазоны, запятые, точки)
  */
-function parseNumber(text: string): number | null {
+function parseNumber(text: string): { value: number; originalText: string } | null {
   // Сначала проверяем диапазон
   const rangeMatch = text.match(RANGE_REGEX);
   if (rangeMatch) {
     const a = parseFloat(rangeMatch[1].replace(',', '.'));
     const b = parseFloat(rangeMatch[2].replace(',', '.'));
     if (!isNaN(a) && !isNaN(b)) {
-      return (a + b) / 2; // среднее значение
+      return {
+        value: (a + b) / 2, // среднее значение
+        originalText: rangeMatch[0],
+      };
     }
-  }
-
-  // Проверяем дробь
-  const fractionMatch = text.match(FRACTION_REGEX);
-  if (fractionMatch) {
-    const num = parseFloat(fractionMatch[1]) / parseFloat(fractionMatch[2]);
-    if (!isNaN(num)) return num;
   }
 
   // Обычное число
-  const num = parseFloat(text.replace(',', '.'));
-  return isNaN(num) ? null : num;
-}
-
-/**
- * Находит единицу измерения в тексте
- * Ищет единицу рядом с числом (до или после), чтобы избежать ложных срабатываний
- */
-function findUnit(text: string): { unit: NormalizedUnit; factor: number; display: string; match: string } | null {
-  // Находим первое число в тексте
-  const numberMatch = text.match(NUMBER_REGEX);
-  
-  if (!numberMatch || numberMatch.index === undefined) {
-    // Если нет чисел, не ищем единицу (чтобы не путать "л" в "молока" с единицей)
-    return null;
-  }
-
-  const numStart = numberMatch.index;
-  const numEnd = numStart + numberMatch[0].length;
-  
-  // Ищем единицу после числа (в пределах 15 символов, включая пробелы)
-  const textAfter = text.substring(numEnd, Math.min(text.length, numEnd + 15));
-  for (const pattern of UNIT_PATTERNS) {
-    const match = textAfter.match(new RegExp(`^\\s*${pattern.pattern.source}`, 'i'));
-    if (match) {
+  const numMatch = text.match(NUMBER_REGEX);
+  if (numMatch) {
+    const num = parseFloat(numMatch[0].replace(',', '.'));
+    if (!isNaN(num)) {
       return {
-        unit: pattern.norm,
-        factor: pattern.factor,
-        display: pattern.display,
-        match: match[0].trim(),
+        value: num,
+        originalText: numMatch[0],
       };
     }
   }
-  
-  // Ищем единицу перед числом (в пределах 15 символов)
-  const textBefore = text.substring(Math.max(0, numStart - 15), numStart);
-  for (const pattern of UNIT_PATTERNS) {
-    const match = textBefore.match(new RegExp(`${pattern.pattern.source}\\s*$`, 'i'));
-    if (match) {
-      return {
-        unit: pattern.norm,
-        factor: pattern.factor,
-        display: pattern.display,
-        match: match[0].trim(),
-      };
-    }
-  }
-  
+
   return null;
 }
 
 /**
- * Определяет единицу по ключевым словам в названии продукта
+ * Находит единицу измерения в тексте рядом с числом
+ * Возвращает информацию о единице и её позицию
  */
-function pickDefaultUnit(name: string): NormalizedUnit {
-  const lower = name.toLowerCase();
-  for (const rule of defaultUnitByKeyword) {
-    if (rule.keys.some((k) => lower.includes(k))) {
-      return rule.unit;
+function findUnitNearNumber(
+  text: string,
+  numberStart: number,
+  numberEnd: number
+): { unit: UnitDefinition; match: string; matchStart: number; matchEnd: number } | null {
+  // Ищем единицу после числа (в пределах 10 символов)
+  const textAfter = text.substring(numberEnd, Math.min(text.length, numberEnd + 10));
+  for (const unitDef of UNIT_DEFINITIONS) {
+    for (const pattern of unitDef.patterns) {
+      const match = textAfter.match(new RegExp(`^\\s*${pattern.source}`, 'i'));
+      if (match) {
+        return {
+          unit: unitDef,
+          match: match[0].trim(),
+          matchStart: numberEnd + textAfter.indexOf(match[0]),
+          matchEnd: numberEnd + textAfter.indexOf(match[0]) + match[0].length,
+        };
+      }
     }
   }
-  return 'g'; // по умолчанию граммы
+
+  // Ищем единицу перед числом (в пределах 10 символов)
+  const textBefore = text.substring(Math.max(0, numberStart - 10), numberStart);
+  for (const unitDef of UNIT_DEFINITIONS) {
+    for (const pattern of unitDef.patterns) {
+      const match = textBefore.match(new RegExp(`${pattern.source}\\s*$`, 'i'));
+      if (match) {
+        const matchStart = numberStart - 10 + textBefore.lastIndexOf(match[0]);
+        return {
+          unit: unitDef,
+          match: match[0].trim(),
+          matchStart: Math.max(0, matchStart),
+          matchEnd: Math.max(0, matchStart) + match[0].length,
+        };
+      }
+    }
+  }
+
+  return null;
 }
 
 /**
+ * Очищает название продукта от единиц измерения и чисел
+ */
+function cleanProductName(text: string): string {
+  let cleaned = text;
+
+  // Удаляем все единицы измерения (регистронезависимо)
+  for (const unit of UNITS_TO_REMOVE_FROM_NAME) {
+    const regex = new RegExp(`\\b${unit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    cleaned = cleaned.replace(regex, ' ');
+  }
+
+  // Удаляем числа
+  cleaned = cleaned.replace(/\d+[.,]?\d*/g, ' ');
+
+  // Удаляем лишние символы и пробелы
+  cleaned = cleaned.replace(/[,;]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  return cleaned;
+}
+
+/**
+ * Нормализует название продукта (убирает окончания для некоторых продуктов)
+ */
+function normalizeProductName(name: string): string {
+  let normalized = name.trim();
+
+  // "чеснока" → "чеснок"
+  if (normalized.toLowerCase().endsWith('чеснока')) {
+    normalized = normalized.replace(/чеснока$/i, 'чеснок');
+  }
+
+  // "морковки" → "морковь"
+  if (normalized.toLowerCase().endsWith('морковки')) {
+    normalized = normalized.replace(/морковки$/i, 'морковь');
+  }
+
+  // "масла" → "масло"
+  if (normalized.toLowerCase().endsWith('масла')) {
+    normalized = normalized.replace(/масла$/i, 'масло');
+  }
+
+  // "масла оливкового" → "масло оливковое"
+  if (normalized.toLowerCase().includes('масла оливкового')) {
+    normalized = normalized.replace(/масла оливкового/gi, 'масло оливковое');
+  }
+
+  // "масла оливкового" → "масло оливковое" (если в конце)
+  if (normalized.toLowerCase().endsWith('масла оливкового')) {
+    normalized = normalized.replace(/масла оливкового$/i, 'масло оливковое');
+  }
+
+  return normalized.trim();
+}
+
+/**
+ * Преобразует amount в граммы для расчётов
+ */
+function convertToGrams(amount: number, unit: NormalizedUnit, productName: string): number {
+  if (unit === 'g') {
+    return amount;
+  } else if (unit === 'ml') {
+    return amount; // плотность ~1 для воды/жидкостей
+  } else if (unit === 'pcs') {
+    // Ищем средний вес для продукта
+    const lowerName = productName.toLowerCase();
+    const key = Object.keys(pieceWeights).find((k) => lowerName.includes(k));
+    const pieceWeight = key ? pieceWeights[key] : 50; // по умолчанию 50г
+    return amount * pieceWeight;
+  }
+  return 0;
+}
+
+// ============================================
+// ОСНОВНАЯ ФУНКЦИЯ ПАРСИНГА
+// ============================================
+
+/**
  * Парсит одну строку ингредиента
- * Поддерживает любой порядок: "250 г говядина" или "говядина 250 г"
+ * Строго следует правилам:
+ * 1. Сначала находим число
+ * 2. Затем находим единицу рядом с числом
+ * 3. Удаляем число и единицу из строки
+ * 4. Очищаем название от всех единиц
+ * 5. Нормализуем единицы по правилам
  */
 function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   const original = rawLine.trim();
   if (!original) return null;
 
-  // Шаг 1: Ищем число в исходном тексте (может быть диапазон)
-  let amount: number | null = null;
-  let amountDisplay = '';
-  const numberMatch = original.match(NUMBER_REGEX);
-  if (numberMatch) {
-    amount = parseNumber(numberMatch[0]);
-    if (amount !== null) {
-      amountDisplay = numberMatch[0];
-    }
-  }
+  // ШАГ 1: Находим число (может быть диапазон)
+  // Сначала проверяем формат "250-грамм" (число с дефисом и единицей)
+  const hyphenUnitMatch = original.match(/(\d+[.,]?\d*)\s*-\s*(грамм|гр|г|кг|литр|л|мл)/i);
+  let numberInfo: { value: number; originalText: string } | null = null;
+  let unitFromHyphen: UnitDefinition | null = null;
 
-  // Шаг 2: Ищем единицу измерения рядом с числом
-  const unitMatch = findUnit(original);
-  const unitInfo = unitMatch
-    ? { unit: unitMatch.unit, factor: unitMatch.factor, display: unitMatch.display, match: unitMatch.match }
-    : null;
-
-  // Шаг 3: Удаляем число и единицу из текста, чтобы получить название продукта
-  let name = original;
-  
-  if (unitInfo && numberMatch) {
-    // Создаём паттерн для поиска "число единица" или "единица число"
-    const unitPattern = unitInfo.match.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // экранируем спецсимволы
-    const numberPattern = numberMatch[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
-    // Пробуем удалить "число единица" (с пробелами)
-    const pattern1 = new RegExp(`\\b${numberPattern}\\s+${unitPattern}\\b`, 'i');
-    if (pattern1.test(name)) {
-      name = name.replace(pattern1, ' ').replace(/\s+/g, ' ').trim();
-    } else {
-      // Пробуем удалить "единица число" (с пробелами)
-      const pattern2 = new RegExp(`\\b${unitPattern}\\s+${numberPattern}\\b`, 'i');
-      if (pattern2.test(name)) {
-        name = name.replace(pattern2, ' ').replace(/\s+/g, ' ').trim();
-      } else {
-        // Пробуем без пробелов: "числоединица" или "единицачисло"
-        const pattern3 = new RegExp(`${numberPattern}${unitPattern}|${unitPattern}${numberPattern}`, 'i');
-        if (pattern3.test(name)) {
-          name = name.replace(pattern3, ' ').replace(/\s+/g, ' ').trim();
-        } else {
-          // Удаляем по отдельности
-          name = name.replace(unitInfo.match, ' ').replace(numberMatch[0], ' ').replace(/\s+/g, ' ').trim();
+  if (hyphenUnitMatch) {
+    const num = parseFloat(hyphenUnitMatch[1].replace(',', '.'));
+    if (!isNaN(num)) {
+      numberInfo = { value: num, originalText: hyphenUnitMatch[0] };
+      // Находим единицу для этого формата
+      const unitText = hyphenUnitMatch[2].toLowerCase();
+      for (const unitDef of UNIT_DEFINITIONS) {
+        for (const pattern of unitDef.patterns) {
+          if (pattern.test(unitText)) {
+            unitFromHyphen = unitDef;
+            break;
+          }
         }
+        if (unitFromHyphen) break;
       }
     }
-  } else {
-    // Удаляем по отдельности, если нет обоих
-    if (unitInfo) {
-      name = name.replace(unitInfo.match, ' ').replace(/\s+/g, ' ').trim();
-    }
-    if (numberMatch) {
-      name = name.replace(numberMatch[0], ' ').replace(/\s+/g, ' ').trim();
-    }
   }
 
-  // Очищаем название от лишних символов
-  name = name.replace(/[,;]/g, '').replace(/\s+/g, ' ').trim();
-
-  // Шаг 4: Определяем финальную единицу измерения
-  let finalUnit: NormalizedUnit = unitInfo?.unit || null;
-  let finalFactor = unitInfo?.factor || 1;
-  let finalDisplay = unitInfo?.display || '';
-
-  // Если единица не найдена, пытаемся определить по названию продукта
-  if (!finalUnit && name) {
-    finalUnit = pickDefaultUnit(name);
-    finalDisplay = finalUnit === 'g' ? 'г' : finalUnit === 'ml' ? 'мл' : 'шт';
-    finalFactor = 1;
+  // Если не нашли в формате "250-грамм", ищем обычное число
+  if (!numberInfo) {
+    numberInfo = parseNumber(original);
   }
 
-  // Если число не найдено, возвращаем только название
-  if (amount === null) {
+  if (!numberInfo) {
+    // Если нет числа, возвращаем только название
+    const cleanedName = cleanProductName(original);
     return {
       original,
-      name: name || original,
+      name: cleanedName || original,
       amount: null,
       unit: null,
-      amountText: name || original,
+      amountText: cleanedName || original,
       amountGrams: 0,
     };
   }
 
-  // Шаг 5: Конвертируем в базовую единицу
-  const amountBase = amount * finalFactor;
+  const { value: amountValue, originalText: amountDisplay } = numberInfo;
 
-  // Шаг 6: Конвертируем в граммы для расчётов
-  let amountGrams = 0;
-  if (finalUnit === 'g') {
-    amountGrams = amountBase;
-  } else if (finalUnit === 'ml') {
-    amountGrams = amountBase; // плотность ~1 для воды/жидкостей
-  } else if (finalUnit === 'pcs') {
-    // Ищем средний вес для продукта
-    const key = Object.keys(pieceWeights).find((k) => name.toLowerCase().includes(k));
-    const pieceWeight = key ? pieceWeights[key] : 50; // по умолчанию 50г
-    amountGrams = amount * pieceWeight;
-  }
+  // Находим позицию числа в строке
+  const numberIndex = original.indexOf(amountDisplay);
+  const numberStart = numberIndex;
+  const numberEnd = numberStart + amountDisplay.length;
 
-  // Шаг 7: Формируем строку для отображения
-  let amountText = '';
-  if (unitInfo && (unitInfo.display.includes('ч.л.') || unitInfo.display.includes('ст.л.'))) {
-    // Для ложек показываем исходное количество и единицу ложки
-    amountText = `${amountDisplay} ${unitInfo.display}`;
-  } else if (finalUnit === 'ml' && finalFactor > 1 && unitInfo?.display === 'л') {
-    // Для литров показываем в мл
-    amountText = `${amountBase} мл`;
+  // ШАГ 2: Находим единицу измерения рядом с числом
+  // Если единица уже найдена из формата "250-грамм", используем её
+  let unitInfo: { unit: UnitDefinition; match: string; matchStart: number; matchEnd: number } | null = null;
+  
+  if (unitFromHyphen) {
+    // Единица уже найдена из формата "250-грамм"
+    unitInfo = {
+      unit: unitFromHyphen,
+      match: hyphenUnitMatch![2],
+      matchStart: numberEnd,
+      matchEnd: numberEnd + hyphenUnitMatch![2].length,
+    };
   } else {
-    // Для остальных показываем исходное количество и единицу
-    amountText = `${amountDisplay} ${finalDisplay}`;
+    // Ищем единицу рядом с числом
+    unitInfo = findUnitNearNumber(original, numberStart, numberEnd);
   }
+
+  // ШАГ 3: Удаляем число и единицу из строки, чтобы получить название продукта
+  let name = original;
+
+  if (unitInfo) {
+    // Удаляем единицу
+    const beforeUnit = name.substring(0, unitInfo.matchStart);
+    const afterUnit = name.substring(unitInfo.matchEnd);
+    name = (beforeUnit + ' ' + afterUnit).replace(/\s+/g, ' ').trim();
+
+    // Удаляем число
+    name = name.replace(amountDisplay, ' ').replace(/\s+/g, ' ').trim();
+  } else {
+    // Если единица не найдена, удаляем только число
+    name = name.replace(amountDisplay, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  // ШАГ 4: Очищаем название от всех единиц измерения
+  name = cleanProductName(name);
+
+  // ШАГ 5: Нормализуем название продукта
+  name = normalizeProductName(name);
+
+  // ШАГ 6: Определяем финальную единицу и преобразуем amount
+  let finalUnit: NormalizedUnit = unitInfo?.unit.norm || null;
+  let finalAmount: number | null = null;
+  let finalDisplay = unitInfo?.unit.display || '';
+
+  if (unitInfo && amountValue !== null) {
+    // Преобразуем amount по правилам
+    finalAmount = amountValue * unitInfo.unit.factor;
+  } else if (amountValue !== null) {
+    // Если единица не найдена, но есть число, используем граммы по умолчанию
+    finalUnit = 'g';
+    finalAmount = amountValue;
+    finalDisplay = 'г';
+  }
+
+  // ШАГ 7: Формируем строку для отображения
+  let amountText = '';
+  if (amountValue !== null && finalDisplay) {
+    if (unitInfo?.unit.display.includes('ч.л.') || unitInfo?.unit.display.includes('ст.л.')) {
+      // Для ложек показываем исходное количество и единицу ложки
+      amountText = `${amountDisplay} ${unitInfo.unit.display}`;
+    } else if (finalUnit === 'ml' && unitInfo?.unit.factor === 1000) {
+      // Для литров показываем в мл
+      amountText = `${finalAmount} мл`;
+    } else {
+      // Для остальных показываем исходное количество и единицу
+      amountText = `${amountDisplay} ${finalDisplay}`;
+    }
+  } else if (amountValue !== null) {
+    amountText = amountDisplay;
+  }
+
+  // ШАГ 8: Конвертируем в граммы для расчётов
+  const amountGrams =
+    finalAmount !== null && finalUnit ? convertToGrams(finalAmount, finalUnit, name) : 0;
 
   return {
     original,
     name: name || original,
-    amount: amountBase,
+    amount: finalAmount,
     unit: finalUnit,
     amountText: amountText.trim(),
-    amountGrams: Math.round(amountGrams * 100) / 100, // округляем до 2 знаков
+    amountGrams: Math.round(amountGrams * 100) / 100,
   };
 }
 
@@ -305,33 +439,98 @@ export function parseRecipeText(text: string): ParsedRecipeIngredient[] {
   return lines.map(parseLine).filter((v): v is ParsedRecipeIngredient => v !== null);
 }
 
+// ============================================
+// АВТОТЕСТЫ
+// ============================================
+
 /**
- * Тестовые примеры (в комментариях):
- *
- * parseRecipeText("250 г говядина постная")
- * → { name: "говядина постная", amount: 250, unit: "g", amountText: "250 г" }
- *
- * parseRecipeText("говядина постная 250 г")
- * → { name: "говядина постная", amount: 250, unit: "g", amountText: "250 г" }
- *
- * parseRecipeText("1–2 шт. морковки")
- * → { name: "морковки", amount: 1.5, unit: "pcs", amountText: "1.5 шт" }
- *
- * parseRecipeText("масла оливкового 1 ч.л.")
- * → { name: "масла оливкового", amount: 5, unit: "ml", amountText: "1 ч.л." }
- *
- * parseRecipeText("1 ч.л. масла")
- * → { name: "масла", amount: 5, unit: "ml", amountText: "1 ч.л." }
- *
- * parseRecipeText("2 ст.л. муки")
- * → { name: "муки", amount: 30, unit: "ml", amountText: "2 ст.л." }
- *
- * parseRecipeText("чеснока 3 дольки")
- * → { name: "чеснока", amount: 3, unit: "pcs", amountText: "3 шт" }
- *
- * parseRecipeText("1 л молока")
- * → { name: "молока", amount: 1000, unit: "ml", amountText: "1000 мл" }
- *
- * parseRecipeText("молока 1 л")
- * → { name: "молока", amount: 1000, unit: "ml", amountText: "1000 мл" }
+ * Запуск автотестов (для проверки корректности парсера)
+ * Вызывать в консоли браузера для отладки
  */
+export function runParserTests(): void {
+  const tests: Array<{ input: string; expected: Partial<ParsedRecipeIngredient> }> = [
+    {
+      input: '250 г говядина постная',
+      expected: { name: 'говядина постная', amount: 250, unit: 'g' },
+    },
+    {
+      input: 'говядина постная 250 г',
+      expected: { name: 'говядина постная', amount: 250, unit: 'g' },
+    },
+    {
+      input: '1–2 шт. морковки',
+      expected: { name: 'морковь', amount: 1.5, unit: 'pcs' },
+    },
+    {
+      input: 'чеснока 3 дольки',
+      expected: { name: 'чеснок', amount: 3, unit: 'pcs' },
+    },
+    {
+      input: '1 ч.л. масла',
+      expected: { name: 'масло', amount: 5, unit: 'ml' },
+    },
+    {
+      input: 'масла оливкового 1 ч.л.',
+      expected: { name: 'масло оливковое', amount: 5, unit: 'ml' },
+    },
+    {
+      input: '2 ст.л. муки',
+      expected: { name: 'мука', amount: 30, unit: 'ml' },
+    },
+    {
+      input: '1 л молока',
+      expected: { name: 'молоко', amount: 1000, unit: 'ml' },
+    },
+    {
+      input: 'молока 1 л',
+      expected: { name: 'молоко', amount: 1000, unit: 'ml' },
+    },
+    {
+      input: '10 гр сыра',
+      expected: { name: 'сыр', amount: 10, unit: 'g' },
+    },
+    {
+      input: '0.5 ч.л. куркумы',
+      expected: { name: 'куркума', amount: 2.5, unit: 'ml' },
+    },
+    {
+      input: '250-грамм говядина',
+      expected: { name: 'говядина', amount: 250, unit: 'g' },
+    },
+  ];
+
+  console.log('🧪 Запуск автотестов парсера ингредиентов...\n');
+
+  let passed = 0;
+  let failed = 0;
+
+  for (const test of tests) {
+    const result = parseRecipeText(test.input);
+    const parsed = result[0];
+
+    if (!parsed) {
+      console.error(`❌ FAIL: "${test.input}" → не распарсилось`);
+      failed++;
+      continue;
+    }
+
+    const checks = [
+      parsed.name === test.expected.name,
+      parsed.amount === test.expected.amount,
+      parsed.unit === test.expected.unit,
+    ];
+
+    if (checks.every((c) => c)) {
+      console.log(`✅ PASS: "${test.input}"`);
+      console.log(`   → name: "${parsed.name}", amount: ${parsed.amount}, unit: ${parsed.unit}`);
+      passed++;
+    } else {
+      console.error(`❌ FAIL: "${test.input}"`);
+      console.error(`   Ожидалось: name="${test.expected.name}", amount=${test.expected.amount}, unit=${test.expected.unit}`);
+      console.error(`   Получено:  name="${parsed.name}", amount=${parsed.amount}, unit=${parsed.unit}`);
+      failed++;
+    }
+  }
+
+  console.log(`\n📊 Результаты: ${passed} прошло, ${failed} провалено из ${tests.length}`);
+}
