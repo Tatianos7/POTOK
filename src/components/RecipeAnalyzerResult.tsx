@@ -11,22 +11,30 @@ interface Props {
 }
 
 const RecipeAnalyzerResult: React.FC<Props> = ({ items, totals, onSaveMenu, onSaveRecipes, onSaveBoth }) => {
-  if (!items.length) return null;
+  const hasItems = items.length > 0;
 
   return (
     <div className="space-y-4">
-      <RecipeIngredientsTable items={items} />
+      {hasItems ? (
+        <>
+          <RecipeIngredientsTable items={items} />
 
-      <div className="px-2 text-sm text-gray-800">
-        <div className="flex justify-between">
-          <span className="font-semibold">ИТОГО</span>
-          <span className="text-right text-gray-900">{Math.round(totals.total.calories)} ккал</span>
-        </div>
-        <div className="flex justify-between text-[12px] text-gray-600">
-          <span>На 100 г</span>
-          <span>{`${totals.per100.proteins.toFixed(2)} / ${totals.per100.fats.toFixed(2)} / ${totals.per100.carbs.toFixed(2)} / ${Math.round(totals.per100.calories)} ккал`}</span>
-        </div>
-      </div>
+          <div className="px-2 text-sm text-gray-800">
+            <div className="flex justify-between">
+              <span className="font-semibold">ИТОГО</span>
+              <span className="text-right text-gray-900">{Math.round(totals.total.calories)} ккал</span>
+            </div>
+            <div className="flex justify-between text-[12px] text-gray-600">
+              <span>На 100 г</span>
+              <span>{`${totals.per100.proteins.toFixed(2)} / ${totals.per100.fats.toFixed(2)} / ${totals.per100.carbs.toFixed(2)} / ${Math.round(
+                totals.per100.calories
+              )} ккал`}</span>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="text-center text-sm text-gray-500 pt-4">Здесь появится результат анализа</div>
+      )}
 
       <div className="space-y-3 pt-2">
         <button
