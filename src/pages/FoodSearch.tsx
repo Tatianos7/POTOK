@@ -109,8 +109,13 @@ const FoodSearch = () => {
         </div>
 
         {/* Tabs mock */}
-        <div className="flex text-[11px] uppercase text-gray-600 dark:text-gray-300 gap-4">
-          <button className="pb-2 border-b-2 border-transparent">Анализатор рецептов</button>
+        <div className="flex justify-center text-[11px] uppercase text-gray-600 dark:text-gray-300 gap-4 mt-4">
+          <button
+            className="pb-2 border-b-2 border-transparent"
+            onClick={() => navigate('/nutrition/recipe-analyzer', { state: { mealType: selectedMealType, selectedDate } })}
+          >
+            Анализатор рецептов
+          </button>
           <button className="pb-2 border-b-2 border-transparent">Рецепты</button>
           <button
             className="pb-2 border-b-2 border-transparent text-gray-800 dark:text-gray-200 font-normal"
@@ -123,18 +128,30 @@ const FoodSearch = () => {
 
       {/* Search results with custom bar + recent */}
       <main className="px-4 py-4 space-y-4">
-        <div className="flex items-center gap-2 border border-gray-300 dark:border-gray-700 rounded-full px-4 py-3 bg-white dark:bg-gray-900">
+        <div
+          className="flex items-center bg-white dark:bg-gray-900 pl-3 pr-0 w-full"
+          style={{ border: '1px solid #c9d0d9', borderRadius: '10px', height: '50px' }}
+        >
           <span className="text-gray-500">🔍</span>
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск еды"
-            className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white"
+            className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white ml-2"
+            style={{ height: '100%' }}
           />
           <button
             onClick={() => setQuery(query.trim())}
-            className="w-10 h-10 rounded-full border border-gray-300 dark:border-gray-700 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="flex items-center justify-center"
+            style={{
+              height: '100%',
+              width: '50px',
+              borderRadius: '10px',
+              border: '1px solid #c9d0d9',
+              marginLeft: 'auto',
+              marginRight: 0,
+            }}
           >
             <ArrowRight className="w-4 h-4 text-gray-700 dark:text-gray-300" />
           </button>

@@ -83,10 +83,14 @@ const FavoritesProductsPage = () => {
         </div>
 
         <div
-          className="flex items-center bg-white overflow-hidden"
-          style={{ border: '0.5px solid #424242', height: '38px', borderRadius: '15px' }}
+          className="flex items-center bg-white px-4"
+          style={{
+            border: '1px solid #c9d0d9',
+            height: '58px',
+            borderRadius: '30px',
+          }}
         >
-          <div className="flex items-center justify-center w-10 text-gray-700">
+          <div className="flex items-center justify-center w-8 text-gray-600">
             <span className="text-lg leading-none">🔍</span>
           </div>
           <input
@@ -94,17 +98,16 @@ const FavoritesProductsPage = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск избранного"
-            className="flex-1 bg-transparent outline-none text-xs italic text-gray-600 placeholder:text-gray-500"
+            className="flex-1 bg-transparent outline-none text-base text-gray-700 placeholder:text-gray-500 ml-2"
           />
           <button
             onClick={() => setQuery(query.trim())}
-            className="w-11 h-full flex items-center justify-center border-l"
+            className="ml-3 flex items-center justify-center"
             style={{
-              borderColor: '#424242',
-              borderTopRightRadius: '15px',
-              borderBottomRightRadius: '15px',
-              borderTopLeftRadius: '15px',
-              borderBottomLeftRadius: '0px',
+              height: '100%',
+              width: '58px',
+              borderRadius: '30px',
+              border: '1px solid #c9d0d9',
             }}
           >
             <ArrowRight className="w-4 h-4 text-gray-700" />
