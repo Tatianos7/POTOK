@@ -61,19 +61,20 @@ const RecipeAnalyzer = () => {
           />
         </div>
 
-        <button
-          onClick={handlePhoto}
-          className="w-full h-12 rounded-[12px] border border-gray-800 text-gray-900 text-sm font-semibold"
-        >
-          Загрузить фото
-        </button>
-
-        <button
-          onClick={handleAnalyze}
-          className="w-full h-12 rounded-[12px] bg-black text-white text-sm font-semibold"
-        >
-          Анализировать
-        </button>
+        <div className="flex gap-[15px]">
+          <button
+            onClick={handlePhoto}
+            className="h-12 flex-1 rounded-[12px] border border-gray-800 text-gray-900 text-sm font-semibold"
+          >
+            Загрузить фото
+          </button>
+          <button
+            onClick={handleAnalyze}
+            className="h-12 flex-1 rounded-[12px] bg-black text-white text-sm font-semibold"
+          >
+            Анализировать
+          </button>
+        </div>
 
         <RecipeAnalyzerResult
           items={items}
