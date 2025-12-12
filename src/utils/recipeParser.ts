@@ -458,13 +458,84 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   // ШАГ 4: Очищаем название от всех единиц измерения
   name = cleanProductName(name);
 
+  // ШАГ 4.5: Дополнительная агрессивная очистка от единиц (на случай, если что-то пропустили)
+  // Удаляем все возможные варианты единиц еще раз, включая с точками и пробелами
+  const additionalUnitPatterns = [
+    /ч\.?\s*л\.?/gi,
+    /ст\.?\s*л\.?/gi,
+    /ч\s*л\b/gi,
+    /ст\s*л\b/gi,
+    /\bгр?\b/gi,
+    /\bкг\b/gi,
+    /\bл\b(?!\w)/gi,
+    /\bмл\b/gi,
+    /\bшт\b/gi,
+    /\bграмм\w*\b/gi,
+    /\bлитр\w*\b/gi,
+    /\bмиллилитр\w*\b/gi,
+    /\bштук\w*\b/gi,
+    /\bдольк\w*\b/gi,
+    /\bзубчик\w*\b/gi,
+    /чайная\s+ложка/gi,
+    /столовая\s+ложка/gi,
+  ];
+  
+  for (const pattern of additionalUnitPatterns) {
+    name = name.replace(pattern, ' ');
+  }
+  name = name.replace(/\s+/g, ' ').trim();
+
   // ШАГ 5: Нормализуем название продукта
   name = normalizeProductName(name);
+  
+  // ШАГ 5.5: Финальная проверка - удаляем единицы еще раз после нормализации
+  name = cleanProductName(name);
+  
+  // ШАГ 5.6: Финальная проверка - если в названии все еще есть единицы, удаляем их
+  // Проверяем наличие единиц в названии и удаляем их
+  const unitCheckPatterns = [
+    /\bч\.?\s*л\.?\b/gi,
+    /\bст\.?\s*л\.?\b/gi,
+    /\bч\s*л\b/gi,
+    /\bст\s*л\b/gi,
+    /\bгр?\b/gi,
+    /\bкг\b/gi,
+    /\bл\b(?!\w)/gi,
+    /\bмл\b/gi,
+    /\bшт\b/gi,
+    /\bграмм\w*\b/gi,
+    /\bлитр\w*\b/gi,
+    /\bмиллилитр\w*\b/gi,
+    /\bштук\w*\b/gi,
+    /\bдольк\w*\b/gi,
+    /\bзубчик\w*\b/gi,
+  ];
+  
+  let hasUnits = false;
+  for (const pattern of unitCheckPatterns) {
+    if (pattern.test(name)) {
+      hasUnits = true;
+      break;
+    }
+  }
+  
+  if (hasUnits) {
+    // Если единицы все еще есть, удаляем их еще раз
+    for (const pattern of unitCheckPatterns) {
+      name = name.replace(pattern, ' ');
+    }
+    name = name.replace(/\s+/g, ' ').trim();
+  }
 
   // ШАГ 6: Определяем финальную единицу и преобразуем amount
   let finalUnit: NormalizedUnit = unitInfo?.unit.norm || null;
   let finalAmount: number | null = null;
   let finalDisplay = unitInfo?.unit.display || '';
+
+  // Дополнительная проверка: если unitInfo определен, но finalDisplay пустой, используем unitInfo.unit.display
+  if (unitInfo && !finalDisplay) {
+    finalDisplay = unitInfo.unit.display;
+  }
 
   if (unitInfo && amountValue !== null) {
     // Преобразуем amount по правилам
@@ -479,10 +550,11 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   // ШАГ 7: Формируем строку для отображения
   let amountText = '';
   if (amountValue !== null && finalDisplay) {
-    if (unitInfo?.unit.display.includes('ч.л.') || unitInfo?.unit.display.includes('ст.л.')) {
+    // Проверяем по finalDisplay, чтобы гарантировать правильное отображение
+    if (finalDisplay.includes('ч.л.') || finalDisplay.includes('ст.л.')) {
       // Для ложек показываем исходное количество и единицу ложки
-      amountText = `${amountDisplay} ${unitInfo.unit.display}`;
-    } else if (finalUnit === 'ml' && unitInfo?.unit.factor === 1000) {
+      amountText = `${amountDisplay} ${finalDisplay}`;
+    } else if (finalUnit === 'ml' && unitInfo?.unit.factor === 1000 && unitInfo?.unit.display === 'л') {
       // Для литров показываем в мл
       amountText = `${finalAmount} мл`;
     } else {
@@ -497,9 +569,35 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   const amountGrams =
     finalAmount !== null && finalUnit ? convertToGrams(finalAmount, finalUnit, name) : 0;
 
+  // ФИНАЛЬНАЯ ПРОВЕРКА: убеждаемся, что название не содержит единиц измерения
+  // Если единицы все еще есть, удаляем их еще раз
+  const finalCleanPatterns = [
+    /\bч\.?\s*л\.?\b/gi,
+    /\bст\.?\s*л\.?\b/gi,
+    /\bч\s*л\b/gi,
+    /\bст\s*л\b/gi,
+    /\bгр?\b/gi,
+    /\bкг\b/gi,
+    /\bл\b(?!\w)/gi,
+    /\bмл\b/gi,
+    /\bшт\b/gi,
+    /\bграмм\w*\b/gi,
+    /\bлитр\w*\b/gi,
+    /\bмиллилитр\w*\b/gi,
+    /\bштук\w*\b/gi,
+    /\bдольк\w*\b/gi,
+    /\bзубчик\w*\b/gi,
+  ];
+  
+  let cleanedName = name;
+  for (const pattern of finalCleanPatterns) {
+    cleanedName = cleanedName.replace(pattern, ' ');
+  }
+  cleanedName = cleanedName.replace(/\s+/g, ' ').trim();
+
   return {
     original,
-    name: name || original,
+    name: cleanedName || original,
     amount: finalAmount,
     unit: finalUnit,
     amountText: amountText.trim(),
