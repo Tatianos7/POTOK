@@ -1,6 +1,6 @@
-import { ParsedIngredient } from './ingredientParser';
+import { ParsedRecipeIngredient } from './recipeParser';
 
-export interface CalculatedIngredient extends ParsedIngredient {
+export interface CalculatedIngredient extends ParsedRecipeIngredient {
   proteins: number;
   fats: number;
   carbs: number;

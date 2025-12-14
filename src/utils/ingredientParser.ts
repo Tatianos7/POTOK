@@ -27,11 +27,25 @@ const parseNumber = (token: string): number | null => {
   return isFinite(n) ? n : null;
 };
 
-const resolveUnit = (tokens: string[]): { unit?: string; rest: string[] } => {
+const resolveUnit = (
+  tokens: string[],
+  rawTokens: string[]
+): { unit?: string; unitDisplay?: string; rest: string[] } => {
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
+    // биграмы после нормализации (ч л, ст л)
+    if (i + 1 < tokens.length) {
+      const bigram = `${t} ${tokens[i + 1]}`;
+      if (unitConversions[bigram] !== undefined) {
+        const rest = [...tokens.slice(0, i), ...tokens.slice(i + 2)];
+        const unitDisplay = `${rawTokens[i]} ${rawTokens[i + 1]}`;
+        return { unit: bigram, unitDisplay, rest };
+      }
+    }
     if (unitConversions[t] !== undefined) {
-      return { unit: t, rest: [...tokens.slice(0, i), ...tokens.slice(i + 1)] };
+      const rest = [...tokens.slice(0, i), ...tokens.slice(i + 1)];
+      const unitDisplay = rawTokens[i];
+      return { unit: t, unitDisplay, rest };
     }
   }
   return { rest: tokens };
@@ -55,15 +69,18 @@ export function parseIngredientLine(line: string): ParsedIngredient | null {
   }
 
   const tokens = normalize(working).split(' ');
+  const rawTokens = normalize(raw).split(' ');
   // ищем число
   let numIdx = tokens.findIndex((t) => parseNumber(t) !== null);
   let value = 1;
+  let valueDisplay = '';
   if (numIdx >= 0) {
     value = parseNumber(tokens[numIdx]) ?? 1;
+    valueDisplay = rawTokens[numIdx] || tokens[numIdx];
     tokens.splice(numIdx, 1);
   }
 
-  const { unit, rest } = resolveUnit(tokens);
+  const { unit, unitDisplay, rest } = resolveUnit(tokens, rawTokens);
   const name = rest.join(' ').trim();
 
   // конвертация
@@ -80,11 +97,16 @@ export function parseIngredientLine(line: string): ParsedIngredient | null {
     }
   }
 
+  const displayValue = rangeMatch
+    ? `${rangeMatch[1]}–${rangeMatch[2]}`
+    : valueDisplay || value.toString();
+  const amountText = `${displayValue} ${unitDisplay || unit || 'шт'}`.trim();
+
   return {
     raw,
     name: name || raw,
     amountGrams: grams,
-    amountText: `${value} ${unit || 'шт'}`.trim(),
+    amountText,
   };
 }
 
