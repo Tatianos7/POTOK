@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, Trash2 } from 'lucide-react';
@@ -19,8 +19,9 @@ import { localAIFoodAnalyzer, LocalIngredient } from '../services/localAIFoodAna
 const FoodDiary = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const currentDate = new Date();
+  // Получаем текущую дату в формате YYYY-MM-DD
+  const getTodayDate = () => new Date().toISOString().split('T')[0];
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [dailyMeals, setDailyMeals] = useState<DailyMeals | null>(null);
   
   // Modal states
@@ -38,26 +39,58 @@ const FoodDiary = () => {
   const [scannedFood, setScannedFood] = useState<Food | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
 
-  // Generate dates for the week
-  const generateDates = () => {
-    const dates = [];
-    const today = new Date(currentDate);
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
+  // Используем useMemo для dates, чтобы они не пересчитывались без необходимости
+  const dates = useMemo(() => {
+    const datesList = [];
+    const todayDate = new Date(); // Всегда используем текущую дату
+    const startOfWeek = new Date(todayDate);
+    // Находим понедельник текущей недели
+    const dayOfWeek = todayDate.getDay(); // 0 = воскресенье, 1 = понедельник, ...
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Если воскресенье, откатываем на 6 дней назад
+    startOfWeek.setDate(todayDate.getDate() + diff);
 
     for (let i = 0; i < 7; i++) {
       const date = new Date(startOfWeek);
       date.setDate(startOfWeek.getDate() + i);
-      dates.push({
+      datesList.push({
         date: date.toISOString().split('T')[0],
         day: date.getDate(),
         weekday: ['В', 'П', 'В', 'С', 'Ч', 'П', 'С'][date.getDay()],
       });
     }
-    return dates;
-  };
-
-  const dates = generateDates();
+    return datesList;
+  }, []); // Пересчитываем только при монтировании компонента
+  
+  // Инициализация: при первом рендере выбираем сегодняшнюю дату, если она есть в календаре
+  useEffect(() => {
+    const currentToday = getTodayDate(); // Получаем актуальную сегодняшнюю дату
+    const todayInCalendar = dates.find(d => d.date === currentToday);
+    
+    // Если сегодняшняя дата есть в календаре, выбираем её
+    if (todayInCalendar) {
+      setSelectedDate(currentToday);
+    } else if (dates.length > 0) {
+      // Если сегодняшней даты нет в календаре, выбираем первую дату календаря
+      setSelectedDate(dates[0].date);
+    }
+  }, []); // Выполняем только при монтировании компонента
+  
+  // Проверка валидности: убеждаемся, что selectedDate всегда соответствует одной из дат в календаре
+  useEffect(() => {
+    const selectedInCalendar = dates.find(d => d.date === selectedDate);
+    
+    // Если выбранная дата не в календаре, выбираем сегодняшнюю или первую дату
+    if (!selectedInCalendar && dates.length > 0) {
+      const currentToday = getTodayDate();
+      const todayInCalendar = dates.find(d => d.date === currentToday);
+      
+      if (todayInCalendar) {
+        setSelectedDate(currentToday);
+      } else {
+        setSelectedDate(dates[0].date);
+      }
+    }
+  }, [dates, selectedDate]); // Выполняем при изменении dates или selectedDate
 
   const meals = [
     { id: 'breakfast', name: 'ЗАВТРАК', icon: Coffee },
@@ -221,7 +254,8 @@ const FoodDiary = () => {
       'ЯНВАРЬ', 'ФЕВРАЛЬ', 'МАРТ', 'АПРЕЛЬ', 'МАЙ', 'ИЮНЬ',
       'ИЮЛЬ', 'АВГУСТ', 'СЕНТЯБРЬ', 'ОКТЯБРЬ', 'НОЯБРЬ', 'ДЕКАБРЬ'
     ];
-    return months[currentDate.getMonth()];
+    const today = new Date();
+    return months[today.getMonth()];
   };
 
   if (!user) {
