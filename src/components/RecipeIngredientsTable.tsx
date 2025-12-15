@@ -11,14 +11,42 @@ const RecipeIngredientsTable: React.FC<Props> = ({ items }) => {
   // Функция для очистки названия продукта от единиц измерения и чисел
   const cleanProductName = (name: string): string => {
     let cleaned = name;
-    // Удаляем все единицы измерения
-    cleaned = cleaned.replace(/\b(г|гр|кг|л|мл|шт|грамм|литр|миллилитр|штук|дольк|зубчик|ч\.?л|ст\.?л|чайная\s+ложка|столовая\s+ложка)\b/gi, '');
-    // Удаляем все числа (включая диапазоны и десятичные)
+    
+    // Удаляем все числа сначала
     cleaned = cleaned.replace(/\d+[.,]?\d*\s*[–-]\s*\d+[.,]?\d*/g, ''); // диапазоны
     cleaned = cleaned.replace(/\d+[.,]?\d*/g, ''); // обычные числа
     cleaned = cleaned.replace(/\d+/g, ''); // любые оставшиеся числа
-    // Удаляем лишние пробелы
+    
+    // Агрессивное удаление единиц измерения (включая с точками и запятыми)
+    const unitPatterns = [
+      /\bгр?\.?\b/gi,  // г, гр, гр.
+      /\bкг\.?\b/gi,   // кг, кг.
+      /\bл\.?\b(?!\w)/gi,  // л, л. (но не часть слова)
+      /\bмл\.?\b/gi,   // мл, мл.
+      /\bшт\.?\b/gi,   // шт, шт.
+      /\bграмм\w*\.?\b/gi,
+      /\bлитр\w*\.?\b/gi,
+      /\bмиллилитр\w*\.?\b/gi,
+      /\bштук\w*\.?\b/gi,
+      /\bдольк\w*\.?\b/gi,
+      /\bзубчик\w*\.?\b/gi,
+      /\bч\.?\s*л\.?\b/gi,
+      /\bст\.?\s*л\.?\b/gi,
+      /чайная\s+ложка/gi,
+      /столовая\s+ложка/gi,
+    ];
+    
+    // Применяем несколько раз для гарантии
+    for (let i = 0; i < 3; i++) {
+      for (const pattern of unitPatterns) {
+        cleaned = cleaned.replace(pattern, ' ');
+      }
+    }
+    
+    // Удаляем точки, запятые и лишние пробелы
+    cleaned = cleaned.replace(/[.,;]/g, ' ');
     cleaned = cleaned.replace(/\s+/g, ' ').trim();
+    
     return cleaned;
   };
 
