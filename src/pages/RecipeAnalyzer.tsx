@@ -1,20 +1,43 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { recipeAnalyzerService } from '../services/recipeAnalyzerService';
 import { CalculatedIngredient, calcTotals } from '../utils/nutritionCalculator';
 import RecipeAnalyzerResult from '../components/RecipeAnalyzerResult';
+import SaveRecipeToDiarySheet from '../components/SaveRecipeToDiarySheet';
+import { useAuth } from '../context/AuthContext';
 
 const placeholderIngredients =
   'Пример: 250 г говядина постная, 1–2 морковки, 1 луковица, 2 дольки чеснока, полтора литра молока, 400 г картофеля';
 
 const RecipeAnalyzer = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [ingredientsText, setIngredientsText] = useState('');
   const [items, setItems] = useState<CalculatedIngredient[]>([]);
+  const [isSaveOpen, setIsSaveOpen] = useState(false);
 
   const totals = calcTotals(items);
+  const per100 = useMemo(
+    () => ({
+      calories: totals.per100.calories || 0,
+      proteins: totals.per100.proteins || 0,
+      fats: totals.per100.fats || 0,
+      carbs: totals.per100.carbs || 0,
+    }),
+    [totals.per100]
+  );
+
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const selectedDate = (location.state as any)?.selectedDate || today;
+  const defaultMealType = (location.state as any)?.mealType as
+    | 'breakfast'
+    | 'lunch'
+    | 'dinner'
+    | 'snack'
+    | undefined;
 
   const handleAnalyze = async () => {
     if (!ingredientsText.trim()) return;
@@ -26,8 +49,9 @@ const RecipeAnalyzer = () => {
     alert('Фото-анализ будет доступен после подключения локального AI.');
   };
 
-  const saveStub = () => {
-    alert('Будет доступно после подключения основной базы.');
+  const handleSaved = () => {
+    // После сохранения уходим в дневник на выбранную дату
+    navigate('/nutrition', { state: { selectedDate } });
   };
 
   return (
@@ -79,11 +103,21 @@ const RecipeAnalyzer = () => {
         <RecipeAnalyzerResult
           items={items}
           totals={totals}
-          onSaveMenu={saveStub}
-          onSaveRecipes={saveStub}
-          onSaveBoth={saveStub}
+          onSaveMenu={() => setIsSaveOpen(true)}
+          onSaveRecipes={() => alert('Сохранение в рецепты будет доступно позже')}
+          onSaveBoth={() => setIsSaveOpen(true)}
         />
       </main>
+
+      <SaveRecipeToDiarySheet
+        isOpen={isSaveOpen && !!user}
+        onClose={() => setIsSaveOpen(false)}
+        recipeName={name || 'Рецепт'}
+        per100={per100}
+        defaultMealType={defaultMealType}
+        date={selectedDate}
+        onSaved={handleSaved}
+      />
     </div>
   );
 };
