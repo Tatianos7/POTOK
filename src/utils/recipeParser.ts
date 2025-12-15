@@ -569,7 +569,7 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   const amountGrams =
     finalAmount !== null && finalUnit ? convertToGrams(finalAmount, finalUnit, name) : 0;
 
-  // ФИНАЛЬНАЯ ПРОВЕРКА: убеждаемся, что название не содержит единиц измерения
+  // ФИНАЛЬНАЯ ПРОВЕРКА: убеждаемся, что название не содержит единиц измерения и чисел
   // Если единицы все еще есть, удаляем их еще раз
   const finalCleanPatterns = [
     /\bч\.?\s*л\.?\b/gi,
@@ -587,12 +587,20 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
     /\bштук\w*\b/gi,
     /\bдольк\w*\b/gi,
     /\bзубчик\w*\b/gi,
+    // Удаляем все числа (включая диапазоны и десятичные)
+    /\d+[.,]?\d*\s*[–-]\s*\d+[.,]?\d*/g, // диапазоны
+    /\d+[.,]?\d*/g, // обычные числа
   ];
   
   let cleanedName = name;
   for (const pattern of finalCleanPatterns) {
     cleanedName = cleanedName.replace(pattern, ' ');
   }
+  cleanedName = cleanedName.replace(/\s+/g, ' ').trim();
+  
+  // Дополнительная очистка: удаляем любые оставшиеся числа и единицы
+  cleanedName = cleanedName.replace(/\d+/g, ''); // удаляем все числа
+  cleanedName = cleanedName.replace(/\b(г|гр|кг|л|мл|шт|грамм|литр|миллилитр|штук|дольк|зубчик|ч\.?л|ст\.?л)\b/gi, ''); // удаляем единицы
   cleanedName = cleanedName.replace(/\s+/g, ' ').trim();
 
   return {
