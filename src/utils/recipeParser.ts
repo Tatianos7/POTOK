@@ -602,6 +602,21 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   cleanedName = cleanedName.replace(/\d+/g, ''); // удаляем все числа
   cleanedName = cleanedName.replace(/\b(г|гр|кг|л|мл|шт|грамм|литр|миллилитр|штук|дольк|зубчик|ч\.?л|ст\.?л)\b/gi, ''); // удаляем единицы
   cleanedName = cleanedName.replace(/\s+/g, ' ').trim();
+  // Удаляем единичные токены-единицы измерения, если остались
+  const unitTokens = new Set([
+    'г', 'гр', 'кг', 'мл', 'л', 'шт',
+    'грамм', 'грамма', 'граммов',
+    'литр', 'литра', 'литров',
+    'миллилитр', 'миллилитров',
+    'штук', 'долька', 'дольки', 'долей',
+    'зубчик', 'зубчика', 'зубчиков',
+    'ч.л', 'ч.л.', 'ст.л', 'ст.л.', 'ч', 'л', 'ст',
+  ]);
+  cleanedName = cleanedName
+    .split(' ')
+    .filter((w) => w && !unitTokens.has(w.toLowerCase()))
+    .join(' ')
+    .trim();
 
   return {
     original,
