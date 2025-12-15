@@ -16,6 +16,7 @@ import FoodDiary from './pages/FoodDiary';
 import FoodSearch from './pages/FoodSearch';
 import FavoritesProductsPage from './pages/FavoritesProductsPage';
 import RecipeAnalyzer from './pages/RecipeAnalyzer';
+import Recipes from './pages/Recipes';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function AppRoutes() {
@@ -136,6 +137,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <RecipeAnalyzer />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/recipes"
+        element={
+          <ProtectedRoute>
+            <Recipes />
           </ProtectedRoute>
         }
       />
