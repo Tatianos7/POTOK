@@ -125,6 +125,45 @@ class RecipesService {
     localStorage.setItem(this.RECIPES_STORAGE_KEY, JSON.stringify(allRecipes));
   }
 
+  // Создать рецепт из анализатора
+  createRecipeFromAnalyzer(data: {
+    name: string;
+    image?: string | null;
+    totalCalories: number;
+    totalProteins: number;
+    totalFats: number;
+    totalCarbs: number;
+    ingredients: Array<{
+      name: string;
+      quantity: number;
+      unit: string;
+      grams: number;
+      calories: number;
+      proteins: number;
+      fats: number;
+      carbs: number;
+    }>;
+    userId: string;
+  }): Recipe {
+    const recipe: Recipe = {
+      id: `recipe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: data.name,
+      image: data.image || null,
+      totalCalories: data.totalCalories,
+      totalProteins: data.totalProteins,
+      totalFats: data.totalFats,
+      totalCarbs: data.totalCarbs,
+      ingredients: data.ingredients,
+      source: 'recipe_analyzer',
+      userId: data.userId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.saveRecipe(recipe);
+    return recipe;
+  }
+
   // Удалить рецепт
   deleteRecipe(recipeId: string, userId?: string): void {
     const allRecipes = this.getAllRecipes(userId);
@@ -150,6 +189,7 @@ class RecipesService {
         proteinsPer100: 20,
         fatsPer100: 3,
         carbsPer100: 0,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -161,6 +201,7 @@ class RecipesService {
         proteinsPer100: 12,
         fatsPer100: 5,
         carbsPer100: 18,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -172,6 +213,7 @@ class RecipesService {
         proteinsPer100: 25,
         fatsPer100: 8,
         carbsPer100: 5,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -183,6 +225,7 @@ class RecipesService {
         proteinsPer100: 15,
         fatsPer100: 7,
         carbsPer100: 25,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -194,6 +237,7 @@ class RecipesService {
         proteinsPer100: 22,
         fatsPer100: 4,
         carbsPer100: 1,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -205,6 +249,7 @@ class RecipesService {
         proteinsPer100: 24,
         fatsPer100: 6,
         carbsPer100: 8,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -216,6 +261,7 @@ class RecipesService {
         proteinsPer100: 2,
         fatsPer100: 2,
         carbsPer100: 6,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -227,6 +273,7 @@ class RecipesService {
         proteinsPer100: 1,
         fatsPer100: 0,
         carbsPer100: 18,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -238,6 +285,7 @@ class RecipesService {
         proteinsPer100: 8,
         fatsPer100: 20,
         carbsPer100: 35,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -249,6 +297,7 @@ class RecipesService {
         proteinsPer100: 23,
         fatsPer100: 9,
         carbsPer100: 2,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -260,6 +309,7 @@ class RecipesService {
         proteinsPer100: 12,
         fatsPer100: 6,
         carbsPer100: 12,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },
@@ -271,6 +321,7 @@ class RecipesService {
         proteinsPer100: 24,
         fatsPer100: 6,
         carbsPer100: 8,
+        source: 'default',
         createdAt: now,
         updatedAt: now,
       },

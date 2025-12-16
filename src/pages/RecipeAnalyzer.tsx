@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { recipeAnalyzerService } from '../services/recipeAnalyzerService';
 import { CalculatedIngredient, calcTotals } from '../utils/nutritionCalculator';
 import RecipeAnalyzerResult from '../components/RecipeAnalyzerResult';
 import SaveRecipeToDiarySheet from '../components/SaveRecipeToDiarySheet';
+import SaveRecipeModal from '../components/SaveRecipeModal';
 import { useAuth } from '../context/AuthContext';
+import { recipesService } from '../services/recipesService';
 
 const placeholderIngredients =
   'Пример: 250 г говядина постная, 1–2 морковки, 1 луковица, 2 дольки чеснока, полтора литра молока, 400 г картофеля';
@@ -14,10 +16,13 @@ const RecipeAnalyzer = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState('');
   const [ingredientsText, setIngredientsText] = useState('');
   const [items, setItems] = useState<CalculatedIngredient[]>([]);
   const [isSaveOpen, setIsSaveOpen] = useState(false);
+  const [isSaveRecipeModalOpen, setIsSaveRecipeModalOpen] = useState(false);
+  const [recipeImage, setRecipeImage] = useState<string | null>(null);
 
   const totals = calcTotals(items);
   const per100 = useMemo(
@@ -46,7 +51,59 @@ const RecipeAnalyzer = () => {
   };
 
   const handlePhoto = () => {
-    alert('Фото-анализ будет доступен после подключения локального AI.');
+    fileInputRef.current?.click();
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setRecipeImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveToRecipes = () => {
+    if (!user?.id) {
+      alert('Необходимо войти в систему');
+      return;
+    }
+    if (items.length === 0) {
+      alert('Сначала проанализируйте рецепт');
+      return;
+    }
+    setIsSaveRecipeModalOpen(true);
+  };
+
+  const handleSaveRecipe = (recipeName: string) => {
+    if (!user?.id || items.length === 0) return;
+
+    recipesService.createRecipeFromAnalyzer({
+      name: recipeName,
+      image: recipeImage,
+      totalCalories: totals.total.calories,
+      totalProteins: totals.total.proteins,
+      totalFats: totals.total.fats,
+      totalCarbs: totals.total.carbs,
+      ingredients: items.map((item) => ({
+        name: item.name,
+        quantity: item.amount || 0,
+        unit: item.unit || 'g',
+        grams: item.amountGrams,
+        calories: item.calories,
+        proteins: item.proteins,
+        fats: item.fats,
+        carbs: item.carbs,
+      })),
+      userId: user.id,
+    });
+
+    setIsSaveRecipeModalOpen(false);
+    alert('Рецепт сохранен в "Мои рецепты"');
+    // Можно перейти на страницу рецептов или остаться здесь
+    // navigate('/nutrition/recipes');
   };
 
   const handleSaved = () => {
@@ -100,12 +157,24 @@ const RecipeAnalyzer = () => {
           </button>
         </div>
 
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+          className="hidden"
+        />
+
         <RecipeAnalyzerResult
           items={items}
           totals={totals}
           onSaveMenu={() => setIsSaveOpen(true)}
-          onSaveRecipes={() => alert('Сохранение в рецепты будет доступно позже')}
-          onSaveBoth={() => setIsSaveOpen(true)}
+          onSaveRecipes={handleSaveToRecipes}
+          onSaveBoth={() => {
+            // При сохранении в оба места сначала сохраняем в рецепты, потом в меню
+            handleSaveToRecipes();
+            setIsSaveOpen(true);
+          }}
         />
       </main>
 
@@ -117,6 +186,18 @@ const RecipeAnalyzer = () => {
         defaultMealType={defaultMealType}
         date={selectedDate}
         onSaved={handleSaved}
+      />
+
+      <SaveRecipeModal
+        isOpen={isSaveRecipeModalOpen}
+        onClose={() => setIsSaveRecipeModalOpen(false)}
+        recipeName={name || 'Рецепт'}
+        recipeImage={recipeImage}
+        totalCalories={totals.total.calories}
+        totalProteins={totals.total.proteins}
+        totalFats={totals.total.fats}
+        totalCarbs={totals.total.carbs}
+        onSave={handleSaveRecipe}
       />
     </div>
   );

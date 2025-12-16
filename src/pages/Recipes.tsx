@@ -132,11 +132,18 @@ const Recipes = () => {
                 {/* Recipe Name */}
                 <div className="text-center text-[11px] text-gray-800 dark:text-gray-200 leading-tight w-full">
                   <div className="font-medium">{recipe.name || 'НАЗВАНИЕ'}</div>
-                  {/* КБЖУ на 100г */}
-                  {recipe.caloriesPer100 > 0 && (
+                  {/* Общие калории для рецептов из анализатора */}
+                  {recipe.totalCalories && recipe.totalCalories > 0 ? (
                     <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
-                      {Math.round(recipe.caloriesPer100)} ккал. 100г
+                      {Math.round(recipe.totalCalories)} ккал
                     </div>
+                  ) : (
+                    /* КБЖУ на 100г для дефолтных рецептов */
+                    recipe.caloriesPer100 && recipe.caloriesPer100 > 0 && (
+                      <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
+                        {Math.round(recipe.caloriesPer100)} ккал. 100г
+                      </div>
+                    )
                   )}
                 </div>
               </button>
