@@ -454,11 +454,11 @@ const FoodDiary = () => {
                           return (
                             <div
                               key={entry.id}
-                              className="flex items-start gap-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded transition-colors"
+                              className="flex items-center gap-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded transition-colors"
                             >
                               {/* Вертикальное троеточие */}
                               <button
-                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors mt-0.5"
+                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
                                 aria-label="Дополнительные действия"
                               >
                                 <MoreVertical className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -479,7 +479,7 @@ const FoodDiary = () => {
                               {/* Checkbox "съедено" */}
                               <button
                                 onClick={() => toggleEntryEaten(entry.id)}
-                                className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors mt-0.5 mr-2 ${
+                                className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                                   isEaten
                                     ? 'border-green-500 bg-green-500'
                                     : 'border-gray-300 dark:border-gray-600'
@@ -490,7 +490,7 @@ const FoodDiary = () => {
                               </button>
                               
                               {/* Калории */}
-                              <div className="flex-shrink-0 text-sm font-medium text-gray-900 dark:text-white">
+                              <div className="flex-shrink-0 text-sm font-medium text-gray-900 dark:text-white w-12 text-right">
                                 {Math.round(entry.calories)}
                               </div>
                             </div>
