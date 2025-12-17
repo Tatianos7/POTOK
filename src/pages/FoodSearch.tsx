@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, ScanLine, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Mic, ScanLine, ArrowRight, Trash2 } from 'lucide-react';
 import ProductSearch from '../components/ProductSearch';
 import BarcodeScanner from '../components/BarcodeScanner';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
@@ -227,19 +227,32 @@ const FoodSearch = () => {
         }
       });
       
-      // Добавляем новую запись с текущей датой использования в начало и ограничиваем до 50 элементов
+      // Добавляем новую запись с текущей датой использования в начало (без ограничения количества)
       const updated = [
         {
           ...recentFood,
           lastUsedAt: new Date().toISOString(),
         },
         ...filtered,
-      ].slice(0, 50);
+      ];
       
       // Сохраняем в localStorage
       localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(updated));
       
       return updated;
+    });
+  };
+
+  /**
+   * Удаление продукта из списка часто используемых
+   */
+  const removeRecent = (foodId: string) => {
+    if (!user?.id || !foodId) return;
+    
+    setRecent((currentRecent) => {
+      const filtered = currentRecent.filter((r) => r.foodId !== foodId);
+      localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(filtered));
+      return filtered;
     });
   };
 
@@ -328,19 +341,35 @@ const FoodSearch = () => {
                 <div className="space-y-2">
                   <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Часто используемые продукты</div>
                   {recent.map((item, index) => (
-                    <button
+                    <div
                       key={item.foodId || `${item.foodName}_${index}`}
-                      onClick={() => handleRecentProductClick(item)}
-                      className="w-full flex items-center justify-between text-left text-sm text-gray-800 dark:text-gray-200 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                      className="w-full flex items-start justify-between text-left py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors group"
                     >
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span className="truncate">{item.foodName}</span>
-                      </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
-                        {Math.round(item.weight)} г
-                      </span>
-                    </button>
+                      <button
+                        onClick={() => handleRecentProductClick(item)}
+                        className="flex-1 min-w-0 text-left"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                            {item.foodName}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                          {Math.round(item.weight)} г
+                        </span>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeRecent(item.foodId);
+                        }}
+                        className="p-1.5 ml-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Удалить из списка"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               );

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { X, ArrowRight, Check, ChevronRight, Circle } from 'lucide-react';
+import { X, ArrowRight, Check, Circle, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Food, MealEntry } from '../types';
 import { mealService } from '../services/mealService';
@@ -173,7 +173,7 @@ const FavoritesProductsPage = () => {
       // Удаляем все старые записи с тем же foodId
       const filtered = currentRecentFoods.filter((rf) => rf.foodId !== entry.foodId);
       
-      // Добавляем новую запись в начало с актуальными граммами и текущей датой использования
+      // Добавляем новую запись в начало с актуальными граммами и текущей датой использования (без ограничения количества)
       const updated = [
         {
           foodId: entry.foodId,
@@ -182,7 +182,7 @@ const FavoritesProductsPage = () => {
           lastUsedAt: new Date().toISOString(),
         },
         ...filtered,
-      ].slice(0, 50); // Ограничиваем до 50 элементов
+      ];
       
       // Сохраняем в localStorage
       localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(updated));
@@ -194,6 +194,19 @@ const FavoritesProductsPage = () => {
     setSelectedFood(null);
     setDefaultWeight(undefined);
     navigate('/nutrition');
+  };
+
+  /**
+   * Удаление продукта из списка часто используемых
+   */
+  const removeRecent = (foodId: string) => {
+    if (!user?.id || !foodId) return;
+    
+    setRecentFoods((currentRecentFoods) => {
+      const filtered = currentRecentFoods.filter((rf) => rf.foodId !== foodId);
+      localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(filtered));
+      return filtered;
+    });
   };
 
   return (
@@ -245,20 +258,22 @@ const FavoritesProductsPage = () => {
             
             const isActive = selectedId === recentFood.foodId;
             return (
-              <button
+              <div
                 key={recentFood.foodId || recentFood.foodName}
-                className="w-full flex items-center px-3 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                onClick={() => handleProductClick(recentFood)}
+                className="w-full flex items-start px-3 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
               >
-                <div className="mr-3">
+                <div className="mr-3 mt-0.5">
                   {isActive ? (
                     <Check className="w-5 h-5 text-green-500" />
                   ) : (
                     <Circle className="w-5 h-5 text-gray-400" />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                <button
+                  onClick={() => handleProductClick(recentFood)}
+                  className="flex-1 min-w-0 text-left"
+                >
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white truncate mb-1">
                     {recentFood.foodName}
                   </div>
                   <div className="text-[11px] flex gap-2">
@@ -271,9 +286,18 @@ const FavoritesProductsPage = () => {
                       </span>
                     )}
                   </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-              </button>
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeRecent(recentFood.foodId);
+                  }}
+                  className="p-1.5 ml-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                  title="Удалить из списка"
+                >
+                  <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+                </button>
+              </div>
             );
           })}
           {filtered.length === 0 && (
