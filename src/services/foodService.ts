@@ -18,7 +18,7 @@ const PRODUCTS_STORAGE_KEY = 'potok_products_russia_v1';
 const EAN_INDEX_STORAGE_KEY = 'potok_ean_index_v1';
 const USER_CUSTOM_PRODUCTS_KEY = 'potok_user_products_v1';
 const DB_VERSION_KEY = 'potok_products_version';
-const DB_VERSION = 'rus-1.0'; // полная смена базы на российскую
+const DB_VERSION = 'mock-1.0'; // ВРЕМЕННАЯ ЗАГЛУШКА: используем mockFoodDatabase для тестирования
 
 // Утилита: числовое значение с безопасным дефолтом
 const toNumber = (value: unknown): number => {
@@ -35,11 +35,19 @@ class FoodService {
   // ВРЕМЕННО: используем mockFoodDatabase для тестирования дневника питания
   private initializeStorage() {
     const version = localStorage.getItem(DB_VERSION_KEY);
-    if (version !== DB_VERSION) {
-      // ВРЕМЕННАЯ ЗАГЛУШКА: используем mockFoodDatabase вместо RUS_PRODUCTS_SEED
+    const stored = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+    const storedProducts = stored ? JSON.parse(stored) : [];
+    
+    // ВРЕМЕННАЯ ЗАГЛУШКА: всегда используем mockFoodDatabase
+    // Перезаписываем базу если версия изменилась ИЛИ база пустая/старая
+    if (version !== DB_VERSION || !stored || storedProducts.length === 0) {
+      console.log(`[FoodService] Инициализация базы продуктов (версия ${DB_VERSION})`);
+      console.log(`[FoodService] Загружено продуктов: ${mockFoodDatabaseAsFood.length}`);
       localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(mockFoodDatabaseAsFood));
       localStorage.setItem(EAN_INDEX_STORAGE_KEY, JSON.stringify(EAN_INDEX_SEED));
       localStorage.setItem(DB_VERSION_KEY, DB_VERSION);
+    } else {
+      console.log(`[FoodService] База уже загружена: ${storedProducts.length} продуктов`);
     }
   }
 
@@ -128,37 +136,10 @@ class FoodService {
     };
   }
 
-  private normalizeText(text: string): string {
-    return text
-      .toLowerCase()
-      .replace(/ё/g, 'е')
-      .replace(/й/g, 'и')
-      .replace(/[^a-zа-я0-9\s]/gi, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  private stemRu(word: string): string {
-    return word.replace(/(ами|ями|ов|ев|ей|ой|ий|ый|ая|яя|ое|ее|ам|ям|ах|ях|ом|ем|ю|а|я|ы|и|ь)$/i, '');
-  }
-
-  // ВРЕМЕННО НЕ ИСПОЛЬЗУЕТСЯ: для mockFoodDatabase используем простой includes
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private _fuzzyMatch(query: string, text?: string | null): boolean {
-    if (!text) return false;
-    const q = this.stemRu(this.normalizeText(query));
-    const t = this.stemRu(this.normalizeText(text));
-    if (!q) return false;
-    if (t === q) return true;
-    if (t.startsWith(q)) return true;
-    if (t.includes(q)) return true;
-    // subsequence
-    let qi = 0;
-    for (let i = 0; i < t.length && qi < q.length; i++) {
-      if (t[i] === q[qi]) qi++;
-    }
-    return qi === q.length;
-  }
+  // ВРЕМЕННО НЕ ИСПОЛЬЗУЮТСЯ: для mockFoodDatabase используем простой includes
+  // Функции оставлены для будущего использования с реальной базой
+  // private normalizeText(text: string): string { ... }
+  // private stemRu(word: string): string { ... }
 
   // === Основной pipeline ===
   private upsertFood(food: Food) {
@@ -175,13 +156,27 @@ class FoodService {
   private searchLocal(query: string, category?: string): Food[] {
     const all = this.loadAll();
     const q = query.toLowerCase().trim();
+    
+    // Отладка: проверяем количество продуктов в базе
+    if (all.length === 0) {
+      console.warn('[FoodService] База продуктов пустая!');
+    }
+    
     const filtered = all.filter((f) => {
       if (category && f.category !== category) return false;
       if (!q) return true;
       // ВРЕМЕННАЯ ЗАГЛУШКА: простой поиск по includes для стабильности
       // Без морфологии и синонимов - только прямое совпадение по name
-      return f.name.toLowerCase().includes(q);
+      const nameMatch = f.name.toLowerCase().includes(q);
+      return nameMatch;
     });
+    
+    // Отладка: логируем результаты поиска
+    if (q && filtered.length === 0) {
+      console.log(`[FoodService] Поиск "${q}": не найдено. Всего продуктов в базе: ${all.length}`);
+      console.log(`[FoodService] Примеры продуктов:`, all.slice(0, 5).map(f => f.name));
+    }
+    
     return filtered.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
   }
 
