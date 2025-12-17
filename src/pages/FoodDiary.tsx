@@ -264,8 +264,8 @@ const FoodDiary = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto">
+    <div className="bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
+      <div className="max-w-[1024px] mx-auto min-h-screen">
         {/* Header */}
         <header className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-3">
