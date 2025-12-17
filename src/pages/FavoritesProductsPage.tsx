@@ -67,14 +67,6 @@ const FavoritesProductsPage = () => {
             }));
           }
           
-          // Фильтруем продукты, которые не использовались более месяца
-          const oneMonthAgo = new Date();
-          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-          const recentOnly = converted.filter((item) => {
-            const lastUsed = new Date(item.lastUsedAt);
-            return lastUsed >= oneMonthAgo;
-          });
-          
           // Дедуплицируем: оставляем только последнюю запись для каждого foodId
           // Если foodId пустой, дедуплицируем по имени
           const deduplicated: RecentFood[] = [];
@@ -82,8 +74,8 @@ const FavoritesProductsPage = () => {
           const seenNames = new Set<string>();
           
           // Проходим в обратном порядке, чтобы оставить последние записи
-          for (let i = recentOnly.length - 1; i >= 0; i--) {
-            const item = recentOnly[i];
+          for (let i = converted.length - 1; i >= 0; i--) {
+            const item = converted[i];
             if (item.foodId && item.foodId.trim()) {
               // Если есть foodId - проверяем по ID
               if (!seenIds.has(item.foodId)) {
@@ -102,8 +94,8 @@ const FavoritesProductsPage = () => {
           
           setRecentFoods(deduplicated);
           
-          // Сохраняем очищенные данные обратно в localStorage
-          if (deduplicated.length !== converted.length || recentOnly.length !== converted.length) {
+          // Сохраняем дедуплицированные данные обратно в localStorage
+          if (deduplicated.length !== converted.length) {
             localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(deduplicated));
           }
         } else {
@@ -178,16 +170,8 @@ const FavoritesProductsPage = () => {
     
     // Используем функциональное обновление состояния для корректной дедупликации
     setRecentFoods((currentRecentFoods) => {
-      // Фильтруем продукты старше месяца
-      const oneMonthAgo = new Date();
-      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      const recentOnly = currentRecentFoods.filter((rf) => {
-        const lastUsed = new Date(rf.lastUsedAt || new Date().toISOString());
-        return lastUsed >= oneMonthAgo;
-      });
-      
       // Удаляем все старые записи с тем же foodId
-      const filtered = recentOnly.filter((rf) => rf.foodId !== entry.foodId);
+      const filtered = currentRecentFoods.filter((rf) => rf.foodId !== entry.foodId);
       
       // Добавляем новую запись в начало с актуальными граммами и текущей датой использования
       const updated = [
