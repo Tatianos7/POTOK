@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, ScanLine, ArrowRight, Trash2 } from 'lucide-react';
+import { ArrowLeft, Mic, ScanLine, ArrowRight } from 'lucide-react';
 import ProductSearch from '../components/ProductSearch';
 import BarcodeScanner from '../components/BarcodeScanner';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
@@ -267,30 +267,6 @@ const FoodSearch = () => {
     });
   };
 
-  /**
-   * Удаление продукта из списка часто используемых
-   * Поддерживает удаление как по foodId, так и по foodName (для старых записей без foodId)
-   */
-  const removeRecent = (foodId: string, foodName?: string) => {
-    if (!user?.id) return;
-    
-    setRecent((currentRecent) => {
-      const filtered = currentRecent.filter((r) => {
-        // Если передан foodId и он не пустой - удаляем по foodId
-        if (foodId && foodId.trim()) {
-          return r.foodId !== foodId;
-        }
-        // Если foodId пустой, но передан foodName - удаляем по имени
-        if (foodName) {
-          return r.foodName.toLowerCase().trim() !== foodName.toLowerCase().trim();
-        }
-        // Если ничего не передано - не удаляем
-        return true;
-      });
-      localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(filtered));
-      return filtered;
-    });
-  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -377,35 +353,21 @@ const FoodSearch = () => {
                 <div className="space-y-2">
                   <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Часто используемые продукты</div>
                   {recent.map((item, index) => (
-                    <div
+                    <button
                       key={item.foodId || `${item.foodName}_${index}`}
-                      className="w-full flex items-start justify-between text-left py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors group"
+                      onClick={() => handleRecentProductClick(item)}
+                      className="w-full flex items-start text-left py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     >
-                      <button
-                        onClick={() => handleRecentProductClick(item)}
-                        className="flex-1 min-w-0 text-left"
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                            {item.foodName}
-                          </span>
-                        </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-6">
-                          {Math.round(item.weight)} г
+                      <div className="flex items-center gap-2 mb-1">
+                        <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                          {item.foodName}
                         </span>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeRecent(item.foodId || '', item.foodName);
-                        }}
-                        className="p-1.5 ml-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        title="Удалить из списка"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
-                      </button>
-                    </div>
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                        {Math.round(item.weight)} г
+                      </span>
+                    </button>
                   ))}
                 </div>
               );
