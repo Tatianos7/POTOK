@@ -234,10 +234,13 @@ const FoodDiary = () => {
     setDailyMeals(updatedMeals);
     
     // Разворачиваем блок приёма пищи, чтобы пользователь видел добавленный продукт
-    setExpandedMeals((prev) => ({
-      ...prev,
-      [mealType]: true,
-    }));
+    // Используем setTimeout чтобы гарантировать, что состояние обновится после setDailyMeals
+    setTimeout(() => {
+      setExpandedMeals((prev) => ({
+        ...prev,
+        [mealType]: true,
+      }));
+    }, 0);
     
     setIsConfirmScannedFoodModalOpen(false);
     setScannedFood(null);
@@ -251,6 +254,9 @@ const FoodDiary = () => {
   const handleAddFood = (entry: MealEntry) => {
     if (!user?.id || !selectedMealType || !dailyMeals) return;
 
+    // Сохраняем тип приёма пищи перед сбросом
+    const mealTypeToExpand = selectedMealType;
+
     mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
     
     // Reload meals
@@ -258,10 +264,13 @@ const FoodDiary = () => {
     setDailyMeals(updatedMeals);
     
     // Разворачиваем блок приёма пищи, чтобы пользователь видел добавленный продукт
-    setExpandedMeals((prev) => ({
-      ...prev,
-      [selectedMealType]: true,
-    }));
+    // Используем setTimeout чтобы гарантировать, что состояние обновится после setDailyMeals
+    setTimeout(() => {
+      setExpandedMeals((prev) => ({
+        ...prev,
+        [mealTypeToExpand]: true,
+      }));
+    }, 0);
     
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
@@ -777,6 +786,10 @@ const FoodDiary = () => {
               setIsRecipeResultOpen(false);
               return;
             }
+            
+            // Сохраняем тип приёма пищи перед сбросом
+            const mealTypeToExpand = selectedMealType;
+            
             ings.forEach((ing) => {
               const food = localAIFoodAnalyzer.toFood(ing);
               const grams = ing.grams ?? 100;
@@ -797,12 +810,13 @@ const FoodDiary = () => {
             setDailyMeals(updated);
             
             // Разворачиваем блок приёма пищи, чтобы пользователь видел добавленные продукты
-            if (selectedMealType) {
+            // Используем setTimeout чтобы гарантировать, что состояние обновится после setDailyMeals
+            setTimeout(() => {
               setExpandedMeals((prev) => ({
                 ...prev,
-                [selectedMealType]: true,
+                [mealTypeToExpand]: true,
               }));
-            }
+            }, 0);
             
             setIsRecipeResultOpen(false);
             setAnalyzedIngredients([]);
