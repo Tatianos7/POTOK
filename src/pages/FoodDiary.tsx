@@ -227,9 +227,6 @@ const FoodDiary = () => {
       carbs: scannedFood.carbs * k,
     };
 
-    // Сохраняем тип приёма пищи для автоматического разворачивания
-    lastAddedMealTypeRef.current = mealType;
-
     mealService.addMealEntry(user.id, selectedDate, mealType, entry);
     
     // Reload meals - useEffect автоматически развернёт блок
