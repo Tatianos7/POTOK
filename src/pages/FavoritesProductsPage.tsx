@@ -182,7 +182,7 @@ const FavoritesProductsPage = () => {
           lastUsedAt: new Date().toISOString(),
         },
         ...filtered,
-      ].slice(0, 10); // Ограничиваем до 10 элементов
+      ].slice(0, 50); // Ограничиваем до 50 элементов
       
       // Сохраняем в localStorage
       localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(updated));

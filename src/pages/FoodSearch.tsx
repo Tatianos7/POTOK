@@ -227,14 +227,14 @@ const FoodSearch = () => {
         }
       });
       
-      // Добавляем новую запись с текущей датой использования в начало и ограничиваем до 10 элементов
+      // Добавляем новую запись с текущей датой использования в начало и ограничиваем до 50 элементов
       const updated = [
         {
           ...recentFood,
           lastUsedAt: new Date().toISOString(),
         },
         ...filtered,
-      ].slice(0, 10);
+      ].slice(0, 50);
       
       // Сохраняем в localStorage
       localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(updated));
