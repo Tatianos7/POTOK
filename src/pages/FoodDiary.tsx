@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check } from 'lucide-react';
@@ -54,6 +54,9 @@ const FoodDiary = () => {
   // State для редактирования записи продукта
   const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
   const [isEditEntryModalOpen, setIsEditEntryModalOpen] = useState(false);
+  
+  // Ref для отслеживания последнего добавленного типа приёма пищи
+  const lastAddedMealTypeRef = useRef<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
   
   // Переключение состояния раскрытия приёма пищи
   const toggleMealExpanded = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
@@ -227,20 +230,14 @@ const FoodDiary = () => {
       carbs: scannedFood.carbs * k,
     };
 
+    // Сохраняем тип приёма пищи для автоматического разворачивания
+    lastAddedMealTypeRef.current = mealType;
+
     mealService.addMealEntry(user.id, selectedDate, mealType, entry);
     
-    // Reload meals
+    // Reload meals - useEffect автоматически развернёт блок
     const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
     setDailyMeals(updatedMeals);
-    
-    // Разворачиваем блок приёма пищи, чтобы пользователь видел добавленный продукт
-    // Используем setTimeout чтобы гарантировать, что состояние обновится после setDailyMeals
-    setTimeout(() => {
-      setExpandedMeals((prev) => ({
-        ...prev,
-        [mealType]: true,
-      }));
-    }, 0);
     
     setIsConfirmScannedFoodModalOpen(false);
     setScannedFood(null);
@@ -254,23 +251,14 @@ const FoodDiary = () => {
   const handleAddFood = (entry: MealEntry) => {
     if (!user?.id || !selectedMealType || !dailyMeals) return;
 
-    // Сохраняем тип приёма пищи перед сбросом
-    const mealTypeToExpand = selectedMealType;
+    // Сохраняем тип приёма пищи для автоматического разворачивания
+    lastAddedMealTypeRef.current = selectedMealType;
 
     mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
     
-    // Reload meals
+    // Reload meals - useEffect автоматически развернёт блок
     const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
     setDailyMeals(updatedMeals);
-    
-    // Разворачиваем блок приёма пищи, чтобы пользователь видел добавленный продукт
-    // Используем setTimeout чтобы гарантировать, что состояние обновится после setDailyMeals
-    setTimeout(() => {
-      setExpandedMeals((prev) => ({
-        ...prev,
-        [mealTypeToExpand]: true,
-      }));
-    }, 0);
     
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
@@ -787,8 +775,8 @@ const FoodDiary = () => {
               return;
             }
             
-            // Сохраняем тип приёма пищи перед сбросом
-            const mealTypeToExpand = selectedMealType;
+            // Сохраняем тип приёма пищи для автоматического разворачивания
+            lastAddedMealTypeRef.current = selectedMealType;
             
             ings.forEach((ing) => {
               const food = localAIFoodAnalyzer.toFood(ing);
@@ -806,17 +794,10 @@ const FoodDiary = () => {
               };
               mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
             });
+            
+            // Reload meals - useEffect автоматически развернёт блок
             const updated = mealService.getMealsForDate(user.id, selectedDate);
             setDailyMeals(updated);
-            
-            // Разворачиваем блок приёма пищи, чтобы пользователь видел добавленные продукты
-            // Используем setTimeout чтобы гарантировать, что состояние обновится после setDailyMeals
-            setTimeout(() => {
-              setExpandedMeals((prev) => ({
-                ...prev,
-                [mealTypeToExpand]: true,
-              }));
-            }, 0);
             
             setIsRecipeResultOpen(false);
             setAnalyzedIngredients([]);
