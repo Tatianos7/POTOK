@@ -7,7 +7,7 @@ import AddFoodToMealModal from '../components/AddFoodToMealModal';
 import { Food, MealEntry, UserCustomFood } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { mealService } from '../services/mealService';
-import { favoritesService } from '../services/favoritesService';
+import { foodService } from '../services/foodService';
 
 interface LocationState {
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -31,13 +31,43 @@ const FoodSearch = () => {
     [state?.selectedDate]
   );
 
-  const handleSelect = (food: Food | UserCustomFood) => {
-    if (user?.id && favoritesService.isFavorite(user.id, food.id)) {
-      navigate('/nutrition/favorites', { state: { mealType: selectedMealType, selectedDate, preselectName: food.name } });
-      return;
-    }
+  // Единый обработчик для открытия модального окна добавления продукта
+  const openAddProductSheet = (food: Food | UserCustomFood) => {
+    // НЕ проверяем избранное - просто открываем модальное окно
     setSelectedFood(food as Food);
     setIsAddFoodModalOpen(true);
+  };
+
+  const handleSelect = (food: Food | UserCustomFood) => {
+    // Используем единый обработчик для всех продуктов
+    openAddProductSheet(food);
+    addRecent(food.name);
+  };
+
+  // Обработчик для часто используемых продуктов
+  const handleRecentProductClick = async (productName: string) => {
+    if (!productName || !productName.trim()) {
+      console.warn('Empty product name');
+      return;
+    }
+
+    try {
+      // Ищем продукт по имени (точное совпадение или начало строки)
+      const results = await foodService.search(productName.trim(), { limit: 5 });
+      
+      if (results.length > 0) {
+        // Нашли продукт - используем первый результат
+        // НЕ проверяем избранное, НЕ перенаправляем на другие страницы
+        openAddProductSheet(results[0]);
+        addRecent(productName);
+      } else {
+        // Продукт не найден - показываем сообщение пользователю
+        alert(`Продукт "${productName}" не найден в базе. Попробуйте найти его через поиск.`);
+      }
+    } catch (error) {
+      console.error('Error searching for product:', error);
+      alert('Ошибка при поиске продукта. Попробуйте еще раз.');
+    }
   };
 
   const handleAdd = (entry: MealEntry) => {
@@ -164,13 +194,12 @@ const FoodSearch = () => {
 
         {recent.length > 0 && (
           <div className="space-y-2">
+            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Часто используемые продукты</div>
             {recent.map((item) => (
               <button
                 key={item}
-                onClick={() => {
-                  navigate('/nutrition/favorites', { state: { mealType: selectedMealType, selectedDate, preselectName: item } });
-                }}
-                className="w-full flex items-center gap-2 text-left text-sm text-gray-800 dark:text-gray-200 py-2"
+                onClick={() => handleRecentProductClick(item)}
+                className="w-full flex items-center gap-2 text-left text-sm text-gray-800 dark:text-gray-200 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
               >
                 <ArrowRight className="w-4 h-4 text-gray-500" />
                 <span>{item}</span>
@@ -181,10 +210,7 @@ const FoodSearch = () => {
 
         <div className="space-y-2">
           <ProductSearch
-            onSelect={(food) => {
-              handleSelect(food);
-              addRecent(food.name);
-            }}
+            onSelect={handleSelect}
             userId={user?.id || ''}
             value={query}
             onChangeQuery={(q) => setQuery(q)}
