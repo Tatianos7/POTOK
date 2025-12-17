@@ -178,6 +178,15 @@ const FoodDiary = () => {
   const remainingFat = Math.max(0, Math.round((dailyFat - consumedFat) * 10) / 10);
   const remainingCarbs = Math.max(0, Math.round((dailyCarbs - consumedCarbs) * 10) / 10);
 
+  // Вычисляем перебор (когда съели больше нормы)
+  const overCalories = consumedCalories > dailyCalories ? Math.round(consumedCalories - dailyCalories) : 0;
+  const overProtein = consumedProtein > dailyProtein ? Math.round((consumedProtein - dailyProtein) * 10) / 10 : 0;
+  const overFat = consumedFat > dailyFat ? Math.round((consumedFat - dailyFat) * 10) / 10 : 0;
+  const overCarbs = consumedCarbs > dailyCarbs ? Math.round(consumedCarbs - dailyCarbs) : 0;
+
+  // Проверяем, есть ли перебор по любому из показателей
+  const hasOverConsumption = overCalories > 0 || overProtein > 0 || overFat > 0 || overCarbs > 0;
+
   const handleMealClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
     setSelectedMealType(mealType);
     navigate('/nutrition/search', { state: { mealType, selectedDate } });
@@ -567,35 +576,55 @@ const FoodDiary = () => {
           </div>
 
           {/* Remaining Nutrients Summary */}
-          <div className="mb-6">
+          <div className={`mb-6 p-4 rounded-lg ${hasOverConsumption ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : ''}`}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase">
+              <h2 className={`text-sm font-medium uppercase ${hasOverConsumption ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                 ОСТАЛОСЬ
               </h2>
               <div className="flex gap-4">
                 <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Белки</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {remainingProtein} г
+                  <p className={`text-xs mb-1 ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Белки</p>
+                  <p className={`text-sm font-semibold ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                    {overProtein > 0 ? Math.round(consumedProtein) : remainingProtein} г
                   </p>
+                  {overProtein > 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+                      +{overProtein} г
+                    </p>
+                  )}
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Жиры</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {remainingFat} г
+                  <p className={`text-xs mb-1 ${hasOverConsumption && overFat > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Жиры</p>
+                  <p className={`text-sm font-semibold ${hasOverConsumption && overFat > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                    {overFat > 0 ? Math.round(consumedFat) : remainingFat} г
                   </p>
+                  {overFat > 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+                      +{overFat} г
+                    </p>
+                  )}
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Углеводы</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {remainingCarbs} г
+                  <p className={`text-xs mb-1 ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Углеводы</p>
+                  <p className={`text-sm font-semibold ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                    {overCarbs > 0 ? Math.round(consumedCarbs) : remainingCarbs} г
                   </p>
+                  {overCarbs > 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+                      +{overCarbs} г
+                    </p>
+                  )}
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Калории</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {remainingCalories} ккал
+                  <p className={`text-xs mb-1 ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Калории</p>
+                  <p className={`text-sm font-semibold ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                    {overCalories > 0 ? Math.round(consumedCalories) : remainingCalories} ккал
                   </p>
+                  {overCalories > 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+                      +{overCalories} ккал
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

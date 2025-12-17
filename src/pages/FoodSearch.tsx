@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, ScanLine, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Mic, ScanLine, ArrowRight, Trash2, Check, Circle } from 'lucide-react';
 import ProductSearch from '../components/ProductSearch';
 import BarcodeScanner from '../components/BarcodeScanner';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
@@ -34,6 +34,8 @@ const FoodSearch = () => {
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
   const [defaultWeight, setDefaultWeight] = useState<number | undefined>(undefined);
   const [selectedMealType] = useState<LocationState['mealType']>(state?.mealType || 'breakfast');
+  const [activeTab, setActiveTab] = useState<'search' | 'favorites'>('search');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedDate = useMemo(
     () => state?.selectedDate || new Date().toISOString().split('T')[0],
     [state?.selectedDate]
@@ -61,6 +63,15 @@ const FoodSearch = () => {
     openAddProductSheet(food);
     // Не добавляем в recent здесь, т.к. граммы еще не известны
     // Добавим в handleAdd после добавления продукта с граммами
+  };
+
+  // Автоматически переключаемся на режим поиска при вводе в поле поиска в режиме избранного
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    // Если пользователь начал вводить в режиме избранного - переключаемся на поиск
+    if (activeTab === 'favorites' && value.trim().length > 0) {
+      setActiveTab('search');
+    }
   };
 
   /**
@@ -100,6 +111,7 @@ const FoodSearch = () => {
       if (food) {
         // Нашли продукт - открываем модальное окно добавления
         // Передаем сохраненные граммы для предзаполнения
+        setSelectedId(food.id);
         setSelectedFood(food);
         setDefaultWeight(recentFood.weight);
         setIsAddFoodModalOpen(true);
@@ -128,6 +140,8 @@ const FoodSearch = () => {
     
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
+    setSelectedId(null);
+    setDefaultWeight(undefined);
     navigate('/nutrition');
   };
 
@@ -267,6 +281,35 @@ const FoodSearch = () => {
     });
   };
 
+  // Удаление продукта из избранного
+  const removeRecent = (foodId: string, foodName?: string) => {
+    if (!user?.id) return;
+    
+    setRecent((currentRecent) => {
+      const filtered = currentRecent.filter((rf) => {
+        // Если передан foodId и он не пустой - удаляем по foodId
+        if (foodId && foodId.trim()) {
+          return rf.foodId !== foodId;
+        }
+        // Если foodId пустой, но передан foodName - удаляем по имени
+        if (foodName) {
+          return rf.foodName.toLowerCase().trim() !== foodName.toLowerCase().trim();
+        }
+        // Если ничего не передано - не удаляем
+        return true;
+      });
+      localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(filtered));
+      return filtered;
+    });
+  };
+
+  // Фильтрация избранных продуктов по запросу
+  const filteredFavorites = recent.filter((rf) => {
+    if (!query.trim()) return true;
+    const q = query.toLowerCase();
+    return rf.foodName.toLowerCase().includes(q);
+  });
+
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -274,19 +317,28 @@ const FoodSearch = () => {
       <header className="px-4 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-1">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (activeTab === 'favorites') {
+                setActiveTab('search');
+                setQuery('');
+              } else {
+                navigate(-1);
+              }
+            }}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           </button>
           <div className="text-center flex-1">
-            <h1 className="text-sm font-semibold text-gray-900 dark:text-white uppercase">{title}</h1>
+            <h1 className="text-sm font-semibold text-gray-900 dark:text-white uppercase">
+              {activeTab === 'favorites' ? 'ИЗБРАННОЕ' : title}
+            </h1>
             <p className="text-xs text-gray-500 dark:text-gray-400">{selectedDate}</p>
           </div>
           <div className="w-10" />
         </div>
 
-        {/* Tabs mock */}
+        {/* Tabs */}
         <div className="flex justify-center text-[11px] uppercase text-gray-600 dark:text-gray-300 gap-4 mt-4">
           <button
             className="pb-2 border-b-2 border-transparent"
@@ -301,8 +353,15 @@ const FoodSearch = () => {
             Рецепты
           </button>
           <button
-            className="pb-2 border-b-2 border-transparent text-gray-800 dark:text-gray-200 font-normal"
-            onClick={() => navigate('/nutrition/favorites', { state: { mealType: selectedMealType, selectedDate } })}
+            className={`pb-2 border-b-2 ${
+              activeTab === 'favorites'
+                ? 'border-gray-800 dark:border-gray-200 text-gray-800 dark:text-gray-200 font-semibold'
+                : 'border-transparent'
+            }`}
+            onClick={() => {
+              setActiveTab('favorites');
+              setQuery('');
+            }}
           >
             Избранное
           </button>
@@ -319,8 +378,8 @@ const FoodSearch = () => {
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Поиск еды"
+            onChange={(e) => handleQueryChange(e.target.value)}
+            placeholder={activeTab === 'favorites' ? 'Поиск избранного' : 'Поиск еды'}
             className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white ml-2"
             style={{ height: '100%' }}
           />
@@ -340,55 +399,115 @@ const FoodSearch = () => {
           </button>
         </div>
 
-        {/* Взаимоисключающий рендер: либо часто используемые, либо результаты поиска */}
-        {(() => {
-          const hasQuery = query.trim().length > 0;
-          
-          // Если поле поиска ПУСТОЕ - показываем ТОЛЬКО часто используемые продукты
-          // ProductSearch НЕ рендерится вообще
-          if (!hasQuery) {
-            // Рендерим часто используемые продукты только если они есть
-            if (recent.length > 0) {
+        {/* Рендер в зависимости от активной вкладки */}
+        {activeTab === 'favorites' ? (
+          // Режим избранного
+          <div className="divide-y divide-gray-200 dark:divide-gray-800 mt-3 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
+            {filteredFavorites.map((recentFood) => {
+              const food = foodService.getFoodById(recentFood.foodId, user?.id);
+              if (!food) return null; // Пропускаем продукты, которые не найдены в базе
+              
+              const isActive = selectedId === recentFood.foodId;
               return (
-                <div className="space-y-2">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Часто используемые продукты</div>
-                  {recent.map((item, index) => (
-                    <button
-                      key={item.foodId || `${item.foodName}_${index}`}
-                      onClick={() => handleRecentProductClick(item)}
-                      className="w-full flex items-start text-left py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                    >
-                      <div className="flex items-center gap-2 mb-1">
-                        <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                          {item.foodName}
-                        </span>
-                      </div>
-                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-6">
-                        {Math.round(item.weight)} г
+                <div
+                  key={recentFood.foodId || recentFood.foodName}
+                  className="w-full flex items-start px-3 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                >
+                  <div className="mr-3 mt-0.5">
+                    {isActive ? (
+                      <Check className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <Circle className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleRecentProductClick(recentFood)}
+                    className="flex-1 min-w-0 text-left"
+                  >
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white truncate mb-1">
+                      {recentFood.foodName}
+                    </div>
+                    <div className="text-[11px] flex gap-2">
+                      <span className="text-green-600 dark:text-green-400">
+                        {Math.round(recentFood.weight)} г
                       </span>
-                    </button>
-                  ))}
+                      {food && (
+                        <span className="text-gray-500 dark:text-gray-400">
+                          {Math.round((food.calories * recentFood.weight) / 100)} ккал
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeRecent(recentFood.foodId || '', recentFood.foodName);
+                    }}
+                    className="p-1.5 ml-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    title="Удалить из списка"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
+                  </button>
                 </div>
               );
+            })}
+            {filteredFavorites.length === 0 && (
+              <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                {query.trim() ? 'Ничего не найдено' : 'Нет избранных продуктов'}
+              </div>
+            )}
+          </div>
+        ) : (
+          // Режим поиска
+          (() => {
+            const hasQuery = query.trim().length > 0;
+            
+            // Если поле поиска ПУСТОЕ - показываем ТОЛЬКО часто используемые продукты
+            // ProductSearch НЕ рендерится вообще
+            if (!hasQuery) {
+              // Рендерим часто используемые продукты только если они есть
+              if (recent.length > 0) {
+                return (
+                  <div className="space-y-2">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Часто используемые продукты</div>
+                    {recent.map((item, index) => (
+                      <button
+                        key={item.foodId || `${item.foodName}_${index}`}
+                        onClick={() => handleRecentProductClick(item)}
+                        className="w-full flex items-start text-left py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                            {item.foodName}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                          {Math.round(item.weight)} г
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              }
+              // Если нет часто используемых продуктов и запрос пустой - ничего не показываем
+              return null;
             }
-            // Если нет часто используемых продуктов и запрос пустой - ничего не показываем
-            return null;
-          }
-          
-          // Если пользователь НАЧАЛ ВВОД (hasQuery === true):
-          // - часто используемые продукты НЕ рендерятся
-          // - показываем ТОЛЬКО результаты поиска
-          return (
-            <ProductSearch
-              onSelect={handleSelect}
-              userId={user?.id || ''}
-              value={query}
-              onChangeQuery={(q) => setQuery(q)}
-              hideInput
-            />
-          );
-        })()}
+            
+            // Если пользователь НАЧАЛ ВВОД (hasQuery === true):
+            // - часто используемые продукты НЕ рендерятся
+            // - показываем ТОЛЬКО результаты поиска
+            return (
+              <ProductSearch
+                onSelect={handleSelect}
+                userId={user?.id || ''}
+                value={query}
+                onChangeQuery={(q) => handleQueryChange(q)}
+                hideInput
+              />
+            );
+          })()
+        )}
       </main>
 
       {/* Bottom bar */}
@@ -438,6 +557,7 @@ const FoodSearch = () => {
         onClose={() => {
           setIsAddFoodModalOpen(false);
           setSelectedFood(null);
+          setSelectedId(null);
           setDefaultWeight(undefined);
         }}
         onAdd={handleAdd}
