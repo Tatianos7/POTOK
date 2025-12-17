@@ -595,7 +595,7 @@ const FoodDiary = () => {
                   ВОДА
                 </h2>
                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                         {dailyMeals?.water || 0} стакан(ов) · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
+                         {dailyMeals?.water || 0} ст. · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
                        </p>
               </div>
               <div className="flex gap-1">
