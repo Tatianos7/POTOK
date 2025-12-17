@@ -10,11 +10,24 @@ interface AddFoodToMealModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAdd: (entry: MealEntry) => void;
+  defaultWeight?: number; // Предзаполненные граммы для часто используемых продуктов
 }
 
-const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd }: AddFoodToMealModalProps) => {
-  const [quantity, setQuantity] = useState('100');
+const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: AddFoodToMealModalProps) => {
+  const [quantity, setQuantity] = useState(() => {
+    // Если передан defaultWeight, используем его, иначе дефолт 100
+    return defaultWeight ? defaultWeight.toString() : '100';
+  });
   const [unit, setUnit] = useState<Unit>('g');
+  
+  // Обновляем quantity при изменении food или defaultWeight
+  useEffect(() => {
+    if (food && defaultWeight) {
+      setQuantity(defaultWeight.toString());
+    } else if (food && !defaultWeight) {
+      setQuantity('100');
+    }
+  }, [food, defaultWeight]);
   const [calculated, setCalculated] = useState({
     calories: 0,
     protein: 0,

@@ -14,6 +14,12 @@ interface LocationState {
   selectedDate?: string;
 }
 
+interface RecentFood {
+  foodId: string;
+  foodName: string;
+  weight: number; // в граммах
+}
+
 const FoodSearch = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -21,10 +27,11 @@ const FoodSearch = () => {
   const state = location.state as LocationState | undefined;
 
   const [query, setQuery] = useState('');
-  const [recent, setRecent] = useState<string[]>([]);
+  const [recent, setRecent] = useState<RecentFood[]>([]);
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
+  const [defaultWeight, setDefaultWeight] = useState<number | undefined>(undefined);
   const [selectedMealType] = useState<LocationState['mealType']>(state?.mealType || 'breakfast');
   const selectedDate = useMemo(
     () => state?.selectedDate || new Date().toISOString().split('T')[0],
@@ -51,37 +58,39 @@ const FoodSearch = () => {
    */
   const handleSelect = (food: Food | UserCustomFood) => {
     openAddProductSheet(food);
-    addRecent(food.name);
+    // Не добавляем в recent здесь, т.к. граммы еще не известны
+    // Добавим в handleAdd после добавления продукта с граммами
   };
 
   /**
    * Обработчик клика по часто используемому продукту
    * 
    * ПРАВИЛЬНОЕ ПОВЕДЕНИЕ:
-   * - Ищет продукт по имени в базе данных
-   * - Открывает модальное окно добавления продукта (то же самое, что при обычном поиске)
+   * - Находит продукт по foodId в базе данных
+   * - Открывает модальное окно добавления продукта с предзаполненными граммами
    * - НЕ проверяет избранное
    * - НЕ перенаправляет на страницу "Избранное"
    * - НЕ меняет вкладки
    */
-  const handleRecentProductClick = async (productName: string) => {
-    if (!productName || !productName.trim()) {
-      console.warn('Empty product name');
+  const handleRecentProductClick = async (recentFood: RecentFood) => {
+    if (!recentFood || !recentFood.foodId) {
+      console.warn('Invalid recent food');
       return;
     }
 
     try {
-      // Ищем продукт по имени в базе данных
-      const results = await foodService.search(productName.trim(), { limit: 5 });
+      // Ищем продукт по ID в базе данных
+      const food = foodService.getFoodById(recentFood.foodId, user?.id);
       
-      if (results.length > 0) {
+      if (food) {
         // Нашли продукт - открываем модальное окно добавления
-        // Используем первый результат (наиболее релевантный)
-        openAddProductSheet(results[0]);
-        addRecent(productName);
+        // Передаем сохраненные граммы для предзаполнения
+        setSelectedFood(food);
+        setDefaultWeight(recentFood.weight);
+        setIsAddFoodModalOpen(true);
       } else {
         // Продукт не найден - показываем сообщение пользователю
-        alert(`Продукт "${productName}" не найден в базе. Попробуйте найти его через поиск.`);
+        alert(`Продукт "${recentFood.foodName}" не найден в базе. Попробуйте найти его через поиск.`);
       }
     } catch (error) {
       console.error('Error searching for product:', error);
@@ -92,6 +101,14 @@ const FoodSearch = () => {
   const handleAdd = (entry: MealEntry) => {
     if (!user?.id || !selectedMealType) return;
     mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
+    
+    // Сохраняем продукт в часто используемые с граммами
+    addRecent({
+      foodId: entry.foodId,
+      foodName: entry.food.name,
+      weight: entry.weight,
+    });
+    
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
     navigate('/nutrition');
@@ -123,18 +140,43 @@ const FoodSearch = () => {
     if (user?.id) {
       try {
         const stored = localStorage.getItem(`recent_food_searches_${user.id}`);
-        if (stored) setRecent(JSON.parse(stored));
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          // Поддержка старого формата (массив строк) и нового формата (массив RecentFood)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            if (typeof parsed[0] === 'string') {
+              // Старый формат - конвертируем в новый
+              const converted: RecentFood[] = parsed.map((name: string) => ({
+                foodId: '', // Будет заполнено при следующем использовании
+                foodName: name,
+                weight: 100, // Дефолтное значение
+              }));
+              setRecent(converted);
+            } else {
+              // Новый формат
+              setRecent(parsed);
+            }
+          } else {
+            setRecent([]);
+          }
+        } else {
+          setRecent([]);
+        }
       } catch {
         setRecent([]);
       }
     }
   }, [user?.id]);
 
-  const addRecent = (q: string) => {
-    if (!user?.id) return;
-    const trimmed = q.trim();
-    if (!trimmed) return;
-    const updated = [trimmed, ...recent.filter((r) => r !== trimmed)].slice(0, 10);
+  const addRecent = (recentFood: RecentFood) => {
+    if (!user?.id || !recentFood.foodId || !recentFood.foodName) return;
+    
+    // Удаляем старую запись с тем же foodId, если есть
+    const updated = [
+      recentFood,
+      ...recent.filter((r) => r.foodId !== recentFood.foodId)
+    ].slice(0, 10); // Ограничиваем до 10 элементов
+    
     setRecent(updated);
     localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(updated));
   };
@@ -223,14 +265,19 @@ const FoodSearch = () => {
               return (
                 <div className="space-y-2">
                   <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Часто используемые продукты</div>
-                  {recent.map((item) => (
+                  {recent.map((item, index) => (
                     <button
-                      key={item}
+                      key={item.foodId || `${item.foodName}_${index}`}
                       onClick={() => handleRecentProductClick(item)}
-                      className="w-full flex items-center gap-2 text-left text-sm text-gray-800 dark:text-gray-200 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                      className="w-full flex items-center justify-between text-left text-sm text-gray-800 dark:text-gray-200 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
                     >
-                      <ArrowRight className="w-4 h-4 text-gray-500" />
-                      <span>{item}</span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        <span className="truncate">{item.foodName}</span>
+                      </div>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
+                        {Math.round(item.weight)} г
+                      </span>
                     </button>
                   ))}
                 </div>
@@ -302,8 +349,10 @@ const FoodSearch = () => {
         onClose={() => {
           setIsAddFoodModalOpen(false);
           setSelectedFood(null);
+          setDefaultWeight(undefined);
         }}
         onAdd={handleAdd}
+        defaultWeight={defaultWeight}
       />
     </div>
   );
