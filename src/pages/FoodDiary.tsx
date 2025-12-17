@@ -139,25 +139,6 @@ const FoodDiary = () => {
     }
   }, [selectedDate, user?.id]);
 
-  // Автоматически разворачиваем блок приёма пищи после добавления продукта
-  useEffect(() => {
-    if (lastAddedMealTypeRef.current && dailyMeals) {
-      const mealType = lastAddedMealTypeRef.current;
-      const mealEntries = dailyMeals[mealType] || [];
-      
-      // Разворачиваем блок, если в нём есть продукты
-      if (mealEntries.length > 0) {
-        setExpandedMeals((prev) => ({
-          ...prev,
-          [mealType]: true,
-        }));
-      }
-      
-      // Сбрасываем ref после разворачивания
-      lastAddedMealTypeRef.current = null;
-    }
-  }, [dailyMeals]);
-
   // Calculate totals
   const dayTotals = dailyMeals ? mealService.calculateDayTotals(dailyMeals) : { calories: 0, protein: 0, fat: 0, carbs: 0 };
   
