@@ -1,7 +1,8 @@
 import { Food, UserCustomFood } from '../types';
 import { CATEGORY_DEFAULTS } from '../data/categoryDefaults';
-import { RUS_PRODUCTS_SEED } from '../data/rusProductsSeed';
+// import { RUS_PRODUCTS_SEED } from '../data/rusProductsSeed'; // Временно не используется - используем mockFoodDatabase
 import { EAN_INDEX_SEED } from '../data/eanIndexSeed';
+import { mockFoodDatabaseAsFood } from '../data/mockFoodDatabase';
 import { barcodeLookupService } from './barcodeLookupService';
 
 /**
@@ -31,10 +32,12 @@ class FoodService {
   }
 
   // Полная очистка старой базы при смене версии
+  // ВРЕМЕННО: используем mockFoodDatabase для тестирования дневника питания
   private initializeStorage() {
     const version = localStorage.getItem(DB_VERSION_KEY);
     if (version !== DB_VERSION) {
-      localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(RUS_PRODUCTS_SEED));
+      // ВРЕМЕННАЯ ЗАГЛУШКА: используем mockFoodDatabase вместо RUS_PRODUCTS_SEED
+      localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(mockFoodDatabaseAsFood));
       localStorage.setItem(EAN_INDEX_STORAGE_KEY, JSON.stringify(EAN_INDEX_SEED));
       localStorage.setItem(DB_VERSION_KEY, DB_VERSION);
     }
@@ -139,7 +142,9 @@ class FoodService {
     return word.replace(/(ами|ями|ов|ев|ей|ой|ий|ый|ая|яя|ое|ее|ам|ям|ах|ях|ом|ем|ю|а|я|ы|и|ь)$/i, '');
   }
 
-  private fuzzyMatch(query: string, text?: string | null): boolean {
+  // ВРЕМЕННО НЕ ИСПОЛЬЗУЕТСЯ: для mockFoodDatabase используем простой includes
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private _fuzzyMatch(query: string, text?: string | null): boolean {
     if (!text) return false;
     const q = this.stemRu(this.normalizeText(query));
     const t = this.stemRu(this.normalizeText(text));
@@ -173,13 +178,9 @@ class FoodService {
     const filtered = all.filter((f) => {
       if (category && f.category !== category) return false;
       if (!q) return true;
-      const aliases = f.aliases || (f as any).synonyms || [];
-      return (
-        this.fuzzyMatch(q, f.name) ||
-        this.fuzzyMatch(q, f.name_original) ||
-        this.fuzzyMatch(q, f.brand) ||
-        aliases.some((a: string) => this.fuzzyMatch(q, a))
-      );
+      // ВРЕМЕННАЯ ЗАГЛУШКА: простой поиск по includes для стабильности
+      // Без морфологии и синонимов - только прямое совпадение по name
+      return f.name.toLowerCase().includes(q);
     });
     return filtered.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
   }
