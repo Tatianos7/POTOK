@@ -245,12 +245,24 @@ const FoodSearch = () => {
 
   /**
    * Удаление продукта из списка часто используемых
+   * Поддерживает удаление как по foodId, так и по foodName (для старых записей без foodId)
    */
-  const removeRecent = (foodId: string) => {
-    if (!user?.id || !foodId) return;
+  const removeRecent = (foodId: string, foodName?: string) => {
+    if (!user?.id) return;
     
     setRecent((currentRecent) => {
-      const filtered = currentRecent.filter((r) => r.foodId !== foodId);
+      const filtered = currentRecent.filter((r) => {
+        // Если передан foodId и он не пустой - удаляем по foodId
+        if (foodId && foodId.trim()) {
+          return r.foodId !== foodId;
+        }
+        // Если foodId пустой, но передан foodName - удаляем по имени
+        if (foodName) {
+          return r.foodName.toLowerCase().trim() !== foodName.toLowerCase().trim();
+        }
+        // Если ничего не передано - не удаляем
+        return true;
+      });
       localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(filtered));
       return filtered;
     });
@@ -362,7 +374,7 @@ const FoodSearch = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          removeRecent(item.foodId);
+                          removeRecent(item.foodId || '', item.foodName);
                         }}
                         className="p-1.5 ml-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
                         title="Удалить из списка"
