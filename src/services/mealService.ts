@@ -45,6 +45,16 @@ class MealService {
     this.saveMealsForDate(userId, meals);
   }
 
+  // Update meal entry
+  updateMealEntry(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entryId: string, updatedEntry: MealEntry): void {
+    const meals = this.getMealsForDate(userId, date);
+    const index = meals[mealType].findIndex((entry) => entry.id === entryId);
+    if (index !== -1) {
+      meals[mealType][index] = updatedEntry;
+      this.saveMealsForDate(userId, meals);
+    }
+  }
+
   // Update water intake
   updateWater(userId: string, date: string, glasses: number): void {
     const meals = this.getMealsForDate(userId, date);

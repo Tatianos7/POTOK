@@ -14,6 +14,7 @@ import ScanConfirmBottomSheet from '../components/ScanConfirmBottomSheet';
 import AddProductModal from '../components/AddProductModal';
 import RecipeAnalyzePicker from '../components/RecipeAnalyzePicker';
 import RecipeAnalyzeResultSheet from '../components/RecipeAnalyzeResultSheet';
+import EditMealEntryModal from '../components/EditMealEntryModal';
 import { localAIFoodAnalyzer, LocalIngredient } from '../services/localAIFoodAnalyzer';
 
 const FoodDiary = () => {
@@ -49,6 +50,10 @@ const FoodDiary = () => {
   
   // State для отметки "съедено" для каждого продукта
   const [eatenEntries, setEatenEntries] = useState<Record<string, boolean>>({});
+  
+  // State для редактирования записи продукта
+  const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
+  const [isEditEntryModalOpen, setIsEditEntryModalOpen] = useState(false);
   
   // Переключение состояния раскрытия приёма пищи
   const toggleMealExpanded = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
@@ -267,6 +272,40 @@ const FoodDiary = () => {
     handleFoodSelect(food);
   };
 
+  const handleEntryClick = (entry: MealEntry, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+    setEditingEntry(entry);
+    setSelectedMealType(mealType);
+    setIsEditEntryModalOpen(true);
+  };
+
+  const handleUpdateEntry = (updatedEntry: MealEntry) => {
+    if (!user?.id || !selectedMealType || !dailyMeals) return;
+
+    mealService.updateMealEntry(user.id, selectedDate, selectedMealType, updatedEntry.id, updatedEntry);
+    
+    // Reload meals
+    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
+    setDailyMeals(updatedMeals);
+    
+    setIsEditEntryModalOpen(false);
+    setEditingEntry(null);
+    setSelectedMealType(null);
+  };
+
+  const handleDeleteEntry = () => {
+    if (!user?.id || !selectedMealType || !editingEntry || !dailyMeals) return;
+
+    mealService.removeMealEntry(user.id, selectedDate, selectedMealType, editingEntry.id);
+    
+    // Reload meals
+    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
+    setDailyMeals(updatedMeals);
+    
+    setIsEditEntryModalOpen(false);
+    setEditingEntry(null);
+    setSelectedMealType(null);
+  };
+
   const getMonthName = () => {
     const months = [
       'ЯНВАРЬ', 'ФЕВРАЛЬ', 'МАРТ', 'АПРЕЛЬ', 'МАЙ', 'ИЮНЬ',
@@ -457,14 +496,21 @@ const FoodDiary = () => {
                             >
                               {/* Вертикальное троеточие */}
                               <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: будущие действия
+                                }}
                                 className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
                                 aria-label="Дополнительные действия"
                               >
                                 <MoreVertical className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                               </button>
                               
-                              {/* Название и БЖУ продукта */}
-                              <div className="flex-1 min-w-0">
+                              {/* Название и БЖУ продукта - кликабельная область */}
+                              <div 
+                                className="flex-1 min-w-0 cursor-pointer"
+                                onClick={() => handleEntryClick(entry, mealType)}
+                              >
                                 <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5">
                                   {entry.food.name}
                                 </p>
@@ -477,7 +523,10 @@ const FoodDiary = () => {
                               
                               {/* Checkbox "съедено" */}
                               <button
-                                onClick={() => toggleEntryEaten(entry.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleEntryEaten(entry.id);
+                                }}
                                 className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
                                   isEaten
                                     ? 'border-green-500 bg-green-500'
@@ -739,6 +788,20 @@ const FoodDiary = () => {
           }}
         />
       )}
+
+      <EditMealEntryModal
+        entry={editingEntry}
+        mealType={selectedMealType}
+        date={selectedDate}
+        isOpen={isEditEntryModalOpen}
+        onClose={() => {
+          setIsEditEntryModalOpen(false);
+          setEditingEntry(null);
+          setSelectedMealType(null);
+        }}
+        onSave={handleUpdateEntry}
+        onDelete={handleDeleteEntry}
+      />
     </div>
   );
 };
