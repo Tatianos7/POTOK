@@ -427,3 +427,4 @@ export const mockFoodDatabase: MockFoodProduct[] = [
 // Экспорт конвертированной базы для использования в foodService
 export const mockFoodDatabaseAsFood: Food[] = mockFoodDatabase.map(convertMockFoodToFood);
 
+

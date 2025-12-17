@@ -211,31 +211,48 @@ const FoodSearch = () => {
           </button>
         </div>
 
-        {recent.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Часто используемые продукты</div>
-            {recent.map((item) => (
-              <button
-                key={item}
-                onClick={() => handleRecentProductClick(item)}
-                className="w-full flex items-center gap-2 text-left text-sm text-gray-800 dark:text-gray-200 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              >
-                <ArrowRight className="w-4 h-4 text-gray-500" />
-                <span>{item}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <ProductSearch
-            onSelect={handleSelect}
-            userId={user?.id || ''}
-            value={query}
-            onChangeQuery={(q) => setQuery(q)}
-            hideInput
-          />
-        </div>
+        {/* Взаимоисключающий рендер: либо часто используемые, либо результаты поиска */}
+        {(() => {
+          const hasQuery = query.trim().length > 0;
+          
+          // Если поле поиска ПУСТОЕ - показываем ТОЛЬКО часто используемые продукты
+          // ProductSearch НЕ рендерится вообще
+          if (!hasQuery) {
+            // Рендерим часто используемые продукты только если они есть
+            if (recent.length > 0) {
+              return (
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Часто используемые продукты</div>
+                  {recent.map((item) => (
+                    <button
+                      key={item}
+                      onClick={() => handleRecentProductClick(item)}
+                      className="w-full flex items-center gap-2 text-left text-sm text-gray-800 dark:text-gray-200 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    >
+                      <ArrowRight className="w-4 h-4 text-gray-500" />
+                      <span>{item}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            }
+            // Если нет часто используемых продуктов и запрос пустой - ничего не показываем
+            return null;
+          }
+          
+          // Если пользователь НАЧАЛ ВВОД (hasQuery === true):
+          // - часто используемые продукты НЕ рендерятся
+          // - показываем ТОЛЬКО результаты поиска
+          return (
+            <ProductSearch
+              onSelect={handleSelect}
+              userId={user?.id || ''}
+              value={query}
+              onChangeQuery={(q) => setQuery(q)}
+              hideInput
+            />
+          );
+        })()}
       </main>
 
       {/* Bottom bar */}
