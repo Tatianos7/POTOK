@@ -23,8 +23,7 @@ const Recipes = () => {
   }, [activeTab, user?.id]);
 
   const handleRecipeClick = (recipe: Recipe) => {
-    // TODO: открыть детальную страницу рецепта или модальное окно
-    console.log('Recipe clicked:', recipe);
+    navigate(`/nutrition/recipes/${recipe.id}`);
   };
 
   return (
