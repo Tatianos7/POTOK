@@ -17,6 +17,7 @@ interface RecentFood {
   foodId: string;
   foodName: string;
   weight: number; // в граммах
+  lastUsedAt: string; // ISO дата последнего использования
 }
 
 const FavoritesProductsPage = () => {
@@ -56,11 +57,23 @@ const FavoritesProductsPage = () => {
               foodId: '', // Будет заполнено при следующем использовании
               foodName: name,
               weight: 100, // Дефолтное значение
+              lastUsedAt: new Date().toISOString(), // Устанавливаем текущую дату
             }));
           } else {
-            // Новый формат
-            converted = parsed;
+            // Новый формат - добавляем lastUsedAt если его нет (для совместимости)
+            converted = parsed.map((item: any) => ({
+              ...item,
+              lastUsedAt: item.lastUsedAt || new Date().toISOString(),
+            }));
           }
+          
+          // Фильтруем продукты, которые не использовались более месяца
+          const oneMonthAgo = new Date();
+          oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+          const recentOnly = converted.filter((item) => {
+            const lastUsed = new Date(item.lastUsedAt);
+            return lastUsed >= oneMonthAgo;
+          });
           
           // Дедуплицируем: оставляем только последнюю запись для каждого foodId
           // Если foodId пустой, дедуплицируем по имени
@@ -69,8 +82,8 @@ const FavoritesProductsPage = () => {
           const seenNames = new Set<string>();
           
           // Проходим в обратном порядке, чтобы оставить последние записи
-          for (let i = converted.length - 1; i >= 0; i--) {
-            const item = converted[i];
+          for (let i = recentOnly.length - 1; i >= 0; i--) {
+            const item = recentOnly[i];
             if (item.foodId && item.foodId.trim()) {
               // Если есть foodId - проверяем по ID
               if (!seenIds.has(item.foodId)) {
@@ -89,8 +102,8 @@ const FavoritesProductsPage = () => {
           
           setRecentFoods(deduplicated);
           
-          // Сохраняем дедуплицированные данные обратно в localStorage
-          if (deduplicated.length !== converted.length) {
+          // Сохраняем очищенные данные обратно в localStorage
+          if (deduplicated.length !== converted.length || recentOnly.length !== converted.length) {
             localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(deduplicated));
           }
         } else {
@@ -165,15 +178,24 @@ const FavoritesProductsPage = () => {
     
     // Используем функциональное обновление состояния для корректной дедупликации
     setRecentFoods((currentRecentFoods) => {
-      // Удаляем все старые записи с тем же foodId
-      const filtered = currentRecentFoods.filter((rf) => rf.foodId !== entry.foodId);
+      // Фильтруем продукты старше месяца
+      const oneMonthAgo = new Date();
+      oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      const recentOnly = currentRecentFoods.filter((rf) => {
+        const lastUsed = new Date(rf.lastUsedAt || new Date().toISOString());
+        return lastUsed >= oneMonthAgo;
+      });
       
-      // Добавляем новую запись в начало с актуальными граммами
+      // Удаляем все старые записи с тем же foodId
+      const filtered = recentOnly.filter((rf) => rf.foodId !== entry.foodId);
+      
+      // Добавляем новую запись в начало с актуальными граммами и текущей датой использования
       const updated = [
         {
           foodId: entry.foodId,
           foodName: entry.food.name,
           weight: entry.weight,
+          lastUsedAt: new Date().toISOString(),
         },
         ...filtered,
       ].slice(0, 10); // Ограничиваем до 10 элементов
