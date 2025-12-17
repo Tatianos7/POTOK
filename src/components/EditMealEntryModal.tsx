@@ -198,7 +198,7 @@ const EditMealEntryModal = ({
           <div className="flex gap-4 justify-center">
             <button
               type="button"
-              className="flex flex-col items-center gap-2 p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <Pencil className="w-5 h-5 text-gray-700 dark:text-gray-300" />
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -208,7 +208,7 @@ const EditMealEntryModal = ({
 
             <button
               type="button"
-              className="flex flex-col items-center gap-2 p-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               <Camera className="w-5 h-5 text-gray-700 dark:text-gray-300" />
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
