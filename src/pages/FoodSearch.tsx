@@ -376,7 +376,7 @@ const FoodSearch = () => {
                           e.stopPropagation();
                           removeRecent(item.foodId || '', item.foodName);
                         }}
-                        className="p-1.5 ml-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                        className="p-1.5 ml-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         title="Удалить из списка"
                       >
                         <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
