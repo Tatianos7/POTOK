@@ -569,7 +569,7 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   const amountGrams =
     finalAmount !== null && finalUnit ? convertToGrams(finalAmount, finalUnit, name) : 0;
 
-  // ФИНАЛЬНАЯ ПРОВЕРКА: убеждаемся, что название не содержит единиц измерения
+  // ФИНАЛЬНАЯ ПРОВЕРКА: убеждаемся, что название не содержит единиц измерения и чисел
   // Если единицы все еще есть, удаляем их еще раз
   const finalCleanPatterns = [
     /\bч\.?\s*л\.?\b/gi,
@@ -587,12 +587,52 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
     /\bштук\w*\b/gi,
     /\bдольк\w*\b/gi,
     /\bзубчик\w*\b/gi,
+    // Удаляем все числа (включая диапазоны и десятичные)
+    /\d+[.,]?\d*\s*[–-]\s*\d+[.,]?\d*/g, // диапазоны
+    /\d+[.,]?\d*/g, // обычные числа
   ];
   
   let cleanedName = name;
   for (const pattern of finalCleanPatterns) {
     cleanedName = cleanedName.replace(pattern, ' ');
   }
+  cleanedName = cleanedName.replace(/\s+/g, ' ').trim();
+  
+  // Дополнительная очистка: удаляем любые оставшиеся числа и единицы
+  cleanedName = cleanedName.replace(/\d+/g, ''); // удаляем все числа
+  
+  // Агрессивное удаление единиц измерения (включая с точками и запятыми)
+  const unitPatternsAggressive = [
+    /\bгр?\.?\b/gi,  // г, гр, гр.
+    /\bкг\.?\b/gi,   // кг, кг.
+    /\bл\.?\b(?!\w)/gi,  // л, л. (но не часть слова)
+    /\bмл\.?\b/gi,   // мл, мл.
+    /\bшт\.?\b/gi,   // шт, шт.
+    /\bграмм\w*\.?\b/gi,
+    /\bлитр\w*\.?\b/gi,
+    /\bмиллилитр\w*\.?\b/gi,
+    /\bштук\w*\.?\b/gi,
+    /\bдольк\w*\.?\b/gi,
+    /\bзубчик\w*\.?\b/gi,
+    /\bч\.?\s*л\.?\b/gi,
+    /\bст\.?\s*л\.?\b/gi,
+  ];
+  
+  // Применяем несколько раз для гарантии
+  for (let i = 0; i < 3; i++) {
+    for (const pattern of unitPatternsAggressive) {
+      cleanedName = cleanedName.replace(pattern, ' ');
+    }
+  }
+  
+  // Удаляем возможные ведущие/висячие токены единиц (включая с точками)
+  cleanedName = cleanedName.replace(
+    /(^|\s)(г|гр|кг|мл|л|шт|грамм\w*|литр\w*|миллилитр\w*|штук\w*|дольк\w*|зубчик\w*|ч\.?\s*л\.?|ст\.?\s*л\.?)(\.|,|\s|$)/gi,
+    ' '
+  );
+  
+  // Удаляем точки и запятые, которые могли остаться
+  cleanedName = cleanedName.replace(/[.,;]/g, ' ');
   cleanedName = cleanedName.replace(/\s+/g, ' ').trim();
 
   return {

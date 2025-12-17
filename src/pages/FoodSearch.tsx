@@ -116,7 +116,12 @@ const FoodSearch = () => {
           >
             Анализатор рецептов
           </button>
-          <button className="pb-2 border-b-2 border-transparent">Рецепты</button>
+          <button
+            className="pb-2 border-b-2 border-transparent"
+            onClick={() => navigate('/nutrition/recipes', { state: { mealType: selectedMealType, selectedDate } })}
+          >
+            Рецепты
+          </button>
           <button
             className="pb-2 border-b-2 border-transparent text-gray-800 dark:text-gray-200 font-normal"
             onClick={() => navigate('/nutrition/favorites', { state: { mealType: selectedMealType, selectedDate } })}
