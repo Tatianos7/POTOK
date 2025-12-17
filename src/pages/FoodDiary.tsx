@@ -229,9 +229,15 @@ const FoodDiary = () => {
 
     mealService.addMealEntry(user.id, selectedDate, mealType, entry);
     
-    // Reload meals - useEffect автоматически развернёт блок
+    // Reload meals
     const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
     setDailyMeals(updatedMeals);
+    
+    // СРАЗУ разворачиваем блок приёма пищи синхронно
+    setExpandedMeals((prev) => ({
+      ...prev,
+      [mealType]: true,
+    }));
     
     setIsConfirmScannedFoodModalOpen(false);
     setScannedFood(null);
