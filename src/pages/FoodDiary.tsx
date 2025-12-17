@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check } from 'lucide-react';
@@ -54,9 +54,6 @@ const FoodDiary = () => {
   // State для редактирования записи продукта
   const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
   const [isEditEntryModalOpen, setIsEditEntryModalOpen] = useState(false);
-  
-  // Ref для отслеживания последнего добавленного типа приёма пищи
-  const lastAddedMealTypeRef = useRef<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
   
   // Переключение состояния раскрытия приёма пищи
   const toggleMealExpanded = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
@@ -270,14 +267,19 @@ const FoodDiary = () => {
   const handleAddFood = (entry: MealEntry) => {
     if (!user?.id || !selectedMealType || !dailyMeals) return;
 
-    // Сохраняем тип приёма пищи для автоматического разворачивания
-    lastAddedMealTypeRef.current = selectedMealType;
+    const mealTypeToExpand = selectedMealType;
 
     mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
     
-    // Reload meals - useEffect автоматически развернёт блок
+    // Reload meals
     const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
     setDailyMeals(updatedMeals);
+    
+    // СРАЗУ разворачиваем блок приёма пищи синхронно
+    setExpandedMeals((prev) => ({
+      ...prev,
+      [mealTypeToExpand]: true,
+    }));
     
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
@@ -794,8 +796,7 @@ const FoodDiary = () => {
               return;
             }
             
-            // Сохраняем тип приёма пищи для автоматического разворачивания
-            lastAddedMealTypeRef.current = selectedMealType;
+            const mealTypeToExpand = selectedMealType;
             
             ings.forEach((ing) => {
               const food = localAIFoodAnalyzer.toFood(ing);
@@ -814,9 +815,15 @@ const FoodDiary = () => {
               mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
             });
             
-            // Reload meals - useEffect автоматически развернёт блок
+            // Reload meals
             const updated = mealService.getMealsForDate(user.id, selectedDate);
             setDailyMeals(updated);
+            
+            // СРАЗУ разворачиваем блок приёма пищи синхронно
+            setExpandedMeals((prev) => ({
+              ...prev,
+              [mealTypeToExpand]: true,
+            }));
             
             setIsRecipeResultOpen(false);
             setAnalyzedIngredients([]);
