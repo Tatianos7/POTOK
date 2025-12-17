@@ -2,15 +2,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { X, ArrowRight, Check, ChevronRight, Circle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { favoritesService } from '../services/favoritesService';
 import { Food, MealEntry } from '../types';
 import { mealService } from '../services/mealService';
+import { foodService } from '../services/foodService';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
 
 interface LocationState {
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   selectedDate?: string;
   preselectName?: string;
+}
+
+interface RecentFood {
+  foodId: string;
+  foodName: string;
+  weight: number; // в граммах
 }
 
 const FavoritesProductsPage = () => {
@@ -20,10 +26,11 @@ const FavoritesProductsPage = () => {
   const state = location.state as LocationState | undefined;
 
   const [query, setQuery] = useState(state?.preselectName || '');
-  const [favorites, setFavorites] = useState<Food[]>([]);
+  const [recentFoods, setRecentFoods] = useState<RecentFood[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isAddFoodModalOpen, setIsAddFoodModalOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
+  const [defaultWeight, setDefaultWeight] = useState<number | undefined>(undefined);
 
   const selectedDate = useMemo(
     () => state?.selectedDate || new Date().toISOString().split('T')[0],
@@ -31,45 +38,124 @@ const FavoritesProductsPage = () => {
   );
   const mealType = state?.mealType || 'breakfast';
 
+  // Загружаем часто используемые продукты с граммами
   useEffect(() => {
     if (!user?.id) return;
-    const items = favoritesService.getFavoriteFoods(user.id);
-    setFavorites(items);
+    
+    try {
+      const stored = localStorage.getItem(`recent_food_searches_${user.id}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        // Поддержка старого формата (массив строк) и нового формата (массив RecentFood)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (typeof parsed[0] === 'string') {
+            // Старый формат - конвертируем в новый
+            const converted: RecentFood[] = parsed.map((name: string) => ({
+              foodId: '', // Будет заполнено при следующем использовании
+              foodName: name,
+              weight: 100, // Дефолтное значение
+            }));
+            setRecentFoods(converted);
+          } else {
+            // Новый формат
+            setRecentFoods(parsed);
+          }
+        } else {
+          setRecentFoods([]);
+        }
+      } else {
+        setRecentFoods([]);
+      }
+    } catch {
+      setRecentFoods([]);
+    }
+  }, [user?.id]);
 
-    if (state?.preselectName) {
-      const found = items.find((f) => f.name.toLowerCase().includes(state.preselectName!.toLowerCase()));
-      if (found) {
-        setSelectedId(found.id);
-        setSelectedFood(found);
+  // Предвыбор продукта по имени, если передан preselectName
+  useEffect(() => {
+    if (!state?.preselectName || !user?.id || recentFoods.length === 0) return;
+    
+    const found = recentFoods.find((rf) => 
+      rf.foodName.toLowerCase().includes(state.preselectName!.toLowerCase())
+    );
+    if (found && found.foodId) {
+      const food = foodService.getFoodById(found.foodId, user.id);
+      if (food) {
+        setSelectedId(found.foodId);
+        setSelectedFood(food);
+        setDefaultWeight(found.weight);
       }
     }
-  }, [user?.id, state?.preselectName]);
+  }, [state?.preselectName, user?.id, recentFoods]);
 
-  const filtered = favorites.filter((f) => {
+  // Фильтруем часто используемые продукты по запросу
+  const filtered = recentFoods.filter((rf) => {
     if (!query.trim()) return true;
     const q = query.toLowerCase();
-    return (
-      f.name.toLowerCase().includes(q) ||
-      (f.name_original || '').toLowerCase().includes(q) ||
-      (f.aliases || []).some((a) => a.toLowerCase().includes(q))
-    );
+    return rf.foodName.toLowerCase().includes(q);
   });
 
-  const handleSave = () => {
-    if (!selectedFood || !user?.id) return;
-    setIsAddFoodModalOpen(true);
+  /**
+   * Обработчик клика по часто используемому продукту
+   * Открывает модальное окно с предзаполненными граммами
+   */
+  const handleProductClick = async (recentFood: RecentFood) => {
+    if (!recentFood || !recentFood.foodId) {
+      console.warn('Invalid recent food');
+      return;
+    }
+
+    try {
+      // Ищем продукт по ID в базе данных
+      const food = foodService.getFoodById(recentFood.foodId, user?.id);
+      
+      if (food) {
+        // Нашли продукт - открываем модальное окно добавления
+        // Передаем сохраненные граммы для предзаполнения
+        setSelectedId(recentFood.foodId);
+        setSelectedFood(food);
+        setDefaultWeight(recentFood.weight);
+        setIsAddFoodModalOpen(true);
+      } else {
+        // Продукт не найден - показываем сообщение пользователю
+        alert(`Продукт "${recentFood.foodName}" не найден в базе. Попробуйте найти его через поиск.`);
+      }
+    } catch (error) {
+      console.error('Error searching for product:', error);
+      alert('Ошибка при поиске продукта. Попробуйте еще раз.');
+    }
   };
 
   const handleAdd = (entry: MealEntry) => {
     if (!user?.id || !mealType) return;
     mealService.addMealEntry(user.id, selectedDate, mealType, entry);
-    favoritesService.incrementFavoriteUsage(user.id, entry.foodId);
+    
+    // Обновляем часто используемые продукты с новыми граммами
+    const updatedRecentFoods = recentFoods.map((rf) => 
+      rf.foodId === entry.foodId 
+        ? { ...rf, weight: entry.weight }
+        : rf
+    );
+    
+    // Если продукта еще нет в списке, добавляем его
+    if (!updatedRecentFoods.find((rf) => rf.foodId === entry.foodId)) {
+      updatedRecentFoods.unshift({
+        foodId: entry.foodId,
+        foodName: entry.food.name,
+        weight: entry.weight,
+      });
+    }
+    
+    // Ограничиваем до 10 элементов и сохраняем
+    const limited = updatedRecentFoods.slice(0, 10);
+    setRecentFoods(limited);
+    localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(limited));
+    
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
+    setDefaultWeight(undefined);
     navigate('/nutrition');
   };
-
-  const gramsLabel = () => '100 г';
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -114,16 +200,16 @@ const FavoritesProductsPage = () => {
 
       <main className="px-2 pb-24">
         <div className="divide-y divide-gray-200 dark:divide-gray-800 mt-3 rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
-          {filtered.map((food) => {
-            const isActive = selectedId === food.id;
+          {filtered.map((recentFood) => {
+            const food = foodService.getFoodById(recentFood.foodId, user?.id);
+            if (!food) return null; // Пропускаем продукты, которые не найдены в базе
+            
+            const isActive = selectedId === recentFood.foodId;
             return (
               <button
-                key={food.id}
-                className="w-full flex items-center px-3 py-3 text-left"
-                onClick={() => {
-                  setSelectedId(food.id);
-                  setSelectedFood(food);
-                }}
+                key={recentFood.foodId || recentFood.foodName}
+                className="w-full flex items-center px-3 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                onClick={() => handleProductClick(recentFood)}
               >
                 <div className="mr-3">
                   {isActive ? (
@@ -132,32 +218,32 @@ const FavoritesProductsPage = () => {
                     <Circle className="w-5 h-5 text-gray-400" />
                   )}
                 </div>
-                <div className="flex-1">
-                  <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">{food.name}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                    {recentFood.foodName}
+                  </div>
                   <div className="text-[11px] flex gap-2">
-                    <span className="text-green-600 dark:text-green-400">{gramsLabel()}</span>
-                    <span className="text-gray-500 dark:text-gray-400">{`${Math.round(food.calories)} ккал`}</span>
+                    <span className="text-green-600 dark:text-green-400">
+                      {Math.round(recentFood.weight)} г
+                    </span>
+                    {food && (
+                      <span className="text-gray-500 dark:text-gray-400">
+                        {Math.round((food.calories * recentFood.weight) / 100)} ккал
+                      </span>
+                    )}
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-gray-400" />
+                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
               </button>
             );
           })}
           {filtered.length === 0 && (
-            <div className="py-6 text-center text-sm text-gray-500">Нет избранных продуктов</div>
+            <div className="py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+              Нет часто используемых продуктов
+            </div>
           )}
         </div>
       </main>
-
-      <div className="fixed bottom-0 left-0 right-0 px-4 pb-6">
-        <button
-          onClick={handleSave}
-          disabled={!selectedFood}
-          className="w-full h-12 rounded-[12px] bg-black text-white font-semibold text-sm disabled:opacity-50"
-        >
-          СОХРАНИТЬ
-        </button>
-      </div>
 
       <AddFoodToMealModal
         food={selectedFood}
@@ -165,8 +251,10 @@ const FavoritesProductsPage = () => {
         onClose={() => {
           setIsAddFoodModalOpen(false);
           setSelectedFood(null);
+          setDefaultWeight(undefined);
         }}
         onAdd={handleAdd}
+        defaultWeight={defaultWeight}
       />
     </div>
   );
