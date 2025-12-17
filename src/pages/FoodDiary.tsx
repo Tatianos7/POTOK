@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, Trash2 } from 'lucide-react';
+import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check } from 'lucide-react';
 import { DailyMeals, MealEntry, Food, UserCustomFood } from '../types';
 import { mealService } from '../services/mealService';
 import { foodService } from '../services/foodService';
@@ -38,6 +38,33 @@ const FoodDiary = () => {
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [scannedFood, setScannedFood] = useState<Food | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
+  
+  // State для раскрытия/сворачивания приёмов пищи
+  const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({
+    breakfast: false,
+    lunch: false,
+    dinner: false,
+    snack: false,
+  });
+  
+  // State для отметки "съедено" для каждого продукта
+  const [eatenEntries, setEatenEntries] = useState<Record<string, boolean>>({});
+  
+  // Переключение состояния раскрытия приёма пищи
+  const toggleMealExpanded = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+    setExpandedMeals((prev) => ({
+      ...prev,
+      [mealType]: !prev[mealType],
+    }));
+  };
+  
+  // Переключение состояния "съедено" для продукта
+  const toggleEntryEaten = (entryId: string) => {
+    setEatenEntries((prev) => ({
+      ...prev,
+      [entryId]: !prev[entryId],
+    }));
+  };
 
   // Используем useMemo для dates, чтобы они не пересчитывались без необходимости
   const dates = useMemo(() => {
@@ -224,15 +251,6 @@ const FoodDiary = () => {
     setSelectedMealType(null);
   };
 
-  const handleRemoveEntry = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entryId: string) => {
-    if (!user?.id || !dailyMeals) return;
-
-    mealService.removeMealEntry(user.id, selectedDate, mealType, entryId);
-    
-    // Reload meals
-    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
-    setDailyMeals(updatedMeals);
-  };
 
   const handleWaterClick = (index: number) => {
     if (!user?.id || !dailyMeals) return;
@@ -360,74 +378,125 @@ const FoodDiary = () => {
               const mealType = meal.id as 'breakfast' | 'lunch' | 'dinner' | 'snack';
               const mealEntries = dailyMeals?.[mealType] || [];
               const mealTotals = mealService.calculateMealTotals(mealEntries);
+              const isExpanded = expandedMeals[mealType];
 
               return (
-                <div key={meal.id} className="space-y-2">
-                  <div className="relative">
-                    {/* Text "Сохранить как рецепт" above right part */}
-                    <div className="absolute -top-3 right-16 z-10">
-                      <div className="relative">
-                        <div className="absolute top-1/2 left-0 right-0 h-px bg-gray-900 dark:bg-gray-300"></div>
-                        <span className="relative bg-white dark:bg-gray-900 px-2 text-xs text-gray-600 dark:text-gray-400">
-                          Сохранить как рецепт
-                        </span>
-                      </div>
+                <div key={meal.id} className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden">
+                  {/* Header - всегда видимый */}
+                  <div className="flex items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                    {/* Иконка приёма пищи */}
+                    <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center mr-3">
+                      <meal.icon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
                     </div>
-
-                    {/* Main container */}
-                    <div className="flex items-center border border-gray-900 dark:border-gray-300 rounded-[15px] bg-white dark:bg-gray-800 overflow-hidden" style={{ borderWidth: '0.5px' }}>
-                      {/* Left part with icon and text */}
-                      <div className="flex items-center gap-4 px-4 py-[10px] flex-1">
-                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                          <meal.icon className="w-7 h-7 text-gray-700 dark:text-gray-300" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase">
-                            {meal.name}
-                          </h3>
-                          {mealEntries.length > 0 && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {Math.round(mealTotals.calories)} ккал
-                            </p>
-                          )}
-                        </div>
+                    
+                    {/* Название и БЖУ */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase">
+                          {meal.name}
+                        </h3>
+                        {mealEntries.length > 0 && (
+                          <span className="text-xs text-gray-600 dark:text-gray-400 ml-2">
+                            {Math.round(mealTotals.calories)} калорий
+                          </span>
+                        )}
                       </div>
                       
-                      {/* Right part - button */}
+                      {/* Общие БЖУ */}
+                      {mealEntries.length > 0 && (
+                        <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+                          <span>{mealTotals.protein.toFixed(2).replace('.', ',')}</span>
+                          <span>{mealTotals.fat.toFixed(2).replace('.', ',')}</span>
+                          <span>{mealTotals.carbs.toFixed(0)}</span>
+                          <span>{Math.round(mealTotals.calories)}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Кнопки справа */}
+                    <div className="flex items-center gap-2 ml-3">
+                      {/* Кнопка раскрытия/сворачивания */}
+                      {mealEntries.length > 0 && (
+                        <button
+                          onClick={() => toggleMealExpanded(mealType)}
+                          className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                          aria-label={isExpanded ? 'Свернуть' : 'Развернуть'}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform" />
+                          ) : (
+                            <ChevronUp className="w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform" />
+                          )}
+                        </button>
+                      )}
+                      
+                      {/* Кнопка добавления продукта */}
                       <button
                         onClick={() => handleMealClick(mealType)}
-                        className="w-16 self-stretch rounded-r-[15px] rounded-bl-[15px] bg-white dark:bg-white border-t border-r border-b border-gray-900 dark:border-gray-300 text-gray-900 dark:text-gray-900 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-100 transition-colors flex-shrink-0 -ml-[0.5px]"
-                        style={{ borderWidth: '0.5px' }}
+                        className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                        aria-label="Добавить продукт"
                       >
-                        <Plus className="w-8 h-8" strokeWidth={2.5} />
+                        <Plus className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Meal Entries */}
+                  {/* Раскрывающийся блок с продуктами */}
                   {mealEntries.length > 0 && (
-                    <div className="ml-4 space-y-2">
-                      {mealEntries.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
-                        >
-                          <div className="flex-1">
-                            <p className="text-xs font-medium text-gray-900 dark:text-white">
-                              {entry.food.name}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {entry.weight}г · {Math.round(entry.calories)} ккал
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => handleRemoveEntry(mealType, entry.id)}
-                            className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-                          </button>
-                        </div>
-                      ))}
+                    <div
+                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                        isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+                      }`}
+                    >
+                      <div className="px-4 pb-3 pt-2 space-y-2">
+                        {mealEntries.map((entry) => {
+                          const isEaten = eatenEntries[entry.id] || false;
+                          return (
+                            <div
+                              key={entry.id}
+                              className="flex items-start gap-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded transition-colors"
+                            >
+                              {/* Вертикальное троеточие */}
+                              <button
+                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors mt-0.5"
+                                aria-label="Дополнительные действия"
+                              >
+                                <MoreVertical className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                              </button>
+                              
+                              {/* Название и БЖУ продукта */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5">
+                                  {entry.food.name}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                  <span>{entry.protein.toFixed(2).replace('.', ',')}</span>
+                                  <span>{entry.fat.toFixed(2).replace('.', ',')}</span>
+                                  <span>{entry.carbs.toFixed(0)}</span>
+                                </div>
+                              </div>
+                              
+                              {/* Checkbox "съедено" */}
+                              <button
+                                onClick={() => toggleEntryEaten(entry.id)}
+                                className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors mt-0.5 mr-2 ${
+                                  isEaten
+                                    ? 'border-green-500 bg-green-500'
+                                    : 'border-gray-300 dark:border-gray-600'
+                                }`}
+                                aria-label={isEaten ? 'Отметить как не съедено' : 'Отметить как съедено'}
+                              >
+                                {isEaten && <Check className="w-3 h-3 text-white" />}
+                              </button>
+                              
+                              {/* Калории */}
+                              <div className="flex-shrink-0 text-sm font-medium text-gray-900 dark:text-white">
+                                {Math.round(entry.calories)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
