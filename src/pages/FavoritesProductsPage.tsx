@@ -183,8 +183,29 @@ const FavoritesProductsPage = () => {
     
     // Используем функциональное обновление состояния для корректной дедупликации
     setRecentFoods((currentRecentFoods) => {
-      // Удаляем все старые записи с тем же foodId
-      const filtered = currentRecentFoods.filter((rf) => rf.foodId !== entry.foodId);
+      const normalizedNewName = entry.food.name.toLowerCase().trim();
+      
+      // Удаляем все старые записи с тем же продуктом:
+      // 1. По foodId (если у нового продукта есть foodId)
+      // 2. По имени (нормализованному) - всегда проверяем, чтобы удалить дубликаты даже если foodId разный
+      const filtered = currentRecentFoods.filter((rf) => {
+        const normalizedOldName = rf.foodName.toLowerCase().trim();
+        
+        // Если у нового продукта есть foodId - удаляем по foodId ИЛИ по имени
+        if (entry.foodId && entry.foodId.trim()) {
+          // Удаляем если совпадает foodId ИЛИ имя
+          if (rf.foodId && rf.foodId.trim()) {
+            // У обоих есть foodId - сравниваем по foodId
+            return rf.foodId !== entry.foodId;
+          } else {
+            // У старого нет foodId - сравниваем по имени
+            return normalizedOldName !== normalizedNewName;
+          }
+        } else {
+          // У нового продукта нет foodId - удаляем только по имени
+          return normalizedOldName !== normalizedNewName;
+        }
+      });
       
       // Добавляем новую запись в начало с актуальными граммами и текущей датой использования (без ограничения количества)
       const updated = [

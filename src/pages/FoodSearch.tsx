@@ -118,6 +118,7 @@ const FoodSearch = () => {
     mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
     
     // Сохраняем продукт в часто используемые с граммами и текущей датой использования
+    // addRecent сам добавит lastUsedAt, но передаем для совместимости
     addRecent({
       foodId: entry.foodId,
       foodName: entry.food.name,
@@ -222,22 +223,31 @@ const FoodSearch = () => {
   }, [user?.id]);
 
   const addRecent = (recentFood: RecentFood) => {
-    if (!user?.id || !recentFood.foodId || !recentFood.foodName) return;
+    if (!user?.id || !recentFood.foodName) return;
     
     // Используем функциональное обновление состояния, чтобы всегда работать с актуальными данными
     setRecent((currentRecent) => {
-      // Удаляем все старые записи с тем же foodId (если foodId есть)
-      // или с тем же foodName (если foodId пустой, для совместимости со старым форматом)
+      const normalizedNewName = recentFood.foodName.toLowerCase().trim();
+      
+      // Удаляем все старые записи с тем же продуктом:
+      // 1. По foodId (если у нового продукта есть foodId)
+      // 2. По имени (нормализованному) - всегда проверяем, чтобы удалить дубликаты даже если foodId разный
       const filtered = currentRecent.filter((r) => {
-        if (recentFood.foodId && r.foodId) {
-          // Если у обоих есть foodId - сравниваем по foodId
-          return r.foodId !== recentFood.foodId;
-        } else if (!recentFood.foodId && !r.foodId) {
-          // Если у обоих нет foodId - сравниваем по имени
-          return r.foodName.toLowerCase() !== recentFood.foodName.toLowerCase();
+        const normalizedOldName = r.foodName.toLowerCase().trim();
+        
+        // Если у нового продукта есть foodId - удаляем по foodId ИЛИ по имени
+        if (recentFood.foodId && recentFood.foodId.trim()) {
+          // Удаляем если совпадает foodId ИЛИ имя
+          if (r.foodId && r.foodId.trim()) {
+            // У обоих есть foodId - сравниваем по foodId
+            return r.foodId !== recentFood.foodId;
+          } else {
+            // У старого нет foodId - сравниваем по имени
+            return normalizedOldName !== normalizedNewName;
+          }
         } else {
-          // Если у одного есть foodId, а у другого нет - оставляем оба (разные форматы)
-          return true;
+          // У нового продукта нет foodId - удаляем только по имени
+          return normalizedOldName !== normalizedNewName;
         }
       });
       
