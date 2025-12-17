@@ -408,7 +408,6 @@ const FoodDiary = () => {
                           <span>{mealTotals.protein.toFixed(2).replace('.', ',')}</span>
                           <span>{mealTotals.fat.toFixed(2).replace('.', ',')}</span>
                           <span>{mealTotals.carbs.toFixed(0)}</span>
-                          <span>{Math.round(mealTotals.calories)}</span>
                         </div>
                       )}
                     </div>
