@@ -233,6 +233,12 @@ const FoodDiary = () => {
     const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
     setDailyMeals(updatedMeals);
     
+    // Разворачиваем блок приёма пищи, чтобы пользователь видел добавленный продукт
+    setExpandedMeals((prev) => ({
+      ...prev,
+      [mealType]: true,
+    }));
+    
     setIsConfirmScannedFoodModalOpen(false);
     setScannedFood(null);
   };
@@ -250,6 +256,12 @@ const FoodDiary = () => {
     // Reload meals
     const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
     setDailyMeals(updatedMeals);
+    
+    // Разворачиваем блок приёма пищи, чтобы пользователь видел добавленный продукт
+    setExpandedMeals((prev) => ({
+      ...prev,
+      [selectedMealType]: true,
+    }));
     
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
@@ -783,6 +795,15 @@ const FoodDiary = () => {
             });
             const updated = mealService.getMealsForDate(user.id, selectedDate);
             setDailyMeals(updated);
+            
+            // Разворачиваем блок приёма пищи, чтобы пользователь видел добавленные продукты
+            if (selectedMealType) {
+              setExpandedMeals((prev) => ({
+                ...prev,
+                [selectedMealType]: true,
+              }));
+            }
+            
             setIsRecipeResultOpen(false);
             setAnalyzedIngredients([]);
           }}
