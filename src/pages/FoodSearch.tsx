@@ -144,17 +144,50 @@ const FoodSearch = () => {
           const parsed = JSON.parse(stored);
           // Поддержка старого формата (массив строк) и нового формата (массив RecentFood)
           if (Array.isArray(parsed) && parsed.length > 0) {
+            let converted: RecentFood[];
+            
             if (typeof parsed[0] === 'string') {
               // Старый формат - конвертируем в новый
-              const converted: RecentFood[] = parsed.map((name: string) => ({
+              converted = parsed.map((name: string) => ({
                 foodId: '', // Будет заполнено при следующем использовании
                 foodName: name,
                 weight: 100, // Дефолтное значение
               }));
-              setRecent(converted);
             } else {
               // Новый формат
-              setRecent(parsed);
+              converted = parsed;
+            }
+            
+            // Дедуплицируем: оставляем только последнюю запись для каждого foodId
+            // Если foodId пустой, дедуплицируем по имени
+            const deduplicated: RecentFood[] = [];
+            const seenIds = new Set<string>();
+            const seenNames = new Set<string>();
+            
+            // Проходим в обратном порядке, чтобы оставить последние записи
+            for (let i = converted.length - 1; i >= 0; i--) {
+              const item = converted[i];
+              if (item.foodId && item.foodId.trim()) {
+                // Если есть foodId - проверяем по ID
+                if (!seenIds.has(item.foodId)) {
+                  seenIds.add(item.foodId);
+                  deduplicated.unshift(item);
+                }
+              } else {
+                // Если нет foodId - проверяем по имени
+                const normalizedName = item.foodName.toLowerCase().trim();
+                if (!seenNames.has(normalizedName)) {
+                  seenNames.add(normalizedName);
+                  deduplicated.unshift(item);
+                }
+              }
+            }
+            
+            setRecent(deduplicated);
+            
+            // Сохраняем дедуплицированные данные обратно в localStorage
+            if (deduplicated.length !== converted.length) {
+              localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(deduplicated));
             }
           } else {
             setRecent([]);
@@ -171,14 +204,31 @@ const FoodSearch = () => {
   const addRecent = (recentFood: RecentFood) => {
     if (!user?.id || !recentFood.foodId || !recentFood.foodName) return;
     
-    // Удаляем старую запись с тем же foodId, если есть
-    const updated = [
-      recentFood,
-      ...recent.filter((r) => r.foodId !== recentFood.foodId)
-    ].slice(0, 10); // Ограничиваем до 10 элементов
-    
-    setRecent(updated);
-    localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(updated));
+    // Используем функциональное обновление состояния, чтобы всегда работать с актуальными данными
+    setRecent((currentRecent) => {
+      // Удаляем все старые записи с тем же foodId (если foodId есть)
+      // или с тем же foodName (если foodId пустой, для совместимости со старым форматом)
+      const filtered = currentRecent.filter((r) => {
+        if (recentFood.foodId && r.foodId) {
+          // Если у обоих есть foodId - сравниваем по foodId
+          return r.foodId !== recentFood.foodId;
+        } else if (!recentFood.foodId && !r.foodId) {
+          // Если у обоих нет foodId - сравниваем по имени
+          return r.foodName.toLowerCase() !== recentFood.foodName.toLowerCase();
+        } else {
+          // Если у одного есть foodId, а у другого нет - оставляем оба (разные форматы)
+          return true;
+        }
+      });
+      
+      // Добавляем новую запись в начало и ограничиваем до 10 элементов
+      const updated = [recentFood, ...filtered].slice(0, 10);
+      
+      // Сохраняем в localStorage
+      localStorage.setItem(`recent_food_searches_${user.id}`, JSON.stringify(updated));
+      
+      return updated;
+    });
   };
 
   return (
