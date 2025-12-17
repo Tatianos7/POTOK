@@ -67,21 +67,35 @@ const FoodSearch = () => {
    * Обработчик клика по часто используемому продукту
    * 
    * ПРАВИЛЬНОЕ ПОВЕДЕНИЕ:
-   * - Находит продукт по foodId в базе данных
+   * - Находит продукт по foodId в базе данных (если есть)
+   * - Если foodId нет, ищет продукт по имени
    * - Открывает модальное окно добавления продукта с предзаполненными граммами
    * - НЕ проверяет избранное
    * - НЕ перенаправляет на страницу "Избранное"
    * - НЕ меняет вкладки
    */
   const handleRecentProductClick = async (recentFood: RecentFood) => {
-    if (!recentFood || !recentFood.foodId) {
+    if (!recentFood || !recentFood.foodName) {
       console.warn('Invalid recent food');
       return;
     }
 
     try {
-      // Ищем продукт по ID в базе данных
-      const food = foodService.getFoodById(recentFood.foodId, user?.id);
+      let food: Food | null = null;
+      
+      // Если есть foodId - ищем по ID
+      if (recentFood.foodId && recentFood.foodId.trim()) {
+        food = foodService.getFoodById(recentFood.foodId, user?.id);
+      }
+      
+      // Если не нашли по ID или foodId пустой - ищем по имени
+      if (!food) {
+        const searchResults = await foodService.search(recentFood.foodName.trim(), { limit: 5 });
+        if (searchResults.length > 0) {
+          // Используем первый результат (наиболее релевантный)
+          food = searchResults[0];
+        }
+      }
       
       if (food) {
         // Нашли продукт - открываем модальное окно добавления
