@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -6,16 +6,32 @@ import { X, Camera, Moon, Sun } from 'lucide-react';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import SubscriptionManagement from '../pages/SubscriptionManagement';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
+import { profileService } from '../services/profileService';
 
 const Profile = () => {
   const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [avatar, setAvatar] = useState<string | null>(
-    localStorage.getItem(`avatar_${user?.id}`) || null
-  );
+  const [avatar, setAvatar] = useState<string | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+  // Загружаем аватар из Supabase при монтировании
+  useEffect(() => {
+    if (user?.id) {
+      profileService.getAvatar(user.id).then((avatarUrl) => {
+        if (avatarUrl) {
+          setAvatar(avatarUrl);
+        } else {
+          // Fallback to localStorage
+          const localAvatar = localStorage.getItem(`avatar_${user.id}`);
+          if (localAvatar) {
+            setAvatar(localAvatar);
+          }
+        }
+      });
+    }
+  }, [user?.id]);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -23,14 +39,15 @@ const Profile = () => {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (file && user?.id) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
         setAvatar(result);
-        if (user?.id) {
-          localStorage.setItem(`avatar_${user.id}`, result);
-        }
+        // Сохраняем в localStorage для быстрого доступа
+        localStorage.setItem(`avatar_${user.id}`, result);
+        // Синхронизируем с Supabase
+        void profileService.saveAvatar(user.id, result);
       };
       reader.readAsDataURL(file);
     }

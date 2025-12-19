@@ -1,4 +1,7 @@
 import { Recipe, RecipeTab } from '../types/recipe';
+import { trackEvent } from './analyticsService';
+import { supabase } from '../lib/supabaseClient';
+import { toUUID } from '../utils/uuid';
 
 class RecipesService {
   private readonly RECIPES_STORAGE_KEY = 'potok_recipes';
@@ -112,7 +115,8 @@ class RecipesService {
   }
 
   // Сохранить рецепт
-  saveRecipe(recipe: Recipe): void {
+  async saveRecipe(recipe: Recipe): Promise<void> {
+    // Save to localStorage first
     const allRecipes = this.getAllRecipes(recipe.userId);
     const existingIndex = allRecipes.findIndex((r) => r.id === recipe.id);
     
@@ -123,6 +127,52 @@ class RecipesService {
     }
     
     localStorage.setItem(this.RECIPES_STORAGE_KEY, JSON.stringify(allRecipes));
+
+    // Try to save to Supabase (only user recipes)
+    if (supabase && recipe.userId) {
+      try {
+        // Calculate totals from ingredients
+        const totalCalories = recipe.ingredients.reduce((sum, ing) => sum + (ing.calories || 0), 0);
+        const totalProtein = recipe.ingredients.reduce((sum, ing) => sum + (ing.protein || 0), 0);
+        const totalFat = recipe.ingredients.reduce((sum, ing) => sum + (ing.fat || 0), 0);
+        const totalCarbs = recipe.ingredients.reduce((sum, ing) => sum + (ing.carbs || 0), 0);
+
+        const uuidUserId = toUUID(recipe.userId);
+        const { error } = await supabase
+          .from('recipes')
+          .upsert({
+            id: recipe.id,
+            user_id: uuidUserId,
+            name: recipe.name,
+            ingredients: recipe.ingredients,
+            total_calories: totalCalories,
+            protein: totalProtein,
+            fat: totalFat,
+            carbs: totalCarbs,
+            updated_at: new Date().toISOString(),
+          }, {
+            onConflict: 'id',
+          });
+
+        if (error) {
+          console.error('[recipesService] Supabase save error:', error);
+        }
+      } catch (err) {
+        console.error('[recipesService] Supabase save connection error:', err);
+      }
+    }
+
+    // Аналитика: сохранён рецепт пользователем
+    if (recipe.userId) {
+      void trackEvent({
+        name: 'save_recipe',
+        userId: recipe.userId,
+        metadata: {
+          recipe_id: recipe.id,
+          source: recipe.source || 'manual',
+        },
+      });
+    }
   }
 
   // Создать рецепт из анализатора

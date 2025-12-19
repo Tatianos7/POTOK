@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { recipesService } from '../services/recipesService';
 import { Recipe } from '../types/recipe';
 import MealTypeSelectorModal from '../components/MealTypeSelectorModal';
+import { recipeDiaryService } from '../services/recipeDiaryService';
 
 const RecipeDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -77,8 +78,6 @@ const RecipeDetails = () => {
   const handleMealTypeSelected = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', date: string) => {
     if (!user?.id || !recipe) return;
 
-    // Используем recipeDiaryService для добавления в меню
-    const { recipeDiaryService } = require('../services/recipeDiaryService');
     recipeDiaryService.saveRecipeEntry({
       userId: user.id,
       date,

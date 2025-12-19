@@ -134,8 +134,9 @@ const FoodDiary = () => {
   // Load meals for selected date
   useEffect(() => {
     if (user?.id) {
-      const meals = mealService.getMealsForDate(user.id, selectedDate);
-      setDailyMeals(meals);
+      mealService.getMealsForDate(user.id, selectedDate).then((meals) => {
+        setDailyMeals(meals);
+      });
     }
   }, [selectedDate, user?.id]);
 
@@ -236,11 +237,12 @@ const FoodDiary = () => {
       carbs: scannedFood.carbs * k,
     };
 
-    mealService.addMealEntry(user.id, selectedDate, mealType, entry);
-    
-    // Reload meals
-    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
-    setDailyMeals(updatedMeals);
+    mealService.addMealEntry(user.id, selectedDate, mealType, entry).then(() => {
+      // Reload meals
+      return mealService.getMealsForDate(user.id, selectedDate);
+    }).then((updatedMeals) => {
+      setDailyMeals(updatedMeals);
+    });
     
     // СРАЗУ разворачиваем блок приёма пищи синхронно
     setExpandedMeals((prev) => ({
@@ -262,17 +264,17 @@ const FoodDiary = () => {
 
     const mealTypeToExpand = selectedMealType;
 
-    mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
-    
-    // Reload meals
-    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
-    setDailyMeals(updatedMeals);
-    
-    // СРАЗУ разворачиваем блок приёма пищи синхронно
-    setExpandedMeals((prev) => ({
-      ...prev,
-      [mealTypeToExpand]: true,
-    }));
+    mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry).then(() => {
+      // Reload meals
+      return mealService.getMealsForDate(user.id, selectedDate);
+    }).then((updatedMeals) => {
+      setDailyMeals(updatedMeals);
+      // СРАЗУ разворачиваем блок приёма пищи синхронно
+      setExpandedMeals((prev) => ({
+        ...prev,
+        [mealTypeToExpand]: true,
+      }));
+    });
     
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
@@ -284,11 +286,12 @@ const FoodDiary = () => {
     if (!user?.id || !dailyMeals) return;
 
     const newWater = index + 1;
-    mealService.updateWater(user.id, selectedDate, newWater);
-    
-    // Reload meals
-    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
-    setDailyMeals(updatedMeals);
+    mealService.updateWater(user.id, selectedDate, newWater).then(() => {
+      // Reload meals
+      return mealService.getMealsForDate(user.id, selectedDate);
+    }).then((updatedMeals) => {
+      setDailyMeals(updatedMeals);
+    });
   };
 
   const handleCreateCustomFood = (food: UserCustomFood) => {
@@ -304,11 +307,12 @@ const FoodDiary = () => {
   const handleUpdateEntry = (updatedEntry: MealEntry) => {
     if (!user?.id || !selectedMealType || !dailyMeals) return;
 
-    mealService.updateMealEntry(user.id, selectedDate, selectedMealType, updatedEntry.id, updatedEntry);
-    
-    // Reload meals
-    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
-    setDailyMeals(updatedMeals);
+    mealService.updateMealEntry(user.id, selectedDate, selectedMealType, updatedEntry.id, updatedEntry).then(() => {
+      // Reload meals
+      return mealService.getMealsForDate(user.id, selectedDate);
+    }).then((updatedMeals) => {
+      setDailyMeals(updatedMeals);
+    });
     
     setIsEditEntryModalOpen(false);
     setEditingEntry(null);
@@ -318,11 +322,12 @@ const FoodDiary = () => {
   const handleDeleteEntry = () => {
     if (!user?.id || !selectedMealType || !editingEntry || !dailyMeals) return;
 
-    mealService.removeMealEntry(user.id, selectedDate, selectedMealType, editingEntry.id);
-    
-    // Reload meals
-    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
-    setDailyMeals(updatedMeals);
+    mealService.removeMealEntry(user.id, selectedDate, selectedMealType, editingEntry.id).then(() => {
+      // Reload meals
+      return mealService.getMealsForDate(user.id, selectedDate);
+    }).then((updatedMeals) => {
+      setDailyMeals(updatedMeals);
+    });
     
     setIsEditEntryModalOpen(false);
     setEditingEntry(null);
@@ -576,9 +581,9 @@ const FoodDiary = () => {
           </div>
 
           {/* Remaining Nutrients Summary */}
-          <div className={`mb-6 p-4 rounded-lg ${hasOverConsumption ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : ''}`}>
+          <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-900">
             <div className="flex items-center justify-between mb-3">
-              <h2 className={`text-sm font-medium uppercase ${hasOverConsumption ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+              <h2 className="text-sm font-medium uppercase text-gray-900 dark:text-white">
                 ОСТАЛОСЬ
               </h2>
               <div className="flex gap-4">
@@ -811,35 +816,38 @@ const FoodDiary = () => {
             
             const mealTypeToExpand = selectedMealType;
             
-            ings.forEach((ing) => {
-              const food = localAIFoodAnalyzer.toFood(ing);
-              const grams = ing.grams ?? 100;
-              const k = grams / 100;
-              const entry: MealEntry = {
-                id: `meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                foodId: food.id,
-                food,
-                weight: grams,
-                calories: food.calories * k,
-                protein: food.protein * k,
-                fat: food.fat * k,
-                carbs: food.carbs * k,
-              };
-              mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
+            Promise.all(
+              ings.map((ing) => {
+                const food = localAIFoodAnalyzer.toFood(ing);
+                const grams = ing.grams ?? 100;
+                const k = grams / 100;
+                const entry: MealEntry = {
+                  id: `meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  foodId: food.id,
+                  food,
+                  weight: grams,
+                  calories: food.calories * k,
+                  protein: food.protein * k,
+                  fat: food.fat * k,
+                  carbs: food.carbs * k,
+                };
+                return mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
+              })
+            ).then(() => {
+              // Reload meals
+              return mealService.getMealsForDate(user.id, selectedDate);
+            }).then((updated) => {
+              setDailyMeals(updated);
+              
+              // СРАЗУ разворачиваем блок приёма пищи синхронно
+              setExpandedMeals((prev) => ({
+                ...prev,
+                [mealTypeToExpand]: true,
+              }));
+              
+              setIsRecipeResultOpen(false);
+              setAnalyzedIngredients([]);
             });
-            
-            // Reload meals
-            const updated = mealService.getMealsForDate(user.id, selectedDate);
-            setDailyMeals(updated);
-            
-            // СРАЗУ разворачиваем блок приёма пищи синхронно
-            setExpandedMeals((prev) => ({
-              ...prev,
-              [mealTypeToExpand]: true,
-            }));
-            
-            setIsRecipeResultOpen(false);
-            setAnalyzedIngredients([]);
           }}
         />
       )}

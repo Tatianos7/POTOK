@@ -6,6 +6,7 @@ import {
   ProfileUpdatePayload,
   ResetPasswordPayload,
 } from '../types';
+import { profileService } from './profileService';
 
 // Временное хранилище для демо (в продакшене использовать backend API)
 const STORAGE_KEY = 'potok_user';
@@ -92,11 +93,25 @@ class AuthService {
     // В реальном приложении здесь будет проверка пароля на сервере
     const token = this.generateToken(user.id);
     
+    // Загружаем профиль из Supabase (если есть)
+    const supabaseProfile = await profileService.getProfile(user.id);
+    if (supabaseProfile) {
+      // Обновляем пользователя данными из Supabase
+      user.profile = profileService.toProfileDetails(supabaseProfile);
+      user.hasPremium = supabaseProfile.has_premium;
+      user.isAdmin = supabaseProfile.is_admin;
+      
+      // Обновляем localStorage пользователей
+      existingUsers[userIndex] = user;
+      localStorage.setItem('potok_users', JSON.stringify(existingUsers));
+    }
+    
     // Сохраняем токен и пользователя
     localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.ensureProfile(user)));
+    const ensuredUser = this.ensureProfile(user);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ensuredUser));
 
-    return { user: this.ensureProfile(user), token };
+    return { user: ensuredUser, token };
   }
 
   async register(credentials: RegisterCredentials): Promise<AuthResponse> {
@@ -182,9 +197,17 @@ class AuthService {
 
     const token = this.generateToken(newUser.id);
     localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.ensureProfile(newUser)));
+    const ensuredUser = this.ensureProfile(newUser);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ensuredUser));
 
-    return { user: this.ensureProfile(newUser), token };
+    // Синхронизируем профиль с Supabase
+    void profileService.saveProfile(newUser.id, ensuredUser.profile);
+    void profileService.updatePremiumStatus(newUser.id, newUser.hasPremium);
+    if (newUser.isAdmin) {
+      void profileService.updateAdminStatus(newUser.id, true);
+    }
+
+    return { user: ensuredUser, token };
   }
 
   getCurrentUser(): User | null {
@@ -410,8 +433,15 @@ class AuthService {
     if (currentUser?.id === userId) {
       const updatedUser = { ...currentUser, isAdmin };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
+      
+      // Синхронизируем админ статус с Supabase
+      void profileService.updateAdminStatus(userId, isAdmin);
+      
       return updatedUser;
     }
+
+    // Синхронизируем админ статус с Supabase
+    void profileService.updateAdminStatus(userId, isAdmin);
 
     return users[index];
   }
@@ -442,6 +472,9 @@ class AuthService {
     this.createBackup();
     localStorage.setItem('potok_users', JSON.stringify(users));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
+    
+    // Синхронизируем профиль с Supabase
+    void profileService.saveProfile(userId, updatedProfile);
     
     // Отправляем событие об изменении данных пользователей
     window.dispatchEvent(new Event('user-data-changed'));
@@ -527,10 +560,17 @@ class AuthService {
     if (currentUser?.id === userId) {
       const updatedUser = { ...currentUser, hasPremium, subscriptionType };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedUser));
+      
+      // Синхронизируем статус подписки с Supabase
+      void profileService.updatePremiumStatus(userId, hasPremium);
+      
       // Отправляем событие для обновления
       window.dispatchEvent(new Event('user-data-changed'));
       return updatedUser;
     }
+
+    // Синхронизируем статус подписки с Supabase
+    void profileService.updatePremiumStatus(userId, hasPremium);
 
     // Отправляем событие для обновления
     window.dispatchEvent(new Event('user-data-changed'));
