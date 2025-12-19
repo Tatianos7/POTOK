@@ -18,6 +18,7 @@ import FavoritesProductsPage from './pages/FavoritesProductsPage';
 import RecipeAnalyzer from './pages/RecipeAnalyzer';
 import Recipes from './pages/Recipes';
 import RecipeDetails from './pages/RecipeDetails';
+import Habits from './pages/Habits';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function AppRoutes() {
@@ -162,6 +163,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <FavoritesProductsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/habits"
+        element={
+          <ProtectedRoute>
+            <Habits />
           </ProtectedRoute>
         }
       />

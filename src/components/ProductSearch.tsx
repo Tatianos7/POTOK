@@ -59,6 +59,12 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
     };
   }, [query, userId, forceTrigger]);
 
+  // Если инпут скрыт и запрос пустой - не рендерим ничего
+  // (родительский компонент должен управлять показом/скрытием этого компонента)
+  if (hideInput && !query.trim()) {
+    return null;
+  }
+
   return (
     <div className="w-full">
       {/* Search Input (optional) */}
@@ -80,29 +86,33 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
         </div>
       )}
 
-      {/* Results */}
-      {query.trim() && !isLoading && (
-        <div className="space-y-2 max-h-[400px] overflow-y-auto">
-          {results.length > 0 ? (
-            results.map((food) => (
-              <ProductCard
-                key={food.id}
-                food={food}
-                onClick={() => onSelect(food)}
-              />
-            ))
-          ) : (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <p>Продукты не найдены</p>
+      {/* Results - рендерим ТОЛЬКО если есть запрос */}
+      {query.trim() && (
+        <>
+          {!isLoading && (
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {results.length > 0 ? (
+                results.map((food) => (
+                  <ProductCard
+                    key={food.id}
+                    food={food}
+                    onClick={() => onSelect(food)}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <p>Продукты не найдены</p>
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {query.trim() && isLoading && (
-        <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
-          Ищем продукты...
-        </div>
+          {isLoading && (
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+              Ищем продукты...
+            </div>
+          )}
+        </>
       )}
     </div>
   );

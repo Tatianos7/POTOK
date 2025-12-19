@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, Trash2 } from 'lucide-react';
+import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check } from 'lucide-react';
 import { DailyMeals, MealEntry, Food, UserCustomFood } from '../types';
 import { mealService } from '../services/mealService';
 import { foodService } from '../services/foodService';
@@ -14,6 +14,7 @@ import ScanConfirmBottomSheet from '../components/ScanConfirmBottomSheet';
 import AddProductModal from '../components/AddProductModal';
 import RecipeAnalyzePicker from '../components/RecipeAnalyzePicker';
 import RecipeAnalyzeResultSheet from '../components/RecipeAnalyzeResultSheet';
+import EditMealEntryModal from '../components/EditMealEntryModal';
 import { localAIFoodAnalyzer, LocalIngredient } from '../services/localAIFoodAnalyzer';
 
 const FoodDiary = () => {
@@ -38,6 +39,37 @@ const FoodDiary = () => {
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [scannedFood, setScannedFood] = useState<Food | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
+  
+  // State для раскрытия/сворачивания приёмов пищи
+  const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({
+    breakfast: false,
+    lunch: false,
+    dinner: false,
+    snack: false,
+  });
+  
+  // State для отметки "съедено" для каждого продукта
+  const [eatenEntries, setEatenEntries] = useState<Record<string, boolean>>({});
+  
+  // State для редактирования записи продукта
+  const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
+  const [isEditEntryModalOpen, setIsEditEntryModalOpen] = useState(false);
+  
+  // Переключение состояния раскрытия приёма пищи
+  const toggleMealExpanded = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+    setExpandedMeals((prev) => ({
+      ...prev,
+      [mealType]: !prev[mealType],
+    }));
+  };
+  
+  // Переключение состояния "съедено" для продукта
+  const toggleEntryEaten = (entryId: string) => {
+    setEatenEntries((prev) => ({
+      ...prev,
+      [entryId]: !prev[entryId],
+    }));
+  };
 
   // Используем useMemo для dates, чтобы они не пересчитывались без необходимости
   const dates = useMemo(() => {
@@ -102,8 +134,9 @@ const FoodDiary = () => {
   // Load meals for selected date
   useEffect(() => {
     if (user?.id) {
-      const meals = mealService.getMealsForDate(user.id, selectedDate);
-      setDailyMeals(meals);
+      mealService.getMealsForDate(user.id, selectedDate).then((meals) => {
+        setDailyMeals(meals);
+      });
     }
   }, [selectedDate, user?.id]);
 
@@ -145,6 +178,15 @@ const FoodDiary = () => {
   const remainingProtein = Math.max(0, Math.round((dailyProtein - consumedProtein) * 10) / 10);
   const remainingFat = Math.max(0, Math.round((dailyFat - consumedFat) * 10) / 10);
   const remainingCarbs = Math.max(0, Math.round((dailyCarbs - consumedCarbs) * 10) / 10);
+
+  // Вычисляем перебор (когда съели больше нормы)
+  const overCalories = consumedCalories > dailyCalories ? Math.round(consumedCalories - dailyCalories) : 0;
+  const overProtein = consumedProtein > dailyProtein ? Math.round((consumedProtein - dailyProtein) * 10) / 10 : 0;
+  const overFat = consumedFat > dailyFat ? Math.round((consumedFat - dailyFat) * 10) / 10 : 0;
+  const overCarbs = consumedCarbs > dailyCarbs ? Math.round(consumedCarbs - dailyCarbs) : 0;
+
+  // Проверяем, есть ли перебор по любому из показателей
+  const hasOverConsumption = overCalories > 0 || overProtein > 0 || overFat > 0 || overCarbs > 0;
 
   const handleMealClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
     setSelectedMealType(mealType);
@@ -195,11 +237,18 @@ const FoodDiary = () => {
       carbs: scannedFood.carbs * k,
     };
 
-    mealService.addMealEntry(user.id, selectedDate, mealType, entry);
+    mealService.addMealEntry(user.id, selectedDate, mealType, entry).then(() => {
+      // Reload meals
+      return mealService.getMealsForDate(user.id, selectedDate);
+    }).then((updatedMeals) => {
+      setDailyMeals(updatedMeals);
+    });
     
-    // Reload meals
-    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
-    setDailyMeals(updatedMeals);
+    // СРАЗУ разворачиваем блок приёма пищи синхронно
+    setExpandedMeals((prev) => ({
+      ...prev,
+      [mealType]: true,
+    }));
     
     setIsConfirmScannedFoodModalOpen(false);
     setScannedFood(null);
@@ -213,40 +262,76 @@ const FoodDiary = () => {
   const handleAddFood = (entry: MealEntry) => {
     if (!user?.id || !selectedMealType || !dailyMeals) return;
 
-    mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
-    
-    // Reload meals
-    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
-    setDailyMeals(updatedMeals);
+    const mealTypeToExpand = selectedMealType;
+
+    mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry).then(() => {
+      // Reload meals
+      return mealService.getMealsForDate(user.id, selectedDate);
+    }).then((updatedMeals) => {
+      setDailyMeals(updatedMeals);
+      // СРАЗУ разворачиваем блок приёма пищи синхронно
+      setExpandedMeals((prev) => ({
+        ...prev,
+        [mealTypeToExpand]: true,
+      }));
+    });
     
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
     setSelectedMealType(null);
   };
 
-  const handleRemoveEntry = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entryId: string) => {
-    if (!user?.id || !dailyMeals) return;
-
-    mealService.removeMealEntry(user.id, selectedDate, mealType, entryId);
-    
-    // Reload meals
-    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
-    setDailyMeals(updatedMeals);
-  };
 
   const handleWaterClick = (index: number) => {
     if (!user?.id || !dailyMeals) return;
 
     const newWater = index + 1;
-    mealService.updateWater(user.id, selectedDate, newWater);
-    
-    // Reload meals
-    const updatedMeals = mealService.getMealsForDate(user.id, selectedDate);
-    setDailyMeals(updatedMeals);
+    mealService.updateWater(user.id, selectedDate, newWater).then(() => {
+      // Reload meals
+      return mealService.getMealsForDate(user.id, selectedDate);
+    }).then((updatedMeals) => {
+      setDailyMeals(updatedMeals);
+    });
   };
 
   const handleCreateCustomFood = (food: UserCustomFood) => {
     handleFoodSelect(food);
+  };
+
+  const handleEntryClick = (entry: MealEntry, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+    setEditingEntry(entry);
+    setSelectedMealType(mealType);
+    setIsEditEntryModalOpen(true);
+  };
+
+  const handleUpdateEntry = (updatedEntry: MealEntry) => {
+    if (!user?.id || !selectedMealType || !dailyMeals) return;
+
+    mealService.updateMealEntry(user.id, selectedDate, selectedMealType, updatedEntry.id, updatedEntry).then(() => {
+      // Reload meals
+      return mealService.getMealsForDate(user.id, selectedDate);
+    }).then((updatedMeals) => {
+      setDailyMeals(updatedMeals);
+    });
+    
+    setIsEditEntryModalOpen(false);
+    setEditingEntry(null);
+    setSelectedMealType(null);
+  };
+
+  const handleDeleteEntry = () => {
+    if (!user?.id || !selectedMealType || !editingEntry || !dailyMeals) return;
+
+    mealService.removeMealEntry(user.id, selectedDate, selectedMealType, editingEntry.id).then(() => {
+      // Reload meals
+      return mealService.getMealsForDate(user.id, selectedDate);
+    }).then((updatedMeals) => {
+      setDailyMeals(updatedMeals);
+    });
+    
+    setIsEditEntryModalOpen(false);
+    setEditingEntry(null);
+    setSelectedMealType(null);
   };
 
   const getMonthName = () => {
@@ -264,8 +349,8 @@ const FoodDiary = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto">
+    <div className="bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
+      <div className="max-w-[1024px] mx-auto min-h-screen">
         {/* Header */}
         <header className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-3">
@@ -360,74 +445,134 @@ const FoodDiary = () => {
               const mealType = meal.id as 'breakfast' | 'lunch' | 'dinner' | 'snack';
               const mealEntries = dailyMeals?.[mealType] || [];
               const mealTotals = mealService.calculateMealTotals(mealEntries);
+              const isExpanded = expandedMeals[mealType];
 
               return (
-                <div key={meal.id} className="space-y-2">
-                  <div className="relative">
-                    {/* Text "Сохранить как рецепт" above right part */}
-                    <div className="absolute -top-3 right-16 z-10">
-                      <div className="relative">
-                        <div className="absolute top-1/2 left-0 right-0 h-px bg-gray-900 dark:bg-gray-300"></div>
-                        <span className="relative bg-white dark:bg-gray-900 px-2 text-xs text-gray-600 dark:text-gray-400">
-                          Сохранить как рецепт
-                        </span>
-                      </div>
+                <div key={meal.id} className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-hidden">
+                  {/* Header - всегда видимый */}
+                  <div className="flex items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                    {/* Иконка приёма пищи */}
+                    <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center mr-3">
+                      <meal.icon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
                     </div>
-
-                    {/* Main container */}
-                    <div className="flex items-center border border-gray-900 dark:border-gray-300 rounded-[15px] bg-white dark:bg-gray-800 overflow-hidden" style={{ borderWidth: '0.5px' }}>
-                      {/* Left part with icon and text */}
-                      <div className="flex items-center gap-4 px-4 py-[10px] flex-1">
-                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-                          <meal.icon className="w-7 h-7 text-gray-700 dark:text-gray-300" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase">
-                            {meal.name}
-                          </h3>
-                          {mealEntries.length > 0 && (
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {Math.round(mealTotals.calories)} ккал
-                            </p>
-                          )}
-                        </div>
+                    
+                    {/* Название и БЖУ */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-white uppercase">
+                          {meal.name}
+                        </h3>
+                        {mealEntries.length > 0 && (
+                          <span className="text-xs text-gray-600 dark:text-gray-400 ml-2">
+                            {Math.round(mealTotals.calories)} калорий
+                          </span>
+                        )}
                       </div>
                       
-                      {/* Right part - button */}
+                      {/* Общие БЖУ */}
+                      {mealEntries.length > 0 && (
+                        <div className="flex items-center gap-3 text-xs text-gray-600 dark:text-gray-400">
+                          <span>{mealTotals.protein.toFixed(2).replace('.', ',')}</span>
+                          <span>{mealTotals.fat.toFixed(2).replace('.', ',')}</span>
+                          <span>{mealTotals.carbs.toFixed(0)}</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Кнопки справа */}
+                    <div className="flex items-center gap-2 ml-3">
+                      {/* Кнопка раскрытия/сворачивания */}
+                      {mealEntries.length > 0 && (
+                        <button
+                          onClick={() => toggleMealExpanded(mealType)}
+                          className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                          aria-label={isExpanded ? 'Свернуть' : 'Развернуть'}
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform" />
+                          ) : (
+                            <ChevronUp className="w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform" />
+                          )}
+                        </button>
+                      )}
+                      
+                      {/* Кнопка добавления продукта */}
                       <button
                         onClick={() => handleMealClick(mealType)}
-                        className="w-16 self-stretch rounded-r-[15px] rounded-bl-[15px] bg-white dark:bg-white border-t border-r border-b border-gray-900 dark:border-gray-300 text-gray-900 dark:text-gray-900 flex items-center justify-center hover:bg-gray-50 dark:hover:bg-gray-100 transition-colors flex-shrink-0 -ml-[0.5px]"
-                        style={{ borderWidth: '0.5px' }}
+                        className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                        aria-label="Добавить продукт"
                       >
-                        <Plus className="w-8 h-8" strokeWidth={2.5} />
+                        <Plus className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Meal Entries */}
+                  {/* Раскрывающийся блок с продуктами */}
                   {mealEntries.length > 0 && (
-                    <div className="ml-4 space-y-2">
-                      {mealEntries.map((entry) => (
-                        <div
-                          key={entry.id}
-                          className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
-                        >
-                          <div className="flex-1">
-                            <p className="text-xs font-medium text-gray-900 dark:text-white">
-                              {entry.food.name}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {entry.weight}г · {Math.round(entry.calories)} ккал
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => handleRemoveEntry(mealType, entry.id)}
-                            className="p-1 hover:bg-red-100 dark:hover:bg-red-900/20 rounded transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
-                          </button>
-                        </div>
-                      ))}
+                    <div
+                      className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                        isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
+                      }`}
+                    >
+                      <div className="px-4 pb-3 pt-2 space-y-2">
+                        {mealEntries.map((entry) => {
+                          const isEaten = eatenEntries[entry.id] || false;
+                          return (
+                            <div
+                              key={entry.id}
+                              className="flex items-center gap-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded transition-colors"
+                            >
+                              {/* Вертикальное троеточие */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // TODO: будущие действия
+                                }}
+                                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors flex-shrink-0"
+                                aria-label="Дополнительные действия"
+                              >
+                                <MoreVertical className="w-4 h-4 text-gray-400 dark:text-gray-500" />
+                              </button>
+                              
+                              {/* Название и БЖУ продукта - кликабельная область */}
+                              <div 
+                                className="flex-1 min-w-0 cursor-pointer"
+                                onClick={() => handleEntryClick(entry, mealType)}
+                              >
+                                <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5">
+                                  {entry.food.name}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                  <span>{entry.protein.toFixed(2).replace('.', ',')}</span>
+                                  <span>{entry.fat.toFixed(2).replace('.', ',')}</span>
+                                  <span>{entry.carbs.toFixed(0)}</span>
+                                </div>
+                              </div>
+                              
+                              {/* Checkbox "съедено" */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleEntryEaten(entry.id);
+                                }}
+                                className={`flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                  isEaten
+                                    ? 'border-green-500 bg-green-500'
+                                    : 'border-gray-300 dark:border-gray-600'
+                                }`}
+                                aria-label={isEaten ? 'Отметить как не съедено' : 'Отметить как съедено'}
+                              >
+                                {isEaten && <Check className="w-3 h-3 text-white" />}
+                              </button>
+                              
+                              {/* Калории */}
+                              <div className="flex-shrink-0 text-sm font-medium text-gray-900 dark:text-white w-12 text-right">
+                                {Math.round(entry.calories)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -436,35 +581,55 @@ const FoodDiary = () => {
           </div>
 
           {/* Remaining Nutrients Summary */}
-          <div className="mb-6">
+          <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-900">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase">
+              <h2 className="text-sm font-medium uppercase text-gray-900 dark:text-white">
                 ОСТАЛОСЬ
               </h2>
               <div className="flex gap-4">
                 <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Белки</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {remainingProtein} г
+                  <p className={`text-xs mb-1 ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Белки</p>
+                  <p className={`text-sm font-semibold ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                    {overProtein > 0 ? Math.round(consumedProtein) : remainingProtein} г
                   </p>
+                  {overProtein > 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+                      +{overProtein} г
+                    </p>
+                  )}
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Жиры</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {remainingFat} г
+                  <p className={`text-xs mb-1 ${hasOverConsumption && overFat > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Жиры</p>
+                  <p className={`text-sm font-semibold ${hasOverConsumption && overFat > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                    {overFat > 0 ? Math.round(consumedFat) : remainingFat} г
                   </p>
+                  {overFat > 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+                      +{overFat} г
+                    </p>
+                  )}
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Углеводы</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {remainingCarbs} г
+                  <p className={`text-xs mb-1 ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Углеводы</p>
+                  <p className={`text-sm font-semibold ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                    {overCarbs > 0 ? Math.round(consumedCarbs) : remainingCarbs} г
                   </p>
+                  {overCarbs > 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+                      +{overCarbs} г
+                    </p>
+                  )}
                 </div>
                 <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Калории</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {remainingCalories} ккал
+                  <p className={`text-xs mb-1 ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Калории</p>
+                  <p className={`text-sm font-semibold ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                    {overCalories > 0 ? Math.round(consumedCalories) : remainingCalories} ккал
                   </p>
+                  {overCalories > 0 && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+                      +{overCalories} ккал
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -478,7 +643,7 @@ const FoodDiary = () => {
                   ВОДА
                 </h2>
                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                         {dailyMeals?.water || 0} стакан(ов) · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
+                         {dailyMeals?.water || 0} ст. · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
                        </p>
               </div>
               <div className="flex gap-1">
@@ -648,29 +813,58 @@ const FoodDiary = () => {
               setIsRecipeResultOpen(false);
               return;
             }
-            ings.forEach((ing) => {
-              const food = localAIFoodAnalyzer.toFood(ing);
-              const grams = ing.grams ?? 100;
-              const k = grams / 100;
-              const entry: MealEntry = {
-                id: `meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                foodId: food.id,
-                food,
-                weight: grams,
-                calories: food.calories * k,
-                protein: food.protein * k,
-                fat: food.fat * k,
-                carbs: food.carbs * k,
-              };
-              mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
+            
+            const mealTypeToExpand = selectedMealType;
+            
+            Promise.all(
+              ings.map((ing) => {
+                const food = localAIFoodAnalyzer.toFood(ing);
+                const grams = ing.grams ?? 100;
+                const k = grams / 100;
+                const entry: MealEntry = {
+                  id: `meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                  foodId: food.id,
+                  food,
+                  weight: grams,
+                  calories: food.calories * k,
+                  protein: food.protein * k,
+                  fat: food.fat * k,
+                  carbs: food.carbs * k,
+                };
+                return mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
+              })
+            ).then(() => {
+              // Reload meals
+              return mealService.getMealsForDate(user.id, selectedDate);
+            }).then((updated) => {
+              setDailyMeals(updated);
+              
+              // СРАЗУ разворачиваем блок приёма пищи синхронно
+              setExpandedMeals((prev) => ({
+                ...prev,
+                [mealTypeToExpand]: true,
+              }));
+              
+              setIsRecipeResultOpen(false);
+              setAnalyzedIngredients([]);
             });
-            const updated = mealService.getMealsForDate(user.id, selectedDate);
-            setDailyMeals(updated);
-            setIsRecipeResultOpen(false);
-            setAnalyzedIngredients([]);
           }}
         />
       )}
+
+      <EditMealEntryModal
+        entry={editingEntry}
+        mealType={selectedMealType}
+        date={selectedDate}
+        isOpen={isEditEntryModalOpen}
+        onClose={() => {
+          setIsEditEntryModalOpen(false);
+          setEditingEntry(null);
+          setSelectedMealType(null);
+        }}
+        onSave={handleUpdateEntry}
+        onDelete={handleDeleteEntry}
+      />
     </div>
   );
 };

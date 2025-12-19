@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
 import CreateGoalModal, { GoalFormData } from '../components/CreateGoalModal';
 import EditGoalModal from '../components/EditGoalModal';
+import { goalService } from '../services/goalService';
 
 interface GoalData {
   goalType: string;
@@ -39,12 +40,29 @@ const Goal = () => {
       return;
     }
 
-    // Загружаем сохраненную цель из localStorage
+    // Load goal from Supabase first, then localStorage for additional data
+    goalService.getUserGoal(user.id).then((supabaseGoal) => {
+      if (supabaseGoal) {
+        // Update goalData with Supabase data
+        setGoalData((prev) => ({
+          ...prev,
+          calories: supabaseGoal.calories.toString(),
+          proteins: supabaseGoal.protein.toString(),
+          fats: supabaseGoal.fat.toString(),
+          carbs: supabaseGoal.carbs.toString(),
+        }));
+      }
+    });
+
+    // Загружаем дополнительные данные цели из localStorage (goalType, dates, etc.)
     const savedGoal = localStorage.getItem(`goal_${user.id}`);
     if (savedGoal) {
       try {
         const parsed = JSON.parse(savedGoal);
-        setGoalData(parsed);
+        setGoalData((prev) => ({
+          ...prev,
+          ...parsed,
+        }));
       } catch (error) {
         console.error('Ошибка загрузки цели:', error);
       }
@@ -70,8 +88,16 @@ const Goal = () => {
     setIsEditGoalModalOpen(true);
   };
 
-  const handleSaveEdit = (data: { calories: string; proteins: string; fats: string; carbs: string }) => {
+  const handleSaveEdit = async (data: { calories: string; proteins: string; fats: string; carbs: string }) => {
     if (!user?.id) return;
+
+    // Save to Supabase
+    await goalService.saveUserGoal(user.id, {
+      calories: Number(data.calories),
+      protein: Number(data.proteins),
+      fat: Number(data.fats),
+      carbs: Number(data.carbs),
+    });
 
     // Обновляем данные цели
     const updatedGoalData = {
@@ -82,7 +108,7 @@ const Goal = () => {
       carbs: data.carbs,
     };
 
-    // Сохраняем в localStorage
+    // Сохраняем в localStorage (для дополнительных данных)
     localStorage.setItem(`goal_${user.id}`, JSON.stringify(updatedGoalData));
     setGoalData(updatedGoalData);
     setIsEditGoalModalOpen(false);

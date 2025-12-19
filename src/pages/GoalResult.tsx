@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
 import { GoalFormData } from '../components/CreateGoalModal';
+import { goalService } from '../services/goalService';
 
 interface CalculatedResult {
   bmr: number;
@@ -230,7 +231,7 @@ const GoalResult = () => {
     return workouts[lifestyle] || '-';
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!user?.id || !formData || !result) return;
 
     const goalTypeMap: Record<string, string> = {
@@ -249,6 +250,15 @@ const GoalResult = () => {
       endDate = endDateObj.toISOString().split('T')[0];
     }
 
+    // Save to Supabase (only calories and macros)
+    await goalService.saveUserGoal(user.id, {
+      calories: result.calories,
+      protein: result.proteins,
+      fat: result.fats,
+      carbs: result.carbs,
+    });
+
+    // Save additional goal data to localStorage (goalType, dates, etc.)
     const goalData = {
       goalType: goalTypeMap[formData.goal] || formData.goal,
       currentWeight: formData.weight, // Сохраняем текущий вес

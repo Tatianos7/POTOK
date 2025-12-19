@@ -2,27 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Plus, Minus, ArrowRight } from 'lucide-react';
-
-interface Measurement {
-  id: string;
-  name: string;
-  value: string;
-}
-
-interface MeasurementHistory {
-  id: string;
-  date: string;
-  measurements: Measurement[];
-  photos: string[]; // Основные фото (первые 3)
-  additionalPhotos: string[]; // Дополнительные фото
-}
-
-interface PhotoHistory {
-  id: string;
-  date: string;
-  photos: string[]; // Основные фото (первые 3)
-  additionalPhotos: string[]; // Дополнительные фото
-}
+import {
+  measurementsService,
+  type Measurement,
+  type MeasurementHistory,
+  type PhotoHistory,
+} from '../services/measurementsService';
 
 const Measurements = () => {
   const { user } = useAuth();
@@ -52,78 +37,35 @@ const Measurements = () => {
       return;
     }
 
-    // Загружаем сохраненные замеры из localStorage
-    const savedMeasurements = localStorage.getItem(`measurements_${user.id}`);
-    if (savedMeasurements) {
-      try {
-        const parsed = JSON.parse(savedMeasurements);
-        setMeasurements(parsed);
-      } catch (error) {
-        console.error('Ошибка загрузки замеров:', error);
-      }
-    }
+    // Загружаем сохраненные замеры
+    measurementsService.getCurrentMeasurements(user.id).then((savedMeasurements) => {
+      setMeasurements(savedMeasurements);
+    });
 
     // Загружаем сохраненные фото
-    const savedPhotos = localStorage.getItem(`measurement_photos_${user.id}`);
-    if (savedPhotos) {
-      try {
-        const parsed = JSON.parse(savedPhotos);
-        // Первые 3 - основные фото
-        const mainPhotos = parsed.slice(0, 3);
-        setPhotos([...mainPhotos, ...Array(3 - mainPhotos.length).fill('')].slice(0, 3));
-        
-        // Если есть фото после первых 3, добавляем их в дополнительные
-        const additional = parsed.slice(3).filter((p: string) => p !== '');
-        if (additional.length > 0) {
-          setAdditionalPhotos(additional);
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки фото:', error);
-      }
-    }
-
-    // Загружаем дополнительные фото отдельно (приоритет над старыми данными)
-    const savedAdditionalPhotos = localStorage.getItem(`measurement_additional_photos_${user.id}`);
-    if (savedAdditionalPhotos) {
-      try {
-        const parsed = JSON.parse(savedAdditionalPhotos);
-        const filtered = parsed.filter((p: string) => p !== '');
-        if (filtered.length > 0) {
-          setAdditionalPhotos(filtered);
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки дополнительных фото:', error);
-      }
-    }
+    measurementsService.getCurrentPhotos(user.id).then(({ photos: savedPhotos, additionalPhotos: savedAdditionalPhotos }) => {
+      // Первые 3 - основные фото
+      const mainPhotos = savedPhotos.slice(0, 3);
+      setPhotos([...mainPhotos, ...Array(3 - mainPhotos.length).fill('')].slice(0, 3));
+      setAdditionalPhotos(savedAdditionalPhotos || []);
+    });
 
     // Загружаем историю замеров (только для бесплатных пользователей)
     if (!user.hasPremium) {
-      const savedHistory = localStorage.getItem(`measurement_history_${user.id}`);
-      if (savedHistory) {
-        try {
-          const parsed = JSON.parse(savedHistory);
-          // Обрабатываем старые записи без фото
-          const processedHistory = parsed.map((entry: any) => ({
-            ...entry,
-            photos: entry.photos || [],
-            additionalPhotos: entry.additionalPhotos || [],
-          }));
-          setHistory(processedHistory);
-        } catch (error) {
-          console.error('Ошибка загрузки истории:', error);
-        }
-      }
+      measurementsService.getMeasurementHistory(user.id).then((savedHistory) => {
+        // Обрабатываем старые записи без фото
+        const processedHistory = savedHistory.map((entry) => ({
+          ...entry,
+          photos: entry.photos || [],
+          additionalPhotos: entry.additionalPhotos || [],
+        }));
+        setHistory(processedHistory);
+      });
 
       // Загружаем историю фото отдельно
-      const savedPhotoHistory = localStorage.getItem(`measurement_photo_history_${user.id}`);
-      if (savedPhotoHistory) {
-        try {
-          const parsed = JSON.parse(savedPhotoHistory);
-          setPhotoHistory(parsed);
-        } catch (error) {
-          console.error('Ошибка загрузки истории фото:', error);
-        }
-      }
+      measurementsService.getPhotoHistory(user.id).then((savedPhotoHistory) => {
+        setPhotoHistory(savedPhotoHistory);
+      });
     }
   }, [user, navigate]);
 
@@ -218,7 +160,7 @@ const Measurements = () => {
   };
 
   const handleAddCustomMeasurement = () => {
-    if (!customData.trim()) return;
+    if (!customData.trim() || !user?.id) return;
 
     const newMeasurement: Measurement = {
       id: `custom_${Date.now()}`,
@@ -231,9 +173,7 @@ const Measurements = () => {
     setCustomData('');
 
     // Сохраняем изменения сразу
-    if (user?.id) {
-      localStorage.setItem(`measurements_${user.id}`, JSON.stringify(updated));
-    }
+    measurementsService.saveCurrentMeasurements(user.id, updated, photos, additionalPhotos);
   };
 
   const handleAddAdditionalPhoto = () => {
@@ -262,34 +202,29 @@ const Measurements = () => {
     setAdditionalPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleDeleteHistoryEntry = (entryId: string) => {
+  const handleDeleteHistoryEntry = async (entryId: string) => {
     if (!user?.id) return;
     
+    await measurementsService.deleteMeasurementHistory(user.id, entryId);
     const updatedHistory = history.filter((entry) => entry.id !== entryId);
     setHistory(updatedHistory);
-    localStorage.setItem(`measurement_history_${user.id}`, JSON.stringify(updatedHistory));
     setDeleteDateId(null);
     // История фото остается нетронутой
   };
 
-  const handleDeletePhotoHistoryEntry = (entryId: string) => {
+  const handleDeletePhotoHistoryEntry = async (entryId: string) => {
     if (!user?.id) return;
     
+    await measurementsService.deletePhotoHistory(user.id, entryId);
     const updatedPhotoHistory = photoHistory.filter((entry) => entry.id !== entryId);
     setPhotoHistory(updatedPhotoHistory);
-    localStorage.setItem(`measurement_photo_history_${user.id}`, JSON.stringify(updatedPhotoHistory));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!user?.id) return;
 
-    // Сохраняем замеры
-    localStorage.setItem(`measurements_${user.id}`, JSON.stringify(measurements));
-    
-    // Сохраняем фото (основные + дополнительные)
-    const allPhotos = [...photos, ...additionalPhotos];
-    localStorage.setItem(`measurement_photos_${user.id}`, JSON.stringify(allPhotos));
-    localStorage.setItem(`measurement_additional_photos_${user.id}`, JSON.stringify(additionalPhotos));
+    // Сохраняем текущие замеры и фото
+    await measurementsService.saveCurrentMeasurements(user.id, measurements, photos, additionalPhotos);
 
     // Для бесплатных пользователей обрабатываем историю
     if (!user.hasPremium) {
@@ -312,9 +247,9 @@ const Measurements = () => {
           additionalPhotos: currentAdditionalPhotos,
         };
         
+        await measurementsService.saveMeasurementHistory(user.id, historyEntry);
         const updatedHistory = [historyEntry, ...history];
         setHistory(updatedHistory);
-        localStorage.setItem(`measurement_history_${user.id}`, JSON.stringify(updatedHistory));
       } else if (lastEntry && (currentPhotos.length > 0 || currentAdditionalPhotos.length > 0)) {
         // Если замеры не изменились, но есть фото - обновляем последнюю запись
         const updatedEntry: MeasurementHistory = {
@@ -323,9 +258,9 @@ const Measurements = () => {
           additionalPhotos: currentAdditionalPhotos.length > 0 ? currentAdditionalPhotos : lastEntry.additionalPhotos,
         };
         
+        await measurementsService.saveMeasurementHistory(user.id, updatedEntry);
         const updatedHistory = [updatedEntry, ...history.slice(1)];
         setHistory(updatedHistory);
-        localStorage.setItem(`measurement_history_${user.id}`, JSON.stringify(updatedHistory));
       }
 
       // Сохраняем фото в отдельную историю фото (независимо от замеров)
@@ -342,18 +277,21 @@ const Measurements = () => {
         const existingPhotoEntry = photoHistory.find(p => p.date === currentDate);
         if (existingPhotoEntry) {
           // Обновляем существующую запись
+          const updatedPhotoHistoryEntry: PhotoHistory = {
+            ...existingPhotoEntry,
+            photos: currentPhotos.length > 0 ? currentPhotos : existingPhotoEntry.photos,
+            additionalPhotos: currentAdditionalPhotos.length > 0 ? currentAdditionalPhotos : existingPhotoEntry.additionalPhotos,
+          };
+          await measurementsService.savePhotoHistory(user.id, updatedPhotoHistoryEntry);
           const updatedPhotoHistory = photoHistory.map(p => 
-            p.date === currentDate 
-              ? { ...p, photos: currentPhotos.length > 0 ? currentPhotos : p.photos, additionalPhotos: currentAdditionalPhotos.length > 0 ? currentAdditionalPhotos : p.additionalPhotos }
-              : p
+            p.date === currentDate ? updatedPhotoHistoryEntry : p
           );
           setPhotoHistory(updatedPhotoHistory);
-          localStorage.setItem(`measurement_photo_history_${user.id}`, JSON.stringify(updatedPhotoHistory));
         } else {
           // Создаем новую запись
+          await measurementsService.savePhotoHistory(user.id, photoHistoryEntry);
           const updatedPhotoHistory = [photoHistoryEntry, ...photoHistory];
           setPhotoHistory(updatedPhotoHistory);
-          localStorage.setItem(`measurement_photo_history_${user.id}`, JSON.stringify(updatedPhotoHistory));
         }
       }
     }
@@ -372,7 +310,7 @@ const Measurements = () => {
     setOpenMenuId(null);
     
     // Сохраняем изменения сразу
-    localStorage.setItem(`measurements_${user.id}`, JSON.stringify(updated));
+    measurementsService.saveCurrentMeasurements(user.id, updated, photos, additionalPhotos);
   };
 
   const handleClose = () => {

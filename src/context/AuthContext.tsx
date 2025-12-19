@@ -8,6 +8,7 @@ import {
 } from '../types';
 import { authService } from '../services/authService';
 import { activityService } from '../services/activityService';
+import { profileService } from '../services/profileService';
 import { useTheme } from './ThemeContext';
 
 interface AuthContextType {
@@ -45,7 +46,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Проверяем наличие сохраненного пользователя при загрузке
     const savedUser = authService.getCurrentUser();
     if (savedUser) {
-      setUser(savedUser);
+      // Загружаем профиль из Supabase и обновляем пользователя
+      profileService.getProfile(savedUser.id).then((supabaseProfile) => {
+        if (supabaseProfile) {
+          const updatedUser = {
+            ...savedUser,
+            profile: {
+              ...savedUser.profile,
+              ...supabaseProfile,
+            },
+          };
+          setUser(updatedUser);
+          // Сохраняем обновленного пользователя
+          localStorage.setItem('potok_user', JSON.stringify(updatedUser));
+        } else {
+          setUser(savedUser);
+        }
+      }).catch(() => {
+        setUser(savedUser);
+      });
+      
       // Обновляем активность при загрузке
       activityService.updateActivity(savedUser.id);
     }
@@ -55,7 +75,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (credentials: LoginCredentials) => {
     try {
       const response = await authService.login(credentials);
-      setUser(response.user);
+      
+      // Загружаем профиль из Supabase и обновляем пользователя
+      const supabaseProfile = await profileService.getProfile(response.user.id);
+      if (supabaseProfile) {
+        const updatedUser = {
+          ...response.user,
+          profile: {
+            ...response.user.profile,
+            ...supabaseProfile,
+          },
+        };
+        setUser(updatedUser);
+        // Сохраняем обновленного пользователя
+        localStorage.setItem('potok_user', JSON.stringify(updatedUser));
+      } else {
+        setUser(response.user);
+      }
+      
       // Обновляем активность при входе
       activityService.updateActivity(response.user.id);
     } catch (error) {

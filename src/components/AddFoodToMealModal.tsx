@@ -1,16 +1,33 @@
 import { useState, useEffect } from 'react';
 import { Food, MealEntry } from '../types';
 import { X } from 'lucide-react';
+import { pieceWeights } from '../data/unitConversions';
+
+type Unit = 'g' | 'ml' | 'pcs' | 'l';
 
 interface AddFoodToMealModalProps {
   food: Food | null;
   isOpen: boolean;
   onClose: () => void;
   onAdd: (entry: MealEntry) => void;
+  defaultWeight?: number; // Предзаполненные граммы для часто используемых продуктов
 }
 
-const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd }: AddFoodToMealModalProps) => {
-  const [weight, setWeight] = useState('100');
+const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: AddFoodToMealModalProps) => {
+  const [quantity, setQuantity] = useState(() => {
+    // Если передан defaultWeight, используем его, иначе дефолт 100
+    return defaultWeight ? defaultWeight.toString() : '100';
+  });
+  const [unit, setUnit] = useState<Unit>('g');
+  
+  // Обновляем quantity при изменении food или defaultWeight
+  useEffect(() => {
+    if (food && defaultWeight) {
+      setQuantity(defaultWeight.toString());
+    } else if (food && !defaultWeight) {
+      setQuantity('100');
+    }
+  }, [food, defaultWeight]);
   const [calculated, setCalculated] = useState({
     calories: 0,
     protein: 0,
@@ -22,13 +39,35 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd }: AddFoodToMealModal
     if (food) {
       calculateNutrients();
     }
-  }, [food, weight]);
+  }, [food, quantity, unit]);
+
+  // Конвертируем количество в граммы для расчета КБЖУ
+  const convertToGrams = (qty: number, u: Unit): number => {
+    switch (u) {
+      case 'g':
+        return qty;
+      case 'ml':
+        return qty; // 1 мл ≈ 1 г для воды и большинства жидкостей
+      case 'l':
+        return qty * 1000; // 1 л = 1000 мл = 1000 г
+      case 'pcs':
+        // Используем средний вес из pieceWeights или дефолтное значение
+        const foodName = food?.name.toLowerCase() || '';
+        const pieceWeight = Object.entries(pieceWeights).find(([key]) =>
+          foodName.includes(key)
+        )?.[1] || 50; // дефолт 50г на штуку
+        return qty * pieceWeight;
+      default:
+        return qty;
+    }
+  };
 
   const calculateNutrients = () => {
     if (!food) return;
 
-    const weightNum = parseFloat(weight) || 0;
-    const k = weightNum / 100;
+    const quantityNum = parseFloat(quantity) || 0;
+    const weightInGrams = convertToGrams(quantityNum, unit);
+    const k = weightInGrams / 100;
 
     setCalculated({
       calories: food.calories * k,
@@ -38,18 +77,44 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd }: AddFoodToMealModal
     });
   };
 
+  // Обработчик быстрых кнопок
+  const handleQuickButton = (qty: number, u: Unit) => {
+    setQuantity(qty.toString());
+    setUnit(u);
+  };
+
+  // Проверка, поддерживает ли продукт данную единицу измерения
+  const isUnitSupported = (u: Unit): boolean => {
+    if (!food) return false;
+    
+    // Все продукты поддерживают граммы и миллилитры
+    if (u === 'g' || u === 'ml' || u === 'l') return true;
+    
+    // Для штук проверяем категорию или название продукта
+    if (u === 'pcs') {
+      const foodName = food.name.toLowerCase();
+      const pieceCategories = ['яйцо', 'яблоко', 'банан', 'помидор', 'огурец', 'морковь', 'картофель', 'лук'];
+      return pieceCategories.some(cat => foodName.includes(cat)) || food.category === 'fruits' || food.category === 'vegetables';
+    }
+    
+    return false;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!food || !weight || parseFloat(weight) <= 0) {
+    if (!food || !quantity || parseFloat(quantity) <= 0) {
       return;
     }
+
+    const quantityNum = parseFloat(quantity);
+    const weightInGrams = convertToGrams(quantityNum, unit);
 
     const entry: MealEntry = {
       id: `meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       foodId: food.id,
       food,
-      weight: parseFloat(weight),
+      weight: weightInGrams,
       calories: calculated.calories,
       protein: calculated.protein,
       fat: calculated.fat,
@@ -57,7 +122,8 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd }: AddFoodToMealModal
     };
 
     onAdd(entry);
-    setWeight('100');
+    setQuantity('100');
+    setUnit('g');
     onClose();
   };
 
@@ -115,26 +181,74 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd }: AddFoodToMealModal
             </div>
           </div>
 
-          {/* Weight Input */}
+          {/* Quantity Input */}
           <div>
             <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Вес порции (г)
+              Количество
             </label>
-            <input
-              type="number"
-              value={weight}
-              onChange={(e) => {
-                const value = e.target.value;
-                if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
-                  setWeight(value);
-                }
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={quantity}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
+                    setQuantity(value);
+                  }
+                }}
+                min="0"
+                step={unit === 'pcs' ? '1' : '1'}
+                className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="100"
+                required
+              />
+              <select
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as Unit)}
+                className="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="g">г</option>
+                <option value="ml">мл</option>
+                <option value="pcs">шт</option>
+                <option value="l">л</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Quick Amount Buttons */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => handleQuickButton(100, 'g')}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              100 г
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickButton(1, 'pcs')}
+              disabled={!isUnitSupported('pcs')}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              1 шт
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickButton(100, 'ml')}
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              100 мл
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setQuantity('1');
+                setUnit('l');
               }}
-              min="0"
-              step="1"
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="100"
-              required
-            />
+              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              1 л
+            </button>
           </div>
 
           {/* Calculated Nutrients */}
@@ -181,7 +295,7 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd }: AddFoodToMealModal
             </button>
             <button
               type="submit"
-              disabled={!weight || parseFloat(weight) <= 0}
+              disabled={!quantity || parseFloat(quantity) <= 0}
               className="flex-1 py-3 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Добавить
