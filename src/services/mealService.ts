@@ -193,11 +193,6 @@ class MealService {
     return this.createEmptyMeals(date);
   }
 
-  // Check if date is in the future
-  private isFutureDate(date: string): boolean {
-    const today = new Date().toISOString().split('T')[0];
-    return date > today;
-  }
 
   // Save meals for a specific date (with Supabase integration)
   async saveMealsForDate(userId: string, meals: DailyMeals): Promise<void> {
@@ -208,7 +203,6 @@ class MealService {
     if (supabase) {
       try {
         const uuidUserId = toUUID(userId);
-        const isFuture = this.isFutureDate(meals.date);
 
         // Подсчитываем общее количество записей
         const totalEntries = 
