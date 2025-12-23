@@ -26,6 +26,11 @@ class ProfileService {
 
   // Получить профиль пользователя
   async getProfile(userId: string): Promise<UserProfile | null> {
+    // Если Supabase недоступен, возвращаем null без ошибок
+    if (!supabase) {
+      return null;
+    }
+
     const uuidUserId = toUUID(userId);
 
     // Try Supabase first
@@ -40,7 +45,13 @@ class ProfileService {
         if (error) {
           // PGRST116 = no rows returned (это нормально, если профиля еще нет)
           if (error.code !== 'PGRST116') {
-            console.error('[profileService] Supabase error:', error);
+            // Не показываем ошибки для сетевых проблем (Failed to fetch, ERR_NAME_NOT_RESOLVED)
+            const isNetworkError = error.message?.includes('Failed to fetch') || 
+                                   error.message?.includes('ERR_NAME_NOT_RESOLVED') ||
+                                   error.message?.includes('NetworkError');
+            if (!isNetworkError) {
+              console.warn('[profileService] Supabase error:', error.message || error);
+            }
           }
           // Fallback to localStorage
         } else if (data) {
@@ -66,8 +77,14 @@ class ProfileService {
           this.saveProfileToLocalStorage(userId, profile);
           return profile;
         }
-      } catch (err) {
-        console.error('[profileService] Supabase connection error:', err);
+      } catch (err: any) {
+        // Не показываем ошибки для сетевых проблем
+        const isNetworkError = err?.message?.includes('Failed to fetch') || 
+                               err?.message?.includes('ERR_NAME_NOT_RESOLVED') ||
+                               err?.message?.includes('NetworkError');
+        if (!isNetworkError) {
+          console.warn('[profileService] Supabase connection error:', err?.message || err);
+        }
         // Fallback to localStorage
       }
     }

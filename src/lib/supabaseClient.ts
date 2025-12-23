@@ -49,17 +49,29 @@ export async function testSupabaseConnection() {
     } = await supabase.auth.getSession();
 
     if (error) {
-      // eslint-disable-next-line no-console
-      console.error('[supabaseClient] auth.getSession error', error);
+      // Не показываем ошибки для сетевых проблем
+      const isNetworkError = error.message?.includes('Failed to fetch') || 
+                             error.message?.includes('ERR_NAME_NOT_RESOLVED') ||
+                             error.message?.includes('NetworkError');
+      if (!isNetworkError) {
+        // eslint-disable-next-line no-console
+        console.warn('[supabaseClient] auth.getSession error:', error.message || error);
+      }
       return null;
     }
 
     // eslint-disable-next-line no-console
     console.log('[supabaseClient] ✅ Supabase connection OK, session:', session ? 'exists' : 'none');
     return session;
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[supabaseClient] unexpected error while testing connection', err);
+  } catch (err: any) {
+    // Не показываем ошибки для сетевых проблем
+    const isNetworkError = err?.message?.includes('Failed to fetch') || 
+                           err?.message?.includes('ERR_NAME_NOT_RESOLVED') ||
+                           err?.message?.includes('NetworkError');
+    if (!isNetworkError) {
+      // eslint-disable-next-line no-console
+      console.warn('[supabaseClient] unexpected error while testing connection:', err?.message || err);
+    }
     return null;
   }
 }

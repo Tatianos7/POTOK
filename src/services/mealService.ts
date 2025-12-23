@@ -50,8 +50,25 @@ class MealService {
       }
 
       if (data && data.length > 0) {
+        // Определяем тип даты для фильтрации
+        const isPast = this.isPastDate(date);
+        const isFuture = this.isFutureDate(date);
+        
         // Group by meal_type
         data.forEach((entry) => {
+          // Фильтруем данные по planned в зависимости от типа даты
+          const entryPlanned = (entry as any).planned || false;
+          
+          // Для прошлых дат показываем только planned = false
+          if (isPast && entryPlanned) {
+            return; // Пропускаем планируемые записи для прошлых дат
+          }
+          
+          // Для будущих дат показываем только planned = true
+          if (isFuture && !entryPlanned) {
+            return; // Пропускаем не планируемые записи для будущих дат
+          }
+          
           const mealEntry: MealEntry = {
             id: entry.id,
             foodId: entry.id,
@@ -119,7 +136,25 @@ class MealService {
       // Если данные в Supabase отличаются от локальных, обновляем localStorage
       if (data && data.length > 0) {
         const supabaseMeals = this.createEmptyMeals(date);
+        
+        // Определяем тип даты для фильтрации
+        const isPast = this.isPastDate(date);
+        const isFuture = this.isFutureDate(date);
+        
         data.forEach((entry) => {
+          // Фильтруем данные по planned в зависимости от типа даты
+          const entryPlanned = (entry as any).planned || false;
+          
+          // Для прошлых дат показываем только planned = false
+          if (isPast && entryPlanned) {
+            return; // Пропускаем планируемые записи для прошлых дат
+          }
+          
+          // Для будущих дат показываем только planned = true
+          if (isFuture && !entryPlanned) {
+            return; // Пропускаем не планируемые записи для будущих дат
+          }
+          
           const mealEntry: MealEntry = {
             id: entry.id,
             foodId: entry.id,
@@ -166,33 +201,35 @@ class MealService {
 
   // Get meals for a specific date (with Supabase integration and localStorage fallback)
   async getMealsForDate(userId: string, date: string): Promise<DailyMeals> {
-    // Приоритет: Supabase
+    // Приоритет: localStorage для мгновенного UI
+    const local = this.getMealsFromLocalStorage(userId, date);
+    if (local) return local;
+
+    // Fallback: Supabase (если доступен)
     if (supabase) {
       try {
         return await this.getFoodDiaryByDate(userId, date);
       } catch (err) {
-        console.error('[mealService] Error loading from Supabase, falling back to localStorage:', err);
+        console.error('[mealService] Error loading from Supabase:', err);
       }
-    }
-
-    // Fallback: localStorage
-    try {
-      const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
-      if (stored) {
-        const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
-        const localMeals = allMeals[date];
-        if (localMeals) {
-          return localMeals;
-        }
-      }
-    } catch (error) {
-      console.error('[mealService] Error loading meals from localStorage:', error);
     }
 
     // Совсем fallback: пустая структура
     return this.createEmptyMeals(date);
   }
 
+
+  // Check if date is in the future (for planned field)
+  private isFutureDate(date: string): boolean {
+    const today = new Date().toISOString().split('T')[0];
+    return date > today;
+  }
+
+  // Check if date is in the past (more than today)
+  private isPastDate(date: string): boolean {
+    const today = new Date().toISOString().split('T')[0];
+    return date < today;
+  }
 
   // Save meals for a specific date (with Supabase integration)
   async saveMealsForDate(userId: string, meals: DailyMeals): Promise<void> {
@@ -203,7 +240,6 @@ class MealService {
     if (supabase) {
       try {
         const uuidUserId = toUUID(userId);
-
         // Подсчитываем общее количество записей
         const totalEntries = 
           meals.breakfast.length + 
@@ -223,7 +259,7 @@ class MealService {
           return;
         }
 
-        // Insert all entries with planned flag (if column exists)
+        // Insert all entries (без поля planned, т.к. в БД его может не быть)
         // Валидация и нормализация числовых значений
         const safeNumber = (value: number | undefined | null): number => {
           const num = Number(value);
@@ -242,7 +278,6 @@ class MealService {
           weight: safeNumber(entry.weight),
         });
 
-        // Сначала создаем записи без planned, чтобы избежать ошибок
         const entriesToInsert = [
           ...meals.breakfast.map((entry) => baseEntry(entry, 'breakfast')),
           ...meals.lunch.map((entry) => baseEntry(entry, 'lunch')),
@@ -276,7 +311,7 @@ class MealService {
             return;
           }
 
-          console.log(`[mealService] Attempting to save ${validEntries.length} entries to Supabase`);
+        console.log(`[mealService] Attempting to save ${validEntries.length} entries to Supabase`);
 
           // Сохраняем текущие данные из Supabase для восстановления при ошибке
           const { data: existingData } = await supabase
@@ -292,7 +327,7 @@ class MealService {
             .eq('user_id', uuidUserId)
             .eq('date', meals.date);
 
-          // Вставляем новые записи (без planned, так как его может не быть)
+          // Пытаемся вставить без поля planned (чтобы не было ошибок 400)
           const { error: insertError } = await supabase
             .from('food_diary_entries')
             .insert(validEntries);
@@ -302,8 +337,7 @@ class MealService {
             // Если вставка не удалась, восстанавливаем старые данные
             if (existingData && existingData.length > 0) {
               console.warn('[mealService] Restoring previous data due to insert failure');
-              // Восстанавливаем старые данные (без planned, если его нет)
-              const restoreEntries = existingData.map(({ planned, ...rest }) => rest);
+              const restoreEntries = existingData;
               await supabase
                 .from('food_diary_entries')
                 .insert(restoreEntries);
@@ -421,12 +455,20 @@ class MealService {
     }
   }
 
-  // Update meal entry
+  // Update meal entry (используем локальные данные, чтобы избежать устаревших значений)
   async updateMealEntry(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entryId: string, updatedEntry: MealEntry): Promise<void> {
-    const meals = await this.getFoodDiaryByDate(userId, date);
+    // Берём актуальные данные из localStorage (быстрее и не даёт устаревших значений)
+    const meals = this.getMealsFromLocalStorage(userId, date) || this.createEmptyMeals(date);
     const index = meals[mealType].findIndex((entry) => entry.id === entryId);
     if (index !== -1) {
-      meals[mealType][index] = updatedEntry;
+      meals[mealType][index] = {
+        ...updatedEntry,
+        weight: Number(updatedEntry.weight) || 0,
+        calories: Number(updatedEntry.calories) || 0,
+        protein: Number(updatedEntry.protein) || 0,
+        fat: Number(updatedEntry.fat) || 0,
+        carbs: Number(updatedEntry.carbs) || 0,
+      };
       await this.saveMealsForDate(userId, meals);
     }
   }
@@ -477,6 +519,22 @@ class MealService {
       snack: [],
       water: 0,
     };
+  }
+
+  // Чтение из localStorage (приоритет для мгновенного UI)
+  private getMealsFromLocalStorage(userId: string, date: string): DailyMeals | null {
+    try {
+      const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
+      if (stored) {
+        const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
+        if (allMeals[date]) {
+          return allMeals[date];
+        }
+      }
+    } catch (error) {
+      console.error('[mealService] Error loading meals from localStorage:', error);
+    }
+    return null;
   }
 }
 
