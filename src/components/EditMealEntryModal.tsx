@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { MealEntry } from '../types';
-import { X, Pencil, Camera } from 'lucide-react';
+import { X, Pencil, Camera, Copy } from 'lucide-react';
 
 interface EditMealEntryModalProps {
   entry: MealEntry | null;
@@ -8,7 +8,7 @@ interface EditMealEntryModalProps {
   date: string;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedEntry: MealEntry) => void;
+  onSave: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', updatedEntry: MealEntry) => void;
   onDelete: () => void;
 }
 
@@ -90,7 +90,9 @@ const EditMealEntryModal = ({
       carbs: calculated.carbs,
     };
 
-    onSave(updatedEntry);
+    if (mealType) {
+      onSave(mealType, updatedEntry);
+    }
     onClose();
   };
 
@@ -203,6 +205,16 @@ const EditMealEntryModal = ({
               <Pencil className="w-5 h-5 text-gray-700 dark:text-gray-300" />
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 ДОБАВИТЬ ЗАМЕТКУ
+              </span>
+            </button>
+
+            <button
+              type="button"
+              className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <Copy className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                ДУБЛИРОВАТЬ
               </span>
             </button>
 
