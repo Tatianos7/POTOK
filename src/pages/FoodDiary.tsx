@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check } from 'lucide-react';
@@ -15,6 +15,7 @@ import AddProductModal from '../components/AddProductModal';
 import RecipeAnalyzePicker from '../components/RecipeAnalyzePicker';
 import RecipeAnalyzeResultSheet from '../components/RecipeAnalyzeResultSheet';
 import EditMealEntryModal from '../components/EditMealEntryModal';
+import InlineCalendar from '../components/InlineCalendar';
 import { localAIFoodAnalyzer, LocalIngredient } from '../services/localAIFoodAnalyzer';
 
 const FoodDiary = () => {
@@ -24,6 +25,7 @@ const FoodDiary = () => {
   const getTodayDate = () => new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [dailyMeals, setDailyMeals] = useState<DailyMeals | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Modal states
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -54,6 +56,32 @@ const FoodDiary = () => {
   // State для редактирования записи продукта
   const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
   const [isEditEntryModalOpen, setIsEditEntryModalOpen] = useState(false);
+  
+  // State для встроенного календаря
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const calendarRef = useRef<HTMLDivElement>(null);
+  
+  // Закрытие календаря при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        // Проверяем, что клик не по кнопке открытия календаря
+        const button = (event.target as HTMLElement).closest('button');
+        if (button && button.querySelector('svg[class*="lucide-calendar"]')) {
+          return; // Не закрываем, если клик по кнопке календаря
+        }
+        setIsCalendarOpen(false);
+      }
+    };
+
+    if (isCalendarOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isCalendarOpen]);
   
   // Переключение состояния раскрытия приёма пищи
   const toggleMealExpanded = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
@@ -131,13 +159,52 @@ const FoodDiary = () => {
     { id: 'snack', name: 'ПЕРЕКУС', icon: Apple },
   ];
 
-  // Load meals for selected date
+  // Load meals for selected date from Supabase
   useEffect(() => {
-    if (user?.id) {
-      mealService.getMealsForDate(user.id, selectedDate).then((meals) => {
+    if (!user?.id) return;
+
+    // Очищаем старые данные
+    setDailyMeals(null);
+    setIsLoading(true);
+
+    // Загружаем данные (сначала из localStorage для мгновенного отображения)
+    mealService.getFoodDiaryByDate(user.id, selectedDate)
+      .then((meals) => {
         setDailyMeals(meals);
+        setIsLoading(false);
+      })
+      .catch((error) => {
+        console.error('[FoodDiary] Error loading meals:', error);
+        // В случае ошибки показываем пустой дневник
+        setDailyMeals({
+          date: selectedDate,
+          breakfast: [],
+          lunch: [],
+          dinner: [],
+          snack: [],
+          water: 0,
+        });
+        setIsLoading(false);
       });
-    }
+  }, [selectedDate, user?.id]);
+
+  // Обработчик синхронизации данных с Supabase
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const handleMealsSynced = (event: CustomEvent) => {
+      const { date, meals } = event.detail;
+      // Обновляем только если это текущая выбранная дата
+      if (date === selectedDate) {
+        setDailyMeals(meals);
+      }
+    };
+
+    window.addEventListener('meals-synced', handleMealsSynced as EventListener);
+
+    return () => {
+      window.removeEventListener('meals-synced', handleMealsSynced as EventListener);
+    };
   }, [selectedDate, user?.id]);
 
   // Calculate totals
@@ -237,11 +304,12 @@ const FoodDiary = () => {
       carbs: scannedFood.carbs * k,
     };
 
-    mealService.addMealEntry(user.id, selectedDate, mealType, entry).then(() => {
-      // Reload meals
-      return mealService.getMealsForDate(user.id, selectedDate);
-    }).then((updatedMeals) => {
-      setDailyMeals(updatedMeals);
+    // Оптимистичное обновление - сразу обновляем UI
+    setDailyMeals((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      updated[mealType] = [...updated[mealType], entry];
+      return updated;
     });
     
     // СРАЗУ разворачиваем блок приёма пищи синхронно
@@ -252,6 +320,15 @@ const FoodDiary = () => {
     
     setIsConfirmScannedFoodModalOpen(false);
     setScannedFood(null);
+
+    // Сохраняем в фоне (не перезагружаем данные, чтобы не потерять оптимистичное обновление)
+    mealService.addMealEntry(user.id, selectedDate, mealType, entry).catch((error) => {
+      console.error('[FoodDiary] Ошибка сохранения продукта:', error);
+      // В случае ошибки откатываем изменение
+      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
+        setDailyMeals(meals);
+      });
+    });
   };
 
   const handleRejectScannedFood = () => {
@@ -260,25 +337,52 @@ const FoodDiary = () => {
   };
 
   const handleAddFood = (entry: MealEntry) => {
-    if (!user?.id || !selectedMealType || !dailyMeals) return;
+    if (!user?.id || !selectedMealType || !dailyMeals) {
+      console.warn('[FoodDiary] handleAddFood: missing required data', { user: !!user?.id, selectedMealType, dailyMeals: !!dailyMeals });
+      return;
+    }
 
     const mealTypeToExpand = selectedMealType;
+    console.log('[FoodDiary] Adding food to', mealTypeToExpand, entry);
 
-    mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry).then(() => {
-      // Reload meals
-      return mealService.getMealsForDate(user.id, selectedDate);
-    }).then((updatedMeals) => {
-      setDailyMeals(updatedMeals);
-      // СРАЗУ разворачиваем блок приёма пищи синхронно
-      setExpandedMeals((prev) => ({
-        ...prev,
-        [mealTypeToExpand]: true,
-      }));
+    // Оптимистичное обновление - сразу обновляем UI
+    setDailyMeals((prev) => {
+      if (!prev) {
+        console.warn('[FoodDiary] No previous dailyMeals, creating new');
+        return {
+          date: selectedDate,
+          breakfast: [],
+          lunch: [],
+          dinner: [],
+          snack: [],
+          water: 0,
+          [selectedMealType]: [entry],
+        };
+      }
+      const updated = { ...prev };
+      updated[selectedMealType] = [...(updated[selectedMealType] || []), entry];
+      console.log('[FoodDiary] Updated dailyMeals:', { mealType: selectedMealType, count: updated[selectedMealType].length });
+      return updated;
     });
+    
+    // СРАЗУ разворачиваем блок приёма пищи синхронно
+    setExpandedMeals((prev) => ({
+      ...prev,
+      [mealTypeToExpand]: true,
+    }));
     
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
     setSelectedMealType(null);
+
+    // Сохраняем в фоне
+    mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry).catch((error) => {
+      console.error('[FoodDiary] Ошибка сохранения продукта:', error);
+      // В случае ошибки откатываем изменение
+      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
+        setDailyMeals(meals);
+      });
+    });
   };
 
 
@@ -286,12 +390,29 @@ const FoodDiary = () => {
     if (!user?.id || !dailyMeals) return;
 
     const newWater = index + 1;
-    mealService.updateWater(user.id, selectedDate, newWater).then(() => {
-      // Reload meals
-      return mealService.getMealsForDate(user.id, selectedDate);
-    }).then((updatedMeals) => {
-      setDailyMeals(updatedMeals);
+    
+    console.log('[FoodDiary] Water click:', { index, newWater, currentWater: dailyMeals.water });
+    
+    // Оптимистичное обновление - сразу обновляем UI
+    setDailyMeals((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, water: newWater };
+      console.log('[FoodDiary] Updated dailyMeals water:', updated.water);
+      return updated;
     });
+    
+    // Сохраняем в фоне
+    mealService.updateWater(user.id, selectedDate, newWater)
+      .then(() => {
+        console.log('[FoodDiary] Water saved successfully:', newWater);
+      })
+      .catch((error) => {
+        console.error('[FoodDiary] Ошибка сохранения воды:', error);
+        // В случае ошибки откатываем изменение
+        mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
+          setDailyMeals(meals);
+        });
+      });
   };
 
   const handleCreateCustomFood = (food: UserCustomFood) => {
@@ -307,31 +428,75 @@ const FoodDiary = () => {
   const handleUpdateEntry = (updatedEntry: MealEntry) => {
     if (!user?.id || !selectedMealType || !dailyMeals) return;
 
-    mealService.updateMealEntry(user.id, selectedDate, selectedMealType, updatedEntry.id, updatedEntry).then(() => {
-      // Reload meals
-      return mealService.getMealsForDate(user.id, selectedDate);
-    }).then((updatedMeals) => {
-      setDailyMeals(updatedMeals);
+    // Оптимистичное обновление - сразу обновляем UI
+    setDailyMeals((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev };
+      const index = updated[selectedMealType].findIndex((e) => e.id === updatedEntry.id);
+      if (index !== -1) {
+        updated[selectedMealType] = [...updated[selectedMealType]];
+        updated[selectedMealType][index] = updatedEntry;
+      }
+      return updated;
     });
     
     setIsEditEntryModalOpen(false);
     setEditingEntry(null);
     setSelectedMealType(null);
+
+    // Сохраняем в фоне
+    mealService.updateMealEntry(user.id, selectedDate, selectedMealType, updatedEntry.id, updatedEntry).catch((error) => {
+      console.error('[FoodDiary] Ошибка обновления продукта:', error);
+      // В случае ошибки откатываем изменение
+      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
+        setDailyMeals(meals);
+      });
+    });
   };
 
   const handleDeleteEntry = () => {
-    if (!user?.id || !selectedMealType || !editingEntry || !dailyMeals) return;
+    if (!user?.id || !selectedMealType || !editingEntry || !dailyMeals) {
+      console.warn('[FoodDiary] handleDeleteEntry: missing required data', { 
+        user: !!user?.id, 
+        selectedMealType, 
+        editingEntry: !!editingEntry, 
+        dailyMeals: !!dailyMeals 
+      });
+      return;
+    }
 
-    mealService.removeMealEntry(user.id, selectedDate, selectedMealType, editingEntry.id).then(() => {
-      // Reload meals
-      return mealService.getMealsForDate(user.id, selectedDate);
-    }).then((updatedMeals) => {
-      setDailyMeals(updatedMeals);
+    const entryIdToDelete = editingEntry.id;
+    const mealTypeToDelete = selectedMealType;
+
+    console.log('[FoodDiary] Deleting entry:', { entryId: entryIdToDelete, mealType: mealTypeToDelete });
+
+    // Оптимистичное обновление - сразу обновляем UI
+    setDailyMeals((prev) => {
+      if (!prev) {
+        console.warn('[FoodDiary] No previous dailyMeals for delete');
+        return prev;
+      }
+      const updated = { ...prev };
+      const beforeCount = updated[mealTypeToDelete]?.length || 0;
+      updated[mealTypeToDelete] = (updated[mealTypeToDelete] || []).filter((e) => e.id !== entryIdToDelete);
+      const afterCount = updated[mealTypeToDelete].length;
+      console.log('[FoodDiary] Entry deleted:', { mealType: mealTypeToDelete, beforeCount, afterCount });
+      return updated;
     });
     
+    // Закрываем модальное окно после обновления состояния
     setIsEditEntryModalOpen(false);
     setEditingEntry(null);
     setSelectedMealType(null);
+
+    // Сохраняем в фоне (не перезагружаем данные, чтобы не потерять оптимистичное обновление)
+    mealService.removeMealEntry(user.id, selectedDate, mealTypeToDelete, entryIdToDelete).catch((error) => {
+      console.error('[FoodDiary] Ошибка удаления продукта:', error);
+      // В случае ошибки откатываем изменение
+      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
+        setDailyMeals(meals);
+      });
+    });
   };
 
   const getMonthName = () => {
@@ -339,8 +504,15 @@ const FoodDiary = () => {
       'ЯНВАРЬ', 'ФЕВРАЛЬ', 'МАРТ', 'АПРЕЛЬ', 'МАЙ', 'ИЮНЬ',
       'ИЮЛЬ', 'АВГУСТ', 'СЕНТЯБРЬ', 'ОКТЯБРЬ', 'НОЯБРЬ', 'ДЕКАБРЬ'
     ];
-    const today = new Date();
-    return months[today.getMonth()];
+    const date = new Date(selectedDate);
+    return months[date.getMonth()];
+  };
+
+  const getFormattedDate = () => {
+    const date = new Date(selectedDate);
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    return `${day.toString().padStart(2, '0')}.${month.toString().padStart(2, '0')}`;
   };
 
   if (!user) {
@@ -349,6 +521,7 @@ const FoodDiary = () => {
   }
 
   return (
+    <>
     <div className="bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
       <div className="max-w-[1024px] mx-auto min-h-screen">
         {/* Header */}
@@ -371,11 +544,40 @@ const FoodDiary = () => {
           
           {/* Month and Report */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-              <span className="text-sm font-medium text-gray-900 dark:text-white">
-                {getMonthName()}
-              </span>
+            <div className="relative">
+              <button 
+                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+              >
+                <Calendar className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  {getMonthName()} {new Date(selectedDate).getFullYear()}
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                  {getFormattedDate()}
+                </span>
+              </button>
+              
+              {/* Календарь поверх контента */}
+              <div
+                ref={calendarRef}
+                className={`absolute top-full left-0 mt-2 z-50 transition-all duration-300 ease-in-out ${
+                  isCalendarOpen 
+                    ? 'opacity-100 translate-y-0 pointer-events-auto' 
+                    : 'opacity-0 -translate-y-2 pointer-events-none'
+                }`}
+              >
+                {isCalendarOpen && (
+                  <InlineCalendar
+                    selectedDate={selectedDate}
+                    onDateSelect={(date) => {
+                      setSelectedDate(date);
+                      setIsCalendarOpen(false);
+                    }}
+                    onClose={() => setIsCalendarOpen(false)}
+                  />
+                )}
+              </div>
             </div>
             <button className="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
               ОТЧЕТ
@@ -384,7 +586,16 @@ const FoodDiary = () => {
         </header>
 
         <main className="px-4 py-6">
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+              <span className="ml-3 text-sm text-gray-600 dark:text-gray-400">Загрузка дневника...</span>
+            </div>
+          )}
+          
           {/* Date Selection Bar */}
+          {!isLoading && (
           <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
             {dates.map((date) => (
               <button
@@ -403,8 +614,10 @@ const FoodDiary = () => {
               </button>
             ))}
           </div>
+          )}
 
           {/* Eaten Nutrients Summary */}
+          {!isLoading && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase">
@@ -438,8 +651,10 @@ const FoodDiary = () => {
               </div>
             </div>
           </div>
+          )}
 
           {/* Meal Entry Sections */}
+          {!isLoading && (
           <div className="space-y-3 mb-6">
             {meals.map((meal) => {
               const mealType = meal.id as 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -579,8 +794,10 @@ const FoodDiary = () => {
               );
             })}
           </div>
+          )}
 
           {/* Remaining Nutrients Summary */}
+          {!isLoading && (
           <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-900">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-medium uppercase text-gray-900 dark:text-white">
@@ -634,8 +851,10 @@ const FoodDiary = () => {
               </div>
             </div>
           </div>
+          )}
 
           {/* Water Intake Tracker */}
+          {!isLoading && (
           <div className="mb-6">
             <div className="flex items-center justify-between">
               <div>
@@ -661,10 +880,12 @@ const FoodDiary = () => {
               </div>
             </div>
           </div>
+          )}
         </main>
+      </div>
 
-        {/* Bottom Navigation Bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-3">
+      {/* Bottom Navigation Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-3">
           <div className="max-w-[1024px] mx-auto flex items-center justify-between gap-3">
             <button
               onClick={() => setIsBarcodeModalOpen(true)}
@@ -685,11 +906,11 @@ const FoodDiary = () => {
               <Camera className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </button>
           </div>
-        </div>
-
-        {/* Spacer for bottom bar */}
-        <div className="h-20"></div>
       </div>
+
+      {/* Spacer for bottom bar */}
+      <div className="h-20"></div>
+    </div>
 
       {/* Modals */}
       {isSearchModalOpen && (
@@ -816,37 +1037,49 @@ const FoodDiary = () => {
             
             const mealTypeToExpand = selectedMealType;
             
+            // Создаем все записи
+            const entries: MealEntry[] = ings.map((ing) => {
+              const food = localAIFoodAnalyzer.toFood(ing);
+              const grams = ing.grams ?? 100;
+              const k = grams / 100;
+              return {
+                id: `meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                foodId: food.id,
+                food,
+                weight: grams,
+                calories: food.calories * k,
+                protein: food.protein * k,
+                fat: food.fat * k,
+                carbs: food.carbs * k,
+              };
+            });
+
+            // Оптимистичное обновление - сразу обновляем UI
+            setDailyMeals((prev) => {
+              if (!prev) return prev;
+              const updated = { ...prev };
+              updated[selectedMealType] = [...updated[selectedMealType], ...entries];
+              return updated;
+            });
+            
+            // СРАЗУ разворачиваем блок приёма пищи синхронно
+            setExpandedMeals((prev) => ({
+              ...prev,
+              [mealTypeToExpand]: true,
+            }));
+            
+            setIsRecipeResultOpen(false);
+            setAnalyzedIngredients([]);
+
+            // Сохраняем в фоне
             Promise.all(
-              ings.map((ing) => {
-                const food = localAIFoodAnalyzer.toFood(ing);
-                const grams = ing.grams ?? 100;
-                const k = grams / 100;
-                const entry: MealEntry = {
-                  id: `meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                  foodId: food.id,
-                  food,
-                  weight: grams,
-                  calories: food.calories * k,
-                  protein: food.protein * k,
-                  fat: food.fat * k,
-                  carbs: food.carbs * k,
-                };
-                return mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
-              })
-            ).then(() => {
-              // Reload meals
-              return mealService.getMealsForDate(user.id, selectedDate);
-            }).then((updated) => {
-              setDailyMeals(updated);
-              
-              // СРАЗУ разворачиваем блок приёма пищи синхронно
-              setExpandedMeals((prev) => ({
-                ...prev,
-                [mealTypeToExpand]: true,
-              }));
-              
-              setIsRecipeResultOpen(false);
-              setAnalyzedIngredients([]);
+              entries.map((entry) => mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry))
+            ).catch((error) => {
+              console.error('[FoodDiary] Ошибка сохранения рецепта:', error);
+              // В случае ошибки откатываем изменение
+              mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
+                setDailyMeals(meals);
+              });
             });
           }}
         />
@@ -865,7 +1098,7 @@ const FoodDiary = () => {
         onSave={handleUpdateEntry}
         onDelete={handleDeleteEntry}
       />
-    </div>
+    </>
   );
 };
 

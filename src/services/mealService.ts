@@ -6,79 +6,193 @@ import { toUUID } from '../utils/uuid';
 class MealService {
   private readonly MEALS_STORAGE_KEY = 'potok_daily_meals';
 
-  // Get meals for a specific date (with Supabase integration)
-  async getMealsForDate(userId: string, date: string): Promise<DailyMeals> {
-    // Try Supabase first
-    if (supabase) {
-      try {
-        const uuidUserId = toUUID(userId);
-        const { data, error } = await supabase
-          .from('food_diary_entries')
-          .select('*')
-          .eq('user_id', uuidUserId)
-          .eq('date', date)
-          .order('created_at', { ascending: true });
-
-        if (error) {
-          console.error('[mealService] Supabase error:', error);
-          // Fallback to localStorage
-        } else if (data && data.length > 0) {
-          // Convert Supabase data to DailyMeals format
-          const meals = this.createEmptyMeals(date);
-          
-          // Group by meal_type
-          data.forEach((entry) => {
-            const mealEntry: MealEntry = {
-              id: entry.id,
-              foodId: entry.id, // We'll need to store foodId separately or in metadata
-              food: {
-                id: entry.id,
-                name: entry.product_name,
-                calories: Number(entry.calories),
-                protein: Number(entry.protein),
-                fat: Number(entry.fat),
-                carbs: Number(entry.carbs),
-                source: 'manual',
-                createdAt: entry.created_at,
-                updatedAt: entry.created_at,
-              },
-              weight: Number(entry.weight),
-              calories: Number(entry.calories),
-              protein: Number(entry.protein),
-              fat: Number(entry.fat),
-              carbs: Number(entry.carbs),
-            };
-
-            if (entry.meal_type === 'breakfast') meals.breakfast.push(mealEntry);
-            else if (entry.meal_type === 'lunch') meals.lunch.push(mealEntry);
-            else if (entry.meal_type === 'dinner') meals.dinner.push(mealEntry);
-            else if (entry.meal_type === 'snack') meals.snack.push(mealEntry);
-          });
-
-          // Also sync to localStorage for offline support
-          this.saveMealsToLocalStorage(userId, meals);
-          return meals;
-        }
-      } catch (err) {
-        console.error('[mealService] Supabase connection error:', err);
-        // Fallback to localStorage
-      }
-    }
-
-    // Fallback to localStorage
+  // Get meals for a specific date from Supabase (primary source)
+  async getFoodDiaryByDate(userId: string, date: string): Promise<DailyMeals> {
+    // Сначала проверяем localStorage для мгновенного отображения
     try {
       const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
-      if (!stored) {
-        return this.createEmptyMeals(date);
+      if (stored) {
+        const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
+        const localMeals = allMeals[date];
+        if (localMeals) {
+          // Возвращаем локальные данные сразу, затем синхронизируем с Supabase в фоне
+          this.syncWithSupabase(userId, date, localMeals).catch(err => {
+            console.warn('[mealService] Background sync failed:', err);
+          });
+          return localMeals;
+        }
+      }
+    } catch (error) {
+      console.error('[mealService] Error loading from localStorage:', error);
+    }
+
+    // Если в localStorage нет, загружаем из Supabase
+    const meals = this.createEmptyMeals(date);
+
+    if (!supabase) {
+      console.warn('[mealService] Supabase not available, returning empty meals');
+      return meals;
+    }
+
+    try {
+      const uuidUserId = toUUID(userId);
+      const { data, error } = await supabase
+        .from('food_diary_entries')
+        .select('*')
+        .eq('user_id', uuidUserId)
+        .eq('date', date)
+        .order('meal_type', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('[mealService] Supabase error:', error);
+        return meals;
       }
 
-      const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
-      return allMeals[date] || this.createEmptyMeals(date);
-    } catch (error) {
-      console.error('Error loading meals:', error);
-      return this.createEmptyMeals(date);
+      if (data && data.length > 0) {
+        // Group by meal_type
+        data.forEach((entry) => {
+          const mealEntry: MealEntry = {
+            id: entry.id,
+            foodId: entry.id,
+            food: {
+              id: entry.id,
+              name: entry.product_name,
+              calories: Number(entry.calories || 0),
+              protein: Number(entry.protein || 0),
+              fat: Number(entry.fat || 0),
+              carbs: Number(entry.carbs || 0),
+              source: 'manual',
+              createdAt: entry.created_at,
+              updatedAt: entry.created_at,
+            },
+            weight: Number(entry.weight || 0),
+            calories: Number(entry.calories || 0),
+            protein: Number(entry.protein || 0),
+            fat: Number(entry.fat || 0),
+            carbs: Number(entry.carbs || 0),
+          };
+
+          if (entry.meal_type === 'breakfast') meals.breakfast.push(mealEntry);
+          else if (entry.meal_type === 'lunch') meals.lunch.push(mealEntry);
+          else if (entry.meal_type === 'dinner') meals.dinner.push(mealEntry);
+          else if (entry.meal_type === 'snack') meals.snack.push(mealEntry);
+        });
+      }
+
+      // Загружаем воду из localStorage (вода хранится только в localStorage)
+      try {
+        const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
+        if (stored) {
+          const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
+          const localMeals = allMeals[date];
+          if (localMeals && typeof localMeals.water === 'number') {
+            meals.water = localMeals.water;
+          }
+        }
+      } catch (err) {
+        console.error('[mealService] Error loading water from localStorage:', err);
+      }
+
+      // Синхронизируем с localStorage
+      this.saveMealsToLocalStorage(userId, meals);
+
+      return meals;
+    } catch (err) {
+      console.error('[mealService] Supabase connection error:', err);
+      return meals;
     }
   }
+
+  // Синхронизация данных с Supabase в фоне (не блокирует UI)
+  private async syncWithSupabase(userId: string, date: string, localMeals: DailyMeals): Promise<void> {
+    if (!supabase) return;
+
+    try {
+      const uuidUserId = toUUID(userId);
+      const { data } = await supabase
+        .from('food_diary_entries')
+        .select('*')
+        .eq('user_id', uuidUserId)
+        .eq('date', date);
+
+      // Если данные в Supabase отличаются от локальных, обновляем localStorage
+      if (data && data.length > 0) {
+        const supabaseMeals = this.createEmptyMeals(date);
+        data.forEach((entry) => {
+          const mealEntry: MealEntry = {
+            id: entry.id,
+            foodId: entry.id,
+            food: {
+              id: entry.id,
+              name: entry.product_name,
+              calories: Number(entry.calories || 0),
+              protein: Number(entry.protein || 0),
+              fat: Number(entry.fat || 0),
+              carbs: Number(entry.carbs || 0),
+              source: 'manual',
+              createdAt: entry.created_at,
+              updatedAt: entry.created_at,
+            },
+            weight: Number(entry.weight || 0),
+            calories: Number(entry.calories || 0),
+            protein: Number(entry.protein || 0),
+            fat: Number(entry.fat || 0),
+            carbs: Number(entry.carbs || 0),
+          };
+
+          if (entry.meal_type === 'breakfast') supabaseMeals.breakfast.push(mealEntry);
+          else if (entry.meal_type === 'lunch') supabaseMeals.lunch.push(mealEntry);
+          else if (entry.meal_type === 'dinner') supabaseMeals.dinner.push(mealEntry);
+          else if (entry.meal_type === 'snack') supabaseMeals.snack.push(mealEntry);
+        });
+
+        // Сохраняем воду из локальных данных
+        supabaseMeals.water = localMeals.water;
+
+        // Обновляем localStorage только если данные изменились
+        const localStr = JSON.stringify(localMeals);
+        const supabaseStr = JSON.stringify(supabaseMeals);
+        if (localStr !== supabaseStr) {
+          this.saveMealsToLocalStorage(userId, supabaseMeals);
+          // Отправляем событие для обновления UI
+          window.dispatchEvent(new CustomEvent('meals-synced', { detail: { userId, date, meals: supabaseMeals } }));
+        }
+      }
+    } catch (err) {
+      console.warn('[mealService] Sync error:', err);
+    }
+  }
+
+  // Get meals for a specific date (with Supabase integration and localStorage fallback)
+  async getMealsForDate(userId: string, date: string): Promise<DailyMeals> {
+    // Приоритет: Supabase
+    if (supabase) {
+      try {
+        return await this.getFoodDiaryByDate(userId, date);
+      } catch (err) {
+        console.error('[mealService] Error loading from Supabase, falling back to localStorage:', err);
+      }
+    }
+
+    // Fallback: localStorage
+    try {
+      const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
+      if (stored) {
+        const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
+        const localMeals = allMeals[date];
+        if (localMeals) {
+          return localMeals;
+        }
+      }
+    } catch (error) {
+      console.error('[mealService] Error loading meals from localStorage:', error);
+    }
+
+    // Совсем fallback: пустая структура
+    return this.createEmptyMeals(date);
+  }
+
 
   // Save meals for a specific date (with Supabase integration)
   async saveMealsForDate(userId: string, meals: DailyMeals): Promise<void> {
@@ -89,68 +203,114 @@ class MealService {
     if (supabase) {
       try {
         const uuidUserId = toUUID(userId);
-        // Delete existing entries for this date
-        await supabase
-          .from('food_diary_entries')
-          .delete()
-          .eq('user_id', uuidUserId)
-          .eq('date', meals.date);
 
-        // Insert all entries
+        // Подсчитываем общее количество записей
+        const totalEntries = 
+          meals.breakfast.length + 
+          meals.lunch.length + 
+          meals.dinner.length + 
+          meals.snack.length;
+
+        // Если нет записей о еде, только удаляем старые записи (если есть)
+        if (totalEntries === 0) {
+          // Удаляем старые записи для этой даты (если есть)
+          await supabase
+            .from('food_diary_entries')
+            .delete()
+            .eq('user_id', uuidUserId)
+            .eq('date', meals.date);
+          // Вода хранится только в localStorage, не сохраняем в Supabase
+          return;
+        }
+
+        // Insert all entries with planned flag (if column exists)
+        // Валидация и нормализация числовых значений
+        const safeNumber = (value: number | undefined | null): number => {
+          const num = Number(value);
+          return isNaN(num) || !isFinite(num) ? 0 : Math.max(0, num);
+        };
+
+        const baseEntry = (entry: MealEntry, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => ({
+          user_id: uuidUserId,
+          date: meals.date,
+          meal_type: mealType,
+          product_name: (entry.food?.name || 'Unknown').trim() || 'Unknown',
+          protein: safeNumber(entry.protein),
+          fat: safeNumber(entry.fat),
+          carbs: safeNumber(entry.carbs),
+          calories: safeNumber(entry.calories),
+          weight: safeNumber(entry.weight),
+        });
+
+        // Сначала создаем записи без planned, чтобы избежать ошибок
         const entriesToInsert = [
-          ...meals.breakfast.map((entry) => ({
-            user_id: uuidUserId,
-            date: meals.date,
-            meal_type: 'breakfast' as const,
-            product_name: entry.food?.name || 'Unknown',
-            protein: entry.protein,
-            fat: entry.fat,
-            carbs: entry.carbs,
-            calories: entry.calories,
-            weight: entry.weight,
-          })),
-          ...meals.lunch.map((entry) => ({
-            user_id: uuidUserId,
-            date: meals.date,
-            meal_type: 'lunch' as const,
-            product_name: entry.food?.name || 'Unknown',
-            protein: entry.protein,
-            fat: entry.fat,
-            carbs: entry.carbs,
-            calories: entry.calories,
-            weight: entry.weight,
-          })),
-          ...meals.dinner.map((entry) => ({
-            user_id: uuidUserId,
-            date: meals.date,
-            meal_type: 'dinner' as const,
-            product_name: entry.food?.name || 'Unknown',
-            protein: entry.protein,
-            fat: entry.fat,
-            carbs: entry.carbs,
-            calories: entry.calories,
-            weight: entry.weight,
-          })),
-          ...meals.snack.map((entry) => ({
-            user_id: uuidUserId,
-            date: meals.date,
-            meal_type: 'snack' as const,
-            product_name: entry.food?.name || 'Unknown',
-            protein: entry.protein,
-            fat: entry.fat,
-            carbs: entry.carbs,
-            calories: entry.calories,
-            weight: entry.weight,
-          })),
+          ...meals.breakfast.map((entry) => baseEntry(entry, 'breakfast')),
+          ...meals.lunch.map((entry) => baseEntry(entry, 'lunch')),
+          ...meals.dinner.map((entry) => baseEntry(entry, 'dinner')),
+          ...meals.snack.map((entry) => baseEntry(entry, 'snack')),
         ];
 
         if (entriesToInsert.length > 0) {
-          const { error } = await supabase
-            .from('food_diary_entries')
-            .insert(entriesToInsert);
+          // Валидация данных перед отправкой
+          const validEntries = entriesToInsert.filter(entry => {
+            const isValid = 
+              entry.user_id &&
+              entry.date &&
+              entry.meal_type &&
+              entry.product_name &&
+              entry.product_name.trim() !== '' &&
+              typeof entry.protein === 'number' &&
+              typeof entry.fat === 'number' &&
+              typeof entry.carbs === 'number' &&
+              typeof entry.calories === 'number' &&
+              typeof entry.weight === 'number';
+            
+            if (!isValid) {
+              console.warn('[mealService] Invalid entry skipped:', entry);
+            }
+            return isValid;
+          });
 
-          if (error) {
-            console.error('[mealService] Supabase save error:', error);
+          if (validEntries.length === 0) {
+            console.warn('[mealService] No valid entries to insert after validation');
+            return;
+          }
+
+          console.log(`[mealService] Attempting to save ${validEntries.length} entries to Supabase`);
+
+          // Сохраняем текущие данные из Supabase для восстановления при ошибке
+          const { data: existingData } = await supabase
+            .from('food_diary_entries')
+            .select('*')
+            .eq('user_id', uuidUserId)
+            .eq('date', meals.date);
+
+          // Удаляем старые записи
+          await supabase
+            .from('food_diary_entries')
+            .delete()
+            .eq('user_id', uuidUserId)
+            .eq('date', meals.date);
+
+          // Вставляем новые записи (без planned, так как его может не быть)
+          const { error: insertError } = await supabase
+            .from('food_diary_entries')
+            .insert(validEntries);
+
+          if (insertError) {
+            console.warn('[mealService] Failed to insert to Supabase:', insertError.message);
+            // Если вставка не удалась, восстанавливаем старые данные
+            if (existingData && existingData.length > 0) {
+              console.warn('[mealService] Restoring previous data due to insert failure');
+              // Восстанавливаем старые данные (без planned, если его нет)
+              const restoreEntries = existingData.map(({ planned, ...rest }) => rest);
+              await supabase
+                .from('food_diary_entries')
+                .insert(restoreEntries);
+              console.warn('[mealService] Previous data restored, new data saved to localStorage only');
+            }
+          } else {
+            console.log('[mealService] Successfully saved to Supabase');
           }
         }
       } catch (err) {
@@ -165,16 +325,44 @@ class MealService {
       const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
       const allMeals: Record<string, DailyMeals> = stored ? JSON.parse(stored) : {};
       allMeals[meals.date] = meals;
+      console.log('[mealService] Saving to localStorage:', { date: meals.date, water: meals.water });
       localStorage.setItem(`${this.MEALS_STORAGE_KEY}_${userId}`, JSON.stringify(allMeals));
+      console.log('[mealService] Saved successfully, verifying...');
+      // Проверяем, что сохранилось
+      const verify = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
+      if (verify) {
+        const verifyData = JSON.parse(verify);
+        console.log('[mealService] Verified water in storage:', verifyData[meals.date]?.water);
+      }
     } catch (error) {
-      console.error('Error saving meals to localStorage:', error);
+      console.error('[mealService] Error saving meals to localStorage:', error);
     }
   }
 
   // Add meal entry to a specific meal type
   async addMealEntry(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entry: MealEntry): Promise<void> {
-    const meals = await this.getMealsForDate(userId, date);
+    // Получаем текущие данные из localStorage для мгновенного обновления
+    let meals: DailyMeals;
+    try {
+      const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
+      if (stored) {
+        const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
+        meals = allMeals[date] || this.createEmptyMeals(date);
+      } else {
+        meals = this.createEmptyMeals(date);
+      }
+    } catch (error) {
+      console.error('[mealService] Error loading from localStorage:', error);
+      meals = this.createEmptyMeals(date);
+    }
+
+    // Добавляем новую запись
     meals[mealType].push(entry);
+    
+    // Сразу сохраняем в localStorage для мгновенного отображения
+    this.saveMealsToLocalStorage(userId, meals);
+    
+    // Затем сохраняем в Supabase в фоне
     await this.saveMealsForDate(userId, meals);
 
     // Аналитика: пользователь добавил еду
@@ -194,8 +382,28 @@ class MealService {
 
   // Remove meal entry
   async removeMealEntry(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entryId: string): Promise<void> {
-    const meals = await this.getMealsForDate(userId, date);
+    // Получаем текущие данные из localStorage для мгновенного обновления
+    let meals: DailyMeals;
+    try {
+      const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
+      if (stored) {
+        const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
+        meals = allMeals[date] || this.createEmptyMeals(date);
+      } else {
+        meals = this.createEmptyMeals(date);
+      }
+    } catch (error) {
+      console.error('[mealService] Error loading from localStorage:', error);
+      meals = this.createEmptyMeals(date);
+    }
+
+    // Удаляем запись
     meals[mealType] = meals[mealType].filter((entry) => entry.id !== entryId);
+    
+    // Сразу сохраняем в localStorage для мгновенного отображения
+    this.saveMealsToLocalStorage(userId, meals);
+    
+    // Затем сохраняем в Supabase в фоне
     await this.saveMealsForDate(userId, meals);
 
     // Also delete from Supabase if exists
@@ -215,7 +423,7 @@ class MealService {
 
   // Update meal entry
   async updateMealEntry(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entryId: string, updatedEntry: MealEntry): Promise<void> {
-    const meals = await this.getMealsForDate(userId, date);
+    const meals = await this.getFoodDiaryByDate(userId, date);
     const index = meals[mealType].findIndex((entry) => entry.id === entryId);
     if (index !== -1) {
       meals[mealType][index] = updatedEntry;
@@ -225,9 +433,13 @@ class MealService {
 
   // Update water intake
   async updateWater(userId: string, date: string, glasses: number): Promise<void> {
+    console.log('[mealService] updateWater called:', { userId, date, glasses });
     const meals = await this.getMealsForDate(userId, date);
+    console.log('[mealService] Current meals water before update:', meals.water);
     meals.water = glasses;
+    console.log('[mealService] Setting water to:', meals.water);
     await this.saveMealsForDate(userId, meals);
+    console.log('[mealService] Water saved successfully');
     // Note: water is stored in localStorage only, not in Supabase schema
   }
 

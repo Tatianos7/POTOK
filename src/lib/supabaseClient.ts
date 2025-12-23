@@ -12,8 +12,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
  * Если переменные окружения не заданы, клиент будет null,
  * и приложение продолжит работать (только Supabase-фичи не будут доступны).
  */
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const supabaseUrl = (import.meta.env as { VITE_SUPABASE_URL?: string }).VITE_SUPABASE_URL;
+const supabaseAnonKey = (import.meta.env as { VITE_SUPABASE_ANON_KEY?: string }).VITE_SUPABASE_ANON_KEY;
 
 export const supabase: SupabaseClient | null = 
   supabaseUrl && supabaseAnonKey

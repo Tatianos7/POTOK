@@ -84,7 +84,7 @@ export async function toggleHabitComplete(params: {
   const uuidUserId = toUUID(userId);
   const { data: existing, error: selectError } = await supabase
     .from('habit_logs')
-    .select<'*, habit_id, user_id, date, completed'>('*')
+    .select('*')
     .eq('user_id', uuidUserId)
     .eq('habit_id', habitId)
     .eq('date', date)
@@ -96,7 +96,7 @@ export async function toggleHabitComplete(params: {
     return null;
   }
 
-  const nextCompleted = existing ? !existing.completed : true;
+  const nextCompleted = existing && (existing as any).completed ? !(existing as any).completed : true;
 
   let log: HabitLog | null = null;
 
@@ -104,7 +104,7 @@ export async function toggleHabitComplete(params: {
     const { data, error } = await supabase
       .from('habit_logs')
       .update({ completed: nextCompleted })
-      .eq('id', existing.id)
+      .eq('id', (existing as any).id)
       .select('*')
       .single();
 

@@ -132,9 +132,13 @@ class RecipesService {
     if (supabase && recipe.userId) {
       try {
         // Calculate totals from ingredients
+        if (!recipe.ingredients) {
+          console.warn('[recipesService] Recipe has no ingredients, skipping Supabase save');
+          return;
+        }
         const totalCalories = recipe.ingredients.reduce((sum, ing) => sum + (ing.calories || 0), 0);
-        const totalProtein = recipe.ingredients.reduce((sum, ing) => sum + (ing.protein || 0), 0);
-        const totalFat = recipe.ingredients.reduce((sum, ing) => sum + (ing.fat || 0), 0);
+        const totalProtein = recipe.ingredients.reduce((sum, ing) => sum + (ing.proteins || 0), 0);
+        const totalFat = recipe.ingredients.reduce((sum, ing) => sum + (ing.fats || 0), 0);
         const totalCarbs = recipe.ingredients.reduce((sum, ing) => sum + (ing.carbs || 0), 0);
 
         const uuidUserId = toUUID(recipe.userId);
