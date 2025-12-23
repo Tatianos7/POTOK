@@ -330,14 +330,14 @@ class MealService {
           // Пытаемся вставить без поля planned (чтобы не было ошибок 400)
           const { error: insertError } = await supabase
             .from('food_diary_entries')
-            .insert(validEntries.map(({ planned, ...rest }) => rest));
+            .insert(validEntries);
 
           if (insertError) {
             console.warn('[mealService] Failed to insert to Supabase:', insertError.message);
             // Если вставка не удалась, восстанавливаем старые данные
             if (existingData && existingData.length > 0) {
               console.warn('[mealService] Restoring previous data due to insert failure');
-              const restoreEntries = existingData.map(({ planned, ...rest }) => rest);
+              const restoreEntries = existingData;
               await supabase
                 .from('food_diary_entries')
                 .insert(restoreEntries);
