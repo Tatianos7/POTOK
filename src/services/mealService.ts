@@ -485,6 +485,48 @@ class MealService {
     // Note: water is stored in localStorage only, not in Supabase schema
   }
 
+  // Copy meal entries to another date and meal type
+  async copyMeal(
+    userId: string,
+    sourceDate: string,
+    sourceMealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    targetDate: string,
+    targetMealType: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  ): Promise<void> {
+    // Получаем исходный приём пищи (из localStorage для скорости)
+    const sourceMeals = await this.getMealsForDate(userId, sourceDate);
+    const sourceEntries = sourceMeals[sourceMealType] || [];
+
+    if (sourceEntries.length === 0) {
+      console.warn('[mealService] No entries to copy');
+      return;
+    }
+
+    // Глубокое копирование записей (создаём новые объекты)
+    const copiedEntries: MealEntry[] = sourceEntries.map((entry) => ({
+      ...entry,
+      id: `${Date.now()}-${Math.random()}`, // Новый уникальный ID
+      food: {
+        ...entry.food,
+        id: entry.food.id ? `${entry.food.id}-copy-${Date.now()}` : undefined,
+      },
+    }));
+
+    // Получаем целевой приём пищи (из localStorage для мгновенного обновления)
+    const targetMeals = await this.getMealsForDate(userId, targetDate);
+
+    // Добавляем скопированные записи к существующим (если есть)
+    targetMeals[targetMealType] = [...(targetMeals[targetMealType] || []), ...copiedEntries];
+
+    // Сохраняем обновлённые данные (сначала в localStorage для мгновенного отображения)
+    this.saveMealsToLocalStorage(userId, targetMeals);
+    
+    // Затем сохраняем в Supabase в фоне (не ждём завершения)
+    this.saveMealsForDate(userId, targetMeals).catch((error) => {
+      console.error('[mealService] Error saving copied meals to Supabase:', error);
+    });
+  }
+
   // Calculate totals for a meal type
   calculateMealTotals(entries: MealEntry[]) {
     return entries.reduce(

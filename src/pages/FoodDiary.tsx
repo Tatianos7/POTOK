@@ -16,6 +16,7 @@ import RecipeAnalyzePicker from '../components/RecipeAnalyzePicker';
 import RecipeAnalyzeResultSheet from '../components/RecipeAnalyzeResultSheet';
 import EditMealEntryModal from '../components/EditMealEntryModal';
 import InlineCalendar from '../components/InlineCalendar';
+import CopyMealModal from '../components/CopyMealModal';
 import { localAIFoodAnalyzer, LocalIngredient } from '../services/localAIFoodAnalyzer';
 
 const FoodDiary = () => {
@@ -64,6 +65,10 @@ const FoodDiary = () => {
   // State для редактирования записи продукта
   const [editingEntry, setEditingEntry] = useState<MealEntry | null>(null);
   const [isEditEntryModalOpen, setIsEditEntryModalOpen] = useState(false);
+  
+  // State для копирования приёма пищи
+  const [isCopyMealModalOpen, setIsCopyMealModalOpen] = useState(false);
+  const [copyingMealType, setCopyingMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
   
   // State для встроенного календаря
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -181,7 +186,14 @@ const FoodDiary = () => {
     { id: 'snack', name: 'ПЕРЕКУС', icon: Apple },
   ];
 
-  // Load meals for selected date from Supabase
+  const mealTypeNames: Record<'breakfast' | 'lunch' | 'dinner' | 'snack', string> = {
+    breakfast: 'Завтрак',
+    lunch: 'Обед',
+    dinner: 'Ужин',
+    snack: 'Перекус',
+  };
+
+  // Load meals for selected date (приоритет localStorage для мгновенного отображения)
   useEffect(() => {
     if (!user?.id) return;
 
@@ -189,8 +201,8 @@ const FoodDiary = () => {
     setDailyMeals(null);
     setIsLoading(true);
 
-    // Загружаем данные (сначала из localStorage для мгновенного отображения)
-    mealService.getFoodDiaryByDate(user.id, selectedDate)
+    // Загружаем данные (getMealsForDate приоритизирует localStorage, затем синхронизирует с Supabase в фоне)
+    mealService.getMealsForDate(user.id, selectedDate)
       .then((meals) => {
         setDailyMeals(meals);
         setIsLoading(false);
@@ -595,7 +607,8 @@ const FoodDiary = () => {
     mealTotals: { calories: number; protein: number; fat: number; carbs: number };
     isExpanded: boolean;
     toggleMealExpanded: (type: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
-  }> = ({ meal, mealType, mealEntries, mealTotals, isExpanded, toggleMealExpanded }) => {
+    onCopyMeal: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
+  }> = ({ meal, mealType, mealEntries, mealTotals, isExpanded, toggleMealExpanded, onCopyMeal }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -680,7 +693,13 @@ const FoodDiary = () => {
                   <Heart className="w-5 h-5 mb-1" />
                   <span>В избранное</span>
                 </button>
-                <button className="flex flex-col items-center text-xs text-gray-800 dark:text-gray-200">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onCopyMeal(mealType);
+                  }}
+                  className="flex flex-col items-center text-xs text-gray-800 dark:text-gray-200 hover:opacity-70 transition-opacity"
+                >
                   <Copy className="w-5 h-5 mb-1" />
                   <span>Копировать</span>
                 </button>
@@ -904,6 +923,10 @@ const FoodDiary = () => {
                   mealTotals={mealTotals}
                   isExpanded={isExpanded}
                   toggleMealExpanded={toggleMealExpanded}
+                  onCopyMeal={(mealType) => {
+                    setCopyingMealType(mealType);
+                    setIsCopyMealModalOpen(true);
+                  }}
                 />
               );
             })}
@@ -1212,6 +1235,47 @@ const FoodDiary = () => {
         onSave={handleUpdateEntry}
         onDelete={handleDeleteEntry}
       />
+
+      {copyingMealType && (
+        <CopyMealModal
+          isOpen={isCopyMealModalOpen}
+          onClose={() => {
+            setIsCopyMealModalOpen(false);
+            setCopyingMealType(null);
+          }}
+          onCopy={async (targetDate, targetMealType) => {
+            if (!user?.id || !copyingMealType) return;
+            
+            try {
+              await mealService.copyMeal(
+                user.id,
+                selectedDate,
+                copyingMealType,
+                targetDate,
+                targetMealType
+              );
+              
+              // Обновляем UI независимо от даты (данные уже в localStorage)
+              // Если копируем на текущую дату, обновляем сразу
+              if (targetDate === selectedDate) {
+                // Используем getMealsForDate для получения актуальных данных из localStorage
+                const updatedMeals = await mealService.getMealsForDate(user.id, selectedDate);
+                setDailyMeals(updatedMeals);
+              }
+              // Если копируем на другую дату, данные уже сохранены в localStorage
+              // При переключении на эту дату useEffect автоматически загрузит актуальные данные
+              
+              // Показываем уведомление об успехе
+              alert(`Приём пищи скопирован на ${targetDate} в ${mealTypeNames[targetMealType]}`);
+            } catch (error) {
+              console.error('[FoodDiary] Ошибка копирования приёма пищи:', error);
+              alert('Ошибка при копировании приёма пищи');
+            }
+          }}
+          sourceMealType={copyingMealType}
+          entries={dailyMeals?.[copyingMealType] || []}
+        />
+      )}
     </>
   );
 };
