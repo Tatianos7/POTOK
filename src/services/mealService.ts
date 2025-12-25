@@ -1,10 +1,51 @@
-import { DailyMeals, MealEntry } from '../types';
+import { DailyMeals, MealEntry, Food } from '../types';
 import { trackEvent } from './analyticsService';
 import { supabase } from '../lib/supabaseClient';
 import { toUUID } from '../utils/uuid';
 
 class MealService {
   private readonly MEALS_STORAGE_KEY = 'potok_daily_meals';
+
+  // Единый нормализатор Supabase entry → MealEntry
+  // Гарантирует строгую типизацию и полный объект Food
+  private mapSupabaseEntryToMealEntry(entry: any): MealEntry {
+    if (!entry?.id) {
+      throw new Error('Supabase entry without id');
+    }
+
+    const foodId = String(entry.id);
+
+    const food: Food = {
+      id: foodId,
+      name: String(entry.product_name ?? 'Unknown'),
+      name_original: undefined,
+      barcode: null,
+      calories: Number(entry.calories ?? 0),
+      protein: Number(entry.protein ?? 0),
+      fat: Number(entry.fat ?? 0),
+      carbs: Number(entry.carbs ?? 0),
+      category: undefined,
+      brand: null,
+      source: 'manual',
+      photo: null,
+      aliases: undefined,
+      autoFilled: undefined,
+      popularity: undefined,
+      createdAt: String(entry.created_at ?? new Date().toISOString()),
+      updatedAt: String(entry.created_at ?? new Date().toISOString()),
+    };
+
+    return {
+      id: foodId,
+      foodId: foodId,
+      food,
+      weight: Number(entry.weight ?? 0),
+      calories: food.calories,
+      protein: food.protein,
+      fat: food.fat,
+      carbs: food.carbs,
+    };
+  }
 
   // Get meals for a specific date from Supabase (primary source)
   async getFoodDiaryByDate(userId: string, date: string): Promise<DailyMeals> {
@@ -69,26 +110,7 @@ class MealService {
             return; // Пропускаем не планируемые записи для будущих дат
           }
           
-          const mealEntry: MealEntry = {
-            id: entry.id,
-            foodId: entry.id,
-            food: {
-              id: entry.id,
-              name: entry.product_name,
-              calories: Number(entry.calories || 0),
-              protein: Number(entry.protein || 0),
-              fat: Number(entry.fat || 0),
-              carbs: Number(entry.carbs || 0),
-              source: 'manual',
-              createdAt: entry.created_at,
-              updatedAt: entry.created_at,
-            },
-            weight: Number(entry.weight || 0),
-            calories: Number(entry.calories || 0),
-            protein: Number(entry.protein || 0),
-            fat: Number(entry.fat || 0),
-            carbs: Number(entry.carbs || 0),
-          };
+          const mealEntry = this.mapSupabaseEntryToMealEntry(entry);
 
           if (entry.meal_type === 'breakfast') meals.breakfast.push(mealEntry);
           else if (entry.meal_type === 'lunch') meals.lunch.push(mealEntry);
@@ -155,26 +177,7 @@ class MealService {
             return; // Пропускаем не планируемые записи для будущих дат
           }
           
-          const mealEntry: MealEntry = {
-            id: entry.id,
-            foodId: entry.id,
-            food: {
-              id: entry.id,
-              name: entry.product_name,
-              calories: Number(entry.calories || 0),
-              protein: Number(entry.protein || 0),
-              fat: Number(entry.fat || 0),
-              carbs: Number(entry.carbs || 0),
-              source: 'manual',
-              createdAt: entry.created_at,
-              updatedAt: entry.created_at,
-            },
-            weight: Number(entry.weight || 0),
-            calories: Number(entry.calories || 0),
-            protein: Number(entry.protein || 0),
-            fat: Number(entry.fat || 0),
-            carbs: Number(entry.carbs || 0),
-          };
+          const mealEntry = this.mapSupabaseEntryToMealEntry(entry);
 
           if (entry.meal_type === 'breakfast') supabaseMeals.breakfast.push(mealEntry);
           else if (entry.meal_type === 'lunch') supabaseMeals.lunch.push(mealEntry);
@@ -503,14 +506,52 @@ class MealService {
     }
 
     // Глубокое копирование записей (создаём новые объекты)
-    const copiedEntries: MealEntry[] = sourceEntries.map((entry) => ({
-      ...entry,
-      id: `${Date.now()}-${Math.random()}`, // Новый уникальный ID
-      food: {
-        ...entry.food,
-        id: entry.food.id ? `${entry.food.id}-copy-${Date.now()}` : undefined,
-      },
-    }));
+    // Теперь entry.food.id гарантированно string, так как все MealEntry создаются через нормализатор
+    const copiedEntries: MealEntry[] = sourceEntries.map((entry): MealEntry => {
+      const timestamp = Date.now();
+      const random = Math.random();
+      const entryId = `${timestamp}-${random}`;
+      
+      // entry.food.id гарантированно string (создано через mapSupabaseEntryToMealEntry)
+      const sourceFoodId: string = entry.food.id;
+      const newFoodId: string = `${sourceFoodId}-copy-${timestamp}`;
+      
+      // Создаём новый объект Food (глубокое копирование)
+      // ВАЖНО: явно указываем id как string, чтобы TypeScript видел правильный тип
+      const copiedFood: Food = {
+        id: newFoodId,  // Явно string
+        name: entry.food.name,
+        name_original: entry.food.name_original,
+        barcode: entry.food.barcode ?? null,
+        calories: entry.food.calories,
+        protein: entry.food.protein,
+        fat: entry.food.fat,
+        carbs: entry.food.carbs,
+        category: entry.food.category,
+        brand: entry.food.brand ?? null,
+        source: entry.food.source,
+        photo: entry.food.photo ?? null,
+        aliases: entry.food.aliases,
+        autoFilled: entry.food.autoFilled,
+        popularity: entry.food.popularity,
+        createdAt: entry.food.createdAt,
+        updatedAt: entry.food.updatedAt,
+      };
+      
+      // Создаём новый MealEntry (глубокое копирование)
+      const copiedEntry: MealEntry = {
+        id: entryId,
+        foodId: newFoodId,
+        food: copiedFood,
+        weight: entry.weight,
+        calories: entry.calories,
+        protein: entry.protein,
+        fat: entry.fat,
+        carbs: entry.carbs,
+      };
+      
+      return copiedEntry;
+    });
 
     // Получаем целевой приём пищи (из localStorage для мгновенного обновления)
     const targetMeals = await this.getMealsForDate(userId, targetDate);
