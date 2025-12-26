@@ -179,6 +179,66 @@ class RecipesService {
     }
   }
 
+  // Создать рецепт из приёма пищи
+  createRecipeFromMeal(data: {
+    name: string;
+    note?: string;
+    mealEntries: Array<{
+      foodId: string;
+      food: {
+        id: string;
+        name: string;
+      };
+      weight: number;
+      calories: number;
+      protein: number;
+      fat: number;
+      carbs: number;
+    }>;
+    userId: string;
+  }): Recipe {
+    // Преобразуем MealEntry в формат ингредиентов рецепта
+    const ingredients = data.mealEntries.map((entry) => ({
+      name: entry.food.name,
+      quantity: entry.weight,
+      unit: 'г',
+      grams: entry.weight,
+      calories: entry.calories,
+      proteins: entry.protein,
+      fats: entry.fat,
+      carbs: entry.carbs,
+    }));
+
+    // Вычисляем общие значения
+    const totalCalories = ingredients.reduce((sum, ing) => sum + ing.calories, 0);
+    const totalProteins = ingredients.reduce((sum, ing) => sum + ing.proteins, 0);
+    const totalFats = ingredients.reduce((sum, ing) => sum + ing.fats, 0);
+    const totalCarbs = ingredients.reduce((sum, ing) => sum + ing.carbs, 0);
+
+    // Генерируем уникальный ID и преобразуем в UUID для Supabase
+    const uniqueId = `recipe_meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const recipeId = toUUID(uniqueId);
+
+    const recipe: Recipe = {
+      id: recipeId,
+      name: data.name,
+      image: null,
+      totalCalories,
+      totalProteins,
+      totalFats,
+      totalCarbs,
+      ingredients,
+      instructions: data.note || undefined,
+      source: 'meal',
+      userId: data.userId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.saveRecipe(recipe);
+    return recipe;
+  }
+
   // Создать рецепт из анализатора
   createRecipeFromAnalyzer(data: {
     name: string;
@@ -199,8 +259,12 @@ class RecipesService {
     }>;
     userId: string;
   }): Recipe {
+    // Генерируем уникальный ID и преобразуем в UUID для Supabase
+    const uniqueId = `recipe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const recipeId = toUUID(uniqueId);
+
     const recipe: Recipe = {
-      id: `recipe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: recipeId,
       name: data.name,
       image: data.image || null,
       totalCalories: data.totalCalories,

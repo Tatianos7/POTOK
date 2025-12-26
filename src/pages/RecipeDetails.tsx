@@ -172,6 +172,16 @@ const RecipeDetails = () => {
             </div>
           </div>
         )}
+
+        {/* Recipe Note/Instructions */}
+        {recipe.instructions && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Заметка:</h3>
+            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+              {recipe.instructions}
+            </p>
+          </div>
+        )}
         {(!recipe.ingredients || recipe.ingredients.length === 0) && recipe.source === 'default' && (
           <div className="space-y-2">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Состав:</h3>

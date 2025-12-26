@@ -17,6 +17,10 @@ import RecipeAnalyzeResultSheet from '../components/RecipeAnalyzeResultSheet';
 import EditMealEntryModal from '../components/EditMealEntryModal';
 import InlineCalendar from '../components/InlineCalendar';
 import CopyMealModal from '../components/CopyMealModal';
+import DeleteMealConfirmModal from '../components/DeleteMealConfirmModal';
+import MealNoteModal from '../components/MealNoteModal';
+import SaveMealAsRecipeModal from '../components/SaveMealAsRecipeModal';
+import { recipesService } from '../services/recipesService';
 import { localAIFoodAnalyzer, LocalIngredient } from '../services/localAIFoodAnalyzer';
 
 const FoodDiary = () => {
@@ -69,6 +73,18 @@ const FoodDiary = () => {
   // State для копирования приёма пищи
   const [isCopyMealModalOpen, setIsCopyMealModalOpen] = useState(false);
   const [copyingMealType, setCopyingMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
+  
+  // State для подтверждения удаления приёма пищи
+  const [isDeleteMealModalOpen, setIsDeleteMealModalOpen] = useState(false);
+  const [deletingMealType, setDeletingMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
+  
+  // State для заметки приёма пищи
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [noteMealType, setNoteMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
+  
+  // State для сохранения рецепта из приёма пищи
+  const [isSaveRecipeModalOpen, setIsSaveRecipeModalOpen] = useState(false);
+  const [savingMealType, setSavingMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
   
   // State для встроенного календаря
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -547,6 +563,179 @@ const FoodDiary = () => {
     });
   };
 
+  const handleDeleteMealClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+    // Открываем модальное окно подтверждения
+    setDeletingMealType(mealType);
+    setIsDeleteMealModalOpen(true);
+  };
+
+  const handleClearMeal = () => {
+    if (!user?.id || !dailyMeals || !deletingMealType) {
+      console.warn('[FoodDiary] handleClearMeal: missing required data', { user: !!user?.id, dailyMeals: !!dailyMeals, deletingMealType });
+      return;
+    }
+
+    const mealType = deletingMealType;
+    console.log('[FoodDiary] Clearing meal type:', mealType);
+
+    // Оптимистичное обновление - сразу очищаем UI
+    setDailyMeals((prev) => {
+      if (!prev) {
+        console.warn('[FoodDiary] No previous dailyMeals');
+        return prev;
+      }
+      const updated = { ...prev };
+      updated[mealType] = [];
+      console.log('[FoodDiary] Meal type cleared:', mealType);
+      return updated;
+    });
+
+    // Сохраняем в фоне
+    mealService.clearMealType(user.id, selectedDate, mealType).catch((error) => {
+      console.error('[FoodDiary] Ошибка очистки приёма пищи:', error);
+      // В случае ошибки откатываем изменение
+      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
+        setDailyMeals(meals);
+      });
+    });
+
+    // Закрываем модальное окно
+    setIsDeleteMealModalOpen(false);
+    setDeletingMealType(null);
+  };
+
+  const handleNoteClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+    // Открываем модальное окно заметки
+    setNoteMealType(mealType);
+    setIsNoteModalOpen(true);
+  };
+
+  const handleSaveNote = (note: string) => {
+    if (!user?.id || !noteMealType) {
+      console.warn('[FoodDiary] handleSaveNote: missing required data', { user: !!user?.id, noteMealType });
+      return;
+    }
+
+    console.log('[FoodDiary] Saving note for meal type:', noteMealType, note);
+
+    // Оптимистичное обновление - сразу обновляем UI
+    setDailyMeals((prev) => {
+      if (!prev) {
+        console.warn('[FoodDiary] No previous dailyMeals');
+        return prev;
+      }
+      const updated = { ...prev };
+      if (!updated.notes) {
+        updated.notes = {
+          breakfast: null,
+          lunch: null,
+          dinner: null,
+          snack: null,
+        };
+      }
+      updated.notes[noteMealType] = note.trim() || null;
+      console.log('[FoodDiary] Note saved:', noteMealType, updated.notes[noteMealType]);
+      return updated;
+    });
+
+    // Сохраняем в фоне
+    mealService.saveMealNote(user.id, selectedDate, noteMealType, note).catch((error) => {
+      console.error('[FoodDiary] Ошибка сохранения заметки:', error);
+      // В случае ошибки откатываем изменение
+      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
+        setDailyMeals(meals);
+      });
+    });
+  };
+
+  const handleDeleteNote = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+    if (!user?.id || !dailyMeals) {
+      console.warn('[FoodDiary] handleDeleteNote: missing required data', { user: !!user?.id, dailyMeals: !!dailyMeals });
+      return;
+    }
+
+    console.log('[FoodDiary] Deleting note for meal type:', mealType);
+
+    // Оптимистичное обновление - сразу удаляем заметку из UI
+    setDailyMeals((prev) => {
+      if (!prev) {
+        console.warn('[FoodDiary] No previous dailyMeals');
+        return prev;
+      }
+      const updated = { ...prev };
+      if (!updated.notes) {
+        updated.notes = {
+          breakfast: null,
+          lunch: null,
+          dinner: null,
+          snack: null,
+        };
+      }
+      updated.notes[mealType] = null;
+      console.log('[FoodDiary] Note deleted:', mealType);
+      return updated;
+    });
+
+    // Сохраняем в фоне
+    mealService.saveMealNote(user.id, selectedDate, mealType, '').catch((error) => {
+      console.error('[FoodDiary] Ошибка удаления заметки:', error);
+      // В случае ошибки откатываем изменение
+      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
+        setDailyMeals(meals);
+      });
+    });
+  };
+
+  const handleSaveAsRecipeClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+    // Проверяем, что в приёме пищи есть продукты
+    const mealEntries = dailyMeals?.[mealType] || [];
+    if (mealEntries.length === 0) {
+      alert('Добавьте продукты в приём пищи перед сохранением рецепта');
+      return;
+    }
+    
+    // Открываем модальное окно
+    setSavingMealType(mealType);
+    setIsSaveRecipeModalOpen(true);
+  };
+
+  const handleSaveRecipe = (name: string, note?: string) => {
+    if (!user?.id || !savingMealType || !dailyMeals) {
+      console.warn('[FoodDiary] handleSaveRecipe: missing required data', { user: !!user?.id, savingMealType, dailyMeals: !!dailyMeals });
+      return;
+    }
+
+    const mealEntries = dailyMeals[savingMealType];
+    if (mealEntries.length === 0) {
+      alert('Нет продуктов для сохранения');
+      return;
+    }
+
+    console.log('[FoodDiary] Saving meal as recipe:', savingMealType, name);
+
+    try {
+      // Создаём рецепт из приёма пищи
+      const recipe = recipesService.createRecipeFromMeal({
+        name,
+        note,
+        mealEntries,
+        userId: user.id,
+      });
+
+      console.log('[FoodDiary] Recipe saved:', recipe.id);
+      
+      // Закрываем модальное окно
+      setIsSaveRecipeModalOpen(false);
+      setSavingMealType(null);
+      
+      // Показываем уведомление
+      alert(`Рецепт "${name}" сохранён в "Мои рецепты"`);
+    } catch (error) {
+      console.error('[FoodDiary] Ошибка сохранения рецепта:', error);
+      alert('Ошибка при сохранении рецепта');
+    }
+  };
+
   const formatSelectedDate = () => {
     // Используем selectedDate напрямую (это уже строка YYYY-MM-DD)
     const dateStr = selectedDate;
@@ -608,9 +797,16 @@ const FoodDiary = () => {
     isExpanded: boolean;
     toggleMealExpanded: (type: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
     onCopyMeal: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
-  }> = ({ meal, mealType, mealEntries, mealTotals, isExpanded, toggleMealExpanded, onCopyMeal }) => {
+    onDeleteMeal: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
+    onNoteClick: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
+    onDeleteNote?: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
+    onSaveAsRecipe: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
+    mealNote: string | null | undefined;
+  }> = ({ meal, mealType, mealEntries, mealTotals, isExpanded, toggleMealExpanded, onCopyMeal, onDeleteMeal, onNoteClick, onDeleteNote, onSaveAsRecipe, mealNote }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
+    const [noteMenuOpen, setNoteMenuOpen] = useState(false);
+    const noteMenuRef = useRef<HTMLDivElement | null>(null);
 
     // Закрытие по клику вне
     useEffect(() => {
@@ -624,6 +820,19 @@ const FoodDiary = () => {
       }
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [menuOpen]);
+
+    // Закрытие меню заметки по клику вне
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (noteMenuRef.current && !noteMenuRef.current.contains(event.target as Node)) {
+          setNoteMenuOpen(false);
+        }
+      };
+      if (noteMenuOpen) {
+        document.addEventListener('mousedown', handleClickOutside);
+      }
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [noteMenuOpen]);
 
     return (
       <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-visible">
@@ -649,6 +858,50 @@ const FoodDiary = () => {
                 <span>{mealTotals.protein.toFixed(2).replace('.', ',')}</span>
                 <span>{mealTotals.fat.toFixed(2).replace('.', ',')}</span>
                 <span>{mealTotals.carbs.toFixed(0)}</span>
+              </div>
+            )}
+            
+            {/* Отображение заметки (всегда видна, даже если блок свёрнут) */}
+            {mealNote && (
+              <div className="mt-2 relative">
+                <div
+                  onClick={() => setNoteMenuOpen((v) => !v)}
+                  className="flex items-start gap-2 cursor-pointer hover:opacity-70 transition-opacity"
+                >
+                  <StickyNote className="w-4 h-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                    {mealNote}
+                  </p>
+                </div>
+                
+                {/* Меню заметки */}
+                {noteMenuOpen && (
+                  <div
+                    ref={noteMenuRef}
+                    className="absolute top-full left-0 mt-2 z-50"
+                  >
+                    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2 min-w-[120px]">
+                      <button
+                        onClick={() => {
+                          setNoteMenuOpen(false);
+                          onNoteClick(mealType);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                      >
+                        Изменить
+                      </button>
+                      <button
+                        onClick={() => {
+                          setNoteMenuOpen(false);
+                          onDeleteNote?.(mealType);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                      >
+                        Удалить
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -689,9 +942,15 @@ const FoodDiary = () => {
               className="absolute bottom-full right-0 mb-2 z-40"
             >
               <div className="flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3 shadow-lg">
-                <button className="flex flex-col items-center text-xs text-gray-800 dark:text-gray-200">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onSaveAsRecipe(mealType);
+                  }}
+                  className="flex flex-col items-center text-xs text-gray-800 dark:text-gray-200 hover:opacity-70 transition-opacity"
+                >
                   <Heart className="w-5 h-5 mb-1" />
-                  <span>В избранное</span>
+                  <span>Сохранить как рецепт</span>
                 </button>
                 <button
                   onClick={() => {
@@ -703,11 +962,23 @@ const FoodDiary = () => {
                   <Copy className="w-5 h-5 mb-1" />
                   <span>Копировать</span>
                 </button>
-                <button className="flex flex-col items-center text-xs text-gray-800 dark:text-gray-200">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDeleteMeal(mealType);
+                  }}
+                  className="flex flex-col items-center text-xs text-gray-800 dark:text-gray-200 hover:opacity-70 transition-opacity"
+                >
                   <Trash2 className="w-5 h-5 mb-1" />
                   <span>Удалить</span>
                 </button>
-                <button className="flex flex-col items-center text-xs text-gray-800 dark:text-gray-200">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onNoteClick(mealType);
+                  }}
+                  className="flex flex-col items-center text-xs text-gray-800 dark:text-gray-200 hover:opacity-70 transition-opacity"
+                >
                   <StickyNote className="w-5 h-5 mb-1" />
                   <span>Заметка</span>
                 </button>
@@ -848,12 +1119,12 @@ const FoodDiary = () => {
           
           {/* Date Selection Bar */}
           {!isLoading && (
-          <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
+          <div className="flex items-center justify-center gap-2 mb-6 overflow-x-auto pb-2">
             {dates.map((date) => (
               <button
                 key={date.date}
                 onClick={() => setSelectedDate(date.date)}
-                className={`flex flex-col items-center justify-center min-w-[50px] h-16 rounded-full transition-colors ${
+                className={`flex flex-col items-center justify-center min-w-[46px] h-[60px] rounded-full transition-colors ${
                   selectedDate === date.date
                     ? 'bg-green-500 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
@@ -927,6 +1198,11 @@ const FoodDiary = () => {
                     setCopyingMealType(mealType);
                     setIsCopyMealModalOpen(true);
                   }}
+                  onDeleteMeal={handleDeleteMealClick}
+                  onNoteClick={handleNoteClick}
+                  onDeleteNote={handleDeleteNote}
+                  onSaveAsRecipe={handleSaveAsRecipeClick}
+                  mealNote={dailyMeals?.notes?.[mealType]}
                 />
               );
             })}
@@ -1274,6 +1550,43 @@ const FoodDiary = () => {
           }}
           sourceMealType={copyingMealType}
           entries={dailyMeals?.[copyingMealType] || []}
+        />
+      )}
+
+      {/* Модальное окно подтверждения удаления приёма пищи */}
+      {deletingMealType && (
+        <DeleteMealConfirmModal
+          isOpen={isDeleteMealModalOpen}
+          onClose={() => {
+            setIsDeleteMealModalOpen(false);
+            setDeletingMealType(null);
+          }}
+          onConfirm={handleClearMeal}
+        />
+      )}
+
+      {/* Модальное окно заметки приёма пищи */}
+      {noteMealType && (
+        <MealNoteModal
+          isOpen={isNoteModalOpen}
+          onClose={() => {
+            setIsNoteModalOpen(false);
+            setNoteMealType(null);
+          }}
+          onSave={handleSaveNote}
+          initialNote={dailyMeals?.notes?.[noteMealType] || null}
+        />
+      )}
+
+      {/* Модальное окно сохранения рецепта из приёма пищи */}
+      {savingMealType && (
+        <SaveMealAsRecipeModal
+          isOpen={isSaveRecipeModalOpen}
+          onClose={() => {
+            setIsSaveRecipeModalOpen(false);
+            setSavingMealType(null);
+          }}
+          onSave={handleSaveRecipe}
         />
       )}
     </>

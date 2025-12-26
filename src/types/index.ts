@@ -120,4 +120,10 @@ export interface DailyMeals {
   dinner: MealEntry[];
   snack: MealEntry[];
   water: number; // glasses
+  notes?: {
+    breakfast?: string | null;
+    lunch?: string | null;
+    dinner?: string | null;
+    snack?: string | null;
+  };
 }
