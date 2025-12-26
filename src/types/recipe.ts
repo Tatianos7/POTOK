@@ -26,7 +26,7 @@ export interface Recipe {
   category?: string;
   isFavorite?: boolean;
   isInCollection?: boolean;
-  source?: 'recipe_analyzer' | 'manual' | 'default';
+  source?: 'recipe_analyzer' | 'manual' | 'default' | 'meal';
   createdAt: string;
   updatedAt: string;
   userId?: string; // для "МОИ РЕЦЕПТЫ"

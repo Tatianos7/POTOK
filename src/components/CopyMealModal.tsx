@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Calendar } from 'lucide-react';
+import { X } from 'lucide-react';
 import { MealEntry } from '../types';
 
 interface CopyMealModalProps {
@@ -101,7 +101,6 @@ const CopyMealModal = ({ isOpen, onClose, onCopy, sourceMealType, entries }: Cop
                 max={maxDateStr}
                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             </div>
             <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
               Можно выбрать дату от сегодня до +14 дней
@@ -125,7 +124,7 @@ const CopyMealModal = ({ isOpen, onClose, onCopy, sourceMealType, entries }: Cop
                     value={mealType}
                     checked={selectedMealType === mealType}
                     onChange={() => setSelectedMealType(mealType)}
-                    className="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 dark:border-gray-600"
+                    className="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 dark:border-gray-600 accent-green-600"
                   />
                   <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
                     {mealTypeNames[mealType]}
