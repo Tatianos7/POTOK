@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MealEntry } from '../types';
 import { X, Pencil, Camera, Copy } from 'lucide-react';
+import { getFoodDisplayName } from '../utils/foodDisplayName';
 
 interface EditMealEntryModalProps {
   entry: MealEntry | null;
@@ -136,7 +137,7 @@ const EditMealEntryModal = ({
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1">
               <p className="text-base font-medium text-gray-900 dark:text-white">
-                {entry.food.name}
+                {getFoodDisplayName(entry.food)}
               </p>
             </div>
             <div className="flex items-center gap-2">

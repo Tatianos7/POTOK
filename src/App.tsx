@@ -18,6 +18,8 @@ import FavoritesProductsPage from './pages/FavoritesProductsPage';
 import RecipeAnalyzer from './pages/RecipeAnalyzer';
 import Recipes from './pages/Recipes';
 import RecipeDetails from './pages/RecipeDetails';
+import CreateCustomProductPage from './pages/CreateCustomProductPage';
+import CreateBrandProductPage from './pages/CreateBrandProductPage';
 import Habits from './pages/Habits';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -139,6 +141,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <RecipeAnalyzer />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/create-custom-product"
+        element={
+          <ProtectedRoute>
+            <CreateCustomProductPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/create-brand-product"
+        element={
+          <ProtectedRoute>
+            <CreateBrandProductPage />
           </ProtectedRoute>
         }
       />

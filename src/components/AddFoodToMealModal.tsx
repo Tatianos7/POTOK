@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Food, MealEntry } from '../types';
 import { X } from 'lucide-react';
 import { pieceWeights } from '../data/unitConversions';
+import { getFoodDisplayName } from '../utils/foodDisplayName';
 
 type Unit = 'g' | 'ml' | 'pcs' | 'l';
 
@@ -168,13 +169,8 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
             )}
             <div className="flex-1">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                {food.name}
+                {getFoodDisplayName(food)}
               </h3>
-              {food.brand && (
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {food.brand}
-                </p>
-              )}
               <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
                 {Math.round(food.calories)} ккал / 100г
               </p>

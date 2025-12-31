@@ -55,7 +55,7 @@ const ModalButton = ({
 }) => (
   <button
     onClick={onClick}
-    className="w-full py-[11px] rounded-full border border-gray-500 text-center text-xs font-semibold text-gray-800 bg-white hover:bg-gray-50 transition-colors"
+    className="w-full py-[11px] rounded-xl border border-gray-500 text-center text-xs font-semibold text-gray-800 bg-white hover:bg-gray-50 transition-colors"
   >
     {label}
   </button>
