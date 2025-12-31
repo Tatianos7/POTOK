@@ -8,6 +8,7 @@ import { Food, MealEntry, UserCustomFood } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { mealService } from '../services/mealService';
 import { foodService } from '../services/foodService';
+import { getFoodDisplayName } from '../utils/foodDisplayName';
 
 interface LocationState {
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -65,13 +66,12 @@ const FoodSearch = () => {
     // Добавим в handleAdd после добавления продукта с граммами
   };
 
-  // Автоматически переключаемся на режим поиска при вводе в поле поиска в режиме избранного
+  // Обработчик изменения поля поиска
+  // ВАЖНО: НЕ меняем активную вкладку автоматически
+  // Поиск в "Избранном" работает независимо от поиска в "Часто вводимых продуктах"
   const handleQueryChange = (value: string) => {
     setQuery(value);
-    // Если пользователь начал вводить в режиме избранного - переключаемся на поиск
-    if (activeTab === 'favorites' && value.trim().length > 0) {
-      setActiveTab('search');
-    }
+    // НЕ переключаем вкладку автоматически - пользователь должен оставаться там, где он был
   };
 
   /**
@@ -130,10 +130,10 @@ const FoodSearch = () => {
     mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
     
     // Сохраняем продукт в часто используемые с граммами и текущей датой использования
-    // addRecent сам добавит lastUsedAt, но передаем для совместимости
+    // Используем getFoodDisplayName для отображения названия с маркой, если есть
     addRecent({
       foodId: entry.foodId,
-      foodName: entry.food.name,
+      foodName: getFoodDisplayName(entry.food),
       weight: entry.weight,
       lastUsedAt: new Date().toISOString(),
     });
@@ -304,11 +304,17 @@ const FoodSearch = () => {
   };
 
   // Фильтрация избранных продуктов по запросу
-  const filteredFavorites = recent.filter((rf) => {
-    if (!query.trim()) return true;
+  // ВАЖНО: Поиск работает ТОЛЬКО по избранным продуктам (recent)
+  // При очистке поля поиска показывается полный список избранных продуктов
+  const filteredFavorites = useMemo(() => {
+    if (!query.trim()) {
+      // Если поле поиска пустое - показываем все избранные продукты
+      return recent;
+    }
+    // Если есть запрос - фильтруем только избранные продукты
     const q = query.toLowerCase();
-    return rf.foodName.toLowerCase().includes(q);
-  });
+    return recent.filter((rf) => rf.foodName.toLowerCase().includes(q));
+  }, [recent, query]);
 
 
   return (

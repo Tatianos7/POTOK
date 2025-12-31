@@ -260,6 +260,15 @@ class FoodService {
     }
     return null;
   }
+
+  getAllFoods(userId?: string): Food[] {
+    const all = this.loadAll();
+    if (userId) {
+      const userFoods = this.loadUserFoods(userId);
+      return [...all, ...userFoods];
+    }
+    return all;
+  }
 }
 
 export const foodService = new FoodService();

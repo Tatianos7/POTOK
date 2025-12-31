@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Food } from '../types';
 import { X } from 'lucide-react';
+import { getFoodDisplayName } from '../utils/foodDisplayName';
 
 interface ScanConfirmBottomSheetProps {
   food: Food | null;
@@ -135,13 +136,8 @@ const ScanConfirmBottomSheet = ({ food, isOpen, onConfirm, onReject }: ScanConfi
               )}
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">
-                  {food.name}
+                  {getFoodDisplayName(food)}
                 </h3>
-                {food.brand && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                    {food.brand}
-                  </p>
-                )}
                 <div className="flex items-center gap-4 text-sm">
                   <div>
                     <span className="text-gray-600 dark:text-gray-400">Калории: </span>

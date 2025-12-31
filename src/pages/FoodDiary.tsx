@@ -5,6 +5,7 @@ import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils,
 import { DailyMeals, MealEntry, Food, UserCustomFood } from '../types';
 import { mealService } from '../services/mealService';
 import { foodService } from '../services/foodService';
+import { getFoodDisplayName } from '../utils/foodDisplayName';
 import ProductSearch from '../components/ProductSearch';
 import BarcodeScanner from '../components/BarcodeScanner';
 import CameraBarcodeScanner from '../components/CameraBarcodeScanner';
@@ -1006,7 +1007,7 @@ const FoodDiary = () => {
                       onClick={() => handleEntryClick(entry, mealType)}
                     >
                       <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 flex items-center gap-1">
-                        <span className="truncate">{entry.food.name}</span>
+                        <span className="truncate">{getFoodDisplayName(entry.food)}</span>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
                           ({Math.round(Number(entry.weight) || 0)} г)
                         </span>
@@ -1403,15 +1404,15 @@ const FoodDiary = () => {
           onClose={() => setShowAddProductModal(false)}
           onBrandInput={() => {
             setShowAddProductModal(false);
-            setIsSearchModalOpen(true);
+            navigate('/nutrition/create-brand-product', { state: { selectedDate } });
           }}
           onCustomInput={() => {
             setShowAddProductModal(false);
-            setIsCreateCustomFoodModalOpen(true);
+            navigate('/nutrition/create-custom-product', { state: { selectedDate } });
           }}
           onRecipeAnalyzer={() => {
             setShowAddProductModal(false);
-            setShowRecipePicker(true);
+            navigate('/nutrition/recipe-analyzer');
           }}
         />
       )}

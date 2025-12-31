@@ -6,6 +6,7 @@ import { Food, MealEntry } from '../types';
 import { mealService } from '../services/mealService';
 import { foodService } from '../services/foodService';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
+import { getFoodDisplayName } from '../utils/foodDisplayName';
 
 interface LocationState {
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -208,10 +209,11 @@ const FavoritesProductsPage = () => {
       });
       
       // Добавляем новую запись в начало с актуальными граммами и текущей датой использования (без ограничения количества)
+      // Используем getFoodDisplayName для отображения названия с маркой, если есть
       const updated = [
         {
           foodId: entry.foodId,
-          foodName: entry.food.name,
+          foodName: getFoodDisplayName(entry.food),
           weight: entry.weight,
           lastUsedAt: new Date().toISOString(),
         },

@@ -1,5 +1,6 @@
 import { Food } from '../types';
 import { Package } from 'lucide-react';
+import { getFoodDisplayName } from '../utils/foodDisplayName';
 
 interface ProductCardProps {
   food: Food;
@@ -7,8 +8,6 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ food, onClick }: ProductCardProps) => {
-  // Предпочитаем русское имя, если есть
-  const displayName = (food as any).name_ru || food.name || 'Продукт';
   return (
     <button
       onClick={onClick}
@@ -34,13 +33,8 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
       {/* Info */}
       <div className="flex-1 min-w-0">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-          {displayName}
+          {getFoodDisplayName(food)}
         </h3>
-        {food.brand && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-            {food.brand}
-          </p>
-        )}
         <div className="flex items-center gap-3 mt-1">
           <span className="text-xs text-gray-600 dark:text-gray-300">
             {Math.round(food.calories || 0)} ккал
