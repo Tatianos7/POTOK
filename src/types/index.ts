@@ -111,6 +111,7 @@ export interface MealEntry {
   protein: number; // calculated
   fat: number; // calculated
   carbs: number; // calculated
+  note?: string | null; // Заметка к продукту в приёме пищи
 }
 
 export interface DailyMeals {

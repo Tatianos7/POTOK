@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { MealEntry } from '../types';
-import { X, Pencil, Camera, Copy } from 'lucide-react';
+import { X, Pencil, Camera } from 'lucide-react';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
+import { mealEntryNotesService } from '../services/mealEntryNotesService';
+import { useAuth } from '../context/AuthContext';
+import MealNoteModal from './MealNoteModal';
 
 interface EditMealEntryModalProps {
   entry: MealEntry | null;
@@ -11,6 +14,7 @@ interface EditMealEntryModalProps {
   onClose: () => void;
   onSave: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', updatedEntry: MealEntry) => void;
   onDelete: () => void;
+  source?: 'meal' | 'search' | 'favorites' | 'analyzer'; // Источник открытия карточки
 }
 
 const mealTypeNames: Record<'breakfast' | 'lunch' | 'dinner' | 'snack', string> = {
@@ -28,7 +32,9 @@ const EditMealEntryModal = ({
   onClose,
   onSave,
   onDelete,
+  source = 'search', // По умолчанию 'search' для обратной совместимости
 }: EditMealEntryModalProps) => {
+  const { user } = useAuth();
   const [weight, setWeight] = useState<string>('');
   const [calculated, setCalculated] = useState({
     calories: 0,
@@ -36,13 +42,32 @@ const EditMealEntryModal = ({
     fat: 0,
     carbs: 0,
   });
+  const [note, setNote] = useState<string>('');
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
 
   useEffect(() => {
     if (entry) {
       setWeight(entry.weight.toString());
       calculateNutrients(entry.weight);
+      // Загружаем заметку, если она есть
+      setNote(entry.note || '');
     }
   }, [entry]);
+
+  // Загружаем заметку из Supabase при открытии модального окна
+  useEffect(() => {
+    if (isOpen && entry && user?.id && source === 'meal') {
+      mealEntryNotesService.getNoteByEntryId(user.id, entry.id)
+        .then((loadedNote) => {
+          if (loadedNote) {
+            setNote(loadedNote);
+          }
+        })
+        .catch((error) => {
+          console.error('[EditMealEntryModal] Error loading note:', error);
+        });
+    }
+  }, [isOpen, entry, user?.id, source]);
 
   const calculateNutrients = (weightInGrams: number) => {
     if (!entry) return;
@@ -100,6 +125,43 @@ const EditMealEntryModal = ({
   const handleDelete = () => {
     onDelete();
     onClose();
+  };
+
+  const handleNoteClick = () => {
+    setIsNoteModalOpen(true);
+  };
+
+  const handleSaveNote = async (noteText: string) => {
+    if (!user?.id || !entry) return;
+
+    try {
+      const trimmedNote = noteText.trim();
+      
+      if (trimmedNote) {
+        // Сохраняем заметку в Supabase
+        await mealEntryNotesService.saveNote(user.id, entry.id, trimmedNote);
+        setNote(trimmedNote);
+      } else {
+        // Удаляем заметку, если текст пустой
+        await mealEntryNotesService.deleteNote(user.id, entry.id);
+        setNote('');
+      }
+
+      // Обновляем entry в родительском компоненте
+      const updatedEntry: MealEntry = {
+        ...entry,
+        note: trimmedNote || null,
+      };
+      
+      if (mealType) {
+        onSave(mealType, updatedEntry);
+      }
+
+      setIsNoteModalOpen(false);
+    } catch (error) {
+      console.error('[EditMealEntryModal] Error saving note:', error);
+      alert('Ошибка при сохранении заметки');
+    }
   };
 
   if (!isOpen || !entry || !mealType) return null;
@@ -201,33 +263,29 @@ const EditMealEntryModal = ({
           <div className="flex gap-4 justify-center">
             <button
               type="button"
-              className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              onClick={handleNoteClick}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                note ? 'ring-2 ring-green-500' : ''
+              }`}
             >
               <Pencil className="w-5 h-5 text-gray-700 dark:text-gray-300" />
               <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                ДОБАВИТЬ ЗАМЕТКУ
+                {note ? 'РЕДАКТИРОВАТЬ ЗАМЕТКУ' : 'ДОБАВИТЬ ЗАМЕТКУ'}
               </span>
             </button>
 
-            <button
-              type="button"
-              className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <Copy className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                ДУБЛИРОВАТЬ
-              </span>
-            </button>
-
-            <button
-              type="button"
-              className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              <Camera className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                ДОБАВИТЬ ФОТО
-              </span>
-            </button>
+            {/* Кнопка "Добавить фото" скрыта, если карточка открыта из приёма пищи */}
+            {source !== 'meal' && (
+              <button
+                type="button"
+                className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Camera className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  ДОБАВИТЬ ФОТО
+                </span>
+              </button>
+            )}
           </div>
 
           {/* Bottom Action Buttons */}
@@ -250,6 +308,31 @@ const EditMealEntryModal = ({
           </div>
         </div>
       </div>
+
+      {/* Модальное окно для заметки */}
+      <MealNoteModal
+        isOpen={isNoteModalOpen}
+        onClose={() => setIsNoteModalOpen(false)}
+        onSave={handleSaveNote}
+        initialNote={note}
+        onDelete={async () => {
+          if (!user?.id || !entry) return;
+          try {
+            await mealEntryNotesService.deleteNote(user.id, entry.id);
+            setNote('');
+            const updatedEntry: MealEntry = {
+              ...entry,
+              note: null,
+            };
+            if (mealType) {
+              onSave(mealType, updatedEntry);
+            }
+          } catch (error) {
+            console.error('[EditMealEntryModal] Error deleting note:', error);
+            alert('Ошибка при удалении заметки');
+          }
+        }}
+      />
     </div>
   );
 };

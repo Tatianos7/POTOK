@@ -5,9 +5,10 @@ interface MealNoteModalProps {
   onClose: () => void;
   onSave: (note: string) => void;
   initialNote?: string | null;
+  onDelete?: () => void; // Опциональная функция для удаления заметки
 }
 
-const MealNoteModal = ({ isOpen, onClose, onSave, initialNote }: MealNoteModalProps) => {
+const MealNoteModal = ({ isOpen, onClose, onSave, initialNote, onDelete }: MealNoteModalProps) => {
   const [note, setNote] = useState('');
 
   // Загружаем существующую заметку при открытии
@@ -46,19 +47,32 @@ const MealNoteModal = ({ isOpen, onClose, onSave, initialNote }: MealNoteModalPr
         </div>
 
         {/* Footer buttons */}
-        <div className="px-6 pb-6 flex justify-end gap-4">
-          <button
-            onClick={onClose}
-            className="text-green-600 dark:text-green-400 font-semibold uppercase hover:opacity-70 transition-opacity"
-          >
-            ОТМЕНИТЬ
-          </button>
-          <button
-            onClick={handleSave}
-            className="text-green-600 dark:text-green-400 font-semibold uppercase hover:opacity-70 transition-opacity"
-          >
-            ОК
-          </button>
+        <div className="px-6 pb-6 flex justify-between items-center">
+          {onDelete && initialNote && (
+            <button
+              onClick={() => {
+                onDelete();
+                onClose();
+              }}
+              className="text-red-600 dark:text-red-400 font-semibold uppercase hover:opacity-70 transition-opacity"
+            >
+              УДАЛИТЬ
+            </button>
+          )}
+          <div className="flex gap-4 ml-auto">
+            <button
+              onClick={onClose}
+              className="text-green-600 dark:text-green-400 font-semibold uppercase hover:opacity-70 transition-opacity"
+            >
+              ОТМЕНИТЬ
+            </button>
+            <button
+              onClick={handleSave}
+              className="text-green-600 dark:text-green-400 font-semibold uppercase hover:opacity-70 transition-opacity"
+            >
+              ОК
+            </button>
+          </div>
         </div>
       </div>
     </div>

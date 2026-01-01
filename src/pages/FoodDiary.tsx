@@ -1017,6 +1017,12 @@ const FoodDiary = () => {
                         <span>{entry.fat.toFixed(2).replace('.', ',')}</span>
                         <span>{entry.carbs.toFixed(0)}</span>
                       </div>
+                      {/* Отображение заметки под продуктом */}
+                      {entry.note && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic line-clamp-2">
+                          {entry.note}
+                        </p>
+                      )}
                     </div>
 
                     <button
@@ -1504,6 +1510,7 @@ const FoodDiary = () => {
         mealType={selectedMealType}
         date={selectedDate}
         isOpen={isEditEntryModalOpen}
+        source="meal"
         onClose={() => {
           setIsEditEntryModalOpen(false);
           setEditingEntry(null);
@@ -1520,7 +1527,9 @@ const FoodDiary = () => {
             setIsCopyMealModalOpen(false);
             setCopyingMealType(null);
           }}
-          onCopy={async (targetDate, targetMealType) => {
+          sourceMealType={copyingMealType}
+          entries={dailyMeals?.[copyingMealType] || []}
+          onCopy={async (targetDate, targetMealType, selectedEntryIds) => {
             if (!user?.id || !copyingMealType) return;
             
             try {
@@ -1529,7 +1538,8 @@ const FoodDiary = () => {
                 selectedDate,
                 copyingMealType,
                 targetDate,
-                targetMealType
+                targetMealType,
+                selectedEntryIds
               );
               
               // Обновляем UI независимо от даты (данные уже в localStorage)
@@ -1549,8 +1559,6 @@ const FoodDiary = () => {
               alert('Ошибка при копировании приёма пищи');
             }
           }}
-          sourceMealType={copyingMealType}
-          entries={dailyMeals?.[copyingMealType] || []}
         />
       )}
 
