@@ -2,6 +2,7 @@ import { DailyMeals, MealEntry, Food } from '../types';
 import { trackEvent } from './analyticsService';
 import { supabase } from '../lib/supabaseClient';
 import { toUUID } from '../utils/uuid';
+import { mealEntryNotesService } from './mealEntryNotesService';
 
 class MealService {
   private readonly MEALS_STORAGE_KEY = 'potok_daily_meals';
@@ -117,6 +118,33 @@ class MealService {
           else if (entry.meal_type === 'dinner') meals.dinner.push(mealEntry);
           else if (entry.meal_type === 'snack') meals.snack.push(mealEntry);
         });
+
+        // Загружаем заметки для всех записей
+        const allEntryIds = [
+          ...meals.breakfast.map(e => e.id),
+          ...meals.lunch.map(e => e.id),
+          ...meals.dinner.map(e => e.id),
+          ...meals.snack.map(e => e.id),
+        ];
+
+        if (allEntryIds.length > 0) {
+          try {
+            const notesMap = await mealEntryNotesService.getNotesByEntryIds(userId, allEntryIds);
+            
+            // Присваиваем заметки к записям
+            const assignNote = (entry: MealEntry) => {
+              entry.note = notesMap[entry.id] || null;
+            };
+            
+            meals.breakfast.forEach(assignNote);
+            meals.lunch.forEach(assignNote);
+            meals.dinner.forEach(assignNote);
+            meals.snack.forEach(assignNote);
+          } catch (error) {
+            console.error('[mealService] Error loading notes:', error);
+            // Продолжаем работу без заметок
+          }
+        }
       }
 
       // Загружаем воду из localStorage (вода хранится только в localStorage)
@@ -580,11 +608,17 @@ class MealService {
     sourceDate: string,
     sourceMealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
     targetDate: string,
-    targetMealType: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+    targetMealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    selectedEntryIds?: string[] // Опциональный массив ID продуктов для копирования
   ): Promise<void> {
     // Получаем исходный приём пищи (из localStorage для скорости)
     const sourceMeals = await this.getMealsForDate(userId, sourceDate);
-    const sourceEntries = sourceMeals[sourceMealType] || [];
+    let sourceEntries = sourceMeals[sourceMealType] || [];
+
+    // Если указаны конкретные продукты, фильтруем по ID
+    if (selectedEntryIds && selectedEntryIds.length > 0) {
+      sourceEntries = sourceEntries.filter(entry => selectedEntryIds.includes(entry.id));
+    }
 
     if (sourceEntries.length === 0) {
       console.warn('[mealService] No entries to copy');
@@ -634,6 +668,7 @@ class MealService {
         protein: entry.protein,
         fat: entry.fat,
         carbs: entry.carbs,
+        note: entry.note || null, // Копируем заметку, если есть
       };
       
       return copiedEntry;
@@ -652,6 +687,36 @@ class MealService {
     this.saveMealsForDate(userId, targetMeals).catch((error) => {
       console.error('[mealService] Error saving copied meals to Supabase:', error);
     });
+
+    // Копируем заметки в Supabase для скопированных продуктов
+    if (supabase) {
+      try {
+        // Копируем заметки для каждого скопированного продукта
+        // Используем индекс, так как порядок сохранён при копировании
+        const noteCopyPromises = copiedEntries.map(async (copiedEntry, index) => {
+          // Находим исходный entry по индексу (порядок сохранён)
+          const sourceEntry = sourceEntries[index];
+          
+          if (sourceEntry?.note) {
+            try {
+              // Сохраняем заметку для нового entry в Supabase
+              await mealEntryNotesService.saveNote(userId, copiedEntry.id, sourceEntry.note);
+            } catch (error) {
+              console.error('[mealService] Error copying note to Supabase:', error);
+              // Продолжаем работу, даже если заметка не скопировалась
+            }
+          }
+        });
+        
+        // Выполняем копирование заметок в фоне (не блокируем основной процесс)
+        Promise.all(noteCopyPromises).catch((error) => {
+          console.error('[mealService] Error copying notes:', error);
+        });
+      } catch (error) {
+        console.error('[mealService] Error in note copying process:', error);
+        // Продолжаем работу, даже если копирование заметок не удалось
+      }
+    }
   }
 
   // Calculate totals for a meal type

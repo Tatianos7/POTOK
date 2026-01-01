@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { MealEntry } from '../types';
+import { getFoodDisplayName } from '../utils/foodDisplayName';
 
 interface CopyMealModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCopy: (targetDate: string, targetMealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => void;
+  onCopy: (targetDate: string, targetMealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', selectedEntryIds?: string[]) => void;
   sourceMealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   entries: MealEntry[];
 }
@@ -26,6 +27,23 @@ const CopyMealModal = ({ isOpen, onClose, onCopy, sourceMealType, entries }: Cop
     return `${year}-${month}-${day}`;
   });
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>(sourceMealType);
+  const [copyAll, setCopyAll] = useState(true);
+  const [selectedEntryIds, setSelectedEntryIds] = useState<Set<string>>(new Set());
+
+  // Инициализируем выбранные продукты при открытии модального окна
+  useEffect(() => {
+    if (isOpen) {
+      setCopyAll(true);
+      setSelectedEntryIds(new Set(entries.map(e => e.id)));
+    }
+  }, [isOpen, entries]);
+
+  // Обновляем выбранные продукты при изменении copyAll
+  useEffect(() => {
+    if (copyAll) {
+      setSelectedEntryIds(new Set(entries.map(e => e.id)));
+    }
+  }, [copyAll, entries]);
 
   if (!isOpen) return null;
 
@@ -56,8 +74,27 @@ const CopyMealModal = ({ isOpen, onClose, onCopy, sourceMealType, entries }: Cop
       alert('Нет продуктов для копирования');
       return;
     }
-    onCopy(selectedDate, selectedMealType);
+
+    // Проверяем, что выбраны продукты (если не копируем весь приём пищи)
+    if (!copyAll && selectedEntryIds.size === 0) {
+      alert('Выберите хотя бы один продукт для копирования');
+      return;
+    }
+
+    // Передаём выбранные ID продуктов (или undefined, если копируем весь приём пищи)
+    const entryIdsToCopy = copyAll ? undefined : Array.from(selectedEntryIds);
+    onCopy(selectedDate, selectedMealType, entryIdsToCopy);
     onClose();
+  };
+
+  const handleToggleEntry = (entryId: string) => {
+    const newSelected = new Set(selectedEntryIds);
+    if (newSelected.has(entryId)) {
+      newSelected.delete(entryId);
+    } else {
+      newSelected.add(entryId);
+    }
+    setSelectedEntryIds(newSelected);
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -134,14 +171,75 @@ const CopyMealModal = ({ isOpen, onClose, onCopy, sourceMealType, entries }: Cop
             </div>
           </div>
 
-          {/* Информация о копируемых данных */}
-          <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg">
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-              Будет скопировано:
-            </p>
-            <p className="text-sm font-medium text-gray-900 dark:text-white">
-              {entries.length} {entries.length === 1 ? 'продукт' : entries.length < 5 ? 'продукта' : 'продуктов'} из {mealTypeNames[sourceMealType]}
-            </p>
+          {/* Выбор продуктов для копирования */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Что копировать
+            </label>
+            
+            {/* Чекбокс "Копировать весь приём пищи" */}
+            <label className="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-3">
+              <input
+                type="checkbox"
+                checked={copyAll}
+                onChange={(e) => setCopyAll(e.target.checked)}
+                className="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 dark:border-gray-600 accent-green-600"
+              />
+              <span className="ml-3 text-sm font-medium text-gray-900 dark:text-white">
+                Копировать весь приём пищи
+              </span>
+            </label>
+
+            {/* Список продуктов */}
+            <div className={`space-y-2 ${copyAll ? 'opacity-50 pointer-events-none' : ''}`}>
+              {entries.map((entry) => {
+                const isSelected = selectedEntryIds.has(entry.id);
+                return (
+                  <label
+                    key={entry.id}
+                    className={`flex items-start p-3 border border-gray-200 dark:border-gray-700 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                      copyAll ? '' : 'cursor-pointer'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleEntry(entry.id)}
+                      disabled={copyAll}
+                      className="mt-1 w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 dark:border-gray-600 accent-green-600 disabled:opacity-50"
+                    />
+                    <div className="ml-3 flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {getFoodDisplayName(entry.food)}
+                      </p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        <span>{Math.round(entry.weight)} г</span>
+                        <span>•</span>
+                        <span>{Math.round(entry.calories)} ккал</span>
+                        <span>•</span>
+                        <span>Б: {entry.protein.toFixed(1)}</span>
+                        <span>Ж: {entry.fat.toFixed(1)}</span>
+                        <span>У: {entry.carbs.toFixed(1)}</span>
+                      </div>
+                      {entry.note && (
+                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 italic line-clamp-1">
+                          {entry.note}
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* Информация о количестве выбранных продуктов */}
+            {!copyAll && (
+              <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-900 rounded-lg">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Выбрано: {selectedEntryIds.size} из {entries.length} {entries.length === 1 ? 'продукта' : 'продуктов'}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -155,7 +253,10 @@ const CopyMealModal = ({ isOpen, onClose, onCopy, sourceMealType, entries }: Cop
           </button>
           <button
             onClick={handleCopy}
-            className="flex-1 py-3 px-4 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors"
+            disabled={
+              !copyAll && selectedEntryIds.size === 0
+            }
+            className="flex-1 py-3 px-4 rounded-lg bg-green-600 text-white font-medium hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Копировать
           </button>
