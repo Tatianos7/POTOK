@@ -49,6 +49,12 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
             У: {(food.carbs || 0).toFixed(1)}г
           </span>
         </div>
+        {/* Пометка для продуктов из общей базы */}
+        {food.source !== 'user' && (
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1 italic">
+            Данные носят справочный характер
+          </p>
+        )}
       </div>
 
     </button>

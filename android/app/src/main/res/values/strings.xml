@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ПОТОК</string>
+    <string name="title_activity_main">ПОТОК</string>
+    <string name="package_name">com.potok.fitness</string>
+    <string name="custom_url_scheme">com.potok.fitness</string>
+</resources>

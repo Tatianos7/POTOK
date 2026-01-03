@@ -23,7 +23,21 @@ dist-ssr
 *.sln
 *.sw?
 
-# Environment variables
-.env
-.env.local
-.env.production
+# Capacitor
+android/.gradle
+android/.idea
+android/app/build
+android/build
+android/local.properties
+android/.DS_Store
+ios/App/Pods
+ios/App/build
+ios/build
+ios/.DS_Store
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web

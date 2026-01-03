@@ -35,7 +35,7 @@ export const generateLargeFoodsDatabase = (): ExtendedFoodDatabaseItem[] => {
       fat,
       carbs,
       serving_size,
-      source: 'local',
+      source: 'core',
     };
   };
 

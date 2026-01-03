@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Recipe } from '../types/recipe';
 import { getRecipeBadges } from '../utils/recipeBadges';
 import RecipeBadge from './RecipeBadge';
+import { recipeNotesService } from '../services/recipeNotesService';
 
 interface RecipesListProps {
   recipes: Recipe[];
@@ -9,10 +11,25 @@ interface RecipesListProps {
 }
 
 const RecipesList = ({ recipes, onRecipeClick, userId }: RecipesListProps) => {
+  const [recipeNotes, setRecipeNotes] = useState<Record<string, string>>({});
+
+  // Загружаем заметки для всех рецептов
+  useEffect(() => {
+    if (!userId || recipes.length === 0) return;
+
+    const recipeIds = recipes.map((r) => r.id);
+    recipeNotesService.getNotesByRecipeIds(userId, recipeIds).then((notes) => {
+      setRecipeNotes(notes);
+    }).catch((error) => {
+      console.error('[RecipesList] Error loading notes:', error);
+    });
+  }, [recipes, userId]);
+
   return (
     <div className="space-y-2">
       {recipes.map((recipe) => {
         const badges = getRecipeBadges(recipe, userId);
+        const note = recipeNotes[recipe.id];
         
         return (
           <button
@@ -75,6 +92,36 @@ const RecipesList = ({ recipes, onRecipeClick, userId }: RecipesListProps) => {
                 {recipe.totalCarbs && recipe.totalCarbs > 0 && (
                   <span>Углеводы: {Math.round(recipe.totalCarbs)}г</span>
                 )}
+              </div>
+            )}
+
+            {/* Состав рецепта */}
+            {recipe.ingredients && recipe.ingredients.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                  Состав:
+                </div>
+                <div className="text-[10px] text-gray-500 dark:text-gray-500 line-clamp-2">
+                  {recipe.ingredients.slice(0, 3).map((ing, idx) => (
+                    <span key={idx}>
+                      {ing.name}
+                      {idx < Math.min(2, recipe.ingredients!.length - 1) && ', '}
+                    </span>
+                  ))}
+                  {recipe.ingredients.length > 3 && '...'}
+                </div>
+              </div>
+            )}
+
+            {/* Заметка к рецепту */}
+            {note && (
+              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+                  Заметка:
+                </div>
+                <div className="text-[10px] text-gray-500 dark:text-gray-500 line-clamp-2">
+                  {note}
+                </div>
               </div>
             )}
           </div>

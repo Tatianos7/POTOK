@@ -15,6 +15,7 @@ import ScanConfirmBottomSheet from '../components/ScanConfirmBottomSheet';
 import AddProductModal from '../components/AddProductModal';
 import RecipeAnalyzePicker from '../components/RecipeAnalyzePicker';
 import RecipeAnalyzeResultSheet from '../components/RecipeAnalyzeResultSheet';
+import PhotoFoodAnalyzerModal from '../components/PhotoFoodAnalyzerModal';
 import EditMealEntryModal from '../components/EditMealEntryModal';
 import InlineCalendar from '../components/InlineCalendar';
 import CopyMealModal from '../components/CopyMealModal';
@@ -51,6 +52,7 @@ const FoodDiary = () => {
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [analyzedIngredients, setAnalyzedIngredients] = useState<LocalIngredient[]>([]);
   const [isRecipeResultOpen, setIsRecipeResultOpen] = useState(false);
+  const [isPhotoFoodAnalyzerOpen, setIsPhotoFoodAnalyzerOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [scannedFood, setScannedFood] = useState<Food | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
@@ -148,12 +150,13 @@ const FoodDiary = () => {
     return ['В', 'П', 'В', 'С', 'Ч', 'П', 'С'][date.getDay()];
   };
 
-  // Быстрый календарь строится относительно selectedDate (7 дней вперёд)
+  // Быстрый календарь всегда строится от сегодняшней даты (7 дней вперёд)
   const dates = useMemo(() => {
     const datesList = [];
+    const today = getTodayDate();
     
     for (let i = 0; i < 7; i++) {
-      const dateStr = addDaysToString(selectedDate, i);
+      const dateStr = addDaysToString(today, i);
       const [, , day] = dateStr.split('-').map(Number);
       
       datesList.push({
@@ -163,38 +166,13 @@ const FoodDiary = () => {
       });
     }
     return datesList;
-  }, [selectedDate]);
+  }, []); // Календарь не зависит от selectedDate, всегда показывает текущую неделю
   
-  // Инициализация: при первом рендере выбираем сегодняшнюю дату, если она есть в календаре
+  // Инициализация: при первом рендере выбираем сегодняшнюю дату
   useEffect(() => {
-    const currentToday = getTodayDate(); // Получаем актуальную сегодняшнюю дату
-    const todayInCalendar = dates.find(d => d.date === currentToday);
-    
-    // Если сегодняшняя дата есть в календаре, выбираем её
-    if (todayInCalendar) {
-      setSelectedDate(currentToday);
-    } else if (dates.length > 0) {
-      // Если сегодняшней даты нет в календаре, выбираем первую дату календаря
-      setSelectedDate(dates[0].date);
-    }
+    const currentToday = getTodayDate();
+    setSelectedDate(currentToday);
   }, []); // Выполняем только при монтировании компонента
-  
-  // Проверка валидности: убеждаемся, что selectedDate всегда соответствует одной из дат в календаре
-  useEffect(() => {
-    const selectedInCalendar = dates.find(d => d.date === selectedDate);
-    
-    // Если выбранная дата не в календаре, выбираем сегодняшнюю или первую дату
-    if (!selectedInCalendar && dates.length > 0) {
-      const currentToday = getTodayDate();
-      const todayInCalendar = dates.find(d => d.date === currentToday);
-      
-      if (todayInCalendar) {
-        setSelectedDate(currentToday);
-      } else {
-        setSelectedDate(dates[0].date);
-      }
-    }
-  }, [dates, selectedDate]); // Выполняем при изменении dates или selectedDate
 
   const meals = [
     { id: 'breakfast', name: 'ЗАВТРАК', icon: Coffee },
@@ -487,6 +465,7 @@ const FoodDiary = () => {
     protein: Number(entry.protein) || 0,
     fat: Number(entry.fat) || 0,
     carbs: Number(entry.carbs) || 0,
+    note: entry.note || null, // Сохраняем заметку
   });
 
   const handleUpdateEntry = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', updatedEntry: MealEntry) => {
@@ -1320,8 +1299,9 @@ const FoodDiary = () => {
               ДОБАВИТЬ ПРОДУКТ
             </button>
             <button
-              onClick={() => setShowRecipePicker(true)}
+              onClick={() => setIsPhotoFoodAnalyzerOpen(true)}
               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              title="Анализ продукта по фото"
             >
               <Camera className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </button>
@@ -1596,6 +1576,52 @@ const FoodDiary = () => {
             setSavingMealType(null);
           }}
           onSave={handleSaveRecipe}
+        />
+      )}
+
+      {/* Photo Food Analyzer Modal */}
+      {isPhotoFoodAnalyzerOpen && (
+        <PhotoFoodAnalyzerModal
+          isOpen={isPhotoFoodAnalyzerOpen}
+          onClose={() => setIsPhotoFoodAnalyzerOpen(false)}
+          onSave={(food, weight, mealType = 'lunch') => {
+            if (!user?.id || !dailyMeals) return;
+
+            const multiplier = weight / 100;
+            const entry: MealEntry = {
+              id: `entry_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+              foodId: food.id,
+              food,
+              weight,
+              calories: Math.round(food.calories * multiplier),
+              protein: Math.round((food.protein * multiplier) * 10) / 10,
+              fat: Math.round((food.fat * multiplier) * 10) / 10,
+              carbs: Math.round((food.carbs * multiplier) * 10) / 10,
+            };
+
+            // Оптимистичное обновление
+            setDailyMeals((prev) => {
+              if (!prev) return prev;
+              const updated = { ...prev };
+              updated[mealType] = [...updated[mealType], entry];
+              return updated;
+            });
+
+            setExpandedMeals((prev) => ({
+              ...prev,
+              [mealType]: true,
+            }));
+
+            // Сохраняем в фоне
+            mealService.addMealEntry(user.id, selectedDate, mealType, entry).catch((error) => {
+              console.error('[FoodDiary] Ошибка сохранения продукта из фото:', error);
+              mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
+                setDailyMeals(meals);
+              });
+            });
+          }}
+          defaultMealType={selectedMealType || 'lunch'}
+          userId={user?.id}
         />
       )}
     </>
