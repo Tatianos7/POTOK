@@ -585,6 +585,7 @@ class MealService {
         protein: Number(updatedEntry.protein) || 0,
         fat: Number(updatedEntry.fat) || 0,
         carbs: Number(updatedEntry.carbs) || 0,
+        note: updatedEntry.note || null, // Сохраняем заметку
       };
       await this.saveMealsForDate(userId, meals);
     }

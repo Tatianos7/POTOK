@@ -35,13 +35,15 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
     const timeoutId = setTimeout(() => {
       (async () => {
         try {
-          const searchResults = await foodService.search(t);
+          // Используем новый метод поиска с приоритетом пользовательских продуктов
+          const searchResults = await foodService.search(t, { userId });
           if (!cancelled) {
             setResults(searchResults);
           }
         } catch (error) {
           if (!cancelled) {
-            console.error('Error searching products:', error);
+            // Ошибки поиска обрабатываются внутри foodService
+            // Здесь просто показываем пустой результат
             setResults([]);
           }
         } finally {
@@ -90,15 +92,52 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
       {query.trim() && (
         <>
           {!isLoading && (
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            <div className="space-y-4 max-h-[400px] overflow-y-auto">
               {results.length > 0 ? (
-                results.map((food) => (
-                  <ProductCard
-                    key={food.id}
-                    food={food}
-                    onClick={() => onSelect(food)}
-                  />
-                ))
+                <>
+                  {/* Ваши продукты */}
+                  {results.filter(f => f.source === 'user').length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Ваши продукты
+                      </h3>
+                      <div className="space-y-2">
+                        {results
+                          .filter(f => f.source === 'user')
+                          .map((food) => (
+                            <ProductCard
+                              key={food.id}
+                              food={food}
+                              onClick={() => onSelect(food)}
+                            />
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Общая база */}
+                  {results.filter(f => f.source !== 'user').length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        Общая база
+                      </h3>
+                      <div className="space-y-2">
+                        {results
+                          .filter(f => f.source !== 'user')
+                          .map((food) => (
+                            <ProductCard
+                              key={food.id}
+                              food={food}
+                              onClick={() => onSelect(food)}
+                            />
+                          ))}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+                        Данные носят справочный характер
+                      </p>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                   <p>Продукты не найдены</p>

@@ -4,6 +4,16 @@ import { CATEGORY_DEFAULTS } from '../data/categoryDefaults';
 import { EAN_INDEX_SEED } from '../data/eanIndexSeed';
 import { mockFoodDatabaseAsFood } from '../data/mockFoodDatabase';
 import { barcodeLookupService } from './barcodeLookupService';
+import { supabase } from '../lib/supabaseClient';
+import { toUUID } from '../utils/uuid';
+// TODO: Re-enable Open Food Facts / USDA when stable
+// import { openFoodFactsService } from './openFoodFactsService';
+// import { usdaService } from './usdaService';
+// import { foodCache } from '../utils/foodCache';
+import { baseFoods } from '../data/baseFoods';
+
+// Кэш для отслеживания доступности таблицы foods в Supabase
+let foodsTableExistsCache: boolean | null = null;
 
 /**
  * Архитектура работы с продуктами (РОССИЙСКАЯ БАЗА):
@@ -41,13 +51,9 @@ class FoodService {
     // ВРЕМЕННАЯ ЗАГЛУШКА: всегда используем mockFoodDatabase
     // Перезаписываем базу если версия изменилась ИЛИ база пустая/старая
     if (version !== DB_VERSION || !stored || storedProducts.length === 0) {
-      console.log(`[FoodService] Инициализация базы продуктов (версия ${DB_VERSION})`);
-      console.log(`[FoodService] Загружено продуктов: ${mockFoodDatabaseAsFood.length}`);
       localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(mockFoodDatabaseAsFood));
       localStorage.setItem(EAN_INDEX_STORAGE_KEY, JSON.stringify(EAN_INDEX_SEED));
       localStorage.setItem(DB_VERSION_KEY, DB_VERSION);
-    } else {
-      console.log(`[FoodService] База уже загружена: ${storedProducts.length} продуктов`);
     }
   }
 
@@ -65,7 +71,8 @@ class FoodService {
       carbs: toNumber(raw.carbs),
       category: raw.category,
       brand: raw.brand ?? null,
-      source: raw.source ?? 'local',
+      source: raw.source ?? 'core', // По умолчанию базовый продукт
+      created_by_user_id: raw.created_by_user_id ?? null,
       photo: raw.photo ?? null,
       aliases: raw.aliases ?? [],
       autoFilled: raw.autoFilled ?? false,
@@ -78,11 +85,35 @@ class FoodService {
   private loadAll(): Food[] {
     try {
       const stored = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-      if (!stored) return [];
+      if (!stored) {
+        this.initializeStorage();
+        const retry = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+        if (!retry) {
+          return [];
+        }
+        return JSON.parse(retry);
+      }
       const parsed: Food[] = JSON.parse(stored);
-      return parsed.map(this.normalizeFood.bind(this));
+      if (!Array.isArray(parsed) || parsed.length === 0) {
+        this.initializeStorage();
+        const retry = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+        if (!retry) {
+          return [];
+        }
+        return JSON.parse(retry);
+      }
+      return parsed;
     } catch (error) {
-      console.error('Error loading products', error);
+      console.error('[FoodService] Error loading products:', error);
+      try {
+        this.initializeStorage();
+        const retry = localStorage.getItem(PRODUCTS_STORAGE_KEY);
+        if (retry) {
+          return JSON.parse(retry);
+        }
+      } catch (retryError) {
+        console.error('[FoodService] Error retrying initialization:', retryError);
+      }
       return [];
     }
   }
@@ -103,7 +134,8 @@ class FoodService {
       return parsed.map((item) => ({
         ...this.normalizeFood(item),
         userId,
-        source: 'manual',
+        source: 'user', // Изменено с 'manual' на 'user'
+        created_by_user_id: userId, // Обязательно для пользовательских продуктов
       }));
     } catch (error) {
       console.error('Error loading user foods', error);
@@ -157,25 +189,26 @@ class FoodService {
     const all = this.loadAll();
     const q = query.toLowerCase().trim();
     
-    // Отладка: проверяем количество продуктов в базе
     if (all.length === 0) {
-      console.warn('[FoodService] База продуктов пустая!');
+      this.initializeStorage();
+      const retry = this.loadAll();
+      if (retry.length === 0) {
+        return [];
+      }
+      return this.searchLocal(query, category);
     }
     
     const filtered = all.filter((f) => {
       if (category && f.category !== category) return false;
       if (!q) return true;
-      // ВРЕМЕННАЯ ЗАГЛУШКА: простой поиск по includes для стабильности
-      // Без морфологии и синонимов - только прямое совпадение по name
-      const nameMatch = f.name.toLowerCase().includes(q);
-      return nameMatch;
+      const nameLower = (f.name || '').toLowerCase();
+      const nameOriginalLower = (f.name_original || '').toLowerCase();
+      const aliases = f.aliases || [];
+      const nameMatch = nameLower.includes(q);
+      const nameOriginalMatch = nameOriginalLower.includes(q);
+      const aliasMatch = aliases.some(alias => alias.toLowerCase().includes(q));
+      return nameMatch || aliasMatch || nameOriginalMatch;
     });
-    
-    // Отладка: логируем результаты поиска
-    if (q && filtered.length === 0) {
-      console.log(`[FoodService] Поиск "${q}": не найдено. Всего продуктов в базе: ${all.length}`);
-      console.log(`[FoodService] Примеры продуктов:`, all.slice(0, 5).map(f => f.name));
-    }
     
     return filtered.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
   }
@@ -204,27 +237,237 @@ class FoodService {
     return null;
   }
 
-  async search(query: string, options?: { category?: string; limit?: number }): Promise<Food[]> {
+  /**
+   * Поиск продуктов с приоритетом пользовательских продуктов
+   * Объединяет результаты из всех источников:
+   * 1) Пользовательские продукты (localStorage + Supabase)
+   * 2) Базовые продукты (локальная справочная база)
+   * 3) Локальная таблица foods (localStorage)
+   * 4) Supabase (открытые базы, если таблица существует)
+   * 
+   * TODO: Re-enable Open Food Facts / USDA when stable
+   */
+  async search(
+    query: string, 
+    options?: { 
+      category?: string; 
+      limit?: number;
+      userId?: string; // Для фильтрации пользовательских продуктов
+    }
+  ): Promise<Food[]> {
     const limit = options?.limit ?? 30;
     const category = options?.category;
+    const userId = options?.userId;
+    const q = query.toLowerCase().trim();
 
-    const local = this.searchLocal(query, category);
-    const unique = Array.from(new Map(local.map((f) => [f.barcode || f.id, f])).values());
+    // Если запрос пустой, возвращаем пустой массив
+    if (!q) {
+      return [];
+    }
 
-    // автодополнение макросов при необходимости
+    const allResults: Food[] = [];
+
+    // 1. Пользовательские продукты (localStorage + Supabase)
+    if (userId) {
+      // Из localStorage
+      const localUserFoods = this.loadUserFoods(userId).filter((f) => {
+        if (category && f.category !== category) return false;
+        if (!q) return true;
+        const nameMatch = f.name.toLowerCase().includes(q);
+        const aliasMatch = f.aliases?.some(alias => alias.toLowerCase().includes(q));
+        return nameMatch || aliasMatch;
+      });
+      allResults.push(...localUserFoods);
+
+      // Из Supabase (только если таблица существует)
+      const foodsTableExists = await this.checkFoodsTableExists();
+      if (foodsTableExists) {
+        try {
+          const supabaseUserFoods = await this.loadUserFoodsFromSupabase(userId);
+        const filtered = supabaseUserFoods.filter((f) => {
+          if (category && f.category !== category) return false;
+          if (!q) return true;
+          const nameMatch = f.name.toLowerCase().includes(q);
+          const aliasMatch = f.aliases?.some(alias => alias.toLowerCase().includes(q));
+          return nameMatch || aliasMatch;
+        });
+        filtered.forEach((food) => {
+          if (!allResults.find((f) => f.id === food.id)) {
+            allResults.push(food);
+          }
+        });
+        } catch (error) {
+          // Продолжаем работу без Supabase - это нормально, если таблица не создана
+        }
+      }
+    }
+
+    // 2. Базовые продукты (локальная справочная база)
+    // Используется вместо внешних API (Open Food Facts / USDA)
+    try {
+      const baseResults = baseFoods.filter((f) => {
+        if (category && f.category !== category) return false;
+        if (!q) return true;
+        const nameMatch = f.name.toLowerCase().includes(q);
+        const aliasMatch = f.aliases?.some(alias => alias.toLowerCase().includes(q));
+        return nameMatch || aliasMatch;
+      });
+      allResults.push(...baseResults);
+    } catch (error) {
+      // Продолжаем работу даже при ошибке
+    }
+
+    // 3. Локальная таблица foods (localStorage) - РЕЗЕРВНЫЙ ИСТОЧНИК
+    // Это должно работать всегда, даже без Supabase
+    // Фильтруем: показываем только core/brand или user продукты текущего пользователя
+    try {
+      const localFoods = this.searchLocal(query, category).filter(
+        (f) => {
+          if (f.source === 'user') {
+            // Показываем только пользовательские продукты текущего пользователя
+            return userId && f.created_by_user_id === userId;
+          }
+          // Показываем core и brand продукты всем
+          return f.source === 'core' || f.source === 'brand';
+        }
+      );
+      allResults.push(...localFoods);
+    } catch (error) {
+      // Продолжаем работу даже при ошибке
+    }
+
+    // 4. Supabase (открытые базы) - полнотекстовый поиск
+    // Пробуем загрузить, но не блокируем основной поиск при ошибках
+    const foodsTableExists = await this.checkFoodsTableExists();
+    if (supabase && q && foodsTableExists) {
+      try {
+        const supabaseFoods = await Promise.race([
+          this.loadPublicFoodsFromSupabase(query),
+          new Promise<Food[]>((resolve) => setTimeout(() => resolve([]), 2000)) // Таймаут 2 секунды
+        ]);
+        const filtered = category 
+          ? supabaseFoods.filter((f) => f.category === category)
+          : supabaseFoods;
+        filtered.forEach((food) => {
+          if (!allResults.find((f) => this.isDuplicate(f, food))) {
+            allResults.push(food);
+          }
+        });
+      } catch (error) {
+        // Продолжаем работу без Supabase
+      }
+    }
+
+    // TODO: Re-enable Open Food Facts / USDA when stable
+    // 5. Open Food Facts API - ОТКЛЮЧЕНО
+    // 6. USDA API - ОТКЛЮЧЕНО
+
+    // Удаляем дубликаты по name + calories + macros
+    const unique = this.removeDuplicates(allResults);
+
+    // Автодополнение макросов при необходимости
     const normalized = unique.map((f) => (f.calories ? f : this.applyCategoryDefaults(f)));
 
-    // сортируем по популярности и наличию точного совпадения
-    const q = query.toLowerCase().trim();
+    // Сортируем: пользовательские продукты всегда выше, затем core, затем brand, затем по популярности
     normalized.sort((a, b) => {
+      // Приоритет пользовательских продуктов
+      const aIsUser = a.source === 'user';
+      const bIsUser = b.source === 'user';
+      if (aIsUser && !bIsUser) return -1;
+      if (!aIsUser && bIsUser) return 1;
+
+      // Приоритет core над brand
+      if (!aIsUser && !bIsUser) {
+        if (a.source === 'core' && b.source === 'brand') return -1;
+        if (a.source === 'brand' && b.source === 'core') return 1;
+      }
+
+      // Точное совпадение
       const aExact = a.name.toLowerCase() === q || a.name_original?.toLowerCase() === q;
       const bExact = b.name.toLowerCase() === q || b.name_original?.toLowerCase() === q;
       if (aExact && !bExact) return -1;
       if (!aExact && bExact) return 1;
+
+      // Популярность
       return (b.popularity ?? 0) - (a.popularity ?? 0);
     });
 
     return normalized.slice(0, limit);
+  }
+
+  /**
+   * Проверяет, являются ли два продукта дубликатами
+   * Дубликаты определяются по name + calories + macros
+   */
+  private isDuplicate(food1: Food, food2: Food): boolean {
+    const nameMatch = food1.name.toLowerCase().trim() === food2.name.toLowerCase().trim();
+    const caloriesMatch = Math.abs(food1.calories - food2.calories) < 1;
+    const proteinMatch = Math.abs(food1.protein - food2.protein) < 0.1;
+    const fatMatch = Math.abs(food1.fat - food2.fat) < 0.1;
+    const carbsMatch = Math.abs(food1.carbs - food2.carbs) < 0.1;
+
+    return nameMatch && caloriesMatch && proteinMatch && fatMatch && carbsMatch;
+  }
+
+  /**
+   * Удаляет дубликаты из массива продуктов
+   */
+  private removeDuplicates(foods: Food[]): Food[] {
+    const seen = new Set<string>();
+    const unique: Food[] = [];
+
+    for (const food of foods) {
+      const key = `${food.name.toLowerCase().trim()}_${food.calories.toFixed(0)}_${food.protein.toFixed(1)}_${food.fat.toFixed(1)}_${food.carbs.toFixed(1)}`;
+      
+      if (!seen.has(key)) {
+        seen.add(key);
+        unique.push(food);
+      }
+    }
+
+    return unique;
+  }
+
+  /**
+   * Поиск с группировкой результатов по источникам
+   * Возвращает объект с разделением на пользовательские и базовые продукты
+   * Использует источники: localStorage, базовые продукты, Supabase
+   * TODO: Re-enable Open Food Facts / USDA when stable
+   */
+  async searchGrouped(
+    query: string,
+    options?: { category?: string; limit?: number; userId?: string }
+  ): Promise<{ userFoods: Food[]; publicFoods: Food[] }> {
+    const userId = options?.userId;
+    const limit = options?.limit ?? 30;
+    const category = options?.category;
+    const q = query.toLowerCase().trim();
+
+    // Получаем все результаты через основной метод search
+    const allResults = await this.search(query, { category, limit: limit * 2, userId });
+
+    // Разделяем на пользовательские и базовые/общие
+    const userFoods = allResults.filter((f) => f.source === 'user');
+    const publicFoods = allResults.filter((f) => f.source !== 'user');
+
+    // Сортировка внутри каждой группы
+    const sortFoods = (foods: Food[]) => {
+      return foods
+        .map((f) => (f.calories ? f : this.applyCategoryDefaults(f)))
+        .sort((a, b) => {
+          const aExact = a.name.toLowerCase() === q || a.name_original?.toLowerCase() === q;
+          const bExact = b.name.toLowerCase() === q || b.name_original?.toLowerCase() === q;
+          if (aExact && !bExact) return -1;
+          if (!aExact && bExact) return 1;
+          return (b.popularity ?? 0) - (a.popularity ?? 0);
+        })
+        .slice(0, limit);
+    };
+
+    return {
+      userFoods: sortFoods(userFoods),
+      publicFoods: sortFoods(publicFoods),
+    };
   }
 
   async searchByCategory(category: string, limit = 50): Promise<Food[]> {
@@ -232,18 +475,313 @@ class FoodService {
     return local.slice(0, limit);
   }
 
-  // === Пользовательские продукты ===
-  createCustomFood(userId: string, data: Omit<Food, 'id' | 'source' | 'createdAt' | 'updatedAt'>): UserCustomFood {
-    const food: UserCustomFood = {
-      ...this.normalizeFood(data),
-      id: `manual_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      userId,
-      source: 'manual',
+  // === Работа с Supabase ===
+  /**
+   * Проверяем, существует ли таблица foods в Supabase (кэшируем результат)
+   */
+  private async checkFoodsTableExists(): Promise<boolean> {
+    if (foodsTableExistsCache !== null) {
+      return foodsTableExistsCache;
+    }
+
+    if (!supabase) {
+      foodsTableExistsCache = false;
+      return false;
+    }
+
+    try {
+      // Пробуем сделать простой запрос к таблице
+      const { error } = await supabase
+        .from('foods')
+        .select('id')
+        .limit(1);
+
+      if (error) {
+        if (error.code === 'PGRST205') {
+          // Таблица не найдена
+          foodsTableExistsCache = false;
+          return false;
+        }
+        // Другая ошибка - считаем, что таблица существует, но есть проблема с доступом
+        foodsTableExistsCache = true;
+        return true;
+      }
+
+      foodsTableExistsCache = true;
+      return true;
+    } catch (error) {
+      foodsTableExistsCache = false;
+      return false;
+    }
+  }
+
+  /**
+   * Маппинг строки Supabase в Food
+   */
+  private mapSupabaseRowToFood(row: any): Food {
+    return {
+      id: row.id,
+      name: row.name,
+      name_original: row.name_original || undefined,
+      barcode: row.barcode || null,
+      calories: Number(row.calories) || 0,
+      protein: Number(row.protein) || 0,
+      fat: Number(row.fat) || 0,
+      carbs: Number(row.carbs) || 0,
+      category: row.category || undefined,
+      brand: row.brand || null,
+      source: row.source as Food['source'],
+      created_by_user_id: row.created_by_user_id || null,
+      photo: row.photo || null,
+      aliases: row.aliases || [],
+      autoFilled: row.auto_filled || false,
+      popularity: row.popularity || 0,
+      createdAt: row.created_at || new Date().toISOString(),
+      updatedAt: row.updated_at || new Date().toISOString(),
     };
+  }
+
+  /**
+   * Загружает пользовательские продукты из Supabase
+   */
+  private async loadUserFoodsFromSupabase(userId: string): Promise<Food[]> {
+    if (!supabase) return [];
+
+    try {
+      const uuidUserId = toUUID(userId);
+      const { data, error } = await supabase
+        .from('foods')
+        .select('*')
+        .eq('source', 'user')
+        .eq('created_by_user_id', uuidUserId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        // Если таблица не найдена (PGRST205), сбрасываем кэш и используем только localStorage
+        if (error.code === 'PGRST205') {
+          foodsTableExistsCache = false;
+        }
+        return [];
+      }
+
+      if (!data) return [];
+
+      return data.map((row) => this.mapSupabaseRowToFood(row));
+    } catch (error) {
+      // Продолжаем работу без Supabase
+      return [];
+    }
+  }
+
+  /**
+   * Загружает открытые продукты из Supabase (core, brand)
+   */
+  private async loadPublicFoodsFromSupabase(query?: string): Promise<Food[]> {
+    if (!supabase) return [];
+
+    try {
+      let queryBuilder = supabase
+        .from('foods')
+        .select('*')
+        .in('source', ['core', 'brand'])
+        .limit(100);
+
+      // Если есть запрос, используем ilike для поиска
+      if (query && query.trim()) {
+        const searchTerm = `%${query.trim()}%`;
+        queryBuilder = queryBuilder.or(`name.ilike.${searchTerm},name_original.ilike.${searchTerm}`);
+      }
+
+      const { data, error } = await queryBuilder.order('popularity', { ascending: false });
+
+      if (error) {
+        // Если таблица не найдена (PGRST205), сбрасываем кэш
+        if (error.code === 'PGRST205') {
+          foodsTableExistsCache = false;
+        }
+        return [];
+      }
+
+      if (!data) return [];
+
+      return data.map((row) => this.mapSupabaseRowToFood(row));
+    } catch (error) {
+      // Продолжаем работу без Supabase
+      return [];
+    }
+  }
+
+  // === Пользовательские продукты ===
+  /**
+   * Создает пользовательский продукт
+   * Сохраняет в localStorage и Supabase
+   */
+  async createUserFood(
+    food: Food,
+    userId: string
+  ): Promise<UserCustomFood> {
+    const userFood: UserCustomFood = {
+      ...this.normalizeFood(food),
+      id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      userId,
+      source: 'user',
+      created_by_user_id: userId,
+    };
+
+    // Сохраняем в localStorage
     const userFoods = this.loadUserFoods(userId);
-    userFoods.push(food);
+    userFoods.push(userFood);
     this.saveUserFoods(userId, userFoods);
-    return food;
+
+    // Синхронизируем с Supabase
+    if (supabase) {
+      try {
+        const uuidUserId = toUUID(userId);
+        const { error } = await supabase.from('foods').insert({
+          id: toUUID(userFood.id),
+          name: userFood.name,
+          name_original: userFood.name_original || null,
+          barcode: userFood.barcode,
+          calories: userFood.calories,
+          protein: userFood.protein,
+          fat: userFood.fat,
+          carbs: userFood.carbs,
+          category: userFood.category || null,
+          brand: userFood.brand,
+          source: 'user',
+          created_by_user_id: uuidUserId,
+          photo: userFood.photo,
+          aliases: userFood.aliases || [],
+          auto_filled: userFood.autoFilled || false,
+          popularity: userFood.popularity || 0,
+        });
+
+        if (error) {
+          console.error('[FoodService] Error saving to Supabase:', error);
+        }
+      } catch (error) {
+        console.error('[FoodService] Error syncing with Supabase:', error);
+      }
+    }
+
+    return userFood;
+  }
+
+  /**
+   * Обновляет пользовательский продукт
+   */
+  async updateUserFood(
+    foodId: string,
+    food: Partial<Food>,
+    userId: string
+  ): Promise<void> {
+    const userFoods = this.loadUserFoods(userId);
+    const index = userFoods.findIndex((f) => f.id === foodId);
+    
+    if (index >= 0) {
+      const updated = {
+        ...userFoods[index],
+        ...food,
+        updatedAt: new Date().toISOString(),
+      };
+      userFoods[index] = updated;
+      this.saveUserFoods(userId, userFoods);
+
+      if (supabase) {
+        try {
+          const uuidUserId = toUUID(userId);
+          const updateData: any = {};
+          
+          if (food.name !== undefined) updateData.name = food.name;
+          if (food.name_original !== undefined) updateData.name_original = food.name_original;
+          if (food.barcode !== undefined) updateData.barcode = food.barcode;
+          if (food.calories !== undefined) updateData.calories = food.calories;
+          if (food.protein !== undefined) updateData.protein = food.protein;
+          if (food.fat !== undefined) updateData.fat = food.fat;
+          if (food.carbs !== undefined) updateData.carbs = food.carbs;
+          if (food.category !== undefined) updateData.category = food.category;
+          if (food.brand !== undefined) updateData.brand = food.brand;
+          if (food.photo !== undefined) updateData.photo = food.photo;
+          if (food.aliases !== undefined) updateData.aliases = food.aliases;
+
+          const { error } = await supabase
+            .from('foods')
+            .update(updateData)
+            .eq('id', toUUID(foodId))
+            .eq('created_by_user_id', uuidUserId)
+            .eq('source', 'user');
+
+          if (error) {
+            console.error('[FoodService] Error updating in Supabase:', error);
+          }
+        } catch (error) {
+          console.error('[FoodService] Error syncing update with Supabase:', error);
+        }
+      }
+    }
+  }
+
+  /**
+   * Удаляет пользовательский продукт
+   */
+  async deleteUserFood(foodId: string, userId: string): Promise<void> {
+    const userFoods = this.loadUserFoods(userId);
+    const filtered = userFoods.filter((f) => f.id !== foodId);
+    this.saveUserFoods(userId, filtered);
+
+    if (supabase) {
+      try {
+        const uuidUserId = toUUID(userId);
+        const { error } = await supabase
+          .from('foods')
+          .delete()
+          .eq('id', toUUID(foodId))
+          .eq('created_by_user_id', uuidUserId)
+          .eq('source', 'user');
+
+        if (error) {
+          console.error('[FoodService] Error deleting from Supabase:', error);
+        }
+      } catch (error) {
+        console.error('[FoodService] Error syncing delete with Supabase:', error);
+      }
+    }
+  }
+
+  /**
+   * Для обратной совместимости
+   * Создает пользовательский продукт синхронно (для существующего кода)
+   * В фоне синхронизирует с Supabase
+   */
+  createCustomFood(
+    userId: string, 
+    data: Omit<Food, 'id' | 'source' | 'created_by_user_id' | 'createdAt' | 'updatedAt'>
+  ): UserCustomFood {
+    const food: Food = {
+      ...this.normalizeFood(data),
+      source: 'user',
+      created_by_user_id: userId,
+    };
+    
+    const userFood: UserCustomFood = {
+      ...food,
+      id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      userId,
+      source: 'user',
+      created_by_user_id: userId,
+    };
+
+    // Сохраняем в localStorage
+    const userFoods = this.loadUserFoods(userId);
+    userFoods.push(userFood);
+    this.saveUserFoods(userId, userFoods);
+
+    // Синхронизируем с Supabase в фоне
+    void this.createUserFood(food, userId).catch((error) => {
+      console.error('[FoodService] Error syncing createCustomFood with Supabase:', error);
+    });
+    
+    return userFood;
   }
 
   saveFood(food: Food): void {

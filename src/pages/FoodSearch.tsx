@@ -101,7 +101,7 @@ const FoodSearch = () => {
       
       // Если не нашли по ID или foodId пустой - ищем по имени
       if (!food) {
-        const searchResults = await foodService.search(recentFood.foodName.trim(), { limit: 5 });
+        const searchResults = await foodService.search(recentFood.foodName.trim(), { limit: 5, userId: user?.id });
         if (searchResults.length > 0) {
           // Используем первый результат (наиболее релевантный)
           food = searchResults[0];

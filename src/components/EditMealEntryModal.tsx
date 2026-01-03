@@ -147,12 +147,13 @@ const EditMealEntryModal = ({
         setNote('');
       }
 
-      // Обновляем entry в родительском компоненте
+      // Обновляем entry в родительском компоненте СРАЗУ, чтобы заметка отобразилась сразу
       const updatedEntry: MealEntry = {
         ...entry,
         note: trimmedNote || null,
       };
       
+      // Вызываем onSave СИНХРОННО, чтобы обновить состояние в родительском компоненте
       if (mealType) {
         onSave(mealType, updatedEntry);
       }
@@ -217,62 +218,82 @@ const EditMealEntryModal = ({
           </div>
 
           {/* Nutritional Information Cards */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex gap-3 overflow-x-auto justify-center">
             {/* Калории */}
-            <div className="p-4 rounded-lg border-2 border-blue-500 bg-white dark:bg-gray-800">
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Калории
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {Math.round(calculated.calories)}
-              </p>
+            <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Калории</div>
+              <div className="border-2 border-blue-400 rounded-xl py-3 px-3 text-center w-full">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {Math.round(calculated.calories)}
+                </div>
+              </div>
             </div>
 
             {/* Белки */}
-            <div className="p-4 rounded-lg border-2 border-orange-500 bg-white dark:bg-gray-800">
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Белки
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {Math.round(calculated.protein)}
-              </p>
+            <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Белки</div>
+              <div className="border-2 border-orange-400 rounded-xl py-3 px-3 text-center w-full">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {Math.round(calculated.protein)}
+                </div>
+              </div>
             </div>
 
             {/* Жиры */}
-            <div className="p-4 rounded-lg border-2 border-yellow-500 bg-white dark:bg-gray-800">
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Жиры
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {Math.round(calculated.fat)}
-              </p>
+            <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Жиры</div>
+              <div className="border-2 border-yellow-400 rounded-xl py-3 px-3 text-center w-full">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {Math.round(calculated.fat)}
+                </div>
+              </div>
             </div>
 
             {/* Углеводы */}
-            <div className="p-4 rounded-lg border-2 border-green-500 bg-white dark:bg-gray-800">
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Углеводы
-              </p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                {Math.round(calculated.carbs)}
-              </p>
+            <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Углеводы</div>
+              <div className="border-2 border-green-500 rounded-xl py-3 px-3 text-center w-full">
+                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {Math.round(calculated.carbs)}
+                </div>
+              </div>
             </div>
           </div>
 
+          {/* User Note - отображается после КБЖУ */}
+          {note && (
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Заметка:</h3>
+                <button
+                  onClick={handleNoteClick}
+                  className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  aria-label="Редактировать заметку"
+                >
+                  <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                {note}
+              </p>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex gap-4 justify-center">
-            <button
-              type="button"
-              onClick={handleNoteClick}
-              className={`flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                note ? 'ring-2 ring-green-500' : ''
-              }`}
-            >
-              <Pencil className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                {note ? 'РЕДАКТИРОВАТЬ ЗАМЕТКУ' : 'ДОБАВИТЬ ЗАМЕТКУ'}
-              </span>
-            </button>
+            {/* Кнопка "Добавить заметку" показывается только если заметки нет */}
+            {!note && (
+              <button
+                type="button"
+                onClick={handleNoteClick}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <Pencil className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                  ДОБАВИТЬ ЗАМЕТКУ
+                </span>
+              </button>
+            )}
 
             {/* Кнопка "Добавить фото" скрыта, если карточка открыта из приёма пищи */}
             {source !== 'meal' && (

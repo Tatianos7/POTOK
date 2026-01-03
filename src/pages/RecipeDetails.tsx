@@ -6,6 +6,8 @@ import { recipesService } from '../services/recipesService';
 import { Recipe } from '../types/recipe';
 import MealTypeSelectorModal from '../components/MealTypeSelectorModal';
 import { recipeDiaryService } from '../services/recipeDiaryService';
+import { recipeNotesService } from '../services/recipeNotesService';
+import RecipeNoteModal from '../components/RecipeNoteModal';
 
 const RecipeDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +17,8 @@ const RecipeDetails = () => {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [weight, setWeight] = useState<number>(100);
   const [isMealTypeModalOpen, setIsMealTypeModalOpen] = useState(false);
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [recipeNote, setRecipeNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id || !user?.id) return;
@@ -22,6 +26,12 @@ const RecipeDetails = () => {
     const loadedRecipe = recipesService.getRecipeById(id, user.id);
     if (loadedRecipe) {
       setRecipe(loadedRecipe);
+      // Загружаем заметку для рецепта
+      recipeNotesService.getNoteByRecipeId(user.id, id).then((note) => {
+        setRecipeNote(note);
+      }).catch((error) => {
+        console.error('[RecipeDetails] Error loading note:', error);
+      });
     } else {
       // Если рецепт не найден, возвращаемся назад
       navigate(-1);
@@ -120,40 +130,61 @@ const RecipeDetails = () => {
       </header>
 
       <main className="px-4 py-4 space-y-4">
-        {/* Recipe Name */}
-        <div>
+        {/* Recipe Name and Weight Input */}
+        <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{recipe.name}</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Вес, г</span>
+            <input
+              type="number"
+              min={1}
+              value={weight}
+              onChange={(e) => setWeight(Math.max(1, Number(e.target.value) || 100))}
+              className="w-20 h-10 border border-gray-300 dark:border-gray-700 rounded-lg px-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
         </div>
 
-        {/* Weight Input */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-600 dark:text-gray-400">Вес, г</span>
-          <input
-            type="number"
-            min={1}
-            value={weight}
-            onChange={(e) => setWeight(Math.max(1, Number(e.target.value) || 100))}
-            className="w-20 h-10 border border-gray-300 dark:border-gray-700 rounded-lg px-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
+        {/* Recipe Image */}
+        {(recipe.image || recipe.photo) && (
+          <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <img
+              src={recipe.image || recipe.photo || ''}
+              alt={recipe.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          </div>
+        )}
 
         {/* КБЖУ Cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="border-2 border-blue-400 rounded-xl py-3 px-2 text-center">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Калории</div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.calories}</div>
+        <div className="flex gap-3 overflow-x-auto justify-center">
+          <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Калории</div>
+            <div className="border-2 border-blue-400 rounded-xl py-3 px-3 text-center w-full">
+              <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.calories}</div>
+            </div>
           </div>
-          <div className="border-2 border-orange-400 rounded-xl py-3 px-2 text-center">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Белки</div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.proteins}</div>
+          <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Белки</div>
+            <div className="border-2 border-orange-400 rounded-xl py-3 px-3 text-center w-full">
+              <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.proteins}</div>
+            </div>
           </div>
-          <div className="border-2 border-yellow-400 rounded-xl py-3 px-2 text-center">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Жиры</div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.fats}</div>
+          <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Жиры</div>
+            <div className="border-2 border-yellow-400 rounded-xl py-3 px-3 text-center w-full">
+              <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.fats}</div>
+            </div>
           </div>
-          <div className="border-2 border-green-500 rounded-xl py-3 px-2 text-center">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Углеводы</div>
-            <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.carbs}</div>
+          <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Углеводы</div>
+            <div className="border-2 border-green-500 rounded-xl py-3 px-3 text-center w-full">
+              <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.carbs}</div>
+            </div>
           </div>
         </div>
 
@@ -173,10 +204,29 @@ const RecipeDetails = () => {
           </div>
         )}
 
-        {/* Recipe Note/Instructions */}
+        {/* User Recipe Note - отображается после состава */}
+        {recipeNote && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Заметка:</h3>
+              <button
+                onClick={() => setIsNoteModalOpen(true)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                aria-label="Редактировать заметку"
+              >
+                <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+              {recipeNote}
+            </p>
+          </div>
+        )}
+
+        {/* Recipe Note/Instructions - отображается после заметки пользователя */}
         {recipe.instructions && (
           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Заметка:</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Инструкции:</h3>
             <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
               {recipe.instructions}
             </p>
@@ -193,14 +243,23 @@ const RecipeDetails = () => {
 
         {/* Action Buttons (Add Note, Add Photo) */}
         <div className="flex gap-4 pt-2">
-          <button className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Pencil className="w-4 h-4" />
-            <span>ДОБАВИТЬ ЗАМЕТКУ</span>
-          </button>
-          <button className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <Camera className="w-4 h-4" />
-            <span>ДОБАВИТЬ ФОТО</span>
-          </button>
+          {/* Кнопка "Добавить заметку" показывается только если заметки нет */}
+          {!recipeNote && (
+            <button 
+              onClick={() => setIsNoteModalOpen(true)}
+              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+            >
+              <Pencil className="w-4 h-4" />
+              <span>ДОБАВИТЬ ЗАМЕТКУ</span>
+            </button>
+          )}
+          {/* Кнопка "Добавить фото" показывается только если фото нет */}
+          {!recipe.photo && !recipe.image && (
+            <button className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <Camera className="w-4 h-4" />
+              <span>ДОБАВИТЬ ФОТО</span>
+            </button>
+          )}
         </div>
 
         {/* Bottom Action Buttons */}
@@ -214,13 +273,15 @@ const RecipeDetails = () => {
                 }
               }
             }}
-            className="w-full h-12 rounded-full border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="w-full h-12 rounded border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            style={{ borderRadius: '12px' }}
           >
             УДАЛИТЬ
           </button>
           <button
             onClick={handleAddToMenu}
-            className="w-full h-12 rounded-full border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="w-full h-12 rounded border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            style={{ borderRadius: '12px' }}
           >
             СОХРАНИТЬ В МЕНЮ
           </button>
@@ -229,7 +290,8 @@ const RecipeDetails = () => {
               // TODO: Редактирование рецепта
               alert('Редактирование рецепта будет доступно позже');
             }}
-            className="w-full h-12 rounded-full bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 text-sm font-semibold hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors"
+            className="w-full h-12 rounded bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 text-sm font-semibold hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors"
+            style={{ borderRadius: '12px' }}
           >
             СОХРАНИТЬ
           </button>
@@ -243,6 +305,61 @@ const RecipeDetails = () => {
         onSelect={handleMealTypeSelected}
         defaultDate={location.state?.selectedDate || new Date().toISOString().split('T')[0]}
       />
+
+      {/* Recipe Note Modal */}
+      {recipe && user?.id && (
+        <RecipeNoteModal
+          isOpen={isNoteModalOpen}
+          onClose={() => setIsNoteModalOpen(false)}
+          initialNote={recipeNote}
+          onSave={async (note) => {
+            try {
+              // Если заметка пустая, удаляем её
+              if (!note || !note.trim()) {
+                if (recipeNote) {
+                  await recipeNotesService.deleteNote(user.id, recipe.id);
+                  setRecipeNote(null);
+                }
+                return;
+              }
+
+              await recipeNotesService.saveNote(user.id, recipe.id, note);
+              setRecipeNote(note);
+            } catch (error: any) {
+              console.error('[RecipeDetails] Error saving note:', error);
+              
+              // Более информативное сообщение об ошибке
+              let errorMessage = 'Не удалось сохранить заметку. Попробуйте еще раз.';
+              
+              if (error?.code === 'PGRST205') {
+                errorMessage = 'Таблица recipe_notes не найдена. Пожалуйста, выполните SQL схему из файла supabase/recipe_notes_schema.sql в Supabase SQL Editor.';
+              } else if (error?.message) {
+                errorMessage = `Ошибка: ${error.message}`;
+              }
+              
+              alert(errorMessage);
+            }
+          }}
+          onDelete={async () => {
+            try {
+              await recipeNotesService.deleteNote(user.id, recipe.id);
+              setRecipeNote(null);
+            } catch (error: any) {
+              console.error('[RecipeDetails] Error deleting note:', error);
+              
+              let errorMessage = 'Не удалось удалить заметку. Попробуйте еще раз.';
+              
+              if (error?.code === 'PGRST205') {
+                errorMessage = 'Таблица recipe_notes не найдена. Пожалуйста, выполните SQL схему из файла supabase/recipe_notes_schema.sql в Supabase SQL Editor.';
+              } else if (error?.message) {
+                errorMessage = `Ошибка: ${error.message}`;
+              }
+              
+              alert(errorMessage);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
