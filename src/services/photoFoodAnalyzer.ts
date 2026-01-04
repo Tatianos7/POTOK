@@ -10,7 +10,7 @@
  */
 
 import { Food } from '../types';
-import { mapLabelToFood, estimateWeightByLabel } from '../utils/foodLabelMapper';
+import { mapLabelToFood } from '../utils/foodLabelMapper';
 import { estimatePortionByCategory, estimateWeightWithConfidence } from '../utils/portionEstimator';
 
 export interface PhotoAnalysisResult {

@@ -27,7 +27,7 @@ class MealService {
       carbs: Number(entry.carbs ?? 0),
       category: undefined,
       brand: null,
-      source: 'manual',
+      source: 'user',
       photo: null,
       aliases: undefined,
       autoFilled: undefined,

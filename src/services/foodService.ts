@@ -679,9 +679,10 @@ class FoodService {
     const index = userFoods.findIndex((f) => f.id === foodId);
     
     if (index >= 0) {
-      const updated = {
+      const updated: UserCustomFood = {
         ...userFoods[index],
         ...food,
+        source: 'user', // Гарантируем, что source всегда 'user' для пользовательских продуктов
         updatedAt: new Date().toISOString(),
       };
       userFoods[index] = updated;
