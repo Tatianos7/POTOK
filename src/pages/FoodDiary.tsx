@@ -1075,7 +1075,7 @@ const FoodDiary = () => {
             </div>
           </div>
           
-          {/* Month and Report */}
+          {/* Month */}
           <div className="flex items-center justify-between">
             <div className="relative flex flex-col gap-1">
               <button 
