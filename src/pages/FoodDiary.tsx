@@ -1054,7 +1054,7 @@ const FoodDiary = () => {
             </div>
           </div>
           
-          {/* Month and Report */}
+          {/* Month */}
           <div className="flex items-center justify-between">
             <div className="relative flex flex-col gap-1">
               <button 
@@ -1088,9 +1088,6 @@ const FoodDiary = () => {
                 )}
               </div>
             </div>
-            <button className="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-              ОТЧЕТ
-            </button>
           </div>
         </header>
 

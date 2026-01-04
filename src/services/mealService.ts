@@ -27,7 +27,7 @@ class MealService {
       carbs: Number(entry.carbs ?? 0),
       category: undefined,
       brand: null,
-      source: 'manual',
+      source: 'user',
       photo: null,
       aliases: undefined,
       autoFilled: undefined,
@@ -626,44 +626,22 @@ class MealService {
       return;
     }
 
-    // Глубокое копирование записей (создаём новые объекты)
-    // Теперь entry.food.id гарантированно string, так как все MealEntry создаются через нормализатор
+    // Копирование записей: используем существующий foodId (НЕ создаём новый Food)
+    // MealEntry ссылается на СУЩЕСТВУЮЩИЙ продукт из таблицы foods
     const copiedEntries: MealEntry[] = sourceEntries.map((entry): MealEntry => {
       const timestamp = Date.now();
       const random = Math.random();
       const entryId = `${timestamp}-${random}`;
       
-      // entry.food.id гарантированно string (создано через mapSupabaseEntryToMealEntry)
-      const sourceFoodId: string = entry.food.id;
-      const newFoodId: string = `${sourceFoodId}-copy-${timestamp}`;
+      // Используем существующий foodId (НЕ создаём новый Food)
+      // foodId должен быть ID продукта из таблицы foods
+      const existingFoodId: string = entry.foodId;
       
-      // Создаём новый объект Food (глубокое копирование)
-      // ВАЖНО: явно указываем id как string, чтобы TypeScript видел правильный тип
-      const copiedFood: Food = {
-        id: newFoodId,  // Явно string
-        name: entry.food.name,
-        name_original: entry.food.name_original,
-        barcode: entry.food.barcode ?? null,
-        calories: entry.food.calories,
-        protein: entry.food.protein,
-        fat: entry.food.fat,
-        carbs: entry.food.carbs,
-        category: entry.food.category,
-        brand: entry.food.brand ?? null,
-        source: entry.food.source,
-        photo: entry.food.photo ?? null,
-        aliases: entry.food.aliases,
-        autoFilled: entry.food.autoFilled,
-        popularity: entry.food.popularity,
-        createdAt: entry.food.createdAt,
-        updatedAt: entry.food.updatedAt,
-      };
-      
-      // Создаём новый MealEntry (глубокое копирование)
+      // Создаём новый MealEntry с тем же foodId (ссылка на существующий продукт)
       const copiedEntry: MealEntry = {
         id: entryId,
-        foodId: newFoodId,
-        food: copiedFood,
+        foodId: existingFoodId, // Используем существующий foodId
+        food: entry.food, // Используем существующий объект Food (не создаём новый)
         weight: entry.weight,
         calories: entry.calories,
         protein: entry.protein,
@@ -742,6 +720,24 @@ class MealService {
       ...meals.snack,
     ];
     return this.calculateMealTotals(allEntries);
+  }
+
+  // Get meals for a date range (period)
+  async getMealsByPeriod(userId: string, fromDate: string, toDate: string): Promise<DailyMeals[]> {
+    const meals: DailyMeals[] = [];
+    const startDate = new Date(fromDate);
+    const endDate = new Date(toDate);
+    
+    // Iterate through all dates in the range
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
+      const dailyMeals = await this.getMealsForDate(userId, dateStr);
+      meals.push(dailyMeals);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    return meals;
   }
 
   // Create empty meals structure

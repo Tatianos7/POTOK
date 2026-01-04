@@ -100,7 +100,7 @@ class USDAService {
             photo: null, // USDA не предоставляет фото
             aliases: [],
           },
-          'usda',
+          'core',
           null
         );
 

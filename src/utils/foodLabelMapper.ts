@@ -20,57 +20,57 @@ export interface LabelMapping {
  */
 const LABEL_TO_FOOD_MAP: Record<string, LabelMapping> = {
   // Мясо
-  'chicken': { russianName: 'Курица', searchTerms: ['курица', 'куриная грудка', 'куриное филе'], defaultWeight: 150 },
-  'chicken breast': { russianName: 'Куриная грудка', searchTerms: ['курица', 'куриная грудка'], defaultWeight: 150 },
-  'beef': { russianName: 'Говядина', searchTerms: ['говядина', 'говяжий'], defaultWeight: 150 },
-  'pork': { russianName: 'Свинина', searchTerms: ['свинина', 'свиной'], defaultWeight: 150 },
-  'turkey': { russianName: 'Индейка', searchTerms: ['индейка', 'индюшка'], defaultWeight: 150 },
+  'chicken': { label: 'chicken', russianName: 'Курица', searchTerms: ['курица', 'куриная грудка', 'куриное филе'], defaultWeight: 150 },
+  'chicken breast': { label: 'chicken breast', russianName: 'Куриная грудка', searchTerms: ['курица', 'куриная грудка'], defaultWeight: 150 },
+  'beef': { label: 'beef', russianName: 'Говядина', searchTerms: ['говядина', 'говяжий'], defaultWeight: 150 },
+  'pork': { label: 'pork', russianName: 'Свинина', searchTerms: ['свинина', 'свиной'], defaultWeight: 150 },
+  'turkey': { label: 'turkey', russianName: 'Индейка', searchTerms: ['индейка', 'индюшка'], defaultWeight: 150 },
   
   // Рыба
-  'salmon': { russianName: 'Лосось', searchTerms: ['лосось', 'семга'], defaultWeight: 150 },
-  'fish': { russianName: 'Рыба', searchTerms: ['рыба', 'рыбное филе'], defaultWeight: 150 },
-  'tuna': { russianName: 'Тунец', searchTerms: ['тунец'], defaultWeight: 150 },
+  'salmon': { label: 'salmon', russianName: 'Лосось', searchTerms: ['лосось', 'семга'], defaultWeight: 150 },
+  'fish': { label: 'fish', russianName: 'Рыба', searchTerms: ['рыба', 'рыбное филе'], defaultWeight: 150 },
+  'tuna': { label: 'tuna', russianName: 'Тунец', searchTerms: ['тунец'], defaultWeight: 150 },
   
   // Гарниры
-  'rice': { russianName: 'Рис', searchTerms: ['рис', 'рис отварной'], defaultWeight: 200 },
-  'pasta': { russianName: 'Макароны', searchTerms: ['макароны', 'паста'], defaultWeight: 200 },
-  'noodles': { russianName: 'Лапша', searchTerms: ['лапша', 'вермишель'], defaultWeight: 200 },
-  'potato': { russianName: 'Картофель', searchTerms: ['картофель', 'картошка'], defaultWeight: 200 },
-  'potatoes': { russianName: 'Картофель', searchTerms: ['картофель', 'картошка'], defaultWeight: 200 },
-  'bread': { russianName: 'Хлеб', searchTerms: ['хлеб', 'хлеб белый'], defaultWeight: 50 },
+  'rice': { label: 'rice', russianName: 'Рис', searchTerms: ['рис', 'рис отварной'], defaultWeight: 200 },
+  'pasta': { label: 'pasta', russianName: 'Макароны', searchTerms: ['макароны', 'паста'], defaultWeight: 200 },
+  'noodles': { label: 'noodles', russianName: 'Лапша', searchTerms: ['лапша', 'вермишель'], defaultWeight: 200 },
+  'potato': { label: 'potato', russianName: 'Картофель', searchTerms: ['картофель', 'картошка'], defaultWeight: 200 },
+  'potatoes': { label: 'potatoes', russianName: 'Картофель', searchTerms: ['картофель', 'картошка'], defaultWeight: 200 },
+  'bread': { label: 'bread', russianName: 'Хлеб', searchTerms: ['хлеб', 'хлеб белый'], defaultWeight: 50 },
   
   // Овощи
-  'tomato': { russianName: 'Помидор', searchTerms: ['помидор', 'томат'], defaultWeight: 150 },
-  'tomatoes': { russianName: 'Помидор', searchTerms: ['помидор', 'томат'], defaultWeight: 150 },
-  'cucumber': { russianName: 'Огурец', searchTerms: ['огурец'], defaultWeight: 100 },
-  'carrot': { russianName: 'Морковь', searchTerms: ['морковь'], defaultWeight: 100 },
-  'carrots': { russianName: 'Морковь', searchTerms: ['морковь'], defaultWeight: 100 },
-  'bell pepper': { russianName: 'Перец болгарский', searchTerms: ['перец', 'болгарский перец'], defaultWeight: 150 },
-  'pepper': { russianName: 'Перец', searchTerms: ['перец'], defaultWeight: 100 },
-  'onion': { russianName: 'Лук', searchTerms: ['лук', 'лук репчатый'], defaultWeight: 100 },
-  'salad': { russianName: 'Салат', searchTerms: ['салат', 'салат листовой'], defaultWeight: 100 },
-  'lettuce': { russianName: 'Салат', searchTerms: ['салат', 'салат листовой'], defaultWeight: 100 },
-  'broccoli': { russianName: 'Брокколи', searchTerms: ['брокколи'], defaultWeight: 150 },
-  'cabbage': { russianName: 'Капуста', searchTerms: ['капуста', 'капуста белокочанная'], defaultWeight: 150 },
+  'tomato': { label: 'tomato', russianName: 'Помидор', searchTerms: ['помидор', 'томат'], defaultWeight: 150 },
+  'tomatoes': { label: 'tomatoes', russianName: 'Помидор', searchTerms: ['помидор', 'томат'], defaultWeight: 150 },
+  'cucumber': { label: 'cucumber', russianName: 'Огурец', searchTerms: ['огурец'], defaultWeight: 100 },
+  'carrot': { label: 'carrot', russianName: 'Морковь', searchTerms: ['морковь'], defaultWeight: 100 },
+  'carrots': { label: 'carrots', russianName: 'Морковь', searchTerms: ['морковь'], defaultWeight: 100 },
+  'bell pepper': { label: 'bell pepper', russianName: 'Перец болгарский', searchTerms: ['перец', 'болгарский перец'], defaultWeight: 150 },
+  'pepper': { label: 'pepper', russianName: 'Перец', searchTerms: ['перец'], defaultWeight: 100 },
+  'onion': { label: 'onion', russianName: 'Лук', searchTerms: ['лук', 'лук репчатый'], defaultWeight: 100 },
+  'salad': { label: 'salad', russianName: 'Салат', searchTerms: ['салат', 'салат листовой'], defaultWeight: 100 },
+  'lettuce': { label: 'lettuce', russianName: 'Салат', searchTerms: ['салат', 'салат листовой'], defaultWeight: 100 },
+  'broccoli': { label: 'broccoli', russianName: 'Брокколи', searchTerms: ['брокколи'], defaultWeight: 150 },
+  'cabbage': { label: 'cabbage', russianName: 'Капуста', searchTerms: ['капуста', 'капуста белокочанная'], defaultWeight: 150 },
   
   // Фрукты
-  'apple': { russianName: 'Яблоко', searchTerms: ['яблоко'], defaultWeight: 150 },
-  'banana': { russianName: 'Банан', searchTerms: ['банан'], defaultWeight: 120 },
-  'orange': { russianName: 'Апельсин', searchTerms: ['апельсин'], defaultWeight: 150 },
-  'avocado': { russianName: 'Авокадо', searchTerms: ['авокадо'], defaultWeight: 150 },
+  'apple': { label: 'apple', russianName: 'Яблоко', searchTerms: ['яблоко'], defaultWeight: 150 },
+  'banana': { label: 'banana', russianName: 'Банан', searchTerms: ['банан'], defaultWeight: 120 },
+  'orange': { label: 'orange', russianName: 'Апельсин', searchTerms: ['апельсин'], defaultWeight: 150 },
+  'avocado': { label: 'avocado', russianName: 'Авокадо', searchTerms: ['авокадо'], defaultWeight: 150 },
   
   // Молочные продукты
-  'cheese': { russianName: 'Сыр', searchTerms: ['сыр', 'сыр твердый'], defaultWeight: 50 },
-  'milk': { russianName: 'Молоко', searchTerms: ['молоко'], defaultWeight: 200 },
-  'yogurt': { russianName: 'Йогурт', searchTerms: ['йогурт'], defaultWeight: 150 },
-  'egg': { russianName: 'Яйцо', searchTerms: ['яйцо', 'яйцо куриное'], defaultWeight: 60 },
-  'eggs': { russianName: 'Яйцо', searchTerms: ['яйцо', 'яйцо куриное'], defaultWeight: 60 },
+  'cheese': { label: 'cheese', russianName: 'Сыр', searchTerms: ['сыр', 'сыр твердый'], defaultWeight: 50 },
+  'milk': { label: 'milk', russianName: 'Молоко', searchTerms: ['молоко'], defaultWeight: 200 },
+  'yogurt': { label: 'yogurt', russianName: 'Йогурт', searchTerms: ['йогурт'], defaultWeight: 150 },
+  'egg': { label: 'egg', russianName: 'Яйцо', searchTerms: ['яйцо', 'яйцо куриное'], defaultWeight: 60 },
+  'eggs': { label: 'eggs', russianName: 'Яйцо', searchTerms: ['яйцо', 'яйцо куриное'], defaultWeight: 60 },
   
   // Блюда
-  'pizza': { russianName: 'Пицца', searchTerms: ['пицца'], defaultWeight: 300 },
-  'burger': { russianName: 'Бургер', searchTerms: ['бургер', 'гамбургер'], defaultWeight: 250 },
-  'sandwich': { russianName: 'Сэндвич', searchTerms: ['сэндвич', 'бутерброд'], defaultWeight: 150 },
-  'soup': { russianName: 'Суп', searchTerms: ['суп'], defaultWeight: 300 },
+  'pizza': { label: 'pizza', russianName: 'Пицца', searchTerms: ['пицца'], defaultWeight: 300 },
+  'burger': { label: 'burger', russianName: 'Бургер', searchTerms: ['бургер', 'гамбургер'], defaultWeight: 250 },
+  'sandwich': { label: 'sandwich', russianName: 'Сэндвич', searchTerms: ['сэндвич', 'бутерброд'], defaultWeight: 150 },
+  'soup': { label: 'soup', russianName: 'Суп', searchTerms: ['суп'], defaultWeight: 300 },
 };
 
 /**

@@ -33,7 +33,7 @@ class RecipeDiaryService {
       protein: per100.proteins,
       fat: per100.fats,
       carbs: per100.carbs,
-      source: 'manual',
+      source: 'user',
       createdAt: now,
       updatedAt: now,
     } as Food;

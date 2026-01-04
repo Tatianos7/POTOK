@@ -146,10 +146,10 @@ const RecipeDetails = () => {
         </div>
 
         {/* Recipe Image */}
-        {(recipe.image || recipe.photo) && (
+        {recipe.image && (
           <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
             <img
-              src={recipe.image || recipe.photo || ''}
+              src={recipe.image}
               alt={recipe.name}
               className="w-full h-full object-cover"
               onError={(e) => {
@@ -254,7 +254,7 @@ const RecipeDetails = () => {
             </button>
           )}
           {/* Кнопка "Добавить фото" показывается только если фото нет */}
-          {!recipe.photo && !recipe.image && (
+          {!recipe.image && (
             <button className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <Camera className="w-4 h-4" />
               <span>ДОБАВИТЬ ФОТО</span>

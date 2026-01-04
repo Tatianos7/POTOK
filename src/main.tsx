@@ -3,7 +3,6 @@ import ReactDOM from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
 import { testSupabaseConnection } from './lib/supabaseClient'
-import { foodService } from './services/foodService'
 
 // Проверяем подключение к Supabase при старте приложения
 testSupabaseConnection().catch((err) => {

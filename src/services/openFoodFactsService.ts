@@ -95,7 +95,7 @@ class OpenFoodFactsService {
             photo: product.image_url || product.image_small_url || null,
             aliases: [],
           },
-          'open_food_facts',
+          'core',
           null
         );
 

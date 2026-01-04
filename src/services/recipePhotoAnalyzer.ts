@@ -152,7 +152,7 @@ class RecipePhotoAnalyzer {
       barcode: null,
       category: undefined,
       brand: null,
-      source: 'manual',
+      source: 'user',
       photo: null,
       aliases: [],
       autoFilled: true,
