@@ -11,7 +11,6 @@
 
 import { Food } from '../types';
 import { mapLabelToFood } from '../utils/foodLabelMapper';
-import { estimatePortionByCategory, estimateWeightWithConfidence } from '../utils/portionEstimator';
 
 export interface PhotoAnalysisResult {
   food: Food | null; // Найденный продукт в базе
