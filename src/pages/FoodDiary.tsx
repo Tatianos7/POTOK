@@ -1109,9 +1109,6 @@ const FoodDiary = () => {
                 )}
               </div>
             </div>
-            <button className="text-sm font-medium text-gray-900 dark:text-white hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-              ОТЧЕТ
-            </button>
           </div>
         </header>
 
