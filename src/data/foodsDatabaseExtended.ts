@@ -14,7 +14,7 @@ export interface ExtendedFoodDatabaseItem {
   fat: number;
   carbs: number;
   serving_size?: number;
-  source: 'local' | 'openfoodfacts';
+  source: 'core' | 'brand';
 }
 
 // Генератор базы продуктов - создаем большой массив продуктов
@@ -71,7 +71,7 @@ export const generateExtendedFoodsDatabase = (): ExtendedFoodDatabaseItem[] => {
       fat: veg.fat,
       carbs: veg.carbs,
       serving_size: 100,
-      source: 'local',
+      source: 'core',
     });
   });
 
@@ -123,7 +123,7 @@ export const generateExtendedFoodsDatabase = (): ExtendedFoodDatabaseItem[] => {
       fat: fruit.fat,
       carbs: fruit.carbs,
       serving_size: 100,
-      source: 'local',
+      source: 'core',
     });
   });
 

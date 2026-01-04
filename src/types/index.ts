@@ -74,8 +74,11 @@ export interface MessageResponse {
   createdAt: string;
 }
 
-// Food types (новая архитектура)
-export type FoodSource = 'openfoodfacts' | 'usda' | 'manual' | 'local';
+// Food types (юридически безопасная архитектура)
+export type FoodSource = 
+  | 'core'             // Базовые продукты (собственная база, видны всем)
+  | 'brand'            // Продукты с брендами (собственная база, видны всем)
+  | 'user';            // Пользовательский продукт (виден только создателю)
 
 export interface Food {
   id: string;
@@ -88,7 +91,8 @@ export interface Food {
   carbs: number;    // на 100 г
   category?: string;
   brand?: string | null;
-  source: FoodSource;
+  source: FoodSource; // ОБЯЗАТЕЛЬНОЕ поле для юридической безопасности
+  created_by_user_id?: string | null; // ID пользователя, создавшего продукт (для source='user')
   photo?: string | null;
   aliases?: string[]; // синонимы для поиска
   autoFilled?: boolean; // были ли БЖУ автозаполнены
@@ -97,9 +101,11 @@ export interface Food {
   updatedAt: string;
 }
 
-export interface UserCustomFood extends Omit<Food, 'source'> {
+// Для обратной совместимости
+export interface UserCustomFood extends Omit<Food, 'source' | 'created_by_user_id'> {
   userId: string;
-  source: 'manual';
+  source: 'user'; // Изменено с 'manual' на 'user'
+  created_by_user_id: string; // Обязательно для пользовательских продуктов
 }
 
 export interface MealEntry {

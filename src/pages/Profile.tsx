@@ -6,6 +6,7 @@ import { X, Camera, Moon, Sun } from 'lucide-react';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import SubscriptionManagement from '../pages/SubscriptionManagement';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
+import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import { profileService } from '../services/profileService';
 
 const Profile = () => {
@@ -15,6 +16,7 @@ const Profile = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
 
   // Загружаем аватар из Supabase при монтировании
   useEffect(() => {
@@ -94,6 +96,10 @@ const Profile = () => {
     setIsHistoryOpen(true);
   };
 
+  const handlePrivacyPolicy = () => {
+    setIsPrivacyPolicyOpen(true);
+  };
+
   const profileMenuItems = [
     { id: 'edit', label: 'РЕДАКТИРОВАТЬ ПРОФИЛЬ', action: handleEdit },
     { id: 'theme', label: 'СМЕНИТЬ ТЕМУ', icon: theme === 'dark' ? Sun : Moon, action: toggleTheme },
@@ -102,7 +108,7 @@ const Profile = () => {
     { id: 'history', label: 'ИСТОРИЯ ОПЛАТЫ', action: handleHistory },
     { id: 'terms', label: 'УСЛОВИЯ ИСПОЛЬЗОВАНИЯ' },
     { id: 'offer', label: 'ОФЕРТА' },
-    { id: 'privacy', label: 'ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ' },
+    { id: 'privacy', label: 'ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ', action: handlePrivacyPolicy },
   ];
 
   return (
@@ -264,6 +270,12 @@ const Profile = () => {
           userId={user?.id}
         />
       )}
+
+      {/* Privacy Policy Modal */}
+      <PrivacyPolicyModal
+        isOpen={isPrivacyPolicyOpen}
+        onClose={() => setIsPrivacyPolicyOpen(false)}
+      />
     </div>
   );
 };

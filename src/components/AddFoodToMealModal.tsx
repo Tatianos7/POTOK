@@ -252,30 +252,38 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
               Пищевая ценность:
             </h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Калории</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {Math.round(calculated.calories)} ккал
-                </p>
+            <div className="flex gap-3 overflow-x-auto justify-center">
+              <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Калории</div>
+                <div className="border-2 border-blue-400 rounded-xl py-3 px-3 text-center w-full">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {Math.round(calculated.calories)}
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Белки</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {calculated.protein.toFixed(1)} г
-                </p>
+              <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Белки</div>
+                <div className="border-2 border-orange-400 rounded-xl py-3 px-3 text-center w-full">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {calculated.protein.toFixed(1)}
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Жиры</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {calculated.fat.toFixed(1)} г
-                </p>
+              <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Жиры</div>
+                <div className="border-2 border-yellow-400 rounded-xl py-3 px-3 text-center w-full">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {calculated.fat.toFixed(1)}
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Углеводы</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {calculated.carbs.toFixed(1)} г
-                </p>
+              <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Углеводы</div>
+                <div className="border-2 border-green-500 rounded-xl py-3 px-3 text-center w-full">
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {calculated.carbs.toFixed(1)}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

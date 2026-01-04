@@ -34,7 +34,7 @@ export const convertMockFoodToFood = (mock: MockFoodProduct): Food => {
     fat: mock.macrosPer100g.fats,
     carbs: mock.macrosPer100g.carbs,
     category: mock.category,
-    source: 'local',
+    source: 'core',
     barcode: null,
     brand: null,
     photo: null,

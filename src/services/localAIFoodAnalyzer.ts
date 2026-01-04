@@ -473,7 +473,7 @@ class LocalAIFoodAnalyzer {
       barcode: null,
       category: withDefaults.category,
       brand: null,
-      source: 'manual',
+      source: 'user',
       photo: null,
       aliases: [],
       autoFilled: true,

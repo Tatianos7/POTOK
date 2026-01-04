@@ -145,9 +145,13 @@ const RecipeAnalyzer = () => {
         <div className="flex gap-[15px]">
           <button
             onClick={handlePhoto}
-            className="h-12 flex-1 rounded-[12px] border border-gray-800 text-gray-900 text-sm font-semibold"
+            className={`h-12 flex-1 rounded-[12px] border text-sm font-semibold transition-colors ${
+              recipeImage
+                ? 'bg-green-500 border-green-500 text-white'
+                : 'border-gray-800 text-gray-900'
+            }`}
           >
-            Загрузить фото
+            {recipeImage ? 'Фото загружено' : 'Загрузить фото'}
           </button>
           <button
             onClick={handleAnalyze}
