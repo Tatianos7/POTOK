@@ -990,7 +990,7 @@ const FoodDiary = () => {
                         <span>
                           {getFoodDisplayName(entry.food)}
                         </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap" style={{ marginLeft: '5px' }}>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap" style={{ marginLeft: '10px' }}>
                           {Math.round(Number(entry.weight) || 0)} г
                         </span>
                       </p>
