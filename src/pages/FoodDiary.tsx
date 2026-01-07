@@ -985,12 +985,9 @@ const FoodDiary = () => {
                       className="flex-1 min-w-0 max-w-full cursor-pointer overflow-hidden"
                       onClick={() => handleEntryClick(entry, mealType)}
                     >
-                      <p 
-                        className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 flex flex-wrap items-center gap-1 break-words overflow-wrap-anywhere"
-                        style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-                      >
-                        <span>{getFoodDisplayName(entry.food)}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 flex items-center gap-1.5 overflow-hidden">
+                        <span className="truncate flex-1 min-w-0">{getFoodDisplayName(entry.food)}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap flex-shrink-0">
                           ({Math.round(Number(entry.weight) || 0)} г)
                         </span>
                       </p>
