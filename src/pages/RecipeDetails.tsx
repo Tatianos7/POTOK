@@ -390,11 +390,8 @@ const RecipeDetails = () => {
 
                 await recipesService.saveRecipe(updatedRecipe);
                 
-                // Обновляем локальное состояние
-                setRecipe(updatedRecipe);
-                
-                // Показываем уведомление об успешном сохранении
-                alert('Рецепт успешно сохранён');
+                // Закрываем карточку и возвращаемся назад
+                navigate(-1);
               } catch (error) {
                 console.error('[RecipeDetails] Error saving recipe:', error);
                 alert('Ошибка при сохранении рецепта. Попробуйте ещё раз.');
