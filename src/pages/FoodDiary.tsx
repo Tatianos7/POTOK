@@ -1202,8 +1202,8 @@ const FoodDiary = () => {
               <h2 className="text-sm font-medium uppercase text-gray-900 dark:text-white mb-2 min-[376px]:mb-0">
                 ОСТАЛОСЬ
               </h2>
-              <div className="flex" style={{ gap: '5px' }}>
-                <div className="text-center min-w-0 flex-1" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
+              <div className="flex justify-between w-full" style={{ gap: '5px' }}>
+                <div className="text-center flex-1" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
                   <p className={`text-xs mb-1 ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Белки</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overProtein > 0 ? Math.round(consumedProtein) : remainingProtein} г
@@ -1214,7 +1214,7 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-center min-w-0 flex-1" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
+                <div className="text-center flex-1" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
                   <p className={`text-xs mb-1 ${hasOverConsumption && overFat > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Жиры</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overFat > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overFat > 0 ? Math.round(consumedFat) : remainingFat} г
@@ -1225,7 +1225,7 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-center" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
+                <div className="text-center flex-1" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
                   <p className={`text-xs mb-1 ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Углеводы</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overCarbs > 0 ? Math.round(consumedCarbs) : remainingCarbs} г
@@ -1236,7 +1236,7 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-center min-w-0 flex-1" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
+                <div className="text-center flex-1" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
                   <p className={`text-xs mb-1 ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Ккал</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overCalories > 0 ? Math.round(consumedCalories) : remainingCalories}
