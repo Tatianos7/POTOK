@@ -190,7 +190,7 @@ const Recipes = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Header */}
-      <header className="px-4 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+      <header className="px-2 sm:px-4 md:px-6 lg:px-8 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <div className="w-6" />
           <h1 className="text-sm font-semibold text-gray-900 dark:text-white uppercase flex-1 text-center">
@@ -273,7 +273,7 @@ const Recipes = () => {
       </header>
 
       {/* Recipe Display */}
-      <main className="px-4 py-4">
+      <main className="px-2 sm:px-4 md:px-6 lg:px-8 py-4">
         {filteredRecipes.length === 0 ? (
           <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-8">
             {recipes.length === 0

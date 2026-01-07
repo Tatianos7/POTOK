@@ -136,7 +136,7 @@ const EditProfile = () => {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto">
+      <div className="max-w-[768px] mx-auto">
         <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200">
           <div className="flex-1"></div>
           <h1 className="text-lg font-semibold text-gray-900 flex-1 text-center uppercase">
@@ -275,7 +275,7 @@ const EditProfile = () => {
             <div className="pt-4 space-y-3">
               <button
                 type="submit"
-                className={`w-full px-6 py-3 rounded-[13px] font-semibold transition-colors disabled:opacity-60 ${
+                className={`w-full max-w-full min-[768px]:button-limited px-6 py-3 rounded-[13px] font-semibold transition-colors disabled:opacity-60 ${
                   theme === 'dark'
                     ? 'bg-white text-black hover:bg-gray-100'
                     : 'bg-gray-900 text-white hover:bg-gray-800'
@@ -287,7 +287,7 @@ const EditProfile = () => {
               <button
                 type="button"
                 onClick={() => setIsDeleteConfirmOpen(true)}
-                className={`w-full px-6 py-3 rounded-[13px] font-semibold transition-colors ${
+                className={`w-full max-w-full min-[768px]:button-limited px-6 py-3 rounded-[13px] font-semibold transition-colors ${
                   theme === 'dark'
                     ? 'bg-transparent text-white border-2 border-gray-300 hover:bg-gray-800'
                     : 'bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-50'

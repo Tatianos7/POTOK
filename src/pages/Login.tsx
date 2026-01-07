@@ -33,9 +33,9 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-white">
-      <div className="w-full max-w-[1024px] flex justify-center">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-white w-full min-w-[320px]">
+      <div className="container-responsive w-full flex justify-center">
+        <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">ПОТОК</h1>
           <p className="text-gray-600">Войдите в свой аккаунт</p>
@@ -81,7 +81,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-black text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full min-[768px]:button-limited bg-black text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Вход...' : 'Войти'}
           </button>

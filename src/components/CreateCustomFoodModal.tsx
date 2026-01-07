@@ -57,11 +57,12 @@ const CreateCustomFoodModal = ({ isOpen, onClose, onCreated, userId }: CreateCus
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-[calc(100vw-24px)] mobile-lg:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden"
         onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 'calc(100vw - 24px)', boxSizing: 'border-box' }}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 mobile-lg:px-6 py-3 mobile-lg:py-4 flex items-center justify-between w-full max-w-full overflow-hidden">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Создать свой продукт
           </h2>
@@ -74,7 +75,7 @@ const CreateCustomFoodModal = ({ isOpen, onClose, onCreated, userId }: CreateCus
         </div>
 
         {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 mobile-lg:p-6 space-y-4 w-full max-w-full overflow-hidden">
           <div>
             <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
               Название продукта *

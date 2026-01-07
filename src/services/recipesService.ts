@@ -142,24 +142,48 @@ class RecipesService {
         const totalCarbs = recipe.ingredients.reduce((sum, ing) => sum + (ing.carbs || 0), 0);
 
         const uuidUserId = toUUID(recipe.userId);
+        const uuidRecipeId = toUUID(recipe.id);
+        
+        // Подготавливаем данные для upsert
+        const recipeData: any = {
+          id: uuidRecipeId,
+          user_id: uuidUserId,
+          name: recipe.name,
+          ingredients: recipe.ingredients,
+          total_calories: totalCalories,
+          protein: totalProtein,
+          fat: totalFat,
+          carbs: totalCarbs,
+          updated_at: new Date().toISOString(),
+        };
+        
         const { error } = await supabase
           .from('recipes')
-          .upsert({
-            id: recipe.id,
-            user_id: uuidUserId,
-            name: recipe.name,
-            ingredients: recipe.ingredients,
-            total_calories: totalCalories,
-            protein: totalProtein,
-            fat: totalFat,
-            carbs: totalCarbs,
-            updated_at: new Date().toISOString(),
-          }, {
+          .upsert(recipeData, {
             onConflict: 'id',
           });
 
+        // Игнорируем ошибки, связанные с отсутствием колонки image
         if (error) {
-          console.error('[recipesService] Supabase save error:', error);
+          // PGRST204 = column not found in schema cache
+          if (error.code === 'PGRST204' && error.message?.includes('image')) {
+            // Пробуем сохранить без image
+            const recipeDataWithoutImage = { ...recipeData };
+            delete recipeDataWithoutImage.image;
+            
+            const { error: retryError } = await supabase
+              .from('recipes')
+              .upsert(recipeDataWithoutImage, {
+                onConflict: 'id',
+              });
+            
+            if (retryError && retryError.code !== 'PGRST204') {
+              console.error('[recipesService] Supabase save error (retry):', retryError);
+            }
+          } else if (error.code !== 'PGRST204') {
+            // Логируем только если это не ошибка отсутствия колонки
+            console.error('[recipesService] Supabase save error:', error);
+          }
         }
       } catch (err) {
         console.error('[recipesService] Supabase save connection error:', err);

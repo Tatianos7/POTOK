@@ -318,9 +318,10 @@ const FoodSearch = () => {
 
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      {/* Header */}
-      <header className="px-4 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+    <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
+      <div className="container-responsive">
+        {/* Header */}
+        <header className="pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-1">
           <button
             onClick={() => {
@@ -374,8 +375,8 @@ const FoodSearch = () => {
         </div>
       </header>
 
-      {/* Search results with custom bar + recent */}
-      <main className="px-4 py-4 space-y-4">
+        {/* Search results with custom bar + recent */}
+        <main className="py-4 space-y-4">
         <div
           className="flex items-center bg-white dark:bg-gray-900 pl-3 pr-0 w-full"
           style={{ border: '1px solid #c9d0d9', borderRadius: '10px', height: '50px' }}
@@ -515,21 +516,26 @@ const FoodSearch = () => {
           })()
         )}
       </main>
+      </div>
 
       {/* Bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
-        <button
-          onClick={() => setIsBarcodeModalOpen(true)}
-          className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-        >
-          <ScanLine className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-        </button>
-        <button
-          onClick={handleVoice}
-          className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-        >
-          <Mic className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-        </button>
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3">
+        <div className="container-responsive">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setIsBarcodeModalOpen(true)}
+              className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <ScanLine className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+            </button>
+            <button
+              onClick={handleVoice}
+              className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <Mic className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+            </button>
+          </div>
+        </div>
       </div>
       <div className="h-16" />
 

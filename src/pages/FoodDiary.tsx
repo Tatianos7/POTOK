@@ -816,7 +816,7 @@ const FoodDiary = () => {
 
     return (
       <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-visible">
-        <div className="relative flex items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="relative flex items-center py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center mr-3">
             <meal.icon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
           </div>
@@ -828,7 +828,7 @@ const FoodDiary = () => {
               </h3>
               {mealEntries.length > 0 && (
                 <span className="text-xs text-gray-600 dark:text-gray-400 ml-2">
-                  {Math.round(mealTotals.calories)} калорий
+                  {Math.round(mealTotals.calories)}
                 </span>
               )}
             </div>
@@ -921,7 +921,7 @@ const FoodDiary = () => {
               ref={menuRef}
               className="absolute bottom-full right-0 mb-2 z-40"
             >
-              <div className="flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3 shadow-lg">
+              <div className="flex items-center gap-2 mobile-lg:gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl py-3 shadow-lg">
                 <button
                   onClick={() => {
                     setMenuOpen(false);
@@ -973,28 +973,31 @@ const FoodDiary = () => {
               isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
             }`}
           >
-            <div className="px-4 pb-3 pt-2 space-y-2">
+            <div className="space-y-2">
               {mealEntries.map((entry) => {
                 const isEaten = eatenEntries[entry.id] || false;
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-center gap-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded transition-colors"
+                    className="flex items-start gap-2 mobile-lg:gap-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded transition-colors w-full max-w-full overflow-hidden"
+                    style={{ padding: '12px' }}
                   >
                     <div 
-                      className="flex-1 min-w-0 cursor-pointer"
+                      className="flex-1 min-w-0 max-w-full cursor-pointer overflow-hidden"
                       onClick={() => handleEntryClick(entry, mealType)}
                     >
-                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 flex items-center gap-1">
-                        <span className="truncate">{getFoodDisplayName(entry.food)}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          ({Math.round(Number(entry.weight) || 0)} г)
+                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 inline-flex items-center flex-nowrap">
+                        <span>
+                          {getFoodDisplayName(entry.food)}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap" style={{ marginLeft: '10px' }}>
+                          {Math.round(Number(entry.weight) || 0)} г
                         </span>
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                        <span>{entry.protein.toFixed(2).replace('.', ',')}</span>
-                        <span>{entry.fat.toFixed(2).replace('.', ',')}</span>
-                        <span>{entry.carbs.toFixed(0)}</span>
+                      <div className="flex items-center gap-1.5 mobile-lg:gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                        <span className="shrink-0">{entry.protein.toFixed(2).replace('.', ',')}</span>
+                        <span className="shrink-0">{entry.fat.toFixed(2).replace('.', ',')}</span>
+                        <span className="shrink-0">{entry.carbs.toFixed(0)}</span>
                       </div>
                       {/* Отображение заметки под продуктом */}
                       {entry.note && (
@@ -1019,7 +1022,7 @@ const FoodDiary = () => {
                       {isEaten && <Check className="w-3 h-3 text-white" />}
                     </button>
 
-                    <div className="flex-shrink-0 text-sm font-medium text-gray-900 dark:text-white w-12 text-right">
+                    <div className="flex-shrink-0 text-sm font-medium text-gray-900 dark:text-white w-10 mobile-lg:w-12 text-right">
                       {Math.round(entry.calories)}
                     </div>
                   </div>
@@ -1034,10 +1037,10 @@ const FoodDiary = () => {
 
   return (
     <>
-    <div className="bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto min-h-screen">
+    <div className="bg-white dark:bg-gray-900 w-full min-w-[320px]">
+      <div className="container-responsive min-h-screen">
         {/* Header */}
-        <header className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+        <header className="py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-3">
             <div className="flex-1"></div>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white uppercase flex-1 text-center whitespace-nowrap">
@@ -1056,10 +1059,10 @@ const FoodDiary = () => {
           
           {/* Month */}
           <div className="flex items-center justify-between">
-            <div className="relative flex flex-col gap-1">
+            <div className="relative flex flex-col gap-1 w-full">
               <button 
                 onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+                className="flex items-center gap-2 hover:opacity-70 transition-opacity w-fit"
               >
                 <Calendar className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 <span className="text-sm font-medium text-gray-900 dark:text-white">
@@ -1070,7 +1073,7 @@ const FoodDiary = () => {
               {/* Календарь поверх контента */}
               <div
                 ref={calendarRef}
-                className={`absolute top-full left-0 mt-2 z-50 transition-all duration-300 ease-in-out ${
+                className={`absolute top-full left-0 right-0 mt-2 z-50 transition-all duration-300 ease-in-out ${
                   isCalendarOpen 
                     ? 'opacity-100 translate-y-0 pointer-events-auto' 
                     : 'opacity-0 -translate-y-2 pointer-events-none'
@@ -1091,7 +1094,7 @@ const FoodDiary = () => {
           </div>
         </header>
 
-        <main className="px-4 py-6">
+        <main className="py-4 tablet:py-6">
           {/* Loading indicator */}
           {isLoading && (
             <div className="flex items-center justify-center py-8">
@@ -1102,19 +1105,19 @@ const FoodDiary = () => {
           
           {/* Date Selection Bar */}
           {!isLoading && (
-          <div className="flex items-center justify-center gap-2 mb-6 overflow-x-auto pb-2">
+          <div className="grid grid-cols-7 gap-1 mb-6 w-full">
             {dates.map((date) => (
               <button
                 key={date.date}
                 onClick={() => setSelectedDate(date.date)}
-                className={`flex flex-col items-center justify-center min-w-[46px] h-[60px] rounded-full transition-colors ${
+                className={`flex flex-col items-center justify-center h-[54px] w-full rounded-full transition-colors ${
                   selectedDate === date.date
                     ? 'bg-green-500 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
                 }`}
               >
-                <span className="text-sm font-medium">{date.day}</span>
-                <span className={`text-xs ${selectedDate === date.date ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                <span className="text-[13px] font-semibold leading-tight">{date.day}</span>
+                <span className={`text-[11px] leading-tight ${selectedDate === date.date ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                   {date.weekday}
                 </span>
               </button>
@@ -1124,34 +1127,34 @@ const FoodDiary = () => {
 
           {/* Eaten Nutrients Summary */}
           {!isLoading && (
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase">
-                СЪЕДЕНО
+          <div className="mb-6 w-full">
+            <div className="flex flex-col min-[381px]:flex-row min-[381px]:items-center min-[381px]:justify-between">
+              <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-2 min-[381px]:mb-0">
+                УПОТРЕБЛЕНО
               </h2>
-              <div className="flex gap-4">
-                <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Белки</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              <div className="flex justify-between w-full min-[381px]:w-auto min-[381px]:justify-end" style={{ gap: '5px' }}>
+                <div className="text-center flex-1 min-[381px]:flex-none" style={{ padding: '0 5px' }}>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Белки</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
                     {Math.round(dayTotals.protein)}г
                   </p>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Жиры</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                <div className="text-center flex-1 min-[381px]:flex-none" style={{ padding: '0 5px' }}>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Жиры</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
                     {Math.round(dayTotals.fat)}г
                   </p>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Углеводы</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                <div className="text-center flex-1 min-[381px]:flex-none" style={{ padding: '0 5px' }}>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Углеводы</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
                     {Math.round(dayTotals.carbs)}г
                   </p>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Калории</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {Math.round(dayTotals.calories)} ккал
+                <div className="text-center flex-1 min-[381px]:flex-none" style={{ padding: '0 5px' }}>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Ккал</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
+                    {Math.round(dayTotals.calories)}
                   </p>
                 </div>
               </div>
@@ -1194,13 +1197,13 @@ const FoodDiary = () => {
 
           {/* Remaining Nutrients Summary */}
           {!isLoading && (
-          <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-900">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-medium uppercase text-gray-900 dark:text-white">
+          <div className="mb-6 rounded-lg bg-white dark:bg-gray-900 w-full">
+            <div className="flex flex-col min-[381px]:flex-row min-[381px]:items-center min-[381px]:justify-between">
+              <h2 className="text-sm font-medium uppercase text-gray-900 dark:text-white mb-2 min-[381px]:mb-0">
                 ОСТАЛОСЬ
               </h2>
-              <div className="flex gap-4">
-                <div className="text-center">
+              <div className="flex justify-between w-full min-[381px]:w-auto min-[381px]:justify-end" style={{ gap: '5px' }}>
+                <div className="text-center flex-1 min-[381px]:flex-none" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
                   <p className={`text-xs mb-1 ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Белки</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overProtein > 0 ? Math.round(consumedProtein) : remainingProtein} г
@@ -1211,7 +1214,7 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-center">
+                <div className="text-center flex-1 min-[381px]:flex-none" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
                   <p className={`text-xs mb-1 ${hasOverConsumption && overFat > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Жиры</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overFat > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overFat > 0 ? Math.round(consumedFat) : remainingFat} г
@@ -1222,7 +1225,7 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-center">
+                <div className="text-center flex-1 min-[381px]:flex-none" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
                   <p className={`text-xs mb-1 ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Углеводы</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overCarbs > 0 ? Math.round(consumedCarbs) : remainingCarbs} г
@@ -1233,14 +1236,14 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-center">
-                  <p className={`text-xs mb-1 ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Калории</p>
+                <div className="text-center flex-1 min-[381px]:flex-none" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
+                  <p className={`text-xs mb-1 ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Ккал</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
-                    {overCalories > 0 ? Math.round(consumedCalories) : remainingCalories} ккал
+                    {overCalories > 0 ? Math.round(consumedCalories) : remainingCalories}
                   </p>
                   {overCalories > 0 && (
                     <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
-                      +{overCalories} ккал
+                      +{overCalories}
                     </p>
                   )}
                 </div>
@@ -1252,21 +1255,21 @@ const FoodDiary = () => {
           {/* Water Intake Tracker */}
           {!isLoading && (
           <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex flex-col min-[381px]:flex-row min-[381px]:items-center min-[381px]:gap-4 mb-3">
+              <div className="mb-3 min-[381px]:mb-0">
                 <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-1">
                   ВОДА
                 </h2>
-                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                         {dailyMeals?.water || 0} ст. · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
-                       </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {dailyMeals?.water || 0} ст. · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
+                </p>
               </div>
-              <div className="flex gap-1">
+              <div className="flex max-[400px]:justify-between min-[401px]:justify-end min-[401px]:gap-1 w-full max-[400px]:w-full min-[401px]:w-full">
                 {Array.from({ length: 10 }).map((_, index) => (
                   <button
                     key={index}
                     onClick={() => handleWaterClick(index)}
-                    className={`w-6 h-8 border-2 rounded-b-full transition-colors ${
+                    className={`w-6 h-8 border-2 rounded-b-full transition-colors flex-shrink-0 ${
                       index < (dailyMeals?.water || 0)
                         ? 'border-blue-500 bg-blue-500'
                         : 'border-gray-300 dark:border-gray-600'
@@ -1277,12 +1280,16 @@ const FoodDiary = () => {
             </div>
           </div>
           )}
+          
+          {/* Spacer for bottom bar */}
+          <div className="h-24"></div>
         </main>
       </div>
 
       {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-3">
-          <div className="max-w-[1024px] mx-auto flex items-center justify-between gap-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3 z-50 shadow-lg">
+        <div className="container-responsive">
+          <div className="flex items-center justify-between gap-2 mobile-lg:gap-3">
             <button
               onClick={() => setIsBarcodeModalOpen(true)}
               className="p-2 hover:bg-gray-100 dark:hover-bg-gray-800 rounded-lg transition-colors"
@@ -1303,10 +1310,8 @@ const FoodDiary = () => {
               <Camera className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </button>
           </div>
+        </div>
       </div>
-
-      {/* Spacer for bottom bar */}
-      <div className="h-20"></div>
     </div>
 
       {/* Modals */}

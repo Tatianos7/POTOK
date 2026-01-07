@@ -318,10 +318,10 @@ const Measurements = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto w-full flex flex-col h-full">
+    <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden min-w-[320px]">
+      <div className="max-w-[768px] mx-auto w-full flex flex-col h-full">
         {/* Header */}
-        <header className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <header className="px-2 sm:px-4 md:px-6 lg:px-8 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex-1"></div>
             <div className="flex-1 text-center px-4 min-w-[250px]">
@@ -335,7 +335,7 @@ const Measurements = () => {
             <div className="flex-1 flex justify-end">
               <button
                 onClick={handleClose}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                className="hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 aria-label="Закрыть"
               >
                 <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
@@ -344,7 +344,7 @@ const Measurements = () => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto min-h-0 px-4 py-6">
+        <main className="flex-1 overflow-y-auto min-h-0 pl-[10px] pr-[10px] sm:px-4 md:px-6 lg:px-8 py-6">
           {/* Measurements Section */}
           <div className="space-y-4 mb-6">
             {measurements.map((measurement) => (

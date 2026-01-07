@@ -68,33 +68,33 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
   const isFieldValid = (value: string) => value.trim() !== '';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto" style={{ minWidth: '360px' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 min-[376px]:p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-[calc(100vw-16px)] min-[376px]:max-w-md max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10">
+        <header className="px-2 min-[376px]:px-4 py-3 min-[376px]:py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-900 z-10 w-full max-w-full overflow-hidden">
           <div className="flex-1"></div>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase whitespace-nowrap">
+          <h1 className="text-base min-[376px]:text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase whitespace-nowrap">
             ЗАДАЙ ЦЕЛЬ
           </h1>
           <div className="flex-1 flex justify-end">
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
               aria-label="Закрыть"
             >
-              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+              <X className="w-5 h-5 min-[376px]:w-6 min-[376px]:h-6 text-gray-700 dark:text-gray-300" />
             </button>
           </div>
         </header>
 
-        <form onSubmit={handleSubmit} className="px-4 py-6 space-y-6">
+        <form onSubmit={handleSubmit} className="px-2 min-[376px]:px-4 py-4 min-[376px]:py-6 space-y-4 min-[376px]:space-y-6 w-full max-w-full overflow-hidden">
           {/* Gender Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          <div className="w-full max-w-full overflow-hidden">
+            <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 min-[376px]:mb-3">
               Пол:
             </label>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
+            <div className="flex gap-3 min-[376px]:gap-4">
+              <label className="flex items-center gap-1.5 min-[376px]:gap-2 cursor-pointer flex-shrink-0">
                 <input
                   type="radio"
                   name="gender"
@@ -103,18 +103,18 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                   onChange={handleChange('gender')}
                   className="sr-only"
                 />
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                <div className={`w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
                   formData.gender === 'male'
                     ? 'border-green-500 bg-green-500'
                     : 'border-gray-300 dark:border-gray-600'
                 }`}>
                   {formData.gender === 'male' && (
-                    <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                    <Check className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-white" strokeWidth={3} />
                   )}
                 </div>
-                <span className="text-gray-900 dark:text-white">Мужчина</span>
+                <span className="text-xs min-[376px]:text-sm text-gray-900 dark:text-white whitespace-nowrap">Мужчина</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-1.5 min-[376px]:gap-2 cursor-pointer flex-shrink-0">
                 <input
                   type="radio"
                   name="gender"
@@ -123,78 +123,81 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                   onChange={handleChange('gender')}
                   className="sr-only"
                 />
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                <div className={`w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
                   formData.gender === 'female'
                     ? 'border-green-500 bg-green-500'
                     : 'border-gray-300 dark:border-gray-600'
                 }`}>
                   {formData.gender === 'female' && (
-                    <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                    <Check className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-white" strokeWidth={3} />
                   )}
                 </div>
-                <span className="text-gray-900 dark:text-white">Женщина</span>
+                <span className="text-xs min-[376px]:text-sm text-gray-900 dark:text-white whitespace-nowrap">Женщина</span>
               </label>
             </div>
           </div>
 
           {/* Personal Data */}
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+          <div className="flex flex-row gap-2 min-[376px]:gap-4 w-full max-w-full overflow-hidden">
+            <div className="flex-1 min-w-0 w-full max-w-full overflow-hidden">
+              <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Возраст
               </label>
               <input
                 type="number"
                 value={formData.age}
                 onChange={handleChange('age')}
-                className={`w-full px-3 py-2 rounded-lg border ${
+                className={`w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 rounded-lg border text-xs min-[376px]:text-sm ${
                   isFieldValid(formData.age)
                     ? 'border-green-500'
                     : 'border-gray-300 dark:border-gray-600'
                 } bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500`}
+                style={{ boxSizing: 'border-box' }}
                 placeholder="0"
               />
             </div>
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            <div className="flex-1 min-w-0 w-full max-w-full overflow-hidden">
+              <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Вес, кг
               </label>
               <input
                 type="number"
                 value={formData.weight}
                 onChange={handleChange('weight')}
-                className={`w-full px-3 py-2 rounded-lg border ${
+                className={`w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 rounded-lg border text-xs min-[376px]:text-sm ${
                   isFieldValid(formData.weight)
                     ? 'border-green-500'
                     : 'border-gray-300 dark:border-gray-600'
                 } bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500`}
+                style={{ boxSizing: 'border-box' }}
                 placeholder="0"
               />
             </div>
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            <div className="flex-1 min-w-0 w-full max-w-full overflow-hidden">
+              <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Рост, см
               </label>
               <input
                 type="number"
                 value={formData.height}
                 onChange={handleChange('height')}
-                className={`w-full px-3 py-2 rounded-lg border ${
+                className={`w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 rounded-lg border text-xs min-[376px]:text-sm ${
                   isFieldValid(formData.height)
                     ? 'border-green-500'
                     : 'border-gray-300 dark:border-gray-600'
                 } bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500`}
+                style={{ boxSizing: 'border-box' }}
                 placeholder="0"
               />
             </div>
           </div>
 
           {/* Lifestyle */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          <div className="w-full max-w-full overflow-hidden">
+            <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 min-[376px]:mb-3">
               Образ жизни:
             </label>
-            <div className="space-y-2">
+            <div className="space-y-2 min-[376px]:space-y-2">
               {[
                 { value: 'sedentary', label: 'Сидячий и малоподвижный' },
                 { value: 'light', label: 'Легкая активность', desc: '1-3 раза в неделю физическая нагрузка' },
@@ -204,7 +207,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
               ].map((option) => {
                 const isChecked = formData.lifestyle === option.value;
                 return (
-                  <label key={option.value} className="flex items-start gap-2 cursor-pointer">
+                  <label key={option.value} className="flex items-start gap-2 cursor-pointer w-full max-w-full overflow-hidden">
                     <input
                       type="radio"
                       name="lifestyle"
@@ -213,21 +216,21 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                       onChange={handleChange('lifestyle')}
                       className="sr-only"
                     />
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
+                    <div className={`w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 mt-0.5 ${
                       isChecked
                         ? 'border-green-500 bg-green-500'
                         : 'border-gray-300 dark:border-gray-600'
                     }`}>
                       {isChecked && (
-                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                        <Check className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-white" strokeWidth={3} />
                       )}
                     </div>
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere">
                         {option.label}
                       </div>
                       {option.desc && (
-                        <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                        <div className="text-[10px] min-[376px]:text-xs text-gray-600 dark:text-gray-400 mt-0.5 min-[376px]:mt-1 break-words overflow-wrap-anywhere">
                           {option.desc}
                         </div>
                       )}
@@ -239,11 +242,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
           </div>
 
           {/* Goal */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          <div className="w-full max-w-full overflow-hidden">
+            <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 min-[376px]:mb-3">
               Цель:
             </label>
-            <div className="flex gap-4 flex-wrap">
+            <div className="flex flex-wrap gap-3 min-[376px]:gap-4">
               {[
                 { value: 'weight-loss', label: 'Похудение' },
                 { value: 'maintain', label: 'Поддержка формы' },
@@ -251,7 +254,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
               ].map((option) => {
                 const isChecked = formData.goal === option.value;
                 return (
-                  <label key={option.value} className="flex items-center gap-2 cursor-pointer">
+                  <label key={option.value} className="flex items-center gap-1.5 min-[376px]:gap-2 cursor-pointer flex-shrink-0">
                     <input
                       type="radio"
                       name="goal"
@@ -260,16 +263,16 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                       onChange={handleChange('goal')}
                       className="sr-only"
                     />
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                    <div className={`w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
                       isChecked
                         ? 'border-green-500 bg-green-500'
                         : 'border-gray-300 dark:border-gray-600'
                     }`}>
                       {isChecked && (
-                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                        <Check className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-white" strokeWidth={3} />
                       )}
                     </div>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    <span className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere">
                       {option.value === 'maintain' ? (
                         <>
                           Поддержка<br />формы
@@ -286,8 +289,8 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
 
           {/* Target Weight Slider (only if weight loss is selected) */}
           {formData.goal === 'weight-loss' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div className="w-full max-w-full overflow-hidden">
+              <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Похудеть до, кг
               </label>
               <div className="relative">
@@ -359,15 +362,15 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
 
           {/* Intensity (only if weight loss is selected) */}
           {formData.goal === 'weight-loss' && (
-            <div style={{ marginTop: '25px' }}>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            <div className="w-full max-w-full overflow-hidden" style={{ marginTop: '20px' }}>
+              <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 min-[376px]:mb-3">
                 Интенсивность похудения:
               </label>
-              <div className="flex gap-4">
+              <div className="flex gap-3 min-[376px]:gap-4">
                 {['10', '15', '20'].map((value) => {
                   const isChecked = formData.intensity === value;
                   return (
-                    <label key={value} className="flex items-center gap-2 cursor-pointer">
+                    <label key={value} className="flex items-center gap-1.5 min-[376px]:gap-2 cursor-pointer flex-shrink-0">
                       <input
                         type="radio"
                         name="intensity"
@@ -376,16 +379,16 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                         onChange={handleChange('intensity')}
                         className="sr-only"
                       />
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                      <div className={`w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
                         isChecked
                           ? 'border-green-500 bg-green-500'
                           : 'border-gray-300 dark:border-gray-600'
                       }`}>
                         {isChecked && (
-                          <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                          <Check className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-white" strokeWidth={3} />
                         )}
                       </div>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">{value}%</span>
+                      <span className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">{value}%</span>
                     </label>
                   );
                 })}
@@ -396,7 +399,8 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
           {/* Calculate Button */}
           <button
             type="submit"
-            className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+            className="w-full max-w-full py-3 min-[376px]:py-4 rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+            style={{ boxSizing: 'border-box' }}
           >
             РАСЧИТАТЬ
           </button>

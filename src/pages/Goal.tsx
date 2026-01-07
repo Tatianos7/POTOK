@@ -187,61 +187,61 @@ const Goal = () => {
     }
   };
 
-  const fieldClasses = 'w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500';
+  const fieldClasses = 'w-full max-w-full px-2 min-[376px]:px-4 py-2 min-[376px]:py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500';
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto w-full flex flex-col h-full">
+    <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden w-full min-w-[320px] max-w-full">
+      <div className="max-w-[768px] mx-auto w-full flex flex-col h-full max-w-full overflow-hidden">
         {/* Header */}
-        <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <header className="px-2 min-[376px]:px-4 py-3 min-[376px]:py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0 w-full max-w-full overflow-hidden">
           <div className="flex-1"></div>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase">
+          <h1 className="text-base min-[376px]:text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase break-words overflow-wrap-anywhere">
             ТВОЯ ЦЕЛЬ
           </h1>
           <div className="flex-1 flex justify-end">
             <button
               onClick={handleClose}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
               aria-label="Закрыть"
             >
-              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+              <X className="w-5 h-5 min-[376px]:w-6 min-[376px]:h-6 text-gray-700 dark:text-gray-300" />
             </button>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto min-h-0 px-4 py-6">
+        <main className="flex-1 overflow-y-auto min-h-0 px-2 min-[376px]:px-4 py-4 min-[376px]:py-6 w-full max-w-full overflow-hidden">
           {/* Goal Summary Section */}
-          <div className="space-y-4 mb-6">
-            <div className="flex items-center gap-2">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Цель:</p>
-              <p className="text-base font-medium text-gray-900 dark:text-white">
+          <div className="space-y-3 min-[376px]:space-y-4 mb-4 min-[376px]:mb-6 w-full max-w-full overflow-hidden">
+            <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
+              <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Цель:</p>
+              <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
                 {goalData.goalType || '-'}
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Вес:</p>
-                <p className="text-base font-medium text-gray-900 dark:text-white">
+            <div className="grid grid-cols-1 min-[376px]:grid-cols-2 gap-3 min-[376px]:gap-4 w-full max-w-full">
+              <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
+                <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Вес:</p>
+                <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
                   {goalData.targetWeight || '-'}
                 </p>
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600 dark:text-gray-400">До цели:</p>
-                <p className="text-base font-medium text-gray-900 dark:text-white">
+              <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
+                <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">До цели:</p>
+                <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
                   {weightDifference !== '-' ? `${weightDifference} кг` : '-'}
                 </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Начало:</p>
-                <p className="text-base font-medium text-gray-900 dark:text-white">
+            <div className="grid grid-cols-1 min-[376px]:grid-cols-2 gap-3 min-[376px]:gap-4 w-full max-w-full">
+              <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
+                <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Начало:</p>
+                <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
                   {formatDate(goalData.startDate)}
                 </p>
               </div>
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600 dark:text-gray-400">Осталось:</p>
-                <p className="text-base font-medium text-gray-900 dark:text-white">
+              <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
+                <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Осталось:</p>
+                <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
                   {goalData.endDate ? formatDays(daysRemaining) : '-'}
                 </p>
               </div>
@@ -249,40 +249,40 @@ const Goal = () => {
           </div>
 
           {/* Daily Calorie and Macronutrient Section */}
-          <div className="mb-6">
-            <h2 className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <div className="mb-4 min-[376px]:mb-6 w-full max-w-full overflow-hidden">
+            <h2 className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 mb-3 min-[376px]:mb-4 break-words overflow-wrap-anywhere">
               Суточный калораж для достижения цели:
             </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+            <div className="grid grid-cols-2 gap-2 min-[376px]:gap-4 w-full max-w-full">
+              <div className="w-full max-w-full overflow-hidden">
+                <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 break-words overflow-wrap-anywhere">
                   калории
                 </label>
-                <div className={`${fieldClasses} ${!goalData.calories ? 'text-gray-400' : ''}`}>
+                <div className={`${fieldClasses} ${!goalData.calories ? 'text-gray-400' : ''} text-xs min-[376px]:text-sm w-full max-w-full`} style={{ boxSizing: 'border-box' }}>
                   {goalData.calories || '-'}
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              <div className="w-full max-w-full overflow-hidden">
+                <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 break-words overflow-wrap-anywhere">
                   белки
                 </label>
-                <div className={`${fieldClasses} ${!goalData.proteins ? 'text-gray-400' : ''}`}>
+                <div className={`${fieldClasses} ${!goalData.proteins ? 'text-gray-400' : ''} text-xs min-[376px]:text-sm w-full max-w-full`} style={{ boxSizing: 'border-box' }}>
                   {goalData.proteins || '-'}
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              <div className="w-full max-w-full overflow-hidden">
+                <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 break-words overflow-wrap-anywhere">
                   жиры
                 </label>
-                <div className={`${fieldClasses} ${!goalData.fats ? 'text-gray-400' : ''}`}>
+                <div className={`${fieldClasses} ${!goalData.fats ? 'text-gray-400' : ''} text-xs min-[376px]:text-sm w-full max-w-full`} style={{ boxSizing: 'border-box' }}>
                   {goalData.fats || '-'}
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+              <div className="w-full max-w-full overflow-hidden">
+                <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1 break-words overflow-wrap-anywhere">
                   углеводы
                 </label>
-                <div className={`${fieldClasses} ${!goalData.carbs ? 'text-gray-400' : ''}`}>
+                <div className={`${fieldClasses} ${!goalData.carbs ? 'text-gray-400' : ''} text-xs min-[376px]:text-sm w-full max-w-full`} style={{ boxSizing: 'border-box' }}>
                   {goalData.carbs || '-'}
                 </div>
               </div>
@@ -290,24 +290,24 @@ const Goal = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-6 pb-6">
+          <div className="pt-4 min-[376px]:pt-6 pb-4 min-[376px]:pb-6 w-full max-w-full overflow-hidden">
             <button
               onClick={handleSetGoal}
-              style={{ height: '45px', minHeight: '45px', maxHeight: '45px' }}
-              className="w-full mx-1 px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-3"
+              style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
+              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-2 min-[376px]:mb-3"
             >
               ЗАДАТЬ ЦЕЛЬ
             </button>
             <button
               onClick={handleEditGoal}
-              style={{ height: '45px', minHeight: '45px', maxHeight: '45px' }}
-              className="w-full mx-1 px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-3"
+              style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
+              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-2 min-[376px]:mb-3 break-words overflow-wrap-anywhere"
             >
               РЕДАКТИРОВАТЬ ЦЕЛЬ
             </button>
             <button
-              style={{ height: '45px', minHeight: '45px', maxHeight: '45px' }}
-              className="w-full mx-1 px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
+              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               СОХРАНИТЬ
             </button>

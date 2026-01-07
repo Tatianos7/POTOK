@@ -14,6 +14,10 @@ class GoalService {
 
   // Get user goal from Supabase or localStorage
   async getUserGoal(userId: string): Promise<UserGoal | null> {
+    if (!userId) {
+      return null;
+    }
+
     // Try Supabase first
     if (supabase) {
       try {
@@ -22,17 +26,22 @@ class GoalService {
           .from('user_goals')
           .select('*')
           .eq('user_id', uuidUserId)
-          .single();
+          .maybeSingle();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-          console.error('[goalService] Supabase error:', error);
+        // Игнорируем ошибки 406 (Not Acceptable) и PGRST116 (no rows returned)
+        if (error) {
+          // PGRST116 = no rows returned - это нормально
+          // 406 = Not Acceptable - может быть из-за RLS или других проблем, игнорируем
+          if (error.code !== 'PGRST116' && error.code !== 'PGRST406') {
+            console.error('[goalService] Supabase error:', error);
+          }
           // Fallback to localStorage
         } else if (data) {
           const goal: UserGoal = {
-            calories: Number(data.calories),
-            protein: Number(data.protein),
-            fat: Number(data.fat),
-            carbs: Number(data.carbs),
+            calories: Number(data.calories) || 0,
+            protein: Number(data.protein) || 0,
+            fat: Number(data.fat) || 0,
+            carbs: Number(data.carbs) || 0,
             updated_at: data.updated_at,
           };
           // Sync to localStorage for offline support
@@ -40,8 +49,8 @@ class GoalService {
           return goal;
         }
       } catch (err) {
-        console.error('[goalService] Supabase connection error:', err);
-        // Fallback to localStorage
+        // Игнорируем ошибки подключения, используем localStorage
+        // Не логируем, чтобы не засорять консоль
       }
     }
 

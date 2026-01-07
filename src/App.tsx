@@ -199,10 +199,17 @@ function AppRoutes() {
 
 function App() {
   return (
-    <Router>
+    <Router
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <ThemeProvider>
         <AuthProvider>
-          <AppRoutes />
+          <div className="app-container">
+            <AppRoutes />
+          </div>
         </AuthProvider>
       </ThemeProvider>
     </Router>

@@ -35,30 +35,39 @@ const RecipesList = ({ recipes, onRecipeClick, userId }: RecipesListProps) => {
           <button
             key={recipe.id}
             onClick={() => onRecipeClick(recipe)}
-            className="w-full flex items-center gap-3 p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow text-left"
+            className="w-full max-w-full flex items-start gap-2 min-[376px]:gap-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow text-left overflow-hidden"
+            style={{ padding: '6px' }}
           >
             {/* Recipe Image (миниатюра) */}
-            <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700">
+            <div className="w-12 h-12 min-[376px]:w-20 min-[376px]:h-20 flex-shrink-0 rounded-lg overflow-hidden bg-gray-200 dark:bg-gray-700">
               {recipe.image ? (
                 <img
                   src={recipe.image}
                   alt={recipe.name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full max-w-full max-h-full object-cover"
+                  style={{ maxWidth: '100%', height: 'auto' }}
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/200x200?text=Recipe';
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
                   }}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <span className="text-gray-400 text-[10px]">Нет фото</span>
+                  <span className="text-gray-400 text-[9px] min-[376px]:text-[10px]">Нет фото</span>
                 </div>
               )}
             </div>
 
             {/* Recipe Info */}
-            <div className="flex-1 min-w-0 space-y-1">
+            <div className="flex-1 min-w-0 max-w-full overflow-hidden space-y-1">
               {/* Recipe Name */}
-              <div className="font-medium text-sm text-gray-900 dark:text-white line-clamp-1">
+              <div className="font-medium text-xs min-[376px]:text-sm text-gray-900 dark:text-white break-words overflow-wrap-anywhere line-clamp-2"
+                style={{ 
+                  wordBreak: 'break-word',
+                  overflowWrap: 'anywhere',
+                  hyphens: 'auto'
+                }}
+              >
                 {recipe.name || 'НАЗВАНИЕ'}
               </div>
               
@@ -72,7 +81,7 @@ const RecipesList = ({ recipes, onRecipeClick, userId }: RecipesListProps) => {
               )}
 
             {/* Calories */}
-            <div className="text-xs text-gray-600 dark:text-gray-400">
+            <div className="text-[10px] min-[376px]:text-xs text-gray-600 dark:text-gray-400 break-words overflow-wrap-anywhere">
               {recipe.totalCalories && recipe.totalCalories > 0
                 ? `${Math.round(recipe.totalCalories)} ккал`
                 : recipe.caloriesPer100 && recipe.caloriesPer100 > 0
@@ -82,26 +91,26 @@ const RecipesList = ({ recipes, onRecipeClick, userId }: RecipesListProps) => {
 
             {/* БЖУ */}
             {(recipe.totalProteins || recipe.totalFats || recipe.totalCarbs) && (
-              <div className="text-[11px] text-gray-500 dark:text-gray-500">
+              <div className="text-[9px] min-[376px]:text-[11px] text-gray-500 dark:text-gray-500 flex flex-wrap gap-1 min-[376px]:gap-2">
                 {recipe.totalProteins && recipe.totalProteins > 0 && (
-                  <span className="mr-3">Белки: {Math.round(recipe.totalProteins)}г</span>
+                  <span className="shrink-0">Б: {Math.round(recipe.totalProteins)}г</span>
                 )}
                 {recipe.totalFats && recipe.totalFats > 0 && (
-                  <span className="mr-3">Жиры: {Math.round(recipe.totalFats)}г</span>
+                  <span className="shrink-0">Ж: {Math.round(recipe.totalFats)}г</span>
                 )}
                 {recipe.totalCarbs && recipe.totalCarbs > 0 && (
-                  <span>Углеводы: {Math.round(recipe.totalCarbs)}г</span>
+                  <span className="shrink-0">У: {Math.round(recipe.totalCarbs)}г</span>
                 )}
               </div>
             )}
 
             {/* Состав рецепта */}
             {recipe.ingredients && recipe.ingredients.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <div className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+              <div className="mt-1 min-[376px]:mt-2 pt-1 min-[376px]:pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-[9px] min-[376px]:text-[10px] font-semibold text-gray-600 dark:text-gray-400 mb-0.5 min-[376px]:mb-1">
                   Состав:
                 </div>
-                <div className="text-[10px] text-gray-500 dark:text-gray-500 line-clamp-2">
+                <div className="text-[9px] min-[376px]:text-[10px] text-gray-500 dark:text-gray-500 line-clamp-2 break-words overflow-wrap-anywhere">
                   {recipe.ingredients.slice(0, 3).map((ing, idx) => (
                     <span key={idx}>
                       {ing.name}
@@ -115,11 +124,11 @@ const RecipesList = ({ recipes, onRecipeClick, userId }: RecipesListProps) => {
 
             {/* Заметка к рецепту */}
             {note && (
-              <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                <div className="text-[10px] font-semibold text-gray-600 dark:text-gray-400 mb-1">
+              <div className="mt-1 min-[376px]:mt-2 pt-1 min-[376px]:pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="text-[9px] min-[376px]:text-[10px] font-semibold text-gray-600 dark:text-gray-400 mb-0.5 min-[376px]:mb-1">
                   Заметка:
                 </div>
-                <div className="text-[10px] text-gray-500 dark:text-gray-500 line-clamp-2">
+                <div className="text-[9px] min-[376px]:text-[10px] text-gray-500 dark:text-gray-500 line-clamp-2 break-words overflow-wrap-anywhere">
                   {note}
                 </div>
               </div>

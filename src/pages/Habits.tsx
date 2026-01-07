@@ -116,7 +116,7 @@ const Habits = () => {
   if (!supabase) {
     return (
       <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden" style={{ minWidth: '360px' }}>
-        <div className="max-w-[1024px] mx-auto w-full flex flex-col h-full items-center justify-center px-4">
+        <div className="max-w-[768px] mx-auto w-full flex flex-col h-full items-center justify-center px-4">
           <p className="text-gray-500 dark:text-gray-400 text-center">
             Supabase не настроен. Настройте переменные окружения для работы с привычками.
           </p>
@@ -127,7 +127,7 @@ const Habits = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto w-full flex flex-col h-full">
+      <div className="max-w-[768px] mx-auto w-full flex flex-col h-full">
         {/* Header */}
         <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex-1"></div>
@@ -231,8 +231,8 @@ const Habits = () => {
           <button
             onClick={() => setIsCreateModalOpen(true)}
             disabled={isLoading}
-            style={{ height: '45px', minHeight: '45px', maxHeight: '45px' }}
-            className="w-full px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
+            style={{ height: '45px', minHeight: '45px', maxHeight: '45px', boxSizing: 'border-box' }}
+            className="w-full max-w-full min-[768px]:button-limited px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
           >
             <Plus className="w-5 h-5 mr-2" />
             СОЗДАТЬ ПРИВЫЧКУ
@@ -243,7 +243,7 @@ const Habits = () => {
       {/* Create Habit Modal */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
-          <div className="w-full max-w-[1024px] mx-auto bg-white dark:bg-gray-900 rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-w-[768px] mx-auto bg-white dark:bg-gray-900 rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 Создать привычку

@@ -25,12 +25,13 @@ const ConfirmScannedFoodModal = ({ food, isOpen, onConfirm, onReject }: ConfirmS
       onClick={onReject}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-[calc(100vw-24px)] mobile-lg:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden"
         onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 'calc(100vw - 24px)', boxSizing: 'border-box' }}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 mobile-lg:px-6 py-3 mobile-lg:py-4 flex items-center justify-between w-full max-w-full overflow-hidden">
+          <h2 className="text-base mobile-lg:text-lg font-semibold text-gray-900 dark:text-white break-words">
             Продукт найден
           </h2>
           <button
@@ -42,9 +43,9 @@ const ConfirmScannedFoodModal = ({ food, isOpen, onConfirm, onReject }: ConfirmS
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="space-y-6 w-full max-w-full overflow-hidden" style={{ padding: '10px' }}>
           {/* Product Card */}
-          <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="p-3 mobile-lg:p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 w-full max-w-full overflow-hidden">
             <ProductCard food={food} onClick={() => {}} />
           </div>
 

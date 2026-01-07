@@ -283,7 +283,7 @@ const GoalResult = () => {
   if (!formData || !result) {
     return (
       <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden" style={{ minWidth: '360px' }}>
-        <div className="max-w-[1024px] mx-auto w-full flex flex-col h-full items-center justify-center">
+        <div className="max-w-[768px] mx-auto w-full flex flex-col h-full items-center justify-center">
           <p className="text-gray-500 dark:text-gray-400">Загрузка...</p>
         </div>
       </div>
@@ -292,7 +292,7 @@ const GoalResult = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto w-full flex flex-col h-full">
+      <div className="max-w-[768px] mx-auto w-full flex flex-col h-full">
         {/* Header */}
         <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex-1"></div>
@@ -430,8 +430,8 @@ const GoalResult = () => {
           <div className="pt-6 pb-6">
             <button
               onClick={handleSave}
-              style={{ height: '45px', minHeight: '45px', maxHeight: '45px' }}
-              className="w-full mx-1 px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              style={{ height: '45px', minHeight: '45px', maxHeight: '45px', boxSizing: 'border-box' }}
+              className="w-full max-w-full min-[768px]:button-limited mx-1 px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               СОХРАНИТЬ
             </button>
