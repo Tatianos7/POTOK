@@ -43,7 +43,7 @@ const ConfirmScannedFoodModal = ({ food, isOpen, onConfirm, onReject }: ConfirmS
         </div>
 
         {/* Content */}
-        <div className="p-1.5 space-y-6 w-full max-w-full overflow-hidden" style={{ padding: '6px' }}>
+        <div className="space-y-6 w-full max-w-full overflow-hidden" style={{ padding: '10px' }}>
           {/* Product Card */}
           <div className="p-3 mobile-lg:p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 w-full max-w-full overflow-hidden">
             <ProductCard food={food} onClick={() => {}} />
