@@ -1132,7 +1132,7 @@ const FoodDiary = () => {
               <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-2 min-[376px]:mb-0">
                 УПОТРЕБЛЕНО
               </h2>
-              <div className="flex gap-1 sm:gap-2 md:gap-3">
+              <div className="flex" style={{ gap: '5px' }}>
                 <div className="text-center min-w-0 flex-1">
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Белки</p>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
