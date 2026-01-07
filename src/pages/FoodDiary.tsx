@@ -1059,10 +1059,10 @@ const FoodDiary = () => {
           
           {/* Month */}
           <div className="flex items-center justify-between">
-            <div className="relative flex flex-col gap-1">
+            <div className="relative flex flex-col gap-1 w-full">
               <button 
                 onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+                className="flex items-center gap-2 hover:opacity-70 transition-opacity w-fit"
               >
                 <Calendar className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                 <span className="text-sm font-medium text-gray-900 dark:text-white">
