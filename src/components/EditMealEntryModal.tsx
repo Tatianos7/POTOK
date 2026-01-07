@@ -196,7 +196,7 @@ const EditMealEntryModal = ({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-6">
+        <div className="p-1.5 space-y-6" style={{ padding: '6px' }}>
           {/* Food Name and Weight Input */}
           <div className="flex items-center justify-between gap-3 mobile-lg:gap-4 w-full max-w-full overflow-hidden">
             <p 
