@@ -11,7 +11,8 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
   return (
     <button
       onClick={onClick}
-      className="w-full max-w-full flex items-start gap-2 min-[376px]:gap-3 p-2 min-[376px]:p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left overflow-hidden"
+      className="w-full max-w-full flex items-start gap-2 min-[376px]:gap-3 p-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left overflow-hidden"
+      style={{ padding: '6px' }}
     >
       {/* Image */}
       <div className="flex-shrink-0 w-12 h-12 min-[376px]:w-16 min-[376px]:h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
