@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { X, Pencil, Camera } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +14,7 @@ const RecipeDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [weight, setWeight] = useState<number>(100);
   const [isMealTypeModalOpen, setIsMealTypeModalOpen] = useState(false);
@@ -83,6 +84,56 @@ const RecipeDetails = () => {
 
   const handleAddToMenu = () => {
     setIsMealTypeModalOpen(true);
+  };
+
+  const handleAddPhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !recipe || !user?.id) return;
+
+    // Проверяем тип файла
+    if (!file.type.startsWith('image/')) {
+      alert('Пожалуйста, выберите изображение');
+      return;
+    }
+
+    // Проверяем размер файла (максимум 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Размер файла не должен превышать 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const imageDataUrl = reader.result as string;
+      
+      // Обновляем рецепт с новым изображением
+      const updatedRecipe: Recipe = {
+        ...recipe,
+        image: imageDataUrl,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Сохраняем рецепт
+      await recipesService.saveRecipe(updatedRecipe);
+      
+      // Обновляем состояние
+      setRecipe(updatedRecipe);
+    };
+
+    reader.onerror = () => {
+      alert('Ошибка при загрузке изображения');
+    };
+
+    reader.readAsDataURL(file);
+    
+    // Сбрасываем input для возможности повторной загрузки того же файла
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleMealTypeSelected = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', date: string) => {
