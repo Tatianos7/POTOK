@@ -239,9 +239,9 @@ const Goal = () => {
               </div>
             </div>
             <div className="grid grid-cols-1 min-[376px]:grid-cols-2 gap-3 min-[376px]:gap-4 w-full max-w-full">
-              <div className="flex items-center gap-2 w-full max-w-full overflow-hidden">
+              <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
                 <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Начало:</p>
-                <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere flex-1 min-w-0">
+                <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
                   {formatDate(goalData.startDate)}
                 </p>
               </div>
