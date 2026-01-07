@@ -1202,7 +1202,7 @@ const FoodDiary = () => {
               <h2 className="text-sm font-medium uppercase text-gray-900 dark:text-white mb-2 min-[376px]:mb-0">
                 ОСТАЛОСЬ
               </h2>
-              <div className="flex gap-1 sm:gap-2 md:gap-3">
+              <div className="flex" style={{ gap: '5px' }}>
                 <div className="text-center min-w-0 flex-1">
                   <p className={`text-xs mb-1 ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Белки</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
