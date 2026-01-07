@@ -1145,7 +1145,7 @@ const FoodDiary = () => {
                     {Math.round(dayTotals.fat)}г
                   </p>
                 </div>
-                <div className="text-center min-w-0 flex-1" style={{ padding: '0 5px' }}>
+                <div className="text-center" style={{ padding: '0 5px' }}>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Углеводы</p>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
                     {Math.round(dayTotals.carbs)}г
