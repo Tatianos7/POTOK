@@ -198,16 +198,13 @@ const EditMealEntryModal = ({
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Food Name and Weight Input */}
-          <div className="flex flex-col mobile-lg:flex-row items-start mobile-lg:items-center justify-between gap-3 mobile-lg:gap-4 w-full max-w-full overflow-hidden">
-            <div className="flex-1 min-w-0 w-full mobile-lg:w-auto">
-              <p 
-                className="text-base font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere"
-                style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-              >
-                {getFoodDisplayName(entry.food)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0 w-full mobile-lg:w-auto">
+          <div className="flex items-center justify-between gap-3 mobile-lg:gap-4 w-full max-w-full overflow-hidden">
+            <p 
+              className="text-base font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0"
+            >
+              {getFoodDisplayName(entry.food)}
+            </p>
+            <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Вес, г</span>
               <input
                 type="number"

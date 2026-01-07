@@ -170,15 +170,16 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
               />
             )}
             <div className="flex-1 min-w-0 overflow-hidden">
-              <h3 
-                className="text-sm font-semibold text-gray-900 dark:text-white break-words overflow-wrap-anywhere"
-                style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
-              >
-                {getFoodDisplayName(food)}
-              </h3>
-              <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
-                {Math.round(food.calories)} ккал / 100г
-              </p>
+              <div className="flex items-center gap-2 overflow-hidden">
+                <h3 
+                  className="text-sm font-semibold text-gray-900 dark:text-white truncate flex-1 min-w-0"
+                >
+                  {getFoodDisplayName(food)}
+                </h3>
+                <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap flex-shrink-0">
+                  {Math.round(food.calories)} ккал / 100г
+                </p>
+              </div>
             </div>
           </div>
 
