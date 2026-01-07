@@ -142,10 +142,11 @@ class RecipesService {
         const totalCarbs = recipe.ingredients.reduce((sum, ing) => sum + (ing.carbs || 0), 0);
 
         const uuidUserId = toUUID(recipe.userId);
+        const uuidRecipeId = toUUID(recipe.id);
         const { error } = await supabase
           .from('recipes')
           .upsert({
-            id: recipe.id,
+            id: uuidRecipeId,
             user_id: uuidUserId,
             name: recipe.name,
             ingredients: recipe.ingredients,
@@ -153,6 +154,7 @@ class RecipesService {
             protein: totalProtein,
             fat: totalFat,
             carbs: totalCarbs,
+            image: recipe.image || null,
             updated_at: new Date().toISOString(),
           }, {
             onConflict: 'id',
