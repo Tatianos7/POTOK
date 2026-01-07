@@ -378,9 +378,27 @@ const RecipeDetails = () => {
             СОХРАНИТЬ В МЕНЮ
           </button>
           <button
-            onClick={() => {
-              // TODO: Редактирование рецепта
-              alert('Редактирование рецепта будет доступно позже');
+            onClick={async () => {
+              if (!recipe || !user?.id) return;
+
+              try {
+                // Сохраняем текущее состояние рецепта со всеми изменениями
+                const updatedRecipe: Recipe = {
+                  ...recipe,
+                  updatedAt: new Date().toISOString(),
+                };
+
+                await recipesService.saveRecipe(updatedRecipe);
+                
+                // Обновляем локальное состояние
+                setRecipe(updatedRecipe);
+                
+                // Показываем уведомление об успешном сохранении
+                alert('Рецепт успешно сохранён');
+              } catch (error) {
+                console.error('[RecipeDetails] Error saving recipe:', error);
+                alert('Ошибка при сохранении рецепта. Попробуйте ещё раз.');
+              }
             }}
             className="w-full h-10 min-[376px]:h-12 rounded bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 text-xs min-[376px]:text-sm font-semibold hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors"
             style={{ borderRadius: '12px', boxSizing: 'border-box' }}
