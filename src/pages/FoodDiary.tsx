@@ -1248,7 +1248,6 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-              </div>
             </div>
           </div>
           )}
