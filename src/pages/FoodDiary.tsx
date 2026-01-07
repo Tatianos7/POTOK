@@ -979,7 +979,8 @@ const FoodDiary = () => {
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-start gap-2 mobile-lg:gap-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded transition-colors w-full max-w-full overflow-hidden"
+                    className="flex items-start gap-2 mobile-lg:gap-3 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded transition-colors w-full max-w-full overflow-hidden"
+                    style={{ padding: '12px' }}
                   >
                     <div 
                       className="flex-1 min-w-0 max-w-full cursor-pointer overflow-hidden"
