@@ -365,14 +365,14 @@ const RecipeDetails = () => {
                 }
               }
             }}
-            className="w-full h-10 min-[376px]:h-12 rounded border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-xs min-[376px]:text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="w-full max-w-full min-[768px]:button-limited h-10 min-[376px]:h-12 rounded border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-xs min-[376px]:text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             style={{ borderRadius: '12px', boxSizing: 'border-box' }}
           >
             УДАЛИТЬ
           </button>
           <button
             onClick={handleAddToMenu}
-            className="w-full h-10 min-[376px]:h-12 rounded border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-xs min-[376px]:text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="w-full max-w-full min-[768px]:button-limited h-10 min-[376px]:h-12 rounded border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-xs min-[376px]:text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             style={{ borderRadius: '12px', boxSizing: 'border-box' }}
           >
             СОХРАНИТЬ В МЕНЮ
@@ -397,7 +397,7 @@ const RecipeDetails = () => {
                 alert('Ошибка при сохранении рецепта. Попробуйте ещё раз.');
               }
             }}
-            className="w-full h-10 min-[376px]:h-12 rounded bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 text-xs min-[376px]:text-sm font-semibold hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors"
+            className="w-full max-w-full min-[768px]:button-limited h-10 min-[376px]:h-12 rounded bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 text-xs min-[376px]:text-sm font-semibold hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors"
             style={{ borderRadius: '12px', boxSizing: 'border-box' }}
           >
             СОХРАНИТЬ

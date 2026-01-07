@@ -319,7 +319,7 @@ const Measurements = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden min-w-[320px]">
-      <div className="max-w-[1024px] mx-auto w-full flex flex-col h-full">
+      <div className="max-w-[768px] mx-auto w-full flex flex-col h-full">
         {/* Header */}
         <header className="px-2 sm:px-4 md:px-6 lg:px-8 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="flex items-center justify-between">

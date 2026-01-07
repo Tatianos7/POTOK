@@ -191,7 +191,7 @@ const Goal = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden w-full min-w-[320px] max-w-full">
-      <div className="max-w-[1024px] mx-auto w-full flex flex-col h-full max-w-full overflow-hidden">
+      <div className="max-w-[768px] mx-auto w-full flex flex-col h-full max-w-full overflow-hidden">
         {/* Header */}
         <header className="px-2 min-[376px]:px-4 py-3 min-[376px]:py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0 w-full max-w-full overflow-hidden">
           <div className="flex-1"></div>
@@ -300,20 +300,20 @@ const Goal = () => {
             <button
               onClick={handleSetGoal}
               style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
-              className="w-full max-w-full px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-2 min-[376px]:mb-3"
+              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-2 min-[376px]:mb-3"
             >
               ЗАДАТЬ ЦЕЛЬ
             </button>
             <button
               onClick={handleEditGoal}
               style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
-              className="w-full max-w-full px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-2 min-[376px]:mb-3 break-words overflow-wrap-anywhere"
+              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-2 min-[376px]:mb-3 break-words overflow-wrap-anywhere"
             >
               РЕДАКТИРОВАТЬ ЦЕЛЬ
             </button>
             <button
               style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
-              className="w-full max-w-full px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               СОХРАНИТЬ
             </button>

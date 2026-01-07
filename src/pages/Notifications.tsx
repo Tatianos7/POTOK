@@ -128,7 +128,7 @@ const Notifications = () => {
   return (
     <>
       <div className="min-h-screen bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
-        <div className="max-w-[1024px] mx-auto">
+        <div className="max-w-[768px] mx-auto">
         {/* Header */}
         <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-800">
           <div className="flex-1"></div>

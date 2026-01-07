@@ -152,7 +152,7 @@ const Register = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="btn-primary w-full"
+            className="btn-primary w-full min-[768px]:button-limited"
           >
             {isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
           </button>

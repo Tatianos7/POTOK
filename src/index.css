@@ -56,7 +56,7 @@
   /* Единая система контейнеров */
   .container-responsive {
     width: 100%;
-    max-width: 1024px;
+    max-width: 768px; /* Планшетная максимальная ширина */
     margin-left: auto;
     margin-right: auto;
     /* mobile: 320px - 479px */
@@ -72,7 +72,7 @@
     }
   }
   
-  /* tablet: 768px - 1023px */
+  /* tablet: 768px+ */
   @media (min-width: 768px) {
     .container-responsive {
       padding-left: 1.25rem; /* 20px */
@@ -80,11 +80,37 @@
     }
   }
   
-  /* desktop: ≥ 1024px */
+  /* desktop: ≥ 1024px - используем ту же планшетную версию */
   @media (min-width: 1024px) {
     .container-responsive {
       padding-left: 1.5rem; /* 24px */
       padding-right: 1.5rem;
+      /* max-width остается 768px */
+    }
+  }
+  
+  /* Общий контейнер приложения */
+  .app-container {
+    width: 100%;
+    max-width: 768px;
+    margin: 0 auto;
+    box-sizing: border-box;
+  }
+  
+  /* Ограничение ширины кнопок на планшетах и десктопе */
+  @media (min-width: 768px) {
+    .button-limited {
+      width: 100%;
+      max-width: 360px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    /* Для кнопок, которые должны быть 50% ширины */
+    .button-half {
+      width: 50%;
+      min-width: 240px;
+      max-width: 360px;
     }
   }
 }

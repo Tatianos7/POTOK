@@ -207,7 +207,9 @@ function App() {
     >
       <ThemeProvider>
         <AuthProvider>
-          <AppRoutes />
+          <div className="app-container">
+            <AppRoutes />
+          </div>
         </AuthProvider>
       </ThemeProvider>
     </Router>
