@@ -1264,7 +1264,7 @@ const FoodDiary = () => {
                   {dailyMeals?.water || 0} ст. · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
                 </p>
               </div>
-              <div className="flex max-[400px]:justify-between min-[401px]:gap-1 w-full max-[400px]:w-full min-[401px]:w-fit">
+              <div className="flex max-[400px]:justify-between min-[401px]:justify-end min-[401px]:gap-1 w-full max-[400px]:w-full min-[401px]:w-full">
                 {Array.from({ length: 10 }).map((_, index) => (
                   <button
                     key={index}
