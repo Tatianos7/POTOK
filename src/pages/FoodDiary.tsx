@@ -1237,7 +1237,7 @@ const FoodDiary = () => {
                   )}
                 </div>
                 <div className="text-center min-w-0 flex-1" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
-                  <p className={`text-xs mb-1 ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Калории</p>
+                  <p className={`text-xs mb-1 ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Ккал</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overCalories > 0 ? Math.round(consumedCalories) : remainingCalories}
                   </p>
