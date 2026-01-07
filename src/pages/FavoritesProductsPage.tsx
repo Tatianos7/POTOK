@@ -258,8 +258,9 @@ const FavoritesProductsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900">
-      <header className="px-2 sm:px-4 md:px-6 lg:px-8 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+    <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
+      <div className="container-responsive">
+        <header className="pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between mb-3">
           <div className="w-6" />
           <h1 className="text-xs font-semibold text-center text-gray-800 dark:text-white uppercase">Избранное</h1>
@@ -308,9 +309,9 @@ const FavoritesProductsPage = () => {
             return (
               <div
                 key={recentFood.foodId || recentFood.foodName}
-                className="w-full flex items-start px-3 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                className="w-full max-w-full flex items-start px-3 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group overflow-hidden"
               >
-                <div className="mr-3 mt-0.5">
+                <div className="mr-3 mt-0.5 flex-shrink-0">
                   {isActive ? (
                     <Check className="w-5 h-5 text-green-500" />
                   ) : (
@@ -319,17 +320,23 @@ const FavoritesProductsPage = () => {
                 </div>
                 <button
                   onClick={() => handleProductClick(recentFood)}
-                  className="flex-1 min-w-0 text-left"
+                  className="flex-1 min-w-0 max-w-full text-left overflow-hidden"
                 >
-                  <div className="text-sm font-semibold text-gray-900 dark:text-white truncate mb-1">
+                  <div 
+                    className="text-sm font-semibold text-gray-900 dark:text-white mb-1 break-words overflow-wrap-anywhere"
+                    style={{ 
+                      wordBreak: 'break-word',
+                      overflowWrap: 'anywhere'
+                    }}
+                  >
                     {recentFood.foodName}
                   </div>
-                  <div className="text-[11px] flex gap-2">
-                    <span className="text-green-600 dark:text-green-400">
+                  <div className="text-[11px] flex gap-2 flex-wrap">
+                    <span className="text-green-600 dark:text-green-400 shrink-0">
                       {Math.round(recentFood.weight)} г
                     </span>
                     {food && (
-                      <span className="text-gray-500 dark:text-gray-400">
+                      <span className="text-gray-500 dark:text-gray-400 shrink-0">
                         {Math.round((food.calories * recentFood.weight) / 100)} ккал
                       </span>
                     )}
@@ -354,7 +361,8 @@ const FavoritesProductsPage = () => {
             </div>
           )}
         </div>
-      </main>
+        </main>
+      </div>
 
       <AddFoodToMealModal
         food={selectedFood}

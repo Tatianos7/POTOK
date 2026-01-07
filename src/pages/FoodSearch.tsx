@@ -516,27 +516,28 @@ const FoodSearch = () => {
           })()
         )}
       </main>
+      </div>
 
-        {/* Bottom bar */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3">
-          <div className="container-responsive">
-            <div className="flex items-center justify-between">
-        <button
-          onClick={() => setIsBarcodeModalOpen(true)}
-          className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-        >
-          <ScanLine className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-        </button>
-        <button
-          onClick={handleVoice}
-          className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-        >
-          <Mic className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+      {/* Bottom bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3">
+        <div className="container-responsive">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setIsBarcodeModalOpen(true)}
+              className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <ScanLine className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+            </button>
+            <button
+              onClick={handleVoice}
+              className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
+              <Mic className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </button>
           </div>
         </div>
-        <div className="h-16" />
       </div>
+      <div className="h-16" />
 
       {/* Barcode modal */}
       {isBarcodeModalOpen && user && (

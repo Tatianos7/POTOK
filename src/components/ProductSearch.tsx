@@ -68,17 +68,17 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-full overflow-hidden">
       {/* Search Input (optional) */}
       {!hideInput && (
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <div className="relative mb-4 w-full max-w-full">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
           <input
             type="text"
             value={query}
             onChange={(e) => (isControlled ? onChangeQuery?.(e.target.value) : setInternalQuery(e.target.value))}
             placeholder="Поиск продуктов..."
-            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full max-w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 box-border"
           />
           {isLoading && (
             <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -92,24 +92,25 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
       {query.trim() && (
         <>
           {!isLoading && (
-            <div className="space-y-4 max-h-[400px] overflow-y-auto">
+            <div className="space-y-4 max-h-[400px] overflow-y-auto overflow-x-hidden w-full max-w-full">
               {results.length > 0 ? (
                 <>
                   {/* Ваши продукты */}
                   {results.filter(f => f.source === 'user').length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    <div className="w-full max-w-full overflow-hidden">
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 break-words">
                         Ваши продукты
                       </h3>
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full max-w-full">
                         {results
                           .filter(f => f.source === 'user')
                           .map((food) => (
-                            <ProductCard
-                              key={food.id}
-                              food={food}
-                              onClick={() => onSelect(food)}
-                            />
+                            <div key={food.id} className="w-full max-w-full overflow-hidden">
+                              <ProductCard
+                                food={food}
+                                onClick={() => onSelect(food)}
+                              />
+                            </div>
                           ))}
                       </div>
                     </div>
@@ -117,29 +118,30 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
 
                   {/* Общая база */}
                   {results.filter(f => f.source !== 'user').length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    <div className="w-full max-w-full overflow-hidden">
+                      <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 break-words">
                         Общая база
                       </h3>
-                      <div className="space-y-2">
+                      <div className="space-y-2 w-full max-w-full">
                         {results
                           .filter(f => f.source !== 'user')
                           .map((food) => (
-                            <ProductCard
-                              key={food.id}
-                              food={food}
-                              onClick={() => onSelect(food)}
-                            />
+                            <div key={food.id} className="w-full max-w-full overflow-hidden">
+                              <ProductCard
+                                food={food}
+                                onClick={() => onSelect(food)}
+                              />
+                            </div>
                           ))}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic break-words overflow-wrap-anywhere">
                         Данные носят справочный характер
                       </p>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400 w-full max-w-full">
                   <p>Продукты не найдены</p>
                 </div>
               )}
