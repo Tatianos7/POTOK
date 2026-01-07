@@ -986,7 +986,7 @@ const FoodDiary = () => {
                       className="flex-1 min-w-0 max-w-full cursor-pointer overflow-hidden"
                       onClick={() => handleEntryClick(entry, mealType)}
                     >
-                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 inline-flex items-center gap-1 flex-nowrap">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 inline-flex items-center flex-nowrap" style={{ gap: '5px' }}>
                         <span>
                           {getFoodDisplayName(entry.food)}
                         </span>
