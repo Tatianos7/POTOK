@@ -1278,6 +1278,9 @@ const FoodDiary = () => {
             </div>
           </div>
           )}
+          
+          {/* Spacer for bottom bar */}
+          <div className="h-24"></div>
         </main>
       </div>
 
@@ -1305,10 +1308,7 @@ const FoodDiary = () => {
               <Camera className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </button>
           </div>
-      </div>
-
-      {/* Spacer for bottom bar */}
-      <div className="h-20"></div>
+        </div>
       </div>
     </div>
 
