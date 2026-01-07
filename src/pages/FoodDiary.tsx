@@ -1264,12 +1264,12 @@ const FoodDiary = () => {
                   {dailyMeals?.water || 0} ст. · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
                 </p>
               </div>
-              <div className="flex gap-1">
+              <div className="flex gap-1 w-fit">
                 {Array.from({ length: 10 }).map((_, index) => (
                   <button
                     key={index}
                     onClick={() => handleWaterClick(index)}
-                    className={`w-6 h-8 border-2 rounded-b-full transition-colors ${
+                    className={`w-6 h-8 border-2 rounded-b-full transition-colors flex-shrink-0 ${
                       index < (dailyMeals?.water || 0)
                         ? 'border-blue-500 bg-blue-500'
                         : 'border-gray-300 dark:border-gray-600'
