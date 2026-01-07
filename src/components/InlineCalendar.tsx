@@ -136,7 +136,7 @@ const InlineCalendar = ({ selectedDate, onDateSelect, onClose }: InlineCalendarP
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mobile-lg:p-5 shadow-lg w-full max-w-full overflow-hidden">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mobile-lg:p-5 shadow-lg w-full overflow-hidden">
       {/* Header с навигацией */}
       <div className="flex items-center justify-between mb-4">
         <button
