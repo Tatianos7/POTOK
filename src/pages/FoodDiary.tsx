@@ -1255,26 +1255,28 @@ const FoodDiary = () => {
           {/* Water Intake Tracker */}
           {!isLoading && (
           <div className="mb-6">
-            <div className="mb-3">
-              <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-1">
-                ВОДА
-              </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {dailyMeals?.water || 0} ст. · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
-              </p>
-            </div>
-            <div className="flex gap-1">
-              {Array.from({ length: 10 }).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleWaterClick(index)}
-                  className={`w-6 h-8 border-2 rounded-b-full transition-colors ${
-                    index < (dailyMeals?.water || 0)
-                      ? 'border-blue-500 bg-blue-500'
-                      : 'border-gray-300 dark:border-gray-600'
-                  }`}
-                ></button>
-              ))}
+            <div className="flex flex-col min-[381px]:flex-row min-[381px]:items-center min-[381px]:gap-4 mb-3">
+              <div className="mb-3 min-[381px]:mb-0">
+                <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-1">
+                  ВОДА
+                </h2>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {dailyMeals?.water || 0} ст. · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
+                </p>
+              </div>
+              <div className="flex gap-1">
+                {Array.from({ length: 10 }).map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleWaterClick(index)}
+                    className={`w-6 h-8 border-2 rounded-b-full transition-colors ${
+                      index < (dailyMeals?.water || 0)
+                        ? 'border-blue-500 bg-blue-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                  ></button>
+                ))}
+              </div>
             </div>
           </div>
           )}
