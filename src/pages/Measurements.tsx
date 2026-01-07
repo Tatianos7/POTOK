@@ -335,16 +335,16 @@ const Measurements = () => {
             <div className="flex-1 flex justify-end">
               <button
                 onClick={handleClose}
-                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                 aria-label="Закрыть"
               >
-                <X className="w-6 h-6 min-[376px]:w-7 min-[376px]:h-7 text-gray-700 dark:text-gray-300" />
+                <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
               </button>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto min-h-0 px-[5px] py-6">
+        <main className="flex-1 overflow-y-auto min-h-0 px-2 sm:px-4 md:px-6 lg:px-8 py-6">
           {/* Measurements Section */}
           <div className="space-y-4 mb-6">
             {measurements.map((measurement) => (
