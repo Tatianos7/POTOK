@@ -344,7 +344,7 @@ const Measurements = () => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto min-h-0 px-2 sm:px-4 md:px-6 lg:px-8 py-6">
+        <main className="flex-1 overflow-y-auto min-h-0 pl-2 pr-[10px] sm:px-4 md:px-6 lg:px-8 py-6">
           {/* Measurements Section */}
           <div className="space-y-4 mb-6">
             {measurements.map((measurement) => (
