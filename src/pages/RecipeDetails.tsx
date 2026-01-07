@@ -334,10 +334,23 @@ const RecipeDetails = () => {
           )}
           {/* Кнопка "Добавить фото" показывается только если фото нет */}
           {!recipe.image && (
-            <button className="flex items-center gap-1.5 min-[376px]:gap-2 text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">
-              <Camera className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4" />
-              <span className="whitespace-nowrap">ДОБАВИТЬ ФОТО</span>
-            </button>
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+                aria-label="Загрузить фото рецепта"
+              />
+              <button 
+                onClick={handleAddPhotoClick}
+                className="flex items-center gap-1.5 min-[376px]:gap-2 text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors flex-shrink-0"
+              >
+                <Camera className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4" />
+                <span className="whitespace-nowrap">ДОБАВИТЬ ФОТО</span>
+              </button>
+            </>
           )}
         </div>
 
