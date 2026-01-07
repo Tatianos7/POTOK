@@ -129,29 +129,39 @@ const RecipeDetails = () => {
         </div>
       </header>
 
-      <main className="px-2 sm:px-4 md:px-6 lg:px-8 py-4 space-y-4">
+      <main className="px-2 sm:px-4 md:px-6 lg:px-8 py-4 space-y-4 w-full max-w-full overflow-hidden">
         {/* Recipe Name and Weight Input */}
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{recipe.name}</h2>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600 dark:text-gray-400">Вес, г</span>
+        <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
+          <h2 className="text-base min-[376px]:text-lg font-semibold text-gray-900 dark:text-white break-words overflow-wrap-anywhere flex-1 min-w-0"
+            style={{ 
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
+              hyphens: 'auto'
+            }}
+          >
+            {recipe.name}
+          </h2>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">Вес, г</span>
             <input
               type="number"
               min={1}
               value={weight}
               onChange={(e) => setWeight(Math.max(1, Number(e.target.value) || 100))}
-              className="w-20 h-10 border border-gray-300 dark:border-gray-700 rounded-lg px-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-16 min-[376px]:w-20 h-8 min-[376px]:h-10 border border-gray-300 dark:border-gray-700 rounded-lg px-2 text-xs min-[376px]:text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+              style={{ boxSizing: 'border-box' }}
             />
           </div>
         </div>
 
         {/* Recipe Image */}
         {recipe.image && (
-          <div className="w-full h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+          <div className="w-full max-w-full h-32 min-[376px]:h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
             <img
               src={recipe.image}
               alt={recipe.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full max-w-full max-h-full object-cover"
+              style={{ maxWidth: '100%', height: 'auto' }}
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
@@ -161,41 +171,47 @@ const RecipeDetails = () => {
         )}
 
         {/* КБЖУ Cards */}
-        <div className="flex gap-3 overflow-x-auto justify-center">
-          <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Калории</div>
-            <div className="border-2 border-blue-400 rounded-xl py-3 px-3 text-center w-full">
-              <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.calories}</div>
+        <div className="grid grid-cols-2 gap-2 min-[376px]:flex min-[376px]:gap-3 min-[376px]:justify-center w-full max-w-full overflow-hidden">
+          <div className="flex-shrink-0 flex flex-col items-center min-w-0 flex-1 min-[376px]:flex-none min-[376px]:min-w-[80px]">
+            <div className="text-[10px] min-[376px]:text-xs text-gray-600 dark:text-gray-400 mb-1 min-[376px]:mb-2 text-center">Ккал</div>
+            <div className="border-2 border-blue-400 rounded-xl py-2 min-[376px]:py-3 px-2 min-[376px]:px-3 text-center w-full max-w-full" style={{ boxSizing: 'border-box' }}>
+              <div className="text-sm min-[376px]:text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.calories}</div>
             </div>
           </div>
-          <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Белки</div>
-            <div className="border-2 border-orange-400 rounded-xl py-3 px-3 text-center w-full">
-              <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.proteins}</div>
+          <div className="flex-shrink-0 flex flex-col items-center min-w-0 flex-1 min-[376px]:flex-none min-[376px]:min-w-[80px]">
+            <div className="text-[10px] min-[376px]:text-xs text-gray-600 dark:text-gray-400 mb-1 min-[376px]:mb-2 text-center">Белки</div>
+            <div className="border-2 border-orange-400 rounded-xl py-2 min-[376px]:py-3 px-2 min-[376px]:px-3 text-center w-full max-w-full" style={{ boxSizing: 'border-box' }}>
+              <div className="text-sm min-[376px]:text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.proteins}</div>
             </div>
           </div>
-          <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Жиры</div>
-            <div className="border-2 border-yellow-400 rounded-xl py-3 px-3 text-center w-full">
-              <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.fats}</div>
+          <div className="flex-shrink-0 flex flex-col items-center min-w-0 flex-1 min-[376px]:flex-none min-[376px]:min-w-[80px]">
+            <div className="text-[10px] min-[376px]:text-xs text-gray-600 dark:text-gray-400 mb-1 min-[376px]:mb-2 text-center">Жиры</div>
+            <div className="border-2 border-yellow-400 rounded-xl py-2 min-[376px]:py-3 px-2 min-[376px]:px-3 text-center w-full max-w-full" style={{ boxSizing: 'border-box' }}>
+              <div className="text-sm min-[376px]:text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.fats}</div>
             </div>
           </div>
-          <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-            <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Углеводы</div>
-            <div className="border-2 border-green-500 rounded-xl py-3 px-3 text-center w-full">
-              <div className="text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.carbs}</div>
+          <div className="flex-shrink-0 flex flex-col items-center min-w-0 flex-1 min-[376px]:flex-none min-[376px]:min-w-[80px]">
+            <div className="text-[10px] min-[376px]:text-xs text-gray-600 dark:text-gray-400 mb-1 min-[376px]:mb-2 text-center">Углеводы</div>
+            <div className="border-2 border-green-500 rounded-xl py-2 min-[376px]:py-3 px-2 min-[376px]:px-3 text-center w-full max-w-full" style={{ boxSizing: 'border-box' }}>
+              <div className="text-sm min-[376px]:text-lg font-semibold text-gray-900 dark:text-white">{calculatedMacros.carbs}</div>
             </div>
           </div>
         </div>
 
         {/* Ingredients List */}
         {recipe.ingredients && recipe.ingredients.length > 0 && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Состав:</h3>
-            <div className="grid grid-cols-2 gap-2 text-sm text-gray-800 dark:text-gray-200">
+          <div className="space-y-2 w-full max-w-full overflow-hidden">
+            <h3 className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white">Состав:</h3>
+            <div className="grid grid-cols-1 min-[376px]:grid-cols-2 gap-2 text-xs min-[376px]:text-sm text-gray-800 dark:text-gray-200 w-full max-w-full">
               {recipe.ingredients.map((ingredient, index) => (
-                <div key={index} className="flex items-start">
-                  <span className="flex-1">
+                <div key={index} className="flex items-start w-full max-w-full overflow-hidden">
+                  <span className="flex-1 break-words overflow-wrap-anywhere"
+                    style={{ 
+                      wordBreak: 'break-word',
+                      overflowWrap: 'anywhere',
+                      hyphens: 'auto'
+                    }}
+                  >
                     {ingredient.name} - {ingredient.quantity} {ingredient.unit}
                   </span>
                 </div>
@@ -206,18 +222,24 @@ const RecipeDetails = () => {
 
         {/* User Recipe Note - отображается после состава */}
         {recipeNote && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden">
             <div className="flex items-center gap-2 mb-2">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Заметка:</h3>
+              <h3 className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white">Заметка:</h3>
               <button
                 onClick={() => setIsNoteModalOpen(true)}
-                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
                 aria-label="Редактировать заметку"
               >
-                <Pencil className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                <Pencil className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4 text-gray-600 dark:text-gray-400" />
               </button>
             </div>
-            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+            <p className="text-xs min-[376px]:text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words overflow-wrap-anywhere"
+              style={{ 
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
+                hyphens: 'auto'
+              }}
+            >
               {recipeNote}
             </p>
           </div>
@@ -225,9 +247,15 @@ const RecipeDetails = () => {
 
         {/* Recipe Note/Instructions - отображается после заметки пользователя */}
         {recipe.instructions && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Инструкции:</h3>
-            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 w-full max-w-full overflow-hidden">
+            <h3 className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white mb-2">Инструкции:</h3>
+            <p className="text-xs min-[376px]:text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words overflow-wrap-anywhere"
+              style={{ 
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
+                hyphens: 'auto'
+              }}
+            >
               {recipe.instructions}
             </p>
           </div>
@@ -242,28 +270,28 @@ const RecipeDetails = () => {
         )}
 
         {/* Action Buttons (Add Note, Add Photo) */}
-        <div className="flex gap-4 pt-2">
+        <div className="flex flex-wrap gap-2 min-[376px]:gap-4 pt-2 w-full max-w-full overflow-hidden">
           {/* Кнопка "Добавить заметку" показывается только если заметки нет */}
           {!recipeNote && (
             <button 
               onClick={() => setIsNoteModalOpen(true)}
-              className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors"
+              className="flex items-center gap-1.5 min-[376px]:gap-2 text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors flex-shrink-0"
             >
-              <Pencil className="w-4 h-4" />
-              <span>ДОБАВИТЬ ЗАМЕТКУ</span>
+              <Pencil className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4" />
+              <span className="whitespace-nowrap">ДОБАВИТЬ ЗАМЕТКУ</span>
             </button>
           )}
           {/* Кнопка "Добавить фото" показывается только если фото нет */}
           {!recipe.image && (
-            <button className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <Camera className="w-4 h-4" />
-              <span>ДОБАВИТЬ ФОТО</span>
+            <button className="flex items-center gap-1.5 min-[376px]:gap-2 text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">
+              <Camera className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4" />
+              <span className="whitespace-nowrap">ДОБАВИТЬ ФОТО</span>
             </button>
           )}
         </div>
 
         {/* Bottom Action Buttons */}
-        <div className="space-y-3 pt-4 pb-8">
+        <div className="space-y-2 min-[376px]:space-y-3 pt-4 pb-8 w-full max-w-full overflow-hidden">
           <button
             onClick={() => {
               if (confirm('Вы уверены, что хотите удалить этот рецепт?')) {
@@ -273,15 +301,15 @@ const RecipeDetails = () => {
                 }
               }
             }}
-            className="w-full h-12 rounded border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            style={{ borderRadius: '12px' }}
+            className="w-full h-10 min-[376px]:h-12 rounded border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-xs min-[376px]:text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            style={{ borderRadius: '12px', boxSizing: 'border-box' }}
           >
             УДАЛИТЬ
           </button>
           <button
             onClick={handleAddToMenu}
-            className="w-full h-12 rounded border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            style={{ borderRadius: '12px' }}
+            className="w-full h-10 min-[376px]:h-12 rounded border-2 border-gray-800 dark:border-gray-300 text-gray-900 dark:text-white text-xs min-[376px]:text-sm font-semibold bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            style={{ borderRadius: '12px', boxSizing: 'border-box' }}
           >
             СОХРАНИТЬ В МЕНЮ
           </button>
@@ -290,8 +318,8 @@ const RecipeDetails = () => {
               // TODO: Редактирование рецепта
               alert('Редактирование рецепта будет доступно позже');
             }}
-            className="w-full h-12 rounded bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 text-sm font-semibold hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors"
-            style={{ borderRadius: '12px' }}
+            className="w-full h-10 min-[376px]:h-12 rounded bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 text-xs min-[376px]:text-sm font-semibold hover:bg-gray-700 dark:hover:bg-gray-300 transition-colors"
+            style={{ borderRadius: '12px', boxSizing: 'border-box' }}
           >
             СОХРАНИТЬ
           </button>
