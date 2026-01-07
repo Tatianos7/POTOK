@@ -44,19 +44,19 @@ const Dashboard = () => {
   const displayName = user?.profile?.firstName || user?.name || 'Пользователь';
 
   return (
-    <div className="min-h-screen bg-white" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto relative">
+    <div className="min-h-screen bg-white w-full min-w-[320px]">
+      <div className="container-responsive">
         {/* Header */}
-        <header className="px-4 py-4 flex items-center justify-center relative border-b border-gray-200">
-          <h1 className="text-lg font-semibold text-gray-900">
+        <header className="py-4 flex items-center justify-center relative border-b border-gray-200">
+          <h1 className="text-base mobile-lg:text-lg font-semibold text-gray-900">
             Привет, {displayName}
           </h1>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="absolute right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="absolute right-0 p-2 hover:bg-gray-100 rounded-lg transition-colors"
             aria-label="Меню"
           >
-            <MenuIcon className="w-6 h-6 text-gray-700" />
+            <MenuIcon className="w-5 h-5 mobile-lg:w-6 mobile-lg:h-6 text-gray-700" />
           </button>
         </header>
 
@@ -69,21 +69,21 @@ const Dashboard = () => {
         />
 
         {/* Main Content */}
-      <main className="px-4 py-6">
-        <div className="space-y-3">
+        <main className="py-4 tablet:py-6">
+          <div className="space-y-3">
             {FEATURE_CARDS.map((card) => {
               const IconComponent = ICON_MAP[card.icon];
               return (
-            <FeatureCard
+                <FeatureCard
                   key={card.id}
                   card={card}
                   icon={IconComponent}
                   hasPremium={user?.hasPremium || false}
-            />
+                />
               );
             })}
-        </div>
-      </main>
+          </div>
+        </main>
       </div>
     </div>
   );

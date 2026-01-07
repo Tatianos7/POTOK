@@ -816,7 +816,7 @@ const FoodDiary = () => {
 
     return (
       <div className="border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 overflow-visible">
-        <div className="relative flex items-center px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div className="relative flex items-center py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center mr-3">
             <meal.icon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
           </div>
@@ -828,7 +828,7 @@ const FoodDiary = () => {
               </h3>
               {mealEntries.length > 0 && (
                 <span className="text-xs text-gray-600 dark:text-gray-400 ml-2">
-                  {Math.round(mealTotals.calories)} калорий
+                  {Math.round(mealTotals.calories)}
                 </span>
               )}
             </div>
@@ -921,7 +921,7 @@ const FoodDiary = () => {
               ref={menuRef}
               className="absolute bottom-full right-0 mb-2 z-40"
             >
-              <div className="flex items-center gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-3 shadow-lg">
+              <div className="flex items-center gap-2 mobile-lg:gap-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl py-3 shadow-lg">
                 <button
                   onClick={() => {
                     setMenuOpen(false);
@@ -973,7 +973,7 @@ const FoodDiary = () => {
               isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
             }`}
           >
-            <div className="px-4 pb-3 pt-2 space-y-2">
+            <div className="pb-3 pt-2 space-y-2">
               {mealEntries.map((entry) => {
                 const isEaten = eatenEntries[entry.id] || false;
                 return (
@@ -1034,10 +1034,10 @@ const FoodDiary = () => {
 
   return (
     <>
-    <div className="bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto min-h-screen">
+    <div className="bg-white dark:bg-gray-900 w-full min-w-[320px]">
+      <div className="container-responsive min-h-screen">
         {/* Header */}
-        <header className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+        <header className="py-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-3">
             <div className="flex-1"></div>
             <h1 className="text-lg font-semibold text-gray-900 dark:text-white uppercase flex-1 text-center whitespace-nowrap">
@@ -1091,7 +1091,7 @@ const FoodDiary = () => {
           </div>
         </header>
 
-        <main className="px-4 py-6">
+        <main className="py-4 tablet:py-6">
           {/* Loading indicator */}
           {isLoading && (
             <div className="flex items-center justify-center py-8">
@@ -1102,19 +1102,19 @@ const FoodDiary = () => {
           
           {/* Date Selection Bar */}
           {!isLoading && (
-          <div className="flex items-center justify-center gap-2 mb-6 overflow-x-auto pb-2">
+          <div className="grid grid-cols-7 gap-1 mb-6 w-full">
             {dates.map((date) => (
               <button
                 key={date.date}
                 onClick={() => setSelectedDate(date.date)}
-                className={`flex flex-col items-center justify-center min-w-[46px] h-[60px] rounded-full transition-colors ${
+                className={`flex flex-col items-center justify-center h-[54px] w-full rounded-full transition-colors ${
                   selectedDate === date.date
                     ? 'bg-green-500 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
                 }`}
               >
-                <span className="text-sm font-medium">{date.day}</span>
-                <span className={`text-xs ${selectedDate === date.date ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                <span className="text-[13px] font-semibold leading-tight">{date.day}</span>
+                <span className={`text-[11px] leading-tight ${selectedDate === date.date ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
                   {date.weekday}
                 </span>
               </button>
@@ -1125,33 +1125,33 @@ const FoodDiary = () => {
           {/* Eaten Nutrients Summary */}
           {!isLoading && (
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase">
-                СЪЕДЕНО
+            <div className="flex flex-col min-[376px]:flex-row min-[376px]:items-center min-[376px]:justify-between mb-3">
+              <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-2 min-[376px]:mb-0">
+                УПОТРЕБЛЕНО
               </h2>
-              <div className="flex gap-4">
-                <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Белки</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+              <div className="flex gap-1 sm:gap-2 md:gap-3">
+                <div className="text-center min-w-0 flex-1">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Белки</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
                     {Math.round(dayTotals.protein)}г
                   </p>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Жиры</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                <div className="text-center min-w-0 flex-1">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Жиры</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
                     {Math.round(dayTotals.fat)}г
                   </p>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Углеводы</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                <div className="text-center min-w-0 flex-1">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Углеводы</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
                     {Math.round(dayTotals.carbs)}г
                   </p>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Калории</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                    {Math.round(dayTotals.calories)} ккал
+                <div className="text-center min-w-0 flex-1">
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Калории</p>
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
+                    {Math.round(dayTotals.calories)}
                   </p>
                 </div>
               </div>
@@ -1194,13 +1194,13 @@ const FoodDiary = () => {
 
           {/* Remaining Nutrients Summary */}
           {!isLoading && (
-          <div className="mb-6 p-4 rounded-lg bg-white dark:bg-gray-900">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-medium uppercase text-gray-900 dark:text-white">
+          <div className="mb-6 rounded-lg bg-white dark:bg-gray-900">
+            <div className="flex flex-col min-[376px]:flex-row min-[376px]:items-center min-[376px]:justify-between mb-3">
+              <h2 className="text-sm font-medium uppercase text-gray-900 dark:text-white mb-2 min-[376px]:mb-0">
                 ОСТАЛОСЬ
               </h2>
-              <div className="flex gap-4">
-                <div className="text-center">
+              <div className="flex gap-1 sm:gap-2 md:gap-3">
+                <div className="text-center min-w-0 flex-1">
                   <p className={`text-xs mb-1 ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Белки</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overProtein > 0 ? Math.round(consumedProtein) : remainingProtein} г
@@ -1211,7 +1211,7 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-center">
+                <div className="text-center min-w-0 flex-1">
                   <p className={`text-xs mb-1 ${hasOverConsumption && overFat > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Жиры</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overFat > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overFat > 0 ? Math.round(consumedFat) : remainingFat} г
@@ -1222,7 +1222,7 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-center">
+                <div className="text-center min-w-0 flex-1">
                   <p className={`text-xs mb-1 ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Углеводы</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overCarbs > 0 ? Math.round(consumedCarbs) : remainingCarbs} г
@@ -1233,14 +1233,14 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-center">
+                <div className="text-center min-w-0 flex-1">
                   <p className={`text-xs mb-1 ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Калории</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overCalories > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
-                    {overCalories > 0 ? Math.round(consumedCalories) : remainingCalories} ккал
+                    {overCalories > 0 ? Math.round(consumedCalories) : remainingCalories}
                   </p>
                   {overCalories > 0 && (
                     <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
-                      +{overCalories} ккал
+                      +{overCalories}
                     </p>
                   )}
                 </div>
@@ -1252,28 +1252,26 @@ const FoodDiary = () => {
           {/* Water Intake Tracker */}
           {!isLoading && (
           <div className="mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-1">
-                  ВОДА
-                </h2>
-                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                         {dailyMeals?.water || 0} ст. · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
-                       </p>
-              </div>
-              <div className="flex gap-1">
-                {Array.from({ length: 10 }).map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleWaterClick(index)}
-                    className={`w-6 h-8 border-2 rounded-b-full transition-colors ${
-                      index < (dailyMeals?.water || 0)
-                        ? 'border-blue-500 bg-blue-500'
-                        : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  ></button>
-                ))}
-              </div>
+            <div className="mb-3">
+              <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-1">
+                ВОДА
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {dailyMeals?.water || 0} ст. · {(((dailyMeals?.water || 0) * 0.3)).toFixed(1)} л
+              </p>
+            </div>
+            <div className="flex gap-1">
+              {Array.from({ length: 10 }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleWaterClick(index)}
+                  className={`w-6 h-8 border-2 rounded-b-full transition-colors ${
+                    index < (dailyMeals?.water || 0)
+                      ? 'border-blue-500 bg-blue-500'
+                      : 'border-gray-300 dark:border-gray-600'
+                  }`}
+                ></button>
+              ))}
             </div>
           </div>
           )}
@@ -1281,8 +1279,9 @@ const FoodDiary = () => {
       </div>
 
       {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-4 py-3">
-          <div className="max-w-[1024px] mx-auto flex items-center justify-between gap-3">
+      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3">
+        <div className="container-responsive">
+          <div className="flex items-center justify-between gap-2 mobile-lg:gap-3">
             <button
               onClick={() => setIsBarcodeModalOpen(true)}
               className="p-2 hover:bg-gray-100 dark:hover-bg-gray-800 rounded-lg transition-colors"
@@ -1307,6 +1306,7 @@ const FoodDiary = () => {
 
       {/* Spacer for bottom bar */}
       <div className="h-20"></div>
+      </div>
     </div>
 
       {/* Modals */}

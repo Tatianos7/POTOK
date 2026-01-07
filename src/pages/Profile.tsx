@@ -112,10 +112,10 @@ const Profile = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white" style={{ minWidth: '360px' }}>
-      <div className="max-w-[1024px] mx-auto">
+    <div className="min-h-screen bg-white w-full min-w-[320px]">
+      <div className="container-responsive">
         {/* Header */}
-        <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200">
+        <header className="py-4 flex items-center justify-between border-b border-gray-200">
           <div className="flex-1"></div>
           <h1 className="text-lg font-semibold text-gray-900 flex-1 text-center">
             Профиль
@@ -132,7 +132,7 @@ const Profile = () => {
         </header>
 
         {/* Profile Content */}
-        <main className="px-4 py-6">
+        <main className="py-4 tablet:py-6">
           {/* Profile Info */}
           <div className="flex items-start gap-4 mb-6">
             {/* Avatar */}

@@ -132,15 +132,15 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-3 mobile-lg:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-[90vw] mobile-lg:max-w-md max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 mobile-lg:px-6 py-3 mobile-lg:py-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Добавить продукт
           </h2>
@@ -153,7 +153,7 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
         </div>
 
         {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="p-4 mobile-lg:p-6 space-y-4 mobile-lg:space-y-6">
           {/* Food Info */}
           <div className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
             {food.photo && (

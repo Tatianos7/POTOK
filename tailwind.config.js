@@ -26,7 +26,10 @@ export default {
         },
       },
       screens: {
-        'mobile': '360px',
+        'mobile': '320px',
+        'mobile-lg': '480px',
+        'tablet': '768px',
+        'desktop': '1024px',
       },
     },
   },

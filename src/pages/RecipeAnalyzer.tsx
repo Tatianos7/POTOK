@@ -113,7 +113,7 @@ const RecipeAnalyzer = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="px-4 pt-4 pb-3 flex items-center justify-between">
+      <header className="px-2 sm:px-4 md:px-6 lg:px-8 pt-4 pb-3 flex items-center justify-between">
         <div className="w-6" />
         <h1 className="text-xs font-semibold text-gray-900 uppercase">Анализатор рецепта</h1>
         <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-gray-100">
@@ -121,7 +121,7 @@ const RecipeAnalyzer = () => {
         </button>
       </header>
 
-      <main className="px-4 pb-10 space-y-4">
+      <main className="px-2 sm:px-4 md:px-6 lg:px-8 pb-10 space-y-4">
         <div className="space-y-1">
           <label className="text-xs text-gray-700">Название рецепта</label>
           <input

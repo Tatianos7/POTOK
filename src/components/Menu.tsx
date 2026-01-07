@@ -106,7 +106,7 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
       
       {/* Menu Sidebar */}
       <div
-        className={`fixed right-0 top-0 h-full w-full max-w-sm bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 h-full w-full mobile-lg:max-w-sm bg-white shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         onClick={(e) => e.stopPropagation()}
@@ -132,7 +132,7 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
             <button
               key={item.id}
               onClick={() => handleMenuItemClick(item.id)}
-              className={`w-full py-3 px-4 rounded-lg text-center font-semibold text-sm uppercase transition-colors ${
+              className={`w-full min-h-[44px] py-3 px-4 rounded-lg text-center font-semibold text-sm uppercase transition-colors ${
                 item.isActive
                   ? 'bg-gray-900 text-white'
                   : 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50'
