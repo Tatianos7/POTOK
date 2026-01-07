@@ -43,7 +43,7 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
         >
           {getFoodDisplayName(food)}
         </h3>
-        <div className="flex items-center gap-1 min-[376px]:gap-1.5 flex-wrap mt-1">
+        <div className="grid grid-cols-2 mobile-lg:flex mobile-lg:items-center gap-1 min-[376px]:gap-1.5 mobile-lg:flex-wrap mt-1 w-full max-w-full">
           <span className="text-[10px] min-[376px]:text-xs text-gray-600 dark:text-gray-300 shrink-0">
             {Math.round(food.calories || 0)}
           </span>

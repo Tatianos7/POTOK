@@ -173,11 +173,12 @@ const EditMealEntryModal = ({
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-[90vw] mobile-lg:max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-[calc(100vw-24px)] mobile-lg:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden"
         onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 'calc(100vw - 24px)', boxSizing: 'border-box' }}
       >
         {/* Header */}
-        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 mobile-lg:px-6 py-3 mobile-lg:py-4 flex items-center justify-between w-full max-w-full overflow-hidden">
           <div className="flex-1">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white text-center">
               {mealTypeNames[mealType]}
@@ -197,63 +198,67 @@ const EditMealEntryModal = ({
         {/* Content */}
         <div className="p-6 space-y-6">
           {/* Food Name and Weight Input */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <p className="text-base font-medium text-gray-900 dark:text-white">
+          <div className="flex flex-col mobile-lg:flex-row items-start mobile-lg:items-center justify-between gap-3 mobile-lg:gap-4 w-full max-w-full overflow-hidden">
+            <div className="flex-1 min-w-0 w-full mobile-lg:w-auto">
+              <p 
+                className="text-base font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere"
+                style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+              >
                 {getFoodDisplayName(entry.food)}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500 dark:text-gray-400">Вес, г</span>
+            <div className="flex items-center gap-2 flex-shrink-0 w-full mobile-lg:w-auto">
+              <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Вес, г</span>
               <input
                 type="number"
                 value={weight}
                 onChange={(e) => handleWeightChange(e.target.value)}
                 min="0"
                 step="1"
-                className="w-20 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 text-center"
+                className="w-20 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 text-center flex-shrink-0"
                 placeholder="150"
+                style={{ boxSizing: 'border-box' }}
               />
             </div>
           </div>
 
           {/* Nutritional Information Cards */}
-          <div className="flex gap-3 overflow-x-auto justify-center">
+          <div className="grid grid-cols-2 gap-2 mobile-lg:gap-3 w-full max-w-full overflow-hidden">
             {/* Калории */}
-            <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Калории</div>
-              <div className="border-2 border-blue-400 rounded-xl py-3 px-3 text-center w-full">
-                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="flex flex-col items-center w-full max-w-full overflow-hidden">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">Калории</div>
+              <div className="border-2 border-blue-400 rounded-xl py-2 mobile-lg:py-3 px-2 mobile-lg:px-3 text-center w-full max-w-full">
+                <div className="text-base mobile-lg:text-lg font-semibold text-gray-900 dark:text-white">
                   {Math.round(calculated.calories)}
                 </div>
               </div>
             </div>
 
             {/* Белки */}
-            <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Белки</div>
-              <div className="border-2 border-orange-400 rounded-xl py-3 px-3 text-center w-full">
-                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="flex flex-col items-center w-full max-w-full overflow-hidden">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">Белки</div>
+              <div className="border-2 border-orange-400 rounded-xl py-2 mobile-lg:py-3 px-2 mobile-lg:px-3 text-center w-full max-w-full">
+                <div className="text-base mobile-lg:text-lg font-semibold text-gray-900 dark:text-white">
                   {Math.round(calculated.protein)}
                 </div>
               </div>
             </div>
 
             {/* Жиры */}
-            <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Жиры</div>
-              <div className="border-2 border-yellow-400 rounded-xl py-3 px-3 text-center w-full">
-                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="flex flex-col items-center w-full max-w-full overflow-hidden">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">Жиры</div>
+              <div className="border-2 border-yellow-400 rounded-xl py-2 mobile-lg:py-3 px-2 mobile-lg:px-3 text-center w-full max-w-full">
+                <div className="text-base mobile-lg:text-lg font-semibold text-gray-900 dark:text-white">
                   {Math.round(calculated.fat)}
                 </div>
               </div>
             </div>
 
             {/* Углеводы */}
-            <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Углеводы</div>
-              <div className="border-2 border-green-500 rounded-xl py-3 px-3 text-center w-full">
-                <div className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="flex flex-col items-center w-full max-w-full overflow-hidden">
+              <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">Углеводы</div>
+              <div className="border-2 border-green-500 rounded-xl py-2 mobile-lg:py-3 px-2 mobile-lg:px-3 text-center w-full max-w-full">
+                <div className="text-base mobile-lg:text-lg font-semibold text-gray-900 dark:text-white">
                   {Math.round(calculated.carbs)}
                 </div>
               </div>

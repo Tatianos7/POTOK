@@ -979,22 +979,25 @@ const FoodDiary = () => {
                 return (
                   <div
                     key={entry.id}
-                    className="flex items-center gap-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded transition-colors"
+                    className="flex items-start gap-2 mobile-lg:gap-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/50 rounded transition-colors w-full max-w-full overflow-hidden"
                   >
                     <div 
-                      className="flex-1 min-w-0 cursor-pointer"
+                      className="flex-1 min-w-0 max-w-full cursor-pointer overflow-hidden"
                       onClick={() => handleEntryClick(entry, mealType)}
                     >
-                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 flex items-center gap-1">
-                        <span className="truncate">{getFoodDisplayName(entry.food)}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                      <p 
+                        className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 flex flex-wrap items-center gap-1 break-words overflow-wrap-anywhere"
+                        style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+                      >
+                        <span>{getFoodDisplayName(entry.food)}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                           ({Math.round(Number(entry.weight) || 0)} г)
                         </span>
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                        <span>{entry.protein.toFixed(2).replace('.', ',')}</span>
-                        <span>{entry.fat.toFixed(2).replace('.', ',')}</span>
-                        <span>{entry.carbs.toFixed(0)}</span>
+                      <div className="flex items-center gap-1.5 mobile-lg:gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                        <span className="shrink-0">{entry.protein.toFixed(2).replace('.', ',')}</span>
+                        <span className="shrink-0">{entry.fat.toFixed(2).replace('.', ',')}</span>
+                        <span className="shrink-0">{entry.carbs.toFixed(0)}</span>
                       </div>
                       {/* Отображение заметки под продуктом */}
                       {entry.note && (
@@ -1019,7 +1022,7 @@ const FoodDiary = () => {
                       {isEaten && <Check className="w-3 h-3 text-white" />}
                     </button>
 
-                    <div className="flex-shrink-0 text-sm font-medium text-gray-900 dark:text-white w-12 text-right">
+                    <div className="flex-shrink-0 text-sm font-medium text-gray-900 dark:text-white w-10 mobile-lg:w-12 text-right">
                       {Math.round(entry.calories)}
                     </div>
                   </div>

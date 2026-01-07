@@ -136,8 +136,9 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-[90vw] mobile-lg:max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-[calc(100vw-24px)] mobile-lg:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden"
         onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 'calc(100vw - 24px)', boxSizing: 'border-box' }}
       >
         {/* Header */}
         <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 mobile-lg:px-6 py-3 mobile-lg:py-4 flex items-center justify-between">
@@ -155,20 +156,24 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
         {/* Content */}
         <form onSubmit={handleSubmit} className="p-4 mobile-lg:p-6 space-y-4 mobile-lg:space-y-6">
           {/* Food Info */}
-          <div className="flex items-center gap-4 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div className="flex items-start gap-3 mobile-lg:gap-4 p-3 mobile-lg:p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 overflow-hidden">
             {food.photo && (
               <img
                 src={food.photo}
                 alt={food.name}
-                className="w-16 h-16 rounded-lg object-cover"
+                className="w-12 h-12 mobile-lg:w-16 mobile-lg:h-16 rounded-lg object-cover flex-shrink-0"
+                style={{ maxWidth: '100%', height: 'auto' }}
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                 }}
               />
             )}
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+            <div className="flex-1 min-w-0 overflow-hidden">
+              <h3 
+                className="text-sm font-semibold text-gray-900 dark:text-white break-words overflow-wrap-anywhere"
+                style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
+              >
                 {getFoodDisplayName(food)}
               </h3>
               <p className="text-xs text-gray-600 dark:text-gray-300 mt-1">
@@ -178,11 +183,11 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
           </div>
 
           {/* Quantity Input */}
-          <div>
+          <div className="w-full max-w-full overflow-hidden">
             <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
               Количество
             </label>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full max-w-full">
               <input
                 type="number"
                 value={quantity}
@@ -194,14 +199,16 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
                 }}
                 min="0"
                 step={unit === 'pcs' ? '1' : '1'}
-                className="flex-1 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="flex-1 min-w-0 px-3 mobile-lg:px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 max-w-full"
                 placeholder="100"
                 required
+                style={{ boxSizing: 'border-box' }}
               />
               <select
                 value={unit}
                 onChange={(e) => setUnit(e.target.value as Unit)}
-                className="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="px-3 mobile-lg:px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 flex-shrink-0"
+                style={{ boxSizing: 'border-box' }}
               >
                 <option value="g">г</option>
                 <option value="ml">мл</option>
@@ -248,39 +255,39 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
           </div>
 
           {/* Calculated Nutrients */}
-          <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20">
+          <div className="p-3 mobile-lg:p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20 w-full max-w-full overflow-hidden">
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
               Пищевая ценность:
             </h4>
-            <div className="flex gap-3 overflow-x-auto justify-center">
-              <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Калории</div>
-                <div className="border-2 border-blue-400 rounded-xl py-3 px-3 text-center w-full">
-                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="grid grid-cols-2 gap-2 mobile-lg:gap-3 w-full max-w-full">
+              <div className="flex flex-col items-center w-full max-w-full overflow-hidden">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">Калории</div>
+                <div className="border-2 border-blue-400 rounded-xl py-2 mobile-lg:py-3 px-2 mobile-lg:px-3 text-center w-full max-w-full">
+                  <div className="text-base mobile-lg:text-lg font-semibold text-gray-900 dark:text-white">
                     {Math.round(calculated.calories)}
                   </div>
                 </div>
               </div>
-              <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Белки</div>
-                <div className="border-2 border-orange-400 rounded-xl py-3 px-3 text-center w-full">
-                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+              <div className="flex flex-col items-center w-full max-w-full overflow-hidden">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">Белки</div>
+                <div className="border-2 border-orange-400 rounded-xl py-2 mobile-lg:py-3 px-2 mobile-lg:px-3 text-center w-full max-w-full">
+                  <div className="text-base mobile-lg:text-lg font-semibold text-gray-900 dark:text-white">
                     {calculated.protein.toFixed(1)}
                   </div>
                 </div>
               </div>
-              <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Жиры</div>
-                <div className="border-2 border-yellow-400 rounded-xl py-3 px-3 text-center w-full">
-                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+              <div className="flex flex-col items-center w-full max-w-full overflow-hidden">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">Жиры</div>
+                <div className="border-2 border-yellow-400 rounded-xl py-2 mobile-lg:py-3 px-2 mobile-lg:px-3 text-center w-full max-w-full">
+                  <div className="text-base mobile-lg:text-lg font-semibold text-gray-900 dark:text-white">
                     {calculated.fat.toFixed(1)}
                   </div>
                 </div>
               </div>
-              <div className="flex-shrink-0 flex flex-col items-center min-w-[80px]">
-                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">Углеводы</div>
-                <div className="border-2 border-green-500 rounded-xl py-3 px-3 text-center w-full">
-                  <div className="text-lg font-semibold text-gray-900 dark:text-white">
+              <div className="flex flex-col items-center w-full max-w-full overflow-hidden">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 text-center">Углеводы</div>
+                <div className="border-2 border-green-500 rounded-xl py-2 mobile-lg:py-3 px-2 mobile-lg:px-3 text-center w-full max-w-full">
+                  <div className="text-base mobile-lg:text-lg font-semibold text-gray-900 dark:text-white">
                     {calculated.carbs.toFixed(1)}
                   </div>
                 </div>
@@ -289,18 +296,18 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-3">
+          <div className="flex gap-2 mobile-lg:gap-3 w-full max-w-full">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="flex-1 min-w-0 py-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={!quantity || parseFloat(quantity) <= 0}
-              className="flex-1 py-3 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 min-w-0 py-3 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Добавить
             </button>

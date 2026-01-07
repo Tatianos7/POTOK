@@ -22,6 +22,8 @@
   html {
     width: 100%;
     min-width: 320px;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   * {
@@ -39,12 +41,16 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   #root {
     @apply min-h-screen w-full;
     min-width: 320px;
     width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
   
   /* Единая система контейнеров */
