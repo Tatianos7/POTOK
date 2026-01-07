@@ -335,7 +335,7 @@ const Measurements = () => {
             <div className="flex-1 flex justify-end">
               <button
                 onClick={handleClose}
-                className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
                 aria-label="Закрыть"
               >
                 <X className="w-6 h-6 min-[376px]:w-7 min-[376px]:h-7 text-gray-700 dark:text-gray-300" />
