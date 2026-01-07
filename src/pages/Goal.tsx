@@ -212,15 +212,9 @@ const Goal = () => {
         <main className="flex-1 overflow-y-auto min-h-0 px-2 min-[376px]:px-4 py-4 min-[376px]:py-6 w-full max-w-full overflow-hidden">
           {/* Goal Summary Section */}
           <div className="space-y-3 min-[376px]:space-y-4 mb-4 min-[376px]:mb-6 w-full max-w-full overflow-hidden">
-            <div className="flex items-center gap-2 w-full max-w-full overflow-hidden">
+            <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
               <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Цель:</p>
-              <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere flex-1 min-w-0"
-                style={{ 
-                  wordBreak: 'break-word',
-                  overflowWrap: 'anywhere',
-                  hyphens: 'auto'
-                }}
-              >
+              <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
                 {goalData.goalType || '-'}
               </p>
             </div>
