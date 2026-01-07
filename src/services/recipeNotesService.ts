@@ -36,7 +36,8 @@ class RecipeNotesService {
         .limit(1);
 
       if (error) {
-        if (error.code === 'PGRST205') {
+        // PGRST205 = table not found, 404 = Not Found
+        if (error.code === 'PGRST205' || error.code === 'PGRST204' || error.message?.includes('404')) {
           // Таблица не найдена
           tableExistsCache = false;
           return false;
