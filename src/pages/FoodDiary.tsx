@@ -1127,36 +1127,36 @@ const FoodDiary = () => {
 
           {/* Eaten Nutrients Summary */}
           {!isLoading && (
-          <div className="mb-6">
+          <div className="mb-6 w-full">
             <div className="flex flex-col min-[376px]:flex-row min-[376px]:items-center min-[376px]:justify-between mb-3">
               <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-2 min-[376px]:mb-0">
                 УПОТРЕБЛЕНО
               </h2>
-              <div className="flex justify-between w-full" style={{ gap: '5px' }}>
-                <div className="text-center flex-1" style={{ padding: '0 5px' }}>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Белки</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
-                    {Math.round(dayTotals.protein)}г
-                  </p>
-                </div>
-                <div className="text-center flex-1" style={{ padding: '0 5px' }}>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Жиры</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
-                    {Math.round(dayTotals.fat)}г
-                  </p>
-                </div>
-                <div className="text-center flex-1" style={{ padding: '0 5px' }}>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Углеводы</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
-                    {Math.round(dayTotals.carbs)}г
-                  </p>
-                </div>
-                <div className="text-center flex-1" style={{ padding: '0 5px' }}>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Ккал</p>
-                  <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
-                    {Math.round(dayTotals.calories)}
-                  </p>
-                </div>
+            </div>
+            <div className="flex justify-between w-full" style={{ gap: '5px' }}>
+              <div className="text-center flex-1" style={{ padding: '0 5px' }}>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Белки</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
+                  {Math.round(dayTotals.protein)}г
+                </p>
+              </div>
+              <div className="text-center flex-1" style={{ padding: '0 5px' }}>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Жиры</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
+                  {Math.round(dayTotals.fat)}г
+                </p>
+              </div>
+              <div className="text-center flex-1" style={{ padding: '0 5px' }}>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Углеводы</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
+                  {Math.round(dayTotals.carbs)}г
+                </p>
+              </div>
+              <div className="text-center flex-1" style={{ padding: '0 5px' }}>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1 leading-tight">Ккал</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
+                  {Math.round(dayTotals.calories)}
+                </p>
               </div>
             </div>
           </div>
@@ -1197,12 +1197,13 @@ const FoodDiary = () => {
 
           {/* Remaining Nutrients Summary */}
           {!isLoading && (
-          <div className="mb-6 rounded-lg bg-white dark:bg-gray-900">
+          <div className="mb-6 rounded-lg bg-white dark:bg-gray-900 w-full">
             <div className="flex flex-col min-[376px]:flex-row min-[376px]:items-center min-[376px]:justify-between mb-3">
               <h2 className="text-sm font-medium uppercase text-gray-900 dark:text-white mb-2 min-[376px]:mb-0">
                 ОСТАЛОСЬ
               </h2>
-              <div className="flex justify-between w-full" style={{ gap: '5px' }}>
+            </div>
+            <div className="flex justify-between w-full" style={{ gap: '5px' }}>
                 <div className="text-center flex-1" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
                   <p className={`text-xs mb-1 ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Белки</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overProtein > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
