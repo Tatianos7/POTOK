@@ -1225,7 +1225,7 @@ const FoodDiary = () => {
                     </p>
                   )}
                 </div>
-                <div className="text-center min-w-0 flex-1" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
+                <div className="text-center" style={{ paddingLeft: '5px', paddingRight: '5px' }}>
                   <p className={`text-xs mb-1 ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>Углеводы</p>
                   <p className={`text-sm font-semibold ${hasOverConsumption && overCarbs > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
                     {overCarbs > 0 ? Math.round(consumedCarbs) : remainingCarbs} г
