@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import CreateGoalModal, { GoalFormData } from '../components/CreateGoalModal';
 import EditGoalModal from '../components/EditGoalModal';
 import { goalService } from '../services/goalService';
+import AiAdviceBlock from '../components/AiAdviceBlock';
 
 interface GoalData {
   goalType: string;
@@ -288,6 +289,9 @@ const Goal = () => {
               </div>
             </div>
           </div>
+
+          {/* AI Advice Block */}
+          <AiAdviceBlock />
 
           {/* Action Buttons */}
           <div className="pt-4 min-[376px]:pt-6 pb-4 min-[376px]:pb-6 w-full max-w-full overflow-hidden">

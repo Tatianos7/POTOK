@@ -21,6 +21,8 @@ import RecipeDetails from './pages/RecipeDetails';
 import CreateCustomProductPage from './pages/CreateCustomProductPage';
 import CreateBrandProductPage from './pages/CreateBrandProductPage';
 import Habits from './pages/Habits';
+import Workouts from './pages/Workouts';
+import ImportExercises from './pages/ImportExercises';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function AppRoutes() {
@@ -189,6 +191,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Habits />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/workouts"
+        element={
+          <ProtectedRoute>
+            <Workouts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/import-exercises"
+        element={
+          <ProtectedRoute>
+            <ImportExercises />
           </ProtectedRoute>
         }
       />

@@ -261,8 +261,14 @@ const GoalResult = () => {
     // Save additional goal data to localStorage (goalType, dates, etc.)
     const goalData = {
       goalType: goalTypeMap[formData.goal] || formData.goal,
+      gender: formData.gender, // Сохраняем пол
+      age: formData.age, // Сохраняем возраст
+      weight: formData.weight, // Сохраняем вес
       currentWeight: formData.weight, // Сохраняем текущий вес
+      height: formData.height, // Сохраняем рост
+      lifestyle: formData.lifestyle, // Сохраняем образ жизни
       targetWeight: formData.targetWeight || formData.weight,
+      intensity: formData.intensity, // Сохраняем интенсивность
       startDate: startDate,
       endDate: endDate, // Сохраняем дату окончания
       monthsToGoal: result.monthsToGoal, // Сохраняем месяцы до цели
