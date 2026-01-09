@@ -34,10 +34,7 @@ export async function generateAdvice(data: UserGoalData): Promise<AiAdviceRespon
  * Заглушка для генерации рекомендаций по питанию
  * В будущем будет заменена на вызов AI API
  */
-function generateNutritionStub(data: UserGoalData, prompt: string): string {
-  const goalLabel = 
-    data.goal === 'lose' ? 'похудение' :
-    data.goal === 'gain' ? 'набор массы' : 'поддержание формы';
+function generateNutritionStub(data: UserGoalData, _prompt: string): string {
 
   let advice = `Персональные рекомендации по питанию для ${data.gender === 'male' ? 'мужчины' : 'женщины'} ${data.age} лет, вес ${data.weight} кг.\n\n`;
 
@@ -130,10 +127,7 @@ function generateNutritionStub(data: UserGoalData, prompt: string): string {
  * Заглушка для генерации рекомендаций по тренировкам
  * В будущем будет заменена на вызов AI API
  */
-function generateTrainingStub(data: UserGoalData, prompt: string): string {
-  const goalLabel = 
-    data.goal === 'lose' ? 'похудение' :
-    data.goal === 'gain' ? 'набор массы' : 'поддержание формы';
+function generateTrainingStub(data: UserGoalData, _prompt: string): string {
 
   let advice = `Персональные рекомендации по тренировкам для ${data.gender === 'male' ? 'мужчины' : 'женщины'} ${data.age} лет.\n\n`;
 

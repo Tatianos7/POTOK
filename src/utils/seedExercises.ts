@@ -5,7 +5,6 @@
 
 import { supabase } from '../lib/supabaseClient';
 import { exercisesSeed } from '../data/exercisesSeed';
-import { toUUID } from './uuid';
 
 interface CategoryCache {
   [key: string]: string;

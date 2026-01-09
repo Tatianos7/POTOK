@@ -89,7 +89,7 @@ export function useAiAdvice(): UseAiAdviceReturn {
           age: parseInt(goalData.age) || userProfile?.age || 25,
           weight: parseFloat(goalData.currentWeight) || parseFloat(goalData.weight) || 70,
           height: parseFloat(goalData.height) || userProfile?.height || 170,
-          gender: (goalData.gender as 'male' | 'female') || (userProfile?.gender as 'male' | 'female') || 'female',
+          gender: (goalData.gender as 'male' | 'female') || ((userProfile as any)?.gender as 'male' | 'female') || 'female',
           activityLevel,
           targetWeight: goalData.targetWeight ? parseFloat(goalData.targetWeight) : undefined,
           intensity: goalData.intensity ? parseInt(goalData.intensity) : undefined,
