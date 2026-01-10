@@ -234,16 +234,16 @@ const SelectedExercisesEditor = ({
           <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex gap-3 flex-shrink-0">
             <button
               onClick={onClose}
-              className="flex-1 py-3 px-4 rounded-xl font-semibold text-sm uppercase bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              className="flex-1 py-3 min-[376px]:py-4 px-4 rounded-xl font-semibold text-sm min-[376px]:text-base uppercase bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
               Отмена
             </button>
             <button
               onClick={handleSave}
               disabled={editedExercises.length === 0}
-              className="flex-1 py-3 px-4 rounded-xl font-semibold text-sm uppercase bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 min-[376px]:py-4 px-4 rounded-xl font-semibold text-sm min-[376px]:text-base uppercase bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              ОК
+              <span>✅ ОК</span>
             </button>
           </div>
         </div>

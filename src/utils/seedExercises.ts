@@ -5,6 +5,7 @@
 
 import { supabase } from '../lib/supabaseClient';
 import { exercisesSeed } from '../data/exercisesSeed';
+import { normalizeMuscleNames } from '../utils/muscleNormalizer';
 
 interface CategoryCache {
   [key: string]: string;
@@ -27,28 +28,79 @@ export async function seedExercises(): Promise<void> {
   const muscleCache: MuscleCache = {};
 
   try {
+    // 0. Удаляем категорию "Ягодицы", если она существует
+    const { data: glutesCategory } = await supabase
+      .from('exercise_categories')
+      .select('id')
+      .eq('name', 'Ягодицы')
+      .maybeSingle();
+    
+    if (glutesCategory) {
+      // Удаляем все упражнения из категории "Ягодицы"
+      const { data: glutesExercises } = await supabase
+        .from('exercises')
+        .select('id')
+        .eq('category_id', glutesCategory.id);
+      
+      if (glutesExercises && glutesExercises.length > 0) {
+        const exerciseIds = glutesExercises.map(ex => ex.id);
+        
+        // Удаляем связи упражнений с мышцами
+        await supabase
+          .from('exercise_muscles')
+          .delete()
+          .in('exercise_id', exerciseIds);
+        
+        // Удаляем сами упражнения
+        await supabase
+          .from('exercises')
+          .delete()
+          .eq('category_id', glutesCategory.id);
+      }
+      
+      // Удаляем саму категорию "Ягодицы"
+      await supabase
+        .from('exercise_categories')
+        .delete()
+        .eq('id', glutesCategory.id);
+      
+      console.log('Категория "Ягодицы" удалена');
+    }
+
     // 1. Создаем категории
     const categories = ['Плечи', 'Руки', 'Грудь', 'Спина', 'Ноги', 'Пресс', 'Кардио'];
     
     for (let i = 0; i < categories.length; i++) {
       const categoryName = categories[i];
+      const categoryOrder = i + 1;
       
       // Проверяем, существует ли категория
       const { data: existingCategory } = await supabase
         .from('exercise_categories')
-        .select('id')
+        .select('id, order')
         .eq('name', categoryName)
         .maybeSingle();
 
       if (existingCategory) {
         categoryCache[categoryName] = existingCategory.id;
+        // Обновляем порядок, если он изменился
+        if (existingCategory.order !== categoryOrder) {
+          const { error: updateError } = await supabase
+            .from('exercise_categories')
+            .update({ order: categoryOrder })
+            .eq('id', existingCategory.id);
+          
+          if (updateError) {
+            console.error(`Ошибка обновления порядка категории ${categoryName}:`, updateError);
+          }
+        }
       } else {
         // Создаем новую категорию
         const { data: newCategory, error } = await supabase
           .from('exercise_categories')
           .insert({
             name: categoryName,
-            order: i + 1,
+            order: categoryOrder,
           })
           .select('id')
           .single();
@@ -111,14 +163,34 @@ export async function seedExercises(): Promise<void> {
         continue;
       }
 
-      // Проверяем, существует ли упражнение
-      const { data: existingExercise } = await supabase
+      // Проверяем, существует ли упражнение (по точному названию)
+      let { data: existingExercise } = await supabase
         .from('exercises')
         .select('id')
         .eq('name', exerciseData.name)
         .eq('category_id', categoryId)
         .eq('is_custom', false)
         .maybeSingle();
+
+      // Если не найдено по точному названию, пытаемся найти похожее (без скобок и доп. текста)
+      if (!existingExercise) {
+        // Пробуем найти упражнение с похожим названием (без описания в скобках)
+        const nameWithoutBrackets = exerciseData.name.replace(/\s*\([^)]*\)\s*/g, '').trim();
+        if (nameWithoutBrackets !== exerciseData.name) {
+          const { data: similarExercises } = await supabase
+            .from('exercises')
+            .select('id, name')
+            .eq('category_id', categoryId)
+            .eq('is_custom', false)
+            .ilike('name', `${nameWithoutBrackets}%`);
+          
+          if (similarExercises && similarExercises.length > 0) {
+            // Берем первое похожее упражнение
+            existingExercise = similarExercises[0];
+            console.log(`Найдено похожее упражнение: "${similarExercises[0].name}" для "${exerciseData.name}"`);
+          }
+        }
+      }
 
       let exerciseId: string;
 
@@ -150,35 +222,35 @@ export async function seedExercises(): Promise<void> {
         exerciseId = newExercise.id;
       }
 
-      // 5. Создаем связи упражнение-мышца
-      for (const muscleName of exerciseData.muscles) {
+      // 5. Удаляем все существующие связи упражнения с мышцами (чтобы обновить их)
+      // Это гарантирует, что связи будут актуальными
+      await supabase
+        .from('exercise_muscles')
+        .delete()
+        .eq('exercise_id', exerciseId);
+
+      // 6. Создаем связи упражнение-мышца заново (с нормализацией)
+      const normalizedMuscles = normalizeMuscleNames(exerciseData.muscles);
+      for (const muscleName of normalizedMuscles) {
         const muscleId = muscleCache[muscleName];
         
         if (!muscleId) {
-          console.error(`Мышца не найдена: ${muscleName}`);
+          console.error(`Мышца не найдена: ${muscleName} для упражнения ${exerciseData.name}`);
           continue;
         }
 
-        // Проверяем, существует ли связь
-        const { data: existingLink } = await supabase
+        // Создаем связь
+        const { error: linkError } = await supabase
           .from('exercise_muscles')
-          .select('*')
-          .eq('exercise_id', exerciseId)
-          .eq('muscle_id', muscleId)
-          .maybeSingle();
+          .insert({
+            exercise_id: exerciseId,
+            muscle_id: muscleId,
+          });
 
-        if (!existingLink) {
-          // Создаем связь
-          const { error: linkError } = await supabase
-            .from('exercise_muscles')
-            .insert({
-              exercise_id: exerciseId,
-              muscle_id: muscleId,
-            });
-
-          if (linkError) {
-            console.error(`Ошибка создания связи для ${exerciseData.name} - ${muscleName}:`, linkError);
-          }
+        if (linkError) {
+          console.error(`Ошибка создания связи для ${exerciseData.name} - ${muscleName}:`, linkError);
+        } else {
+          console.log(`✓ Связь создана: ${exerciseData.name} - ${muscleName}`);
         }
       }
     }

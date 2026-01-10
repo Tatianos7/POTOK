@@ -16,13 +16,11 @@ const WorkoutEntryCard = ({ entry, onEdit, onDelete }: WorkoutEntryCardProps) =>
         <div className="flex-1 min-w-0">
           <h3 className="text-sm min-[376px]:text-base font-semibold text-gray-900 dark:text-white mb-1 truncate">
             {entry.exercise?.name || 'Неизвестное упражнение'}
+            {primaryMuscle && (
+              <span className="text-gray-500 dark:text-gray-400 font-normal"> — {primaryMuscle}</span>
+            )}
           </h3>
-          {primaryMuscle && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
-              {primaryMuscle}
-            </p>
-          )}
-          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <p className="text-sm min-[376px]:text-base font-medium text-gray-700 dark:text-gray-300">
             {entry.sets} × {entry.reps} × {entry.weight} кг
           </p>
         </div>
