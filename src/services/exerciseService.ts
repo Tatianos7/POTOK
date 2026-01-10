@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { toUUID } from '../utils/uuid';
 import { Exercise, ExerciseCategory, Muscle, CreateExerciseData } from '../types/workout';
+import { normalizeMuscleNames } from '../utils/muscleNormalizer';
 
 class ExerciseService {
   /**
@@ -22,6 +23,7 @@ class ExerciseService {
         console.error('[exerciseService] Error fetching categories:', error);
         return this.getCategoriesFromLocalStorage();
       }
+
 
       // Сохраняем в localStorage для offline
       if (data) {
@@ -67,9 +69,138 @@ class ExerciseService {
   }
 
   /**
-   * Получить упражнения по категории
+   * Получить упражнения по категории (используя exercises_full_view)
    */
   async getExercisesByCategory(categoryId: string, userId?: string): Promise<Exercise[]> {
+    if (!supabase) {
+      return this.getExercisesByCategoryFromLocalStorage(categoryId);
+    }
+
+    try {
+      // Сначала получаем название категории
+      const { data: categoryData } = await supabase
+        .from('exercise_categories')
+        .select('name')
+        .eq('id', categoryId)
+        .single();
+
+      if (!categoryData) {
+        return [];
+      }
+
+      // Используем exercises_full_view для получения упражнений
+      const { data, error } = await supabase
+        .from('exercises_full_view')
+        .select('*')
+        .eq('category', categoryData.name)
+        .order('exercise_name', { ascending: true });
+
+      if (error) {
+        console.error('[exerciseService] Error fetching exercises from view:', error);
+        // Fallback на прямой запрос
+        return this.getExercisesByCategoryDirect(categoryId, userId);
+      }
+
+      // Преобразуем данные из view в формат Exercise с дедупликацией
+      const exercisesMap = new Map<string, Exercise>();
+      
+      (data || []).forEach((ex: any) => {
+        const exerciseName = (ex.exercise_name || '').trim();
+        if (!exerciseName) return; // Пропускаем упражнения без названия
+        
+        // Обрабатываем мышцы: может быть массив строк или уже объекты
+        let musclesArray: string[] = [];
+        if (Array.isArray(ex.muscles)) {
+          if (ex.muscles.length > 0 && typeof ex.muscles[0] === 'string') {
+            // Если это массив строк
+            musclesArray = ex.muscles.filter((m: any) => m && typeof m === 'string' && m.trim() !== '');
+          } else if (ex.muscles.length > 0 && typeof ex.muscles[0] === 'object') {
+            // Если это массив объектов, извлекаем name
+            musclesArray = ex.muscles
+              .map((m: any) => m?.name || m)
+              .filter((m: any) => m && typeof m === 'string' && m.trim() !== '');
+          }
+        }
+        
+        // Если упражнение уже есть в мапе
+        if (exercisesMap.has(exerciseName)) {
+          const existing = exercisesMap.get(exerciseName)!;
+          const existingHasMuscles = existing.muscles && existing.muscles.length > 0;
+          const currentHasMuscles = musclesArray.length > 0;
+          
+          // Приоритет: версия с мышцами > версия без мышц
+          if (currentHasMuscles && !existingHasMuscles) {
+            // Заменяем версию без мышц на версию с мышцами
+            exercisesMap.set(exerciseName, {
+              id: ex.id,
+              name: exerciseName,
+              category_id: categoryId,
+              description: undefined,
+              is_custom: false,
+              created_by_user_id: undefined,
+            muscles: normalizeMuscleNames(musclesArray).map((muscleName: string) => ({
+              id: '',
+              name: muscleName,
+            })),
+            });
+          } else if (currentHasMuscles && existingHasMuscles && existing.muscles && existing.muscles.length > 0) {
+            // Если обе версии с мышцами, объединяем уникальные мышцы (с нормализацией)
+            const existingMuscles = existing.muscles; // TypeScript guard
+            if (existingMuscles) {
+              const normalizedExisting = normalizeMuscleNames(existingMuscles.map((m: Muscle) => m.name));
+              const normalizedNew = normalizeMuscleNames(musclesArray);
+              
+              // Объединяем нормализованные массивы и убираем дубликаты
+              const allNormalized = normalizeMuscleNames([...normalizedExisting, ...normalizedNew]);
+              
+              if (allNormalized.length > normalizedExisting.length) {
+                exercisesMap.set(exerciseName, {
+                  ...existing,
+                  muscles: allNormalized.map((muscleName: string) => ({
+                    id: '',
+                    name: muscleName,
+                  })),
+                });
+              }
+            }
+          }
+          // Если новая версия без мышц, а существующая с мышцами - игнорируем новую
+        } else {
+          // Добавляем новое упражнение с нормализацией мышц
+          const normalizedMuscles = normalizeMuscleNames(musclesArray);
+          exercisesMap.set(exerciseName, {
+            id: ex.id,
+            name: exerciseName,
+            category_id: categoryId,
+            description: undefined,
+            is_custom: false,
+            created_by_user_id: undefined,
+            muscles: normalizedMuscles.map((muscleName: string) => ({
+              id: '',
+              name: muscleName,
+            })),
+          });
+        }
+      });
+
+      // Конвертируем Map в массив и фильтруем: если есть упражнения с мышцами, возвращаем только их
+      const exercisesArray = Array.from(exercisesMap.values());
+      const exercisesWithMuscles = exercisesArray.filter(ex => ex.muscles && ex.muscles.length > 0);
+      const exercisesWithoutMuscles = exercisesArray.filter(ex => !ex.muscles || ex.muscles.length === 0);
+      
+      // Если есть упражнения с мышцами, возвращаем только их. Иначе возвращаем все (на случай, если все без мышц)
+      return exercisesWithMuscles.length > 0 ? exercisesWithMuscles : exercisesWithoutMuscles;
+    } catch (error) {
+      console.error('[exerciseService] Error:', error);
+      // Fallback на прямой запрос
+      return this.getExercisesByCategoryDirect(categoryId, userId);
+    }
+  }
+
+  /**
+   * Прямой запрос к таблице exercises (fallback)
+   */
+  private async getExercisesByCategoryDirect(categoryId: string, userId?: string): Promise<Exercise[]> {
     if (!supabase) {
       return this.getExercisesByCategoryFromLocalStorage(categoryId);
     }
@@ -101,19 +232,68 @@ class ExerciseService {
         return this.getExercisesByCategoryFromLocalStorage(categoryId);
       }
 
-      // Преобразуем данные
-      const exercises: Exercise[] = (data || []).map((ex: any) => ({
-        id: ex.id,
-        name: ex.name,
-        category_id: ex.category_id,
-        description: ex.description,
-        is_custom: ex.is_custom,
-        created_by_user_id: ex.created_by_user_id,
-        category: ex.category,
-        muscles: ex.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
-      }));
+      // Преобразуем данные и дедуплицируем
+      const exercisesMap = new Map<string, Exercise>();
+      
+      (data || []).forEach((ex: any) => {
+        const exerciseName = ex.name;
+        const muscles = ex.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [];
+        
+        // Если упражнение уже есть в мапе
+        if (exercisesMap.has(exerciseName)) {
+          const existing = exercisesMap.get(exerciseName)!;
+          
+          // Приоритет: оставляем версию с мышцами
+          if (muscles.length > 0 && (!existing.muscles || existing.muscles.length === 0)) {
+            // Заменяем версию без мышц на версию с мышцами
+            exercisesMap.set(exerciseName, {
+              id: ex.id,
+              name: exerciseName,
+              category_id: ex.category_id,
+              description: ex.description,
+              is_custom: ex.is_custom,
+              created_by_user_id: ex.created_by_user_id,
+              category: ex.category,
+              muscles: muscles,
+            });
+          } else if (muscles.length > 0 && existing.muscles && existing.muscles.length > 0) {
+            // Если обе версии с мышцами, объединяем уникальные мышцы
+            const existingMuscleNames = new Set(existing.muscles.map((m: Muscle) => m.id || m.name));
+            const newMuscles = muscles.filter((m: Muscle) => {
+              const key = m.id || m.name;
+              return key && !existingMuscleNames.has(key);
+            });
+            
+            if (newMuscles.length > 0) {
+              exercisesMap.set(exerciseName, {
+                ...existing,
+                muscles: [...existing.muscles, ...newMuscles],
+              });
+            }
+          }
+          // Если новая версия без мышц, а существующая с мышцами - игнорируем новую
+        } else {
+          // Добавляем новое упражнение
+          exercisesMap.set(exerciseName, {
+            id: ex.id,
+            name: exerciseName,
+            category_id: ex.category_id,
+            description: ex.description,
+            is_custom: ex.is_custom,
+            created_by_user_id: ex.created_by_user_id,
+            category: ex.category,
+            muscles: muscles,
+          });
+        }
+      });
 
-      return exercises;
+      // Конвертируем Map в массив и фильтруем упражнения без мышц, если есть версии с мышцами
+      const exercisesArray = Array.from(exercisesMap.values());
+      const exercisesWithMuscles = exercisesArray.filter(ex => ex.muscles && ex.muscles.length > 0);
+      const exercisesWithoutMuscles = exercisesArray.filter(ex => !ex.muscles || ex.muscles.length === 0);
+      
+      // Если есть упражнения с мышцами, возвращаем только их. Иначе возвращаем все
+      return exercisesWithMuscles.length > 0 ? exercisesWithMuscles : exercisesWithoutMuscles;
     } catch (error) {
       console.error('[exerciseService] Error:', error);
       return this.getExercisesByCategoryFromLocalStorage(categoryId);
@@ -159,19 +339,68 @@ class ExerciseService {
         return [];
       }
 
-      // Преобразуем данные
-      const exercises: Exercise[] = (data || []).map((ex: any) => ({
-        id: ex.id,
-        name: ex.name,
-        category_id: ex.category_id,
-        description: ex.description,
-        is_custom: ex.is_custom,
-        created_by_user_id: ex.created_by_user_id,
-        category: ex.category,
-        muscles: ex.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
-      }));
+      // Преобразуем данные и дедуплицируем
+      const exercisesMap = new Map<string, Exercise>();
+      
+      (data || []).forEach((ex: any) => {
+        const exerciseName = ex.name;
+        const muscles = ex.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [];
+        
+        // Если упражнение уже есть в мапе
+        if (exercisesMap.has(exerciseName)) {
+          const existing = exercisesMap.get(exerciseName)!;
+          
+          // Приоритет: оставляем версию с мышцами
+          if (muscles.length > 0 && (!existing.muscles || existing.muscles.length === 0)) {
+            // Заменяем версию без мышц на версию с мышцами
+            exercisesMap.set(exerciseName, {
+              id: ex.id,
+              name: exerciseName,
+              category_id: ex.category_id,
+              description: ex.description,
+              is_custom: ex.is_custom,
+              created_by_user_id: ex.created_by_user_id,
+              category: ex.category,
+              muscles: muscles,
+            });
+          } else if (muscles.length > 0 && existing.muscles && existing.muscles.length > 0) {
+            // Если обе версии с мышцами, объединяем уникальные мышцы
+            const existingMuscleNames = new Set(existing.muscles.map((m: Muscle) => m.id || m.name));
+            const newMuscles = muscles.filter((m: Muscle) => {
+              const key = m.id || m.name;
+              return key && !existingMuscleNames.has(key);
+            });
+            
+            if (newMuscles.length > 0) {
+              exercisesMap.set(exerciseName, {
+                ...existing,
+                muscles: [...existing.muscles, ...newMuscles],
+              });
+            }
+          }
+          // Если новая версия без мышц, а существующая с мышцами - игнорируем новую
+        } else {
+          // Добавляем новое упражнение
+          exercisesMap.set(exerciseName, {
+            id: ex.id,
+            name: exerciseName,
+            category_id: ex.category_id,
+            description: ex.description,
+            is_custom: ex.is_custom,
+            created_by_user_id: ex.created_by_user_id,
+            category: ex.category,
+            muscles: muscles,
+          });
+        }
+      });
 
-      return exercises;
+      // Конвертируем Map в массив и фильтруем упражнения без мышц, если есть версии с мышцами
+      const exercisesArray = Array.from(exercisesMap.values());
+      const exercisesWithMuscles = exercisesArray.filter(ex => ex.muscles && ex.muscles.length > 0);
+      const exercisesWithoutMuscles = exercisesArray.filter(ex => !ex.muscles || ex.muscles.length === 0);
+      
+      // Если есть упражнения с мышцами, возвращаем только их. Иначе возвращаем все
+      return exercisesWithMuscles.length > 0 ? exercisesWithMuscles : exercisesWithoutMuscles;
     } catch (error) {
       console.error('[exerciseService] Error:', error);
       return [];
