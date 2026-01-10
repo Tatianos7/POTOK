@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { X, Search, Check, Filter } from 'lucide-react';
 import { Exercise, ExerciseCategory, Muscle } from '../types/workout';
-import { exerciseService } from '../services/exerciseService';
-import { normalizeMuscleName, normalizeMuscleNames } from '../utils/muscleNormalizer';
+import { normalizeMuscleName } from '../utils/muscleNormalizer';
 
 interface ExerciseListSheetProps {
   isOpen: boolean;
@@ -110,19 +109,23 @@ const ExerciseListSheet = ({
         if (hasMuscles && !existingHasMuscles) {
           // Заменяем версию без мышц на версию с мышцами
           exercisesMap.set(exerciseName, ex);
-        } else if (hasMuscles && existingHasMuscles) {
+        } else if (hasMuscles && existingHasMuscles && existing.muscles && ex.muscles) {
           // Если обе версии с мышцами, объединяем уникальные мышцы
-          const existingMuscleNames = new Set(existing.muscles.map(m => m.name || m.id));
-          const newMuscles = ex.muscles.filter(m => {
-            const key = m.name || m.id;
-            return key && !existingMuscleNames.has(key);
-          });
-          
-          if (newMuscles.length > 0) {
-            exercisesMap.set(exerciseName, {
-              ...existing,
-              muscles: [...existing.muscles, ...newMuscles],
+          const existingMuscles = existing.muscles; // TypeScript guard
+          const exMuscles = ex.muscles; // TypeScript guard
+          if (existingMuscles && exMuscles) {
+            const existingMuscleNames = new Set(existingMuscles.map(m => m.name || m.id));
+            const newMuscles = exMuscles.filter(m => {
+              const key = m.name || m.id;
+              return key && !existingMuscleNames.has(key);
             });
+            
+            if (newMuscles.length > 0) {
+              exercisesMap.set(exerciseName, {
+                ...existing,
+                muscles: [...existingMuscles, ...newMuscles],
+              });
+            }
           }
         }
         // Если новая версия без мышц, а существующая с мышцами - игнорируем новую
@@ -149,14 +152,15 @@ const ExerciseListSheet = ({
 
     // Фильтр по выбранным мышцам (с нормализацией)
     if (selectedMuscles.size > 0) {
-      deduplicated = deduplicated.filter(ex =>
-        ex.muscles?.some(m => {
+      deduplicated = deduplicated.filter(ex => {
+        if (!ex.muscles || ex.muscles.length === 0) return false;
+        return ex.muscles.some(m => {
           const muscleName = m.name || '';
           const normalized = normalizeMuscleName(muscleName);
           // Проверяем как по исходному, так и по нормализованному названию
           return selectedMuscles.has(muscleName) || selectedMuscles.has(normalized);
-        })
-      );
+        });
+      });
     }
 
     return deduplicated;

@@ -143,23 +143,25 @@ class ExerciseService {
               name: muscleName,
             })),
             });
-          } else if (currentHasMuscles && existingHasMuscles) {
+          } else if (currentHasMuscles && existingHasMuscles && existing.muscles && existing.muscles.length > 0) {
             // Если обе версии с мышцами, объединяем уникальные мышцы (с нормализацией)
-            const existingMuscleNames = new Set(existing.muscles.map((m: Muscle) => m.name));
-            const normalizedExisting = normalizeMuscleNames(existing.muscles.map((m: Muscle) => m.name));
-            const normalizedNew = normalizeMuscleNames(musclesArray);
-            
-            // Объединяем нормализованные массивы и убираем дубликаты
-            const allNormalized = normalizeMuscleNames([...normalizedExisting, ...normalizedNew]);
-            
-            if (allNormalized.length > normalizedExisting.length) {
-              exercisesMap.set(exerciseName, {
-                ...existing,
-                muscles: allNormalized.map((muscleName: string) => ({
-                  id: '',
-                  name: muscleName,
-                })),
-              });
+            const existingMuscles = existing.muscles; // TypeScript guard
+            if (existingMuscles) {
+              const normalizedExisting = normalizeMuscleNames(existingMuscles.map((m: Muscle) => m.name));
+              const normalizedNew = normalizeMuscleNames(musclesArray);
+              
+              // Объединяем нормализованные массивы и убираем дубликаты
+              const allNormalized = normalizeMuscleNames([...normalizedExisting, ...normalizedNew]);
+              
+              if (allNormalized.length > normalizedExisting.length) {
+                exercisesMap.set(exerciseName, {
+                  ...existing,
+                  muscles: allNormalized.map((muscleName: string) => ({
+                    id: '',
+                    name: muscleName,
+                  })),
+                });
+              }
             }
           }
           // Если новая версия без мышц, а существующая с мышцами - игнорируем новую
