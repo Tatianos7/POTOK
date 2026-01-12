@@ -104,6 +104,10 @@ DROP POLICY IF EXISTS "Anyone can read exercise categories" ON exercise_categori
 CREATE POLICY "Anyone can read exercise categories"
   ON exercise_categories FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Anyone can insert exercise categories" ON exercise_categories;
+CREATE POLICY "Anyone can insert exercise categories"
+  ON exercise_categories FOR INSERT WITH CHECK (true);
+
 DROP POLICY IF EXISTS "Anyone can read muscles" ON muscles;
 CREATE POLICY "Anyone can read muscles"
   ON muscles FOR SELECT USING (true);

@@ -138,15 +138,21 @@ const Workouts = () => {
         
         // Если категорий нет, пытаемся инициализировать данные
         if (cats.length === 0) {
+          console.log('[Workouts] Категории не найдены, запускаем инициализацию...');
           const { initializeExerciseData } = await import('../utils/initializeExerciseData');
           await initializeExerciseData();
+          
+          // Ждем немного, чтобы данные успели сохраниться
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
           // Повторно загружаем категории после инициализации
           cats = await exerciseService.getCategories();
+          console.log(`[Workouts] После инициализации найдено ${cats.length} категорий`);
         }
         
         setCategories(cats);
       } catch (error) {
-        console.error('Ошибка загрузки категорий:', error);
+        console.error('[Workouts] Ошибка загрузки категорий:', error);
       }
     };
     loadCategories();
