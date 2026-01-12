@@ -130,11 +130,20 @@ const Workouts = () => {
     setSelectedDate(currentToday);
   }, []); // Выполняем только при монтировании компонента
 
-  // Загружаем категории при монтировании
+  // Загружаем категории при монтировании (с автоматической инициализацией)
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        const cats = await exerciseService.getCategories();
+        let cats = await exerciseService.getCategories();
+        
+        // Если категорий нет, пытаемся инициализировать данные
+        if (cats.length === 0) {
+          const { initializeExerciseData } = await import('../utils/initializeExerciseData');
+          await initializeExerciseData();
+          // Повторно загружаем категории после инициализации
+          cats = await exerciseService.getCategories();
+        }
+        
         setCategories(cats);
       } catch (error) {
         console.error('Ошибка загрузки категорий:', error);
