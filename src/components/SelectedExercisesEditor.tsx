@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Plus, Minus } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Exercise, SelectedExercise } from '../types/workout';
 
 interface SelectedExercisesEditorProps {
@@ -93,16 +93,6 @@ const SelectedExercisesEditor = ({
     setEditedExercises(updated);
   };
 
-  const handleIncrement = (index: number, field: 'sets' | 'reps' | 'weight', step: number = 1) => {
-    const current = editedExercises[index][field];
-    handleUpdate(index, field, current + step);
-  };
-
-  const handleDecrement = (index: number, field: 'sets' | 'reps' | 'weight', step: number = 1) => {
-    const current = editedExercises[index][field];
-    handleUpdate(index, field, Math.max(0, current - step));
-  };
-
   const handleSave = () => {
     onSave(editedExercises);
     onClose();
@@ -194,73 +184,37 @@ const SelectedExercisesEditor = ({
                             </div>
                           </td>
                           <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
-                            <div className="flex items-center justify-end gap-0.5 min-[376px]:gap-1">
-                              <button
-                                onClick={() => handleDecrement(index, 'sets')}
-                                className="p-0.5 min-[376px]:p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                              >
-                                <Minus className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-gray-600 dark:text-gray-400" />
-                              </button>
+                            <div className="flex items-center justify-end">
                               <input
                                 type="number"
                                 min="0"
                                 value={item.sets}
                                 onChange={(e) => handleUpdate(index, 'sets', parseInt(e.target.value) || 0)}
-                                className="w-10 min-[376px]:w-12 px-0.5 min-[376px]:px-1 py-0.5 min-[376px]:py-1 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                                className="w-12 min-[376px]:w-14 px-1.5 min-[376px]:px-2 py-1 min-[376px]:py-1.5 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
                               />
-                              <button
-                                onClick={() => handleIncrement(index, 'sets')}
-                                className="p-0.5 min-[376px]:p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                              >
-                                <Plus className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-gray-600 dark:text-gray-400" />
-                              </button>
                             </div>
                           </td>
                           <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
-                            <div className="flex items-center justify-end gap-0.5 min-[376px]:gap-1">
-                              <button
-                                onClick={() => handleDecrement(index, 'reps')}
-                                className="p-0.5 min-[376px]:p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                              >
-                                <Minus className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-gray-600 dark:text-gray-400" />
-                              </button>
+                            <div className="flex items-center justify-end">
                               <input
                                 type="number"
                                 min="0"
                                 value={item.reps}
                                 onChange={(e) => handleUpdate(index, 'reps', parseInt(e.target.value) || 0)}
-                                className="w-10 min-[376px]:w-12 px-0.5 min-[376px]:px-1 py-0.5 min-[376px]:py-1 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                                className="w-12 min-[376px]:w-14 px-1.5 min-[376px]:px-2 py-1 min-[376px]:py-1.5 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
                               />
-                              <button
-                                onClick={() => handleIncrement(index, 'reps')}
-                                className="p-0.5 min-[376px]:p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                              >
-                                <Plus className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-gray-600 dark:text-gray-400" />
-                              </button>
                             </div>
                           </td>
                           <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
-                            <div className="flex items-center justify-end gap-0.5 min-[376px]:gap-1">
-                              <button
-                                onClick={() => handleDecrement(index, 'weight', 0.5)}
-                                className="p-0.5 min-[376px]:p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                              >
-                                <Minus className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-gray-600 dark:text-gray-400" />
-                              </button>
+                            <div className="flex items-center justify-center">
                               <input
                                 type="number"
                                 min="0"
                                 step="0.5"
                                 value={item.weight}
                                 onChange={(e) => handleUpdate(index, 'weight', parseFloat(e.target.value) || 0)}
-                                className="w-10 min-[376px]:w-12 px-0.5 min-[376px]:px-1 py-0.5 min-[376px]:py-1 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                                className="w-12 min-[376px]:w-14 px-1.5 min-[376px]:px-2 py-1 min-[376px]:py-1.5 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
                               />
-                              <button
-                                onClick={() => handleIncrement(index, 'weight', 0.5)}
-                                className="p-0.5 min-[376px]:p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
-                              >
-                                <Plus className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-gray-600 dark:text-gray-400" />
-                              </button>
                             </div>
                           </td>
                         </tr>
