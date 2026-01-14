@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabaseClient';
-import { toUUID } from '../utils/uuid';
 import { WorkoutDay, WorkoutEntry, SelectedExercise } from '../types/workout';
 
 class WorkoutService {
@@ -12,7 +11,14 @@ class WorkoutService {
     }
 
     try {
-      const uuidUserId = toUUID(userId);
+      // Получаем текущего пользователя из Supabase сессии
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !authUser) {
+        throw new Error('Пользователь не авторизован в Supabase');
+      }
+
+      const uuidUserId = authUser.id;
 
       // Пытаемся найти существующий день
       const { data: existingDay, error: fetchError } = await supabase
@@ -60,7 +66,14 @@ class WorkoutService {
     }
 
     try {
-      const uuidUserId = toUUID(userId);
+      // Получаем текущего пользователя из Supabase сессии
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !authUser) {
+        throw new Error('Пользователь не авторизован в Supabase');
+      }
+
+      const uuidUserId = authUser.id;
 
       const { data, error } = await supabase
         .from('workout_entries')
