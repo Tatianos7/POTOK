@@ -6,7 +6,6 @@ import InlineCalendar from '../components/InlineCalendar';
 import ExerciseCategorySheet from '../components/ExerciseCategorySheet';
 import ExerciseListSheet from '../components/ExerciseListSheet';
 import SelectedExercisesEditor from '../components/SelectedExercisesEditor';
-import WorkoutEntryCard from '../components/WorkoutEntryCard';
 import CreateExerciseModal from '../components/CreateExerciseModal';
 import { exerciseService } from '../services/exerciseService';
 import { workoutService } from '../services/workoutService';
@@ -265,22 +264,6 @@ const Workouts = () => {
     }
   };
 
-  const handleDeleteEntry = async (entryId: string) => {
-    if (!confirm('Удалить это упражнение из тренировки?')) return;
-
-    try {
-      await workoutService.deleteWorkoutEntry(entryId);
-      
-      // Перезагружаем записи
-      if (user?.id) {
-        const entries = await workoutService.getWorkoutEntries(user.id, selectedDate);
-        setWorkoutEntries(entries);
-      }
-    } catch (error) {
-      console.error('Ошибка удаления записи:', error);
-      alert('Ошибка при удалении упражнения');
-    }
-  };
 
   const handleHistory = () => {
     // TODO: Реализовать переход на историю
@@ -399,7 +382,7 @@ const Workouts = () => {
             {/* Table Headers */}
             <div className="grid grid-cols-4 gap-2 min-[376px]:gap-4 mb-3 min-[376px]:mb-4 pb-2 border-b border-gray-200 dark:border-gray-700 w-full max-w-full">
               <div className="text-xs min-[376px]:text-sm font-semibold text-gray-700 dark:text-gray-300 text-left whitespace-nowrap overflow-hidden text-ellipsis">
-                Упражнение
+                Название упражнения
               </div>
               <div className="text-xs min-[376px]:text-sm font-semibold text-gray-700 dark:text-gray-300 text-center break-words overflow-wrap-anywhere">
                 Подходы
@@ -424,14 +407,36 @@ const Workouts = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 min-[376px]:space-y-4">
-                {workoutEntries.map((entry) => (
-                  <WorkoutEntryCard
-                    key={entry.id}
-                    entry={entry}
-                    onDelete={handleDeleteEntry}
-                  />
-                ))}
+              <div className="space-y-2 min-[376px]:space-y-3">
+                {workoutEntries.map((entry) => {
+                  const primaryMuscle = entry.exercise?.muscles?.[0]?.name || '';
+                  return (
+                    <div
+                      key={entry.id}
+                      className="grid grid-cols-4 gap-2 min-[376px]:gap-4 py-2 min-[376px]:py-3 border-b border-gray-100 dark:border-gray-800 last:border-0"
+                    >
+                      <div className="text-xs min-[376px]:text-sm text-gray-900 dark:text-white text-left break-words overflow-wrap-anywhere">
+                        <div className="font-medium">
+                          {entry.exercise?.name || 'Неизвестное упражнение'}
+                        </div>
+                        {primaryMuscle && (
+                          <div className="text-[10px] min-[376px]:text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {primaryMuscle}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-xs min-[376px]:text-sm text-gray-700 dark:text-gray-300 text-center">
+                        {entry.sets}
+                      </div>
+                      <div className="text-xs min-[376px]:text-sm text-gray-700 dark:text-gray-300 text-center">
+                        {entry.reps}
+                      </div>
+                      <div className="text-xs min-[376px]:text-sm text-gray-700 dark:text-gray-300 text-center">
+                        {entry.weight}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
