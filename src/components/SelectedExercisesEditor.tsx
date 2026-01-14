@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Plus, Minus } from 'lucide-react';
 import { Exercise, SelectedExercise } from '../types/workout';
 
@@ -30,11 +30,30 @@ const SelectedExercisesEditor = ({
   const [editedExercises, setEditedExercises] = useState<SelectedExercise[]>([]);
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number | null>(null);
   const [saveForEachWeek, setSaveForEachWeek] = useState(false);
+  const previousExercisesRef = useRef<Exercise[]>([]);
+  const isInitializedRef = useRef(false);
 
+  // Управление overflow body
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      // Инициализируем с дефолтными значениями
+    } else {
+      document.body.style.overflow = '';
+      // Сбрасываем при закрытии
+      isInitializedRef.current = false;
+      previousExercisesRef.current = [];
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  // Инициализация и добавление новых упражнений
+  useEffect(() => {
+    if (!isOpen) return;
+
+    if (!isInitializedRef.current && exercises.length > 0) {
+      // Первая инициализация
       setEditedExercises(
         exercises.map(ex => ({
           exercise: ex,
@@ -43,16 +62,27 @@ const SelectedExercisesEditor = ({
           weight: 20,
         }))
       );
-      // Сбрасываем выбор дня недели
       setSelectedDayOfWeek(null);
       setSaveForEachWeek(false);
-    } else {
-      document.body.style.overflow = '';
+      isInitializedRef.current = true;
+      previousExercisesRef.current = exercises;
+    } else if (isInitializedRef.current && exercises.length > 0) {
+      // Добавление новых упражнений к существующим
+      const previousIds = new Set(previousExercisesRef.current.map(ex => ex.id));
+      const newExercises = exercises.filter(ex => !previousIds.has(ex.id));
+      
+      if (newExercises.length > 0) {
+        const newSelectedExercises = newExercises.map(ex => ({
+          exercise: ex,
+          sets: 3,
+          reps: 12,
+          weight: 20,
+        }));
+        setEditedExercises(prev => [...prev, ...newSelectedExercises]);
+        previousExercisesRef.current = exercises;
+      }
     }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen, exercises]);
+  }, [exercises, isOpen]);
 
   const handleUpdate = (index: number, field: 'sets' | 'reps' | 'weight', value: number) => {
     const updated = [...editedExercises];

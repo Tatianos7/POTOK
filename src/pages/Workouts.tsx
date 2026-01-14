@@ -230,9 +230,19 @@ const Workouts = () => {
   };
 
   const handleExercisesSelect = (selected: Exercise[]) => {
-    setSelectedExercises(selected);
+    if (isSelectedExercisesEditorOpen) {
+      // Если редактор уже открыт, добавляем новые упражнения к существующим
+      setSelectedExercises(prev => {
+        const existingIds = new Set(prev.map(ex => ex.id));
+        const newExercises = selected.filter(ex => !existingIds.has(ex.id));
+        return [...prev, ...newExercises];
+      });
+    } else {
+      // Если редактор закрыт, открываем его с новыми упражнениями
+      setSelectedExercises(selected);
+      setIsSelectedExercisesEditorOpen(true);
+    }
     setIsExerciseListSheetOpen(false);
-    setIsSelectedExercisesEditorOpen(true);
   };
 
   const handleSaveSelectedExercises = async (exercises: SelectedExercise[]) => {
@@ -520,7 +530,7 @@ const Workouts = () => {
         exercises={selectedExercises}
         onSave={handleSaveSelectedExercises}
         onAddExercise={() => {
-          setIsSelectedExercisesEditorOpen(false);
+          // Не закрываем редактор, открываем выбор категории поверх него
           setIsExerciseCategorySheetOpen(true);
         }}
       />
