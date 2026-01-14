@@ -154,7 +154,7 @@ const SelectedExercisesEditor = ({
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto mb-4 sm:mb-6 -mx-2 min-[376px]:-mx-3 sm:-mx-4 px-2 min-[376px]:px-3 sm:px-4">
+              <div className="overflow-x-auto mb-4 sm:mb-6 -mx-2 min-[376px]:-mx-3 sm:-mx-4 pl-2 min-[376px]:pl-3 sm:pl-4">
                 <table className="w-full border-collapse min-w-[280px]">
                   <thead>
                     <tr className="border-b border-gray-200 dark:border-gray-700">
