@@ -162,13 +162,13 @@ const SelectedExercisesEditor = ({
                         <span className="hidden min-[376px]:inline">Название упражнения</span>
                         <span className="min-[376px]:hidden">Упражнение</span>
                       </th>
-                      <th className="text-center py-1.5 min-[376px]:py-2 px-1 min-[376px]:px-2 text-[10px] min-[376px]:text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase w-16 min-[376px]:w-20">
+                      <th className="text-right py-1.5 min-[376px]:py-2 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3 text-[10px] min-[376px]:text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase w-16 min-[376px]:w-20">
                         Подходы
                       </th>
-                      <th className="text-center py-1.5 min-[376px]:py-2 px-1 min-[376px]:px-2 text-[10px] min-[376px]:text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase w-16 min-[376px]:w-20">
+                      <th className="text-right py-1.5 min-[376px]:py-2 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3 text-[10px] min-[376px]:text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase w-16 min-[376px]:w-20">
                         Повторы
                       </th>
-                      <th className="text-center py-1.5 min-[376px]:py-2 px-1 min-[376px]:px-2 text-[10px] min-[376px]:text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase w-16 min-[376px]:w-20">
+                      <th className="text-right py-1.5 min-[376px]:py-2 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3 text-[10px] min-[376px]:text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase w-16 min-[376px]:w-20">
                         Вес
                       </th>
                     </tr>
@@ -193,8 +193,8 @@ const SelectedExercisesEditor = ({
                               )}
                             </div>
                           </td>
-                          <td className="py-2 min-[376px]:py-3 px-1 min-[376px]:px-2">
-                            <div className="flex items-center justify-center gap-0.5 min-[376px]:gap-1">
+                          <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
+                            <div className="flex items-center justify-end gap-0.5 min-[376px]:gap-1">
                               <button
                                 onClick={() => handleDecrement(index, 'sets')}
                                 className="p-0.5 min-[376px]:p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
@@ -216,8 +216,8 @@ const SelectedExercisesEditor = ({
                               </button>
                             </div>
                           </td>
-                          <td className="py-2 min-[376px]:py-3 px-1 min-[376px]:px-2">
-                            <div className="flex items-center justify-center gap-0.5 min-[376px]:gap-1">
+                          <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
+                            <div className="flex items-center justify-end gap-0.5 min-[376px]:gap-1">
                               <button
                                 onClick={() => handleDecrement(index, 'reps')}
                                 className="p-0.5 min-[376px]:p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
@@ -239,8 +239,8 @@ const SelectedExercisesEditor = ({
                               </button>
                             </div>
                           </td>
-                          <td className="py-2 min-[376px]:py-3 px-1 min-[376px]:px-2">
-                            <div className="flex items-center justify-center gap-0.5 min-[376px]:gap-1">
+                          <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
+                            <div className="flex items-center justify-end gap-0.5 min-[376px]:gap-1">
                               <button
                                 onClick={() => handleDecrement(index, 'weight', 0.5)}
                                 className="p-0.5 min-[376px]:p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
