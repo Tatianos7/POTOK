@@ -519,6 +519,10 @@ const Workouts = () => {
         }}
         exercises={selectedExercises}
         onSave={handleSaveSelectedExercises}
+        onAddExercise={() => {
+          setIsSelectedExercisesEditorOpen(false);
+          setIsExerciseCategorySheetOpen(true);
+        }}
       />
     </div>
   );
