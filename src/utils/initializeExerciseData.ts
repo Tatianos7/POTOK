@@ -50,27 +50,38 @@ export async function initializeExerciseData(): Promise<void> {
       { name: 'Кардио', order: 7 },
     ];
 
-    // Пытаемся создать категории через upsert (создаст, если нет, обновит, если есть)
-    const { error: upsertError } = await supabase
-      .from('exercise_categories')
-      .upsert(basicCategories, { 
-        onConflict: 'name',
-        ignoreDuplicates: false 
-      });
-    
-    if (upsertError) {
-      console.error('[initializeExerciseData] Ошибка upsert категорий:', upsertError);
-      // Если upsert не работает, пробуем вставить по одной
-      for (const category of basicCategories) {
-        const { error } = await supabase
-          .from('exercise_categories')
-          .insert(category)
-          .select();
-        
-        if (error && !error.message.includes('duplicate') && !error.message.includes('unique')) {
-          console.error(`[initializeExerciseData] Ошибка создания категории ${category.name}:`, error);
+    // Пытаемся создать категории по одной (более надежно)
+    let successCount = 0;
+    for (const category of basicCategories) {
+      const { error } = await supabase
+        .from('exercise_categories')
+        .insert(category)
+        .select();
+      
+      if (error) {
+        // Игнорируем ошибки дубликатов (категория уже существует)
+        if (error.message.includes('duplicate') || 
+            error.message.includes('unique') ||
+            error.code === '23505') {
+          console.log(`[initializeExerciseData] Категория "${category.name}" уже существует`);
+          successCount++;
+        } else {
+          console.error(`[initializeExerciseData] Ошибка создания категории "${category.name}":`, error);
+          // Если это ошибка отсутствия таблицы, выводим понятное сообщение
+          if (error.message.includes('relation') || error.message.includes('does not exist')) {
+            console.error('[initializeExerciseData] ⚠️ Таблица exercise_categories не существует! Выполните SQL скрипт из supabase/workout_schema.sql в Supabase SQL Editor');
+          }
         }
+      } else {
+        successCount++;
+        console.log(`[initializeExerciseData] ✅ Категория "${category.name}" создана`);
       }
+    }
+    
+    if (successCount === 0) {
+      console.error('[initializeExerciseData] ❌ Не удалось создать ни одной категории. Проверьте RLS политики и права доступа в Supabase.');
+    } else {
+      console.log(`[initializeExerciseData] ✅ Успешно создано/найдено ${successCount} из ${basicCategories.length} категорий`);
     }
 
     console.log('[initializeExerciseData] Базовые категории созданы');
