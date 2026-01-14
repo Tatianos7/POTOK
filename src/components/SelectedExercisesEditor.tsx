@@ -168,7 +168,7 @@ const SelectedExercisesEditor = ({
                       <th className="text-right py-1.5 min-[376px]:py-2 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3 text-[10px] min-[376px]:text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase w-16 min-[376px]:w-20">
                         Повторы
                       </th>
-                      <th className="text-right py-1.5 min-[376px]:py-2 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3 text-[10px] min-[376px]:text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase w-16 min-[376px]:w-20">
+                      <th className="text-center py-1.5 min-[376px]:py-2 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3 text-[10px] min-[376px]:text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase w-16 min-[376px]:w-20">
                         Вес
                       </th>
                     </tr>
