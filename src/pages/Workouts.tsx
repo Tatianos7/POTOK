@@ -256,9 +256,14 @@ const Workouts = () => {
       
       setIsSelectedExercisesEditorOpen(false);
       setSelectedExercises([]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка сохранения упражнений:', error);
-      alert('Ошибка при сохранении упражнений');
+      const errorMessage = error?.message || 'Ошибка при сохранении упражнений';
+      if (errorMessage.includes('row-level security')) {
+        alert('Ошибка доступа к базе данных. Пожалуйста, обновите RLS политики в Supabase SQL Editor.');
+      } else {
+        alert(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }

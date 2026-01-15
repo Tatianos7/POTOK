@@ -126,6 +126,13 @@ class WorkoutService {
       // Получаем или создаем день тренировки
       const workoutDay = await this.getOrCreateWorkoutDay(userId, date);
 
+      // Проверяем, что workoutDay.id является валидным UUID (не из localStorage)
+      if (!workoutDay.id || workoutDay.id.startsWith('workout_day_') || workoutDay.id.startsWith('entry_')) {
+        // Это ID из localStorage, не можем использовать в Supabase
+        console.warn('[workoutService] Получен ID из localStorage, используем fallback');
+        return this.addExercisesToWorkoutInLocalStorage(userId, date, exercises);
+      }
+
       // Создаем записи
       const entries = exercises.map(ex => ({
         workout_day_id: workoutDay.id,
@@ -172,7 +179,12 @@ class WorkoutService {
       return workoutEntries;
     } catch (error) {
       console.error('[workoutService] Error:', error);
-      return this.addExercisesToWorkoutInLocalStorage(userId, date, exercises);
+      // Используем localStorage только если Supabase недоступен
+      if (!supabase) {
+        return this.addExercisesToWorkoutInLocalStorage(userId, date, exercises);
+      }
+      // Если Supabase доступен, но выдает ошибку - пробрасываем её дальше
+      throw error;
     }
   }
 
