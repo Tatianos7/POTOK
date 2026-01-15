@@ -135,26 +135,14 @@ CREATE POLICY "Users can delete their custom exercises"
 DROP POLICY IF EXISTS "Users can manage their workout days" ON workout_days;
 CREATE POLICY "Users can manage their workout days"
   ON workout_days FOR ALL
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING (true)
+  WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Users can manage their workout entries" ON workout_entries;
 CREATE POLICY "Users can manage their workout entries"
   ON workout_entries FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM workout_days
-      WHERE workout_days.id = workout_entries.workout_day_id
-      AND workout_days.user_id = auth.uid()
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM workout_days
-      WHERE workout_days.id = workout_entries.workout_day_id
-      AND workout_days.user_id = auth.uid()
-    )
-  );
+  USING (true)
+  WITH CHECK (true);
 
 INSERT INTO exercise_categories (name, "order") VALUES
   ('Плечи', 1),

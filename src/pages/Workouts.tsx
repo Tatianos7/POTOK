@@ -6,7 +6,6 @@ import InlineCalendar from '../components/InlineCalendar';
 import ExerciseCategorySheet from '../components/ExerciseCategorySheet';
 import ExerciseListSheet from '../components/ExerciseListSheet';
 import SelectedExercisesEditor from '../components/SelectedExercisesEditor';
-import WorkoutEntryCard from '../components/WorkoutEntryCard';
 import CreateExerciseModal from '../components/CreateExerciseModal';
 import { exerciseService } from '../services/exerciseService';
 import { workoutService } from '../services/workoutService';
@@ -230,8 +229,17 @@ const Workouts = () => {
   };
 
   const handleExercisesSelect = (selected: Exercise[]) => {
-    setSelectedExercises(selected);
+    // Всегда добавляем новые упражнения к существующим, если они есть
+    setSelectedExercises(prev => {
+      if (prev.length === 0) {
+        return selected;
+      }
+      const existingIds = new Set(prev.map(ex => ex.id));
+      const newExercises = selected.filter(ex => !existingIds.has(ex.id));
+      return [...prev, ...newExercises];
+    });
     setIsExerciseListSheetOpen(false);
+    // Открываем редактор после выбора упражнений
     setIsSelectedExercisesEditorOpen(true);
   };
 
@@ -248,30 +256,15 @@ const Workouts = () => {
       
       setIsSelectedExercisesEditorOpen(false);
       setSelectedExercises([]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Ошибка сохранения упражнений:', error);
-      alert('Ошибка при сохранении упражнений');
+      const errorMessage = error?.message || 'Ошибка при сохранении упражнений';
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDeleteEntry = async (entryId: string) => {
-    if (!confirm('Удалить это упражнение из тренировки?')) return;
-
-    try {
-      await workoutService.deleteWorkoutEntry(entryId);
-      
-      // Перезагружаем записи
-      if (user?.id) {
-        const entries = await workoutService.getWorkoutEntries(user.id, selectedDate);
-        setWorkoutEntries(entries);
-      }
-    } catch (error) {
-      console.error('Ошибка удаления записи:', error);
-      alert('Ошибка при удалении упражнения');
-    }
-  };
 
   const handleHistory = () => {
     // TODO: Реализовать переход на историю
@@ -388,17 +381,17 @@ const Workouts = () => {
             </div>
 
             {/* Table Headers */}
-            <div className="grid grid-cols-4 gap-2 min-[376px]:gap-4 mb-3 min-[376px]:mb-4 pb-2 border-b border-gray-200 dark:border-gray-700 w-full max-w-full">
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-700 dark:text-gray-300 text-left whitespace-nowrap overflow-hidden text-ellipsis">
-                Упражнение
+            <div className="grid grid-cols-4 gap-2 min-[376px]:gap-4 mb-2 min-[376px]:mb-3 pb-2 border-b border-gray-200 dark:border-gray-700 w-full max-w-full">
+              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-left">
+                Название упражнения
               </div>
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-700 dark:text-gray-300 text-center break-words overflow-wrap-anywhere">
+              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-center">
                 Подходы
               </div>
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-700 dark:text-gray-300 text-center break-words overflow-wrap-anywhere">
+              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-center">
                 Повторы
               </div>
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-700 dark:text-gray-300 text-center break-words overflow-wrap-anywhere">
+              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-center">
                 Вес
               </div>
             </div>
@@ -415,14 +408,28 @@ const Workouts = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 min-[376px]:space-y-4">
-                {workoutEntries.map((entry) => (
-                  <WorkoutEntryCard
-                    key={entry.id}
-                    entry={entry}
-                    onDelete={handleDeleteEntry}
-                  />
-                ))}
+              <div className="w-full max-w-full">
+                {workoutEntries.map((entry) => {
+                  return (
+                    <div
+                      key={entry.id}
+                      className="grid grid-cols-4 gap-2 min-[376px]:gap-4 py-2.5 min-[376px]:py-3 border-b border-gray-200 dark:border-gray-700 last:border-0 w-full max-w-full"
+                    >
+                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-left break-words overflow-wrap-anywhere">
+                        {entry.exercise?.name || 'Неизвестное упражнение'}
+                      </div>
+                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-center">
+                        {entry.sets}
+                      </div>
+                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-center">
+                        {entry.reps}
+                      </div>
+                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-center">
+                        {entry.weight}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -520,6 +527,7 @@ const Workouts = () => {
         exercises={selectedExercises}
         onSave={handleSaveSelectedExercises}
         onAddExercise={() => {
+          // Закрываем редактор и открываем выбор категории
           setIsSelectedExercisesEditorOpen(false);
           setIsExerciseCategorySheetOpen(true);
         }}
