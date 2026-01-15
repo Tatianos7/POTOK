@@ -380,17 +380,17 @@ const Workouts = () => {
             </div>
 
             {/* Table Headers */}
-            <div className="grid grid-cols-4 gap-2 min-[376px]:gap-4 mb-3 min-[376px]:mb-4 pb-2 border-b border-gray-200 dark:border-gray-700 w-full max-w-full">
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-700 dark:text-gray-300 text-left whitespace-nowrap overflow-hidden text-ellipsis">
+            <div className="grid grid-cols-4 gap-2 min-[376px]:gap-4 mb-2 min-[376px]:mb-3 pb-2 border-b border-gray-200 dark:border-gray-700 w-full max-w-full">
+              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-left">
                 Название упражнения
               </div>
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-700 dark:text-gray-300 text-center break-words overflow-wrap-anywhere">
+              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-center">
                 Подходы
               </div>
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-700 dark:text-gray-300 text-center break-words overflow-wrap-anywhere">
+              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-center">
                 Повторы
               </div>
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-700 dark:text-gray-300 text-center break-words overflow-wrap-anywhere">
+              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-center">
                 Вес
               </div>
             </div>
@@ -407,31 +407,23 @@ const Workouts = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-2 min-[376px]:space-y-3">
+              <div className="w-full max-w-full">
                 {workoutEntries.map((entry) => {
-                  const primaryMuscle = entry.exercise?.muscles?.[0]?.name || '';
                   return (
                     <div
                       key={entry.id}
-                      className="grid grid-cols-4 gap-2 min-[376px]:gap-4 py-2 min-[376px]:py-3 border-b border-gray-100 dark:border-gray-800 last:border-0"
+                      className="grid grid-cols-4 gap-2 min-[376px]:gap-4 py-2.5 min-[376px]:py-3 border-b border-gray-200 dark:border-gray-700 last:border-0 w-full max-w-full"
                     >
-                      <div className="text-xs min-[376px]:text-sm text-gray-900 dark:text-white text-left break-words overflow-wrap-anywhere">
-                        <div className="font-medium">
-                          {entry.exercise?.name || 'Неизвестное упражнение'}
-                        </div>
-                        {primaryMuscle && (
-                          <div className="text-[10px] min-[376px]:text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            {primaryMuscle}
-                          </div>
-                        )}
+                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-left break-words overflow-wrap-anywhere">
+                        {entry.exercise?.name || 'Неизвестное упражнение'}
                       </div>
-                      <div className="text-xs min-[376px]:text-sm text-gray-700 dark:text-gray-300 text-center">
+                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-center">
                         {entry.sets}
                       </div>
-                      <div className="text-xs min-[376px]:text-sm text-gray-700 dark:text-gray-300 text-center">
+                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-center">
                         {entry.reps}
                       </div>
-                      <div className="text-xs min-[376px]:text-sm text-gray-700 dark:text-gray-300 text-center">
+                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-center">
                         {entry.weight}
                       </div>
                     </div>
