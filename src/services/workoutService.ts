@@ -8,48 +8,51 @@ class WorkoutService {
    */
   async getOrCreateWorkoutDay(userId: string, date: string): Promise<WorkoutDay> {
     if (!supabase) {
-      return this.getOrCreateWorkoutDayFromLocalStorage(userId, date);
+      throw new Error('Supabase не инициализирован. Проверьте переменные окружения VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY');
     }
 
-    try {
-      // Преобразуем userId в UUID формат
-      const uuidUserId = toUUID(userId);
+    // Преобразуем userId в UUID формат
+    const uuidUserId = toUUID(userId);
 
-      // Пытаемся найти существующий день
-      const { data: existingDay, error: fetchError } = await supabase
-        .from('workout_days')
-        .select('*')
-        .eq('user_id', uuidUserId)
-        .eq('date', date)
-        .maybeSingle();
+    // Пытаемся найти существующий день
+    const { data: existingDay, error: fetchError } = await supabase
+      .from('workout_days')
+      .select('*')
+      .eq('user_id', uuidUserId)
+      .eq('date', date)
+      .maybeSingle();
 
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        console.error('[workoutService] Error fetching workout day:', fetchError);
-      }
-
-      if (existingDay) {
-        return existingDay;
-      }
-
-      // Создаем новый день
-      const { data: newDay, error: createError } = await supabase
-        .from('workout_days')
-        .insert({
-          user_id: uuidUserId,
-          date: date,
-        })
-        .select('*')
-        .single();
-
-      if (createError || !newDay) {
-        throw new Error(createError?.message || 'Ошибка создания дня тренировки');
-      }
-
-      return newDay;
-    } catch (error) {
-      console.error('[workoutService] Error:', error);
-      return this.getOrCreateWorkoutDayFromLocalStorage(userId, date);
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('[workoutService] Error fetching workout day:', fetchError);
+      throw new Error(`Ошибка получения дня тренировки: ${fetchError.message}`);
     }
+
+    if (existingDay) {
+      return existingDay;
+    }
+
+    // Создаем новый день (UUID сгенерируется в БД через DEFAULT gen_random_uuid())
+    const { data: newDay, error: createError } = await supabase
+      .from('workout_days')
+      .insert({
+        user_id: uuidUserId,
+        date: date,
+      })
+      .select('*')
+      .single();
+
+    if (createError || !newDay) {
+      const errorMessage = createError?.message || 'Ошибка создания дня тренировки';
+      console.error('[workoutService] Error creating workout day:', createError);
+      
+      if (createError?.code === '42501' || errorMessage.includes('row-level security')) {
+        throw new Error('Ошибка доступа: обновите RLS политики в Supabase SQL Editor. Выполните команды из файла supabase/workout_schema.sql (строки 135-145)');
+      }
+      
+      throw new Error(errorMessage);
+    }
+
+    return newDay;
   }
 
   /**
@@ -57,57 +60,52 @@ class WorkoutService {
    */
   async getWorkoutEntries(userId: string, date: string): Promise<WorkoutEntry[]> {
     if (!supabase) {
-      return this.getWorkoutEntriesFromLocalStorage(userId, date);
+      throw new Error('Supabase не инициализирован. Проверьте переменные окружения VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY');
     }
 
-    try {
-      // Преобразуем userId в UUID формат
-      const uuidUserId = toUUID(userId);
+    // Преобразуем userId в UUID формат
+    const uuidUserId = toUUID(userId);
 
-      const { data, error } = await supabase
-        .from('workout_entries')
-        .select(`
+    const { data, error } = await supabase
+      .from('workout_entries')
+      .select(`
+        *,
+        exercise:exercises(
           *,
-          exercise:exercises(
-            *,
-            category:exercise_categories(*),
-            exercise_muscles(
-              muscle:muscles(*)
-            )
-          ),
-          workout_day:workout_days(*)
-        `)
-        .eq('workout_day.user_id', uuidUserId)
-        .eq('workout_day.date', date)
-        .order('created_at', { ascending: true });
+          category:exercise_categories(*),
+          exercise_muscles(
+            muscle:muscles(*)
+          )
+        ),
+        workout_day:workout_days(*)
+      `)
+      .eq('workout_day.user_id', uuidUserId)
+      .eq('workout_day.date', date)
+      .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error('[workoutService] Error fetching workout entries:', error);
-        return this.getWorkoutEntriesFromLocalStorage(userId, date);
-      }
-
-      // Преобразуем данные
-      const entries: WorkoutEntry[] = (data || []).map((entry: any) => ({
-        id: entry.id,
-        workout_day_id: entry.workout_day_id,
-        exercise_id: entry.exercise_id,
-        sets: entry.sets,
-        reps: entry.reps,
-        weight: entry.weight,
-        created_at: entry.created_at,
-        updated_at: entry.updated_at,
-        exercise: entry.exercise ? {
-          ...entry.exercise,
-          muscles: entry.exercise.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
-        } : undefined,
-        workout_day: entry.workout_day,
-      }));
-
-      return entries;
-    } catch (error) {
-      console.error('[workoutService] Error:', error);
-      return this.getWorkoutEntriesFromLocalStorage(userId, date);
+    if (error) {
+      console.error('[workoutService] Error fetching workout entries:', error);
+      throw new Error(`Ошибка получения записей тренировки: ${error.message}`);
     }
+
+    // Преобразуем данные
+    const entries: WorkoutEntry[] = (data || []).map((entry: any) => ({
+      id: entry.id,
+      workout_day_id: entry.workout_day_id,
+      exercise_id: entry.exercise_id,
+      sets: entry.sets,
+      reps: entry.reps,
+      weight: entry.weight,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
+      exercise: entry.exercise ? {
+        ...entry.exercise,
+        muscles: entry.exercise.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
+      } : undefined,
+      workout_day: entry.workout_day,
+    }));
+
+    return entries;
   }
 
   /**
@@ -119,73 +117,63 @@ class WorkoutService {
     exercises: SelectedExercise[]
   ): Promise<WorkoutEntry[]> {
     if (!supabase) {
-      return this.addExercisesToWorkoutInLocalStorage(userId, date, exercises);
+      throw new Error('Supabase не инициализирован. Проверьте переменные окружения VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY');
     }
 
-    try {
-      // Получаем или создаем день тренировки
-      const workoutDay = await this.getOrCreateWorkoutDay(userId, date);
+    // Получаем или создаем день тренировки (UUID сгенерируется в БД)
+    const workoutDay = await this.getOrCreateWorkoutDay(userId, date);
 
-      // Проверяем, что workoutDay.id является валидным UUID (не из localStorage)
-      if (!workoutDay.id || workoutDay.id.startsWith('workout_day_') || workoutDay.id.startsWith('entry_')) {
-        // Это ID из localStorage, не можем использовать в Supabase
-        console.warn('[workoutService] Получен ID из localStorage, используем fallback');
-        return this.addExercisesToWorkoutInLocalStorage(userId, date, exercises);
-      }
+    // Создаем записи (UUID для каждой записи сгенерируется в БД через DEFAULT gen_random_uuid())
+    const entries = exercises.map(ex => ({
+      workout_day_id: workoutDay.id,
+      exercise_id: ex.exercise.id,
+      sets: ex.sets,
+      reps: ex.reps,
+      weight: ex.weight,
+    }));
 
-      // Создаем записи
-      const entries = exercises.map(ex => ({
-        workout_day_id: workoutDay.id,
-        exercise_id: ex.exercise.id,
-        sets: ex.sets,
-        reps: ex.reps,
-        weight: ex.weight,
-      }));
-
-      const { data, error } = await supabase
-        .from('workout_entries')
-        .insert(entries)
-        .select(`
+    const { data, error } = await supabase
+      .from('workout_entries')
+      .insert(entries)
+      .select(`
+        *,
+        exercise:exercises(
           *,
-          exercise:exercises(
-            *,
-            category:exercise_categories(*),
-            exercise_muscles(
-              muscle:muscles(*)
-            )
+          category:exercise_categories(*),
+          exercise_muscles(
+            muscle:muscles(*)
           )
-        `);
+        )
+      `);
 
-      if (error) {
-        throw new Error(error.message || 'Ошибка добавления упражнений');
+    if (error) {
+      const errorMessage = error.message || 'Ошибка добавления упражнений';
+      console.error('[workoutService] Error adding exercises:', error);
+      
+      if (error.code === '42501' || errorMessage.includes('row-level security')) {
+        throw new Error('Ошибка доступа: обновите RLS политики в Supabase SQL Editor. Выполните команды из файла supabase/workout_schema.sql (строки 135-145)');
       }
-
-      // Преобразуем данные
-      const workoutEntries: WorkoutEntry[] = (data || []).map((entry: any) => ({
-        id: entry.id,
-        workout_day_id: entry.workout_day_id,
-        exercise_id: entry.exercise_id,
-        sets: entry.sets,
-        reps: entry.reps,
-        weight: entry.weight,
-        created_at: entry.created_at,
-        updated_at: entry.updated_at,
-        exercise: entry.exercise ? {
-          ...entry.exercise,
-          muscles: entry.exercise.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
-        } : undefined,
-      }));
-
-      return workoutEntries;
-    } catch (error) {
-      console.error('[workoutService] Error:', error);
-      // Используем localStorage только если Supabase недоступен
-      if (!supabase) {
-        return this.addExercisesToWorkoutInLocalStorage(userId, date, exercises);
-      }
-      // Если Supabase доступен, но выдает ошибку - пробрасываем её дальше
-      throw error;
+      
+      throw new Error(errorMessage);
     }
+
+    // Преобразуем данные
+    const workoutEntries: WorkoutEntry[] = (data || []).map((entry: any) => ({
+      id: entry.id,
+      workout_day_id: entry.workout_day_id,
+      exercise_id: entry.exercise_id,
+      sets: entry.sets,
+      reps: entry.reps,
+      weight: entry.weight,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
+      exercise: entry.exercise ? {
+        ...entry.exercise,
+        muscles: entry.exercise.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
+      } : undefined,
+    }));
+
+    return workoutEntries;
   }
 
   /**
@@ -238,97 +226,28 @@ class WorkoutService {
    */
   async deleteWorkoutEntry(entryId: string): Promise<void> {
     if (!supabase) {
-      return this.deleteWorkoutEntryFromLocalStorage(entryId);
+      throw new Error('Supabase не инициализирован. Проверьте переменные окружения VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY');
     }
 
-    try {
-      const { error } = await supabase
-        .from('workout_entries')
-        .delete()
-        .eq('id', entryId);
+    const { error } = await supabase
+      .from('workout_entries')
+      .delete()
+      .eq('id', entryId);
 
-      if (error) {
-        throw new Error(error.message || 'Ошибка удаления записи');
+    if (error) {
+      const errorMessage = error.message || 'Ошибка удаления записи';
+      console.error('[workoutService] Error deleting entry:', error);
+      
+      if (error.code === '42501' || errorMessage.includes('row-level security')) {
+        throw new Error('Ошибка доступа: обновите RLS политики в Supabase SQL Editor. Выполните команды из файла supabase/workout_schema.sql (строки 135-145)');
       }
-    } catch (error) {
-      console.error('[workoutService] Error:', error);
-      this.deleteWorkoutEntryFromLocalStorage(entryId);
+      
+      throw new Error(errorMessage);
     }
   }
 
-  // Fallback методы для localStorage
-  private getOrCreateWorkoutDayFromLocalStorage(userId: string, date: string): WorkoutDay {
-    const key = `workout_day_${userId}_${date}`;
-    try {
-      const stored = localStorage.getItem(key);
-      if (stored) {
-        return JSON.parse(stored);
-      }
-
-      const newDay: WorkoutDay = {
-        id: `workout_day_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        user_id: userId,
-        date: date,
-      };
-
-      localStorage.setItem(key, JSON.stringify(newDay));
-      return newDay;
-    } catch {
-      return {
-        id: `workout_day_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        user_id: userId,
-        date: date,
-      };
-    }
-  }
-
-  private getWorkoutEntriesFromLocalStorage(userId: string, date: string): WorkoutEntry[] {
-    const key = `workout_entries_${userId}_${date}`;
-    try {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  private async addExercisesToWorkoutInLocalStorage(
-    userId: string,
-    date: string,
-    exercises: SelectedExercise[]
-  ): Promise<WorkoutEntry[]> {
-    const key = `workout_entries_${userId}_${date}`;
-    const existing = this.getWorkoutEntriesFromLocalStorage(userId, date);
-
-    const newEntries: WorkoutEntry[] = exercises.map(ex => ({
-      id: `entry_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      workout_day_id: `workout_day_${userId}_${date}`,
-      exercise_id: ex.exercise.id,
-      sets: ex.sets,
-      reps: ex.reps,
-      weight: ex.weight,
-      exercise: ex.exercise,
-    }));
-
-    const allEntries = [...existing, ...newEntries];
-    localStorage.setItem(key, JSON.stringify(allEntries));
-    return newEntries;
-  }
-
-  private deleteWorkoutEntryFromLocalStorage(entryId: string): void {
-    // Простая реализация - удаляем из всех дат
-    const keys = Object.keys(localStorage).filter(k => k.startsWith('workout_entries_'));
-    keys.forEach(key => {
-      try {
-        const entries: WorkoutEntry[] = JSON.parse(localStorage.getItem(key) || '[]');
-        const filtered = entries.filter(e => e.id !== entryId);
-        localStorage.setItem(key, JSON.stringify(filtered));
-      } catch {
-        // Игнорируем ошибки
-      }
-    });
-  }
 }
 
 export const workoutService = new WorkoutService();
+
 

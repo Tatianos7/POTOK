@@ -259,11 +259,7 @@ const Workouts = () => {
     } catch (error: any) {
       console.error('Ошибка сохранения упражнений:', error);
       const errorMessage = error?.message || 'Ошибка при сохранении упражнений';
-      if (errorMessage.includes('row-level security')) {
-        alert('Ошибка доступа к базе данных. Пожалуйста, обновите RLS политики в Supabase SQL Editor.');
-      } else {
-        alert(errorMessage);
-      }
+      alert(errorMessage);
     } finally {
       setIsLoading(false);
     }
