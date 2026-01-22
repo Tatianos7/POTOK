@@ -1,9 +1,30 @@
 import { supabase } from '../lib/supabaseClient';
-import { toUUID } from '../utils/uuid';
 import { Exercise, ExerciseCategory, Muscle, CreateExerciseData } from '../types/workout';
 import { normalizeMuscleNames } from '../utils/muscleNormalizer';
 
 class ExerciseService {
+  private normalizeMuscles(muscles: Muscle[]): Muscle[] {
+    const names = muscles.map((m) => m.name).filter(Boolean);
+    const normalized = normalizeMuscleNames(names);
+    return normalized.map((name) => ({ id: '', name }));
+  }
+
+  private async getSessionUserId(userId?: string): Promise<string> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user?.id) {
+      throw new Error('Пользователь не авторизован');
+    }
+
+    if (userId && userId !== data.user.id) {
+      console.warn('[exerciseService] Передан userId не совпадает с сессией');
+    }
+
+    return data.user.id;
+  }
   /**
    * Получить все категории упражнений
    */
@@ -88,12 +109,14 @@ class ExerciseService {
         return [];
       }
 
+      const limit = 500;
       // Используем exercises_full_view для получения упражнений
       const { data, error } = await supabase
         .from('exercises_full_view')
         .select('*')
         .eq('category', categoryData.name)
-        .order('exercise_name', { ascending: true });
+        .order('exercise_name', { ascending: true })
+        .limit(limit);
 
       if (error) {
         console.error('[exerciseService] Error fetching exercises from view:', error);
@@ -138,10 +161,18 @@ class ExerciseService {
               description: undefined,
               is_custom: false,
               created_by_user_id: undefined,
-            muscles: normalizeMuscleNames(musclesArray).map((muscleName: string) => ({
-              id: '',
-              name: muscleName,
-            })),
+              canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
+              normalized_name: ex.normalized_name ?? null,
+              movement_pattern: ex.movement_pattern ?? null,
+              equipment_type: ex.equipment_type ?? null,
+              difficulty_level: ex.difficulty_level ?? null,
+              is_compound: ex.is_compound ?? false,
+              energy_system: ex.energy_system ?? null,
+              metabolic_equivalent: ex.metabolic_equivalent ?? null,
+              muscles: normalizeMuscleNames(musclesArray).map((muscleName: string) => ({
+                id: '',
+                name: muscleName,
+              })),
             });
           } else if (currentHasMuscles && existingHasMuscles && existing.muscles && existing.muscles.length > 0) {
             // Если обе версии с мышцами, объединяем уникальные мышцы (с нормализацией)
@@ -175,6 +206,14 @@ class ExerciseService {
             description: undefined,
             is_custom: false,
             created_by_user_id: undefined,
+            canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
+            normalized_name: ex.normalized_name ?? null,
+            movement_pattern: ex.movement_pattern ?? null,
+            equipment_type: ex.equipment_type ?? null,
+            difficulty_level: ex.difficulty_level ?? null,
+            is_compound: ex.is_compound ?? false,
+            energy_system: ex.energy_system ?? null,
+            metabolic_equivalent: ex.metabolic_equivalent ?? null,
             muscles: normalizedMuscles.map((muscleName: string) => ({
               id: '',
               name: muscleName,
@@ -206,6 +245,8 @@ class ExerciseService {
     }
 
     try {
+      const limit = 500;
+      const sessionUserId = await this.getSessionUserId(userId);
       let query = supabase
         .from('exercises')
         .select(`
@@ -216,14 +257,11 @@ class ExerciseService {
           )
         `)
         .eq('category_id', categoryId)
-        .order('name', { ascending: true });
+        .order('name', { ascending: true })
+        .limit(limit);
 
       // Включаем стандартные упражнения и пользовательские упражнения текущего пользователя
-      if (userId) {
-        query = query.or(`is_custom.eq.false,created_by_user_id.eq.${toUUID(userId)}`);
-      } else {
-        query = query.eq('is_custom', false);
-      }
+      query = query.or(`is_custom.eq.false,created_by_user_id.eq.${sessionUserId}`);
 
       const { data, error } = await query;
 
@@ -238,13 +276,14 @@ class ExerciseService {
       (data || []).forEach((ex: any) => {
         const exerciseName = ex.name;
         const muscles = ex.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [];
+        const normalizedMuscles = this.normalizeMuscles(muscles);
         
         // Если упражнение уже есть в мапе
         if (exercisesMap.has(exerciseName)) {
           const existing = exercisesMap.get(exerciseName)!;
           
           // Приоритет: оставляем версию с мышцами
-          if (muscles.length > 0 && (!existing.muscles || existing.muscles.length === 0)) {
+          if (normalizedMuscles.length > 0 && (!existing.muscles || existing.muscles.length === 0)) {
             // Заменяем версию без мышц на версию с мышцами
             exercisesMap.set(exerciseName, {
               id: ex.id,
@@ -254,13 +293,13 @@ class ExerciseService {
               is_custom: ex.is_custom,
               created_by_user_id: ex.created_by_user_id,
               category: ex.category,
-              muscles: muscles,
+              muscles: normalizedMuscles,
             });
-          } else if (muscles.length > 0 && existing.muscles && existing.muscles.length > 0) {
+          } else if (normalizedMuscles.length > 0 && existing.muscles && existing.muscles.length > 0) {
             // Если обе версии с мышцами, объединяем уникальные мышцы
-            const existingMuscleNames = new Set(existing.muscles.map((m: Muscle) => m.id || m.name));
-            const newMuscles = muscles.filter((m: Muscle) => {
-              const key = m.id || m.name;
+            const existingMuscleNames = new Set(existing.muscles.map((m: Muscle) => m.name));
+            const newMuscles = normalizedMuscles.filter((m: Muscle) => {
+              const key = m.name;
               return key && !existingMuscleNames.has(key);
             });
             
@@ -281,8 +320,16 @@ class ExerciseService {
             description: ex.description,
             is_custom: ex.is_custom,
             created_by_user_id: ex.created_by_user_id,
+            canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
+            normalized_name: ex.normalized_name ?? null,
+            movement_pattern: ex.movement_pattern ?? null,
+            equipment_type: ex.equipment_type ?? null,
+            difficulty_level: ex.difficulty_level ?? null,
+            is_compound: ex.is_compound ?? false,
+            energy_system: ex.energy_system ?? null,
+            metabolic_equivalent: ex.metabolic_equivalent ?? null,
             category: ex.category,
-            muscles: muscles,
+            muscles: normalizedMuscles,
           });
         }
       });
@@ -309,6 +356,8 @@ class ExerciseService {
     }
 
     try {
+      const limit = 200;
+      const sessionUserId = await this.getSessionUserId(userId);
       let query = supabase
         .from('exercises')
         .select(`
@@ -319,18 +368,15 @@ class ExerciseService {
           )
         `)
         .ilike('name', `%${searchTerm}%`)
-        .order('name', { ascending: true });
+        .order('name', { ascending: true })
+        .limit(limit);
 
       if (categoryId) {
         query = query.eq('category_id', categoryId);
       }
 
       // Включаем стандартные упражнения и пользовательские упражнения текущего пользователя
-      if (userId) {
-        query = query.or(`is_custom.eq.false,created_by_user_id.eq.${toUUID(userId)}`);
-      } else {
-        query = query.eq('is_custom', false);
-      }
+      query = query.or(`is_custom.eq.false,created_by_user_id.eq.${sessionUserId}`);
 
       const { data, error } = await query;
 
@@ -345,13 +391,14 @@ class ExerciseService {
       (data || []).forEach((ex: any) => {
         const exerciseName = ex.name;
         const muscles = ex.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [];
+        const normalizedMuscles = this.normalizeMuscles(muscles);
         
         // Если упражнение уже есть в мапе
         if (exercisesMap.has(exerciseName)) {
           const existing = exercisesMap.get(exerciseName)!;
           
           // Приоритет: оставляем версию с мышцами
-          if (muscles.length > 0 && (!existing.muscles || existing.muscles.length === 0)) {
+          if (normalizedMuscles.length > 0 && (!existing.muscles || existing.muscles.length === 0)) {
             // Заменяем версию без мышц на версию с мышцами
             exercisesMap.set(exerciseName, {
               id: ex.id,
@@ -361,13 +408,13 @@ class ExerciseService {
               is_custom: ex.is_custom,
               created_by_user_id: ex.created_by_user_id,
               category: ex.category,
-              muscles: muscles,
+              muscles: normalizedMuscles,
             });
-          } else if (muscles.length > 0 && existing.muscles && existing.muscles.length > 0) {
+          } else if (normalizedMuscles.length > 0 && existing.muscles && existing.muscles.length > 0) {
             // Если обе версии с мышцами, объединяем уникальные мышцы
-            const existingMuscleNames = new Set(existing.muscles.map((m: Muscle) => m.id || m.name));
-            const newMuscles = muscles.filter((m: Muscle) => {
-              const key = m.id || m.name;
+            const existingMuscleNames = new Set(existing.muscles.map((m: Muscle) => m.name));
+            const newMuscles = normalizedMuscles.filter((m: Muscle) => {
+              const key = m.name;
               return key && !existingMuscleNames.has(key);
             });
             
@@ -389,7 +436,7 @@ class ExerciseService {
             is_custom: ex.is_custom,
             created_by_user_id: ex.created_by_user_id,
             category: ex.category,
-            muscles: muscles,
+            muscles: normalizedMuscles,
           });
         }
       });
@@ -416,7 +463,7 @@ class ExerciseService {
     }
 
     try {
-      const uuidUserId = toUUID(userId);
+      const sessionUserId = await this.getSessionUserId(userId);
 
       // Создаем упражнение
       const { data: exercise, error: exerciseError } = await supabase
@@ -426,7 +473,7 @@ class ExerciseService {
           category_id: data.category_id,
           description: data.description,
           is_custom: true,
-          created_by_user_id: uuidUserId,
+          created_by_user_id: sessionUserId,
         })
         .select(`
           *,

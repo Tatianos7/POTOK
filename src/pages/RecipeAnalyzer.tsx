@@ -77,10 +77,10 @@ const RecipeAnalyzer = () => {
     setIsSaveRecipeModalOpen(true);
   };
 
-  const handleSaveRecipe = (recipeName: string) => {
+  const handleSaveRecipe = async (recipeName: string) => {
     if (!user?.id || items.length === 0) return;
 
-    recipesService.createRecipeFromAnalyzer({
+    await recipesService.createRecipeFromAnalyzer({
       name: recipeName,
       image: recipeImage,
       totalCalories: totals.total.calories,

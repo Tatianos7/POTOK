@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS exercises (
   category_id UUID NOT NULL REFERENCES exercise_categories(id) ON DELETE CASCADE,
   description TEXT,
   is_custom BOOLEAN NOT NULL DEFAULT false,
-  created_by_user_id UUID,
+  created_by_user_id UUID REFERENCES auth.users (id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   CONSTRAINT exercises_name_category_unique UNIQUE (name, category_id, created_by_user_id)
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS exercise_muscles (
 
 CREATE TABLE IF NOT EXISTS workout_days (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL,
+  user_id UUID NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
   date DATE NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
@@ -106,7 +106,7 @@ CREATE POLICY "Anyone can read exercise categories"
 
 DROP POLICY IF EXISTS "Anyone can insert exercise categories" ON exercise_categories;
 CREATE POLICY "Anyone can insert exercise categories"
-  ON exercise_categories FOR INSERT WITH CHECK (true);
+  ON exercise_categories FOR INSERT WITH CHECK (false);
 
 DROP POLICY IF EXISTS "Anyone can read muscles" ON muscles;
 CREATE POLICY "Anyone can read muscles"
@@ -115,7 +115,12 @@ CREATE POLICY "Anyone can read muscles"
 DROP POLICY IF EXISTS "Anyone can read standard exercises" ON exercises;
 CREATE POLICY "Anyone can read standard exercises"
   ON exercises FOR SELECT
-  USING (is_custom = false OR created_by_user_id = auth.uid());
+  USING (is_custom = false);
+
+DROP POLICY IF EXISTS "Users can read their custom exercises" ON exercises;
+CREATE POLICY "Users can read their custom exercises"
+  ON exercises FOR SELECT
+  USING (created_by_user_id = auth.uid());
 
 DROP POLICY IF EXISTS "Users can create custom exercises" ON exercises;
 CREATE POLICY "Users can create custom exercises"
@@ -125,7 +130,8 @@ CREATE POLICY "Users can create custom exercises"
 DROP POLICY IF EXISTS "Users can update their custom exercises" ON exercises;
 CREATE POLICY "Users can update their custom exercises"
   ON exercises FOR UPDATE
-  USING (created_by_user_id = auth.uid());
+  USING (created_by_user_id = auth.uid())
+  WITH CHECK (created_by_user_id = auth.uid());
 
 DROP POLICY IF EXISTS "Users can delete their custom exercises" ON exercises;
 CREATE POLICY "Users can delete their custom exercises"
@@ -135,14 +141,28 @@ CREATE POLICY "Users can delete their custom exercises"
 DROP POLICY IF EXISTS "Users can manage their workout days" ON workout_days;
 CREATE POLICY "Users can manage their workout days"
   ON workout_days FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can manage their workout entries" ON workout_entries;
 CREATE POLICY "Users can manage their workout entries"
   ON workout_entries FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM workout_days wd
+      WHERE wd.id = workout_day_id
+        AND wd.user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM workout_days wd
+      WHERE wd.id = workout_day_id
+        AND wd.user_id = auth.uid()
+    )
+  );
 
 INSERT INTO exercise_categories (name, "order") VALUES
   ('Плечи', 1),

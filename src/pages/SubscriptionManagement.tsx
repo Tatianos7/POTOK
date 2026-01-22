@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { authService } from '../services/authService';
+import { profileService } from '../services/profileService';
 import { X } from 'lucide-react';
 import DeleteSubscriptionModal from '../components/DeleteSubscriptionModal';
 import ChangeSubscriptionModal from '../components/ChangeSubscriptionModal';
@@ -40,12 +40,11 @@ const SubscriptionManagement = ({ onClose }: SubscriptionManagementProps) => {
     setStatus('');
 
     try {
-      // Используем безопасный метод из authService
-      const updatedUser = authService.updateUserSubscription(user.id, true, planType);
+      await profileService.updatePremiumStatus(user.id, true);
+      setCurrentUser((prev) => (prev ? { ...prev, hasPremium: true } : prev));
       
-      setCurrentUser(updatedUser);
-      
-      setStatus(`Подписка PREMIUM успешно активирована!`);
+      const planLabel = planType === 'monthly' ? 'Месячный' : 'Годовой';
+      setStatus(`Подписка PREMIUM (${planLabel}) успешно активирована!`);
       
       // Закрываем модальное окно выбора тарифа
       setIsChangeModalOpen(false);
@@ -70,10 +69,8 @@ const SubscriptionManagement = ({ onClose }: SubscriptionManagementProps) => {
     setStatus('');
 
     try {
-      // Используем безопасный метод из authService
-      const updatedUser = authService.updateUserSubscription(user.id, false);
-      
-      setCurrentUser(updatedUser);
+      await profileService.updatePremiumStatus(user.id, false);
+      setCurrentUser((prev) => prev ? { ...prev, hasPremium: false } : prev);
       
       // Показываем модальное окно с подтверждением удаления
       setIsDeleteModalOpen(true);

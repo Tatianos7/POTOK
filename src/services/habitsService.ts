@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { trackEvent } from './analyticsService';
-import { toUUID } from '../utils/uuid';
+import { aiRecommendationsService } from './aiRecommendationsService';
 
 export type HabitFrequency = 'daily' | 'weekly';
 
@@ -34,6 +34,37 @@ if (!supabase) {
   );
 }
 
+async function getSessionUserId(userId?: string): Promise<string> {
+  if (!supabase) {
+    throw new Error('Supabase не инициализирован');
+  }
+
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user?.id) {
+    throw new Error('Пользователь не авторизован');
+  }
+
+  if (userId && userId !== data.user.id) {
+    console.warn('[habitsService] Передан userId не совпадает с сессией');
+  }
+
+  return data.user.id;
+}
+
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 200): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts) break;
+      await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
+    }
+  }
+  throw lastError;
+}
+
 export async function createHabit(params: {
   userId: string;
   title: string;
@@ -44,17 +75,19 @@ export async function createHabit(params: {
 
   const { userId, title, description, frequency } = params;
 
-  const uuidUserId = toUUID(userId);
-  const { data, error } = await supabase
-    .from('habits')
-    .insert({
-      user_id: uuidUserId,
-      title: title.trim(),
-      description: description?.trim() || null,
-      frequency,
-    })
-    .select('*')
-    .single();
+  const sessionUserId = await getSessionUserId(userId);
+  const { data, error } = await withRetry(() =>
+    supabase
+      .from('habits')
+      .insert({
+        user_id: sessionUserId,
+        title: title.trim(),
+        description: description?.trim() || null,
+        frequency,
+      })
+      .select('*')
+      .single()
+  );
 
   if (error) {
     // eslint-disable-next-line no-console
@@ -81,64 +114,88 @@ export async function toggleHabitComplete(params: {
 
   const { userId, habitId, date } = params;
 
-  const uuidUserId = toUUID(userId);
-  const { data: existing, error: selectError } = await supabase
-    .from('habit_logs')
-    .select('*')
-    .eq('user_id', uuidUserId)
-    .eq('habit_id', habitId)
-    .eq('date', date)
-    .maybeSingle();
+  const sessionUserId = await getSessionUserId(userId);
+  const { data, error } = await withRetry(() =>
+    supabase.rpc('toggle_habit_log', {
+      p_user_id: sessionUserId,
+      p_habit_id: habitId,
+      p_date: date,
+    })
+  );
 
-  if (selectError && selectError.code !== 'PGRST116') {
+  if (error) {
     // eslint-disable-next-line no-console
-    console.error('[habitsService] toggleHabitComplete select error', selectError);
+    console.error('[habitsService] toggleHabitComplete rpc error', error);
     return null;
   }
 
-  const nextCompleted = existing && (existing as any).completed ? !(existing as any).completed : true;
+  const log = data as HabitLog | null;
 
-  let log: HabitLog | null = null;
-
-  if (existing) {
-    const { data, error } = await supabase
-      .from('habit_logs')
-      .update({ completed: nextCompleted })
-      .eq('id', (existing as any).id)
-      .select('*')
-      .single();
-
-    if (error) {
-      // eslint-disable-next-line no-console
-      console.error('[habitsService] toggleHabitComplete update error', error);
-      return null;
-    }
-    log = data as HabitLog;
-  } else {
-    const { data, error } = await supabase
-      .from('habit_logs')
-      .insert({
-        habit_id: habitId,
-        user_id: uuidUserId,
-        date,
-        completed: true,
-      })
-      .select('*')
-      .single();
-
-    if (error) {
-      // eslint-disable-next-line no-console
-      console.error('[habitsService] toggleHabitComplete insert error', error);
-      return null;
-    }
-    log = data as HabitLog;
-  }
-
-  if (nextCompleted) {
+  if (log?.completed) {
     await trackEvent({ name: 'complete_habit', userId, metadata: { habit_id: habitId, date } });
   }
 
   return log;
+}
+
+export async function getHabitStats(params: {
+  userId: string;
+  habitId: string;
+  fromDate: string;
+  toDate: string;
+}): Promise<{ streak: number; adherence: number }> {
+  if (!supabase) return { streak: 0, adherence: 0 };
+  const { userId, habitId, fromDate, toDate } = params;
+  const sessionUserId = await getSessionUserId(userId);
+
+  const { data, error } = await withRetry(() =>
+    supabase
+      .from('habit_logs')
+      .select('date, completed')
+      .eq('user_id', sessionUserId)
+      .eq('habit_id', habitId)
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: true })
+  );
+
+  if (error) {
+    console.error('[habitsService] getHabitStats error', error);
+    return { streak: 0, adherence: 0 };
+  }
+
+  const logs = data || [];
+  const completedDates = new Set(logs.filter((l: any) => l.completed).map((l: any) => l.date));
+
+  let streak = 0;
+  let current = new Date(toDate);
+  const start = new Date(fromDate);
+  while (current >= start) {
+    const dateStr = current.toISOString().split('T')[0];
+    if (completedDates.has(dateStr)) {
+      streak += 1;
+      current.setDate(current.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  const totalDays = Math.max(1, Math.floor((new Date(toDate).getTime() - new Date(fromDate).getTime()) / 86400000) + 1);
+  const adherence = logs.length > 0 ? completedDates.size / totalDays : 0;
+
+  return { streak, adherence };
+}
+
+export async function requestHabitFeedback(params: {
+  userId: string;
+  habitId: string;
+  fromDate: string;
+  toDate: string;
+}): Promise<void> {
+  const { userId, habitId, fromDate, toDate } = params;
+  const stats = await getHabitStats({ userId, habitId, fromDate, toDate });
+  const context = { habit_id: habitId, fromDate, toDate, stats };
+  await aiRecommendationsService.queueHabitFeedback(userId, context, `habit-${habitId}-${toDate}`);
 }
 
 export async function getHabitsForDate(params: {
@@ -149,18 +206,22 @@ export async function getHabitsForDate(params: {
 
   const { userId, date } = params;
 
-  const uuidUserId = toUUID(userId);
+  const sessionUserId = await getSessionUserId(userId);
   const [{ data: habits, error: habitsError }, { data: logs, error: logsError }] = await Promise.all([
-    supabase
-      .from('habits')
-      .select<'*'>('*')
-      .eq('user_id', uuidUserId)
-      .eq('is_active', true),
-    supabase
-      .from('habit_logs')
-      .select<'*'>('*')
-      .eq('user_id', uuidUserId)
-      .eq('date', date),
+    withRetry(() =>
+      supabase
+        .from('habits')
+        .select<'*'>('*')
+        .eq('user_id', sessionUserId)
+        .eq('is_active', true)
+    ),
+    withRetry(() =>
+      supabase
+        .from('habit_logs')
+        .select<'*'>('*')
+        .eq('user_id', sessionUserId)
+        .eq('date', date)
+    ),
   ]);
 
   if (habitsError) {

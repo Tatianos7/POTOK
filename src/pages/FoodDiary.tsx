@@ -679,7 +679,7 @@ const FoodDiary = () => {
     setIsSaveRecipeModalOpen(true);
   };
 
-  const handleSaveRecipe = (name: string, note?: string) => {
+  const handleSaveRecipe = async (name: string, note?: string) => {
     if (!user?.id || !savingMealType || !dailyMeals) {
       console.warn('[FoodDiary] handleSaveRecipe: missing required data', { user: !!user?.id, savingMealType, dailyMeals: !!dailyMeals });
       return;
@@ -695,7 +695,7 @@ const FoodDiary = () => {
 
     try {
       // Создаём рецепт из приёма пищи
-      const recipe = recipesService.createRecipeFromMeal({
+      const recipe = await recipesService.createRecipeFromMeal({
         name,
         note,
         mealEntries,

@@ -8,7 +8,7 @@ interface ChangePasswordModalProps {
 }
 
 const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProps) => {
-  const { resetPassword, user } = useAuth();
+  const { updatePassword } = useAuth();
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -64,18 +64,9 @@ const ChangePasswordModal = ({ isOpen, onClose }: ChangePasswordModalProps) => {
       return;
     }
 
-    if (!user?.email && !user?.phone) {
-      setError('Не указан email или телефон для смены пароля');
-      return;
-    }
-
     setIsLoading(true);
     try {
-      const identifier = user?.email || user?.phone || '';
-      await resetPassword({
-        identifier,
-        newPassword,
-      });
+      await updatePassword(newPassword);
       setStatus('Пароль успешно изменен');
       setTimeout(() => {
         onClose();

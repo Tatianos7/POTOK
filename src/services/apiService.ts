@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { authService } from './authService';
+import { supabase } from '../lib/supabaseClient';
 
 // Базовый URL для API (в продакшене заменить на реальный)
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://api.potok-fitness.com';
@@ -18,10 +18,13 @@ class ApiService {
 
     // Интерцептор для добавления токена к каждому запросу
     this.api.interceptors.request.use(
-      (config) => {
-        const token = authService.getToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+      async (config) => {
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const token = data?.session?.access_token;
+          if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+          }
         }
         return config;
       },
@@ -35,8 +38,9 @@ class ApiService {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          // Токен истек или невалиден
-          authService.logout();
+          if (supabase) {
+            void supabase.auth.signOut();
+          }
           window.location.href = '/login';
         }
         return Promise.reject(error);

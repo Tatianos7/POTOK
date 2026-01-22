@@ -23,6 +23,7 @@ import CreateBrandProductPage from './pages/CreateBrandProductPage';
 import Habits from './pages/Habits';
 import Workouts from './pages/Workouts';
 import ImportExercises from './pages/ImportExercises';
+import PoseCoach from './pages/PoseCoach';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function AppRoutes() {
@@ -199,6 +200,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Workouts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pose"
+        element={
+          <ProtectedRoute>
+            <PoseCoach />
           </ProtectedRoute>
         }
       />

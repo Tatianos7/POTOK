@@ -6,6 +6,7 @@ import { activityService } from '../services/activityService';
 import { notificationService } from '../services/notificationService';
 import { SupportMessage, User } from '../types';
 import { X, MessageSquare, Users, UserCheck, UserX, Mail, CheckCircle, Clock, AlertCircle, Shield, ShieldOff, Wifi } from 'lucide-react';
+import FoodIngestionPanel from '../components/FoodIngestionPanel';
 
 const AdminPanel = () => {
   const { user, logout, getAllUsers, setAdminStatus } = useAuth();
@@ -17,7 +18,7 @@ const AdminPanel = () => {
   const [usersStats, setUsersStats] = useState({ total: 0, withPremium: 0, withoutPremium: 0, online: 0 });
   const [messagesStats, setMessagesStats] = useState({ total: 0, new: 0, inProgress: 0, resolved: 0 });
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [activeTab, setActiveTab] = useState<'stats' | 'messages' | 'users'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'messages' | 'users' | 'imports'>('stats');
   const [isResponding, setIsResponding] = useState(false);
   
   // Группируем сообщения по userId
@@ -59,9 +60,8 @@ const AdminPanel = () => {
       navigate('/login');
       return;
     }
-    // Доступ к админ-панели только для специального админ-аккаунта (id === 'admin')
-    // Обычные пользователи с правами админа не могут заходить в админ-панель
-    if (!user.isAdmin || user.id !== 'admin') {
+    // Доступ к админ-панели только для пользователей с isAdmin
+    if (!user.isAdmin) {
       navigate('/');
       return;
     }
@@ -345,6 +345,16 @@ const AdminPanel = () => {
             >
               Пользователи
             </button>
+            <button
+              onClick={() => setActiveTab('imports')}
+              className={`px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === 'imports'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Импорт
+            </button>
           </div>
         </div>
 
@@ -573,6 +583,12 @@ const AdminPanel = () => {
                   )}
                 </div>
               </div>
+            </>
+          )}
+          {activeTab === 'imports' && (
+            <>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Импорт базы продуктов</h2>
+              <FoodIngestionPanel />
             </>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { User } from '../types';
+import { supabase } from '../lib/supabaseClient';
 
-const ACTIVITY_KEY = 'potok_user_activity';
 const ONLINE_THRESHOLD = 5 * 60 * 1000; // 5 минут в миллисекундах
 
 interface UserActivity {
@@ -9,13 +9,25 @@ interface UserActivity {
 }
 
 class ActivityService {
+  private activities: UserActivity[] = [];
   // Обновить активность пользователя
-  updateActivity(userId: string): void {
+  async updateActivity(userId: string): Promise<void> {
+    let sessionUserId = userId;
+    if (supabase) {
+      const { data, error } = await supabase.auth.getUser();
+      if (!error && data?.user?.id) {
+        if (userId && userId !== data.user.id) {
+          console.warn('[activityService] Передан userId не совпадает с сессией');
+        }
+        sessionUserId = data.user.id;
+      }
+    }
+
     const activities = this.getAllActivities();
-    const existingIndex = activities.findIndex(a => a.userId === userId);
+    const existingIndex = activities.findIndex(a => a.userId === sessionUserId);
     
     const activity: UserActivity = {
-      userId,
+      userId: sessionUserId,
       lastActivity: Date.now(),
     };
 
@@ -25,8 +37,6 @@ class ActivityService {
       activities.push(activity);
     }
 
-    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(activities));
-    
     // Отправляем событие для обновления админ-панели
     window.dispatchEvent(new Event('user-activity-changed'));
     
@@ -36,14 +46,7 @@ class ActivityService {
 
   // Получить все активности
   private getAllActivities(): UserActivity[] {
-    const activitiesStr = localStorage.getItem(ACTIVITY_KEY);
-    if (!activitiesStr) return [];
-
-    try {
-      return JSON.parse(activitiesStr);
-    } catch {
-      return [];
-    }
+    return this.activities;
   }
 
   // Проверить, онлайн ли пользователь
@@ -92,7 +95,7 @@ class ActivityService {
     const cleaned = activities.filter(
       a => now - a.lastActivity < ONLINE_THRESHOLD * 2 // Храним активности в 2 раза дольше порога
     );
-    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(cleaned));
+    this.activities = cleaned;
   }
 }
 

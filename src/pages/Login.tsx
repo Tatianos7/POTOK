@@ -5,10 +5,11 @@ import { useTheme } from '../context/ThemeContext';
 
 const Login = () => {
   const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, verifyOtp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { setThemeExplicit } = useTheme();
 
@@ -17,14 +18,33 @@ const Login = () => {
     setThemeExplicit('light');
   }, [setThemeExplicit]);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
+  const trimmedIdentifier = identifier.trim();
+  const isEmail = trimmedIdentifier.includes('@');
+  const isPhone = trimmedIdentifier.length > 0 && !isEmail;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setStatus('');
     setIsLoading(true);
 
     try {
-      await login({ identifier, password });
-      navigate('/');
+      if (!otpCode) {
+        await login({ identifier: trimmedIdentifier });
+        if (isEmail) {
+          setStatus('Ссылка для входа отправлена на email. Проверьте почту.');
+        } else {
+          setStatus('Код подтверждения отправлен по SMS.');
+        }
+      } else {
+        await verifyOtp({ identifier: trimmedIdentifier, token: otpCode });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка входа');
     } finally {
@@ -47,6 +67,11 @@ const Login = () => {
               {error}
             </div>
           )}
+          {status && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+              {status}
+            </div>
+          )}
 
           <div>
             <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-1">
@@ -63,27 +88,28 @@ const Login = () => {
             />
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Пароль
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="input-field"
-              placeholder="••••••••"
-            />
-          </div>
+          {isPhone && (
+            <div>
+              <label htmlFor="otpCode" className="block text-sm font-medium text-gray-700 mb-1">
+                Код из SMS
+              </label>
+              <input
+                id="otpCode"
+                type="text"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value)}
+                className="input-field"
+                placeholder="123456"
+              />
+            </div>
+          )}
 
           <button
             type="submit"
             disabled={isLoading}
             className="w-full min-[768px]:button-limited bg-black text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Вход...' : 'Войти'}
+            {isLoading ? 'Отправка...' : otpCode ? 'Подтвердить' : 'Получить код'}
           </button>
           <div className="text-right">
             <Link to="/forgot-password" className="text-sm text-primary-600 font-semibold hover:underline">

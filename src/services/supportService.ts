@@ -67,7 +67,7 @@ class SupportService {
 
     const messages = await this.getAllMessages();
     messages.push(newMessage);
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+    console.warn('[supportService] createMessage disabled: Supabase is source of truth');
     
     // Отправляем событие об изменении сообщений
     window.dispatchEvent(new Event('support-message-changed'));
@@ -108,7 +108,7 @@ class SupportService {
       messages[messageIndex].status = 'in_progress';
     }
 
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+    console.warn('[supportService] addResponse disabled: Supabase is source of truth');
     
     // Отправляем событие об изменении сообщений
     window.dispatchEvent(new Event('support-message-changed'));
@@ -128,7 +128,7 @@ class SupportService {
     }
 
     messages[messageIndex].status = status;
-    localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages));
+    console.warn('[supportService] updateMessageStatus disabled: Supabase is source of truth');
     
     // Отправляем событие для обновления админ-панели
     window.dispatchEvent(new Event('support-message-changed'));

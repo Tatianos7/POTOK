@@ -14,6 +14,7 @@ export interface Recipe {
   carbsPer100?: number;
   ingredients?: Array<{
     name: string;
+    canonical_food_id?: string | null;
     quantity: number;
     unit: string;
     grams: number;

@@ -12,10 +12,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Перенаправляем только специального админ-аккаунта (id === 'admin') в админ-панель
-  // Обычные пользователи с правами админа не редиректятся автоматически
+  // Перенаправляем админов в админ-панель
   useEffect(() => {
-    if (user?.isAdmin && user?.id === 'admin') {
+    if (user?.isAdmin) {
       navigate('/admin');
     }
   }, [user, navigate]);

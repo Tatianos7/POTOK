@@ -11,6 +11,8 @@ export interface ExerciseCategory {
 export interface Muscle {
   id: string;
   name: string;
+  canonical_muscle_id?: string | null;
+  region?: 'upper' | 'lower' | 'core' | string;
 }
 
 export interface Exercise {
@@ -20,6 +22,16 @@ export interface Exercise {
   description?: string | null;
   is_custom: boolean;
   created_by_user_id?: string | null;
+  canonical_exercise_id?: string | null;
+  normalized_name?: string | null;
+  movement_pattern?: 'push' | 'pull' | 'hinge' | 'squat' | 'carry' | 'rotation' | string;
+  equipment_type?: string | null;
+  difficulty_level?: string | null;
+  is_compound?: boolean;
+  energy_system?: 'aerobic' | 'anaerobic' | 'mixed' | string;
+  metabolic_equivalent?: number | null;
+  aliases?: string[] | null;
+  safety_flags?: Record<string, unknown> | null;
   category?: ExerciseCategory;
   muscles?: Muscle[];
 }
@@ -27,6 +39,7 @@ export interface Exercise {
 export interface ExerciseMuscle {
   exercise_id: string;
   muscle_id: string;
+  role?: 'prime' | 'secondary' | 'stabilizer' | string;
   exercise?: Exercise;
   muscle?: Muscle;
 }
@@ -43,6 +56,7 @@ export interface WorkoutEntry {
   id: string;
   workout_day_id: string;
   exercise_id: string;
+  canonical_exercise_id?: string | null;
   sets: number;
   reps: number;
   weight: number;

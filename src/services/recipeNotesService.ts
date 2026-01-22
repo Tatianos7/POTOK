@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabaseClient';
-import { toUUID } from '../utils/uuid';
 
 export interface RecipeNote {
   id: string;
@@ -10,13 +9,26 @@ export interface RecipeNote {
   updated_at: string;
 }
 
-// Fallback на localStorage, если Supabase недоступен
-const RECIPE_NOTES_STORAGE_KEY = 'potok_recipe_notes_v1';
-
 // Кэш для отслеживания доступности таблицы в Supabase
 let tableExistsCache: boolean | null = null;
 
 class RecipeNotesService {
+  private async getSessionUserId(userId?: string): Promise<string> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user?.id) {
+      throw new Error('Пользователь не авторизован');
+    }
+
+    if (userId && userId !== data.user.id) {
+      console.warn('[recipeNotesService] Передан userId не совпадает с сессией');
+    }
+
+    return data.user.id;
+  }
   // Проверяем, существует ли таблица в Supabase (кэшируем результат)
   private async checkTableExists(): Promise<boolean> {
     if (tableExistsCache !== null) {
@@ -54,27 +66,6 @@ class RecipeNotesService {
       return false;
     }
   }
-  // Получить заметки из localStorage (fallback)
-  private getLocalStorageNotes(userId: string): Record<string, string> {
-    try {
-      const key = `${RECIPE_NOTES_STORAGE_KEY}_${userId}`;
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : {};
-    } catch (error) {
-      console.error('[recipeNotesService] Error reading from localStorage:', error);
-      return {};
-    }
-  }
-
-  // Сохранить заметки в localStorage (fallback)
-  private saveLocalStorageNotes(userId: string, notes: Record<string, string>): void {
-    try {
-      const key = `${RECIPE_NOTES_STORAGE_KEY}_${userId}`;
-      localStorage.setItem(key, JSON.stringify(notes));
-    } catch (error) {
-      console.error('[recipeNotesService] Error saving to localStorage:', error);
-    }
-  }
   /**
    * Получить заметку для рецепта
    */
@@ -84,54 +75,36 @@ class RecipeNotesService {
 
     // Пробуем получить из Supabase только если таблица существует
     if (supabase && tableExists) {
+      const sessionUserId = await this.getSessionUserId(userId);
       try {
-        const uuidUserId = toUUID(userId);
 
         const { data, error } = await supabase
           .from('recipe_notes')
           .select('text')
-          .eq('user_id', uuidUserId)
+          .eq('user_id', sessionUserId)
           .eq('recipe_id', recipeId)
           .single();
 
         if (error) {
           // Если записи нет, это нормально (not found)
           if (error.code === 'PGRST116') {
-            // Fallback на localStorage
-            const localNotes = this.getLocalStorageNotes(userId);
-            return localNotes[recipeId] || null;
+            return null;
           }
-          // Если таблица не найдена, сбрасываем кэш и используем localStorage
+          // Если таблица не найдена, сбрасываем кэш
           if (error.code === 'PGRST205') {
             tableExistsCache = false;
-            const localNotes = this.getLocalStorageNotes(userId);
-            return localNotes[recipeId] || null;
           }
-          // Fallback на localStorage при любой другой ошибке
-          const localNotes = this.getLocalStorageNotes(userId);
-          return localNotes[recipeId] || null;
+          return null;
         }
 
         const note = data?.text || null;
-        
-        // Синхронизируем с localStorage
-        if (note) {
-          const localNotes = this.getLocalStorageNotes(userId);
-          localNotes[recipeId] = note;
-          this.saveLocalStorageNotes(userId, localNotes);
-        }
-        
         return note;
       } catch (error) {
-        // Fallback на localStorage при любой ошибке
-        const localNotes = this.getLocalStorageNotes(userId);
-        return localNotes[recipeId] || null;
+        return null;
       }
     }
 
-    // Fallback на localStorage, если Supabase недоступен или таблица не существует
-    const localNotes = this.getLocalStorageNotes(userId);
-    return localNotes[recipeId] || null;
+    return null;
   }
 
   /**
@@ -147,37 +120,20 @@ class RecipeNotesService {
 
     // Пробуем получить из Supabase только если таблица существует
     if (supabase && tableExists) {
+      const sessionUserId = await this.getSessionUserId(userId);
       try {
-        const uuidUserId = toUUID(userId);
 
         const { data, error } = await supabase
           .from('recipe_notes')
           .select('recipe_id, text')
-          .eq('user_id', uuidUserId)
+          .eq('user_id', sessionUserId)
           .in('recipe_id', recipeIds);
 
         if (error) {
-          // Если таблица не найдена, сбрасываем кэш и используем localStorage
           if (error.code === 'PGRST205') {
             tableExistsCache = false;
-            const localNotes = this.getLocalStorageNotes(userId);
-            const result: Record<string, string> = {};
-            recipeIds.forEach((id) => {
-              if (localNotes[id]) {
-                result[id] = localNotes[id];
-              }
-            });
-            return result;
           }
-          // Fallback на localStorage при любой ошибке
-          const localNotes = this.getLocalStorageNotes(userId);
-          const result: Record<string, string> = {};
-          recipeIds.forEach((id) => {
-            if (localNotes[id]) {
-              result[id] = localNotes[id];
-            }
-          });
-          return result;
+          return {};
         }
 
         // Преобразуем массив в объект { recipe_id: text }
@@ -188,34 +144,13 @@ class RecipeNotesService {
           });
         }
 
-        // Синхронизируем с localStorage
-        const localNotes = this.getLocalStorageNotes(userId);
-        Object.assign(localNotes, notesMap);
-        this.saveLocalStorageNotes(userId, localNotes);
-
         return notesMap;
       } catch (error) {
-        // Fallback на localStorage
-        const localNotes = this.getLocalStorageNotes(userId);
-        const result: Record<string, string> = {};
-        recipeIds.forEach((id) => {
-          if (localNotes[id]) {
-            result[id] = localNotes[id];
-          }
-        });
-        return result;
+        return {};
       }
     }
 
-    // Fallback на localStorage, если Supabase недоступен
-    const localNotes = this.getLocalStorageNotes(userId);
-    const result: Record<string, string> = {};
-    recipeIds.forEach((id) => {
-      if (localNotes[id]) {
-        result[id] = localNotes[id];
-      }
-    });
-    return result;
+    return {};
   }
 
   /**
@@ -240,18 +175,13 @@ class RecipeNotesService {
       return;
     }
 
-    // Сохраняем в localStorage сразу (оптимистичное обновление)
-    const localNotes = this.getLocalStorageNotes(userId);
-    localNotes[recipeId] = trimmedText;
-    this.saveLocalStorageNotes(userId, localNotes);
-
     // Проверяем, существует ли таблица в Supabase
     const tableExists = await this.checkTableExists();
 
     // Пробуем сохранить в Supabase только если таблица существует
     if (supabase && tableExists) {
       try {
-        const uuidUserId = toUUID(userId);
+        const activeUserId = await this.getSessionUserId(userId);
 
         // Проверяем, существует ли заметка
         const existingNote = await this.getNoteByRecipeId(userId, recipeId);
@@ -264,7 +194,7 @@ class RecipeNotesService {
               text: trimmedText,
               updated_at: new Date().toISOString(),
             })
-            .eq('user_id', uuidUserId)
+            .eq('user_id', activeUserId)
             .eq('recipe_id', recipeId);
 
           if (error) {
@@ -276,12 +206,15 @@ class RecipeNotesService {
             // Не бросаем ошибку, так как уже сохранено в localStorage
             return;
           }
+          const localNotes = this.getLocalStorageNotes(activeUserId);
+          localNotes[recipeId] = trimmedText;
+          this.saveLocalStorageNotes(activeUserId, localNotes);
         } else {
           // Создаём новую заметку
           const { error } = await supabase
             .from('recipe_notes')
             .insert({
-              user_id: uuidUserId,
+              user_id: activeUserId,
               recipe_id: recipeId,
               text: trimmedText,
             });
@@ -295,6 +228,9 @@ class RecipeNotesService {
             // Не бросаем ошибку, так как уже сохранено в localStorage
             return;
           }
+          const localNotes = this.getLocalStorageNotes(activeUserId);
+          localNotes[recipeId] = trimmedText;
+          this.saveLocalStorageNotes(activeUserId, localNotes);
         }
       } catch (error) {
         // Не бросаем ошибку, так как уже сохранено в localStorage
@@ -308,23 +244,18 @@ class RecipeNotesService {
    * Удалить заметку для рецепта
    */
   async deleteNote(userId: string, recipeId: string): Promise<void> {
-    // Удаляем из localStorage сразу
-    const localNotes = this.getLocalStorageNotes(userId);
-    delete localNotes[recipeId];
-    this.saveLocalStorageNotes(userId, localNotes);
-
     // Проверяем, существует ли таблица в Supabase
     const tableExists = await this.checkTableExists();
 
     // Пробуем удалить из Supabase только если таблица существует
     if (supabase && tableExists) {
       try {
-        const uuidUserId = toUUID(userId);
+        const activeUserId = await this.getSessionUserId(userId);
 
         const { error } = await supabase
           .from('recipe_notes')
           .delete()
-          .eq('user_id', uuidUserId)
+          .eq('user_id', activeUserId)
           .eq('recipe_id', recipeId);
 
         if (error) {
@@ -336,6 +267,9 @@ class RecipeNotesService {
           // Не бросаем ошибку, так как уже удалено из localStorage
           return;
         }
+        const localNotes = this.getLocalStorageNotes(activeUserId);
+        delete localNotes[recipeId];
+        this.saveLocalStorageNotes(activeUserId, localNotes);
       } catch (error) {
         // Не бросаем ошибку, так как уже удалено из localStorage
         return;
