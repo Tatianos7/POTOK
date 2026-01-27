@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { aiTrustService } from './aiTrustService';
+import { entitlementService } from './entitlementService';
 
 export type ProgramType = 'nutrition' | 'training';
 export type AdaptationStrategy = 'micro' | 'meso' | 'macro' | 'pause';
@@ -53,7 +54,6 @@ const ADHERENCE_THRESHOLD = 0.5;
 const PLATEAU_WEIGHT_DELTA = 0.2;
 const DELOAD_FACTOR = 0.8;
 const MICRO_ADJUST_FACTOR = 0.95;
-const REFEED_FACTOR = 1.05;
 
 const toISODate = (value: Date): string => value.toISOString().split('T')[0];
 
@@ -82,6 +82,9 @@ class ProgramGenerationService {
   }
 
   private async getGoalContext(userId: string) {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
     const { data, error } = await supabase
       .from('user_goals')
       .select('calories,protein,fat,carbs')
@@ -95,6 +98,9 @@ class ProgramGenerationService {
   }
 
   private async getUserState(userId: string) {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
     const { data, error } = await supabase
       .from('user_state')
       .select('*')
@@ -212,6 +218,9 @@ class ProgramGenerationService {
     days: Array<{ date: string; targets?: any; session_plan?: any }>;
     constraints: Record<string, unknown>;
   }) {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
     const { programId, programType, phases, days, constraints } = params;
     let dayIndex = 0;
 

@@ -24,8 +24,7 @@ const distance2d = (a: PosePoint3D, b: PosePoint3D) =>
 
 export const computeBiomechanics = (
   landmarks: PosePoint3D[],
-  angles: Pose3dAngles,
-  velocity?: { leftKnee?: number; rightKnee?: number }
+  angles: Pose3dAngles
 ): BiomechanicsMetrics => {
   const leftKnee = landmarks[25];
   const rightKnee = landmarks[26];

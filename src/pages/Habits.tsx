@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Plus, Check, Circle, Calendar } from 'lucide-react';
-import { createHabit, getHabitsForDate, toggleHabitComplete, HabitWithStatus, HabitFrequency } from '../services/habitsService';
+import { createHabit, toggleHabitComplete, HabitWithStatus, HabitFrequency } from '../services/habitsService';
 import { supabase } from '../lib/supabaseClient';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import ExplainabilityDrawer from '../components/ExplainabilityDrawer';

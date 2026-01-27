@@ -129,7 +129,10 @@ class WorkoutService {
     const periodEnd = date;
     const periodStart = new Date(new Date(date).getTime() - 29 * 86400000).toISOString().split('T')[0];
     const userState = await userStateService.buildState(userId, { fromDate: periodStart, toDate: periodEnd });
-    const context = { ...this.buildTrainingDayContext(date, entries, goals), user_state: userState };
+    const context = {
+      ...this.buildTrainingDayContext(date, entries, goals),
+      user_state: (userState ?? {}) as unknown as Record<string, unknown>,
+    };
     await aiTrainingPlansService.queueTrainingPlan(userId, context);
   }
   /**
@@ -141,10 +144,11 @@ class WorkoutService {
     }
 
     const sessionUserId = await this.getSessionUserId(userId);
+    const supabaseClient = supabase!;
 
     // UPSERT (user_id, date) — устраняет гонки при создании дня
-    const { data: newDay, error: createError } = await this.withRetry(() =>
-      supabase
+    const { data: newDay, error: createError } = await this.withRetry(async () =>
+      await supabaseClient
         .from('workout_days')
         .upsert(
           {
@@ -323,6 +327,7 @@ class WorkoutService {
     if (!supabase) {
       return merged;
     }
+    const supabaseClient = supabase;
 
     // Получаем или создаем день тренировки (UUID сгенерируется в БД)
     let workoutDay: WorkoutDay;
@@ -355,8 +360,8 @@ class WorkoutService {
       throw new Error('[workoutService] Suspicious volume spike');
     }
 
-    const { data, error } = await this.withRetry(() =>
-      supabase
+    const { data, error } = await this.withRetry(async () =>
+      await supabaseClient
         .from('workout_entries')
         .upsert(entries, { onConflict: 'workout_day_id,idempotency_key' })
         .select(`
@@ -615,9 +620,13 @@ class WorkoutService {
       throw new Error(errorMessage);
     }
 
-    if (data?.workout_day?.date) {
+    const workoutDayData = (data as any)?.workout_day;
+    const workoutDate = Array.isArray(workoutDayData)
+      ? workoutDayData?.[0]?.date
+      : workoutDayData?.date;
+    if (workoutDate) {
       try {
-        await aiTrainingPlansService.markTrainingPlanOutdated(sessionUserId, data.workout_day.date);
+        await aiTrainingPlansService.markTrainingPlanOutdated(sessionUserId, workoutDate);
       } catch (aiError) {
         console.error('[workoutService] Error marking AI training plan outdated:', aiError);
       }

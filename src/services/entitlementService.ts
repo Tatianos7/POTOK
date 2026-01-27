@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabaseClient';
-import { profileService } from './profileService';
 import type { PaywallExplainabilityDTO } from '../types/explainability';
 
 export interface EntitlementStatus {

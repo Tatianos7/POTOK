@@ -92,12 +92,19 @@ const MyProgram = () => {
     const containsToday = week.days.some((day) => day.date === today);
     const weekCompleted = week.days.every((day) => day.status === 'completed');
     const weekUpcoming = week.days.every((day) => day.date > today);
+    const status: 'active' | 'done' | 'upcoming' = weekCompleted
+      ? 'done'
+      : containsToday
+        ? 'active'
+        : weekUpcoming
+          ? 'upcoming'
+          : 'done';
     return {
       title: `Неделя ${index + 1} · ${week.label}`,
       subtitle: `${week.days.length} дней · ${Math.round(
         (week.days.filter((day) => day.status === 'completed').length / Math.max(1, week.days.length)) * 100
       )}% выполнения`,
-      status: weekCompleted ? 'done' : containsToday ? 'active' : weekUpcoming ? 'upcoming' : 'done',
+      status,
     };
   });
 

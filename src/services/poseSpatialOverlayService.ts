@@ -1,4 +1,3 @@
-import type { PosePoint } from '../utils/poseMath';
 
 export interface SpatialAnchor {
   id: 'left_knee' | 'right_knee' | 'hip' | 'spine' | 'bar_path';

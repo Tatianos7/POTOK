@@ -39,14 +39,14 @@ const SupportForm = ({ isOpen, onClose }: SupportFormProps) => {
       );
       
       // Используем одно уведомление поддержки для всех сообщений от этого пользователя
-      const userNotifications = notificationService.getNotifications(user.id);
+      const userNotifications = await notificationService.getNotifications(user.id);
       let supportNotification = userNotifications.find(
         (n) => n.category === 'support' && !n.isDeleted
       );
       
       if (!supportNotification) {
         // Создаем новое уведомление только если его еще нет
-        const newNotification = notificationService.addNotification(user.id, {
+        const newNotification = await notificationService.addNotification(user.id, {
           title: 'Обращение в поддержку',
           message: 'Ваше обращение получено. Мы ответим в ближайшее время.',
           category: 'support',

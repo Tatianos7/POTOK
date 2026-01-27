@@ -7,7 +7,7 @@ export type TrustIssueCategory =
   | "low_confidence"
   | "unknown";
 
-export type TrustAction = "block" | "warn" | "adapt" | "fallback" | "explain";
+export type TrustAction = "block" | "warn" | "adapt" | "fallback" | "explain" | "recover";
 
 export interface TrustDecision {
   category: TrustIssueCategory;

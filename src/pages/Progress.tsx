@@ -119,7 +119,7 @@ const Progress = () => {
       items.push({
         title: snapshot.habitsAdherence < 0.5 ? 'Срыв ритма' : 'Возврат в ритм',
         subtitle: 'Мы поддерживаем мягкое возвращение.',
-        status: snapshot.habitsAdherence < 0.5 ? 'active' : 'done',
+        status: (snapshot.habitsAdherence < 0.5 ? 'active' : 'done') as 'active' | 'done',
       });
     }
     if (explainability?.adaptation_reason) {

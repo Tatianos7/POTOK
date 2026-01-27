@@ -87,8 +87,8 @@ export async function createHabit(params: {
   const { userId, title, description, frequency } = params;
 
   const sessionUserId = await getSessionUserId(userId);
-  const { data, error } = await withRetry(() =>
-    supabase
+  const { data, error } = await withRetry(async () =>
+    (await supabase!
       .from('habits')
       .insert({
         user_id: sessionUserId,
@@ -97,7 +97,7 @@ export async function createHabit(params: {
         frequency,
       })
       .select('*')
-      .single()
+      .single()) as { data: Habit; error: any }
   );
 
   if (error) {
@@ -126,12 +126,12 @@ export async function toggleHabitComplete(params: {
   const { userId, habitId, date } = params;
 
   const sessionUserId = await getSessionUserId(userId);
-  const { data, error } = await withRetry(() =>
-    supabase.rpc('toggle_habit_log', {
+  const { data, error } = await withRetry(async () =>
+    (await supabase!.rpc('toggle_habit_log', {
       p_user_id: sessionUserId,
       p_habit_id: habitId,
       p_date: date,
-    })
+    })) as { data: HabitLog | null; error: any }
   );
 
   if (error) {
@@ -159,15 +159,15 @@ export async function getHabitStats(params: {
   const { userId, habitId, fromDate, toDate } = params;
   const sessionUserId = await getSessionUserId(userId);
 
-  const { data, error } = await withRetry(() =>
-    supabase
+  const { data, error } = await withRetry(async () =>
+    (await supabase!
       .from('habit_logs')
       .select('date, completed')
       .eq('user_id', sessionUserId)
       .eq('habit_id', habitId)
       .gte('date', fromDate)
       .lte('date', toDate)
-      .order('date', { ascending: true })
+      .order('date', { ascending: true })) as { data: Array<{ date: string; completed: boolean }>; error: any }
   );
 
   if (error) {
@@ -176,7 +176,7 @@ export async function getHabitStats(params: {
   }
 
   const logs = data || [];
-  const completedDates = new Set(logs.filter((l: any) => l.completed).map((l: any) => l.date));
+  const completedDates = new Set(logs.filter((l) => l.completed).map((l) => l.date));
 
   let streak = 0;
   let current = new Date(toDate);
@@ -219,19 +219,19 @@ export async function getHabitsForDate(params: {
 
   const sessionUserId = await getSessionUserId(userId);
   const [{ data: habits, error: habitsError }, { data: logs, error: logsError }] = await Promise.all([
-    withRetry(() =>
-      supabase
+    withRetry(async () =>
+      (await supabase!
         .from('habits')
         .select<'*'>('*')
         .eq('user_id', sessionUserId)
-        .eq('is_active', true)
+        .eq('is_active', true)) as { data: Habit[]; error: any }
     ),
-    withRetry(() =>
-      supabase
+    withRetry(async () =>
+      (await supabase!
         .from('habit_logs')
         .select<'*'>('*')
         .eq('user_id', sessionUserId)
-        .eq('date', date)
+        .eq('date', date)) as { data: HabitLog[]; error: any }
     ),
   ]);
 
@@ -246,11 +246,11 @@ export async function getHabitsForDate(params: {
   }
 
   const logMap = new Map<string, HabitLog>();
-  (logs || []).forEach((log) => {
+  (logs || []).forEach((log: HabitLog) => {
     logMap.set(log.habit_id, log as HabitLog);
   });
 
-  return (habits || []).map((habit) => {
+  return (habits || []).map((habit: Habit) => {
     const log = logMap.get(habit.id);
     return {
       ...(habit as Habit),

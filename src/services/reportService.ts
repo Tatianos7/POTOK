@@ -64,10 +64,11 @@ class ReportService {
       throw new Error('Supabase не инициализирован');
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    const supabaseClient = supabase;
     const aggregates = await this.buildAggregates(sessionUserId, period);
 
-    const { data, error } = await this.withRetry(() =>
-      supabase
+    const { data, error } = await this.withRetry(async () =>
+      await supabaseClient
         .from('report_snapshots')
         .upsert(
           {
@@ -88,8 +89,8 @@ class ReportService {
       throw error || new Error('Failed to create report snapshot');
     }
 
-    await this.withRetry(() =>
-      supabase
+    await this.withRetry(async () =>
+      await supabaseClient
         .from('report_aggregates')
         .upsert(
           {
@@ -102,8 +103,8 @@ class ReportService {
         )
     );
 
-    await this.withRetry(() =>
-      supabase
+    await this.withRetry(async () =>
+      await supabaseClient
         .from('progress_trends')
         .upsert(
           {

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   User,
   LoginCredentials,
@@ -39,14 +39,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
   const [entitlements, setEntitlements] = useState<Record<string, boolean> | null>(null);
   const [trustScore, setTrustScore] = useState<number | null>(null);
   const { setThemeExplicit } = useTheme();
 
   const buildUser = async (
-    sessionUser: Session['user']
+    sessionUser: SupabaseUser
   ): Promise<{ user: User; profile: UserProfile | null }> => {
     let supabaseProfile: UserProfile | null = null;
     try {
@@ -101,7 +100,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const clearSessionState = () => {
-    setSession(null);
     setUser(null);
     setProfile(null);
     setEntitlements(null);
@@ -127,7 +125,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const currentSession = data?.session ?? null;
-      setSession(currentSession);
 
       if (currentSession?.user) {
         try {
@@ -177,7 +174,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     init();
 
     const { data: authListener } = supabaseClient.auth.onAuthStateChange(async (_event, newSession) => {
-      setSession(newSession);
       if (newSession?.user) {
         try {
           const { user: builtUser, profile: builtProfile } = await buildUser(newSession.user);
@@ -462,7 +458,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const setAdminStatus = async (userId: string, isAdmin: boolean) => {
         if (!supabase) return;
         const updateByColumn = async (column: 'user_id' | 'id_user') => {
-          return supabase
+          return supabase!
             .from('user_profiles')
             .update({ is_admin: isAdmin })
             .eq(column, userId);

@@ -25,7 +25,7 @@ const Notifications = () => {
   const [selectedNews, setSelectedNews] = useState<AppNotification | null>(null);
   const [isNewsModalOpen, setIsNewsModalOpen] = useState(false);
 
-  const loadNotifications = () => {
+  const loadNotifications = async () => {
     if (!user?.id) {
       setNotifications([]);
       return;
@@ -38,11 +38,11 @@ const Notifications = () => {
       return;
     }
     
-    const data = notificationService.getNotifications(user.id);
+    const data = await notificationService.getNotifications(user.id);
     data
       .filter((item) => item.category === 'support')
       .forEach((item) => {
-        notificationService.seedThreadIfNeeded(user.id!, item.id, {
+        void notificationService.seedThreadIfNeeded(user.id!, item.id, {
           id: `msg_seed_${item.id}`,
           text: item.message,
           isUser: false,
@@ -57,7 +57,7 @@ const Notifications = () => {
       navigate('/login');
       return;
     }
-    loadNotifications();
+    void loadNotifications();
   }, [user, navigate]);
 
   const filteredNotifications = useMemo(() => {
@@ -76,7 +76,7 @@ const Notifications = () => {
     });
   }, [notifications, activeTab, view]);
 
-  const saveNotifications = (items: AppNotification[]) => {
+  const saveNotifications = async (items: AppNotification[]) => {
     if (!user?.id) {
       console.warn('Попытка сохранить уведомления без userId');
       return;
@@ -88,7 +88,7 @@ const Notifications = () => {
       return;
     }
     
-    notificationService.saveNotifications(user.id, items);
+    await notificationService.saveNotifications(user.id, items);
     setNotifications(items);
   };
 
@@ -96,21 +96,21 @@ const Notifications = () => {
     const updated = notifications.map((item) =>
       item.id === id ? { ...item, isRead: !item.isRead } : item
     );
-    saveNotifications(updated);
+    void saveNotifications(updated);
   };
 
   const moveToTrash = (id: string) => {
     const updated = notifications.map((item) =>
       item.id === id ? { ...item, isDeleted: true, isArchived: false } : item
     );
-    saveNotifications(updated);
+    void saveNotifications(updated);
   };
 
   const restoreNotification = (id: string) => {
     const updated = notifications.map((item) =>
       item.id === id ? { ...item, isDeleted: false } : item
     );
-    saveNotifications(updated);
+    void saveNotifications(updated);
     setView('inbox');
   };
 

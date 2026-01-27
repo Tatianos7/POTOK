@@ -3,14 +3,7 @@ import { entitlementService } from './entitlementService';
 import { profileService } from './profileService';
 import { programGenerationService } from './programGenerationService';
 import type { ProgramExplainabilityDTO } from '../types/explainability';
-import type {
-  ProgramDayCardDTO,
-  ProgramMyPlanDTO,
-  ProgramPhaseWeekDTO,
-  ProgramTodayDTO,
-  ProgramTier,
-  ProgramWhyDTO,
-} from '../types/programDelivery';
+import type { ProgramMyPlanDTO, ProgramPhaseWeekDTO, ProgramTodayDTO, ProgramTier, ProgramWhyDTO } from '../types/programDelivery';
 
 export type ProgramType = 'nutrition' | 'training';
 
@@ -138,7 +131,7 @@ class ProgramDeliveryService {
       });
       if (error) throw error;
       return (data as ProgramWhyDTO[]).map((row) => ({
-        decisionRef: row.decisionRef ?? row.decision_ref,
+        decisionRef: (row as any).decision_ref ?? row.decisionRef,
       }));
     }
     const { data, error } = await supabase.rpc('get_program_explainability', {
@@ -215,9 +208,13 @@ class ProgramDeliveryService {
     const nextTrust = this.adjustTrustScore(Number(trustRow?.trust_score ?? 50), -3);
     await supabase.from('ai_trust_scores').upsert({ user_id: userId, trust_score: nextTrust });
 
-    await programGenerationService.adaptProgram(programId, programType, {
-      skipped_dates: [date],
-      skip_reason: reason,
+    await programGenerationService.adaptProgram({
+      programId,
+      programType,
+      constraints: {
+        skipped_dates: [date],
+        skip_reason: reason,
+      },
     });
   }
 
@@ -284,13 +281,17 @@ class ProgramDeliveryService {
     });
     if (feedbackError) throw feedbackError;
 
-    await programGenerationService.adaptProgram(input.programId, input.programType, {
-      feedback: {
-        energy: input.energy,
-        hunger: input.hunger,
-        difficulty: input.difficulty,
-        pain: input.pain,
-        motivation: input.motivation,
+    await programGenerationService.adaptProgram({
+      programId: input.programId,
+      programType: input.programType,
+      constraints: {
+        feedback: {
+          energy: input.energy,
+          hunger: input.hunger,
+          difficulty: input.difficulty,
+          pain: input.pain,
+          motivation: input.motivation,
+        },
       },
     });
   }

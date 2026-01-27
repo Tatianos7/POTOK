@@ -182,19 +182,22 @@ class MealService {
         ...meals.lunch,
         ...meals.dinner,
         ...meals.snack,
-      ].map((entry) => ({
-        canonical_food_id: this.isValidUUID(entry.canonicalFoodId)
-          ? entry.canonicalFoodId
-          : this.isValidUUID(entry.food?.canonical_food_id)
+      ].map((entry) => {
+        const canonicalFoodId = this.isValidUUID(entry.canonicalFoodId ?? null)
+          ? entry.canonicalFoodId ?? null
+          : this.isValidUUID(entry.food?.canonical_food_id ?? null)
             ? entry.food?.canonical_food_id ?? null
-            : null,
-        name: entry.food?.name ?? entry.foodId,
-        grams: entry.weight,
-        calories: entry.calories,
-        protein: entry.protein,
-        fat: entry.fat,
-        carbs: entry.carbs,
-      })),
+            : null;
+        return {
+          canonical_food_id: canonicalFoodId,
+          name: entry.food?.name ?? entry.foodId,
+          grams: entry.weight,
+          calories: entry.calories,
+          protein: entry.protein,
+          fat: entry.fat,
+          carbs: entry.carbs,
+        };
+      }),
       goals: goals ? {
         calories: goals.calories,
         protein: goals.protein,
@@ -393,8 +396,8 @@ class MealService {
 
         // Если нет записей о еде, только удаляем старые записи (если есть)
         if (totalEntries === 0) {
-          await this.withRetry(() =>
-            supabase
+          await this.withRetry(async () =>
+            await supabase!
               .from('food_diary_entries')
               .delete()
               .eq('user_id', sessionUserId)
@@ -432,7 +435,7 @@ class MealService {
           display_amount: safeNumber(entry.displayAmount ?? entry.weight),
           canonical_food_id: this.isValidUUID(entry.canonicalFoodId)
             ? entry.canonicalFoodId
-            : this.isValidUUID(entry.food?.canonical_food_id)
+            : this.isValidUUID(entry.food?.canonical_food_id ?? null)
               ? entry.food?.canonical_food_id ?? null
               : null,
           idempotency_key: entry.idempotencyKey || this.buildIdempotencyKey(meals.date, mealType, entry.foodId),
@@ -485,8 +488,8 @@ class MealService {
           const incomingKeys = new Set(validEntries.map((entry) => entry.idempotency_key));
           const incomingIds = new Set(entryIds);
 
-          const { data: existingRows, error: existingError } = await this.withRetry(() =>
-            supabase
+          const { data: existingRows, error: existingError } = await this.withRetry(async () =>
+            await supabase!
               .from('food_diary_entries')
               .select('id,idempotency_key')
               .eq('user_id', sessionUserId)
@@ -500,7 +503,7 @@ class MealService {
           const staleKeys: string[] = [];
           const staleIds: string[] = [];
 
-          (existingRows ?? []).forEach((row) => {
+          (existingRows ?? []).forEach((row: { id?: string; idempotency_key?: string | null }) => {
             const rowKey = row.idempotency_key ? String(row.idempotency_key) : null;
             if (rowKey) {
               if (!incomingKeys.has(rowKey)) {
@@ -515,8 +518,8 @@ class MealService {
           });
 
           if (staleKeys.length > 0) {
-            await this.withRetry(() =>
-              supabase
+            await this.withRetry(async () =>
+              await supabase!
                 .from('food_diary_entries')
                 .delete()
                 .eq('user_id', sessionUserId)
@@ -526,8 +529,8 @@ class MealService {
           }
 
           if (staleIds.length > 0) {
-            await this.withRetry(() =>
-              supabase
+            await this.withRetry(async () =>
+              await supabase!
                 .from('food_diary_entries')
                 .delete()
                 .eq('user_id', sessionUserId)
@@ -536,8 +539,8 @@ class MealService {
             );
           }
 
-          const { error: upsertError } = await this.withRetry(() =>
-            supabase
+          const { error: upsertError } = await this.withRetry(async () =>
+            await supabase!
               .from('food_diary_entries')
               .upsert(validEntries, { onConflict: 'user_id,idempotency_key' })
           );
@@ -648,19 +651,19 @@ class MealService {
       food: {
         id: recipe.id,
         name: recipe.name,
-        calories: recipe.totalCalories,
-        protein: recipe.totalProteins,
-        fat: recipe.totalFats,
-        carbs: recipe.totalCarbs,
+        calories: recipe.totalCalories ?? 0,
+        protein: recipe.totalProteins ?? 0,
+        fat: recipe.totalFats ?? 0,
+        carbs: recipe.totalCarbs ?? 0,
         source: 'user',
         createdAt: recipe.createdAt,
         updatedAt: recipe.updatedAt,
       },
       weight,
-      calories: recipe.totalCalories,
-      protein: recipe.totalProteins,
-      fat: recipe.totalFats,
-      carbs: recipe.totalCarbs,
+      calories: recipe.totalCalories ?? 0,
+      protein: recipe.totalProteins ?? 0,
+      fat: recipe.totalFats ?? 0,
+      carbs: recipe.totalCarbs ?? 0,
       recipeId: recipe.id,
     };
 

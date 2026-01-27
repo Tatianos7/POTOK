@@ -154,7 +154,9 @@ class ProgressAggregatorService {
       trends = this.loadTrendsFromLocal(userId, periodKey);
     }
 
+    const cachedSnapshot = this.loadSnapshotFromLocal(userId, date);
     const snapshot: ProgressSnapshot = {
+      ...(cachedSnapshot ?? {}),
       date,
     };
 

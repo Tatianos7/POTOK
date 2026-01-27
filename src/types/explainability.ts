@@ -1,5 +1,6 @@
 export type ExplainabilitySource =
   | "programUxRuntimeService"
+  | "programDeliveryService"
   | "progressAggregatorService"
   | "habitsService"
   | "entitlementService"

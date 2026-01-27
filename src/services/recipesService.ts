@@ -286,8 +286,9 @@ class RecipesService {
     }
 
     const sessionUserId = await this.getSessionUserId(recipe.userId);
+    const ingredients = recipe.ingredients ?? [];
     const enrichedIngredients = await Promise.all(
-      recipe.ingredients.map(async (ingredient) => {
+      ingredients.map(async (ingredient) => {
         if (ingredient.canonical_food_id) {
           return ingredient;
         }
@@ -366,6 +367,7 @@ class RecipesService {
       food: {
         id: string;
         name: string;
+        canonical_food_id?: string | null;
       };
       weight: number;
       calories: number;
@@ -469,7 +471,10 @@ class RecipesService {
     }
   }
 
-  async requestMealPlan(userId: string, context: { goals?: Record<string, number>; preferences?: Record<string, unknown> } = {}): Promise<void> {
+  async requestMealPlan(
+    userId: string,
+    context: { goals?: { calories: number; protein: number; fat: number; carbs: number } | null; preferences?: Record<string, unknown> } = {}
+  ): Promise<void> {
     const sessionUserId = await this.getSessionUserId(userId);
     await aiMealPlansService.queueMealPlan(sessionUserId, {
       goals: context.goals ?? null,

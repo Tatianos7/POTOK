@@ -175,7 +175,7 @@ export async function getProgressTrends(
 
   (foodRes.data || []).forEach((row: any) => {
     const date = row.date;
-    const existing = pointsMap.get(date) ?? { date };
+    const existing: ProgressPoint = pointsMap.get(date) ?? { date };
     existing.calories = (existing.calories ?? 0) + Number(row.calories || 0);
     existing.protein = (existing.protein ?? 0) + Number(row.protein || 0);
     existing.fat = (existing.fat ?? 0) + Number(row.fat || 0);
@@ -186,7 +186,7 @@ export async function getProgressTrends(
   (workoutEntries || []).forEach((row: any) => {
     const date = row.workout_day?.date;
     if (!date) return;
-    const existing = pointsMap.get(date) ?? { date };
+    const existing: ProgressPoint = pointsMap.get(date) ?? { date };
     const volume = Number(row.sets || 0) * Number(row.reps || 0) * Number(row.weight || 0);
     existing.volume = (existing.volume ?? 0) + volume;
     pointsMap.set(date, existing);
@@ -194,7 +194,7 @@ export async function getProgressTrends(
 
   (measurementRes.data || []).forEach((row: any) => {
     const date = row.date;
-    const existing = pointsMap.get(date) ?? { date };
+    const existing: ProgressPoint = pointsMap.get(date) ?? { date };
     const weight = parseWeight(row.measurements || []);
     if (weight !== null) {
       existing.weight = weight;

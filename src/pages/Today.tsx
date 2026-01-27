@@ -19,21 +19,17 @@ const Today = () => {
   const [today, setToday] = useState<ProgramTodayDTO | null>(null);
   const [runtimeContext, setRuntimeContext] = useState<RuntimeContext | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
 
   const loadToday = useCallback(async () => {
     if (!user?.id) return;
     setRuntimeStatus('loading');
     setErrorMessage(null);
-    setTrustMessage(null);
     uiRuntimeAdapter.startLoadingTimer('Today', {
       pendingSources: ['program_sessions', 'food_diary_entries', 'workout_entries', 'habit_logs', 'user_goals'],
       onTimeout: () => {
-        const decision = classifyTrustDecision('loading_timeout');
         setRuntimeStatus('error');
         setErrorMessage('Загрузка дня заняла слишком много времени.');
-        setTrustMessage(decision.message);
       },
     });
     try {
@@ -42,15 +38,13 @@ const Today = () => {
       setToday(state.program ?? null);
       setRuntimeContext(state.context ?? null);
       setExplainability((state.explainability as BaseExplainabilityDTO) ?? null);
-      setTrustMessage(state.trust?.message ?? null);
       if (state.status === 'error') {
         setErrorMessage(state.message || 'Не удалось загрузить день.');
       }
     } catch (error) {
-      const decision = classifyTrustDecision(error);
+      classifyTrustDecision(error);
       setRuntimeStatus('error');
       setErrorMessage('Не удалось загрузить день.');
-      setTrustMessage(decision.message);
     } finally {
       uiRuntimeAdapter.clearLoadingTimer('Today');
     }
@@ -141,7 +135,7 @@ const Today = () => {
                     Мы подстроим нагрузку под ваше самочувствие.
                   </p>
                   <div className="mt-3 text-sm text-gray-700 dark:text-gray-300">
-                    План: {today.day?.sessionPlan?.title ?? 'Запланировано'}
+                    План: {today.day?.sessionPlan?.focus ?? today.day?.sessionPlan?.intensity ?? 'Запланировано'}
                   </div>
                 </Card>
 

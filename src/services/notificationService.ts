@@ -273,10 +273,11 @@ class NotificationService {
       throw new Error('Supabase не инициализирован');
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    const supabaseClient = supabase;
 
     await Promise.all(
       items.map((item) =>
-        supabase
+        supabaseClient
           .from('notification_history')
           .update({
             channel: item.category,

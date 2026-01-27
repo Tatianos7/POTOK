@@ -366,6 +366,8 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
       unit: null,
       amountText: cleanedName || original,
       amountGrams: 0,
+      displayAmount: null,
+      displayUnit: null,
     };
   }
 

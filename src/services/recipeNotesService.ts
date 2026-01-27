@@ -277,6 +277,28 @@ class RecipeNotesService {
     }
     // Если Supabase недоступен, заметка уже удалена из localStorage
   }
+
+  private notesKey(userId: string): string {
+    return `potok_recipe_notes_${userId}`;
+  }
+
+  private getLocalStorageNotes(userId: string): Record<string, string> {
+    try {
+      const stored = localStorage.getItem(this.notesKey(userId));
+      return stored ? (JSON.parse(stored) as Record<string, string>) : {};
+    } catch (error) {
+      console.error('[recipeNotesService] Error reading localStorage notes:', error);
+      return {};
+    }
+  }
+
+  private saveLocalStorageNotes(userId: string, notes: Record<string, string>): void {
+    try {
+      localStorage.setItem(this.notesKey(userId), JSON.stringify(notes));
+    } catch (error) {
+      console.error('[recipeNotesService] Error saving localStorage notes:', error);
+    }
+  }
 }
 
 export const recipeNotesService = new RecipeNotesService();

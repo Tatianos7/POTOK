@@ -9,13 +9,13 @@ import { aiPoseCoachService } from '../services/aiPoseCoachService';
 import { poseVoiceQueueService } from '../services/poseVoiceQueueService';
 import { aiTrustService } from '../services/aiTrustService';
 import { poseRealtimeFeedbackService } from '../services/poseRealtimeFeedbackService';
-import { poseSpatialOverlayService } from '../services/poseSpatialOverlayService';
+import { poseSpatialOverlayService, type SpatialAnchor } from '../services/poseSpatialOverlayService';
 import { pose3dService } from '../services/pose3dService';
 import { poseEdgePipelineService } from '../services/poseEdgePipelineService';
 import { poseEdgeBufferService } from '../services/poseEdgeBufferService';
 import { computeConfidence, POSE_LANDMARKS, PosePoint } from '../utils/poseMath';
 import { toPose3dPoints } from '../utils/pose3dMath';
-import { EXERCISE_TEMPLATES, ExerciseTemplateKey, evaluateTechnique, aggregateSeverity } from '../utils/poseTemplates';
+import { EXERCISE_TEMPLATES, ExerciseTemplateKey } from '../utils/poseTemplates';
 
 const CONNECTIONS: Array<[number, number]> = [
   [POSE_LANDMARKS.LEFT_SHOULDER, POSE_LANDMARKS.RIGHT_SHOULDER],
@@ -61,7 +61,6 @@ const PoseCoach = () => {
   const [latencyStats, setLatencyStats] = useState<{ p50: number; p95: number } | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [spatialMode, setSpatialMode] = useState<'full' | 'overlay' | 'safety'>('overlay');
-  const [spatialOverlayState, setSpatialOverlayState] = useState<ReturnType<typeof poseSpatialOverlayService.buildOverlayState> | null>(null);
 
   const template = useMemo(() => EXERCISE_TEMPLATES[currentExercise], [currentExercise]);
   const templateRef = useRef(template);
@@ -217,7 +216,7 @@ const PoseCoach = () => {
               ctx.stroke();
             }
             if (spatialMode !== 'safety') {
-              const anchors = [
+              const anchors: SpatialAnchor[] = [
                 { id: 'left_knee', x: results.poseLandmarks[POSE_LANDMARKS.LEFT_KNEE].x, y: results.poseLandmarks[POSE_LANDMARKS.LEFT_KNEE].y },
                 { id: 'right_knee', x: results.poseLandmarks[POSE_LANDMARKS.RIGHT_KNEE].x, y: results.poseLandmarks[POSE_LANDMARKS.RIGHT_KNEE].y },
                 { id: 'hip', x: (results.poseLandmarks[POSE_LANDMARKS.LEFT_HIP].x + results.poseLandmarks[POSE_LANDMARKS.RIGHT_HIP].x) / 2, y: (results.poseLandmarks[POSE_LANDMARKS.LEFT_HIP].y + results.poseLandmarks[POSE_LANDMARKS.RIGHT_HIP].y) / 2 },
@@ -229,7 +228,6 @@ const PoseCoach = () => {
                 riskStatus,
                 undefined
               );
-              setSpatialOverlayState(overlay);
               overlay.anchors.forEach((anchor) => {
                 ctx.fillStyle = overlayState === 'red' ? '#ef4444' : overlayState === 'yellow' ? '#f59e0b' : '#22c55e';
                 ctx.beginPath();
@@ -367,7 +365,7 @@ const PoseCoach = () => {
                   fatigue_index: pipeline.load.fatigueIndex,
                   rpe_proxy: pipeline.load.rpeProxy,
                   volume_stress_score: pipeline.load.volumeStressScore,
-                  guard_flags: pipeline.load.guardFlags,
+                  guard_flags: Array.isArray(pipeline.load.guardFlags) ? pipeline.load.guardFlags.length : 0,
                 },
               },
             });

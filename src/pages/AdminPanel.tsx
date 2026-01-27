@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supportService } from '../services/supportService';
 import { activityService } from '../services/activityService';
-import { notificationService } from '../services/notificationService';
+import { notificationService, type AppNotification } from '../services/notificationService';
 import { SupportMessage, User } from '../types';
 import { X, MessageSquare, Users, UserCheck, UserX, Mail, CheckCircle, Clock, AlertCircle, Shield, ShieldOff, Wifi } from 'lucide-react';
 import FoodIngestionPanel from '../components/FoodIngestionPanel';
@@ -172,9 +172,9 @@ const AdminPanel = () => {
       // Создаем уведомление для пользователя, которому адресован ответ
       try {
         // Ищем существующее уведомление поддержки для этого пользователя
-        const userNotifications = notificationService.getNotifications(selectedUserId);
+        const userNotifications = await notificationService.getNotifications(selectedUserId);
         const existingSupportNotification = userNotifications.find(
-          (n) => n.category === 'support' && !n.isDeleted
+          (n: AppNotification) => n.category === 'support' && !n.isDeleted
         );
         
         let notificationId: string;
@@ -185,13 +185,13 @@ const AdminPanel = () => {
           
           // ВСЕГДА помечаем уведомление как непрочитанное при получении нового ответа от админа
           // Это гарантирует, что пользователь увидит красный индикатор
-          const updatedNotifications = userNotifications.map(n => 
+          const updatedNotifications = userNotifications.map((n: AppNotification) =>
             n.id === notificationId ? { ...n, isRead: false } : n
           );
-          notificationService.saveNotifications(selectedUserId, updatedNotifications);
+          await notificationService.saveNotifications(selectedUserId, updatedNotifications);
         } else {
           // Создаем новое уведомление только если его еще нет
-          const newNotification = notificationService.addNotification(selectedUserId, {
+          const newNotification = await notificationService.addNotification(selectedUserId, {
             title: 'Ответ на обращение',
             message: 'Мы ответили на вашу заявку в поддержку.',
             category: 'support',

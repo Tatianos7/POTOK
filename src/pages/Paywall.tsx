@@ -50,11 +50,12 @@ const Paywall = () => {
       setExplainability((state.explainability as BaseExplainabilityDTO) ?? null);
       setTrustMessage(state.trust?.message ?? null);
 
+      const paywallData = state.paywall as { status?: string; state?: string; tier?: string } | null;
       const statusFromPayload =
-        state.paywall?.status ??
-        state.paywall?.state ??
-        (state.paywall?.tier === 'free' ? 'free' : 'active');
-      setPaywallStatus(statusFromPayload);
+        paywallData?.status ??
+        paywallData?.state ??
+        (paywallData?.tier === 'free' ? 'free' : 'active');
+      setPaywallStatus((statusFromPayload as PaywallStatus) ?? 'free');
 
       if (state.status === 'error') {
         setErrorMessage(state.message || 'Не удалось загрузить доступы.');

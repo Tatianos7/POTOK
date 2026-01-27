@@ -91,7 +91,7 @@ class ProgramUxRuntimeService {
 
   async getToday(
     programId: string,
-    programType: ProgramType,
+    _programType: ProgramType,
     entitlementOverride?: ProgramTier
   ): Promise<{ state: ProgramUxState; data?: ProgramTodayDTO }> {
     const userId = await this.getSessionUserId();
@@ -107,18 +107,21 @@ class ProgramUxRuntimeService {
       const uxStatus: UxStatus =
         status === 'blocked' ? 'blocked' : status === 'paused' ? 'paused' : 'ready';
 
-      const day = dayDetails?.day
+      const rawDay = (dayDetails as any)?.day;
+      const rawExplainability = (dayDetails as any)?.explainability;
+      const rawSession = (dayDetails as any)?.session;
+      const day = rawDay
         ? {
-            date: dayDetails.day.date,
-            targets: dayDetails.day.targets ?? null,
-            sessionPlan: dayDetails.day.session_plan ?? null,
-            status: dayDetails.session?.status ?? 'planned',
+            date: rawDay.date,
+            targets: rawDay.targets ?? null,
+            sessionPlan: rawDay.session_plan ?? null,
+            status: rawSession?.status ?? 'planned',
             explainabilitySummary: this.applyEntitlementToExplainability(
               tier,
-              dayDetails.explainability?.[0]
+              rawExplainability?.[0]
                 ? {
-                    decisionRef: dayDetails.explainability[0].decision_ref,
-                    reasonCode: dayDetails.explainability[0].guard_notes?.reason_code,
+                    decisionRef: rawExplainability[0].decision_ref,
+                    reasonCode: rawExplainability[0].guard_notes?.reason_code,
                   }
                 : null
             ),
@@ -129,7 +132,7 @@ class ProgramUxRuntimeService {
         programId,
         date: today,
         day: day as ProgramDayCardDTO,
-        explainability: tier === 'free' ? null : dayDetails.explainability ?? null,
+        explainability: tier === 'free' ? null : rawExplainability ?? null,
       };
 
       localStorage.setItem(this.cacheKey('today', programId), JSON.stringify(payload));
@@ -288,7 +291,7 @@ class ProgramUxRuntimeService {
     const canExplain = await entitlementService.canExplain(userId);
     const today = new Date().toISOString().split('T')[0];
     const details = await programDeliveryService.getProgramDayDetails(active.programId, today);
-    const explainability = details?.explainability?.[0];
+    const explainability = (details as any)?.explainability?.[0] as any;
     const trustScore = await this.getTrustScore(userId);
 
     return {
