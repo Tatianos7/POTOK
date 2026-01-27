@@ -5,6 +5,7 @@ import { getFoodDisplayName } from '../utils/foodDisplayName';
 import { mealEntryNotesService } from '../services/mealEntryNotesService';
 import { useAuth } from '../context/AuthContext';
 import MealNoteModal from './MealNoteModal';
+import { convertDisplayToGrams, FoodDisplayUnit, foodDisplayUnits } from '../utils/foodUnits';
 
 interface EditMealEntryModalProps {
   entry: MealEntry | null;
@@ -35,7 +36,8 @@ const EditMealEntryModal = ({
   source = 'search', // По умолчанию 'search' для обратной совместимости
 }: EditMealEntryModalProps) => {
   const { user } = useAuth();
-  const [weight, setWeight] = useState<string>('');
+  const [amount, setAmount] = useState<string>('');
+  const [unit, setUnit] = useState<FoodDisplayUnit>('г');
   const [calculated, setCalculated] = useState({
     calories: 0,
     protein: 0,
@@ -47,8 +49,12 @@ const EditMealEntryModal = ({
 
   useEffect(() => {
     if (entry) {
-      setWeight(entry.weight.toString());
-      calculateNutrients(entry.weight);
+      const displayUnit = (entry.displayUnit as FoodDisplayUnit) || 'г';
+      const displayAmount = entry.displayAmount ?? entry.weight;
+      setUnit(displayUnit);
+      setAmount(displayAmount.toString());
+      const grams = convertDisplayToGrams(displayAmount, displayUnit, entry.food?.name);
+      calculateNutrients(grams);
       // Загружаем заметку, если она есть
       setNote(entry.note || '');
     }
@@ -81,11 +87,12 @@ const EditMealEntryModal = ({
     });
   };
 
-  const handleWeightChange = (value: string) => {
+  const handleAmountChange = (value: string) => {
     if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
-      setWeight(value);
-      const weightNum = parseFloat(value) || 0;
-      calculateNutrients(weightNum);
+      setAmount(value);
+      const amountNum = parseFloat(value) || 0;
+      const grams = convertDisplayToGrams(amountNum, unit, entry?.food?.name);
+      calculateNutrients(grams);
     }
   };
 
@@ -102,11 +109,12 @@ const EditMealEntryModal = ({
   };
 
   const handleSave = () => {
-    if (!entry || !weight || parseFloat(weight) <= 0) {
+    if (!entry || !amount || parseFloat(amount) <= 0) {
       return;
     }
 
-    const weightNum = parseFloat(weight);
+    const amountNum = parseFloat(amount);
+    const weightNum = convertDisplayToGrams(amountNum, unit, entry.food?.name);
     const updatedEntry: MealEntry = {
       ...entry,
       weight: weightNum,
@@ -114,6 +122,9 @@ const EditMealEntryModal = ({
       protein: calculated.protein,
       fat: calculated.fat,
       carbs: calculated.carbs,
+      baseUnit: 'г',
+      displayUnit: unit,
+      displayAmount: amountNum,
     };
 
     if (mealType) {
@@ -205,17 +216,34 @@ const EditMealEntryModal = ({
               {getFoodDisplayName(entry.food)}
             </p>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Вес, г</span>
+              <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Количество</span>
               <input
                 type="number"
-                value={weight}
-                onChange={(e) => handleWeightChange(e.target.value)}
+                value={amount}
+                onChange={(e) => handleAmountChange(e.target.value)}
                 min="0"
                 step="1"
                 className="w-20 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 text-center flex-shrink-0"
                 placeholder="150"
                 style={{ boxSizing: 'border-box' }}
               />
+              <select
+                value={unit}
+                onChange={(e) => {
+                  const nextUnit = e.target.value as FoodDisplayUnit;
+                  setUnit(nextUnit);
+                  const amountNum = parseFloat(amount) || 0;
+                  const grams = convertDisplayToGrams(amountNum, nextUnit, entry?.food?.name);
+                  calculateNutrients(grams);
+                }}
+                className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                {foodDisplayUnits.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

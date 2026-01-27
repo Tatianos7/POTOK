@@ -2,8 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Plus, Check, Circle, Calendar } from 'lucide-react';
-import { createHabit, getHabitsForDate, toggleHabitComplete, HabitWithStatus, HabitFrequency } from '../services/habitsService';
+import { createHabit, toggleHabitComplete, HabitWithStatus, HabitFrequency } from '../services/habitsService';
 import { supabase } from '../lib/supabaseClient';
+import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
+import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
+import type { BaseExplainabilityDTO } from '../types/explainability';
+import { classifyTrustDecision } from '../services/trustSafetyService';
 
 const Habits = () => {
   const { user } = useAuth();
@@ -15,6 +19,11 @@ const Habits = () => {
   const [newHabitDescription, setNewHabitDescription] = useState('');
   const [newHabitFrequency, setNewHabitFrequency] = useState<HabitFrequency>('daily');
   const [isLoading, setIsLoading] = useState(false);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [trustMessage, setTrustMessage] = useState<string | null>(null);
+  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
+  const [habitStats, setHabitStats] = useState<Record<string, { streak: number; adherence: number }>>({});
 
   useEffect(() => {
     if (!user?.id) {
@@ -27,17 +36,37 @@ const Habits = () => {
 
   const loadHabits = async () => {
     if (!user?.id || !supabase) return;
-
     setIsLoading(true);
+    setRuntimeStatus('loading');
+    setErrorMessage(null);
+    setTrustMessage(null);
+    uiRuntimeAdapter.startLoadingTimer('Habits', {
+      pendingSources: ['habits', 'habit_logs'],
+      onTimeout: () => {
+        const decision = classifyTrustDecision('loading_timeout');
+        setRuntimeStatus('error');
+        setErrorMessage('Загрузка привычек заняла слишком много времени.');
+        setTrustMessage(decision.message);
+      },
+    });
     try {
-      const habitsData = await getHabitsForDate({
-        userId: user.id,
-        date: selectedDate,
-      });
-      setHabits(habitsData);
+      const state = await uiRuntimeAdapter.getHabitsState(user.id, selectedDate);
+      setRuntimeStatus(state.status);
+      setHabits(state.habits || []);
+      setExplainability(state.explainability ?? null);
+      setTrustMessage(state.trust?.message ?? null);
+      setHabitStats(state.habitStats || {});
+      if (state.status === 'error') {
+        setErrorMessage(state.message || 'Не удалось загрузить привычки.');
+      }
     } catch (error) {
       console.error('Error loading habits:', error);
+      const decision = classifyTrustDecision(error);
+      setRuntimeStatus('error');
+      setErrorMessage('Не удалось загрузить привычки.');
+      setTrustMessage(decision.message);
     } finally {
+      uiRuntimeAdapter.clearLoadingTimer('Habits');
       setIsLoading(false);
     }
   };
@@ -146,6 +175,52 @@ const Habits = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto min-h-0 px-4 py-6">
+          {errorMessage && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+              <div className="flex flex-col gap-2 mobile-lg:flex-row mobile-lg:items-center mobile-lg:justify-between">
+                <span>{errorMessage}</span>
+                {trustMessage && (
+                  <span className="text-xs text-red-700 dark:text-red-200">{trustMessage}</span>
+                )}
+                <button
+                  onClick={() => {
+                    uiRuntimeAdapter.recover().finally(loadHabits);
+                  }}
+                  className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-700 dark:text-red-200 dark:hover:bg-red-900/50"
+                >
+                  Повторить
+                </button>
+              </div>
+            </div>
+          )}
+          {runtimeStatus === 'offline' && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Работаем офлайн. Данные могут быть неактуальны.
+              <button
+                onClick={() => {
+                  uiRuntimeAdapter.revalidate().finally(loadHabits);
+                }}
+                className="ml-3 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+              >
+                Обновить
+              </button>
+            </div>
+          )}
+          {runtimeStatus === 'recovery' && (
+            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Идёт восстановление данных. Продолжаем безопасно.
+            </div>
+          )}
+          {runtimeStatus === 'partial' && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              Данные доступны частично. Мы показываем то, что уже есть.
+            </div>
+          )}
+          {explainability && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
+              Доступно объяснение: «Почему так?»
+            </div>
+          )}
           {/* Date Selector */}
           <div className="mb-6 flex items-center justify-between">
             <button
@@ -205,6 +280,16 @@ const Habits = () => {
                     <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                       {habit.frequency === 'daily' ? 'Ежедневно' : 'Еженедельно'}
                     </p>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                      <span>Стрик: {habitStats[habit.id]?.streak ?? 0}</span>
+                      <span>•</span>
+                      <span>Устойчивость: {Math.round((habitStats[habit.id]?.adherence ?? 0) * 100)}%</span>
+                    </div>
+                    {!habit.completed && (
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Срыв — не провал. Давайте вернёмся спокойно.
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={() => handleToggleHabit(habit.id)}
@@ -237,6 +322,9 @@ const Habits = () => {
             <Plus className="w-5 h-5 mr-2" />
             СОЗДАТЬ ПРИВЫЧКУ
           </button>
+          <div className="mt-6">
+            <ExplainabilityDrawer explainability={explainability} />
+          </div>
         </main>
       </div>
 

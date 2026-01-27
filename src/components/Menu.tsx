@@ -20,7 +20,7 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
-  const refreshNotificationsIndicator = () => {
+  const refreshNotificationsIndicator = async () => {
     if (!user?.id) {
       setHasUnreadNotifications(false);
       return;
@@ -32,20 +32,26 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
       return;
     }
     
-    const notifications = notificationService.getNotifications(user.id);
-    setHasUnreadNotifications(
-      notifications.some((item) => !item.isRead && !item.isDeleted && !item.isArchived)
-    );
+    try {
+      const notifications = await notificationService.getNotifications(user.id);
+      const list = Array.isArray(notifications) ? notifications : [];
+      setHasUnreadNotifications(
+        list.some((item) => !item.isRead && !item.isDeleted && !item.isArchived)
+      );
+    } catch (error) {
+      console.warn('[Menu] Failed to load notifications:', error);
+      setHasUnreadNotifications(false);
+    }
   };
 
   useEffect(() => {
-    refreshNotificationsIndicator();
+    void refreshNotificationsIndicator();
   }, [user?.id]);
 
   // Обновляем индикатор при открытии меню
   useEffect(() => {
     if (isOpen) {
-      refreshNotificationsIndicator();
+      void refreshNotificationsIndicator();
     }
   }, [isOpen, user?.id]);
 
@@ -56,7 +62,7 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
       const customEvent = event as CustomEvent<{ userId?: string }>;
       // Обновляем индикатор если событие для текущего пользователя или userId не указан (глобальное обновление)
       if (!customEvent.detail?.userId || customEvent.detail.userId === user.id) {
-        refreshNotificationsIndicator();
+        void refreshNotificationsIndicator();
       }
     };
     window.addEventListener('notifications-updated', handler as EventListener);

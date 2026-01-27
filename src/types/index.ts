@@ -15,32 +15,24 @@ export interface User {
   name: string;
   email?: string;
   phone?: string;
-  password?: string;
   hasPremium: boolean;
   createdAt: string;
   profile: ProfileDetails;
   isAdmin?: boolean;
 }
 
-export interface AuthResponse {
-  user: User;
-  token: string;
-}
-
 export interface LoginCredentials {
   identifier: string;
-  password: string;
 }
 
 export interface RegisterCredentials extends ProfileDetails {
-  password: string;
+  contact: string;
 }
 
 export interface ProfileUpdatePayload extends ProfileDetails {}
 
 export interface ResetPasswordPayload {
-  identifier: string;
-  newPassword: string;
+  email: string;
 }
 
 export interface FeatureCard {
@@ -89,10 +81,22 @@ export interface Food {
   protein: number;  // на 100 г
   fat: number;      // на 100 г
   carbs: number;    // на 100 г
+  fiber?: number;   // на 100 г
+  unit?: string;    // единица измерения (по умолчанию g)
   category?: string;
   brand?: string | null;
   source: FoodSource; // ОБЯЗАТЕЛЬНОЕ поле для юридической безопасности
   created_by_user_id?: string | null; // ID пользователя, создавшего продукт (для source='user')
+  canonical_food_id?: string | null;
+  normalized_name?: string;
+  normalized_brand?: string | null;
+  nutrition_version?: number;
+  verified?: boolean;
+  suspicious?: boolean;
+  confidenceScore?: number;
+  sourceVersion?: string | null;
+  allergens?: string[];
+  intolerances?: string[];
   photo?: string | null;
   aliases?: string[]; // синонимы для поиска
   autoFilled?: boolean; // были ли БЖУ автозаполнены
@@ -117,7 +121,13 @@ export interface MealEntry {
   protein: number; // calculated
   fat: number; // calculated
   carbs: number; // calculated
+  baseUnit?: string; // base unit for storage/calculation (default: 'г')
+  displayUnit?: string; // unit selected by user (e.g. 'г', 'мл', 'шт', 'ст.л', 'ч.л', 'порция')
+  displayAmount?: number; // amount in displayUnit
+  idempotencyKey?: string; // stable key for deduplication/upsert
+  canonicalFoodId?: string | null;
   note?: string | null; // Заметка к продукту в приёме пищи
+  recipeId?: string; // Опционально: запись создана из рецепта
 }
 
 export interface DailyMeals {

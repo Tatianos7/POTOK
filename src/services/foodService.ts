@@ -1,16 +1,12 @@
 import { Food, UserCustomFood } from '../types';
 import { CATEGORY_DEFAULTS } from '../data/categoryDefaults';
-// import { RUS_PRODUCTS_SEED } from '../data/rusProductsSeed'; // Временно не используется - используем mockFoodDatabase
-import { EAN_INDEX_SEED } from '../data/eanIndexSeed';
-import { mockFoodDatabaseAsFood } from '../data/mockFoodDatabase';
 import { barcodeLookupService } from './barcodeLookupService';
 import { supabase } from '../lib/supabaseClient';
-import { toUUID } from '../utils/uuid';
+import { buildNormalizedBrand, buildNormalizedName, normalizeFoodText, validateNutrition } from '../utils/foodNormalizer';
 // TODO: Re-enable Open Food Facts / USDA when stable
 // import { openFoodFactsService } from './openFoodFactsService';
 // import { usdaService } from './usdaService';
 // import { foodCache } from '../utils/foodCache';
-import { baseFoods } from '../data/baseFoods';
 
 // Кэш для отслеживания доступности таблицы foods в Supabase
 let foodsTableExistsCache: boolean | null = null;
@@ -28,7 +24,7 @@ const PRODUCTS_STORAGE_KEY = 'potok_products_russia_v1';
 const EAN_INDEX_STORAGE_KEY = 'potok_ean_index_v1';
 const USER_CUSTOM_PRODUCTS_KEY = 'potok_user_products_v1';
 const DB_VERSION_KEY = 'potok_products_version';
-const DB_VERSION = 'mock-1.0'; // ВРЕМЕННАЯ ЗАГЛУШКА: используем mockFoodDatabase для тестирования
+const DB_VERSION = 'cache-1.0';
 
 // Утилита: числовое значение с безопасным дефолтом
 const toNumber = (value: unknown): number => {
@@ -41,18 +37,33 @@ class FoodService {
     this.initializeStorage();
   }
 
-  // Полная очистка старой базы при смене версии
-  // ВРЕМЕННО: используем mockFoodDatabase для тестирования дневника питания
+  private isValidUUID(id: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  }
+
+  private async getSessionUserId(userId?: string): Promise<string> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user?.id) {
+      throw new Error('Пользователь не авторизован');
+    }
+
+    if (userId && userId !== data.user.id) {
+      console.warn('[foodService] Передан userId не совпадает с сессией');
+    }
+
+    return data.user.id;
+  }
+
+  // Инициализация кеша (без mock-данных)
   private initializeStorage() {
     const version = localStorage.getItem(DB_VERSION_KEY);
-    const stored = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-    const storedProducts = stored ? JSON.parse(stored) : [];
-    
-    // ВРЕМЕННАЯ ЗАГЛУШКА: всегда используем mockFoodDatabase
-    // Перезаписываем базу если версия изменилась ИЛИ база пустая/старая
-    if (version !== DB_VERSION || !stored || storedProducts.length === 0) {
-      localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(mockFoodDatabaseAsFood));
-      localStorage.setItem(EAN_INDEX_STORAGE_KEY, JSON.stringify(EAN_INDEX_SEED));
+    if (version !== DB_VERSION) {
+      localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify([]));
+      localStorage.setItem(EAN_INDEX_STORAGE_KEY, JSON.stringify([]));
       localStorage.setItem(DB_VERSION_KEY, DB_VERSION);
     }
   }
@@ -60,6 +71,18 @@ class FoodService {
   // === Работа с локальным хранилищем ===
   private normalizeFood(raw: Partial<Food>): Food {
     const now = new Date().toISOString();
+    const normalizedName = buildNormalizedName(raw.name ?? raw.name_original ?? '');
+    const normalizedBrand = buildNormalizedBrand(raw.brand ?? null);
+    const nutritionVersion = raw.nutrition_version ?? 1;
+    const unit = raw.unit ?? 'g';
+    const fiber = toNumber(raw.fiber);
+    const { suspicious } = validateNutrition({
+      calories: toNumber(raw.calories),
+      protein: toNumber(raw.protein),
+      fat: toNumber(raw.fat),
+      carbs: toNumber(raw.carbs),
+      fiber,
+    });
     return {
       id: raw.id ?? `food_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       name: raw.name ?? raw.name_original ?? 'Без названия',
@@ -69,10 +92,22 @@ class FoodService {
       protein: toNumber(raw.protein),
       fat: toNumber(raw.fat),
       carbs: toNumber(raw.carbs),
+      fiber,
+      unit,
       category: raw.category,
       brand: raw.brand ?? null,
       source: raw.source ?? 'core', // По умолчанию базовый продукт
       created_by_user_id: raw.created_by_user_id ?? null,
+      canonical_food_id: raw.canonical_food_id ?? raw.id ?? null,
+      normalized_name: normalizedName,
+      normalized_brand: normalizedBrand || null,
+      nutrition_version: nutritionVersion,
+      verified: raw.verified ?? (raw.source === 'core' || raw.source === 'brand'),
+      suspicious: raw.suspicious ?? suspicious,
+      confidenceScore: raw.confidenceScore ?? (raw.verified ? 0.95 : 0.7),
+      sourceVersion: raw.sourceVersion ?? null,
+      allergens: raw.allergens ?? [],
+      intolerances: raw.intolerances ?? [],
       photo: raw.photo ?? null,
       aliases: raw.aliases ?? [],
       autoFilled: raw.autoFilled ?? false,
@@ -86,34 +121,15 @@ class FoodService {
     try {
       const stored = localStorage.getItem(PRODUCTS_STORAGE_KEY);
       if (!stored) {
-        this.initializeStorage();
-        const retry = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-        if (!retry) {
-          return [];
-        }
-        return JSON.parse(retry);
+        return [];
       }
       const parsed: Food[] = JSON.parse(stored);
       if (!Array.isArray(parsed) || parsed.length === 0) {
-        this.initializeStorage();
-        const retry = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-        if (!retry) {
-          return [];
-        }
-        return JSON.parse(retry);
+        return [];
       }
       return parsed;
     } catch (error) {
       console.error('[FoodService] Error loading products:', error);
-      try {
-        this.initializeStorage();
-        const retry = localStorage.getItem(PRODUCTS_STORAGE_KEY);
-        if (retry) {
-          return JSON.parse(retry);
-        }
-      } catch (retryError) {
-        console.error('[FoodService] Error retrying initialization:', retryError);
-      }
       return [];
     }
   }
@@ -163,6 +179,7 @@ class FoodService {
       protein: food.protein || defaults.protein,
       fat: food.fat || defaults.fat,
       carbs: food.carbs || defaults.carbs,
+      fiber: food.fiber ?? 0,
       autoFilled: true,
       updatedAt: new Date().toISOString(),
     };
@@ -302,23 +319,7 @@ class FoodService {
       }
     }
 
-    // 2. Базовые продукты (локальная справочная база)
-    // Используется вместо внешних API (Open Food Facts / USDA)
-    try {
-      const baseResults = baseFoods.filter((f) => {
-        if (category && f.category !== category) return false;
-        if (!q) return true;
-        const nameMatch = f.name.toLowerCase().includes(q);
-        const aliasMatch = f.aliases?.some(alias => alias.toLowerCase().includes(q));
-        return nameMatch || aliasMatch;
-      });
-      allResults.push(...baseResults);
-    } catch (error) {
-      // Продолжаем работу даже при ошибке
-    }
-
-    // 3. Локальная таблица foods (localStorage) - РЕЗЕРВНЫЙ ИСТОЧНИК
-    // Это должно работать всегда, даже без Supabase
+    // 2. Локальный cache (read-only), если он уже заполнен из Supabase
     // Фильтруем: показываем только core/brand или user продукты текущего пользователя
     try {
       const localFoods = this.searchLocal(query, category).filter(
@@ -336,7 +337,7 @@ class FoodService {
       // Продолжаем работу даже при ошибке
     }
 
-    // 4. Supabase (открытые базы) - полнотекстовый поиск
+    // 3. Supabase (открытые базы) - полнотекстовый поиск
     // Пробуем загрузить, но не блокируем основной поиск при ошибках
     const foodsTableExists = await this.checkFoodsTableExists();
     if (supabase && q && foodsTableExists) {
@@ -353,6 +354,29 @@ class FoodService {
             allResults.push(food);
           }
         });
+
+        const normalizedQuery = normalizeFoodText(query);
+        if (normalizedQuery) {
+          const { data: aliasRows } = await supabase
+            .from('food_aliases')
+            .select('canonical_food_id')
+            .eq('normalized_alias', normalizedQuery)
+            .limit(20);
+          const aliasIds = (aliasRows || []).map((row: any) => row.canonical_food_id).filter(Boolean);
+          if (aliasIds.length > 0) {
+            const { data: aliasFoods } = await supabase
+              .from('foods')
+              .select('*')
+              .in('id', aliasIds)
+              .limit(50);
+            (aliasFoods || []).forEach((row: any) => {
+              const food = this.mapSupabaseRowToFood(row);
+              if (!allResults.find((f) => this.isDuplicate(f, food))) {
+                allResults.push(food);
+              }
+            });
+          }
+        }
       } catch (error) {
         // Продолжаем работу без Supabase
       }
@@ -400,13 +424,12 @@ class FoodService {
    * Дубликаты определяются по name + calories + macros
    */
   private isDuplicate(food1: Food, food2: Food): boolean {
-    const nameMatch = food1.name.toLowerCase().trim() === food2.name.toLowerCase().trim();
-    const caloriesMatch = Math.abs(food1.calories - food2.calories) < 1;
-    const proteinMatch = Math.abs(food1.protein - food2.protein) < 0.1;
-    const fatMatch = Math.abs(food1.fat - food2.fat) < 0.1;
-    const carbsMatch = Math.abs(food1.carbs - food2.carbs) < 0.1;
+    const nameMatch =
+      buildNormalizedName(food1.name) === buildNormalizedName(food2.name);
+    const brandMatch =
+      buildNormalizedBrand(food1.brand ?? null) === buildNormalizedBrand(food2.brand ?? null);
 
-    return nameMatch && caloriesMatch && proteinMatch && fatMatch && carbsMatch;
+    return nameMatch && brandMatch;
   }
 
   /**
@@ -417,7 +440,7 @@ class FoodService {
     const unique: Food[] = [];
 
     for (const food of foods) {
-      const key = `${food.name.toLowerCase().trim()}_${food.calories.toFixed(0)}_${food.protein.toFixed(1)}_${food.fat.toFixed(1)}_${food.carbs.toFixed(1)}`;
+      const key = `${buildNormalizedName(food.name)}_${buildNormalizedBrand(food.brand ?? null)}`;
       
       if (!seen.has(key)) {
         seen.add(key);
@@ -471,6 +494,12 @@ class FoodService {
   }
 
   async searchByCategory(category: string, limit = 50): Promise<Food[]> {
+    const foodsTableExists = await this.checkFoodsTableExists();
+    if (supabase && foodsTableExists) {
+      const supabaseFoods = await this.loadPublicFoodsFromSupabase();
+      const filtered = supabaseFoods.filter((f) => f.category === category);
+      return filtered.slice(0, limit);
+    }
     const local = this.searchLocal('', category);
     return local.slice(0, limit);
   }
@@ -528,10 +557,22 @@ class FoodService {
       protein: Number(row.protein) || 0,
       fat: Number(row.fat) || 0,
       carbs: Number(row.carbs) || 0,
+      fiber: Number(row.fiber) || 0,
+      unit: row.unit || 'g',
       category: row.category || undefined,
       brand: row.brand || null,
       source: row.source as Food['source'],
       created_by_user_id: row.created_by_user_id || null,
+      canonical_food_id: row.canonical_food_id || null,
+      normalized_name: row.normalized_name || undefined,
+      normalized_brand: row.normalized_brand || null,
+      nutrition_version: row.nutrition_version ?? 1,
+      verified: row.verified ?? false,
+      suspicious: row.suspicious ?? false,
+      confidenceScore: row.confidence_score ?? 0.7,
+      sourceVersion: row.source_version ?? null,
+      allergens: row.allergens || [],
+      intolerances: row.intolerances || [],
       photo: row.photo || null,
       aliases: row.aliases || [],
       autoFilled: row.auto_filled || false,
@@ -548,12 +589,12 @@ class FoodService {
     if (!supabase) return [];
 
     try {
-      const uuidUserId = toUUID(userId);
+      const sessionUserId = await this.getSessionUserId(userId);
       const { data, error } = await supabase
         .from('foods')
         .select('*')
         .eq('source', 'user')
-        .eq('created_by_user_id', uuidUserId)
+        .eq('created_by_user_id', sessionUserId)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -566,7 +607,15 @@ class FoodService {
 
       if (!data) return [];
 
-      return data.map((row) => this.mapSupabaseRowToFood(row));
+      const mapped = data.map((row) => this.mapSupabaseRowToFood(row));
+      const userFoods = mapped.map((food) => ({
+        ...food,
+        userId: sessionUserId,
+        source: 'user' as const,
+        created_by_user_id: sessionUserId,
+      }));
+      this.saveUserFoods(sessionUserId, userFoods as UserCustomFood[]);
+      return mapped;
     } catch (error) {
       // Продолжаем работу без Supabase
       return [];
@@ -586,10 +635,8 @@ class FoodService {
         .in('source', ['core', 'brand'])
         .limit(100);
 
-      // Если есть запрос, используем ilike для поиска
       if (query && query.trim()) {
-        const searchTerm = `%${query.trim()}%`;
-        queryBuilder = queryBuilder.or(`name.ilike.${searchTerm},name_original.ilike.${searchTerm}`);
+        queryBuilder = queryBuilder.textSearch('search_vector', query.trim(), { config: 'russian' });
       }
 
       const { data, error } = await queryBuilder.order('popularity', { ascending: false });
@@ -604,7 +651,9 @@ class FoodService {
 
       if (!data) return [];
 
-      return data.map((row) => this.mapSupabaseRowToFood(row));
+      const mapped = data.map((row) => this.mapSupabaseRowToFood(row));
+      this.saveAll(mapped);
+      return mapped;
     } catch (error) {
       // Продолжаем работу без Supabase
       return [];
@@ -620,48 +669,65 @@ class FoodService {
     food: Food,
     userId: string
   ): Promise<UserCustomFood> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+    const sessionUserId = await this.getSessionUserId(userId);
     const userFood: UserCustomFood = {
       ...this.normalizeFood(food),
-      id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      userId,
+      id: '',
+      userId: sessionUserId,
       source: 'user',
-      created_by_user_id: userId,
+      created_by_user_id: sessionUserId,
     };
 
-    // Сохраняем в localStorage
-    const userFoods = this.loadUserFoods(userId);
-    userFoods.push(userFood);
-    this.saveUserFoods(userId, userFoods);
-
     // Синхронизируем с Supabase
-    if (supabase) {
-      try {
-        const uuidUserId = toUUID(userId);
-        const { error } = await supabase.from('foods').insert({
-          id: toUUID(userFood.id),
-          name: userFood.name,
-          name_original: userFood.name_original || null,
-          barcode: userFood.barcode,
-          calories: userFood.calories,
-          protein: userFood.protein,
-          fat: userFood.fat,
-          carbs: userFood.carbs,
-          category: userFood.category || null,
-          brand: userFood.brand,
-          source: 'user',
-          created_by_user_id: uuidUserId,
-          photo: userFood.photo,
-          aliases: userFood.aliases || [],
-          auto_filled: userFood.autoFilled || false,
-          popularity: userFood.popularity || 0,
-        });
+    try {
+      const { data, error } = await supabase.from('foods').insert({
+        name: userFood.name,
+        name_original: userFood.name_original || null,
+        barcode: userFood.barcode,
+        calories: userFood.calories,
+        protein: userFood.protein,
+        fat: userFood.fat,
+        carbs: userFood.carbs,
+        fiber: userFood.fiber ?? 0,
+        unit: userFood.unit ?? 'g',
+        category: userFood.category || null,
+        brand: userFood.brand,
+        source: 'user',
+        created_by_user_id: sessionUserId,
+        canonical_food_id: null,
+        normalized_name: userFood.normalized_name,
+        normalized_brand: userFood.normalized_brand,
+        nutrition_version: userFood.nutrition_version ?? 1,
+        verified: userFood.verified ?? false,
+        suspicious: userFood.suspicious ?? false,
+        confidence_score: userFood.confidenceScore ?? 0.7,
+        source_version: userFood.sourceVersion ?? null,
+        allergens: userFood.allergens ?? [],
+        intolerances: userFood.intolerances ?? [],
+        photo: userFood.photo,
+        aliases: userFood.aliases || [],
+        auto_filled: userFood.autoFilled || false,
+        popularity: userFood.popularity || 0,
+      }).select('*').single();
 
-        if (error) {
-          console.error('[FoodService] Error saving to Supabase:', error);
-        }
-      } catch (error) {
-        console.error('[FoodService] Error syncing with Supabase:', error);
+      if (error) {
+        console.error('[FoodService] Error saving to Supabase:', error);
+        throw error;
       }
+      if (!data?.id) {
+        throw new Error('[FoodService] Supabase did not return id for created food');
+      }
+      userFood.id = data.id;
+      userFood.canonical_food_id = data.canonical_food_id || data.id;
+      const userFoods = this.loadUserFoods(sessionUserId);
+      userFoods.push(userFood);
+      this.saveUserFoods(sessionUserId, userFoods);
+    } catch (error) {
+      console.error('[FoodService] Error syncing with Supabase:', error);
+      throw error;
     }
 
     return userFood;
@@ -675,7 +741,11 @@ class FoodService {
     food: Partial<Food>,
     userId: string
   ): Promise<void> {
-    const userFoods = this.loadUserFoods(userId);
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+    const sessionUserId = await this.getSessionUserId(userId);
+    const userFoods = this.loadUserFoods(sessionUserId);
     const index = userFoods.findIndex((f) => f.id === foodId);
     
     if (index >= 0) {
@@ -686,39 +756,61 @@ class FoodService {
         created_by_user_id: userFoods[index].created_by_user_id, // Сохраняем существующий created_by_user_id
         updatedAt: new Date().toISOString(),
       };
-      userFoods[index] = updated;
-      this.saveUserFoods(userId, userFoods);
 
-      if (supabase) {
-        try {
-          const uuidUserId = toUUID(userId);
-          const updateData: any = {};
-          
-          if (food.name !== undefined) updateData.name = food.name;
-          if (food.name_original !== undefined) updateData.name_original = food.name_original;
-          if (food.barcode !== undefined) updateData.barcode = food.barcode;
-          if (food.calories !== undefined) updateData.calories = food.calories;
-          if (food.protein !== undefined) updateData.protein = food.protein;
-          if (food.fat !== undefined) updateData.fat = food.fat;
-          if (food.carbs !== undefined) updateData.carbs = food.carbs;
-          if (food.category !== undefined) updateData.category = food.category;
-          if (food.brand !== undefined) updateData.brand = food.brand;
-          if (food.photo !== undefined) updateData.photo = food.photo;
-          if (food.aliases !== undefined) updateData.aliases = food.aliases;
-
-          const { error } = await supabase
-            .from('foods')
-            .update(updateData)
-            .eq('id', toUUID(foodId))
-            .eq('created_by_user_id', uuidUserId)
-            .eq('source', 'user');
-
-          if (error) {
-            console.error('[FoodService] Error updating in Supabase:', error);
-          }
-        } catch (error) {
-          console.error('[FoodService] Error syncing update with Supabase:', error);
+      try {
+        if (!this.isValidUUID(foodId)) {
+          return;
         }
+        const updateData: any = {};
+        const normalizedName = buildNormalizedName(updated.name);
+        const normalizedBrand = buildNormalizedBrand(updated.brand ?? null);
+        const { suspicious } = validateNutrition({
+          calories: Number(updated.calories) || 0,
+          protein: Number(updated.protein) || 0,
+          fat: Number(updated.fat) || 0,
+          carbs: Number(updated.carbs) || 0,
+          fiber: Number(updated.fiber) || 0,
+        });
+        
+        if (food.name !== undefined) updateData.name = food.name;
+        if (food.name_original !== undefined) updateData.name_original = food.name_original;
+        if (food.barcode !== undefined) updateData.barcode = food.barcode;
+        if (food.calories !== undefined) updateData.calories = food.calories;
+        if (food.protein !== undefined) updateData.protein = food.protein;
+        if (food.fat !== undefined) updateData.fat = food.fat;
+        if (food.carbs !== undefined) updateData.carbs = food.carbs;
+        if (food.fiber !== undefined) updateData.fiber = food.fiber;
+        if (food.unit !== undefined) updateData.unit = food.unit;
+        if (food.category !== undefined) updateData.category = food.category;
+        if (food.brand !== undefined) updateData.brand = food.brand;
+        if (food.photo !== undefined) updateData.photo = food.photo;
+        if (food.aliases !== undefined) updateData.aliases = food.aliases;
+        updateData.normalized_name = normalizedName;
+        updateData.normalized_brand = normalizedBrand;
+        updateData.nutrition_version = updated.nutrition_version ?? 1;
+        updateData.verified = updated.verified ?? false;
+        updateData.suspicious = updated.suspicious ?? suspicious;
+        updateData.confidence_score = updated.confidenceScore ?? 0.7;
+        updateData.source_version = updated.sourceVersion ?? null;
+        updateData.allergens = updated.allergens ?? [];
+        updateData.intolerances = updated.intolerances ?? [];
+
+        const { error } = await supabase
+          .from('foods')
+          .update(updateData)
+          .eq('id', foodId)
+          .eq('created_by_user_id', sessionUserId)
+          .eq('source', 'user');
+
+        if (error) {
+          console.error('[FoodService] Error updating in Supabase:', error);
+          throw error;
+        }
+        userFoods[index] = updated;
+        this.saveUserFoods(sessionUserId, userFoods);
+      } catch (error) {
+        console.error('[FoodService] Error syncing update with Supabase:', error);
+        throw error;
       }
     }
   }
@@ -727,63 +819,49 @@ class FoodService {
    * Удаляет пользовательский продукт
    */
   async deleteUserFood(foodId: string, userId: string): Promise<void> {
-    const userFoods = this.loadUserFoods(userId);
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+    const sessionUserId = await this.getSessionUserId(userId);
+    const userFoods = this.loadUserFoods(sessionUserId);
     const filtered = userFoods.filter((f) => f.id !== foodId);
-    this.saveUserFoods(userId, filtered);
 
-    if (supabase) {
-      try {
-        const uuidUserId = toUUID(userId);
-        const { error } = await supabase
-          .from('foods')
-          .delete()
-          .eq('id', toUUID(foodId))
-          .eq('created_by_user_id', uuidUserId)
-          .eq('source', 'user');
-
-        if (error) {
-          console.error('[FoodService] Error deleting from Supabase:', error);
-        }
-      } catch (error) {
-        console.error('[FoodService] Error syncing delete with Supabase:', error);
+    try {
+      if (!this.isValidUUID(foodId)) {
+        return;
       }
+      const { error } = await supabase
+        .from('foods')
+        .delete()
+        .eq('id', foodId)
+        .eq('created_by_user_id', sessionUserId)
+        .eq('source', 'user');
+
+      if (error) {
+        console.error('[FoodService] Error deleting from Supabase:', error);
+        throw error;
+      }
+      this.saveUserFoods(sessionUserId, filtered);
+    } catch (error) {
+      console.error('[FoodService] Error syncing delete with Supabase:', error);
+      throw error;
     }
   }
 
   /**
-   * Для обратной совместимости
-   * Создает пользовательский продукт синхронно (для существующего кода)
-   * В фоне синхронизирует с Supabase
+   * Создает пользовательский продукт только через Supabase
    */
-  createCustomFood(
-    userId: string, 
+  async createCustomFood(
+    userId: string,
     data: Omit<Food, 'id' | 'source' | 'created_by_user_id' | 'createdAt' | 'updatedAt'>
-  ): UserCustomFood {
+  ): Promise<UserCustomFood> {
     const food: Food = {
       ...this.normalizeFood(data),
       source: 'user',
       created_by_user_id: userId,
     };
-    
-    const userFood: UserCustomFood = {
-      ...food,
-      id: `user_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      userId,
-      source: 'user',
-      created_by_user_id: userId,
-    };
 
-    // Сохраняем в localStorage
-    const userFoods = this.loadUserFoods(userId);
-    userFoods.push(userFood);
-    this.saveUserFoods(userId, userFoods);
-
-    // Синхронизируем с Supabase в фоне
-    void this.createUserFood(food, userId).catch((error) => {
-      console.error('[FoodService] Error syncing createCustomFood with Supabase:', error);
-    });
-    
-    return userFood;
+    return this.createUserFood(food, userId);
   }
 
   saveFood(food: Food): void {

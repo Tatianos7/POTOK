@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -8,6 +8,10 @@ import SubscriptionManagement from '../pages/SubscriptionManagement';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import { profileService } from '../services/profileService';
+import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
+import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
+import type { BaseExplainabilityDTO } from '../types/explainability';
+import { classifyTrustDecision } from '../services/trustSafetyService';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -17,6 +21,46 @@ const Profile = () => {
   const [avatar, setAvatar] = useState<string | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [trustMessage, setTrustMessage] = useState<string | null>(null);
+  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [entitlements, setEntitlements] = useState<any>(null);
+
+  const loadProfileState = useCallback(async () => {
+    if (!user?.id) return;
+    setRuntimeStatus('loading');
+    setErrorMessage(null);
+    setTrustMessage(null);
+    uiRuntimeAdapter.startLoadingTimer('Profile', {
+      pendingSources: ['user_profiles', 'entitlements'],
+      onTimeout: () => {
+        const decision = classifyTrustDecision('loading_timeout');
+        setRuntimeStatus('error');
+        setErrorMessage('Загрузка профиля заняла слишком много времени.');
+        setTrustMessage(decision.message);
+      },
+    });
+    try {
+      const state = await uiRuntimeAdapter.getProfileState(user.id);
+      setRuntimeStatus(state.status);
+      setExplainability((state.explainability as BaseExplainabilityDTO) ?? null);
+      setTrustMessage(state.trust?.message ?? null);
+      setProfileData(state.profile ?? null);
+      setEntitlements(state.entitlements ?? null);
+      if (state.status === 'error') {
+        setErrorMessage(state.message || 'Не удалось загрузить профиль.');
+      }
+    } catch (error) {
+      const decision = classifyTrustDecision(error);
+      setRuntimeStatus('error');
+      setErrorMessage('Не удалось загрузить профиль.');
+      setTrustMessage(decision.message);
+    } finally {
+      uiRuntimeAdapter.clearLoadingTimer('Profile');
+    }
+  }, [user?.id]);
 
   // Загружаем аватар из Supabase при монтировании
   useEffect(() => {
@@ -34,6 +78,10 @@ const Profile = () => {
       });
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    loadProfileState();
+  }, [loadProfileState]);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -59,7 +107,7 @@ const Profile = () => {
     navigate('/');
   };
 
-  const profile = user?.profile;
+  const profile = profileData || user?.profile;
 
   const formatAge = (value?: number) => {
     if (!value) return '';
@@ -133,6 +181,50 @@ const Profile = () => {
 
         {/* Profile Content */}
         <main className="py-4 tablet:py-6">
+          {runtimeStatus === 'offline' && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Работаем офлайн. Данные могут быть неактуальны.
+              <button
+                onClick={() => {
+                  uiRuntimeAdapter.revalidate().finally(loadProfileState);
+                }}
+                className="ml-3 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+              >
+                Обновить
+              </button>
+            </div>
+          )}
+          {runtimeStatus === 'recovery' && (
+            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Идёт восстановление данных. Продолжаем безопасно.
+            </div>
+          )}
+          {runtimeStatus === 'partial' && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              Данные профиля доступны частично. Мы покажем доступное.
+            </div>
+          )}
+          {runtimeStatus === 'error' && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <div className="flex flex-col gap-2 mobile-lg:flex-row mobile-lg:items-center mobile-lg:justify-between">
+                <span>{errorMessage || 'Не удалось загрузить профиль.'}</span>
+                {trustMessage && <span className="text-xs text-red-700">{trustMessage}</span>}
+                <button
+                  onClick={() => {
+                    uiRuntimeAdapter.recover().finally(loadProfileState);
+                  }}
+                  className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100"
+                >
+                  Повторить
+                </button>
+              </div>
+            </div>
+          )}
+          {runtimeStatus === 'loading' && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+            </div>
+          )}
           {/* Profile Info */}
           <div className="flex items-start gap-4 mb-6">
             {/* Avatar */}
@@ -207,12 +299,17 @@ const Profile = () => {
           <div className="mb-6 space-y-2 text-sm">
             <p className="text-gray-900">
               <span className="font-semibold">Тариф:</span>{' '}
-              <span className={user?.hasPremium ? 'text-primary-600' : 'text-gray-600'}>
-                {user?.hasPremium ? 'PREMIUM' : 'FREE'}
+              <span className={profile?.has_premium || user?.hasPremium ? 'text-primary-600' : 'text-gray-600'}>
+                {profile?.has_premium || user?.hasPremium ? 'PREMIUM' : 'FREE'}
               </span>
             </p>
             <p className="text-gray-600">{profile?.email || 'Email не указан'}</p>
             <p className="text-gray-600">{profile?.phone || 'Телефон не указан'}</p>
+            {entitlements?.tier && (
+              <p className="text-gray-600">
+                <span className="font-semibold">Entitlement:</span> {entitlements.tier}
+              </p>
+            )}
           </div>
 
           {/* Menu Items */}
@@ -248,6 +345,26 @@ const Profile = () => {
                 </button>
               );
             })}
+          </div>
+          <div className="mt-6 rounded-2xl border border-gray-200 p-4 space-y-3">
+            <h3 className="text-sm font-semibold text-gray-900">Данные и права</h3>
+            <p className="text-xs text-gray-600">
+              Ваши данные принадлежат вам. Мы обеспечиваем прозрачность и контроль.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button className="rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700">
+                Экспорт данных
+              </button>
+              <button className="rounded-xl border border-red-300 py-2 text-xs font-semibold uppercase text-red-600">
+                Удалить аккаунт
+              </button>
+              <button className="rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700">
+                Юридические согласия (РФ)
+              </button>
+            </div>
+          </div>
+          <div className="mt-6">
+            <ExplainabilityDrawer explainability={explainability} />
           </div>
         </main>
       </div>

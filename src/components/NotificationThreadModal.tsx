@@ -1,9 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import {
-  NotificationMessage,
-  notificationService,
-} from '../services/notificationService';
+import { notificationService, type ThreadMessage } from '../services/notificationService';
 import { useAuth } from '../context/AuthContext';
 import { supportService } from '../services/supportService';
 
@@ -23,20 +20,26 @@ const NotificationThreadModal = ({
   onMarkAsRead,
 }: NotificationThreadModalProps) => {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<NotificationMessage[]>([]);
+  const [messages, setMessages] = useState<ThreadMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen && user?.id && notificationId) {
-      const thread = notificationService.getThread(user.id, notificationId);
-      setMessages(thread);
-      
-      // Помечаем уведомление как прочитанное при открытии модального окна
+    if (!isOpen || !user?.id || !notificationId) return;
+    let mounted = true;
+    const loadThread = async () => {
+      const thread = await notificationService.getThread(user.id, notificationId);
+      if (mounted) {
+        setMessages(thread);
+      }
       if (onMarkAsRead) {
         onMarkAsRead(notificationId);
       }
-    }
+    };
+    loadThread();
+    return () => {
+      mounted = false;
+    };
   }, [isOpen, user?.id, notificationId, onMarkAsRead]);
 
   useEffect(() => {
@@ -49,8 +52,8 @@ const NotificationThreadModal = ({
 
   const handleSend = async () => {
     if (!inputValue.trim() || !user?.id) return;
-    notificationService.addThreadMessage(user.id, notificationId, inputValue.trim(), true);
-    const updatedThread = notificationService.getThread(user.id, notificationId);
+    await notificationService.addThreadMessage(user.id, notificationId, inputValue.trim(), true);
+    const updatedThread = await notificationService.getThread(user.id, notificationId);
     setMessages(updatedThread);
 
     // Отправляем сообщение в админку
@@ -77,14 +80,12 @@ const NotificationThreadModal = ({
     setInputValue('');
 
     setTimeout(() => {
-      notificationService.addThreadMessage(
-        user.id,
-        notificationId,
-        'Спасибо за сообщение! Мы скоро ответим.',
-        false
-      );
-      const thread = notificationService.getThread(user.id, notificationId);
-      setMessages(thread);
+      void notificationService
+        .addThreadMessage(user.id, notificationId, 'Спасибо за сообщение! Мы скоро ответим.', false)
+        .then(async () => {
+          const thread = await notificationService.getThread(user.id, notificationId);
+          setMessages(thread);
+        });
     }, 1500);
   };
 

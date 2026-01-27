@@ -4,8 +4,8 @@
 
 create table if not exists public.meal_entry_notes (
   id            uuid primary key default gen_random_uuid(),
-  user_id       uuid not null,
-  meal_entry_id uuid not null,  -- ID записи из food_diary_entries
+  user_id       uuid not null references auth.users (id) on delete cascade,
+  meal_entry_id uuid not null references public.food_diary_entries (id) on delete cascade,  -- ID записи из food_diary_entries
   product_id    uuid,            -- ID продукта (опционально, для будущего использования)
   text          text not null,
   created_at    timestamptz not null default now(),
@@ -23,30 +23,33 @@ create index if not exists meal_entry_notes_entry_idx
 create unique index if not exists meal_entry_notes_entry_unique
   on public.meal_entry_notes (meal_entry_id);
 
--- ВРЕМЕННО ОТКЛЮЧАЕМ RLS (для работы с локальной авторизацией)
--- В продакшене с Supabase Auth включите RLS и используйте:
--- alter table public.meal_entry_notes enable row level security;
---
--- create policy "meal_entry_notes_select_own"
---   on public.meal_entry_notes
---   for select
---   using (auth.uid() = user_id);
---
--- create policy "meal_entry_notes_insert_own"
---   on public.meal_entry_notes
---   for insert
---   with check (auth.uid() = user_id);
---
--- create policy "meal_entry_notes_update_own"
---   on public.meal_entry_notes
---   for update
---   using (auth.uid() = user_id)
---   with check (auth.uid() = user_id);
---
--- create policy "meal_entry_notes_delete_own"
---   on public.meal_entry_notes
---   for delete
---   using (auth.uid() = user_id);
+-- Row Level Security (RLS)
+alter table public.meal_entry_notes enable row level security;
+
+drop policy if exists "meal_entry_notes_select_own" on public.meal_entry_notes;
+create policy "meal_entry_notes_select_own"
+  on public.meal_entry_notes
+  for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "meal_entry_notes_insert_own" on public.meal_entry_notes;
+create policy "meal_entry_notes_insert_own"
+  on public.meal_entry_notes
+  for insert
+  with check (auth.uid() = user_id);
+
+drop policy if exists "meal_entry_notes_update_own" on public.meal_entry_notes;
+create policy "meal_entry_notes_update_own"
+  on public.meal_entry_notes
+  for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+drop policy if exists "meal_entry_notes_delete_own" on public.meal_entry_notes;
+create policy "meal_entry_notes_delete_own"
+  on public.meal_entry_notes
+  for delete
+  using (auth.uid() = user_id);
 
 -- Функция для автоматического обновления updated_at
 create or replace function update_meal_entry_notes_updated_at()

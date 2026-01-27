@@ -18,7 +18,7 @@ const VIEW_MODE_STORAGE_KEY = 'potok_recipes_view_mode';
 
 const Recipes = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, authStatus } = useAuth();
 
   const [activeTab, setActiveTab] = useState<RecipeTab>('my');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -43,17 +43,36 @@ const Recipes = () => {
   };
 
   useEffect(() => {
-    if (user?.id) {
-      const loadedRecipes = recipesService.getRecipesByTab(activeTab, user.id);
-      setRecipes(loadedRecipes);
-    } else {
-      const loadedRecipes = recipesService.getRecipesByTab(activeTab);
-      setRecipes(loadedRecipes);
-    }
+    let isActive = true;
+
+    const loadRecipes = async () => {
+      if (authStatus !== 'authenticated' || !user?.id) {
+        if (isActive) {
+          setRecipes([]);
+        }
+        return;
+      }
+      try {
+        const loaded = await recipesService.getRecipesByTab(activeTab, user.id);
+        if (!isActive) return;
+        setRecipes(Array.isArray(loaded) ? loaded : []);
+      } catch (error) {
+        console.error('[Recipes] Failed to load recipes:', error);
+        if (isActive) {
+          setRecipes([]);
+        }
+      }
+    };
+
+    loadRecipes();
     // Сбрасываем фильтры при смене вкладки
     setTypeFilter('all');
     setGoalFilter('all');
-  }, [activeTab, user?.id]);
+
+    return () => {
+      isActive = false;
+    };
+  }, [activeTab, authStatus, user?.id]);
 
   const handleRecipeClick = (recipe: Recipe) => {
     navigate(`/nutrition/recipes/${recipe.id}`);

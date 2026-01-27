@@ -10,7 +10,7 @@
 create table if not exists public.recipe_notes (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references auth.users (id) on delete cascade,
-  recipe_id     text not null, -- ID рецепта (может быть не UUID, так как рецепты хранятся в localStorage)
+  recipe_id     uuid not null references public.recipes (id) on delete cascade,
   text          text not null,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
@@ -72,6 +72,6 @@ create policy "recipe_notes_delete_own"
 
 -- Комментарии для документации
 comment on table public.recipe_notes is 'Заметки пользователей к рецептам';
-comment on column public.recipe_notes.recipe_id is 'ID рецепта (может быть не UUID, так как рецепты хранятся в localStorage)';
+comment on column public.recipe_notes.recipe_id is 'ID рецепта (uuid из public.recipes)';
 comment on column public.recipe_notes.text is 'Текст заметки (способ приготовления блюда)';
 

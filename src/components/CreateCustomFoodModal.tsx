@@ -20,10 +20,10 @@ const CreateCustomFoodModal = ({ isOpen, onClose, onCreated, userId }: CreateCus
     carbs: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const food = foodService.createCustomFood(userId, {
+    const food = await foodService.createCustomFood(userId, {
       name: formData.name.trim(),
       brand: formData.brand.trim() || null,
       calories: parseFloat(formData.calories) || 0,

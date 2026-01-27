@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabaseClient';
-import { toUUID } from '../utils/uuid';
 
 export interface Measurement {
   id: string;
@@ -29,16 +28,33 @@ class MeasurementsService {
   private readonly HISTORY_STORAGE_KEY = 'potok_measurement_history';
   private readonly PHOTO_HISTORY_STORAGE_KEY = 'potok_measurement_photo_history';
 
+  private async getSessionUserId(userId?: string): Promise<string> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data?.user?.id) {
+      throw new Error('Пользователь не авторизован');
+    }
+
+    if (userId && userId !== data.user.id) {
+      console.warn('[measurementsService] Передан userId не совпадает с сессией');
+    }
+
+    return data.user.id;
+  }
+
   // Получить текущие замеры
   async getCurrentMeasurements(userId: string): Promise<Measurement[]> {
     // Try Supabase first
     if (supabase) {
       try {
-        const uuidUserId = toUUID(userId);
+        const sessionUserId = await this.getSessionUserId(userId);
         const { data, error } = await supabase
           .from('user_measurements')
           .select('measurements')
-          .eq('user_id', uuidUserId)
+          .eq('user_id', sessionUserId)
           .maybeSingle();
 
         if (error) {
@@ -50,7 +66,7 @@ class MeasurementsService {
         } else if (data && data.measurements) {
           const measurements: Measurement[] = data.measurements as Measurement[];
           // Sync to localStorage
-          this.saveMeasurementsToLocalStorage(userId, measurements);
+          this.saveMeasurementsToLocalStorage(sessionUserId, measurements);
           return measurements;
         }
       } catch (err) {
@@ -61,7 +77,8 @@ class MeasurementsService {
 
     // Fallback to localStorage
     try {
-      const stored = localStorage.getItem(`${this.MEASUREMENTS_STORAGE_KEY}_${userId}`);
+      const sessionUserId = await this.getSessionUserId(userId);
+      const stored = localStorage.getItem(`${this.MEASUREMENTS_STORAGE_KEY}_${sessionUserId}`);
       if (stored) {
         return JSON.parse(stored);
       }
@@ -71,6 +88,7 @@ class MeasurementsService {
 
     // Default measurements
     return [
+      { id: 'weight', name: 'ВЕС', value: '0' },
       { id: 'neck', name: 'ШЕЯ', value: '0' },
       { id: 'shoulders', name: 'ПЛЕЧИ', value: '0' },
       { id: 'chest', name: 'ГРУДЬ', value: '0' },
@@ -85,18 +103,14 @@ class MeasurementsService {
     photos: string[],
     additionalPhotos: string[]
   ): Promise<void> {
-    // Save to localStorage first
-    this.saveMeasurementsToLocalStorage(userId, measurements);
-    this.savePhotosToLocalStorage(userId, photos, additionalPhotos);
-
     // Try to save to Supabase
     if (supabase) {
       try {
-        const uuidUserId = toUUID(userId);
+        const sessionUserId = await this.getSessionUserId(userId);
         const { error } = await supabase
           .from('user_measurements')
           .upsert({
-            user_id: uuidUserId,
+            user_id: sessionUserId,
             measurements: measurements,
             photos: photos.filter(p => p !== ''),
             additional_photos: additionalPhotos.filter(p => p !== ''),
@@ -108,6 +122,8 @@ class MeasurementsService {
         if (error) {
           console.error('[measurementsService] Supabase save error:', error);
         }
+        this.saveMeasurementsToLocalStorage(sessionUserId, measurements);
+        this.savePhotosToLocalStorage(sessionUserId, photos, additionalPhotos);
       } catch (err) {
         console.error('[measurementsService] Supabase save connection error:', err);
       }
@@ -119,11 +135,11 @@ class MeasurementsService {
     // Try Supabase first
     if (supabase) {
       try {
-        const uuidUserId = toUUID(userId);
+        const sessionUserId = await this.getSessionUserId(userId);
         const { data, error } = await supabase
           .from('user_measurements')
           .select('photos, additional_photos')
-          .eq('user_id', uuidUserId)
+          .eq('user_id', sessionUserId)
           .maybeSingle();
 
         if (error) {
@@ -145,8 +161,9 @@ class MeasurementsService {
 
     // Fallback to localStorage
     try {
-      const savedPhotos = localStorage.getItem(`${this.PHOTOS_STORAGE_KEY}_${userId}`);
-      const savedAdditional = localStorage.getItem(`${this.ADDITIONAL_PHOTOS_STORAGE_KEY}_${userId}`);
+      const sessionUserId = await this.getSessionUserId(userId);
+      const savedPhotos = localStorage.getItem(`${this.PHOTOS_STORAGE_KEY}_${sessionUserId}`);
+      const savedAdditional = localStorage.getItem(`${this.ADDITIONAL_PHOTOS_STORAGE_KEY}_${sessionUserId}`);
       
       const photos = savedPhotos ? JSON.parse(savedPhotos) : ['', '', ''];
       const additionalPhotos = savedAdditional ? JSON.parse(savedAdditional) : [];
@@ -160,15 +177,17 @@ class MeasurementsService {
 
   // Получить историю замеров
   async getMeasurementHistory(userId: string): Promise<MeasurementHistory[]> {
+    const limit = 365;
     // Try Supabase first
     if (supabase) {
       try {
-        const uuidUserId = toUUID(userId);
+        const sessionUserId = await this.getSessionUserId(userId);
         const { data, error } = await supabase
           .from('measurement_history')
           .select('*')
-          .eq('user_id', uuidUserId)
-          .order('date', { ascending: false });
+          .eq('user_id', sessionUserId)
+          .order('date', { ascending: false })
+          .limit(limit);
 
         if (error) {
           console.error('[measurementsService] Supabase error:', error);
@@ -182,7 +201,7 @@ class MeasurementsService {
             additionalPhotos: (entry.additional_photos as string[]) || [],
           }));
           // Sync to localStorage
-          this.saveHistoryToLocalStorage(userId, history);
+          this.saveHistoryToLocalStorage(sessionUserId, history);
           return history;
         }
       } catch (err) {
@@ -193,7 +212,8 @@ class MeasurementsService {
 
     // Fallback to localStorage
     try {
-      const stored = localStorage.getItem(`${this.HISTORY_STORAGE_KEY}_${userId}`);
+      const sessionUserId = await this.getSessionUserId(userId);
+      const stored = localStorage.getItem(`${this.HISTORY_STORAGE_KEY}_${sessionUserId}`);
       if (stored) {
         return JSON.parse(stored);
       }
@@ -209,71 +229,51 @@ class MeasurementsService {
     userId: string,
     entry: MeasurementHistory
   ): Promise<void> {
-    // Save to localStorage first
-    const history = await this.getMeasurementHistory(userId);
-    const updatedHistory = [entry, ...history.filter(h => h.date !== entry.date)];
-    this.saveHistoryToLocalStorage(userId, updatedHistory);
-
     // Try to save to Supabase
     if (supabase) {
       try {
-        const uuidUserId = toUUID(userId);
-        // Сначала проверяем, существует ли запись с таким user_id и date
-        const { data: existing } = await supabase
+        const sessionUserId = await this.getSessionUserId(userId);
+        const { error } = await supabase
           .from('measurement_history')
-          .select('id')
-          .eq('user_id', uuidUserId)
-          .eq('date', entry.date)
-          .maybeSingle();
-
-        if (existing) {
-          // Обновляем существующую запись
-          const { error } = await supabase
-            .from('measurement_history')
-            .update({
-              measurements: entry.measurements,
-              photos: entry.photos,
-              additional_photos: entry.additionalPhotos,
-            })
-            .eq('id', existing.id);
-
-          if (error) {
-            console.error('[measurementsService] Supabase history update error:', error);
-          }
-        } else {
-          // Создаем новую запись
-          const { error } = await supabase
-            .from('measurement_history')
-            .insert({
+          .upsert(
+            {
               id: entry.id,
-              user_id: uuidUserId,
+              user_id: sessionUserId,
               date: entry.date,
               measurements: entry.measurements,
               photos: entry.photos,
               additional_photos: entry.additionalPhotos,
-            });
+            },
+            { onConflict: 'user_id,date' }
+          );
 
-          if (error) {
-            console.error('[measurementsService] Supabase history insert error:', error);
-          }
+        if (error) {
+          console.error('[measurementsService] Supabase history upsert error:', error);
         }
       } catch (err) {
         console.error('[measurementsService] Supabase history save connection error:', err);
       }
     }
+
+    const history = await this.getMeasurementHistory(userId);
+    const updatedHistory = [entry, ...history.filter(h => h.date !== entry.date)];
+    const sessionUserId = await this.getSessionUserId(userId);
+    this.saveHistoryToLocalStorage(sessionUserId, updatedHistory);
   }
 
   // Получить историю фото
   async getPhotoHistory(userId: string): Promise<PhotoHistory[]> {
+    const limit = 365;
     // Try Supabase first
     if (supabase) {
       try {
-        const uuidUserId = toUUID(userId);
+        const sessionUserId = await this.getSessionUserId(userId);
         const { data, error } = await supabase
           .from('measurement_photo_history')
           .select('*')
-          .eq('user_id', uuidUserId)
-          .order('date', { ascending: false });
+          .eq('user_id', sessionUserId)
+          .order('date', { ascending: false })
+          .limit(limit);
 
         if (error) {
           console.error('[measurementsService] Supabase error:', error);
@@ -286,7 +286,7 @@ class MeasurementsService {
             additionalPhotos: (entry.additional_photos as string[]) || [],
           }));
           // Sync to localStorage
-          this.savePhotoHistoryToLocalStorage(userId, history);
+          this.savePhotoHistoryToLocalStorage(sessionUserId, history);
           return history;
         }
       } catch (err) {
@@ -297,7 +297,8 @@ class MeasurementsService {
 
     // Fallback to localStorage
     try {
-      const stored = localStorage.getItem(`${this.PHOTO_HISTORY_STORAGE_KEY}_${userId}`);
+      const sessionUserId = await this.getSessionUserId(userId);
+      const stored = localStorage.getItem(`${this.PHOTO_HISTORY_STORAGE_KEY}_${sessionUserId}`);
       if (stored) {
         return JSON.parse(stored);
       }
@@ -313,56 +314,35 @@ class MeasurementsService {
     userId: string,
     entry: PhotoHistory
   ): Promise<void> {
-    // Save to localStorage first
-    const history = await this.getPhotoHistory(userId);
-    const updatedHistory = [entry, ...history.filter(h => h.date !== entry.date)];
-    this.savePhotoHistoryToLocalStorage(userId, updatedHistory);
-
     // Try to save to Supabase
     if (supabase) {
       try {
-        const uuidUserId = toUUID(userId);
-        // Сначала проверяем, существует ли запись с таким user_id и date
-        const { data: existing } = await supabase
+        const sessionUserId = await this.getSessionUserId(userId);
+        const { error } = await supabase
           .from('measurement_photo_history')
-          .select('id')
-          .eq('user_id', uuidUserId)
-          .eq('date', entry.date)
-          .maybeSingle();
-
-        if (existing) {
-          // Обновляем существующую запись
-          const { error } = await supabase
-            .from('measurement_photo_history')
-            .update({
-              photos: entry.photos,
-              additional_photos: entry.additionalPhotos,
-            })
-            .eq('id', existing.id);
-
-          if (error) {
-            console.error('[measurementsService] Supabase photo history update error:', error);
-          }
-        } else {
-          // Создаем новую запись
-          const { error } = await supabase
-            .from('measurement_photo_history')
-            .insert({
+          .upsert(
+            {
               id: entry.id,
-              user_id: uuidUserId,
+              user_id: sessionUserId,
               date: entry.date,
               photos: entry.photos,
               additional_photos: entry.additionalPhotos,
-            });
+            },
+            { onConflict: 'user_id,date' }
+          );
 
-          if (error) {
-            console.error('[measurementsService] Supabase photo history insert error:', error);
-          }
+        if (error) {
+          console.error('[measurementsService] Supabase photo history upsert error:', error);
         }
       } catch (err) {
         console.error('[measurementsService] Supabase photo history save connection error:', err);
       }
     }
+
+    const history = await this.getPhotoHistory(userId);
+    const updatedHistory = [entry, ...history.filter(h => h.date !== entry.date)];
+    const sessionUserId = await this.getSessionUserId(userId);
+    this.savePhotoHistoryToLocalStorage(sessionUserId, updatedHistory);
   }
 
   // Удалить запись из истории замеров

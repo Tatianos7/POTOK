@@ -47,6 +47,9 @@ class RecipeDiaryService {
       protein: totals.proteins,
       fat: totals.fats,
       carbs: totals.carbs,
+      baseUnit: 'г',
+      displayUnit: 'г',
+      displayAmount: weight,
     };
 
     mealService.addMealEntry(userId, date, mealType, entry);

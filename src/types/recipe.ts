@@ -14,6 +14,7 @@ export interface Recipe {
   carbsPer100?: number;
   ingredients?: Array<{
     name: string;
+    canonical_food_id?: string | null;
     quantity: number;
     unit: string;
     grams: number;
@@ -21,6 +22,8 @@ export interface Recipe {
     proteins: number;
     fats: number;
     carbs: number;
+    display_amount?: string | null;
+    display_unit?: string | null;
   }>;
   instructions?: string;
   category?: string;

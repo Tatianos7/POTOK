@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Calendar, Edit, Trash2, Clock, Plus, CheckCircle } from 'lucide-react';
@@ -9,6 +9,10 @@ import SelectedExercisesEditor from '../components/SelectedExercisesEditor';
 import CreateExerciseModal from '../components/CreateExerciseModal';
 import { exerciseService } from '../services/exerciseService';
 import { workoutService } from '../services/workoutService';
+import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
+import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
+import type { BaseExplainabilityDTO } from '../types/explainability';
+import { classifyTrustDecision } from '../services/trustSafetyService';
 import { ExerciseCategory, Exercise, SelectedExercise, WorkoutEntry } from '../types/workout';
 import '../utils/checkExercisesData'; // Импортируем для доступа через window
 
@@ -37,6 +41,11 @@ const Workouts = () => {
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [workoutEntries, setWorkoutEntries] = useState<WorkoutEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
+  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
+  const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
 
   // Утилита для добавления дней к дате в формате YYYY-MM-DD
@@ -157,24 +166,61 @@ const Workouts = () => {
     loadCategories();
   }, []);
 
+  const reloadWorkoutEntries = useCallback(async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
+    setRuntimeStatus('loading');
+    setErrorMessage(null);
+    setTrustMessage(null);
+    uiRuntimeAdapter.startLoadingTimer('TrainingDiary', {
+      pendingSources: ['workout_entries', 'local_cache'],
+      onTimeout: () => {
+        const decision = classifyTrustDecision('loading_timeout');
+        setRuntimeStatus('error');
+        setErrorMessage('Загрузка тренировки заняла слишком много времени.');
+        setTrustMessage(decision.message);
+      },
+    });
+    try {
+      const state = await uiRuntimeAdapter.getTrainingDiaryState(user.id, selectedDate);
+      setRuntimeStatus(state.status);
+      setExplainability(state.explainability ?? null);
+      setTrustMessage(state.trust?.message ?? null);
+      setWorkoutEntries(state.entries ?? []);
+      if (state.status === 'error') {
+        setErrorMessage(state.message || 'Не удалось загрузить тренировку. Проверьте соединение и попробуйте снова.');
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки записей тренировки:', error);
+      const decision = classifyTrustDecision(error);
+      setRuntimeStatus('error');
+      setErrorMessage('Не удалось загрузить тренировку. Проверьте соединение и попробуйте снова.');
+      setTrustMessage(decision.message);
+      setWorkoutEntries([]);
+    } finally {
+      uiRuntimeAdapter.clearLoadingTimer('TrainingDiary');
+      setIsLoading(false);
+    }
+  }, [user?.id, selectedDate]);
+
   // Загружаем упражнения тренировки при изменении даты
   useEffect(() => {
-    if (!user?.id) return;
+    reloadWorkoutEntries();
+  }, [reloadWorkoutEntries]);
 
-    const loadWorkoutEntries = async () => {
-      setIsLoading(true);
-      try {
-        const entries = await workoutService.getWorkoutEntries(user.id, selectedDate);
+  // Обновляем данные при фоновом sync
+  useEffect(() => {
+    const handleWorkoutsSynced = (event: CustomEvent) => {
+      const { date, entries } = event.detail;
+      if (date === selectedDate) {
         setWorkoutEntries(entries);
-      } catch (error) {
-        console.error('Ошибка загрузки записей тренировки:', error);
-      } finally {
-        setIsLoading(false);
       }
     };
-
-    loadWorkoutEntries();
-  }, [user?.id, selectedDate]);
+    window.addEventListener('workouts-synced', handleWorkoutsSynced as EventListener);
+    return () => {
+      window.removeEventListener('workouts-synced', handleWorkoutsSynced as EventListener);
+    };
+  }, [selectedDate]);
 
   // Закрытие календаря при клике вне его
   useEffect(() => {
@@ -246,7 +292,8 @@ const Workouts = () => {
   const handleSaveSelectedExercises = async (exercises: SelectedExercise[]) => {
     if (!user?.id) return;
 
-    setIsLoading(true);
+    setIsSaving(true);
+    setErrorMessage(null);
     try {
       await workoutService.addExercisesToWorkout(user.id, selectedDate, exercises);
       
@@ -259,9 +306,10 @@ const Workouts = () => {
     } catch (error: any) {
       console.error('Ошибка сохранения упражнений:', error);
       const errorMessage = error?.message || 'Ошибка при сохранении упражнений';
+      setErrorMessage(errorMessage);
       alert(errorMessage);
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -297,6 +345,50 @@ const Workouts = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto min-h-0 px-2 min-[376px]:px-4 py-3 min-[376px]:py-4 w-full max-w-full">
+          {errorMessage && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+              <div className="flex flex-col gap-2 min-[376px]:flex-row min-[376px]:items-center min-[376px]:justify-between">
+                <span>{errorMessage}</span>
+                {trustMessage && <span className="text-xs text-red-700 dark:text-red-200">{trustMessage}</span>}
+                <button
+                  onClick={() => {
+                    uiRuntimeAdapter.recover().finally(reloadWorkoutEntries);
+                  }}
+                  className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-700 dark:text-red-200 dark:hover:bg-red-900/50"
+                >
+                  Повторить
+                </button>
+              </div>
+            </div>
+          )}
+          {runtimeStatus === 'offline' && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Работаем офлайн. Данные могут быть неактуальны.
+              <button
+                onClick={() => {
+                  uiRuntimeAdapter.revalidate().finally(reloadWorkoutEntries);
+                }}
+                className="ml-3 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+              >
+                Обновить
+              </button>
+            </div>
+          )}
+          {runtimeStatus === 'recovery' && (
+            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Идёт восстановление данных. Продолжаем безопасно.
+            </div>
+          )}
+          {runtimeStatus === 'partial' && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              Данные доступны частично. Мы покажем то, что уже есть.
+            </div>
+          )}
+          {explainability && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
+              Доступно объяснение: «Почему так?»
+            </div>
+          )}
           {/* Calendar Section */}
           <div className="mb-4 min-[376px]:mb-6 w-full max-w-full">
             {/* Month */}
@@ -392,12 +484,12 @@ const Workouts = () => {
                 Повторы
               </div>
               <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-center">
-                Вес
+                Вес (кг)
               </div>
             </div>
 
             {/* Workout Entries */}
-            {isLoading ? (
+            {isLoading || runtimeStatus === 'loading' ? (
               <div className="flex items-center justify-center py-12 min-[376px]:py-16 w-full max-w-full">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
               </div>
@@ -425,13 +517,16 @@ const Workouts = () => {
                         {entry.reps}
                       </div>
                       <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-center">
-                        {entry.weight}
+                        {entry.displayAmount ?? entry.weight} {entry.displayUnit ?? 'кг'}
                       </div>
                     </div>
                   );
                 })}
               </div>
             )}
+          </div>
+          <div className="mt-4">
+            <ExplainabilityDrawer explainability={explainability} />
           </div>
         </main>
 
@@ -531,6 +626,7 @@ const Workouts = () => {
           setIsSelectedExercisesEditorOpen(false);
           setIsExerciseCategorySheetOpen(true);
         }}
+        isSaving={isSaving}
       />
     </div>
   );

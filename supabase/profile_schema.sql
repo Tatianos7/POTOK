@@ -6,7 +6,7 @@
 -- USER_PROFILES (профиль пользователя) ----------------------
 
 create table if not exists public.user_profiles (
-  user_id          uuid primary key,
+  user_id          uuid primary key references auth.users (id) on delete cascade,
   first_name       text,
   last_name        text,
   middle_name      text,
@@ -32,22 +32,20 @@ create index if not exists user_profiles_phone_idx
   on public.user_profiles (phone)
   where phone is not null;
 
--- ВРЕМЕННО ОТКЛЮЧАЕМ RLS (для работы с локальной авторизацией)
--- alter table public.user_profiles disable row level security;
+alter table public.user_profiles enable row level security;
 
--- Для продакшена с Supabase Auth используйте:
--- alter table public.user_profiles enable row level security;
--- 
--- create policy "user_profiles_select_own"
---   on public.user_profiles
---   for select
---   using (auth.uid() = user_id);
---
--- create policy "user_profiles_modify_own"
---   on public.user_profiles
---   for all
---   using (auth.uid() = user_id)
---   with check (auth.uid() = user_id);
+drop policy if exists "user_profiles_select_own" on public.user_profiles;
+create policy "user_profiles_select_own"
+  on public.user_profiles
+  for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "user_profiles_modify_own" on public.user_profiles;
+create policy "user_profiles_modify_own"
+  on public.user_profiles
+  for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 -- ============================================================
 -- Проверка создания таблицы

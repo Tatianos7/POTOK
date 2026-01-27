@@ -38,13 +38,20 @@ create table if not exists public.food_diary_entries (
   protein      numeric(8,2) not null default 0,
   fat          numeric(8,2) not null default 0,
   carbs        numeric(8,2) not null default 0,
+  fiber        numeric(8,2) not null default 0,
   calories     numeric(8,2) not null default 0,
   weight       numeric(8,2) not null default 0,
+  canonical_food_id uuid references public.foods (id) on delete set null,
+  idempotency_key text,
   created_at   timestamptz not null default now()
 );
 
 create index if not exists food_diary_entries_user_date_idx
   on public.food_diary_entries (user_id, date, meal_type);
+
+create unique index if not exists food_diary_entries_idempotency_unique
+  on public.food_diary_entries (user_id, idempotency_key)
+  where idempotency_key is not null;
 
 alter table public.food_diary_entries enable row level security;
 
@@ -66,15 +73,17 @@ create table if not exists public.favorite_products (
   id           uuid primary key default gen_random_uuid(),
   user_id      uuid not null references auth.users (id) on delete cascade,
   product_name text not null,
+  canonical_food_id uuid references public.foods (id) on delete set null,
   protein      numeric(8,2) not null default 0,
   fat          numeric(8,2) not null default 0,
   carbs        numeric(8,2) not null default 0,
   calories     numeric(8,2) not null default 0,
+  canonical_food_id uuid references public.foods (id) on delete set null,
   usage_count  integer not null default 0,
   created_at   timestamptz not null default now()
 );
 
-create index if not exists favorite_products_user_idx
+create unique index if not exists favorite_products_user_unique
   on public.favorite_products (user_id, product_name);
 
 alter table public.favorite_products enable row level security;

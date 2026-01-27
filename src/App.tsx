@@ -22,13 +22,19 @@ import CreateCustomProductPage from './pages/CreateCustomProductPage';
 import CreateBrandProductPage from './pages/CreateBrandProductPage';
 import Habits from './pages/Habits';
 import Workouts from './pages/Workouts';
+import Progress from './pages/Progress';
 import ImportExercises from './pages/ImportExercises';
+import PoseCoach from './pages/PoseCoach';
 import ProtectedRoute from './components/ProtectedRoute';
+import ErrorBoundary from './components/ErrorBoundary';
+import Today from './pages/Today';
+import MyProgram from './pages/MyProgram';
+import Paywall from './pages/Paywall';
 
 function AppRoutes() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { authStatus } = useAuth();
 
-  if (isLoading) {
+  if (authStatus === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">Загрузка...</div>
@@ -40,15 +46,15 @@ function AppRoutes() {
     <Routes>
       <Route
         path="/login"
-        element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
+        element={authStatus === 'authenticated' ? <Navigate to="/" replace /> : <Login />}
       />
       <Route
         path="/register"
-        element={isAuthenticated ? <Navigate to="/" replace /> : <Register />}
+        element={authStatus === 'authenticated' ? <Navigate to="/" replace /> : <Register />}
       />
       <Route
         path="/forgot-password"
-        element={isAuthenticated ? <Navigate to="/" replace /> : <ForgotPassword />}
+        element={authStatus === 'authenticated' ? <Navigate to="/" replace /> : <ForgotPassword />}
       />
       <Route
         path="/"
@@ -203,6 +209,46 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/progress"
+        element={
+          <ProtectedRoute>
+            <Progress />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/today"
+        element={
+          <ProtectedRoute>
+            <Today />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/my-program"
+        element={
+          <ProtectedRoute>
+            <MyProgram />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/paywall"
+        element={
+          <ProtectedRoute>
+            <Paywall />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pose"
+        element={
+          <ProtectedRoute>
+            <PoseCoach />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/import-exercises"
         element={
           <ProtectedRoute>
@@ -226,7 +272,9 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <div className="app-container">
-            <AppRoutes />
+            <ErrorBoundary>
+              <AppRoutes />
+            </ErrorBoundary>
           </div>
         </AuthProvider>
       </ThemeProvider>

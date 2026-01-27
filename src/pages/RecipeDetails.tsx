@@ -24,19 +24,25 @@ const RecipeDetails = () => {
   useEffect(() => {
     if (!id || !user?.id) return;
 
-    const loadedRecipe = recipesService.getRecipeById(id, user.id);
-    if (loadedRecipe) {
-      setRecipe(loadedRecipe);
-      // Загружаем заметку для рецепта
-      recipeNotesService.getNoteByRecipeId(user.id, id).then((note) => {
-        setRecipeNote(note);
-      }).catch((error) => {
-        console.error('[RecipeDetails] Error loading note:', error);
-      });
-    } else {
-      // Если рецепт не найден, возвращаемся назад
-      navigate(-1);
-    }
+    const loadRecipe = async () => {
+      const loadedRecipe = await recipesService.getRecipeById(id, user.id);
+      if (loadedRecipe) {
+        setRecipe(loadedRecipe);
+        // Загружаем заметку для рецепта
+        recipeNotesService.getNoteByRecipeId(user.id, id).then((note) => {
+          setRecipeNote(note);
+        }).catch((error) => {
+          console.error('[RecipeDetails] Error loading note:', error);
+        });
+      } else {
+        // Если рецепт не найден, возвращаемся назад
+        navigate(-1);
+      }
+    };
+
+    loadRecipe().catch((error) => {
+      console.error('[RecipeDetails] Error loading recipe:', error);
+    });
   }, [id, user?.id, navigate]);
 
   // Вычисляем КБЖУ на 100г из сохраненных данных
@@ -118,10 +124,10 @@ const RecipeDetails = () => {
       };
 
       // Сохраняем рецепт
-      await recipesService.saveRecipe(updatedRecipe);
+      const saved = await recipesService.saveRecipe(updatedRecipe);
       
       // Обновляем состояние
-      setRecipe(updatedRecipe);
+      setRecipe(saved);
     };
 
     reader.onerror = () => {
@@ -263,7 +269,10 @@ const RecipeDetails = () => {
                       hyphens: 'auto'
                     }}
                   >
-                    {ingredient.name} - {ingredient.quantity} {ingredient.unit}
+                    {ingredient.name} -{' '}
+                    {ingredient.display_amount && ingredient.display_unit
+                      ? `${ingredient.display_amount} ${ingredient.display_unit}`
+                      : `${ingredient.quantity} ${ingredient.unit}`}
                   </span>
                 </div>
               ))}
@@ -357,10 +366,10 @@ const RecipeDetails = () => {
         {/* Bottom Action Buttons */}
         <div className="space-y-2 min-[376px]:space-y-3 pt-4 pb-8 w-full max-w-full overflow-hidden">
           <button
-            onClick={() => {
+            onClick={async () => {
               if (confirm('Вы уверены, что хотите удалить этот рецепт?')) {
                 if (user?.id && recipe.id) {
-                  recipesService.deleteRecipe(recipe.id, user.id);
+                  await recipesService.deleteRecipe(recipe.id, user.id);
                   navigate(-1);
                 }
               }

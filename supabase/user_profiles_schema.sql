@@ -6,7 +6,7 @@
 -- USER_PROFILES (профили пользователей) ---------------------
 
 create table if not exists public.user_profiles (
-  user_id          uuid primary key,
+  user_id          uuid primary key references auth.users (id) on delete cascade,
   first_name       text,
   last_name        text,
   middle_name      text,
@@ -34,8 +34,20 @@ create index if not exists user_profiles_phone_idx
   on public.user_profiles (phone)
   where phone is not null;
 
--- ВРЕМЕННО ОТКЛЮЧАЕМ RLS (для работы с локальной авторизацией)
--- alter table public.user_profiles disable row level security;
+alter table public.user_profiles enable row level security;
+
+drop policy if exists "user_profiles_select_own" on public.user_profiles;
+create policy "user_profiles_select_own"
+  on public.user_profiles
+  for select
+  using (auth.uid() = user_id);
+
+drop policy if exists "user_profiles_modify_own" on public.user_profiles;
+create policy "user_profiles_modify_own"
+  on public.user_profiles
+  for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 -- Функция для автоматического обновления updated_at
 create or replace function update_updated_at_column()

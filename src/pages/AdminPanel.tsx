@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supportService } from '../services/supportService';
 import { activityService } from '../services/activityService';
-import { notificationService } from '../services/notificationService';
+import { notificationService, type AppNotification } from '../services/notificationService';
 import { SupportMessage, User } from '../types';
 import { X, MessageSquare, Users, UserCheck, UserX, Mail, CheckCircle, Clock, AlertCircle, Shield, ShieldOff, Wifi } from 'lucide-react';
+import FoodIngestionPanel from '../components/FoodIngestionPanel';
 
 const AdminPanel = () => {
-  const { user, logout, getAllUsers, setAdminStatus } = useAuth();
+  const { user, authStatus, logout, getAllUsers, setAdminStatus } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -17,7 +18,7 @@ const AdminPanel = () => {
   const [usersStats, setUsersStats] = useState({ total: 0, withPremium: 0, withoutPremium: 0, online: 0 });
   const [messagesStats, setMessagesStats] = useState({ total: 0, new: 0, inProgress: 0, resolved: 0 });
   const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [activeTab, setActiveTab] = useState<'stats' | 'messages' | 'users'>('stats');
+  const [activeTab, setActiveTab] = useState<'stats' | 'messages' | 'users' | 'imports'>('stats');
   const [isResponding, setIsResponding] = useState(false);
   
   // Группируем сообщения по userId
@@ -55,23 +56,16 @@ const AdminPanel = () => {
     : null;
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    // Доступ к админ-панели только для специального админ-аккаунта (id === 'admin')
-    // Обычные пользователи с правами админа не могут заходить в админ-панель
-    if (!user.isAdmin || user.id !== 'admin') {
-      navigate('/');
+    if (authStatus !== 'authenticated' || !user?.isAdmin) {
       return;
     }
     loadData();
-    
+
     // Обновляем данные каждые 10 секунд для актуальной статистики
     const interval = setInterval(() => {
       loadData({ silent: true });
     }, 10000);
-    
+
     // Слушаем изменения в localStorage для обновления в реальном времени
     const handleStorageChange = (e: StorageEvent) => {
       // Если изменились пользователи или сообщения, обновляем данные
@@ -79,18 +73,18 @@ const AdminPanel = () => {
         loadData({ silent: true });
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Также слушаем кастомные события для обновления в текущей вкладке
     const handleCustomStorageChange = () => {
       loadData({ silent: true });
     };
-    
+
     window.addEventListener('user-data-changed', handleCustomStorageChange);
     window.addEventListener('support-message-changed', handleCustomStorageChange);
     window.addEventListener('user-activity-changed', handleCustomStorageChange);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('storage', handleStorageChange);
@@ -98,7 +92,7 @@ const AdminPanel = () => {
       window.removeEventListener('support-message-changed', handleCustomStorageChange);
       window.removeEventListener('user-activity-changed', handleCustomStorageChange);
     };
-  }, [user, navigate]);
+  }, [authStatus, user?.isAdmin]);
 
   const loadData = async (options?: { silent?: boolean }): Promise<{ messages: SupportMessage[] } | null> => {
     const silent = options?.silent ?? false;
@@ -110,7 +104,7 @@ const AdminPanel = () => {
         supportService.getAllMessages(),
         Promise.resolve(supportService.getUsersStats()),
         supportService.getMessagesStats(),
-        Promise.resolve(getAllUsers()),
+        getAllUsers(),
       ]);
       
       // Обновляем активность текущего админа
@@ -178,9 +172,9 @@ const AdminPanel = () => {
       // Создаем уведомление для пользователя, которому адресован ответ
       try {
         // Ищем существующее уведомление поддержки для этого пользователя
-        const userNotifications = notificationService.getNotifications(selectedUserId);
+        const userNotifications = await notificationService.getNotifications(selectedUserId);
         const existingSupportNotification = userNotifications.find(
-          (n) => n.category === 'support' && !n.isDeleted
+          (n: AppNotification) => n.category === 'support' && !n.isDeleted
         );
         
         let notificationId: string;
@@ -191,13 +185,13 @@ const AdminPanel = () => {
           
           // ВСЕГДА помечаем уведомление как непрочитанное при получении нового ответа от админа
           // Это гарантирует, что пользователь увидит красный индикатор
-          const updatedNotifications = userNotifications.map(n => 
+          const updatedNotifications = userNotifications.map((n: AppNotification) =>
             n.id === notificationId ? { ...n, isRead: false } : n
           );
-          notificationService.saveNotifications(selectedUserId, updatedNotifications);
+          await notificationService.saveNotifications(selectedUserId, updatedNotifications);
         } else {
           // Создаем новое уведомление только если его еще нет
-          const newNotification = notificationService.addNotification(selectedUserId, {
+          const newNotification = await notificationService.addNotification(selectedUserId, {
             title: 'Ответ на обращение',
             message: 'Мы ответили на вашу заявку в поддержку.',
             category: 'support',
@@ -281,8 +275,16 @@ const AdminPanel = () => {
     );
   };
 
-  if (!user?.isAdmin) {
-    return null;
+  if (authStatus === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (authStatus === 'authenticated' && !user?.isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return (
@@ -344,6 +346,16 @@ const AdminPanel = () => {
               }`}
             >
               Пользователи
+            </button>
+            <button
+              onClick={() => setActiveTab('imports')}
+              className={`px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === 'imports'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Импорт
             </button>
           </div>
         </div>
@@ -573,6 +585,12 @@ const AdminPanel = () => {
                   )}
                 </div>
               </div>
+            </>
+          )}
+          {activeTab === 'imports' && (
+            <>
+              <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-3">Импорт базы продуктов</h2>
+              <FoodIngestionPanel />
             </>
           )}
         </div>

@@ -338,7 +338,7 @@ const FavoritesProductsPage = () => {
                     {food && (
                       <span className="text-gray-500 dark:text-gray-400 shrink-0">
                         {Math.round((food.calories * recentFood.weight) / 100)} ккал
-                      </span>
+                </span>
                     )}
                   </div>
                 </button>
@@ -352,7 +352,7 @@ const FavoritesProductsPage = () => {
                 >
                   <Trash2 className="w-4 h-4 text-red-500 dark:text-red-400" />
                 </button>
-              </div>
+                </div>
             );
           })}
           {filtered.length === 0 && (
@@ -361,7 +361,7 @@ const FavoritesProductsPage = () => {
             </div>
           )}
         </div>
-        </main>
+      </main>
       </div>
 
       <AddFoodToMealModal

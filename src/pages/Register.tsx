@@ -9,11 +9,12 @@ const Register = () => {
     lastName: '',
     middleName: '',
     contact: '',
-    password: '',
+    otpCode: '',
   });
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  const { register, verifyOtp, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { setThemeExplicit } = useTheme();
 
@@ -22,6 +23,12 @@ const Register = () => {
     setThemeExplicit('light');
   }, [setThemeExplicit]);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
   const handleChange = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
   };
@@ -29,6 +36,7 @@ const Register = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setStatus('');
     setIsLoading(true);
 
     if (!form.contact.trim()) {
@@ -41,15 +49,21 @@ const Register = () => {
     const isEmail = contactValue.includes('@');
 
     try {
-      await register({
-        firstName: form.firstName,
-        lastName: form.lastName || undefined,
-        middleName: form.middleName || undefined,
-        email: isEmail ? contactValue : undefined,
-        phone: !isEmail ? contactValue : undefined,
-        password: form.password,
-      });
-      navigate('/');
+      if (!form.otpCode) {
+        await register({
+          firstName: form.firstName,
+          lastName: form.lastName || undefined,
+          middleName: form.middleName || undefined,
+          contact: contactValue,
+        });
+        if (isEmail) {
+          setStatus('Ссылка для подтверждения отправлена на email. Проверьте почту.');
+        } else {
+          setStatus('Код подтверждения отправлен по SMS.');
+        }
+      } else {
+        await verifyOtp({ identifier: contactValue, token: form.otpCode });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка регистрации');
     } finally {
@@ -70,6 +84,11 @@ const Register = () => {
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {error}
+            </div>
+          )}
+          {status && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
+              {status}
             </div>
           )}
 
@@ -132,21 +151,21 @@ const Register = () => {
             />
           </div>
 
-          <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Пароль <span className="text-red-500">*</span>
-            </label>
-            <input
-                id="password"
-              type="password"
-                value={form.password}
-                onChange={handleChange('password')}
-              required
-              minLength={6}
+          {!form.contact.includes('@') && form.contact.trim().length > 0 && (
+            <div>
+              <label htmlFor="otpCode" className="block text-sm font-medium text-gray-700 mb-1">
+                Код из SMS
+              </label>
+              <input
+                id="otpCode"
+                type="text"
+                value={form.otpCode}
+                onChange={handleChange('otpCode')}
                 className="input-field text-gray-900"
-                placeholder="••••••••"
-            />
+                placeholder="123456"
+              />
             </div>
+          )}
           </div>
 
           <button
@@ -154,7 +173,7 @@ const Register = () => {
             disabled={isLoading}
             className="btn-primary w-full min-[768px]:button-limited"
           >
-            {isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
+            {isLoading ? 'Отправка...' : form.otpCode ? 'Подтвердить' : 'Получить код'}
           </button>
 
           <div className="text-center text-sm text-gray-600">

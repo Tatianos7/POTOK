@@ -4,12 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
 const ForgotPassword = () => {
-  const { resetPassword } = useAuth();
+  const { requestPasswordReset } = useAuth();
   const navigate = useNavigate();
   const { setThemeExplicit } = useTheme();
-  const [identifier, setIdentifier] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,18 +22,13 @@ const ForgotPassword = () => {
     setError('');
     setStatus('');
 
-    if (newPassword !== confirmPassword) {
-      setError('Пароли не совпадают');
-      return;
-    }
-
     setIsLoading(true);
     try {
-      await resetPassword({ identifier, newPassword });
-      setStatus('Пароль успешно обновлен, можно войти');
+      await requestPasswordReset({ email });
+      setStatus('Ссылка для восстановления отправлена на email');
       setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось обновить пароль');
+      setError(err instanceof Error ? err.message : 'Не удалось отправить ссылку');
     } finally {
       setIsLoading(false);
     }
@@ -62,49 +55,17 @@ const ForgotPassword = () => {
           )}
 
           <div>
-            <label htmlFor="identifier" className="block text-sm font-medium text-gray-700 mb-1">
-              Email или телефон
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              Email
             </label>
             <input
-              id="identifier"
-              type="text"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               className="input-field"
-              placeholder="your@email.com или +7 999 000 00 00"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-1">
-              Новый пароль
-            </label>
-            <input
-              id="newPassword"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={6}
-              className="input-field"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-              Повторите пароль
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={6}
-              className="input-field"
-              placeholder="••••••••"
+              placeholder="your@email.com"
             />
           </div>
 
@@ -113,7 +74,7 @@ const ForgotPassword = () => {
             disabled={isLoading}
             className="w-full min-[768px]:button-limited bg-black text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 transition-colors disabled:opacity-50"
           >
-            {isLoading ? 'Обновление...' : 'Обновить пароль'}
+            {isLoading ? 'Отправка...' : 'Отправить ссылку'}
           </button>
 
           <div className="text-center text-sm text-gray-600">

@@ -6,8 +6,6 @@ import { foodService } from '../services/foodService';
 import { mealService } from '../services/mealService';
 import { favoritesService } from '../services/favoritesService';
 import { MealEntry, Food } from '../types';
-import { supabase } from '../lib/supabaseClient';
-import { toUUID } from '../utils/uuid';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
 
 const CreateBrandProductPage = () => {
@@ -61,7 +59,7 @@ const CreateBrandProductPage = () => {
 
     try {
       // 1. Создаём продукт через foodService с указанием марки
-      const customFood = foodService.createCustomFood(user.id, {
+      const customFood = await foodService.createCustomFood(user.id, {
         name: name.trim(),
         brand: brandName.trim() || null,
         calories: caloriesValue,
@@ -76,52 +74,8 @@ const CreateBrandProductPage = () => {
       // 2. Добавляем в избранное, если опция включена
       if (addToFavorites) {
         try {
-          // Проверяем, что продукт действительно сохранён и доступен
-          const savedFood = foodService.getFoodById(customFood.id, user.id);
-          if (savedFood) {
-            await favoritesService.addToFavorites(user.id, customFood.id);
-            console.log('[CreateBrandProductPage] Product added to favorites:', customFood.id);
-          } else {
-            console.warn('[CreateBrandProductPage] Product not found via getFoodById, adding directly:', customFood.id);
-            // Fallback: добавляем напрямую в localStorage и Supabase
-            const STORAGE_KEY = 'potok_favorites_v1';
-            const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-            const list = all[user.id] || [];
-            const idx = list.findIndex((f: any) => f.productId === customFood.id);
-            if (idx < 0) {
-              list.push({ productId: customFood.id, usage: 0, addedAt: new Date().toISOString() });
-              all[user.id] = list;
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-              
-              // Также сохраняем в Supabase, если доступен
-              if (supabase) {
-                try {
-                  const uuidUserId = toUUID(user.id);
-                  const { error } = await supabase
-                    .from('favorite_products')
-                    .insert({
-                      user_id: uuidUserId,
-                      product_name: customFood.name,
-                      protein: customFood.protein,
-                      fat: customFood.fat,
-                      carbs: customFood.carbs,
-                      calories: customFood.calories,
-                      usage_count: 0,
-                    });
-                  
-                  if (error) {
-                    console.error('[CreateBrandProductPage] Supabase save error:', error);
-                  } else {
-                    console.log('[CreateBrandProductPage] Product added to favorites (fallback):', customFood.id);
-                  }
-                } catch (supabaseError) {
-                  console.error('[CreateBrandProductPage] Supabase save connection error:', supabaseError);
-                }
-              } else {
-                console.log('[CreateBrandProductPage] Product added to favorites (localStorage only):', customFood.id);
-              }
-            }
-          }
+          await favoritesService.addToFavorites(user.id, customFood.id);
+          console.log('[CreateBrandProductPage] Product added to favorites:', customFood.id);
           
           // ВАЖНО: Также добавляем в recent_food_searches, так как страница "Избранное" 
           // на самом деле показывает недавно использованные продукты из этого списка
@@ -172,6 +126,9 @@ const CreateBrandProductPage = () => {
         protein: proteinValue * weightMultiplier,
         fat: fatValue * weightMultiplier,
         carbs: carbsValue * weightMultiplier,
+        baseUnit: 'г',
+        displayUnit: 'г',
+        displayAmount: weightValue,
       };
 
       // Добавляем в дневник питания

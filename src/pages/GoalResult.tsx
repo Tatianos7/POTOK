@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
 import { GoalFormData } from '../components/CreateGoalModal';
 import { goalService } from '../services/goalService';
+import { profileService } from '../services/profileService';
 
 interface CalculatedResult {
   bmr: number;
@@ -250,12 +251,19 @@ const GoalResult = () => {
       endDate = endDateObj.toISOString().split('T')[0];
     }
 
-    // Save to Supabase (only calories and macros)
+    // Save goal macros (source of truth)
     await goalService.saveUserGoal(user.id, {
       calories: result.calories,
       protein: result.proteins,
       fat: result.fats,
       carbs: result.carbs,
+    });
+
+    // Persist profile fields used across manual flow
+    await profileService.saveProfile(user.id, {
+      age: Number(formData.age),
+      height: Number(formData.height),
+      goal: goalTypeMap[formData.goal] || formData.goal,
     });
 
     // Save additional goal data to localStorage (goalType, dates, etc.)

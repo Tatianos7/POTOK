@@ -1,0 +1,117 @@
+barcode,food_id,canonical_name,name,category,calories_100g,calculated_calories,protein_100g,fat_100g,carbs_100g,is_vegan,tags,allergens,confidence_score,source,nutrition_version,verified,calorie_diff
+,eggs_fried,яичница глазунья,Яичница глазунья,eggs,243,243.3,12.9,20.9,0.9,0,keto,,0.95,manual_core_v1,v1,1,-0.300000000000011
+,egg_chicken ,яйцо куриное,Яйцо куриное,eggs,143,138.3,12.5,9.5,0.7,0,"protein,keto",,0.95,manual_core_v1,v1,1,4.69999999999999
+,egg_hard_boiled_chicken ,яйцо куриное вареное вкрутую,Яйцо куриное вареное вкрутую,eggs,158.7,158.57,12.82,11.61,0.7,0,"protein,keto",,0.95,manual_core_v1,v1,1,0.129999999999996
+,egg_soft_boiled_chicken ,яйцо куриное вареное всмятку,Яйцо куриное вареное всмятку,eggs,158.7,158.57,12.82,11.61,0.7,0,"protein,keto",,0.95,manual_core_v1,v1,1,0.129999999999996
+,egg_fried_chicken ,яйцо куриное жареное,Яйцо куриное жареное,eggs,196,191.32,13.61,14.84,0.83,0,"protein,keto",,0.95,manual_core_v1,v1,1,4.68000000000001
+,egg_fried_chicken_without oil,яйцо куриное жареное (без масла),Яйцо куриное жареное (без масла),eggs,174.6,174.51,14.59,12.55,0.8,0,"protein,keto",,0.95,manual_core_v1,v1,1,0.0900000000000034
+,egg_chicken_omelette,омлет (яйцо куриное),Омлет (яйцо куриное),eggs,154,149.78,10.57,11.66,0.64,0,"protein,keto",,0.95,manual_core_v1,v1,1,4.22
+,chicken_egg_poached,пашот (яйцо куриное),Пашот (яйцо куриное),eggs,143,138.11,12.51,9.470000000000001,0.71,0,"protein,keto",,0.95,manual_core_v1,v1,1,4.88999999999999
+,quail_egg,яйцо перепелиное,Яйцо перепелиное,eggs,158,,13.05,11.09,0.41,0,"protein,keto",,0.95,manual_core_v1,v1,1,
+,omelette_with_cheese,омлет с сыром,Омлет с сыром,eggs,342,,16.3,20.07,2.6,0,"protein,keto",,0.95,manual_core_v1,v1,1,
+,egg_goose,яйцо гусиное,Яйцо гусиное,eggs,185,,13.9,13.3,1.4,0,"protein,keto",,0.95,manual_core_v1,v1,1,
+,egg_chicken_protein,яйцо куриное белок,Яйцо куриное белок,eggs,48,,11.1,0,1,0,protein,,0.95,manual_core_v1,v1,1,
+,egg_сhicken_yolk,яйцо куриное желток,Яйцо куриное желток,eggs,354,,16.2,31.2,0,0,keto,,0.95,manual_core_v1,v1,1,
+,оstrich_egg,яйцо страусиное,Яйцо страусиное,eggs,118,,12.2,11.7,0.7,0,"protein,keto",,0.95,manual_core_v1,v1,1,
+,duck_egg,яйцо утиное,Яйцо утиное,eggs,185,,13.3,14.5,0.1,0,"protein,keto",,0.95,manual_core_v1,v1,1,
+,ayran_(tan)_carbonated,айран (тан) газированный,Айран (тан) газированный,milk,24,23.5,1.1,1.5,1.4,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,0.5
+,ayran_(tan)_from_goat's_milk,айран (тан) из козьего молока,Айран (тан) из козьего молока,milk,24,23.5,1.1,1.5,1.4,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,0.5
+,ayran_(tan)_still,айран (тан) негазированный,Айран (тан) негазированный,milk,24,23.5,1.1,1.5,1.4,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,0.5
+,ayran_(tan)_highly_carbonated,айран (тан) сильногазированный,Айран (тан) сильногазированный,milk,19,19,1.1,1,1.4,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,0
+,acidophilus_0_1,ацидофилин 0.1,Ацидофилин 0.1 %,milk,31,28.5,3,0.1,3.9,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,2.5
+,acidophilus_1,ацидофилин 1,Ацидофилин 1 %,milk,40,28.9,3,0.1,4,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,11.1
+,acidophilus_3_2,ацидофилин 3.2,Ацидофилин 3.2 %,milk,57,55.2,2.8,3.2,3.8,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,1.8
+,acidophilus_3_2_sweet,ацидофилин 3.2  сладкий,Ацидофилин 3.2 % сладкий,milk,77,74.40000000000001,2.8,3.2,8.6,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,2.60000000000001
+,cottage_cheese_casserole,запеканка творожная,Запеканка творожная,milk,168,165,17.6,4.2,14.2,0,"protein,carbohydrate",lactose,0.95,manual_core_v1,v1,1,3
+,kefir_0,кефир 0,Кефир 0 %,milk,30,28.1,3,0.1,3.8,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,1.9
+,kefir_1,кефир 1,Кефир 1 %,milk,40,36.2,2.8,1,4,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,3.8
+,kefir_1_5,кефир 1.5,Кефир 1.5 %,milk,41,41.1,3.3,1.5,3.6,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-0.100000000000001
+,kefir_2,кефир 2,Кефир 2 %,milk,51,50.4,3.4,2,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,0.600000000000001
+,kefir_2_5,кефир 2.5,Кефир 2.5 %,milk,50,49.3,2.8,2.5,3.9,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,0.700000000000003
+,kefir_3_2,кефир 3.2,Кефир 3.2 %,milk,56,56.4,2.8,3.2,4.1,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-0.399999999999999
+,milk,молоко,Молоко,milk,64,64.40000000000001,3.2,3.6,4.8,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-0.400000000000006
+,milk_0_1_(skim),молоко 0.1 (обезжиренное),Молоко 0.1% (обезжиренное),milk,31,28.1,2,0.1,4.8,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,2.9
+,milk_0_7,молоко 0.7,Молоко 0.7%,milk,38,38.3,3.3,0.7,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-0.299999999999997
+,milk_1,молоко 1,Молоко 1%,milk,41,41.4,3.3,1,4.8,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-0.399999999999999
+,milk_1_5,молоко 1.5,Молоко 1.5%,milk,44,43.5,2.8,1.5,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,0.5
+,milk_2_5,молоко 2.5,Молоко 2.5%,milk,52,52.5,2.8,2.5,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-0.5
+,milk_3_2,молоко 3.2,Молоко 3.2% ,milk,59,59.2,2.9,3.2,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-0.200000000000003
+,milk_3_2_(pasteurized),молоко 3.2 (пастеризованное),Молоко 3.2% (пастеризованное),milk,58,58.8,2.8,3.2,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-0.799999999999997
+,milk_3_4_(whole pasteurized),молоко 3.4 (цельное пастеризованное),Молоко 3.4% (цельное пастеризованное),milk,65,61.4,3,3.4,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,3.6
+,milk_3_6,молоко 3.6,Молоко 3.6%,milk,62,62.4,2.8,3.6,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-0.399999999999999
+,milk_3_9_(whole pasteurized),молоко 3.9 (цельное пастеризованное),Молоко 3.9% (цельное пастеризованное),milk,69,66.7,3.2,3.9,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,2.3
+,milk_4_5,молоко 4.5,Молоко 4.5%,milk,72,71.7,3.1,4.5,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,0.299999999999997
+,goat_milk,молоко козье,Молоко козье,milk,68,63.3,3.6,3.3,4.8,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,4.7
+,fresh_cow's_milk,молоко коровье свежее,Молоко коровье свежее,milk,62,61.9,2.9,3.5,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,0.100000000000001
+,sesame_milk,молоко кунжутное,Молоко кунжутное,plant milk,142,142.1,3.1,8.1,14.2,1,"keto,carbohydrate",f10,0.95,manual_core_v1,v1,1,-0.0999999999999943
+,nut_milk,молоко ореховое,Молоко ореховое,plant milk,126,131.5,3.7,3.5,21.3,1,keto,,0.95,manual_core_v1,v1,1,-5.5
+,condensed_milk_without_sugar,молоко сгущённое без сахара,Молоко сгущённое без сахара,milk,126,131.5,6.6,7.5,9.4,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-5.5
+,сondensed_milk_with_sugar,молоко сгущённое с сахаром,Молоко сгущённое с сахаром,milk,320,329.3,7.2,8.5,56,0,carbohydrate,lactose,0.95,manual_core_v1,v1,1,-9.30000000000001
+,skimmed_milk_powder,молоко сухое обезжиренное,Молоко сухое обезжиренное,milk,362,352.2,33.2,1,52.6,0,"protein,carbohydrate",lactose,0.95,manual_core_v1,v1,1,9.799999999999949
+,baked_milk,молоко топлёное,Молоко топлёное,milk,84,84.8,3,6,4.7,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-0.799999999999997
+,сedar_milk,молочко кедровое,Молочко кедровое,plant milk,55,54.5,2.3,4.5,1.2,1,keto,,0.95,manual_core_v1,v1,1,0.5
+,baked_fermented_milk_1,ряженка 1,Ряженка 1%,milk,40,37.8,3,1,4.2,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,2.2
+,baked_fermented_milk_2_5,ряженка 2.5,Ряженка 2.5%,milk,54,50.9,2.9,2.5,4.2,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,3.1
+,baked_fermented_milk_3_2,ряженка 3.2,Ряженка 3.2%,milk,57,56.8,2.9,3.2,4.1,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,0.200000000000003
+,baked_fermented_milk_4,ряженка 4,Ряженка 4%,milk,67,64,2.8,4,4.2,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,3
+,baked_fermented_milk_6,ряженка 6,Ряженка 6%,milk,84,90.40000000000001,5,6,4.1,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-6.40000000000001
+,cream_9,сливки 9,Сливки 9%,milk,107,108.2,2.8,9,4,0,keto,lactose,0.95,manual_core_v1,v1,1,-1.2
+,cream_10,сливки 10,Сливки 10%,milk,118,118,3,10,4,0,keto,lactose,0.95,manual_core_v1,v1,1,0
+,cream_15,сливки 15,Сливки 15%,milk,161,158.6,2.3,15,3.6,0,keto,lactose,0.95,manual_core_v1,v1,1,2.40000000000001
+,cream_20,сливки 20,Сливки 20%,milk,205,206,2.8,20,3.7,0,keto,lactose,0.95,manual_core_v1,v1,1,-1
+,cream_33,сливки 33,Сливки 33%,milk,322,321.8,2.2,33,4,0,keto,lactose,0.95,manual_core_v1,v1,1,0.199999999999989
+,cream_35,сливки 35,Сливки 35%,milk,337,337,2.5,35,3,0,keto,lactose,0.95,manual_core_v1,v1,1,0
+,whipped_cream,сливки взбитые,Сливки взбитые,milk,257,262.6,3.2,22.2,12.5,0,keto,lactose,0.95,manual_core_v1,v1,1,-5.59999999999997
+,dry_cream,сливки сухие,Сливки сухие,milk,579,581.5,23,42.7,26.3,0,"protein,keto,carbohydrate",lactose,0.95,manual_core_v1,v1,1,-2.5
+,sour_cream_10,сметана 10,Сметана 10%,milk,115,113.6,3,10,2.9,0,keto,lactose,0.95,manual_core_v1,v1,1,1.40000000000001
+,sour_cream_12,сметана 12,Сметана 12%,milk,133,134.4,2.7,12,3.9,0,keto,lactose,0.95,manual_core_v1,v1,1,-1.40000000000001
+,sour_cream_15,сметана 15,Сметана 15%,milk,158,157.4,2.6,15,3,0,keto,lactose,0.95,manual_core_v1,v1,1,0.599999999999994
+,sour_cream_18,сметана 18,Сметана 18%,milk,184,186.4,2.5,18,3.6,0,keto,lactose,0.95,manual_core_v1,v1,1,-2.40000000000001
+,sour_cream_20,сметана 20,Сметана 20%,milk,206,204,2.8,20,3.2,0,keto,lactose,0.95,manual_core_v1,v1,1,2
+,sour_cream_25,сметана 25,Сметана 25%,milk,248,245.4,2.6,25,2.5,0,keto,lactose,0.95,manual_core_v1,v1,1,2.59999999999999
+,sour_cream_30,сметана 30,Сметана 30%,milk,294,292,2.4,30,3.1,0,keto,lactose,0.95,manual_core_v1,v1,1,2
+,sour_cream_40,сметана 40,Сметана 40%,milk,381,380,2.4,40,2.6,0,keto,lactose,0.95,manual_core_v1,v1,1,1
+,apricot_oil,масло абрикосовое,Масло абрикосовое,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,avocado_oil,масло авокадо,Масло авокадо,oil,884,900,0,100,0,1,keto,,0.95,manual_core_v1,v1,1,-16
+,amaranth_oil,масло амаранта,Масло амаранта,oil,736,736.2,0,81.8,0,1,keto,,0.95,manual_core_v1,v1,1,-0.199999999999932
+,peanut_butter,масло арахисовое,Масло арахисовое,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,grape_seed_oil,масло виноградных косточек,Масло виноградных косточек,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,mustard_oil,масло горчичное,Масло горчичное,oil,898,898.2,0,99.8,0,1,keto,,0.95,manual_core_v1,v1,1,-0.199999999999932
+,walnut_oil,масло грецкого ореха,Масло грецкого ореха,oil,898,898.2,0,99.8,0,1,keto,,0.95,manual_core_v1,v1,1,-0.199999999999932
+,clarified_ghee_butter,масло гхи топлёное,Масло гхи топлёное,oil,902,900,0,100,0,1,keto,,0.95,manual_core_v1,v1,1,2
+,wheat_germ_oil,масло зародышей пшеницы,Масло зародышей пшеницы,oil,884,900,0,100,0,1,keto,,0.95,manual_core_v1,v1,1,-16
+,cocoa_butter,масло какао,Масло какао,oil,889,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-10.1
+,cedar_nut_oil,масло кедрового ореха,Масло кедрового ореха,oil,898,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-1.10000000000002
+,canola_oil,масло канолы,Масло канолы,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,coconut_oil,масло кокосовое,Масло кокосовое,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,hemp_oil,масло конопляное,Масло конопляное,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,corn_oil,масло кукурузное,Масло кукурузное,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,sesame_oil,масло кунжутное,Масло кунжутное,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,lemon_oil,масло лимонное,Масло лимонное,oil,900,900,0,100,0,1,keto,,0.95,manual_core_v1,v1,1,0
+,flaxseed_oil,масло льняное,Масло льняное,oil,898,898.2,0,99.8,0,1,keto,,0.95,manual_core_v1,v1,1,-0.199999999999932
+,macadamia_oil,масло макадамии,Масло макадамии,oil,708,748.2,9.199999999999999,74.59999999999999,10,1,keto,,0.95,manual_core_v1,v1,1,-40.1999999999999
+,poppy_oil,масло маковое,Масло маковое,oil,898,898.2,0,99.8,0,1,keto,,0.95,manual_core_v1,v1,1,-0.199999999999932
+,almond_oil,масло миндальное,Масло миндальное,oil,816,816.3,0,90.7,0,1,keto,,0.95,manual_core_v1,v1,1,-0.300000000000068
+,nutmeg_oil,масло мускатного ореха,Масло мускатного ореха,oil,899,900.4,0,100,0.1,1,keto,,0.95,manual_core_v1,v1,1,-1.39999999999998
+,sea_buckthorn_oil,масло облепиховое,Масло облепиховое,oil,896,895.5,0,99.5,0,1,keto,,0.95,manual_core_v1,v1,1,0.5
+,oat_oil,масло овсяное,Масло овсяное,oil,890,891,0,99,0,1,keto,,0.95,manual_core_v1,v1,1,-1
+,olive_oil,масло оливковое,Масло оливковое,oil,898,898.2,0,99.8,0,1,keto,,0.95,manual_core_v1,v1,1,-0.199999999999932
+,nut_butter,масло ореховое,Масло ореховое,oil,899,900,0,100,0,1,keto,,0.95,manual_core_v1,v1,1,-1
+,palm_oil,масло пальмовое,Масло пальмовое,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,sunflower oil,масло подсолнечное,Масло подсолнечное,oil,900,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,0.899999999999977
+,rapeseed oil,масло рапсовое,Масло рапсовое,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,unrefined vegetable oil,масло растительное нерафинированное,Масло растительное нерафинированное,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,refined vegetable oil,масло растительное рафинированное,Масло растительное рафинированное,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,milk thistle oil,масло расторопши,Масло расторопши,oil,889,882,0,98,0,1,keto,,0.95,manual_core_v1,v1,1,7
+,burdock oil,масло репейное,Масло репейное,oil,930,900,0,100,0,1,keto,,0.95,manual_core_v1,v1,1,30
+,camelina oil,масло рыжиковое,Масло рыжиковое,oil,900,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,0.899999999999977
+,butter_6_0,масло сливочное 60,Масло сливочное 60%,oil,552,552,1.3,60,1.7,1,keto,,0.95,manual_core_v1,v1,1,0
+,butter_6_7,масло сливочное 67,Масло сливочное 67%,oil,610,613.4,1,67,1.6,1,keto,,0.95,manual_core_v1,v1,1,-3.39999999999998
+,butter_72_5,масло сливочное 72.5,Масло сливочное 72.5%,oil,661,660.9,0.8,72.5,1.3,1,keto,,0.95,manual_core_v1,v1,1,0.100000000000023
+,butter_82,масло сливочное 82,Масло сливочное 82%,oil,740,743.6,0.7,82,0.7,1,keto,,0.95,manual_core_v1,v1,1,-3.60000000000002
+,butter_82_5,масло сливочное 82.5,Масло сливочное 82.5%,oil,748,748.1,0.6,82.5,0.8,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,chocolate_butter,масло сливочное шоколадное,Масло сливочное шоколадное,oil,642,638.4,1.5,62,18.6,1,keto,,0.95,manual_core_v1,v1,1,3.60000000000002
+,soybean_oil,масло соевое,Масло соевое,oil,899,899.1,0,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-0.100000000000023
+,ghee,масло топлёное,Масло топлёное,oil,892,899.9,0.2,99.90000000000001,0,1,keto,,0.95,manual_core_v1,v1,1,-7.89999999999998
+,pumpkin_oil,масло тыквенное,Масло тыквенное,oil,896,895.5,0,99.5,0,1,keto,,0.95,manual_core_v1,v1,1,0.5
+,shea_butter_(karite),масло ши (карите),Масло ши (карите),oil,884,882,0,98,0,1,keto,,0.95,manual_core_v1,v1,1,2
