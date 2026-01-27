@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supportService } from '../services/supportService';
 import { activityService } from '../services/activityService';
@@ -9,7 +9,7 @@ import { X, MessageSquare, Users, UserCheck, UserX, Mail, CheckCircle, Clock, Al
 import FoodIngestionPanel from '../components/FoodIngestionPanel';
 
 const AdminPanel = () => {
-  const { user, logout, getAllUsers, setAdminStatus } = useAuth();
+  const { user, authStatus, logout, getAllUsers, setAdminStatus } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -56,22 +56,16 @@ const AdminPanel = () => {
     : null;
 
   useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    // Доступ к админ-панели только для пользователей с isAdmin
-    if (!user.isAdmin) {
-      navigate('/');
+    if (authStatus !== 'authenticated' || !user?.isAdmin) {
       return;
     }
     loadData();
-    
+
     // Обновляем данные каждые 10 секунд для актуальной статистики
     const interval = setInterval(() => {
       loadData({ silent: true });
     }, 10000);
-    
+
     // Слушаем изменения в localStorage для обновления в реальном времени
     const handleStorageChange = (e: StorageEvent) => {
       // Если изменились пользователи или сообщения, обновляем данные
@@ -79,18 +73,18 @@ const AdminPanel = () => {
         loadData({ silent: true });
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Также слушаем кастомные события для обновления в текущей вкладке
     const handleCustomStorageChange = () => {
       loadData({ silent: true });
     };
-    
+
     window.addEventListener('user-data-changed', handleCustomStorageChange);
     window.addEventListener('support-message-changed', handleCustomStorageChange);
     window.addEventListener('user-activity-changed', handleCustomStorageChange);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('storage', handleStorageChange);
@@ -98,7 +92,7 @@ const AdminPanel = () => {
       window.removeEventListener('support-message-changed', handleCustomStorageChange);
       window.removeEventListener('user-activity-changed', handleCustomStorageChange);
     };
-  }, [user, navigate]);
+  }, [authStatus, user?.isAdmin]);
 
   const loadData = async (options?: { silent?: boolean }): Promise<{ messages: SupportMessage[] } | null> => {
     const silent = options?.silent ?? false;
@@ -110,7 +104,7 @@ const AdminPanel = () => {
         supportService.getAllMessages(),
         Promise.resolve(supportService.getUsersStats()),
         supportService.getMessagesStats(),
-        Promise.resolve(getAllUsers()),
+        getAllUsers(),
       ]);
       
       // Обновляем активность текущего админа
@@ -281,8 +275,16 @@ const AdminPanel = () => {
     );
   };
 
-  if (!user?.isAdmin) {
-    return null;
+  if (authStatus === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Загрузка...</div>
+      </div>
+    );
+  }
+
+  if (authStatus === 'authenticated' && !user?.isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return (

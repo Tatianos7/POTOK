@@ -16,6 +16,7 @@
 - **Progress**: выполнение, adherence, тренды.
 - **Why this plan**: explainability + knowledge refs.
 - **Entitlement & Pricing**: Free/Pro/Vision Pro предложения.
+- **Account & Legal**: профиль, оплата, уведомления, настройки, поддержка, юридические экраны.
 
 ## Entitlement & Pricing
 - **Free**: просмотр, статический план, базовые карточки.
@@ -25,6 +26,13 @@
 ## Paywall & Upgrade
 - Триггеры paywall: генерация плана, адаптация, explainability, voice/spatial.
 - Контракты: `PaywallState`, `UpgradeAction`, `RestorePurchase`.
+
+## Account / Legal Layer
+- Профиль: данные, безопасность, подписка, история оплат, документы.
+- Уведомления: системные/поддержка/новости, статусы.
+- Настройки: разрешения, каналы уведомлений, локализация, privacy toggles.
+- Подписка/Оплата: тариф, автопродление, карты, чеки, промокоды.
+- Юридические экраны (РФ): политика, оферта, согласия, дисклеймеры.
 
 ## Delivery Formats
 - In‑app cards (основной формат).

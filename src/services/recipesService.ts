@@ -152,9 +152,13 @@ class RecipesService {
     return (data || []).map((row) => this.mapRowToRecipe(row));
   }
 
-  async getRecipesByTab(tab: RecipeTab, userId: string): Promise<Recipe[]> {
+  async getRecipesByTab(tab: RecipeTab, userId?: string): Promise<Recipe[]> {
     if (!supabase) {
-      throw new Error('Supabase не инициализирован');
+      return [];
+    }
+
+    if (!userId) {
+      return [];
     }
 
     const sessionUserId = await this.getSessionUserId(userId);
@@ -420,6 +424,8 @@ class RecipesService {
       proteins: number;
       fats: number;
       carbs: number;
+      display_amount?: string | null;
+      display_unit?: string | null;
     }>;
     userId: string;
   }): Promise<Recipe> {

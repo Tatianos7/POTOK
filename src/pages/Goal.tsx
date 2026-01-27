@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
@@ -6,6 +6,9 @@ import CreateGoalModal, { GoalFormData } from '../components/CreateGoalModal';
 import EditGoalModal from '../components/EditGoalModal';
 import { goalService } from '../services/goalService';
 import AiAdviceBlock from '../components/AiAdviceBlock';
+import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
+import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
+import type { BaseExplainabilityDTO } from '../types/explainability';
 
 interface GoalData {
   goalType: string;
@@ -34,6 +37,37 @@ const Goal = () => {
     fats: '',
     carbs: '',
   });
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
+  const [runtimeMessage, setRuntimeMessage] = useState<string | null>(null);
+  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
+  const [trustMessage, setTrustMessage] = useState<string | null>(null);
+
+  const loadGoalState = useCallback(async () => {
+    if (!user?.id) return;
+    setRuntimeStatus('loading');
+    setRuntimeMessage(null);
+    setTrustMessage(null);
+    try {
+      const state = await uiRuntimeAdapter.getGoalState(user.id);
+      setRuntimeStatus(state.status);
+      setRuntimeMessage(state.message || null);
+      setExplainability(state.explainability ?? null);
+      setTrustMessage(state.trust?.message ?? null);
+      if (state.goal) {
+        setGoalData((prev) => ({
+          ...prev,
+          calories: state.goal?.calories?.toString() ?? '',
+          proteins: state.goal?.protein?.toString() ?? '',
+          fats: state.goal?.fat?.toString() ?? '',
+          carbs: state.goal?.carbs?.toString() ?? '',
+        }));
+      }
+    } catch (error) {
+      setRuntimeStatus('error');
+      setRuntimeMessage('Не удалось загрузить цель.');
+      setTrustMessage('Проверьте соединение и попробуйте снова.');
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) {
@@ -41,19 +75,7 @@ const Goal = () => {
       return;
     }
 
-    // Load goal from Supabase first, then localStorage for additional data
-    goalService.getUserGoal(user.id).then((supabaseGoal) => {
-      if (supabaseGoal) {
-        // Update goalData with Supabase data
-        setGoalData((prev) => ({
-          ...prev,
-          calories: supabaseGoal.calories.toString(),
-          proteins: supabaseGoal.protein.toString(),
-          fats: supabaseGoal.fat.toString(),
-          carbs: supabaseGoal.carbs.toString(),
-        }));
-      }
-    });
+    loadGoalState();
 
     // Загружаем дополнительные данные цели из localStorage (goalType, dates, etc.)
     const savedGoal = localStorage.getItem(`goal_${user.id}`);
@@ -68,7 +90,7 @@ const Goal = () => {
         console.error('Ошибка загрузки цели:', error);
       }
     }
-  }, [user, navigate]);
+  }, [user, navigate, loadGoalState]);
 
   const handleSetGoal = () => {
     setIsCreateGoalModalOpen(true);
@@ -211,6 +233,55 @@ const Goal = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto min-h-0 px-2 min-[376px]:px-4 py-4 min-[376px]:py-6 w-full max-w-full overflow-hidden">
+          {runtimeStatus === 'loading' && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              Загрузка цели...
+            </div>
+          )}
+          {runtimeStatus === 'offline' && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Работаем офлайн. Данные могут быть неактуальны.
+              <button
+                onClick={() => {
+                  uiRuntimeAdapter.revalidate().finally(loadGoalState);
+                }}
+                className="ml-3 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+              >
+                Обновить
+              </button>
+            </div>
+          )}
+          {runtimeStatus === 'recovery' && (
+            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Идёт восстановление данных. Продолжаем безопасно.
+            </div>
+          )}
+          {runtimeStatus === 'error' && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <div className="flex flex-col gap-2">
+                <span>{runtimeMessage || 'Не удалось загрузить данные.'}</span>
+                {trustMessage && <span className="text-xs text-red-700">{trustMessage}</span>}
+                <button
+                  onClick={() => {
+                    uiRuntimeAdapter.recover().finally(loadGoalState);
+                  }}
+                  className="w-fit rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100"
+                >
+                  Повторить
+                </button>
+              </div>
+            </div>
+          )}
+          {runtimeStatus === 'empty' && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              Цель ещё не задана. Начните с расчёта.
+            </div>
+          )}
+          {explainability && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
+              Доступно объяснение: «Почему так?»
+            </div>
+          )}
           {/* Goal Summary Section */}
           <div className="space-y-3 min-[376px]:space-y-4 mb-4 min-[376px]:mb-6 w-full max-w-full overflow-hidden">
             <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
@@ -292,6 +363,9 @@ const Goal = () => {
 
           {/* AI Advice Block */}
           <AiAdviceBlock />
+          <div className="mt-4">
+            <ExplainabilityDrawer explainability={explainability} />
+          </div>
 
           {/* Action Buttons */}
           <div className="pt-4 min-[376px]:pt-6 pb-4 min-[376px]:pb-6 w-full max-w-full overflow-hidden">

@@ -3,8 +3,11 @@ import { WorkoutDay, WorkoutEntry, SelectedExercise } from '../types/workout';
 import { aiTrainingPlansService, TrainingDayContext } from './aiTrainingPlansService';
 import { goalService } from './goalService';
 import { userStateService } from './userStateService';
+import { convertWeightToKg } from '../utils/workoutUnits';
+import { aggregateWorkoutEntries, calculateVolume } from '../utils/workoutMetrics';
 
 class WorkoutService {
+  private readonly WORKOUTS_STORAGE_KEY = 'potok_workout_entries';
   private readonly MAX_WEIGHT = 500;
   private readonly MAX_REPS = 200;
   private readonly MAX_SETS = 50;
@@ -40,6 +43,34 @@ class WorkoutService {
     return data.user.id;
   }
 
+  private buildIdempotencyKey(date: string, exerciseId: string): string {
+    const safeExerciseId = exerciseId || 'unknown';
+    return `${date}:${safeExerciseId}`;
+  }
+
+  private saveWorkoutsToLocalStorage(userId: string, date: string, entries: WorkoutEntry[]): void {
+    try {
+      const stored = localStorage.getItem(`${this.WORKOUTS_STORAGE_KEY}_${userId}`);
+      const allEntries: Record<string, WorkoutEntry[]> = stored ? JSON.parse(stored) : {};
+      allEntries[date] = entries;
+      localStorage.setItem(`${this.WORKOUTS_STORAGE_KEY}_${userId}`, JSON.stringify(allEntries));
+    } catch (error) {
+      console.error('[workoutService] Error saving workouts to localStorage:', error);
+    }
+  }
+
+  private getWorkoutsFromLocalStorage(userId: string, date: string): WorkoutEntry[] | null {
+    try {
+      const stored = localStorage.getItem(`${this.WORKOUTS_STORAGE_KEY}_${userId}`);
+      if (!stored) return null;
+      const allEntries: Record<string, WorkoutEntry[]> = JSON.parse(stored);
+      return allEntries[date] || null;
+    } catch (error) {
+      console.error('[workoutService] Error loading workouts from localStorage:', error);
+      return null;
+    }
+  }
+
   private assertEntryNumbers(entry: { sets?: number; reps?: number; weight?: number }): void {
     const { sets, reps, weight } = entry;
     if (sets !== undefined && (!Number.isFinite(sets) || sets < 1)) {
@@ -63,17 +94,15 @@ class WorkoutService {
   }
 
   private buildTrainingDayContext(date: string, entries: WorkoutEntry[], goals?: Awaited<ReturnType<typeof goalService.getUserGoal>>): TrainingDayContext {
-    const totalVolume = entries.reduce((sum, entry) => sum + entry.sets * entry.reps * entry.weight, 0);
-    const totalSets = entries.reduce((sum, entry) => sum + entry.sets, 0);
-    const totalReps = entries.reduce((sum, entry) => sum + entry.reps, 0);
+    const totals = aggregateWorkoutEntries(entries);
 
     return {
       date,
       totals: {
-        volume: totalVolume,
-        sets: totalSets,
-        reps: totalReps,
-        exercises: entries.length,
+        volume: totals.volume,
+        sets: totals.sets,
+        reps: totals.reps,
+        exercises: totals.exercises,
       },
       exercises: entries.map((entry) => ({
         canonical_exercise_id: entry.canonical_exercise_id ?? entry.exercise?.canonical_exercise_id ?? entry.exercise_id,
@@ -82,7 +111,7 @@ class WorkoutService {
         sets: entry.sets,
         reps: entry.reps,
         weight: entry.weight,
-        volume: entry.sets * entry.reps * entry.weight,
+        volume: calculateVolume(entry.sets, entry.reps, entry.weight),
         muscles: entry.exercise?.muscles?.map((m) => m.name) || [],
       })),
       goals: goals ? {
@@ -146,11 +175,48 @@ class WorkoutService {
    * Получить все записи тренировки за день
    */
   async getWorkoutEntries(userId: string, date: string): Promise<WorkoutEntry[]> {
-    if (!supabase) {
-      throw new Error('Supabase не инициализирован. Проверьте переменные окружения VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY');
+    // Приоритет: localStorage для мгновенного UI
+    const local = this.getWorkoutsFromLocalStorage(userId, date);
+    if (local) {
+      // Фоновая синхронизация с Supabase
+      void this.getWorkoutEntriesFromSupabase(userId, date).catch(() => undefined);
+      return local;
     }
 
-    const sessionUserId = await this.getSessionUserId(userId);
+    return this.getWorkoutEntriesFromSupabase(userId, date);
+  }
+
+  private async getWorkoutEntriesFromSupabase(userId: string, date: string): Promise<WorkoutEntry[]> {
+    if (!supabase) {
+      console.warn('[workoutService] Supabase not available, returning empty workouts');
+      return [];
+    }
+
+    let sessionUserId: string;
+    try {
+      sessionUserId = await this.getSessionUserId(userId);
+    } catch (error) {
+      console.warn('[workoutService] getWorkoutEntries: no active session, using local storage only');
+      return this.getWorkoutsFromLocalStorage(userId, date) || [];
+    }
+
+    const { data: workoutDay, error: dayError } = await supabase
+      .from('workout_days')
+      .select('id')
+      .eq('user_id', sessionUserId)
+      .eq('date', date)
+      .maybeSingle();
+
+    if (dayError) {
+      if (dayError.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout day:', dayError);
+      }
+      return [];
+    }
+
+    if (!workoutDay?.id) {
+      return [];
+    }
 
     const { data, error } = await supabase
       .from('workout_entries')
@@ -165,13 +231,14 @@ class WorkoutService {
         ),
         workout_day:workout_days(*)
       `)
-      .eq('workout_day.user_id', sessionUserId)
-      .eq('workout_day.date', date)
+      .eq('workout_day_id', workoutDay.id)
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('[workoutService] Error fetching workout entries:', error);
-      throw new Error(`Ошибка получения записей тренировки: ${error.message}`);
+      if (error.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout entries:', error);
+      }
+      return [];
     }
 
     // Преобразуем данные
@@ -179,9 +246,14 @@ class WorkoutService {
       id: entry.id,
       workout_day_id: entry.workout_day_id,
       exercise_id: entry.exercise_id,
+      canonical_exercise_id: entry.canonical_exercise_id ?? null,
       sets: entry.sets,
       reps: entry.reps,
-      weight: entry.weight,
+      weight: Number(entry.weight) || 0,
+      baseUnit: entry.base_unit ?? 'кг',
+      displayUnit: entry.display_unit ?? 'кг',
+      displayAmount: Number(entry.display_amount ?? entry.weight ?? 0),
+      idempotencyKey: entry.idempotency_key ?? undefined,
       created_at: entry.created_at,
       updated_at: entry.updated_at,
       exercise: entry.exercise ? {
@@ -190,6 +262,15 @@ class WorkoutService {
       } : undefined,
       workout_day: entry.workout_day,
     }));
+
+    this.saveWorkoutsToLocalStorage(sessionUserId, date, entries);
+    try {
+      window.dispatchEvent(
+        new CustomEvent('workouts-synced', { detail: { date, entries } })
+      );
+    } catch {
+      // ignore if window is not available
+    }
 
     return entries;
   }
@@ -202,12 +283,55 @@ class WorkoutService {
     date: string,
     exercises: SelectedExercise[]
   ): Promise<WorkoutEntry[]> {
+    // Оптимистично обновляем localStorage (manual mode)
+    const localExisting = this.getWorkoutsFromLocalStorage(userId, date) || [];
+    const withKeys = exercises.map((ex) => {
+      this.assertEntryNumbers({ sets: ex.sets, reps: ex.reps, weight: ex.weight });
+      const key = this.buildIdempotencyKey(date, ex.exercise.id);
+      const baseUnit = 'кг';
+      const displayUnit = 'кг';
+      const displayAmount = ex.weight;
+      const baseWeight = convertWeightToKg(displayAmount, displayUnit);
+      const existing = localExisting.find((entry) => entry.idempotencyKey === key);
+      return {
+        id: existing?.id || `local-${key}`,
+        workout_day_id: existing?.workout_day_id || `local-${date}`,
+        exercise_id: ex.exercise.id,
+        canonical_exercise_id: ex.exercise.canonical_exercise_id ?? ex.exercise.id,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: baseWeight,
+        baseUnit,
+        displayUnit,
+        displayAmount,
+        idempotencyKey: key,
+        exercise: ex.exercise,
+      } as WorkoutEntry;
+    });
+
+    const merged = [...localExisting];
+    withKeys.forEach((entry) => {
+      const index = merged.findIndex((e) => e.idempotencyKey === entry.idempotencyKey);
+      if (index >= 0) {
+        merged[index] = entry;
+      } else {
+        merged.push(entry);
+      }
+    });
+    this.saveWorkoutsToLocalStorage(userId, date, merged);
+
     if (!supabase) {
-      throw new Error('Supabase не инициализирован. Проверьте переменные окружения VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY');
+      return merged;
     }
 
     // Получаем или создаем день тренировки (UUID сгенерируется в БД)
-    const workoutDay = await this.getOrCreateWorkoutDay(userId, date);
+    let workoutDay: WorkoutDay;
+    try {
+      workoutDay = await this.getOrCreateWorkoutDay(userId, date);
+    } catch (error) {
+      console.warn('[workoutService] addExercisesToWorkout: no active session, using local storage only');
+      return merged;
+    }
 
     // Создаем записи (UUID для каждой записи сгенерируется в БД через DEFAULT gen_random_uuid())
     exercises.forEach((ex) => {
@@ -220,9 +344,13 @@ class WorkoutService {
       canonical_exercise_id: ex.exercise.canonical_exercise_id ?? ex.exercise.id,
       sets: ex.sets,
       reps: ex.reps,
-      weight: ex.weight,
+      weight: convertWeightToKg(ex.weight, 'кг'),
+      base_unit: 'кг',
+      display_unit: 'кг',
+      display_amount: ex.weight,
+      idempotency_key: this.buildIdempotencyKey(date, ex.exercise.id),
     }));
-    const totalVolume = entries.reduce((sum, entry) => sum + entry.sets * entry.reps * entry.weight, 0);
+    const totalVolume = entries.reduce((sum, entry) => sum + calculateVolume(entry.sets, entry.reps, entry.weight), 0);
     if (totalVolume > this.MAX_VOLUME) {
       throw new Error('[workoutService] Suspicious volume spike');
     }
@@ -230,7 +358,7 @@ class WorkoutService {
     const { data, error } = await this.withRetry(() =>
       supabase
         .from('workout_entries')
-        .insert(entries)
+        .upsert(entries, { onConflict: 'workout_day_id,idempotency_key' })
         .select(`
           *,
           exercise:exercises(
@@ -263,6 +391,10 @@ class WorkoutService {
       sets: entry.sets,
       reps: entry.reps,
       weight: entry.weight,
+      baseUnit: entry.base_unit ?? 'кг',
+      displayUnit: entry.display_unit ?? 'кг',
+      displayAmount: Number(entry.display_amount ?? entry.weight ?? 0),
+      idempotencyKey: entry.idempotency_key ?? undefined,
       created_at: entry.created_at,
       updated_at: entry.updated_at,
       exercise: entry.exercise ? {
@@ -270,6 +402,8 @@ class WorkoutService {
         muscles: entry.exercise.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
       } : undefined,
     }));
+
+    this.saveWorkoutsToLocalStorage(userId, date, workoutEntries);
 
     try {
       await aiTrainingPlansService.markTrainingPlanOutdated(userId, workoutDay.date);
@@ -371,6 +505,26 @@ class WorkoutService {
       throw new Error('Supabase не инициализирован');
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    const { data: workoutDays, error: workoutDaysError } = await supabase
+      .from('workout_days')
+      .select('id, date')
+      .eq('user_id', sessionUserId)
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: true });
+
+    if (workoutDaysError) {
+      if (workoutDaysError.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout days:', workoutDaysError);
+      }
+      return [];
+    }
+
+    const dayIds = (workoutDays || []).map((day) => day.id).filter(Boolean);
+    if (dayIds.length === 0) {
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('workout_entries')
       .select(`
@@ -378,15 +532,15 @@ class WorkoutService {
         reps,
         weight,
         exercise:exercises(id,name),
-        workout_day:workout_days(user_id, date)
+        workout_day:workout_days(date)
       `)
-      .eq('workout_day.user_id', sessionUserId)
-      .gte('workout_day.date', fromDate)
-      .lte('workout_day.date', toDate)
-      .order('workout_day.date', { ascending: true });
+      .in('workout_day_id', dayIds);
 
     if (error) {
-      throw error;
+      if (error.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout progress:', error);
+      }
+      return [];
     }
 
     const progress = new Map<

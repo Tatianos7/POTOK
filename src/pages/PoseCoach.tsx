@@ -326,7 +326,6 @@ const PoseCoach = () => {
             setOverlayState(feedbackResult.stableSeverity);
             lastOverlayChangeRef.current = Date.now();
           }
-          let feedbackResult: ReturnType<typeof poseRealtimeFeedbackService.update> | null = null;
           if (session3dIdRef.current) {
             const frameTs = new Date().toISOString();
             poseEdgeBufferService.bufferFrame({

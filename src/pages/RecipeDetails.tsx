@@ -269,7 +269,10 @@ const RecipeDetails = () => {
                       hyphens: 'auto'
                     }}
                   >
-                    {ingredient.name} - {ingredient.quantity} {ingredient.unit}
+                    {ingredient.name} -{' '}
+                    {ingredient.display_amount && ingredient.display_unit
+                      ? `${ingredient.display_amount} ${ingredient.display_unit}`
+                      : `${ingredient.quantity} ${ingredient.unit}`}
                   </span>
                 </div>
               ))}

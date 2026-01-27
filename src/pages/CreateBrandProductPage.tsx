@@ -126,6 +126,9 @@ const CreateBrandProductPage = () => {
         protein: proteinValue * weightMultiplier,
         fat: fatValue * weightMultiplier,
         carbs: carbsValue * weightMultiplier,
+        baseUnit: 'г',
+        displayUnit: 'г',
+        displayAmount: weightValue,
       };
 
       // Добавляем в дневник питания

@@ -88,6 +88,7 @@ class MeasurementsService {
 
     // Default measurements
     return [
+      { id: 'weight', name: 'ВЕС', value: '0' },
       { id: 'neck', name: 'ШЕЯ', value: '0' },
       { id: 'shoulders', name: 'ПЛЕЧИ', value: '0' },
       { id: 'chest', name: 'ГРУДЬ', value: '0' },

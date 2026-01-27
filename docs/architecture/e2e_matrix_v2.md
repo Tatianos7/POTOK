@@ -5,6 +5,28 @@ Scenarios 1–7 cover Auth, Goals, Food, Workout, Recipes, AI, Reports, Progress
 
 ---
 
+# Scenario 7.4 — Premium Runtime Wiring (v2)
+
+**Today (Follow Plan)**
+- Happy: active program → Today shows plan + explainability.
+- Fatigue/Pain: guard notes → safety copy + recovery path.
+- Offline: cached snapshot → revalidate on retry.
+
+**My Program (Timeline)**
+- Preview → Follow → Adapt → Replan flow.
+- Explainability shows reasons for changes (nutrition/training/habits/pain/fatigue).
+- Low confidence → conservative copy.
+
+**Paywall / Entitlements**
+- Block → explain → upgrade → unlock.
+- Restore purchase → access restored.
+- Grace period → allow view, warn.
+
+**Profile / Subscription**
+- Subscription lifecycle (free → active → grace → expired).
+- Legal: consent, delete account, export data.
+- Offline: cached profile + retry.
+
 # Scenario 1.1 — Auth & Profile (v2)
 
 **DB Assertions (SQL)**
@@ -408,6 +430,101 @@ Scenarios 1–7 cover Auth, Goals, Food, Workout, Recipes, AI, Reports, Progress
 - mismatched macros.
 
 ---
+
+# Scenario 7.4.2 — Habits Engine (v2)
+
+**DB Assertions (SQL)**
+- `habits.user_id` FK → `auth.users(id)`.
+- `habit_logs` unique `(user_id, habit_id, date)`.
+
+**RLS Assertions**
+- `habits`, `habit_logs` enforce `auth.uid()`.
+
+**Service Assertions**
+- streak/recovery computed without негативных блокировок.
+- relapse → recovery transition without data loss.
+
+**AI Assertions**
+- explainability bundle uses `habit_logs` + `habit_state`.
+
+**Failure Simulation**
+- Offline → local streak cache, no data loss.
+
+**Expected Transitions**
+- `inactive → active → streak → slip → recovery → stabilized`.
+
+**Invariants**
+- No shame states; only recovery support.
+
+**Allowed States**
+- active, streak, slip, recovery, stabilized.
+
+**Forbidden States**
+- forced reset to zero after slip.
+
+---
+
+# Scenario 7.4.3 — Progress Intelligence (v2)
+
+**DB Assertions (SQL)**
+- `progress_trends` upsert by `(user_id, period_start, period_end)`.
+
+**RLS Assertions**
+- `progress_trends` owner-only.
+
+**Service Assertions**
+- EMA, slope metrics are deterministic.
+- partial data does not break aggregation.
+
+**AI Assertions**
+- explainability bundle contains data_sources + confidence.
+
+**Failure Simulation**
+- Offline snapshot → no white screen.
+
+**Expected Transitions**
+- `snapshot_ready → trend_ready → explainable`.
+
+**Invariants**
+- No silent fail; must return empty state or fallback.
+
+**Allowed States**
+- empty, partial, ready.
+
+**Forbidden States**
+- silent fail without UI feedback.
+
+# Scenario 7.4.4 — UI Runtime State Machine (v2)
+
+**DB Assertions (SQL)**
+- None (runtime state machine).
+
+**RLS Assertions**
+- All reads still scoped to auth.uid in underlying services.
+
+**Service Assertions**
+- UI state transitions deterministic.
+- Offline fallback for all key screens.
+
+**AI Assertions**
+- Explainability bundle always present if metric shown.
+
+**Failure Simulation**
+- Offline → cached snapshot
+- Trust drop → blocked state with safe copy
+
+**Expected Transitions**
+- `loading → active → error → recovery → active`
+
+**Invariants**
+- No white screen.
+- Every error has recovery path.
+
+**Allowed States**
+- empty, loading, active, error, recovery, blocked, premium-locked.
+
+**Forbidden States**
+- silent error without UI.
 
 # Scenario 4.4 — Recipe Plans & Goal Matching (v2)
 
@@ -3154,73 +3271,74 @@ Scenarios 1–7 cover Auth, Goals, Food, Workout, Recipes, AI, Reports, Progress
 
 ---
 
-# Scenario 142 — Goal → Program generation (v2)
+# Scenario 142 — Goal → Result → Gate (v2)
 
 **Service Assertions**
-- Program generated after goal save.
+- Goal saved + nutrition targets saved regardless of entitlement.
+- Gate blocks program generation for non‑Premium.
 
 **Expected Transitions**
-- `goal_saved → program_generated`.
+- `goal_saved → result_shown → gate_checked`.
 
 ---
 
-# Scenario 143 — Today screen opens (v2)
+# Scenario 143 — Today available only with active plan (v2)
 
 **Service Assertions**
-- Today DTO loads for first day.
+- Today DTO loads only if Premium + Follow Plan.
 
 **Expected Transitions**
-- `app_open → today_loaded`.
+- `follow_plan → today_loaded`.
 
 ---
 
-# Scenario 144 — First workout logged (v2)
+# Scenario 144 — Follow Plan activates Today (v2)
 
 **Service Assertions**
-- Workout entry created + linked to day.
+- Follow Plan marks program active + creates program_session for day.
 
 **Expected Transitions**
-- `workout_started → workout_logged`.
+- `follow_plan → program_active → session_created`.
 
 ---
 
-# Scenario 145 — First food day completed (v2)
+# Scenario 145 — Planned meal completion (v2)
 
 **Service Assertions**
-- Food diary day closed + AI queued.
+- Planned meal writes to `food_diary_entries` + updates `program_sessions`.
 
 **Expected Transitions**
-- `day_completed → ai_queued`.
+- `meal_complete → diary_written → session_updated`.
 
 ---
 
-# Scenario 146 — First feedback submitted (v2)
+# Scenario 146 — Planned workout completion/skip (v2)
 
 **Service Assertions**
-- Feedback saved to `program_feedback`.
+- Workout complete/skip writes `training_entries` + `program_sessions`.
 
 **Expected Transitions**
-- `feedback_submitted → stored`.
+- `workout_complete|skip → diary_written → session_updated`.
 
 ---
 
-# Scenario 147 — First adaptation triggered (v2)
+# Scenario 147 — Feedback triggers adaptation (v2)
 
 **Service Assertions**
-- Adaptation replan after feedback.
+- Feedback saved to `program_feedback` and triggers `adaptProgram`.
 
 **Expected Transitions**
 - `feedback → adaptation_created`.
 
 ---
 
-# Scenario 148 — First progress view (v2)
+# Scenario 148 — Program cancelled disables Today (v2)
 
 **Service Assertions**
-- Progress view shows adherence + streak.
+- Today disabled; diaries remain manual.
 
 **Expected Transitions**
-- `progress_opened → progress_rendered`.
+- `program_cancelled → today_disabled`.
 
 ---
 
@@ -3235,6 +3353,607 @@ Scenarios 1–7 cover Auth, Goals, Food, Workout, Recipes, AI, Reports, Progress
 ---
 
 # Scenario 150 — Explainability shown (v2)
+---
+
+# Scenario 151 — Progress aggregates sources (v2)
+
+**Service Assertions**
+- Progress aggregates goal + measurements + nutrition + training.
+
+**Expected Transitions**
+- `progress_opened → aggregated → rendered`.
+
+---
+
+# Scenario 152 — Plan adherence visible only with Follow Plan (v2)
+
+**Service Assertions**
+- Plan adherence appears only for active plan users.
+
+**Expected Transitions**
+- `follow_plan → adherence_visible`.
+
+---
+
+# Scenario 153 — Goal change recalculates trajectory (v2)
+
+**Service Assertions**
+- Goal update recalculates progress trajectory and forecasts.
+
+**Expected Transitions**
+- `goal_updated → trajectory_rebuilt`.
+
+---
+
+# Scenario 154 — Measurements update progress charts (v2)
+
+**Service Assertions**
+- New measurement/photo updates progress charts and timeline.
+
+**Expected Transitions**
+- `measurement_added → charts_updated`.
+
+---
+
+# Scenario 155 — Nutrition deviation reflected (v2)
+
+**Service Assertions**
+- Over/under target macros reflected in nutrition timeline.
+
+**Expected Transitions**
+- `diary_updated → nutrition_timeline_updated`.
+
+---
+
+# Scenario 156 — Training PR reflected (v2)
+
+**Service Assertions**
+- New PR or volume change reflected in training timeline.
+
+**Expected Transitions**
+- `training_logged → training_timeline_updated`.
+
+---
+
+# Scenario 157 — Custom habit created (v2)
+
+**Service Assertions**
+- Custom habit saved with frequency + reminders.
+
+**Expected Transitions**
+- `habit_created → habit_visible`.
+
+---
+
+# Scenario 158 — Habit archived/removed (v2)
+
+**Service Assertions**
+- Habit archived; no longer shows in active list.
+
+**Expected Transitions**
+- `habit_archived → habit_hidden`.
+
+---
+
+# Scenario 159 — Streak impacts trust score (v2)
+
+**Service Assertions**
+- Habit streak updates trust score inputs.
+
+**Expected Transitions**
+- `streak_updated → trust_adjusted`.
+
+---
+
+# Scenario 160 — Relapse triggers adaptation (v2)
+
+**Service Assertions**
+- Habit relapse contributes to adaptation/relief decision.
+
+**Expected Transitions**
+- `relapse_detected → adaptation_triggered`.
+
+---
+
+# Scenario 161 — Explainability references habits (v2)
+
+**Service Assertions**
+- Explainability includes habit factors.
+
+**Expected Transitions**
+- `why_opened → habits_explained`.
+
+---
+
+# Scenario 162 — System habits toggle (v2)
+
+**Service Assertions**
+- System habit enabled/disabled per user.
+
+**Expected Transitions**
+- `habit_toggled → habit_state_updated`.
+
+---
+
+# Scenario 163 — Habit streak recovery (v2)
+
+**Service Assertions**
+- Recovery after lapse resets streak but keeps history.
+
+**Expected Transitions**
+- `streak_reset → recovery_flow`.
+
+---
+
+# Scenario 164 — Habit affects Progress timeline (v2)
+
+**Service Assertions**
+- Habit adherence displayed in Progress timeline.
+
+**Expected Transitions**
+- `progress_opened → habits_timeline_rendered`.
+
+---
+
+# Scenario 165 — Habit affects program gating (v2)
+
+**Service Assertions**
+- Habit compliance influences plan difficulty or reminders.
+
+**Expected Transitions**
+- `habit_compliance → plan_adjusted`.
+
+---
+
+# Scenario 166 — Manual mode full journey (v2)
+
+**Service Assertions**
+- Manual mode skips Today but still builds Progress.
+
+**Expected Transitions**
+- `manual_selected → diaries_only → progress_updated`.
+
+---
+
+# Scenario 167 — Follow Plan full journey (v2)
+
+**Service Assertions**
+- Follow Plan activates Today + auto‑sync to diaries + Progress.
+
+**Expected Transitions**
+- `follow_plan → today_active → progress_updated`.
+
+---
+
+# Scenario 168 — Explainability across sources (v2)
+
+**Service Assertions**
+- Explainability references Goal/Measurements/Food/Training/Habits.
+
+**Expected Transitions**
+- `why_opened → multi_source_explainability`.
+
+---
+
+# Scenario 169 — Trust score affected by adherence (v2)
+
+**Service Assertions**
+- Adherence and habit streaks adjust trust.
+
+**Expected Transitions**
+- `adherence_changed → trust_recomputed`.
+
+---
+
+# Scenario 170 — Adaptation triggered by cross‑signals (v2)
+
+**Service Assertions**
+- Low adherence + fatigue + habit relapse trigger adaptation.
+
+**Expected Transitions**
+- `signals_detected → adaptation_triggered`.
+
+---
+
+# Scenario 171 — Profile update saved (v2)
+
+**Service Assertions**
+- Profile fields saved and reflected in UI.
+
+**Expected Transitions**
+- `profile_edit → profile_saved`.
+
+---
+
+# Scenario 172 — Subscription status shown (v2)
+
+**Service Assertions**
+- Current tier and renewal date displayed.
+- Paywall shows reason when access is locked.
+
+**Expected Transitions**
+- `billing_loaded → subscription_visible`.
+
+---
+
+# Scenario 173 — Payment history visible (v2)
+
+**Service Assertions**
+- Billing history and receipts accessible.
+
+**Expected Transitions**
+- `payments_opened → history_rendered`.
+
+---
+
+# Scenario 174 — Cancel subscription (v2)
+
+**Service Assertions**
+- Subscription canceled, entitlement downgraded after period.
+
+**Expected Transitions**
+- `cancel_requested → cancel_scheduled`.
+
+---
+
+# Scenario 175 — Restore subscription (v2)
+
+**Service Assertions**
+- Restore flow re‑enables entitlements.
+
+**Expected Transitions**
+- `restore_requested → entitlements_restored`.
+
+---
+
+# Scenario 176 — Notifications read/archive (v2)
+
+**Service Assertions**
+- Notifications delivered and can be marked read/archived/deleted.
+
+**Expected Transitions**
+- `notification_action → status_updated`.
+
+---
+
+# Scenario 177 — Settings permissions update (v2)
+
+**Service Assertions**
+- Permissions toggles saved and respected.
+
+**Expected Transitions**
+- `settings_changed → permissions_saved`.
+
+---
+
+# Scenario 178 — Privacy toggles (v2)
+
+**Service Assertions**
+- Analytics/personalization/AI toggles saved.
+
+**Expected Transitions**
+- `privacy_toggle → preference_saved`.
+
+---
+
+# Scenario 179 — Support ticket created (v2)
+
+**Service Assertions**
+- Support message saved and listed.
+
+**Expected Transitions**
+- `support_sent → ticket_created`.
+
+---
+
+# Scenario 180 — Legal consent recorded (v2)
+
+**Service Assertions**
+- User consent stored for required docs.
+- Blocking until consent for required legal screens.
+
+**Expected Transitions**
+- `consent_given → consent_saved`.
+
+---
+
+# Scenario 181 — Data export requested (v2)
+
+**Service Assertions**
+- Data export request queued.
+
+**Expected Transitions**
+- `export_requested → export_queued`.
+
+---
+
+# Scenario 182 — Account deletion (v2)
+
+**Service Assertions**
+- Account deletion request processed.
+
+**Expected Transitions**
+- `delete_requested → account_deleted`.
+
+---
+
+# Scenario 183 — Medical disclaimer accepted (v2)
+
+**Service Assertions**
+- Disclaimer acceptance recorded before coaching.
+
+**Expected Transitions**
+- `disclaimer_accepted → coaching_enabled`.
+
+---
+
+# Scenario 184 — Promo code applied (v2)
+
+**Service Assertions**
+- Promo code applied to subscription.
+
+**Expected Transitions**
+- `promo_applied → billing_updated`.
+
+---
+
+# Scenario 185 — Contact details updated (v2)
+
+**Service Assertions**
+- Email/phone updated with verification.
+
+**Expected Transitions**
+- `contact_update → verified`.
+
+---
+
+# Scenario 186 — Return after skip (v2)
+
+**Service Assertions**
+- Soft return flow shown after missed days.
+
+**Expected Transitions**
+- `skip_detected → return_flow`.
+
+---
+
+# Scenario 187 — Anxiety reduction cue (v2)
+
+**Service Assertions**
+- Coach provides calm, non‑judgmental cue.
+
+**Expected Transitions**
+- `anxiety_signal → calming_message`.
+
+---
+
+# Scenario 188 — Pain support (v2)
+
+**Service Assertions**
+- Safety‑first message and reduced load suggestion.
+
+**Expected Transitions**
+- `pain_reported → safety_support`.
+
+---
+
+# Scenario 189 — Micro‑success praise (v2)
+
+**Service Assertions**
+- Positive reinforcement for small wins.
+
+**Expected Transitions**
+- `micro_success → praise_shown`.
+
+---
+
+# Scenario 190 — Dialog instead of push (v2)
+
+**Service Assertions**
+- In‑app dialog used before push.
+
+**Expected Transitions**
+- `low_engagement → dialog_prompt`.
+
+---
+
+# Scenario 191 — Burnout relief (v2)
+
+**Service Assertions**
+- Load reduced after fatigue pattern.
+
+**Expected Transitions**
+- `fatigue_detected → relief_plan`.
+
+---
+
+# Scenario 192 — Soft re‑activation after pause (v2)
+
+**Service Assertions**
+- Gentle restart without penalty.
+
+**Expected Transitions**
+- `paused → soft_restart`.
+
+---
+
+# Scenario 193 — Minimal plan on overload (v2)
+
+**Service Assertions**
+- Minimal plan recommended on overload.
+
+**Expected Transitions**
+- `overload → minimal_plan`.
+
+---
+
+# Scenario 194 — Low trust support (v2)
+
+**Service Assertions**
+- Coaching tone softens when trust is low.
+
+**Expected Transitions**
+- `trust_low → soft_tone`.
+
+---
+
+# Scenario 195 — Emotional explainability (v2)
+
+**Service Assertions**
+- Reasons explained in empathetic tone.
+
+**Expected Transitions**
+- `why_opened → emotional_explain`.
+
+---
+
+# Scenario 196 — Anonymous comparison (v2)
+
+**Service Assertions**
+- Safe anonymized comparison shown.
+
+**Expected Transitions**
+- `comparison_opened → anonymized_view`.
+
+---
+
+# Scenario 197 — Milestone sharing (v2)
+
+**Service Assertions**
+- Shareable milestone generated.
+
+**Expected Transitions**
+- `milestone_reached → share_ready`.
+
+---
+
+# Scenario 198 — Crisis safe mode (v2)
+
+**Service Assertions**
+- Crisis mode reduces demands.
+
+**Expected Transitions**
+- `crisis_signal → safe_mode`.
+
+---
+
+# Scenario 199 — Recovery‑first plan (v2)
+
+**Service Assertions**
+- Recovery‑first plan delivered.
+
+**Expected Transitions**
+- `recovery_needed → recovery_plan`.
+
+---
+
+# Scenario 200 — Habit relapse soft return (v2)
+
+**Service Assertions**
+- Habit relapse triggers gentle return loop.
+
+**Expected Transitions**
+- `habit_relapse → return_loop`.
+
+---
+
+# Scenario 201 — Training fear reassurance (v2)
+
+**Service Assertions**
+- Safety reassurance before training.
+
+**Expected Transitions**
+- `fear_signal → reassurance`.
+
+---
+
+# Scenario 202 — Nutrition guilt reframing (v2)
+
+**Service Assertions**
+- Reframing message for diet guilt.
+
+**Expected Transitions**
+- `guilt_signal → reframe`.
+
+---
+
+# Scenario 203 — Long streak sustain (v2)
+
+**Service Assertions**
+- Support to sustain long streak without pressure.
+
+**Expected Transitions**
+- `streak_long → sustain_prompt`.
+
+---
+
+# Scenario 204 — Short streak encouragement (v2)
+
+**Service Assertions**
+- Encouragement for early streak.
+
+**Expected Transitions**
+- `streak_short → encourage`.
+
+---
+
+# Scenario 205 — Plan change emotional explain (v2)
+
+**Service Assertions**
+- Plan change framed with empathy.
+
+**Expected Transitions**
+- `plan_changed → emotional_reason`.
+
+---
+
+# Scenario 206 — Voice coach opt‑in/out (v2)
+
+**Service Assertions**
+- Voice coach opt‑in/out respected.
+
+**Expected Transitions**
+- `voice_toggle → preference_saved`.
+
+---
+
+# Scenario 207 — Camera opt‑in/out (v2)
+
+**Service Assertions**
+- Camera opt‑in/out respected.
+
+**Expected Transitions**
+- `camera_toggle → preference_saved`.
+
+---
+
+# Scenario 208 — Support escalation (v2)
+
+**Service Assertions**
+- Support escalation path available.
+
+**Expected Transitions**
+- `support_request → escalated`.
+
+---
+
+# Scenario 209 — Soft legal reminder (v2)
+
+**Service Assertions**
+- Soft reminder for required consent.
+
+**Expected Transitions**
+- `consent_required → reminder_shown`.
+
+---
+
+# Scenario 210 — Transition to AI Companion (v2)
+
+**Service Assertions**
+- Stage E readiness flags set for Phase 8.
+
+**Expected Transitions**
+- `stage_e_complete → phase8_ready`.
 
 **Service Assertions**
 - Explainability surface visible for Pro.

@@ -8,16 +8,16 @@ import Menu from '../components/Menu';
 import { activityService } from '../services/activityService';
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, profile, authStatus, logout } = useAuth();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Перенаправляем админов в админ-панель
   useEffect(() => {
-    if (user?.isAdmin) {
+    if (authStatus === 'authenticated' && (profile?.is_admin || user?.isAdmin)) {
       navigate('/admin');
     }
-  }, [user, navigate]);
+  }, [authStatus, profile?.is_admin, user?.isAdmin, navigate]);
 
   // Обновляем активность пользователя
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Plus, Minus, ArrowRight } from 'lucide-react';
@@ -8,6 +8,9 @@ import {
   type MeasurementHistory,
   type PhotoHistory,
 } from '../services/measurementsService';
+import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
+import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
+import type { BaseExplainabilityDTO } from '../types/explainability';
 
 const Measurements = () => {
   const { user } = useAuth();
@@ -15,6 +18,7 @@ const Measurements = () => {
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const additionalPhotoRefs = useRef<(HTMLInputElement | null)[]>([]);
   const [measurements, setMeasurements] = useState<Measurement[]>([
+    { id: 'weight', name: 'ВЕС', value: '0' },
     { id: 'neck', name: 'ШЕЯ', value: '0' },
     { id: 'shoulders', name: 'ПЛЕЧИ', value: '0' },
     { id: 'chest', name: 'ГРУДЬ', value: '0' },
@@ -28,46 +32,57 @@ const Measurements = () => {
   const [photoHistory, setPhotoHistory] = useState<PhotoHistory[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [deleteDateId, setDeleteDateId] = useState<string | null>(null);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
+  const [runtimeMessage, setRuntimeMessage] = useState<string | null>(null);
+  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
+  const [trustMessage, setTrustMessage] = useState<string | null>(null);
 
   const photoLabels = ['спереди', 'с боку', 'сзади'];
+
+  const loadMeasurementsState = useCallback(async () => {
+    if (!user?.id) return;
+    setRuntimeStatus('loading');
+    setRuntimeMessage(null);
+    setTrustMessage(null);
+    try {
+      const state = await uiRuntimeAdapter.getMeasurementsState(user.id);
+      setRuntimeStatus(state.status);
+      setRuntimeMessage(state.message || null);
+      setExplainability(state.explainability ?? null);
+      setTrustMessage(state.trust?.message ?? null);
+      if (state.measurements?.length) {
+        setMeasurements(state.measurements);
+      }
+      if (state.photos) {
+        const mainPhotos = state.photos.slice(0, 3);
+        setPhotos([...mainPhotos, ...Array(3 - mainPhotos.length).fill('')].slice(0, 3));
+        setAdditionalPhotos(state.additionalPhotos || []);
+      }
+      if (state.history) {
+        const processedHistory = state.history.map((entry) => ({
+          ...entry,
+          photos: entry.photos || [],
+          additionalPhotos: entry.additionalPhotos || [],
+        }));
+        setHistory(processedHistory);
+      }
+      if (state.photoHistory) {
+        setPhotoHistory(state.photoHistory);
+      }
+    } catch (error) {
+      setRuntimeStatus('error');
+      setRuntimeMessage('Не удалось загрузить замеры.');
+      setTrustMessage('Проверьте соединение и попробуйте снова.');
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) {
       navigate('/login');
       return;
     }
-
-    // Загружаем сохраненные замеры
-    measurementsService.getCurrentMeasurements(user.id).then((savedMeasurements) => {
-      setMeasurements(savedMeasurements);
-    });
-
-    // Загружаем сохраненные фото
-    measurementsService.getCurrentPhotos(user.id).then(({ photos: savedPhotos, additionalPhotos: savedAdditionalPhotos }) => {
-      // Первые 3 - основные фото
-      const mainPhotos = savedPhotos.slice(0, 3);
-      setPhotos([...mainPhotos, ...Array(3 - mainPhotos.length).fill('')].slice(0, 3));
-      setAdditionalPhotos(savedAdditionalPhotos || []);
-    });
-
-    // Загружаем историю замеров (только для бесплатных пользователей)
-    if (!user.hasPremium) {
-      measurementsService.getMeasurementHistory(user.id).then((savedHistory) => {
-        // Обрабатываем старые записи без фото
-        const processedHistory = savedHistory.map((entry) => ({
-          ...entry,
-          photos: entry.photos || [],
-          additionalPhotos: entry.additionalPhotos || [],
-        }));
-        setHistory(processedHistory);
-      });
-
-      // Загружаем историю фото отдельно
-      measurementsService.getPhotoHistory(user.id).then((savedPhotoHistory) => {
-        setPhotoHistory(savedPhotoHistory);
-      });
-    }
-  }, [user, navigate]);
+    loadMeasurementsState();
+  }, [user, navigate, loadMeasurementsState]);
 
   // Закрываем меню при клике вне его
   useEffect(() => {
@@ -345,6 +360,55 @@ const Measurements = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto min-h-0 pl-[10px] pr-[10px] sm:px-4 md:px-6 lg:px-8 py-6">
+          {runtimeStatus === 'loading' && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              Загрузка замеров...
+            </div>
+          )}
+          {runtimeStatus === 'offline' && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Работаем офлайн. Данные могут быть неактуальны.
+              <button
+                onClick={() => {
+                  uiRuntimeAdapter.revalidate().finally(loadMeasurementsState);
+                }}
+                className="ml-3 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+              >
+                Обновить
+              </button>
+            </div>
+          )}
+          {runtimeStatus === 'recovery' && (
+            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Идёт восстановление данных. Продолжаем безопасно.
+            </div>
+          )}
+          {runtimeStatus === 'error' && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <div className="flex flex-col gap-2">
+                <span>{runtimeMessage || 'Не удалось загрузить данные.'}</span>
+                {trustMessage && <span className="text-xs text-red-700">{trustMessage}</span>}
+                <button
+                  onClick={() => {
+                    uiRuntimeAdapter.recover().finally(loadMeasurementsState);
+                  }}
+                  className="w-fit rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100"
+                >
+                  Повторить
+                </button>
+              </div>
+            </div>
+          )}
+          {runtimeStatus === 'empty' && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              Замеры ещё не заполнены.
+            </div>
+          )}
+          {explainability && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
+              Доступно объяснение: «Почему так?»
+            </div>
+          )}
           {/* Measurements Section */}
           <div className="space-y-4 mb-6">
             {measurements.map((measurement) => (
@@ -738,6 +802,10 @@ const Measurements = () => {
               </div>
             </div>
           )}
+
+          <div className="mt-6">
+            <ExplainabilityDrawer explainability={explainability} />
+          </div>
         </main>
 
         {/* Save Button */}

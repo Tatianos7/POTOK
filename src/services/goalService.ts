@@ -74,6 +74,29 @@ class GoalService {
       }
     }
 
+    // Fallback to localStorage
+    try {
+      const stored = localStorage.getItem(`goal_${userId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const calories = Number(parsed.calories);
+        const protein = Number(parsed.proteins ?? parsed.protein);
+        const fat = Number(parsed.fats ?? parsed.fat);
+        const carbs = Number(parsed.carbs);
+        const hasValues = [calories, protein, fat, carbs].every((v) => Number.isFinite(v));
+        if (hasValues) {
+          return {
+            calories,
+            protein,
+            fat,
+            carbs,
+          };
+        }
+      }
+    } catch (error) {
+      console.warn('[goalService] localStorage fallback failed:', error);
+    }
+
     return null;
   }
 
@@ -99,7 +122,6 @@ class GoalService {
 
         if (error) {
           console.error('[goalService] Supabase save error:', error);
-          return;
         }
 
         const today = new Date().toISOString().split('T')[0];
@@ -138,6 +160,22 @@ class GoalService {
       } catch (err) {
         console.error('[goalService] Supabase save connection error:', err);
       }
+    }
+
+    // Always persist a local fallback for manual flow
+    try {
+      const existing = localStorage.getItem(`goal_${userId}`);
+      const parsed = existing ? JSON.parse(existing) : {};
+      const updated = {
+        ...parsed,
+        calories: Math.round(goal.calories).toString(),
+        proteins: goal.protein.toString(),
+        fats: goal.fat.toString(),
+        carbs: goal.carbs.toString(),
+      };
+      localStorage.setItem(`goal_${userId}`, JSON.stringify(updated));
+    } catch (error) {
+      console.warn('[goalService] Failed to persist local goal cache:', error);
     }
   }
 

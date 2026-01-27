@@ -121,6 +121,10 @@ export interface MealEntry {
   protein: number; // calculated
   fat: number; // calculated
   carbs: number; // calculated
+  baseUnit?: string; // base unit for storage/calculation (default: 'г')
+  displayUnit?: string; // unit selected by user (e.g. 'г', 'мл', 'шт', 'ст.л', 'ч.л', 'порция')
+  displayAmount?: number; // amount in displayUnit
+  idempotencyKey?: string; // stable key for deduplication/upsert
   canonicalFoodId?: string | null;
   note?: string | null; // Заметка к продукту в приёме пищи
   recipeId?: string; // Опционально: запись создана из рецепта

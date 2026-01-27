@@ -1,0 +1,186 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { X } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
+import type { ProgramTodayDTO } from '../types/programDelivery';
+import type { RuntimeContext } from '../services/uiRuntimeAdapter';
+import type { BaseExplainabilityDTO } from '../types/explainability';
+import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
+import Card from '../ui/components/Card';
+import StateContainer from '../ui/components/StateContainer';
+import TrustBanner from '../ui/components/TrustBanner';
+import { classifyTrustDecision } from '../services/trustSafetyService';
+
+const Today = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
+  const [today, setToday] = useState<ProgramTodayDTO | null>(null);
+  const [runtimeContext, setRuntimeContext] = useState<RuntimeContext | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [trustMessage, setTrustMessage] = useState<string | null>(null);
+  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
+
+  const loadToday = useCallback(async () => {
+    if (!user?.id) return;
+    setRuntimeStatus('loading');
+    setErrorMessage(null);
+    setTrustMessage(null);
+    uiRuntimeAdapter.startLoadingTimer('Today', {
+      pendingSources: ['program_sessions', 'food_diary_entries', 'workout_entries', 'habit_logs', 'user_goals'],
+      onTimeout: () => {
+        const decision = classifyTrustDecision('loading_timeout');
+        setRuntimeStatus('error');
+        setErrorMessage('Загрузка дня заняла слишком много времени.');
+        setTrustMessage(decision.message);
+      },
+    });
+    try {
+      const state = await uiRuntimeAdapter.getTodayState(user.id);
+      setRuntimeStatus(state.status);
+      setToday(state.program ?? null);
+      setRuntimeContext(state.context ?? null);
+      setExplainability((state.explainability as BaseExplainabilityDTO) ?? null);
+      setTrustMessage(state.trust?.message ?? null);
+      if (state.status === 'error') {
+        setErrorMessage(state.message || 'Не удалось загрузить день.');
+      }
+    } catch (error) {
+      const decision = classifyTrustDecision(error);
+      setRuntimeStatus('error');
+      setErrorMessage('Не удалось загрузить день.');
+      setTrustMessage(decision.message);
+    } finally {
+      uiRuntimeAdapter.clearLoadingTimer('Today');
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    loadToday();
+  }, [loadToday]);
+
+  const safetyFlags = (explainability as any)?.safety_flags ?? [];
+  const isFatigue = safetyFlags.includes('fatigue');
+  const isPain = safetyFlags.includes('pain');
+  const isRecovery = safetyFlags.includes('recovery_needed');
+  const dayTone = isPain ? 'Pain' : isFatigue ? 'Fatigue' : isRecovery ? 'Recovery' : 'Normal';
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
+      <div className="container-responsive">
+        <header className="py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+          <div className="flex-1" />
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white uppercase text-center flex-1">
+            TODAY
+          </h1>
+          <div className="flex-1 flex justify-end">
+            <button
+              onClick={() => navigate('/')}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label="Закрыть"
+            >
+              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+            </button>
+          </div>
+        </header>
+
+        <main className="py-4 tablet:py-6">
+          <StateContainer
+            status={runtimeStatus}
+            message={runtimeStatus === 'empty' ? 'План на сегодня не найден.' : errorMessage || undefined}
+            onRetry={() => {
+              if (runtimeStatus === 'offline') {
+                uiRuntimeAdapter.revalidate().finally(loadToday);
+              } else {
+                uiRuntimeAdapter.recover().finally(loadToday);
+              }
+            }}
+          >
+            {isPain && (
+              <TrustBanner tone="pain">
+                Сегодня важно беречь себя. Мы предлагаем безопасный режим и поддержку.
+              </TrustBanner>
+            )}
+            {isFatigue && !isPain && (
+              <TrustBanner tone="fatigue">
+                Усталость — нормальна. Мы адаптируем день, чтобы сохранить устойчивость.
+              </TrustBanner>
+            )}
+            {isRecovery && !isPain && !isFatigue && (
+              <TrustBanner tone="recovery">
+                Это день восстановления. Сила растёт, когда мы даём телу отдых.
+              </TrustBanner>
+            )}
+
+            {today && (
+              <div className="space-y-4">
+                <Card title="План дня" action={<span className="text-xs text-gray-500">Состояние: {dayTone}</span>}>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Сегодня мы держим курс с заботой о восстановлении.
+                  </p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <p>Калории: {today.day?.targets?.calories ?? '—'}</p>
+                    <p>Белки: {today.day?.targets?.protein ?? '—'}</p>
+                    <p>Жиры: {today.day?.targets?.fat ?? '—'}</p>
+                    <p>Углеводы: {today.day?.targets?.carbs ?? '—'}</p>
+                  </div>
+                </Card>
+
+                <Card title="Питание сегодня">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Маленькие шаги дают устойчивый результат. Сбалансируйте день без давления.
+                  </p>
+                  <div className="mt-3 text-sm text-gray-700 dark:text-gray-300">
+                    Съедено сегодня: {runtimeContext?.meals ? 'есть данные' : 'нет данных'}
+                  </div>
+                </Card>
+
+                <Card title="Тренировка сегодня">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Мы подстроим нагрузку под ваше самочувствие.
+                  </p>
+                  <div className="mt-3 text-sm text-gray-700 dark:text-gray-300">
+                    План: {today.day?.sessionPlan?.title ?? 'Запланировано'}
+                  </div>
+                </Card>
+
+                <Card title="Привычки">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Привычки укрепляют доверие к себе, даже в сложные дни.
+                  </p>
+                  <div className="mt-3 text-sm text-gray-700 dark:text-gray-300">
+                    Отмечено: {runtimeContext?.habits?.filter((h) => h.completed).length ?? 0} /{' '}
+                    {runtimeContext?.habits?.length ?? 0}
+                  </div>
+                </Card>
+
+                <Card title="Самочувствие">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Если чувствуете усталость или боль — мы сделаем день безопасным.
+                  </p>
+                  <div className="mt-3 text-sm text-gray-700 dark:text-gray-300">
+                    Сигналы: {isPain ? 'боль' : isFatigue ? 'усталость' : 'норма'}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            <div className="mt-6">
+              <Card tone="explainable" title="Почему сегодня так?">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Мы объясняем каждое изменение и выбор нагрузки.
+                </p>
+                <div className="mt-3">
+                  <ExplainabilityDrawer explainability={explainability} />
+                </div>
+              </Card>
+            </div>
+          </StateContainer>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default Today;

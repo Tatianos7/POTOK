@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { profileService } from './profileService';
+import type { PaywallExplainabilityDTO } from '../types/explainability';
 
 export interface EntitlementStatus {
   allowed: boolean;
@@ -68,6 +69,46 @@ class EntitlementService {
   async canExplain(userId: string): Promise<boolean> {
     const ent = await this.getEntitlements(userId);
     return Boolean(ent?.flags?.can_explain ?? false);
+  }
+
+  async load(): Promise<void> {
+    await this.getEntitlements();
+  }
+
+  async refresh(): Promise<void> {
+    await this.getEntitlements();
+  }
+
+  async offlineSnapshot(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  async revalidate(): Promise<void> {
+    await this.refresh();
+  }
+
+  async recover(): Promise<void> {
+    await this.refresh();
+  }
+
+  async explain(): Promise<PaywallExplainabilityDTO> {
+    const userId = await this.getSessionUserId();
+    const paywall = await this.getPaywallState('explainability', userId);
+    const ent = await this.getEntitlements(userId);
+    const trustScore = 50;
+
+    return {
+      source: 'entitlementService',
+      version: '1.0',
+      data_sources: ['entitlements', 'paywall_state'],
+      confidence: 0.9,
+      trust_score: trustScore,
+      decision_ref: paywall?.decision_ref ?? 'paywall:default',
+      safety_notes: [],
+      trust_level: trustScore,
+      safety_flags: [],
+      premium_reason: paywall?.reason ?? (ent?.tier === 'free' ? 'premium_required' : undefined),
+    };
   }
 }
 

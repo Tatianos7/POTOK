@@ -21,6 +21,7 @@ export interface UserProfile {
 
 class ProfileService {
   private readonly AVATAR_STORAGE_KEY = 'potok_user_avatar';
+  private userIdColumn: 'user_id' | 'id_user' | null = null;
 
   private async getSessionUserId(userId?: string): Promise<string> {
     if (!supabase) {
@@ -39,6 +40,23 @@ class ProfileService {
     return data.user.id;
   }
 
+  private async resolveUserIdColumn(): Promise<'user_id' | 'id_user'> {
+    if (this.userIdColumn) {
+      return this.userIdColumn;
+    }
+    if (!supabase) {
+      this.userIdColumn = 'user_id';
+      return this.userIdColumn;
+    }
+    const { error } = await supabase.from('user_profiles').select('user_id').limit(1);
+    if (error?.message?.includes('user_profiles.user_id does not exist')) {
+      this.userIdColumn = 'id_user';
+    } else {
+      this.userIdColumn = 'user_id';
+    }
+    return this.userIdColumn;
+  }
+
   // Получить профиль пользователя
   async getProfile(userId: string): Promise<UserProfile | null> {
     if (!supabase) {
@@ -46,6 +64,7 @@ class ProfileService {
     }
 
     const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = await this.resolveUserIdColumn();
 
     // Try Supabase first
     if (supabase) {
@@ -53,7 +72,7 @@ class ProfileService {
         const { data, error } = await supabase
           .from('user_profiles')
           .select('*')
-          .eq('user_id', sessionUserId)
+          .eq(userIdColumn, sessionUserId)
           .maybeSingle();
 
         if (error) {
@@ -70,7 +89,7 @@ class ProfileService {
           // Fallback to localStorage
         } else if (data) {
           const profile: UserProfile = {
-            user_id: data.user_id,
+            user_id: data.user_id ?? data.id_user,
             first_name: data.first_name || undefined,
             last_name: data.last_name || undefined,
             middle_name: data.middle_name || undefined,
@@ -107,6 +126,7 @@ class ProfileService {
   // Сохранить/обновить профиль пользователя
   async saveProfile(userId: string, profile: Partial<ProfileDetails>): Promise<void> {
     const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = await this.resolveUserIdColumn();
 
     const existingProfile = await this.getProfile(userId);
     const updatedProfile: UserProfile = {
@@ -133,7 +153,7 @@ class ProfileService {
         const { error } = await supabase
           .from('user_profiles')
           .upsert({
-            user_id: sessionUserId,
+            [userIdColumn]: sessionUserId,
             first_name: updatedProfile.first_name || null,
             last_name: updatedProfile.last_name || null,
             middle_name: updatedProfile.middle_name || null,
@@ -147,7 +167,7 @@ class ProfileService {
             has_premium: updatedProfile.has_premium,
             is_admin: updatedProfile.is_admin,
           }, {
-            onConflict: 'user_id',
+            onConflict: userIdColumn,
           });
 
         if (error) {
@@ -162,6 +182,7 @@ class ProfileService {
   // Обновить админ статус
   async updateAdminStatus(userId: string, isAdmin: boolean): Promise<void> {
     const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = await this.resolveUserIdColumn();
 
     // Try to update in Supabase
     if (supabase) {
@@ -169,7 +190,7 @@ class ProfileService {
         const { error } = await supabase
           .from('user_profiles')
           .update({ is_admin: isAdmin })
-          .eq('user_id', sessionUserId);
+          .eq(userIdColumn, sessionUserId);
 
         if (error) {
           console.error('[profileService] Supabase admin status update error:', error);
@@ -183,6 +204,7 @@ class ProfileService {
   // Обновить премиум статус
   async updatePremiumStatus(userId: string, hasPremium: boolean): Promise<void> {
     const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = await this.resolveUserIdColumn();
 
     // Try to update in Supabase
     if (supabase) {
@@ -190,7 +212,7 @@ class ProfileService {
         const { error } = await supabase
           .from('user_profiles')
           .update({ has_premium: hasPremium })
-          .eq('user_id', sessionUserId);
+          .eq(userIdColumn, sessionUserId);
 
         if (error) {
           console.error('[profileService] Supabase premium status update error:', error);
@@ -204,6 +226,7 @@ class ProfileService {
   // Сохранить аватар (base64 или URL)
   async saveAvatar(userId: string, avatarData: string): Promise<void> {
     const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = await this.resolveUserIdColumn();
 
     // Try to save to Supabase
     if (supabase) {
@@ -213,7 +236,7 @@ class ProfileService {
         const { error } = await supabase
           .from('user_profiles')
           .update({ avatar_url: avatarData })
-          .eq('user_id', sessionUserId);
+          .eq(userIdColumn, sessionUserId);
 
         if (error) {
           // Если профиля еще нет, создаем его
@@ -221,7 +244,7 @@ class ProfileService {
             const { error: insertError } = await supabase
               .from('user_profiles')
               .insert({
-                user_id: sessionUserId,
+                [userIdColumn]: sessionUserId,
                 avatar_url: avatarData,
                 has_premium: false,
                 is_admin: false,
@@ -251,6 +274,7 @@ class ProfileService {
   // Получить аватар
   async getAvatar(userId: string): Promise<string | null> {
     const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = await this.resolveUserIdColumn();
 
     // Try Supabase first
     if (supabase) {
@@ -258,7 +282,7 @@ class ProfileService {
         const { data, error } = await supabase
           .from('user_profiles')
           .select('avatar_url')
-          .eq('user_id', sessionUserId)
+          .eq(userIdColumn, sessionUserId)
           .maybeSingle();
 
         if (error && error.code !== 'PGRST116') {

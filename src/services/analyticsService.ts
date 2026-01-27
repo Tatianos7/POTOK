@@ -135,7 +135,7 @@ export async function getProgressTrends(
   }
   const sessionUserId = await getSessionUserId(userId);
 
-  const [foodRes, workoutRes, measurementRes] = await Promise.all([
+  const [foodRes, workoutDaysRes, measurementRes] = await Promise.all([
     supabase
       .from('food_diary_entries')
       .select('date, calories, protein, fat, carbs')
@@ -143,11 +143,11 @@ export async function getProgressTrends(
       .gte('date', fromDate)
       .lte('date', toDate),
     supabase
-      .from('workout_entries')
-      .select('sets, reps, weight, workout_day:workout_days(user_id, date)')
-      .eq('workout_day.user_id', sessionUserId)
-      .gte('workout_day.date', fromDate)
-      .lte('workout_day.date', toDate),
+      .from('workout_days')
+      .select('id, date')
+      .eq('user_id', sessionUserId)
+      .gte('date', fromDate)
+      .lte('date', toDate),
     supabase
       .from('measurement_history')
       .select('date, measurements')
@@ -157,8 +157,19 @@ export async function getProgressTrends(
   ]);
 
   if (foodRes.error) throw foodRes.error;
-  if (workoutRes.error) throw workoutRes.error;
+  if (workoutDaysRes.error) throw workoutDaysRes.error;
   if (measurementRes.error) throw measurementRes.error;
+
+  const dayIds = (workoutDaysRes.data || []).map((day) => day.id).filter(Boolean);
+  let workoutEntries: any[] = [];
+  if (dayIds.length > 0) {
+    const { data, error } = await supabase
+      .from('workout_entries')
+      .select('sets, reps, weight, workout_day:workout_days(date)')
+      .in('workout_day_id', dayIds);
+    if (error) throw error;
+    workoutEntries = data || [];
+  }
 
   const pointsMap = new Map<string, ProgressPoint>();
 
@@ -172,7 +183,7 @@ export async function getProgressTrends(
     pointsMap.set(date, existing);
   });
 
-  (workoutRes.data || []).forEach((row: any) => {
+  (workoutEntries || []).forEach((row: any) => {
     const date = row.workout_day?.date;
     if (!date) return;
     const existing = pointsMap.get(date) ?? { date };

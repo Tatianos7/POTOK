@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { trackEvent } from './analyticsService';
 import { aiRecommendationsService } from './aiRecommendationsService';
+import type { HabitsExplainabilityDTO } from '../types/explainability';
 
 export type HabitFrequency = 'daily' | 'weekly';
 
@@ -49,6 +50,16 @@ async function getSessionUserId(userId?: string): Promise<string> {
   }
 
   return data.user.id;
+}
+
+async function getTrustScore(userId: string): Promise<number> {
+  if (!supabase) return 50;
+  const { data } = await supabase
+    .from('ai_trust_scores')
+    .select('trust_score')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return Number(data?.trust_score ?? 50);
 }
 
 async function withRetry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 200): Promise<T> {
@@ -248,4 +259,48 @@ export async function getHabitsForDate(params: {
   });
 }
 
+export const habitsService = {
+  load: async (): Promise<void> => {
+    return Promise.resolve();
+  },
+  refresh: async (): Promise<void> => {
+    return Promise.resolve();
+  },
+  offlineSnapshot: async (): Promise<void> => {
+    return Promise.resolve();
+  },
+  revalidate: async (): Promise<void> => {
+    return Promise.resolve();
+  },
+  recover: async (): Promise<void> => {
+    return Promise.resolve();
+  },
+  explain: async (): Promise<HabitsExplainabilityDTO> => {
+    const userId = await getSessionUserId();
+    const today = new Date().toISOString().split('T')[0];
+    const habits = await getHabitsForDate({ userId, date: today });
+    const total = habits.length;
+    const completed = habits.filter((h) => h.completed).length;
+    const completionRate = total === 0 ? 0 : completed / total;
+    const confidence = total === 0 ? 0.2 : Math.min(1, 0.6 + completionRate * 0.4);
+    const trustScore = await getTrustScore(userId);
 
+    return {
+      source: 'habitsService',
+      version: '1.0',
+      data_sources: ['habits', 'habit_logs'],
+      confidence,
+      trust_score: trustScore,
+      decision_ref: 'habits:daily',
+      safety_notes: total === 0 ? ['Нет привычек на сегодня.'] : [],
+      trust_level: trustScore,
+      safety_flags: total === 0 ? ['data_gap'] : [],
+      premium_reason: undefined,
+    };
+  },
+  createHabit,
+  toggleHabitComplete,
+  getHabitStats,
+  requestHabitFeedback,
+  getHabitsForDate,
+};

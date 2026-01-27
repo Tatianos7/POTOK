@@ -2,17 +2,23 @@ import { useState, useEffect } from 'react';
 import { Food } from '../types';
 import { X } from 'lucide-react';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
+import { FoodDisplayUnit, foodDisplayUnits } from '../utils/foodUnits';
 
 interface ScanConfirmBottomSheetProps {
   food: Food | null;
   isOpen: boolean;
-  onConfirm: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', weight: number) => void;
+  onConfirm: (
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    amount: number,
+    unit: FoodDisplayUnit
+  ) => void;
   onReject: () => void;
 }
 
 const ScanConfirmBottomSheet = ({ food, isOpen, onConfirm, onReject }: ScanConfirmBottomSheetProps) => {
   const [selectedMeal, setSelectedMeal] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
   const [weight, setWeight] = useState('100');
+  const [unit, setUnit] = useState<FoodDisplayUnit>('г');
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
   const [currentY, setCurrentY] = useState(0);
@@ -21,6 +27,7 @@ const ScanConfirmBottomSheet = ({ food, isOpen, onConfirm, onReject }: ScanConfi
     if (isOpen && food) {
       setSelectedMeal(null);
       setWeight('100');
+      setUnit('г');
     }
   }, [isOpen, food]);
 
@@ -36,7 +43,7 @@ const ScanConfirmBottomSheet = ({ food, isOpen, onConfirm, onReject }: ScanConfi
 
   const handleConfirm = () => {
     if (!selectedMeal || !weight || parseFloat(weight) < 1) return;
-    onConfirm(selectedMeal, parseFloat(weight));
+    onConfirm(selectedMeal, parseFloat(weight), unit);
   };
 
   const handleWeightChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,21 +200,34 @@ const ScanConfirmBottomSheet = ({ food, isOpen, onConfirm, onReject }: ScanConfi
             </div>
           </div>
 
-          {/* Weight Input */}
+          {/* Amount Input */}
           <div>
             <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
-              Введите вес (в граммах) *
+              Количество *
             </label>
-            <input
-              type="number"
-              value={weight}
-              onChange={handleWeightChange}
-              min="1"
-              step="1"
-              className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 text-center text-lg font-semibold"
-              placeholder="100"
-              required
-            />
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={weight}
+                onChange={handleWeightChange}
+                min="1"
+                step={unit === 'шт' ? '1' : '0.1'}
+                className="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 text-center text-lg font-semibold"
+                placeholder="100"
+                required
+              />
+              <select
+                value={unit}
+                onChange={(e) => setUnit(e.target.value as FoodDisplayUnit)}
+                className="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+              >
+                {foodDisplayUnits.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Buttons */}

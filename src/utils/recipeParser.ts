@@ -9,6 +9,8 @@ export interface ParsedRecipeIngredient {
   unit: NormalizedUnit;
   amountText: string; // для отображения (с исходной единицей)
   amountGrams: number; // для расчётов (всегда в граммах)
+  displayAmount: string | null; // исходное количество для отображения
+  displayUnit: string | null; // исходная единица для отображения
 }
 
 // ============================================
@@ -635,6 +637,9 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   cleanedName = cleanedName.replace(/[.,;]/g, ' ');
   cleanedName = cleanedName.replace(/\s+/g, ' ').trim();
 
+  const displayAmount = amountValue !== null ? amountDisplay : null;
+  const displayUnit = finalDisplay || null;
+
   return {
     original,
     name: cleanedName || original,
@@ -642,6 +647,8 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
     unit: finalUnit,
     amountText: amountText.trim(),
     amountGrams: Math.round(amountGrams * 100) / 100,
+    displayAmount,
+    displayUnit,
   };
 }
 

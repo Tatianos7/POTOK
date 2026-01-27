@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabaseClient';
 import { entitlementService } from './entitlementService';
 import { profileService } from './profileService';
 import { programGenerationService } from './programGenerationService';
+import type { ProgramExplainabilityDTO } from '../types/explainability';
 import type {
   ProgramDayCardDTO,
   ProgramMyPlanDTO,
@@ -61,6 +62,16 @@ class ProgramDeliveryService {
   private adjustTrustScore(current: number, delta: number) {
     const next = Math.max(0, Math.min(100, Math.round(current + delta)));
     return next;
+  }
+
+  private async getTrustScore(userId: string): Promise<number> {
+    if (!supabase) return 50;
+    const { data } = await supabase
+      .from('ai_trust_scores')
+      .select('trust_score')
+      .eq('user_id', userId)
+      .maybeSingle();
+    return Number(data?.trust_score ?? 50);
   }
 
   async getActiveProgram(
@@ -301,6 +312,65 @@ class ProgramDeliveryService {
         status: day.session_status ?? 'planned',
         explainabilitySummary: day.explainability_summary ?? null,
       })),
+    };
+  }
+
+  async load(): Promise<void> {
+    await this.getActiveProgram();
+  }
+
+  async refresh(): Promise<void> {
+    await this.getActiveProgram();
+  }
+
+  async offlineSnapshot(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  async revalidate(): Promise<void> {
+    await this.refresh();
+  }
+
+  async recover(): Promise<void> {
+    await this.refresh();
+  }
+
+  async explain(): Promise<ProgramExplainabilityDTO> {
+    const { program, tier } = await this.getActiveProgram();
+    const programId = program?.id ?? program?.program_id ?? program?.programId;
+    if (!programId) {
+      return {
+        source: 'programDeliveryService',
+        version: '1.0',
+        data_sources: ['programs'],
+        confidence: 0.2,
+        trust_score: 50,
+        decision_ref: 'program:no_program',
+        safety_notes: ['Нет активной программы.'],
+        trust_level: 50,
+        safety_flags: ['data_gap'],
+        premium_reason: undefined,
+      };
+    }
+
+    const userId = await this.getSessionUserId();
+    const canExplain = await entitlementService.canExplain(userId);
+    const rows = await this.getProgramExplainability(programId);
+    const first = rows?.[0] as any;
+    const trustScore = await this.getTrustScore(userId);
+
+    return {
+      source: 'programDeliveryService',
+      version: '1.0',
+      data_sources: ['program_explainability', 'program_sessions'],
+      confidence: Number(first?.confidence ?? 0.7),
+      trust_score: trustScore,
+      decision_ref: first?.decision_ref ?? first?.decisionRef ?? 'program:default',
+      safety_notes: (first?.guard_notes?.safety_notes as string[]) ?? [],
+      adaptation_reason: first?.guard_notes?.reason_code ?? undefined,
+      trust_level: trustScore,
+      safety_flags: (first?.guard_notes?.flags as any) ?? [],
+      premium_reason: canExplain || tier !== 'free' ? undefined : 'explainability_locked',
     };
   }
 }

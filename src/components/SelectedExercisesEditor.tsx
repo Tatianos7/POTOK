@@ -8,6 +8,7 @@ interface SelectedExercisesEditorProps {
   exercises: Exercise[];
   onSave: (exercises: SelectedExercise[]) => void;
   onAddExercise?: () => void;
+  isSaving?: boolean;
 }
 
 const weekDays = [
@@ -26,6 +27,7 @@ const SelectedExercisesEditor = ({
   exercises,
   onSave,
   onAddExercise,
+  isSaving = false,
 }: SelectedExercisesEditorProps) => {
   const [editedExercises, setEditedExercises] = useState<SelectedExercise[]>([]);
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number | null>(null);
@@ -94,6 +96,7 @@ const SelectedExercisesEditor = ({
   };
 
   const handleSave = () => {
+    if (isSaving) return;
     onSave(editedExercises);
     onClose();
   };
@@ -159,7 +162,7 @@ const SelectedExercisesEditor = ({
                         Повторы
                       </th>
                       <th className="text-center py-1.5 min-[376px]:py-2 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3 text-[10px] min-[376px]:text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase w-16 min-[376px]:w-20">
-                        Вес
+                        Вес, кг
                       </th>
                     </tr>
                   </thead>
@@ -281,10 +284,10 @@ const SelectedExercisesEditor = ({
             </button>
             <button
               onClick={handleSave}
-              disabled={editedExercises.length === 0}
+              disabled={editedExercises.length === 0 || isSaving}
               className="w-full py-2.5 min-[376px]:py-3 sm:py-3 px-3 min-[376px]:px-4 rounded-lg sm:rounded-xl font-semibold text-[11px] min-[376px]:text-xs sm:text-sm uppercase bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              СОХРАНИТЬ
+              {isSaving ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
             </button>
           </div>
         </div>

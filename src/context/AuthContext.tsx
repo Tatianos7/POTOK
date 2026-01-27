@@ -9,11 +9,15 @@ import {
 } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { activityService } from '../services/activityService';
-import { profileService } from '../services/profileService';
+import { profileService, type UserProfile } from '../services/profileService';
 import { useTheme } from './ThemeContext';
+
+type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
 
 interface AuthContextType {
   user: User | null;
+  profile: UserProfile | null;
+  authStatus: AuthStatus;
   isLoading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   register: (credentials: RegisterCredentials) => Promise<void>;
@@ -24,7 +28,9 @@ interface AuthContextType {
   deleteAccount: () => void;
   logout: () => void;
   isAuthenticated: boolean;
-  getAllUsers: () => User[];
+  entitlements: Record<string, boolean> | null;
+  trustScore: number | null;
+  getAllUsers: () => Promise<User[]>;
   setAdminStatus: (userId: string, isAdmin: boolean) => Promise<void>;
 }
 
@@ -32,12 +38,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
+  const [entitlements, setEntitlements] = useState<Record<string, boolean> | null>(null);
+  const [trustScore, setTrustScore] = useState<number | null>(null);
   const { setThemeExplicit } = useTheme();
 
-  const buildUser = async (sessionUser: Session['user']): Promise<User> => {
-    const supabaseProfile = await profileService.getProfile(sessionUser.id);
+  const buildUser = async (
+    sessionUser: Session['user']
+  ): Promise<{ user: User; profile: UserProfile | null }> => {
+    let supabaseProfile: UserProfile | null = null;
+    try {
+      supabaseProfile = await profileService.getProfile(sessionUser.id);
+    } catch (error) {
+      console.warn('[AuthContext] getProfile failed, continue without profile:', error);
+    }
     const email = sessionUser.email ?? supabaseProfile?.email ?? undefined;
     const phone = sessionUser.phone ?? supabaseProfile?.phone ?? undefined;
     const firstName =
@@ -60,6 +76,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       'Пользователь';
 
     return {
+      profile: supabaseProfile ?? null,
+      user: {
       id: sessionUser.id,
       name,
       email,
@@ -78,12 +96,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         phone,
       },
       isAdmin: supabaseProfile?.is_admin ?? false,
+      },
     };
+  };
+
+  const clearSessionState = () => {
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setEntitlements(null);
+    setTrustScore(null);
+    setAuthStatus('unauthenticated');
   };
 
   useEffect(() => {
     if (!supabase) {
-      setIsLoading(false);
+      setAuthStatus('unauthenticated');
       return;
     }
 
@@ -103,19 +131,47 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (currentSession?.user) {
         try {
-          const builtUser = await buildUser(currentSession.user);
+          const { user: builtUser, profile: builtProfile } = await buildUser(currentSession.user);
           if (!isMounted) return;
           setUser(builtUser);
+          setProfile(builtProfile);
+          setAuthStatus('authenticated');
           activityService.updateActivity(builtUser.id);
         } catch (buildError) {
           console.error('[AuthContext] buildUser error:', buildError);
-          setUser(null);
+          const fallbackUser: User = {
+            id: currentSession.user.id,
+            name:
+              currentSession.user.email ||
+              currentSession.user.phone ||
+              'Пользователь',
+            email: currentSession.user.email ?? undefined,
+            phone: currentSession.user.phone ?? undefined,
+            hasPremium: false,
+            createdAt: currentSession.user.created_at || new Date().toISOString(),
+            profile: {
+              firstName:
+                (currentSession.user.user_metadata?.first_name as string | undefined) || '',
+              lastName:
+                (currentSession.user.user_metadata?.last_name as string | undefined) || undefined,
+              middleName:
+                (currentSession.user.user_metadata?.middle_name as string | undefined) || undefined,
+              birthDate: undefined,
+              age: undefined,
+              height: undefined,
+              goal: undefined,
+              email: currentSession.user.email ?? undefined,
+              phone: currentSession.user.phone ?? undefined,
+            },
+            isAdmin: false,
+          };
+          setUser(fallbackUser);
+          setProfile(null);
+          setAuthStatus('authenticated');
         }
       } else {
-        setUser(null);
+        clearSessionState();
       }
-
-      setIsLoading(false);
     };
 
     init();
@@ -124,16 +180,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setSession(newSession);
       if (newSession?.user) {
         try {
-          const builtUser = await buildUser(newSession.user);
+          const { user: builtUser, profile: builtProfile } = await buildUser(newSession.user);
           if (!isMounted) return;
           setUser(builtUser);
+          setProfile(builtProfile);
+          setAuthStatus('authenticated');
           activityService.updateActivity(builtUser.id);
         } catch (buildError) {
           console.error('[AuthContext] buildUser error:', buildError);
-          setUser(null);
+          const fallbackUser: User = {
+            id: newSession.user.id,
+            name:
+              newSession.user.email ||
+              newSession.user.phone ||
+              'Пользователь',
+            email: newSession.user.email ?? undefined,
+            phone: newSession.user.phone ?? undefined,
+            hasPremium: false,
+            createdAt: newSession.user.created_at || new Date().toISOString(),
+            profile: {
+              firstName:
+                (newSession.user.user_metadata?.first_name as string | undefined) || '',
+              lastName:
+                (newSession.user.user_metadata?.last_name as string | undefined) || undefined,
+              middleName:
+                (newSession.user.user_metadata?.middle_name as string | undefined) || undefined,
+              birthDate: undefined,
+              age: undefined,
+              height: undefined,
+              goal: undefined,
+              email: newSession.user.email ?? undefined,
+              phone: newSession.user.phone ?? undefined,
+            },
+            isAdmin: false,
+          };
+          setUser(fallbackUser);
+          setProfile(null);
+          setAuthStatus('authenticated');
         }
       } else {
-        setUser(null);
+        clearSessionState();
       }
     });
 
@@ -288,33 +374,121 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = () => {
     if (!supabase) {
-      setUser(null);
+      clearSessionState();
       return;
     }
     void supabase.auth.signOut();
-    setUser(null);
+    clearSessionState();
   };
 
   const deleteAccount = () => {
     if (!supabase || !user) return;
     void supabase.auth.signOut();
-    setUser(null);
+    clearSessionState();
     setThemeExplicit('light');
   };
 
-      const getAllUsers = () => {
-        console.warn('[AuthContext] getAllUsers is not available with Supabase Auth');
-        return [];
+      const mapProfileToUser = (profile: Record<string, any>): User | null => {
+        const id = profile?.user_id ?? profile?.id_user ?? profile?.id;
+        if (!id) {
+          return null;
+        }
+        const firstName = profile?.first_name || '';
+        const lastName = profile?.last_name || undefined;
+        const name =
+          `${firstName} ${lastName ?? ''}`.trim() ||
+          profile?.email ||
+          profile?.phone ||
+          'Пользователь';
+
+        return {
+          id,
+          name,
+          email: profile?.email || undefined,
+          phone: profile?.phone || undefined,
+          hasPremium: profile?.has_premium ?? false,
+          createdAt: profile?.created_at || new Date().toISOString(),
+          profile: {
+            firstName,
+            lastName,
+            middleName: profile?.middle_name || undefined,
+            birthDate: profile?.birth_date || undefined,
+            age: profile?.age ?? undefined,
+            height: profile?.height ?? undefined,
+            goal: profile?.goal ?? undefined,
+            email: profile?.email || undefined,
+            phone: profile?.phone || undefined,
+          },
+          isAdmin: profile?.is_admin ?? false,
+        };
+      };
+
+      const getAllUsers = async (): Promise<User[]> => {
+        if (!supabase) {
+          return [];
+        }
+        try {
+          let { data, error } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (error && error.message?.includes('created_at')) {
+            const fallback = await supabase.from('user_profiles').select('*');
+            if (!fallback.error) {
+              data = fallback.data;
+              error = null;
+            } else {
+              error = fallback.error;
+            }
+          }
+
+          if (error) {
+            if (error.code !== 'PGRST205') {
+              console.warn('[AuthContext] getAllUsers error:', error.message || error);
+            }
+            return [];
+          }
+
+          return (data || [])
+            .map((profile) => mapProfileToUser(profile))
+            .filter((userEntry): userEntry is User => Boolean(userEntry));
+        } catch (err) {
+          console.warn('[AuthContext] getAllUsers failed:', err);
+          return [];
+        }
       };
 
       const setAdminStatus = async (userId: string, isAdmin: boolean) => {
-        console.warn('[AuthContext] setAdminStatus is not available with Supabase Auth', userId, isAdmin);
+        if (!supabase) return;
+        const updateByColumn = async (column: 'user_id' | 'id_user') => {
+          return supabase
+            .from('user_profiles')
+            .update({ is_admin: isAdmin })
+            .eq(column, userId);
+        };
+        const { error } = await updateByColumn('user_id');
+        if (error) {
+          if (error.message?.includes('user_profiles.user_id does not exist')) {
+            const fallback = await updateByColumn('id_user');
+            if (fallback.error) {
+              console.warn('[AuthContext] setAdminStatus error:', fallback.error.message || fallback.error);
+            }
+          } else {
+            console.warn('[AuthContext] setAdminStatus error:', error.message || error);
+          }
+        }
       };
+
+      const isLoading = authStatus === 'loading';
+      const isAuthenticated = authStatus === 'authenticated';
 
       return (
         <AuthContext.Provider
           value={{
             user,
+            profile,
+            authStatus,
             isLoading,
             login,
             register,
@@ -324,7 +498,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             updatePassword,
             deleteAccount,
             logout,
-            isAuthenticated: !!session?.user,
+            isAuthenticated,
+            entitlements,
+            trustScore,
             getAllUsers,
             setAdminStatus,
           }}

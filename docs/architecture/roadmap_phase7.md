@@ -67,3 +67,36 @@ Phase 7.1 Knowledge Base v1 — Production Ready
 - Trust/Safety UX rules + explainability
 - Vision Pro & voice hooks readiness
 - Sprints 7.3.3.1–7.3.3.4
+
+### 7.3.4 Legal & Account Layer (1–2 weeks)
+- Profile / Payments / Notifications / Settings / Support
+- Legal screens (privacy, consent, offer, refunds, disclaimer)
+- Trust & safety gating for critical actions
+
+### 7.3.5 Stage E — Long-Term Engagement & AI Coach UX (1–2 weeks)
+- Emotional coaching layer
+- Relapse/return loops
+- Social & support readiness
+- Voice/Vision hooks for future AI Companion
+
+## Phase 7.4 — Full UI Implementation (Calm Power Coach)
+
+### 7.4.1 Core Manual UX (Stabilization)
+- Goal / Measurements / Food Diary / Training Diary / Progress
+- Offline fallback, idempotency, base/display units
+
+### 7.4.2 Habits Engine (Architecture)
+- Habit domain model + streak/recovery
+- Trust & safety integration
+- Explainability bundles
+
+### 7.4.3 Progress Intelligence (Architecture)
+- Life timeline + trends
+- Insight engine
+- Premium interpretation layer
+
+### 7.4.4 UI Runtime & Experience Layer (State Machine + Contracts)
+- UI State Machine for all key screens
+- Screen Contracts (reads/writes/derived/explainability)
+- Navigation + global runtime state
+- Explainability overlay, safety hooks

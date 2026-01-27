@@ -60,6 +60,10 @@ export interface WorkoutEntry {
   sets: number;
   reps: number;
   weight: number;
+  baseUnit?: string; // базовая единица (например, кг)
+  displayUnit?: string; // отображаемая единица (например, кг)
+  displayAmount?: number; // отображаемое значение веса
+  idempotencyKey?: string; // ключ для dedup/upsert
   created_at?: string;
   updated_at?: string;
   exercise?: Exercise;

@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabaseClient';
 import { profileService } from './profileService';
 import { programDeliveryService } from './programDeliveryService';
+import { entitlementService } from './entitlementService';
+import type { TodayExplainabilityDTO } from '../types/explainability';
 import type {
   ProgramDayCardDTO,
   ProgramMyPlanDTO,
@@ -52,6 +54,28 @@ class ProgramUxRuntimeService {
     if (profile?.is_admin) return 'coach';
     if (profile?.has_premium) return 'pro';
     return 'free';
+  }
+
+  private async getTrustScore(userId: string): Promise<number> {
+    if (!supabase) return 50;
+    const { data } = await supabase
+      .from('ai_trust_scores')
+      .select('trust_score')
+      .eq('user_id', userId)
+      .maybeSingle();
+    return Number(data?.trust_score ?? 50);
+  }
+
+  private async resolveActiveProgram(): Promise<{ programId: string; programType: ProgramType } | null> {
+    try {
+      const { program } = await programDeliveryService.getActiveProgram();
+      const programId = program?.id ?? program?.program_id ?? program?.programId;
+      if (!programId) return null;
+      const programType = (program?.program_type ?? program?.programType ?? 'nutrition') as ProgramType;
+      return { programId, programType };
+    } catch (error) {
+      return null;
+    }
   }
 
   private applyEntitlementToExplainability(
@@ -220,6 +244,65 @@ class ProgramUxRuntimeService {
       skippedDays: skipped,
       plannedDays: planned,
       adherenceRate,
+    };
+  }
+
+  async load(): Promise<void> {
+    await this.resolveActiveProgram();
+  }
+
+  async refresh(): Promise<void> {
+    await this.resolveActiveProgram();
+  }
+
+  async offlineSnapshot(): Promise<void> {
+    return Promise.resolve();
+  }
+
+  async revalidate(): Promise<void> {
+    await this.refresh();
+  }
+
+  async recover(): Promise<void> {
+    await this.refresh();
+  }
+
+  async explain(): Promise<TodayExplainabilityDTO> {
+    const active = await this.resolveActiveProgram();
+    if (!active) {
+      return {
+        source: 'programUxRuntimeService',
+        version: '1.0',
+        data_sources: ['programs'],
+        confidence: 0.2,
+        trust_score: 50,
+        decision_ref: 'today:no_program',
+        safety_notes: ['Нет активной программы.'],
+        trust_level: 50,
+        safety_flags: ['data_gap'],
+        premium_reason: undefined,
+      };
+    }
+
+    const userId = await this.getSessionUserId();
+    const canExplain = await entitlementService.canExplain(userId);
+    const today = new Date().toISOString().split('T')[0];
+    const details = await programDeliveryService.getProgramDayDetails(active.programId, today);
+    const explainability = details?.explainability?.[0];
+    const trustScore = await this.getTrustScore(userId);
+
+    return {
+      source: 'programUxRuntimeService',
+      version: '1.0',
+      data_sources: ['program_sessions', 'program_explainability', 'program_guard_events'],
+      confidence: Number(explainability?.confidence ?? 0.7),
+      trust_score: trustScore,
+      decision_ref: explainability?.decision_ref ?? 'today:default',
+      safety_notes: (explainability?.guard_notes?.safety_notes as string[]) ?? [],
+      adaptation_reason: explainability?.guard_notes?.reason_code ?? undefined,
+      trust_level: trustScore,
+      safety_flags: (explainability?.guard_notes?.flags as any) ?? [],
+      premium_reason: canExplain ? undefined : 'explainability_locked',
     };
   }
 }

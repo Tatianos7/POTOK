@@ -22,6 +22,8 @@ export interface Recipe {
     proteins: number;
     fats: number;
     carbs: number;
+    display_amount?: string | null;
+    display_unit?: string | null;
   }>;
   instructions?: string;
   category?: string;

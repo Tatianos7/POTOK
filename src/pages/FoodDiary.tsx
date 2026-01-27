@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check, Heart, Copy, Trash2, StickyNote } from 'lucide-react';
 import { DailyMeals, MealEntry, Food, UserCustomFood } from '../types';
@@ -24,6 +24,10 @@ import MealNoteModal from '../components/MealNoteModal';
 import SaveMealAsRecipeModal from '../components/SaveMealAsRecipeModal';
 import { recipesService } from '../services/recipesService';
 import { localAIFoodAnalyzer, LocalIngredient } from '../services/localAIFoodAnalyzer';
+import { convertDisplayToGrams, FoodDisplayUnit, formatDisplayAmount } from '../utils/foodUnits';
+import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
+import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
+import type { BaseExplainabilityDTO } from '../types/explainability';
 
 const FoodDiary = () => {
   const navigate = useNavigate();
@@ -40,6 +44,16 @@ const FoodDiary = () => {
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [dailyMeals, setDailyMeals] = useState<DailyMeals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [goalTargets, setGoalTargets] = useState<{
+    calories: number;
+    proteins: number;
+    fats: number;
+    carbs: number;
+  } | null>(null);
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
+  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
+  const [trustMessage, setTrustMessage] = useState<string | null>(null);
   
   // Modal states
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -188,34 +202,65 @@ const FoodDiary = () => {
     snack: 'Перекус',
   };
 
-  // Load meals for selected date (приоритет localStorage для мгновенного отображения)
-  useEffect(() => {
+  const reloadMeals = useCallback(async () => {
     if (!user?.id) return;
 
-    // Очищаем старые данные
     setDailyMeals(null);
     setIsLoading(true);
+    setErrorMessage(null);
+    setTrustMessage(null);
 
-    // Загружаем данные (getMealsForDate приоритизирует localStorage, затем синхронизирует с Supabase в фоне)
-    mealService.getMealsForDate(user.id, selectedDate)
-      .then((meals) => {
-        setDailyMeals(meals);
-        setIsLoading(false);
-      })
-      .catch((error) => {
-        console.error('[FoodDiary] Error loading meals:', error);
-        // В случае ошибки показываем пустой дневник
-        setDailyMeals({
+    try {
+      const state = await uiRuntimeAdapter.getFoodDiaryState(user.id, selectedDate);
+      setRuntimeStatus(state.status);
+      setExplainability(state.explainability ?? null);
+      setTrustMessage(state.trust?.message ?? null);
+      setDailyMeals(
+        state.meals || {
           date: selectedDate,
           breakfast: [],
           lunch: [],
           dinner: [],
           snack: [],
           water: 0,
+        }
+      );
+      if (state.goal) {
+        setGoalTargets({
+          calories: Number(state.goal.calories) || 0,
+          proteins: Number(state.goal.protein) || 0,
+          fats: Number(state.goal.fat) || 0,
+          carbs: Number(state.goal.carbs) || 0,
         });
-        setIsLoading(false);
+      } else {
+        setGoalTargets(null);
+      }
+      if (state.status === 'error') {
+        setErrorMessage(state.message || 'Не удалось загрузить дневник. Проверьте соединение и попробуйте снова.');
+      }
+    } catch (error) {
+      console.error('[FoodDiary] Error loading meals:', error);
+      setRuntimeStatus('error');
+      setErrorMessage('Не удалось загрузить дневник. Проверьте соединение и попробуйте снова.');
+      setDailyMeals({
+        date: selectedDate,
+        breakfast: [],
+        lunch: [],
+        dinner: [],
+        snack: [],
+        water: 0,
       });
+    } finally {
+      setIsLoading(false);
+    }
   }, [selectedDate, user?.id]);
+
+  // Load meals for selected date (приоритет localStorage для мгновенного отображения)
+  useEffect(() => {
+    reloadMeals();
+  }, [reloadMeals]);
+
+  // Goal targets handled by uiRuntimeAdapter in reloadMeals
 
   // Обработчик синхронизации данных с Supabase
   useEffect(() => {
@@ -240,12 +285,15 @@ const FoodDiary = () => {
   const dayTotals = dailyMeals ? mealService.calculateDayTotals(dailyMeals) : { calories: 0, protein: 0, fat: 0, carbs: 0 };
   
   // Get goal data (if exists) - используем правильный ключ
-  const goalData = user?.id ? (() => {
+  const goalData = useMemo(() => {
+    if (goalTargets) {
+      return goalTargets;
+    }
+    if (!user?.id) return null;
     try {
       const stored = localStorage.getItem(`goal_${user.id}`);
       if (!stored) return null;
       const parsed = JSON.parse(stored);
-      // Преобразуем строки в числа
       return {
         calories: parseFloat(parsed.calories) || 0,
         proteins: parseFloat(parsed.proteins) || 0,
@@ -255,7 +303,7 @@ const FoodDiary = () => {
     } catch {
       return null;
     }
-  })() : null;
+  }, [goalTargets, user?.id]);
 
   // Дневные нормы из целей (значения по умолчанию, если цели нет)
   const dailyCalories = goalData?.calories || 2000;
@@ -283,6 +331,11 @@ const FoodDiary = () => {
 
   // Проверяем, есть ли перебор по любому из показателей
   const hasOverConsumption = overCalories > 0 || overProtein > 0 || overFat > 0 || overCarbs > 0;
+
+  const reportError = (message: string, error?: unknown) => {
+    console.error('[FoodDiary]', message, error);
+    setErrorMessage(message);
+  };
 
   const handleMealClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
     setSelectedMealType(mealType);
@@ -317,20 +370,29 @@ const FoodDiary = () => {
     }
   };
 
-  const handleConfirmScannedFood = async (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', weight: number) => {
+  const handleConfirmScannedFood = async (
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    amount: number,
+    unit: FoodDisplayUnit
+  ) => {
     if (!user?.id || !scannedFood || !dailyMeals) return;
 
     // Пересчитываем калории и БЖУ на основе веса
-    const k = weight / 100;
+    const grams = convertDisplayToGrams(amount, unit, scannedFood.name);
+    const k = grams / 100;
     const entry: MealEntry = {
       id: `meal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       foodId: scannedFood.id,
       food: scannedFood,
-      weight: weight,
+      weight: grams,
       calories: scannedFood.calories * k,
       protein: scannedFood.protein * k,
       fat: scannedFood.fat * k,
       carbs: scannedFood.carbs * k,
+      baseUnit: 'г',
+      displayUnit: unit,
+      displayAmount: amount,
+      idempotencyKey: buildIdempotencyKey(mealType, scannedFood.id),
     };
 
     const normalizedEntry = normalizeEntry(entry);
@@ -339,7 +401,16 @@ const FoodDiary = () => {
     setDailyMeals((prev) => {
       if (!prev) return prev;
       const updated = { ...prev };
-      updated[mealType] = [...updated[mealType], normalizedEntry];
+      const list = [...updated[mealType]];
+      const existingIndex = list.findIndex(
+        (item) => item.idempotencyKey && item.idempotencyKey === normalizedEntry.idempotencyKey
+      );
+      if (existingIndex >= 0) {
+        list[existingIndex] = normalizedEntry;
+      } else {
+        list.push(normalizedEntry);
+      }
+      updated[mealType] = list;
       return updated;
     });
     
@@ -354,7 +425,7 @@ const FoodDiary = () => {
 
     // Сохраняем в фоне (не перезагружаем данные, чтобы не потерять оптимистичное обновление)
     mealService.addMealEntry(user.id, selectedDate, mealType, normalizedEntry).catch((error) => {
-      console.error('[FoodDiary] Ошибка сохранения продукта:', error);
+      reportError('Не удалось сохранить продукт. Проверьте соединение и попробуйте снова.', error);
       // В случае ошибки откатываем изменение
       mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
         setDailyMeals(meals);
@@ -375,7 +446,10 @@ const FoodDiary = () => {
 
     const mealTypeToExpand = selectedMealType;
     console.log('[FoodDiary] Adding food to', mealTypeToExpand, entry);
-    const normalizedEntry = normalizeEntry(entry);
+    const normalizedEntry = normalizeEntry({
+      ...entry,
+      idempotencyKey: entry.idempotencyKey || buildIdempotencyKey(selectedMealType, entry.foodId),
+    });
 
     // Оптимистичное обновление - сразу обновляем UI
     setDailyMeals((prev) => {
@@ -392,7 +466,16 @@ const FoodDiary = () => {
         };
       }
       const updated = { ...prev };
-      updated[selectedMealType] = [...(updated[selectedMealType] || []), normalizedEntry];
+      const list = [...(updated[selectedMealType] || [])];
+      const existingIndex = list.findIndex(
+        (item) => item.idempotencyKey && item.idempotencyKey === normalizedEntry.idempotencyKey
+      );
+      if (existingIndex >= 0) {
+        list[existingIndex] = normalizedEntry;
+      } else {
+        list.push(normalizedEntry);
+      }
+      updated[selectedMealType] = list;
       console.log('[FoodDiary] Updated dailyMeals:', { mealType: selectedMealType, count: updated[selectedMealType].length });
       return updated;
     });
@@ -409,7 +492,7 @@ const FoodDiary = () => {
 
     // Сохраняем в фоне
     mealService.addMealEntry(user.id, selectedDate, selectedMealType, normalizedEntry).catch((error) => {
-      console.error('[FoodDiary] Ошибка сохранения продукта:', error);
+      reportError('Не удалось сохранить продукт. Проверьте соединение и попробуйте снова.', error);
       // В случае ошибки откатываем изменение
       mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
         setDailyMeals(meals);
@@ -439,7 +522,7 @@ const FoodDiary = () => {
         console.log('[FoodDiary] Water saved successfully:', newWater);
       })
       .catch((error) => {
-        console.error('[FoodDiary] Ошибка сохранения воды:', error);
+        reportError('Не удалось сохранить воду. Проверьте соединение и попробуйте снова.', error);
         // В случае ошибки откатываем изменение
         mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
           setDailyMeals(meals);
@@ -457,6 +540,10 @@ const FoodDiary = () => {
     setIsEditEntryModalOpen(true);
   };
 
+  const buildIdempotencyKey = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', foodId: string) => {
+    return `${selectedDate}:${mealType}:${foodId}`;
+  };
+
   // Нормализация числовых полей записи, чтобы вес/КБЖУ сразу были числами
   const normalizeEntry = (entry: MealEntry): MealEntry => ({
     ...entry,
@@ -466,11 +553,18 @@ const FoodDiary = () => {
     fat: Number(entry.fat) || 0,
     carbs: Number(entry.carbs) || 0,
     note: entry.note || null, // Сохраняем заметку
+    baseUnit: entry.baseUnit || 'г',
+    displayUnit: entry.displayUnit || 'г',
+    displayAmount: Number(entry.displayAmount ?? entry.weight) || 0,
+    idempotencyKey: entry.idempotencyKey,
   });
 
   const handleUpdateEntry = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', updatedEntry: MealEntry) => {
     if (!user?.id || !dailyMeals) return;
-    const normalizedEntry = normalizeEntry(updatedEntry);
+    const normalizedEntry = normalizeEntry({
+      ...updatedEntry,
+      idempotencyKey: updatedEntry.idempotencyKey || buildIdempotencyKey(mealType, updatedEntry.foodId),
+    });
 
     // Оптимистичное обновление - сразу обновляем UI
     setDailyMeals((prev) => {
@@ -490,7 +584,7 @@ const FoodDiary = () => {
 
     // Сохраняем в фоне
     mealService.updateMealEntry(user.id, selectedDate, mealType, updatedEntry.id, normalizedEntry).catch((error) => {
-      console.error('[FoodDiary] Ошибка обновления продукта:', error);
+      reportError('Не удалось обновить продукт. Проверьте соединение и попробуйте снова.', error);
       // В случае ошибки откатываем изменение
       mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
         setDailyMeals(meals);
@@ -535,7 +629,7 @@ const FoodDiary = () => {
 
     // Сохраняем в фоне (не перезагружаем данные, чтобы не потерять оптимистичное обновление)
     mealService.removeMealEntry(user.id, selectedDate, mealTypeToDelete, entryIdToDelete).catch((error) => {
-      console.error('[FoodDiary] Ошибка удаления продукта:', error);
+      reportError('Не удалось удалить продукт. Проверьте соединение и попробуйте снова.', error);
       // В случае ошибки откатываем изменение
       mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
         setDailyMeals(meals);
@@ -572,7 +666,7 @@ const FoodDiary = () => {
 
     // Сохраняем в фоне
     mealService.clearMealType(user.id, selectedDate, mealType).catch((error) => {
-      console.error('[FoodDiary] Ошибка очистки приёма пищи:', error);
+      reportError('Не удалось очистить приём пищи. Проверьте соединение и попробуйте снова.', error);
       // В случае ошибки откатываем изменение
       mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
         setDailyMeals(meals);
@@ -620,7 +714,7 @@ const FoodDiary = () => {
 
     // Сохраняем в фоне
     mealService.saveMealNote(user.id, selectedDate, noteMealType, note).catch((error) => {
-      console.error('[FoodDiary] Ошибка сохранения заметки:', error);
+      reportError('Не удалось сохранить заметку. Проверьте соединение и попробуйте снова.', error);
       // В случае ошибки откатываем изменение
       mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
         setDailyMeals(meals);
@@ -658,7 +752,7 @@ const FoodDiary = () => {
 
     // Сохраняем в фоне
     mealService.saveMealNote(user.id, selectedDate, mealType, '').catch((error) => {
-      console.error('[FoodDiary] Ошибка удаления заметки:', error);
+      reportError('Не удалось удалить заметку. Проверьте соединение и попробуйте снова.', error);
       // В случае ошибки откатываем изменение
       mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
         setDailyMeals(meals);
@@ -711,7 +805,7 @@ const FoodDiary = () => {
       // Показываем уведомление
       alert(`Рецепт "${name}" сохранён в "Мои рецепты"`);
     } catch (error) {
-      console.error('[FoodDiary] Ошибка сохранения рецепта:', error);
+      reportError('Не удалось сохранить рецепт. Проверьте соединение и попробуйте снова.', error);
       alert('Ошибка при сохранении рецепта');
     }
   };
@@ -764,8 +858,7 @@ const FoodDiary = () => {
   };
 
   if (!user) {
-    navigate('/login');
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   // Компонент блока приёма пищи с локальным меню
@@ -991,7 +1084,7 @@ const FoodDiary = () => {
                           {getFoodDisplayName(entry.food)}
                         </span>
                         <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap" style={{ marginLeft: '10px' }}>
-                          {Math.round(Number(entry.weight) || 0)} г
+                          {formatDisplayAmount(entry.displayAmount, entry.displayUnit) || `${Math.round(Number(entry.weight) || 0)} г`}
                         </span>
                       </p>
                       <div className="flex items-center gap-1.5 mobile-lg:gap-2 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
@@ -1095,6 +1188,52 @@ const FoodDiary = () => {
         </header>
 
         <main className="py-4 tablet:py-6">
+          {runtimeStatus === 'offline' && !errorMessage && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Работаем офлайн. Данные могут быть неактуальны.
+              <button
+                onClick={() => {
+                  uiRuntimeAdapter.revalidate().finally(reloadMeals);
+                }}
+                className="ml-3 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
+              >
+                Обновить
+              </button>
+            </div>
+          )}
+          {runtimeStatus === 'recovery' && (
+            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Идёт восстановление данных. Продолжаем безопасно.
+            </div>
+          )}
+          {errorMessage && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+              <div className="flex flex-col gap-2 mobile-lg:flex-row mobile-lg:items-center mobile-lg:justify-between">
+                <span>{errorMessage}</span>
+                {trustMessage && (
+                  <span className="text-xs text-red-700 dark:text-red-200">{trustMessage}</span>
+                )}
+                <button
+                  onClick={() => {
+                    uiRuntimeAdapter.recover().finally(reloadMeals);
+                  }}
+                  className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-700 dark:text-red-200 dark:hover:bg-red-900/50"
+                >
+                  Повторить
+                </button>
+              </div>
+            </div>
+          )}
+          {runtimeStatus === 'empty' && !isLoading && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              День пока пустой. Добавьте продукты, чтобы начать.
+            </div>
+          )}
+          {explainability && (
+            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
+              Доступно объяснение: «Почему так?»
+            </div>
+          )}
           {/* Loading indicator */}
           {isLoading && (
             <div className="flex items-center justify-center py-8">
@@ -1251,6 +1390,11 @@ const FoodDiary = () => {
             </div>
           </div>
           )}
+
+          {/* Explainability */}
+          <div className="mb-6">
+            <ExplainabilityDrawer explainability={explainability} />
+          </div>
 
           {/* Water Intake Tracker */}
           {!isLoading && (
@@ -1453,6 +1597,10 @@ const FoodDiary = () => {
                 protein: food.protein * k,
                 fat: food.fat * k,
                 carbs: food.carbs * k,
+                baseUnit: 'г',
+                displayUnit: 'г',
+                displayAmount: grams,
+                idempotencyKey: buildIdempotencyKey(selectedMealType, food.id),
               };
             });
 
@@ -1460,7 +1608,18 @@ const FoodDiary = () => {
             setDailyMeals((prev) => {
               if (!prev) return prev;
               const updated = { ...prev };
-              updated[selectedMealType] = [...updated[selectedMealType], ...entries];
+              const list = [...updated[selectedMealType]];
+              entries.forEach((entry) => {
+                const existingIndex = list.findIndex(
+                  (item) => item.idempotencyKey && item.idempotencyKey === entry.idempotencyKey
+                );
+                if (existingIndex >= 0) {
+                  list[existingIndex] = entry;
+                } else {
+                  list.push(entry);
+                }
+              });
+              updated[selectedMealType] = list;
               return updated;
             });
             
@@ -1477,7 +1636,7 @@ const FoodDiary = () => {
             Promise.all(
               entries.map((entry) => mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry))
             ).catch((error) => {
-              console.error('[FoodDiary] Ошибка сохранения рецепта:', error);
+              reportError('Не удалось сохранить рецепт. Проверьте соединение и попробуйте снова.', error);
               // В случае ошибки откатываем изменение
               mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
                 setDailyMeals(meals);
@@ -1537,7 +1696,7 @@ const FoodDiary = () => {
               // Показываем уведомление об успехе
               alert(`Приём пищи скопирован на ${targetDate} в ${mealTypeNames[targetMealType]}`);
             } catch (error) {
-              console.error('[FoodDiary] Ошибка копирования приёма пищи:', error);
+              reportError('Не удалось скопировать приём пищи. Проверьте соединение и попробуйте снова.', error);
               alert('Ошибка при копировании приёма пищи');
             }
           }}
@@ -1595,17 +1754,30 @@ const FoodDiary = () => {
               foodId: food.id,
               food,
               weight,
-              calories: Math.round(food.calories * multiplier),
-              protein: Math.round((food.protein * multiplier) * 10) / 10,
-              fat: Math.round((food.fat * multiplier) * 10) / 10,
-              carbs: Math.round((food.carbs * multiplier) * 10) / 10,
+              calories: food.calories * multiplier,
+              protein: food.protein * multiplier,
+              fat: food.fat * multiplier,
+              carbs: food.carbs * multiplier,
+              baseUnit: 'г',
+              displayUnit: 'г',
+              displayAmount: weight,
+              idempotencyKey: buildIdempotencyKey(mealType, food.id),
             };
 
             // Оптимистичное обновление
             setDailyMeals((prev) => {
               if (!prev) return prev;
               const updated = { ...prev };
-              updated[mealType] = [...updated[mealType], entry];
+              const list = [...updated[mealType]];
+              const existingIndex = list.findIndex(
+                (item) => item.idempotencyKey && item.idempotencyKey === entry.idempotencyKey
+              );
+              if (existingIndex >= 0) {
+                list[existingIndex] = entry;
+              } else {
+                list.push(entry);
+              }
+              updated[mealType] = list;
               return updated;
             });
 
@@ -1616,7 +1788,7 @@ const FoodDiary = () => {
 
             // Сохраняем в фоне
             mealService.addMealEntry(user.id, selectedDate, mealType, entry).catch((error) => {
-              console.error('[FoodDiary] Ошибка сохранения продукта из фото:', error);
+              reportError('Не удалось сохранить продукт с фото. Проверьте соединение и попробуйте снова.', error);
               mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
                 setDailyMeals(meals);
               });

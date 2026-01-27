@@ -96,6 +96,8 @@ const RecipeAnalyzer = () => {
         proteins: item.proteins,
         fats: item.fats,
         carbs: item.carbs,
+        display_amount: item.displayAmount ?? item.amountText ?? null,
+        display_unit: item.displayUnit ?? null,
       })),
       userId: user.id,
     });
