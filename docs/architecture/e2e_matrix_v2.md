@@ -4086,6 +4086,16 @@ ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
 **Expected Transitions**
 - `delivery_event → audit_logged`.
 
+# Phase 8 — Voice Coach Layer (E2E 306–310)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+306 | Premium voice support | Голосовая поддержка после пропуска | Voice coach | Support | Safe‑tone | Причина | Voice ok
+307 | Free voice gated | Кнопка заблокирована | Voice button | Честно | Без давления | Пояснение | Gate ok
+308 | Safety voice | Тон осторожный | Voice safety | Trust‑safe | Safety‑first | Причина | Safe voice ok
+309 | Voice plan explanation | Голос объясняет адаптацию | Voice explain | Прозрачность | Без давления | Источники | Explain ok
+310 | Voice disabled | Голос выключен | Settings | Уважение | Без давления | — | Voice off
+
 # Scaling Invariants
 - All reads/writes scoped by `auth.uid()`.
 - Indexes for `(user_id, date)` and `(user_id, created_at desc)` on high-traffic tables.

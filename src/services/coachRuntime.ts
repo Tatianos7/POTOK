@@ -96,6 +96,37 @@ export type CoachRequestIntent = 'explain' | 'support' | 'motivate' | 'clarify' 
 
 export type CoachDialogStatus = 'thinking' | 'responding' | 'safety' | 'explainability' | 'cooldown';
 
+export type VoiceEmotionTone = 'calm' | 'motivational' | 'neutral' | 'recovery' | 'safety';
+export type VoiceSafetyMode = 'normal' | 'caution' | 'crisis';
+
+export interface VoiceState {
+  enabled: boolean;
+  isSpeaking: boolean;
+  isListening: boolean;
+  tone: VoiceEmotionTone;
+  safetyMode: VoiceSafetyMode;
+}
+
+export interface VoiceUtterance {
+  id: string;
+  text: string;
+  tone: VoiceEmotionTone;
+  durationMs?: number;
+}
+
+export interface UserSpeechIntent {
+  intent: CoachRequestIntent;
+  transcript: string;
+  confidence?: number;
+}
+
+export interface CoachVoiceService {
+  speak: (response: CoachResponse) => Promise<VoiceUtterance>;
+  listen: () => Promise<UserSpeechIntent>;
+  stop: () => void;
+  setVoiceStyle: (style: 'Calm' | 'Motivational' | 'Neutral' | 'Recovery') => void;
+}
+
 export interface CoachDialogTurn {
   id: string;
   role: 'user' | 'coach';

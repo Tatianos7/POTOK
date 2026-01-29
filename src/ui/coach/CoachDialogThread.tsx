@@ -1,4 +1,6 @@
 import type { CoachDialogStatus, CoachDialogTurn } from '../../services/coachRuntime';
+import CoachVoiceButton from './CoachVoiceButton';
+import CoachSpeakingIndicator from './CoachSpeakingIndicator';
 
 interface CoachDialogThreadProps {
   turns: CoachDialogTurn[];
@@ -27,7 +29,13 @@ const statusLabel: Record<CoachDialogStatus, string> = {
 const CoachDialogThread = ({ turns, status, allowFollowups, onReply, onEnd }: CoachDialogThreadProps) => {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-      <p className="text-[11px] text-gray-500 dark:text-gray-400">{statusLabel[status]}</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] text-gray-500 dark:text-gray-400">{statusLabel[status]}</p>
+        <div className="flex items-center gap-2">
+          {(status === 'thinking' || status === 'responding') && <CoachSpeakingIndicator />}
+          <CoachVoiceButton label="🎙 Голос" disabled />
+        </div>
+      </div>
       <div className="mt-3 space-y-2">
         {turns.map((turn) => (
           <div
