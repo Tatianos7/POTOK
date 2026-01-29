@@ -175,6 +175,10 @@ const Profile = () => {
     setIsPrivacyPolicyOpen(true);
   };
 
+  const handleCoachHistory = () => {
+    navigate('/coach-history');
+  };
+
   const persistCoachSettings = async (settings: CoachSettings) => {
     if (!user?.id) return;
     try {
@@ -387,6 +391,18 @@ const Profile = () => {
                     </button>
                   ))}
                 </div>
+              </Card>
+
+              <Card title="История рекомендаций коуча">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  История решений и объяснений, чтобы видеть логику и доверять процессу.
+                </p>
+                <button
+                  onClick={handleCoachHistory}
+                  className="mt-3 w-full rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200"
+                >
+                  Открыть историю
+                </button>
               </Card>
 
               <Card title="Данные и права">

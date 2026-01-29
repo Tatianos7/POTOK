@@ -3963,6 +3963,31 @@ ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
 279 | Trust timeline | Скрыт в Free / виден в Premium | CoachExplainabilityDrawer | Честность | Без давления | Гейтинг доверия | Гейтинг работает
 280 | Эмоциональная глубина | Free: нейтрально, Premium: адаптивно | CoachMessageCard | Мягкий тон | Без давления | Причина тона | Тон различается
 
+# Phase 8 — Production Hardening & Alpha Readiness (E2E 281–300)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+281 | Memory cleared | Сброс тона и памяти | CoachMessageCard | Новый старт | Без давления | Память сброшена | Тон reset
+282 | Crisis input | Safe‑mode включен | CoachSafetyBanner | Поддержка | Safety‑first | Причина | Crisis handled
+283 | Offline runtime | Fallback коуч | CoachNudge | Спокойно | Без риска | Limited explain | Degrade ok
+284 | High latency | Graceful response | CoachMessageCard | Без ожидания | Safe‑tone | Без деталей | SLA ok
+285 | Memory service down | Simplified coach | CoachMessageCard | Trust‑safe | Без риска | Explainable fallback | Works
+286 | Explainability failure | Без деталей | CoachExplainabilityDrawer | Прозрачно | Без риска | “Без деталей” | Copy ok
+287 | Premium downgrade | Снижение глубины | CoachMessageCard | Честно | Без давления | Причина | Depth reduced
+288 | Trust rebuild | Мягкая динамика | CoachMessageCard | Trust‑repair | Без давления | История учтена | Trust grows
+289 | Long absence | Warm return | CoachDialog | Поддержка | Safe‑tone | История учтена | Return ok
+290 | Circuit breaker open | Коуч молчит | No coach UI | Без давления | Без риска | — | Silent ok
+291 | Emotion calc failure | Neutral tone | CoachMessageCard | Без давления | Safe‑tone | Причина | Neutral ok
+292 | Memory TTL | Старые события удалены | CoachExplainabilityDrawer | Честность | Без давления | TTL applied | TTL ok
+293 | Data minimization | Сжатие payload | Backend only | Trust‑safe | Safe‑tone | — | Minimize ok
+294 | Trust telemetry | Метрики обновлены | — | Observed | — | — | Metrics ok
+295 | Explainability latency | Telemetry recorded | — | Observed | — | — | Metrics ok
+296 | Memory hits | Telemetry recorded | — | Observed | — | — | Metrics ok
+297 | Helpfulness score | Captured | — | Observed | — | — | Metric ok
+298 | Engagement loop | Daily return | UX nudge | Support | Safe‑tone | — | Return tracked
+299 | Compliance check | Disclaimer route | CoachSafetyBanner | Без давления | Safety‑first | Причина | Disclaimer ok
+300 | Alpha readiness | All checks pass | — | Trust‑safe | Safe‑tone | Explainable | Ready
+
 # Scenario 122 — Blocked day warning (v2)
 
 **Service Assertions**

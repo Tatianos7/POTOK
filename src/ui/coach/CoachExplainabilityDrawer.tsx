@@ -16,7 +16,7 @@ const CoachExplainabilityDrawer = ({
   decisionId,
   trace,
   title = 'Почему коуч так сказал?',
-  fallbackReason = 'Я опираюсь на вашу историю, текущие сигналы и безопасность.',
+  fallbackReason = 'Я могу помочь, но сейчас без деталей.',
   confidence,
   trustLevel,
   safetyFlags,

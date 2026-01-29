@@ -10,6 +10,8 @@ import {
   createCoachMemoryPersistenceService,
   type CoachMemoryPersistenceService,
 } from './coachMemoryPersistenceService';
+import { CircuitBreaker } from './coachCircuitBreaker';
+import { coachTelemetry } from './coachTelemetry';
 
 export interface CoachRelationshipRuntime {
   getProfile: () => Promise<RelationshipProfile>;
@@ -28,6 +30,8 @@ export interface CoachMemoryFacade {
   getLongTermNarrative: (userId: string) => Promise<string>;
   getExplainableReasoningTrace: (decisionId: string) => Promise<CoachExplainabilityBinding>;
   getCoachContextForResponse: () => Promise<CoachLongTermContext>;
+  clearCoachHistory?: () => Promise<void>;
+  clearTrustModel?: () => Promise<void>;
 }
 
 interface CoachMemoryFacadeDeps {
@@ -41,27 +45,63 @@ export const createCoachMemoryFacade = ({
   persistenceService = createCoachMemoryPersistenceService(),
   relationshipRuntime,
 }: CoachMemoryFacadeDeps = {}): CoachMemoryFacade => {
+  const memoryBreaker = new CircuitBreaker({ name: 'coachMemoryFacade', failureThreshold: 2 });
+
+  const minimizePayload = (payload: Record<string, unknown>) => {
+    const minimized: Record<string, unknown> = {};
+    Object.entries(payload ?? {}).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        minimized[key] = value.length > 500 ? `${value.slice(0, 500)}…` : value;
+        return;
+      }
+      minimized[key] = value;
+    });
+    return minimized;
+  };
+
   return {
     recordExperience: async (event, context) => {
-      await persistenceService.persistEventMemory({
-        ...event,
-        payload: {
-          ...event.payload,
-          source_screen: context.sourceScreen,
-          explainability_ref: context.explainabilityRef ?? null,
-        },
-      });
+      if (!memoryBreaker.canRequest()) {
+        throw new Error('memory_circuit_open');
+      }
+      const minimizedPayload = minimizePayload(event.payload ?? {});
+      try {
+        await persistenceService.persistEventMemory({
+          ...event,
+          payload: {
+            ...minimizedPayload,
+            source_screen: context.sourceScreen,
+            explainability_ref: context.explainabilityRef ?? null,
+          },
+        });
+        memoryBreaker.recordSuccess();
+      } catch (error) {
+        memoryBreaker.recordFailure();
+        throw error;
+      }
       await memoryService.recordEvent(event);
       if (relationshipRuntime?.updateFromEvent) {
         await relationshipRuntime.updateFromEvent(event);
       }
     },
     loadCoachContext: async () => {
-      return persistenceService.loadLongTermProfile();
+      if (!memoryBreaker.canRequest()) {
+        throw new Error('memory_circuit_open');
+      }
+      const startedAt = performance.now();
+      const profile = await persistenceService.loadLongTermProfile();
+      coachTelemetry.trackTiming('memory_fetch_time', performance.now() - startedAt, {
+        source: 'loadCoachContext',
+      });
+      return profile;
     },
     updateTrustModel: async (signal) => {
+      const startedAt = performance.now();
       await persistenceService.updateTrustCurve(signal.delta, signal.reason);
       await memoryService.updateTrust(signal.delta, signal.reason);
+      coachTelemetry.trackTiming('trust_update_time', performance.now() - startedAt, {
+        reason: signal.reason ?? 'unknown',
+      });
     },
     getLongTermNarrative: async () => {
       try {
@@ -74,7 +114,14 @@ export const createCoachMemoryFacade = ({
     getExplainableReasoningTrace: async (decisionId) => {
       let profile: RelationshipProfile | null = null;
       try {
+        if (!memoryBreaker.canRequest()) {
+          throw new Error('memory_circuit_open');
+        }
+        const startedAt = performance.now();
         profile = await persistenceService.loadLongTermProfile();
+        coachTelemetry.trackTiming('memory_fetch_time', performance.now() - startedAt, {
+          source: 'getExplainableReasoningTrace',
+        });
       } catch (error) {
         console.warn('[coachMemoryFacade] loadLongTermProfile failed', error);
       }
@@ -191,6 +238,15 @@ export const createCoachMemoryFacade = ({
     },
     getCoachContextForResponse: async () => {
       return persistenceService.getCoachContextForResponse();
+    },
+    clearCoachHistory: async () => {
+      if (persistenceService.clearCoachMemory) {
+        await persistenceService.clearCoachMemory();
+      }
+    },
+    clearTrustModel: async () => {
+      await persistenceService.updateTrustCurve(0, 'trust_reset');
+      await memoryService.updateTrust(0, 'trust_reset');
     },
   };
 };

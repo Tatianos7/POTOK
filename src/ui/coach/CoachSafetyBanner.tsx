@@ -12,7 +12,7 @@ const CoachSafetyBanner = ({ title = 'Safety first', message, action }: CoachSaf
   const styles = coachModeStyles.protect;
 
   return (
-    <div className={`rounded-xl px-4 py-3 ${styles.container} ${coachAnimations.calmEnter}`}>
+    <div className={`rounded-xl px-4 py-3 ${styles.container} ${coachAnimations.calmEnter} ${coachAnimations.softFade}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className={styles.title}>{title}</p>

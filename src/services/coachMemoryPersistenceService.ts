@@ -7,6 +7,10 @@ export interface CoachMemoryPersistenceService {
   updateEmotionalBaseline: (state: RelationshipProfile['emotionalState']) => Promise<void>;
   summarizeUserJourney: () => Promise<string>;
   getCoachContextForResponse: () => Promise<CoachLongTermContext>;
+  getMemoryRetentionPolicy: () => Promise<{ shortTermDays: number; midTermDays: number; longTermDays: number }>;
+  clearCoachMemory: () => Promise<void>;
+  forgetMemoryPeriod: (fromISO: string, toISO: string) => Promise<void>;
+  getMemorySummary: () => Promise<string>;
 }
 
 export const createCoachMemoryPersistenceService = (): CoachMemoryPersistenceService => {
@@ -21,5 +25,9 @@ export const createCoachMemoryPersistenceService = (): CoachMemoryPersistenceSer
     updateEmotionalBaseline: notImplemented,
     summarizeUserJourney: notImplemented,
     getCoachContextForResponse: notImplemented,
+    getMemoryRetentionPolicy: async () => ({ shortTermDays: 14, midTermDays: 60, longTermDays: 365 }),
+    clearCoachMemory: notImplemented,
+    forgetMemoryPeriod: notImplemented,
+    getMemorySummary: async () => 'Память коуча содержит краткую историю и устойчивые паттерны.',
   };
 };

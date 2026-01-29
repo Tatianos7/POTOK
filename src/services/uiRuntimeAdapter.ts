@@ -24,7 +24,13 @@ import { mealService } from './mealService';
 import { workoutService } from './workoutService';
 import { aggregateWorkoutEntries } from '../utils/workoutMetrics';
 import { classifyTrustDecision, TrustDecision } from './trustSafetyService';
-import { coachRuntime, type CoachResponse, type CoachScreen, type CoachScreenContext } from './coachRuntime';
+import {
+  coachRuntime,
+  type CoachResponse,
+  type CoachScreen,
+  type CoachScreenContext,
+  type CoachDecisionHistoryQuery,
+} from './coachRuntime';
 
 export type RuntimeStatus =
   | 'loading'
@@ -701,6 +707,22 @@ class UiRuntimeAdapter {
     return coachRuntime.getExplainability(decisionId, {
       subscriptionState: context?.subscriptionState,
     });
+  }
+
+  async getCoachHistory(query: CoachDecisionHistoryQuery) {
+    return coachRuntime.listExplainableDecisions(query);
+  }
+
+  async getTrustNarrative() {
+    return coachRuntime.buildTrustNarrative();
+  }
+
+  async clearCoachHistory() {
+    return coachRuntime.clearCoachHistory();
+  }
+
+  async resetCoachTrust() {
+    return coachRuntime.resetTrustStyle();
   }
 }
 

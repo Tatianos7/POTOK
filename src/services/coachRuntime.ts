@@ -71,6 +71,27 @@ export interface CoachResponse {
   explainability?: CoachExplainabilityBinding;
 }
 
+export interface CoachDecisionHistoryItem {
+  decisionId: string;
+  timestamp: string;
+  dateLabel: string;
+  screen: CoachScreen;
+  decisionType: string;
+  summary: string;
+  reason?: string;
+  data_sources: string[];
+  impact?: string;
+  trustState?: string;
+  uiMode?: CoachUiMode;
+}
+
+export interface CoachDecisionHistoryQuery {
+  from: string;
+  to: string;
+  screen?: CoachScreen;
+  limit?: number;
+}
+
 const emotionalStateToMode: Record<CoachEmotionalState, CoachUiMode> = {
   neutral: 'support',
   motivated: 'motivate',
@@ -181,6 +202,19 @@ class CoachRuntime {
       event: normalizedEvent.type,
     });
     this.runtimeBreaker.recordSuccess();
+
+    this.storeDecisionHistory({
+      decisionId,
+      timestamp: normalizedEvent.timestamp,
+      screen: screenContext.screen,
+      decisionType: normalizedEvent.type,
+      summary: response.coach_message,
+      reason: response.safety_reason ?? response.trust_reason,
+      data_sources: response.data_sources ?? [],
+      impact: response.trust_state ? `Тон: ${response.trust_state}` : undefined,
+      trustState: response.trust_state,
+      uiMode: response.ui_mode,
+    });
 
     return {
       ...response,
@@ -474,6 +508,73 @@ class CoachRuntime {
             ? (payload as any).period
             : event.timestamp.split('T')[0];
     return `${event.type}:${date}:${source}`;
+  }
+
+  async listExplainableDecisions(query: CoachDecisionHistoryQuery): Promise<CoachDecisionHistoryItem[]> {
+    const history = this.readDecisionHistory();
+    const fromMs = new Date(query.from).getTime();
+    const toMs = new Date(query.to).getTime();
+    const filtered = history.filter((item) => {
+      const ts = new Date(item.timestamp).getTime();
+      if (Number.isNaN(ts)) return false;
+      if (ts < fromMs || ts > toMs) return false;
+      if (query.screen && item.screen !== query.screen) return false;
+      return true;
+    });
+    const limited = filtered.slice(0, query.limit ?? 50);
+    return limited.map((item) => ({
+      ...item,
+      dateLabel: new Date(item.timestamp).toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: 'short',
+      }),
+    }));
+  }
+
+  async buildTrustNarrative(): Promise<string> {
+    const history = this.readDecisionHistory();
+    const latest = history[0];
+    if (!latest) return 'Доверие выстраивается постепенно.';
+    if (latest.trustState === 'trust_repair') {
+      return 'Коуч стал осторожнее, чтобы вернуть доверие.';
+    }
+    if (latest.trustState === 'stable') {
+      return 'Доверие растёт, и коуч поддерживает уверенный ритм.';
+    }
+    return 'Доверие стабильное. Коуч удерживает мягкий тон.';
+  }
+
+  async clearCoachHistory(): Promise<void> {
+    localStorage.removeItem('coach_decision_history');
+    if (this.facade.clearCoachHistory) {
+      await this.facade.clearCoachHistory();
+    }
+  }
+
+  async resetTrustStyle(): Promise<void> {
+    localStorage.removeItem('coach_ignore_count');
+    localStorage.removeItem('coach_silence_until');
+    localStorage.removeItem('coach_last_nudge_at');
+    if (this.facade.clearTrustModel) {
+      await this.facade.clearTrustModel();
+    }
+  }
+
+  private storeDecisionHistory(entry: Omit<CoachDecisionHistoryItem, 'dateLabel'>) {
+    const history = this.readDecisionHistory();
+    const updated = [entry, ...history].slice(0, 200);
+    localStorage.setItem('coach_decision_history', JSON.stringify(updated));
+  }
+
+  private readDecisionHistory(): Omit<CoachDecisionHistoryItem, 'dateLabel'>[] {
+    try {
+      const raw = localStorage.getItem('coach_decision_history');
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   }
 
   private getInterventionPolicy(): CoachInterventionPolicy {

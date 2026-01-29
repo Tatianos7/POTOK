@@ -16,7 +16,7 @@ const CoachMessageCard = ({ title, message, mode = 'support', action, footer }: 
   const label = title ?? coachModeCopy[mode];
 
   return (
-    <section className={`rounded-2xl p-4 ${styles.container} ${coachAnimations.calmEnter}`}>
+    <section className={`rounded-2xl p-4 ${styles.container} ${coachAnimations.calmEnter} ${coachAnimations.softFade}`}>
       <div className="flex items-start justify-between gap-3 mb-2">
         <div>
           <p className={`${typography.micro} ${styles.accent}`}>{label}</p>
