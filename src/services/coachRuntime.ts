@@ -94,6 +94,36 @@ export interface CoachDecisionHistoryQuery {
 
 export type CoachRequestIntent = 'explain' | 'support' | 'motivate' | 'clarify' | 'reflect' | 'reassure';
 
+export type CoachDialogStatus = 'thinking' | 'responding' | 'safety' | 'explainability' | 'cooldown';
+
+export interface CoachDialogTurn {
+  id: string;
+  role: 'user' | 'coach';
+  message: string;
+  timestamp: string;
+  decisionId?: string;
+  explainability?: CoachExplainabilityBinding;
+}
+
+export interface CoachDialogState {
+  dialogId: string;
+  lastIntent: CoachRequestIntent;
+  emotionalState: CoachEmotionalState;
+  trustLevel?: number;
+  safetyMode: boolean;
+  shortTermMemory: CoachDialogTurn[];
+  subscriptionState: CoachScreenContext['subscriptionState'];
+  screen: CoachScreen;
+}
+
+export interface CoachDialogResponse {
+  dialogId: string;
+  status: CoachDialogStatus;
+  turns: CoachDialogTurn[];
+  allowFollowups: boolean;
+  decisionId?: string;
+}
+
 const emotionalStateToMode: Record<CoachEmotionalState, CoachUiMode> = {
   neutral: 'support',
   motivated: 'motivate',
@@ -133,6 +163,7 @@ const responseByEvent: Partial<Record<CoachMemoryEvent['type'], { message: strin
 
 class CoachRuntime {
   private readonly dedupeKeys = new Set<string>();
+  private readonly dialogStore = new Map<string, CoachDialogState>();
   private readonly runtimeBreaker = new CircuitBreaker({ name: 'coachRuntime', failureThreshold: 2 });
   private readonly explainabilityBreaker = new CircuitBreaker({ name: 'explainability', failureThreshold: 2 });
 
@@ -396,6 +427,174 @@ class CoachRuntime {
 
     this.registerUserRequest();
     return response;
+  }
+
+  async startDialog(intent: CoachRequestIntent, screenContext: CoachScreenContext): Promise<CoachDialogResponse> {
+    const dialogId = globalThis.crypto?.randomUUID?.() ?? `dialog_${Date.now()}`;
+    const emotionalState = this.evaluateEmotionalState(screenContext);
+    const safetyMode = (screenContext.safetyFlags?.length ?? 0) > 0;
+    const allowFollowups = this.hasPremiumAccess(screenContext.subscriptionState);
+    const baseMessage = this.buildRequestMessage(intent, screenContext);
+    const decisionId = `dialog:${intent}:${Date.now()}`;
+
+    let response: CoachResponse = {
+      decision_id: decisionId,
+      coach_message: baseMessage,
+      emotional_state: emotionalState,
+      ui_surface: 'dialog',
+      ui_mode: 'support',
+      safety_flags: screenContext.safetyFlags,
+      trust_state: this.describeTrust(screenContext.trustLevel),
+      trust_reason: this.describeTrustReason(screenContext.trustLevel),
+      personalization_basis: 'user_request',
+    };
+
+    response = this.applySafetyGuards(response, screenContext, {
+      type: 'UserRequest',
+      timestamp: new Date().toISOString(),
+      payload: { intent, source: 'user_request' },
+      confidence: 0.7,
+      safetyClass: safetyMode ? 'caution' : 'normal',
+      trustImpact: 0,
+    });
+    response = this.applyEntitlementGate(response, screenContext.subscriptionState);
+    if (this.hasPremiumAccess(screenContext.subscriptionState)) {
+      response = this.applyTrustModulation(response, screenContext.trustLevel ?? 50);
+    }
+
+    const explainability = await this.attachExplainability(response, decisionId, screenContext);
+    response.explainability = explainability;
+
+    const coachTurn: CoachDialogTurn = {
+      id: `turn:${decisionId}`,
+      role: 'coach',
+      message: response.coach_message,
+      timestamp: new Date().toISOString(),
+      decisionId,
+      explainability,
+    };
+
+    const state: CoachDialogState = {
+      dialogId,
+      lastIntent: intent,
+      emotionalState: response.emotional_state,
+      trustLevel: screenContext.trustLevel,
+      safetyMode: response.emotional_state === 'cautious',
+      shortTermMemory: [coachTurn],
+      subscriptionState: screenContext.subscriptionState,
+      screen: screenContext.screen,
+    };
+    this.dialogStore.set(dialogId, state);
+    this.registerUserRequest();
+
+    return {
+      dialogId,
+      status: response.emotional_state === 'cautious' ? 'safety' : 'responding',
+      turns: [coachTurn],
+      allowFollowups,
+      decisionId,
+    };
+  }
+
+  async continueDialog(dialogId: string, userReply: string): Promise<CoachDialogResponse> {
+    const state = this.dialogStore.get(dialogId);
+    if (!state) {
+      return {
+        dialogId,
+        status: 'cooldown',
+        turns: [],
+        allowFollowups: false,
+      };
+    }
+
+    const maxTurns = 5;
+    if (!this.hasPremiumAccess(state.subscriptionState) || state.shortTermMemory.length >= maxTurns) {
+      return {
+        dialogId,
+        status: 'cooldown',
+        turns: [
+          {
+            id: `turn:cooldown:${Date.now()}`,
+            role: 'coach',
+            message: 'Давай сделаем паузу. Если нужно, вернёмся чуть позже.',
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        allowFollowups: false,
+      };
+    }
+
+    const userTurn: CoachDialogTurn = {
+      id: `turn:user:${Date.now()}`,
+      role: 'user',
+      message: userReply,
+      timestamp: new Date().toISOString(),
+    };
+
+    const responseText = this.buildFollowupMessage(state.lastIntent, userReply, state.safetyMode);
+    const decisionId = `dialog:${state.lastIntent}:${Date.now()}`;
+
+    const coachTurn: CoachDialogTurn = {
+      id: `turn:coach:${decisionId}`,
+      role: 'coach',
+      message: responseText,
+      timestamp: new Date().toISOString(),
+      decisionId,
+    };
+
+    const explainability = await this.attachExplainability(
+      {
+        decision_id: decisionId,
+        coach_message: responseText,
+        emotional_state: state.emotionalState,
+        ui_surface: 'dialog',
+        ui_mode: 'support',
+      },
+      decisionId,
+      {
+        screen: state.screen,
+        userMode: 'Manual',
+        subscriptionState: state.subscriptionState,
+        trustLevel: state.trustLevel,
+        safetyFlags: state.safetyMode ? ['dialog_safety'] : [],
+      }
+    );
+    coachTurn.explainability = explainability;
+
+    state.shortTermMemory = [...state.shortTermMemory, userTurn, coachTurn].slice(-5);
+    this.dialogStore.set(dialogId, state);
+    this.registerUserRequest();
+
+    return {
+      dialogId,
+      status: state.safetyMode ? 'safety' : 'responding',
+      turns: [userTurn, coachTurn],
+      allowFollowups: true,
+      decisionId,
+    };
+  }
+
+  async endDialog(dialogId: string): Promise<void> {
+    const state = this.dialogStore.get(dialogId);
+    if (!state) return;
+    if (this.hasPremiumAccess(state.subscriptionState)) {
+      const summary = state.shortTermMemory
+        .filter((turn) => turn.role === 'coach')
+        .map((turn) => turn.message)
+        .join(' ');
+      await this.facade.recordExperience(
+        {
+          type: 'DialogSummary',
+          timestamp: new Date().toISOString(),
+          payload: { summary, dialog_id: dialogId },
+          confidence: 0.6,
+          safetyClass: state.safetyMode ? 'caution' : 'normal',
+          trustImpact: 0,
+        },
+        { sourceScreen: 'CoachDialog' }
+      );
+    }
+    this.dialogStore.delete(dialogId);
   }
 
   generateCoachResponse(
@@ -780,6 +979,30 @@ class CoachRuntime {
         return 'Если тревожно — это нормально. Мы можем замедлиться и сохранить безопасность.';
       default:
         return 'Я рядом и готов поддержать.';
+    }
+  }
+
+  private buildFollowupMessage(intent: CoachRequestIntent, reply: string, safetyMode: boolean): string {
+    if (safetyMode) {
+      return 'Давай двигаться бережно. Я рядом и помогу сохранить безопасность.';
+    }
+    if (reply.toLowerCase().includes('подроб')) {
+      return 'Подробнее: я опираюсь на текущие сигналы и твою историю, чтобы поддержать устойчивость.';
+    }
+    if (reply.toLowerCase().includes('дальше')) {
+      return 'Следующий шаг — небольшой и выполнимый. Я помогу сохранить ритм.';
+    }
+    switch (intent) {
+      case 'support':
+        return 'Я с тобой. Давай выберем один спокойный шаг.';
+      case 'explain':
+        return 'Я объясню суть: это фазовый сигнал, не оценка тебя.';
+      case 'motivate':
+        return 'Держим курс мягко и уверенно. Ты уже в пути.';
+      case 'clarify':
+        return 'Изменения нужны, чтобы поддержать твой ресурс и цель.';
+      default:
+        return 'Спасибо за доверие. Я рядом.';
     }
   }
 

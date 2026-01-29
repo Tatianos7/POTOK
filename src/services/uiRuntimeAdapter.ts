@@ -726,9 +726,17 @@ class UiRuntimeAdapter {
     return coachRuntime.resetTrustStyle();
   }
 
-  async requestCoachResponse(intent: CoachRequestIntent, context: Partial<CoachScreenContext>) {
+  async requestCoachDialogStart(intent: CoachRequestIntent, context: Partial<CoachScreenContext>) {
     const coachContext = this.buildCoachContext(context.screen ?? 'Today', context);
-    return coachRuntime.handleUserRequest(intent, coachContext);
+    return coachRuntime.startDialog(intent, coachContext);
+  }
+
+  async requestCoachDialogContinue(dialogId: string, reply: string) {
+    return coachRuntime.continueDialog(dialogId, reply);
+  }
+
+  async requestCoachDialogEnd(dialogId: string) {
+    return coachRuntime.endDialog(dialogId);
   }
 }
 
