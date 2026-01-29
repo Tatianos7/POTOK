@@ -15,6 +15,7 @@ import CoachMessageCard, { CoachMemoryChip } from '../ui/coach/CoachMessageCard'
 import { CoachDailyNudge } from '../ui/coach/CoachNudge';
 import CoachSafetyBanner from '../ui/coach/CoachSafetyBanner';
 import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import CoachRequestModal from '../ui/coach/CoachRequestModal';
 import type { CoachResponse } from '../services/coachRuntime';
 import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
@@ -28,6 +29,7 @@ const Today = () => {
   const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
   const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
   const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
+  const [coachRequestOpen, setCoachRequestOpen] = useState(false);
 
   const loadToday = useCallback(async () => {
     if (!user?.id) return;
@@ -126,6 +128,12 @@ const Today = () => {
             }}
           >
             <div className="space-y-3">
+              <button
+                onClick={() => setCoachRequestOpen(true)}
+                className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
+              >
+                🧠 Спросить коуча
+              </button>
               {coachOverlay && (
                 <CoachDailyNudge
                   message={coachOverlay.coach_message}
@@ -249,6 +257,19 @@ const Today = () => {
           </StateContainer>
         </main>
       </div>
+      {coachRequestOpen && (
+        <CoachRequestModal
+          open={coachRequestOpen}
+          onClose={() => setCoachRequestOpen(false)}
+          context={{
+            screen: 'Today',
+            userMode: today ? 'Follow Plan' : 'Manual',
+            subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+            trustLevel: (explainability as any)?.trust_level ?? explainability?.trust_score,
+            safetyFlags,
+          }}
+        />
+      )}
     </div>
   );
 };

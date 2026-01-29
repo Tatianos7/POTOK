@@ -3988,6 +3988,16 @@ ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
 299 | Compliance check | Disclaimer route | CoachSafetyBanner | Без давления | Safety‑first | Причина | Disclaimer ok
 300 | Alpha readiness | All checks pass | — | Trust‑safe | Safe‑tone | Explainable | Ready
 
+# Phase 8 — User‑Initiated Coach Interaction (E2E 301–305)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+301 | Пользователь вызывает коуча | Ответ по запросу | CoachDialog | Уверенность | Safe‑tone | Trace доступен | Ответ есть
+302 | «Почему план изменился» | Разъяснение | Explainability + data_sources | Прозрачность | Без давления | Основание | Пояснение есть
+303 | «Почему у меня плато» | Нормализация | Support + explain | Без стыда | Safe‑tone | Источники | Плато объяснено
+304 | «Поддержи после срыва» | Мягкая поддержка | CoachDialog | Trust‑repair | Без давления | Причина тона | Тон корректен
+305 | Free vs Premium запрос | Разная глубина | CoachDialog | Честность | Без давления | Гейтинг памяти | Разница видна
+
 # Scenario 122 — Blocked day warning (v2)
 
 **Service Assertions**

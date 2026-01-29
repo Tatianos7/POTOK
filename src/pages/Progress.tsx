@@ -16,6 +16,7 @@ import CoachMessageCard from '../ui/coach/CoachMessageCard';
 import CoachTimelineComment from '../ui/coach/CoachTimelineComment';
 import { CoachRecoveryDialog } from '../ui/coach/CoachDialog';
 import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import CoachRequestModal from '../ui/coach/CoachRequestModal';
 import type { CoachResponse } from '../services/coachRuntime';
 import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
@@ -30,6 +31,7 @@ const Progress = () => {
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
   const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
+  const [coachRequestOpen, setCoachRequestOpen] = useState(false);
   const lastCoachEventKey = useRef<string | null>(null);
 
   const getTodayDate = () => {
@@ -335,6 +337,12 @@ const Progress = () => {
             )}
 
             <div className="space-y-4">
+              <button
+                onClick={() => setCoachRequestOpen(true)}
+                className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
+              >
+                🧠 Спросить коуча
+              </button>
               {coachOverlay && (
                 <CoachMessageCard
                   mode={coachOverlay.ui_mode}
@@ -488,6 +496,21 @@ const Progress = () => {
           </StateContainer>
         </main>
       </div>
+      {coachRequestOpen && (
+        <CoachRequestModal
+          open={coachRequestOpen}
+          onClose={() => setCoachRequestOpen(false)}
+          context={{
+            screen: 'Progress',
+            userMode: snapshot?.programAdherence ? 'Follow Plan' : 'Manual',
+            subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+            trustLevel,
+            safetyFlags,
+            relapseRisk: isRegression ? 0.7 : undefined,
+            fatigueLevel: isRecovery ? 0.7 : undefined,
+          }}
+        />
+      )}
     </div>
   );
 };

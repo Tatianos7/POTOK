@@ -92,6 +92,8 @@ export interface CoachDecisionHistoryQuery {
   limit?: number;
 }
 
+export type CoachRequestIntent = 'explain' | 'support' | 'motivate' | 'clarify' | 'reflect' | 'reassure';
+
 const emotionalStateToMode: Record<CoachEmotionalState, CoachUiMode> = {
   neutral: 'support',
   motivated: 'motivate',
@@ -318,6 +320,82 @@ class CoachRuntime {
         explainabilityRef: 'explainability_unavailable',
       };
     }
+  }
+
+  async handleUserRequest(
+    intent: CoachRequestIntent,
+    screenContext: CoachScreenContext
+  ): Promise<CoachResponse | null> {
+    if (!this.runtimeBreaker.canRequest()) {
+      return null;
+    }
+    const policy = this.getInterventionPolicy();
+    if (policy.mode === 'off') return null;
+    if (policy.mode === 'risk_only' && !(screenContext.safetyFlags?.length ?? 0)) {
+      return null;
+    }
+
+    const rateLimited = this.isRequestRateLimited();
+    if (rateLimited) {
+      return {
+        decision_id: `request:rate_limit:${Date.now()}`,
+        coach_message: 'Давай сделаем паузу. Я отвечу чуть позже, чтобы сохранить ясность.',
+        emotional_state: 'neutral',
+        ui_surface: 'dialog',
+        ui_mode: 'support',
+        safety_reason: 'rate_limit',
+      };
+    }
+
+    const baseMessage = this.buildRequestMessage(intent, screenContext);
+    const event: CoachMemoryEvent = {
+      type: 'UserRequest',
+      timestamp: new Date().toISOString(),
+      payload: { intent, source: 'user_request', screen: screenContext.screen },
+      confidence: 0.7,
+      safetyClass:
+        intent === 'reassure' || (screenContext.safetyFlags?.length ?? 0) > 0 ? 'caution' : 'normal',
+      trustImpact: 0,
+    };
+
+    let response: CoachResponse = {
+      decision_id: `request:${intent}:${Date.now()}`,
+      coach_message: baseMessage,
+      emotional_state: 'neutral',
+      ui_surface: 'dialog',
+      ui_mode: 'support',
+      safety_flags: screenContext.safetyFlags,
+      trust_state: this.describeTrust(screenContext.trustLevel),
+      trust_reason: this.describeTrustReason(screenContext.trustLevel),
+      personalization_basis: 'user_request',
+    };
+
+    response = this.applySafetyGuards(response, screenContext, event);
+    response = this.applyEntitlementGate(response, screenContext.subscriptionState);
+    if (this.hasPremiumAccess(screenContext.subscriptionState)) {
+      response = this.applyTrustModulation(response, screenContext.trustLevel ?? 50);
+    }
+
+    const decisionId = `request:${intent}:${Date.now()}`;
+    const explainability = await this.attachExplainability(response, decisionId, screenContext);
+    response.explainability = explainability;
+    response.decision_id = decisionId;
+
+    this.storeDecisionHistory({
+      decisionId,
+      timestamp: event.timestamp,
+      screen: screenContext.screen,
+      decisionType: `user_request:${intent}`,
+      summary: response.coach_message,
+      reason: response.safety_reason ?? response.trust_reason,
+      data_sources: response.data_sources ?? [],
+      impact: response.trust_state ? `Тон: ${response.trust_state}` : undefined,
+      trustState: response.trust_state,
+      uiMode: response.ui_mode,
+    });
+
+    this.registerUserRequest();
+    return response;
   }
 
   generateCoachResponse(
@@ -682,6 +760,49 @@ class CoachRuntime {
       data_sources: undefined,
       trust_reason: undefined,
     };
+  }
+
+  private buildRequestMessage(intent: CoachRequestIntent, context: CoachScreenContext): string {
+    switch (intent) {
+      case 'explain':
+        return 'Я объясню, что происходит, опираясь на данные и твой контекст.';
+      case 'support':
+        return 'Я рядом. Давай сделаем один спокойный шаг прямо сейчас.';
+      case 'motivate':
+        return 'Сфокусируемся на следующем шаге и сохраним ритм.';
+      case 'clarify':
+        return context.screen === 'Program'
+          ? 'Поясню, почему план изменился и как это поддерживает твою цель.'
+          : 'Поясню изменения и логику, если они есть.';
+      case 'reflect':
+        return 'Давай посмотрим на происходящее мягко и без давления.';
+      case 'reassure':
+        return 'Если тревожно — это нормально. Мы можем замедлиться и сохранить безопасность.';
+      default:
+        return 'Я рядом и готов поддержать.';
+    }
+  }
+
+  private isRequestRateLimited(): boolean {
+    const today = new Date().toISOString().split('T')[0];
+    const countKey = `coach_request_count_${today}`;
+    const lastKey = 'coach_request_last_at';
+    const count = Number(localStorage.getItem(countKey) ?? 0);
+    if (count >= 6) return true;
+    const lastAtRaw = localStorage.getItem(lastKey);
+    if (lastAtRaw) {
+      const minutes = (Date.now() - new Date(lastAtRaw).getTime()) / 60000;
+      if (minutes < 2) return true;
+    }
+    return false;
+  }
+
+  private registerUserRequest() {
+    const today = new Date().toISOString().split('T')[0];
+    const countKey = `coach_request_count_${today}`;
+    const count = Number(localStorage.getItem(countKey) ?? 0);
+    localStorage.setItem(countKey, String(count + 1));
+    localStorage.setItem('coach_request_last_at', new Date().toISOString());
   }
 
   private describeTrust(trustLevel?: number): string | undefined {

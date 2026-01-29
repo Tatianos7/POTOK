@@ -14,6 +14,7 @@ import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
 import CoachMessageCard from '../ui/coach/CoachMessageCard';
 import CoachNudge from '../ui/coach/CoachNudge';
 import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import CoachRequestModal from '../ui/coach/CoachRequestModal';
 import { coachRuntime, type CoachResponse, type CoachScreenContext } from '../services/coachRuntime';
 import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
@@ -34,6 +35,7 @@ const Habits = () => {
   const [habitStats, setHabitStats] = useState<Record<string, { streak: number; adherence: number }>>({});
   const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
   const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
+  const [coachRequestOpen, setCoachRequestOpen] = useState(false);
 
   const buildCoachContext = (): CoachScreenContext => ({
     screen: 'Habits',
@@ -290,6 +292,12 @@ const Habits = () => {
               }
             }}
           >
+            <button
+              onClick={() => setCoachRequestOpen(true)}
+              className="mb-3 rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
+            >
+              🧠 Спросить коуча
+            </button>
             {coachOverlay && (
               <CoachNudge message={coachOverlay.coach_message} mode={coachOverlay.ui_mode} />
             )}
@@ -551,6 +559,20 @@ const Habits = () => {
             </div>
           </div>
         </div>
+      )}
+      {coachRequestOpen && (
+        <CoachRequestModal
+          open={coachRequestOpen}
+          onClose={() => setCoachRequestOpen(false)}
+          context={{
+            screen: 'Habits',
+            userMode: 'Manual',
+            subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+            trustLevel: explainability?.trust_level ?? explainability?.trust_score,
+            adherence: adherenceRate ? adherenceRate / 100 : undefined,
+            streak: Math.max(...Object.values(habitStats).map((stat) => stat?.streak ?? 0), 0),
+          }}
+        />
       )}
     </div>
   );

@@ -15,6 +15,7 @@ import TrustBanner from '../ui/components/TrustBanner';
 import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
 import CoachMessageCard from '../ui/coach/CoachMessageCard';
 import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import CoachRequestModal from '../ui/coach/CoachRequestModal';
 import type { CoachResponse } from '../services/coachRuntime';
 import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
@@ -29,6 +30,7 @@ const MyProgram = () => {
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
   const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
   const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
+  const [coachRequestOpen, setCoachRequestOpen] = useState(false);
 
   const loadProgram = useCallback(async () => {
     if (!user?.id) return;
@@ -238,6 +240,12 @@ const MyProgram = () => {
               }
             }}
           >
+            <button
+              onClick={() => setCoachRequestOpen(true)}
+              className="mb-3 rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
+            >
+              🧠 Спросить коуча
+            </button>
             {isPain && (
               <TrustBanner tone="pain">
                 Мы снизили нагрузку ради безопасности. Это бережное решение, а не откат.
@@ -440,6 +448,20 @@ const MyProgram = () => {
           </StateContainer>
         </main>
       </div>
+      {coachRequestOpen && (
+        <CoachRequestModal
+          open={coachRequestOpen}
+          onClose={() => setCoachRequestOpen(false)}
+          context={{
+            screen: 'Program',
+            userMode: plan ? 'Follow Plan' : 'Manual',
+            subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+            trustLevel,
+            safetyFlags,
+            adherence: totalDays ? completedDays / totalDays : undefined,
+          }}
+        />
+      )}
     </div>
   );
 };

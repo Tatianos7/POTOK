@@ -30,6 +30,7 @@ import {
   type CoachScreen,
   type CoachScreenContext,
   type CoachDecisionHistoryQuery,
+  type CoachRequestIntent,
 } from './coachRuntime';
 
 export type RuntimeStatus =
@@ -705,7 +706,7 @@ class UiRuntimeAdapter {
 
   async getCoachExplainability(decisionId: string, context?: Partial<CoachScreenContext>) {
     return coachRuntime.getExplainability(decisionId, {
-      subscriptionState: context?.subscriptionState,
+      subscriptionState: context?.subscriptionState ?? 'Free',
     });
   }
 
@@ -723,6 +724,11 @@ class UiRuntimeAdapter {
 
   async resetCoachTrust() {
     return coachRuntime.resetTrustStyle();
+  }
+
+  async requestCoachResponse(intent: CoachRequestIntent, context: Partial<CoachScreenContext>) {
+    const coachContext = this.buildCoachContext(context.screen ?? 'Today', context);
+    return coachRuntime.handleUserRequest(intent, coachContext);
   }
 }
 
