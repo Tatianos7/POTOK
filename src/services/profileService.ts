@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { ProfileDetails } from '../types';
+import type { CoachMode, CoachSettings } from '../types/coachSettings';
 
 export interface UserProfile {
   user_id: string;
@@ -21,6 +22,7 @@ export interface UserProfile {
 
 class ProfileService {
   private readonly AVATAR_STORAGE_KEY = 'potok_user_avatar';
+  private readonly COACH_SETTINGS_KEY = 'potok_coach_settings';
   private userIdColumn: 'user_id' | 'id_user' | null = null;
 
   private async getSessionUserId(userId?: string): Promise<string> {
@@ -330,6 +332,71 @@ class ProfileService {
       email: profile.email,
       phone: profile.phone,
     };
+  }
+
+  async getCoachSettings(userId: string): Promise<CoachSettings> {
+    const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = await this.resolveUserIdColumn();
+    const fallback: CoachSettings = { coach_enabled: true, coach_mode: 'support' };
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('coach_settings')
+          .eq(userIdColumn, sessionUserId)
+          .maybeSingle();
+        if (!error && data?.coach_settings) {
+          const settings = data.coach_settings as CoachSettings;
+          this.writeCoachSettingsCache(sessionUserId, settings);
+          return settings;
+        }
+      } catch (err) {
+        console.warn('[profileService] coach settings load error', err);
+      }
+    }
+
+    return this.readCoachSettingsCache(sessionUserId) ?? fallback;
+  }
+
+  async saveCoachSettings(userId: string, settings: CoachSettings): Promise<void> {
+    const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = await this.resolveUserIdColumn();
+    this.writeCoachSettingsCache(sessionUserId, settings);
+
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ coach_settings: settings })
+        .eq(userIdColumn, sessionUserId);
+      if (error) {
+        console.warn('[profileService] coach settings save error', error);
+      }
+    } catch (err) {
+      console.warn('[profileService] coach settings save connection error', err);
+    }
+  }
+
+  private writeCoachSettingsCache(userId: string, settings: CoachSettings) {
+    try {
+      localStorage.setItem(`${this.COACH_SETTINGS_KEY}_${userId}`, JSON.stringify(settings));
+      localStorage.setItem(this.COACH_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.warn('[profileService] Error saving coach settings to localStorage', error);
+    }
+  }
+
+  private readCoachSettingsCache(userId: string): CoachSettings | null {
+    try {
+      const raw = localStorage.getItem(`${this.COACH_SETTINGS_KEY}_${userId}`) ?? localStorage.getItem(this.COACH_SETTINGS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? (parsed as CoachSettings) : null;
+    } catch (error) {
+      console.warn('[profileService] Error reading coach settings from localStorage', error);
+      return null;
+    }
   }
 }
 

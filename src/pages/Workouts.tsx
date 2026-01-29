@@ -13,6 +13,7 @@ import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapt
 import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
 import type { BaseExplainabilityDTO } from '../types/explainability';
 import { classifyTrustDecision } from '../services/trustSafetyService';
+import { coachRuntime, type CoachScreenContext } from '../services/coachRuntime';
 import { ExerciseCategory, Exercise, SelectedExercise, WorkoutEntry } from '../types/workout';
 import '../utils/checkExercisesData'; // Импортируем для доступа через window
 
@@ -47,6 +48,27 @@ const Workouts = () => {
   const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const buildCoachContext = (): CoachScreenContext => ({
+    screen: 'Today',
+    userMode: 'Manual',
+    subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+    trustLevel: explainability?.trust_score,
+    safetyFlags: [],
+  });
+  const prStorageKey = (userId: string) => `workout_pr_${userId}`;
+  const readPrMap = (userId: string): Record<string, number> => {
+    try {
+      const raw = localStorage.getItem(prStorageKey(userId));
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
+  const writePrMap = (userId: string, map: Record<string, number>) => {
+    localStorage.setItem(prStorageKey(userId), JSON.stringify(map));
+  };
 
   // Утилита для добавления дней к дате в формате YYYY-MM-DD
   const addDaysToString = (dateStr: string, days: number): string => {
@@ -300,6 +322,56 @@ const Workouts = () => {
       // Перезагружаем записи тренировки
       const entries = await workoutService.getWorkoutEntries(user.id, selectedDate);
       setWorkoutEntries(entries);
+
+      const totalSets = exercises.reduce((sum, item) => sum + item.sets, 0);
+      const totalVolume = exercises.reduce((sum, item) => sum + item.sets * item.reps * item.weight, 0);
+      void coachRuntime.handleUserEvent(
+        {
+          type: 'WorkoutCompleted',
+          timestamp: new Date().toISOString(),
+          payload: {
+            date: selectedDate,
+            exercise_count: exercises.length,
+            total_sets: totalSets,
+            total_volume: totalVolume,
+            source: 'ui',
+          },
+          confidence: 0.6,
+          safetyClass: 'normal',
+          trustImpact: 1,
+        },
+        buildCoachContext()
+      );
+
+      const prMap = readPrMap(user.id);
+      const newPrs = exercises.filter((item) => {
+        const exerciseId = item.exercise.id;
+        const currentMax = prMap[exerciseId] ?? 0;
+        if (item.weight > currentMax) {
+          prMap[exerciseId] = item.weight;
+          return true;
+        }
+        return false;
+      });
+      if (newPrs.length > 0) {
+        writePrMap(user.id, prMap);
+        void coachRuntime.handleUserEvent(
+          {
+            type: 'StrengthPR',
+            timestamp: new Date().toISOString(),
+            payload: {
+              date: selectedDate,
+              exercise_ids: newPrs.map((item) => item.exercise.id),
+              exercise_names: newPrs.map((item) => item.exercise.name),
+              source: 'ui',
+            },
+            confidence: 0.55,
+            safetyClass: 'normal',
+            trustImpact: 1,
+          },
+          buildCoachContext()
+        );
+      }
       
       setIsSelectedExercisesEditorOpen(false);
       setSelectedExercises([]);

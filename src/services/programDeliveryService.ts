@@ -183,6 +183,7 @@ class ProgramDeliveryService {
       .from(programType === 'nutrition' ? 'nutrition_programs' : 'training_programs')
       .update({ status: 'active' })
       .eq('id', programId);
+
   }
 
   async skipDay(
@@ -216,6 +217,7 @@ class ProgramDeliveryService {
         skip_reason: reason,
       },
     });
+
   }
 
   async pauseProgram(programId: string, programType: ProgramType, reason: string) {
@@ -252,6 +254,7 @@ class ProgramDeliveryService {
         safety_notes: { reason },
       },
     });
+
   }
 
   async resumeProgram(programId: string, programType: ProgramType) {

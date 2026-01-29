@@ -13,6 +13,11 @@ import Timeline from '../ui/components/Timeline';
 import StateContainer from '../ui/components/StateContainer';
 import TrustBanner from '../ui/components/TrustBanner';
 import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
+import CoachMessageCard from '../ui/coach/CoachMessageCard';
+import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import CoachRequestModal from '../ui/coach/CoachRequestModal';
+import type { CoachResponse } from '../services/coachRuntime';
+import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
 const MyProgram = () => {
   const { user } = useAuth();
@@ -23,6 +28,9 @@ const MyProgram = () => {
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const [explainability, setExplainability] = useState<ProgramExplainabilityDTO | null>(null);
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
+  const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
+  const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
+  const [coachRequestOpen, setCoachRequestOpen] = useState(false);
 
   const loadProgram = useCallback(async () => {
     if (!user?.id) return;
@@ -113,6 +121,7 @@ const MyProgram = () => {
   const isFatigue = safetyFlags.includes('fatigue');
   const isRecovery = safetyFlags.includes('recovery_needed');
   const isOverload = safetyFlags.includes('overload');
+  const trustLevel = explainability?.trust_level ?? explainability?.trust_score;
 
   const versionOptions = useMemo(() => {
     const count = plan?.programVersion ?? 1;
@@ -148,6 +157,31 @@ const MyProgram = () => {
     },
     [plan, loadProgram]
   );
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const subscriptionState = user?.hasPremium ? 'Premium' : 'Free';
+    uiRuntimeAdapter
+      .getCoachOverlay('Program', {
+        trustLevel,
+        safetyFlags,
+        userMode: plan ? 'Follow Plan' : 'Manual',
+        subscriptionState,
+        adherence: totalDays ? completedDays / totalDays : undefined,
+      })
+      .then(setCoachOverlay)
+      .catch(() => setCoachOverlay(null));
+  }, [completedDays, plan, safetyFlags, totalDays, trustLevel, user?.hasPremium, user?.id]);
+
+  useEffect(() => {
+    const decisionId = explainability?.decision_ref;
+    if (!decisionId) return;
+    const subscriptionState = user?.hasPremium ? 'Premium' : 'Free';
+    uiRuntimeAdapter
+      .getCoachExplainability(decisionId, { subscriptionState })
+      .then(setCoachExplainability)
+      .catch(() => setCoachExplainability(null));
+  }, [explainability?.decision_ref, user?.hasPremium]);
 
   const getDayMarker = (day: ProgramMyPlanDTO['dayCards'][number]) => {
     const reasonText = `${day.explainabilitySummary?.reasonCode ?? ''} ${day.explainabilitySummary?.decisionRef ?? ''}`
@@ -206,6 +240,12 @@ const MyProgram = () => {
               }
             }}
           >
+            <button
+              onClick={() => setCoachRequestOpen(true)}
+              className="mb-3 rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
+            >
+              🧠 Спросить коуча
+            </button>
             {isPain && (
               <TrustBanner tone="pain">
                 Мы снизили нагрузку ради безопасности. Это бережное решение, а не откат.
@@ -225,6 +265,24 @@ const MyProgram = () => {
               <TrustBanner tone="recovery">
                 Сейчас фаза восстановления. Сила растёт, когда отдых осознанный.
               </TrustBanner>
+            )}
+
+            {coachOverlay && (
+              <CoachMessageCard
+                mode={coachOverlay.ui_mode}
+                message={coachOverlay.coach_message}
+                footer={
+                  plan?.status?.toLowerCase().includes('pause')
+                    ? 'Мы можем вернуться, когда вы будете готовы.'
+                    : undefined
+                }
+              />
+            )}
+            {plan?.status?.toLowerCase().includes('cancel') && (
+              <CoachMessageCard
+                mode="support"
+                message="Мы сохраним ваш путь и поможем перейти в Manual Mode без давления."
+              />
             )}
 
             {plan && (
@@ -368,6 +426,15 @@ const MyProgram = () => {
                   </div>
                   <div className="mt-4">
                     <ExplainabilityDrawer explainability={explainability} />
+                    <div className="mt-3">
+                      <CoachExplainabilityDrawer
+                        decisionId={explainability?.decision_ref}
+                        trace={coachExplainability}
+                        confidence={explainability?.confidence}
+                        trustLevel={String(explainability?.trust_level ?? explainability?.trust_score ?? '—')}
+                        safetyFlags={explainability?.safety_flags ?? []}
+                      />
+                    </div>
                   </div>
                 </Card>
 
@@ -381,6 +448,20 @@ const MyProgram = () => {
           </StateContainer>
         </main>
       </div>
+      {coachRequestOpen && (
+        <CoachRequestModal
+          open={coachRequestOpen}
+          onClose={() => setCoachRequestOpen(false)}
+          context={{
+            screen: 'Program',
+            userMode: plan ? 'Follow Plan' : 'Manual',
+            subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+            trustLevel,
+            safetyFlags,
+            adherence: totalDays ? completedDays / totalDays : undefined,
+          }}
+        />
+      )}
     </div>
   );
 };

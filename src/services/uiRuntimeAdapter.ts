@@ -18,11 +18,20 @@ import { habitsService, HabitWithStatus } from './habitsService';
 import { entitlementService } from './entitlementService';
 import { goalService } from './goalService';
 import { profileService, UserProfile } from './profileService';
+import type { CoachSettings } from '../types/coachSettings';
 import { measurementsService } from './measurementsService';
 import { mealService } from './mealService';
 import { workoutService } from './workoutService';
 import { aggregateWorkoutEntries } from '../utils/workoutMetrics';
 import { classifyTrustDecision, TrustDecision } from './trustSafetyService';
+import {
+  coachRuntime,
+  type CoachResponse,
+  type CoachScreen,
+  type CoachScreenContext,
+  type CoachDecisionHistoryQuery,
+  type CoachRequestIntent,
+} from './coachRuntime';
 
 export type RuntimeStatus =
   | 'loading'
@@ -639,6 +648,87 @@ class UiRuntimeAdapter {
       habitsService.recover(),
       entitlementService.recover(),
     ]);
+  }
+
+  private buildCoachContext(screen: CoachScreen, context: Partial<CoachScreenContext> = {}): CoachScreenContext {
+    const confidenceLevel = context.confidenceLevel ?? (context.trustLevel ? context.trustLevel / 100 : undefined);
+
+    return {
+      screen,
+      userMode: context.userMode ?? 'Manual',
+      subscriptionState: context.subscriptionState ?? 'Free',
+      trustLevel: context.trustLevel,
+      confidenceLevel,
+      fatigueLevel: context.fatigueLevel,
+      relapseRisk: context.relapseRisk,
+      motivationLevel: context.motivationLevel,
+      safetyFlags: context.safetyFlags ?? [],
+      adherence: context.adherence,
+      streak: context.streak,
+      timeGapDays: context.timeGapDays,
+    };
+  }
+
+  private readCoachSettings(): CoachSettings {
+    try {
+      const raw = localStorage.getItem('potok_coach_settings');
+      if (!raw) return { coach_enabled: true, coach_mode: 'support' };
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object'
+        ? (parsed as CoachSettings)
+        : { coach_enabled: true, coach_mode: 'support' };
+    } catch {
+      return { coach_enabled: true, coach_mode: 'support' };
+    }
+  }
+
+  async getCoachOverlay(
+    screen: CoachScreen,
+    context: Partial<CoachScreenContext> = {}
+  ): Promise<CoachResponse | null> {
+    const settings = this.readCoachSettings();
+    const mode = settings.coach_enabled ? settings.coach_mode : 'off';
+    if (mode === 'off' || mode === 'on_request') return null;
+    if (mode === 'risk_only') {
+      const hasRisk =
+        (context.safetyFlags?.length ?? 0) > 0 ||
+        (context.fatigueLevel ?? 0) > 0.6 ||
+        (context.relapseRisk ?? 0) > 0.6;
+      if (!hasRisk) return null;
+    }
+    const coachContext = this.buildCoachContext(screen, context);
+    return coachRuntime.getCoachOverlay(coachContext);
+  }
+
+  getCoachNudge(type: 'morning' | 'evening' | 'recovery' | 'motivation'): CoachResponse {
+    return coachRuntime.getCoachNudge(type);
+  }
+
+  async getCoachExplainability(decisionId: string, context?: Partial<CoachScreenContext>) {
+    return coachRuntime.getExplainability(decisionId, {
+      subscriptionState: context?.subscriptionState ?? 'Free',
+    });
+  }
+
+  async getCoachHistory(query: CoachDecisionHistoryQuery) {
+    return coachRuntime.listExplainableDecisions(query);
+  }
+
+  async getTrustNarrative() {
+    return coachRuntime.buildTrustNarrative();
+  }
+
+  async clearCoachHistory() {
+    return coachRuntime.clearCoachHistory();
+  }
+
+  async resetCoachTrust() {
+    return coachRuntime.resetTrustStyle();
+  }
+
+  async requestCoachResponse(intent: CoachRequestIntent, context: Partial<CoachScreenContext>) {
+    const coachContext = this.buildCoachContext(context.screen ?? 'Today', context);
+    return coachRuntime.handleUserRequest(intent, coachContext);
   }
 }
 

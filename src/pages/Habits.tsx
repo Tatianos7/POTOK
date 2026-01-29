@@ -1,13 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Plus, Check, Circle, Calendar } from 'lucide-react';
 import { createHabit, toggleHabitComplete, HabitWithStatus, HabitFrequency } from '../services/habitsService';
-import { supabase } from '../lib/supabaseClient';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
-import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
-import type { BaseExplainabilityDTO } from '../types/explainability';
+import type { HabitsExplainabilityDTO } from '../types/explainability';
 import { classifyTrustDecision } from '../services/trustSafetyService';
+import Card from '../ui/components/Card';
+import Timeline from '../ui/components/Timeline';
+import StateContainer from '../ui/components/StateContainer';
+import TrustBanner from '../ui/components/TrustBanner';
+import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
+import CoachMessageCard from '../ui/coach/CoachMessageCard';
+import CoachNudge from '../ui/coach/CoachNudge';
+import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import CoachRequestModal from '../ui/coach/CoachRequestModal';
+import { coachRuntime, type CoachResponse, type CoachScreenContext } from '../services/coachRuntime';
+import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
 const Habits = () => {
   const { user } = useAuth();
@@ -18,12 +27,23 @@ const Habits = () => {
   const [newHabitTitle, setNewHabitTitle] = useState('');
   const [newHabitDescription, setNewHabitDescription] = useState('');
   const [newHabitFrequency, setNewHabitFrequency] = useState<HabitFrequency>('daily');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isWorking, setIsWorking] = useState(false);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
-  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
+  const [explainability, setExplainability] = useState<HabitsExplainabilityDTO | null>(null);
   const [habitStats, setHabitStats] = useState<Record<string, { streak: number; adherence: number }>>({});
+  const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
+  const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
+  const [coachRequestOpen, setCoachRequestOpen] = useState(false);
+
+  const buildCoachContext = (): CoachScreenContext => ({
+    screen: 'Habits',
+    userMode: 'Manual',
+    subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+    trustLevel: explainability?.trust_level ?? explainability?.trust_score,
+    safetyFlags: [],
+  });
 
   useEffect(() => {
     if (!user?.id) {
@@ -35,8 +55,8 @@ const Habits = () => {
   }, [user, selectedDate, navigate]);
 
   const loadHabits = async () => {
-    if (!user?.id || !supabase) return;
-    setIsLoading(true);
+    if (!user?.id) return;
+    setIsWorking(true);
     setRuntimeStatus('loading');
     setErrorMessage(null);
     setTrustMessage(null);
@@ -60,21 +80,20 @@ const Habits = () => {
         setErrorMessage(state.message || 'Не удалось загрузить привычки.');
       }
     } catch (error) {
-      console.error('Error loading habits:', error);
       const decision = classifyTrustDecision(error);
       setRuntimeStatus('error');
       setErrorMessage('Не удалось загрузить привычки.');
       setTrustMessage(decision.message);
     } finally {
       uiRuntimeAdapter.clearLoadingTimer('Habits');
-      setIsLoading(false);
+      setIsWorking(false);
     }
   };
 
   const handleCreateHabit = async () => {
     if (!user?.id || !newHabitTitle.trim()) return;
 
-    setIsLoading(true);
+    setIsWorking(true);
     try {
       const habit = await createHabit({
         userId: user.id,
@@ -91,27 +110,55 @@ const Habits = () => {
         await loadHabits();
       }
     } catch (error) {
-      console.error('Error creating habit:', error);
+      const decision = classifyTrustDecision(error);
+      setErrorMessage('Не удалось создать привычку.');
+      setTrustMessage(decision.message);
     } finally {
-      setIsLoading(false);
+      setIsWorking(false);
     }
   };
 
   const handleToggleHabit = async (habitId: string) => {
     if (!user?.id) return;
 
-    setIsLoading(true);
+    setIsWorking(true);
     try {
+      const targetHabit = habits.find((habit) => habit.id === habitId);
+      const previousStatus = targetHabit ? habitStatus(targetHabit) : 'on_track';
       await toggleHabitComplete({
         userId: user.id,
         habitId,
         date: selectedDate,
       });
+      const wasCompleted = Boolean(targetHabit?.completed);
+      const eventType = wasCompleted
+        ? 'HabitBroken'
+        : previousStatus === 'break' || previousStatus === 'slip'
+          ? 'StreakRecovered'
+          : 'HabitCompleted';
+      void coachRuntime.handleUserEvent(
+        {
+          type: eventType,
+          timestamp: new Date().toISOString(),
+          payload: {
+            habit_id: habitId,
+            date: selectedDate,
+            previous_status: previousStatus,
+            source: 'ui',
+          },
+          confidence: 0.6,
+          safetyClass: 'normal',
+          trustImpact: wasCompleted ? -1 : 1,
+        },
+        buildCoachContext()
+      );
       await loadHabits();
     } catch (error) {
-      console.error('Error toggling habit:', error);
+      const decision = classifyTrustDecision(error);
+      setErrorMessage('Не удалось обновить привычку.');
+      setTrustMessage(decision.message);
     } finally {
-      setIsLoading(false);
+      setIsWorking(false);
     }
   };
 
@@ -142,24 +189,83 @@ const Habits = () => {
     return `${day} ${month}`;
   };
 
-  if (!supabase) {
-    return (
-      <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden" style={{ minWidth: '360px' }}>
-        <div className="max-w-[768px] mx-auto w-full flex flex-col h-full items-center justify-center px-4">
-          <p className="text-gray-500 dark:text-gray-400 text-center">
-            Supabase не настроен. Настройте переменные окружения для работы с привычками.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const totalHabits = habits.length;
+  const completedHabits = habits.filter((habit) => habit.completed).length;
+  const adherenceRate = totalHabits
+    ? Math.round(
+        (Object.values(habitStats).reduce((sum, stat) => sum + (stat?.adherence ?? 0), 0) / totalHabits) * 100
+      )
+    : 0;
+
+  const habitStatus = (habit: HabitWithStatus) => {
+    const stats = habitStats[habit.id];
+    const streak = stats?.streak ?? 0;
+    const adherence = stats?.adherence ?? 0;
+    if (habit.completed && adherence < 0.5) return 'recovery';
+    if (!habit.completed && streak === 0) return 'break';
+    if (!habit.completed && streak > 0) return 'slip';
+    return 'on_track';
+  };
+
+  const rhythmTimeline = useMemo(() => {
+    if (totalHabits === 0) {
+      return [
+        {
+          title: 'Ритм начинается здесь',
+          subtitle: 'Создайте 1–2 привычки и двигайтесь спокойно.',
+          status: 'upcoming' as const,
+        },
+      ];
+    }
+    if (adherenceRate >= 70) {
+      return [
+        { title: 'Ритм устойчив', subtitle: 'Вы держите темп уверенно.', status: 'done' as const },
+        { title: 'Рост доверия', subtitle: 'Стабильность укрепляет уверенность.', status: 'active' as const },
+      ];
+    }
+    if (adherenceRate >= 40) {
+      return [
+        { title: 'Ритм формируется', subtitle: 'Небольшие шаги дают устойчивость.', status: 'active' as const },
+        { title: 'Срыв ≠ провал', subtitle: 'Мы поддержим возвращение.', status: 'upcoming' as const },
+      ];
+    }
+    return [
+      { title: 'Нужен мягкий возврат', subtitle: 'Ритм важнее идеальности.', status: 'active' as const },
+      { title: 'План восстановления', subtitle: 'Мы начнем с малого.', status: 'upcoming' as const },
+    ];
+  }, [adherenceRate, totalHabits]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const trustLevel = explainability?.trust_level ?? explainability?.trust_score;
+    const subscriptionState = user?.hasPremium ? 'Premium' : 'Free';
+    uiRuntimeAdapter
+      .getCoachOverlay('Habits', {
+        trustLevel,
+        subscriptionState,
+        adherence: adherenceRate ? adherenceRate / 100 : undefined,
+        streak: Math.max(...Object.values(habitStats).map((stat) => stat?.streak ?? 0), 0),
+      })
+      .then(setCoachOverlay)
+      .catch(() => setCoachOverlay(null));
+  }, [adherenceRate, habitStats, explainability?.trust_level, explainability?.trust_score, user?.hasPremium, user?.id]);
+
+  useEffect(() => {
+    const decisionId = explainability?.decision_ref;
+    if (!decisionId) return;
+    const subscriptionState = user?.hasPremium ? 'Premium' : 'Free';
+    uiRuntimeAdapter
+      .getCoachExplainability(decisionId, { subscriptionState })
+      .then(setCoachExplainability)
+      .catch(() => setCoachExplainability(null));
+  }, [explainability?.decision_ref, user?.hasPremium]);
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden" style={{ minWidth: '360px' }}>
-      <div className="max-w-[768px] mx-auto w-full flex flex-col h-full">
+    <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
+      <div className="container-responsive">
         {/* Header */}
-        <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <div className="flex-1"></div>
+        <header className="py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+          <div className="flex-1" />
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase">
             ПРИВЫЧКИ
           </h1>
@@ -174,157 +280,193 @@ const Habits = () => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto min-h-0 px-4 py-6">
-          {errorMessage && (
-            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
-              <div className="flex flex-col gap-2 mobile-lg:flex-row mobile-lg:items-center mobile-lg:justify-between">
-                <span>{errorMessage}</span>
-                {trustMessage && (
-                  <span className="text-xs text-red-700 dark:text-red-200">{trustMessage}</span>
-                )}
-                <button
-                  onClick={() => {
-                    uiRuntimeAdapter.recover().finally(loadHabits);
-                  }}
-                  className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-700 dark:text-red-200 dark:hover:bg-red-900/50"
-                >
-                  Повторить
-                </button>
-              </div>
-            </div>
-          )}
-          {runtimeStatus === 'offline' && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Работаем офлайн. Данные могут быть неактуальны.
-              <button
-                onClick={() => {
-                  uiRuntimeAdapter.revalidate().finally(loadHabits);
-                }}
-                className="ml-3 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
-              >
-                Обновить
-              </button>
-            </div>
-          )}
-          {runtimeStatus === 'recovery' && (
-            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-              Идёт восстановление данных. Продолжаем безопасно.
-            </div>
-          )}
-          {runtimeStatus === 'partial' && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              Данные доступны частично. Мы показываем то, что уже есть.
-            </div>
-          )}
-          {explainability && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
-              Доступно объяснение: «Почему так?»
-            </div>
-          )}
-          {/* Date Selector */}
-          <div className="mb-6 flex items-center justify-between">
+        <main className="py-4 tablet:py-6">
+          <StateContainer
+            status={runtimeStatus}
+            message={runtimeStatus === 'empty' ? 'Пока нет привычек. Начните с одной опоры.' : errorMessage || undefined}
+            onRetry={() => {
+              if (runtimeStatus === 'offline') {
+                uiRuntimeAdapter.revalidate().finally(loadHabits);
+              } else {
+                uiRuntimeAdapter.recover().finally(loadHabits);
+              }
+            }}
+          >
             <button
-              onClick={() => handleDateChange(-1)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              aria-label="Предыдущий день"
+              onClick={() => setCoachRequestOpen(true)}
+              className="mb-3 rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
             >
-              <Calendar className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+              🧠 Спросить коуча
             </button>
-            <div className="text-center">
-              <p className="text-base font-medium text-gray-900 dark:text-white">
-                {formatDate(selectedDate)}
-              </p>
-            </div>
-            <button
-              onClick={() => handleDateChange(1)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              aria-label="Следующий день"
-            >
-              <Calendar className="w-5 h-5 text-gray-700 dark:text-gray-300 rotate-180" />
-            </button>
-          </div>
+            {coachOverlay && (
+              <CoachNudge message={coachOverlay.coach_message} mode={coachOverlay.ui_mode} />
+            )}
+            {habits.some((habit) => habitStatus(habit) === 'break') && (
+              <TrustBanner tone="recovery">
+                Вы не сломались — вы восстанавливаетесь. Ритм важнее идеальности.
+              </TrustBanner>
+            )}
+            {habits.some((habit) => habitStatus(habit) === 'slip') && (
+              <TrustBanner tone="plateau">
+                Один пропуск — это сигнал, не провал. Возвращаемся спокойно.
+              </TrustBanner>
+            )}
 
-          {/* Habits List */}
-          {isLoading && habits.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400">Загрузка...</p>
-            </div>
-          ) : habits.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400 mb-4">
-                У вас пока нет привычек
-              </p>
-              <button
-                onClick={() => setIsCreateModalOpen(true)}
-                className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg font-medium"
-              >
-                Создать первую привычку
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3 mb-6">
-              {habits.map((habit) => (
-                <div
-                  key={habit.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700"
-                >
-                  <div className="flex-1">
-                    <h3 className="text-base font-medium text-gray-900 dark:text-white mb-1">
-                      {habit.title}
-                    </h3>
-                    {habit.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {habit.description}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                      {habit.frequency === 'daily' ? 'Ежедневно' : 'Еженедельно'}
+            {adherenceRate < 40 && totalHabits > 0 && (
+              <CoachMessageCard
+                mode="support"
+                message="Ритм важнее идеальности. Начнем с одного устойчивого шага."
+              />
+            )}
+
+            <div className="space-y-4">
+              <Card title="Ритм дня" action={<span className="text-xs text-gray-500">{formatDate(selectedDate)}</span>}>
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => handleDateChange(-1)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    aria-label="Предыдущий день"
+                  >
+                    <Calendar className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                  </button>
+                  <div className="text-center">
+                    <p className="text-xs text-gray-600 dark:text-gray-400">Выполнено</p>
+                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {completedHabits}/{totalHabits}
                     </p>
-                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                      <span>Стрик: {habitStats[habit.id]?.streak ?? 0}</span>
-                      <span>•</span>
-                      <span>Устойчивость: {Math.round((habitStats[habit.id]?.adherence ?? 0) * 100)}%</span>
-                    </div>
-                    {!habit.completed && (
-                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Срыв — не провал. Давайте вернёмся спокойно.
-                      </p>
-                    )}
                   </div>
                   <button
-                    onClick={() => handleToggleHabit(habit.id)}
-                    disabled={isLoading}
-                    className={`ml-4 p-2 rounded-lg transition-colors ${
-                      habit.completed
-                        ? 'bg-green-500 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                    }`}
-                    aria-label={habit.completed ? 'Отметить как невыполненное' : 'Отметить как выполненное'}
+                    onClick={() => handleDateChange(1)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                    aria-label="Следующий день"
                   >
-                    {habit.completed ? (
-                      <Check className="w-6 h-6" />
-                    ) : (
-                      <Circle className="w-6 h-6" />
-                    )}
+                    <Calendar className="w-5 h-5 text-gray-700 dark:text-gray-300 rotate-180" />
                   </button>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+                  Устойчивость: {adherenceRate}% · Стрики укрепляют доверие к себе.
+                </div>
+              </Card>
 
-          {/* Create Habit Button */}
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            disabled={isLoading}
-            style={{ height: '45px', minHeight: '45px', maxHeight: '45px', boxSizing: 'border-box' }}
-            className="w-full max-w-full min-[768px]:button-limited px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            СОЗДАТЬ ПРИВЫЧКУ
-          </button>
-          <div className="mt-6">
-            <ExplainabilityDrawer explainability={explainability} />
-          </div>
+              <Timeline title="Линия ритма" items={rhythmTimeline} />
+
+              <Card title="Мои привычки" action={<span className="text-xs text-gray-500">{totalHabits} активных</span>}>
+                {totalHabits === 0 ? (
+                  <div className="text-center py-6">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Привычки — это опора, а не контроль. Начните с одной.
+                    </p>
+                    <button
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 text-xs font-semibold hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                    >
+                      Создать первую привычку
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {habits.map((habit) => {
+                      const status = habitStatus(habit);
+                      const statusLabel =
+                        status === 'recovery'
+                          ? 'возврат'
+                          : status === 'break'
+                            ? 'пауза'
+                            : status === 'slip'
+                              ? 'срыв'
+                              : 'ритм';
+                      return (
+                        <div
+                          key={habit.id}
+                          className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700"
+                        >
+                          <div className="flex-1">
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {habit.title}
+                            </h3>
+                            {habit.description && (
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                {habit.description}
+                              </p>
+                            )}
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                              <span>{habit.frequency === 'daily' ? 'Ежедневно' : 'Еженедельно'}</span>
+                              <span>•</span>
+                              <span>Стрик: {habitStats[habit.id]?.streak ?? 0}</span>
+                              <span>•</span>
+                              <span>Ритм: {Math.round((habitStats[habit.id]?.adherence ?? 0) * 100)}%</span>
+                              <span>•</span>
+                              <span>{statusLabel}</span>
+                            </div>
+                            {status !== 'on_track' && (
+                              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                Ритм важнее идеальности. Мы поможем вернуться.
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => handleToggleHabit(habit.id)}
+                            disabled={isWorking}
+                            className={`mt-1 p-2 rounded-lg transition-colors ${
+                              habit.completed
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                            }`}
+                            aria-label={habit.completed ? 'Отметить как невыполненное' : 'Отметить как выполненное'}
+                          >
+                            {habit.completed ? <Check className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+
+              <Card title="Создать привычку">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Привычка — это ваш ритм. Мы помогаем удерживать его мягко.
+                </p>
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  disabled={isWorking}
+                  className="mt-3 w-full rounded-xl bg-gray-900 text-white py-3 text-sm font-semibold uppercase hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                >
+                  Создать привычку
+                </button>
+              </Card>
+
+              <Card tone="explainable" title="Почему привычки важны?">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Мы объясняем влияние привычек на прогресс и восстановление.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-gray-700 dark:text-gray-300">
+                  <div>Источники: {explainability?.data_sources?.join(', ') || '—'}</div>
+                  <div>Уверенность: {explainability?.confidence ?? '—'}</div>
+                  <div>Trust: {explainability?.trust_level ?? '—'}</div>
+                  <div>Safety: {explainability?.safety_notes?.join(', ') || '—'}</div>
+                </div>
+                <div className="mt-4">
+                  <ExplainabilityDrawer explainability={explainability} />
+                  <div className="mt-3">
+                    <CoachExplainabilityDrawer
+                      decisionId={explainability?.decision_ref}
+                      trace={coachExplainability}
+                      confidence={explainability?.confidence}
+                      trustLevel={String(explainability?.trust_level ?? explainability?.trust_score ?? '—')}
+                      safetyFlags={explainability?.safety_flags ?? []}
+                    />
+                  </div>
+                </div>
+              </Card>
+
+              {trustMessage && (
+                <Card title="Поддержка">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{trustMessage}</p>
+                </Card>
+              )}
+            </div>
+          </StateContainer>
         </main>
       </div>
 
@@ -353,7 +495,7 @@ const Habits = () => {
                   type="text"
                   value={newHabitTitle}
                   onChange={(e) => setNewHabitTitle(e.target.value)}
-                  placeholder="Например: Пить воду"
+                  placeholder="Например: Ложиться спать до 23:00"
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
                 />
               </div>
@@ -365,7 +507,7 @@ const Habits = () => {
                 <textarea
                   value={newHabitDescription}
                   onChange={(e) => setNewHabitDescription(e.target.value)}
-                  placeholder="Добавьте описание..."
+                  placeholder="Зачем мне это? Например: больше энергии утром"
                   rows={3}
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 resize-none"
                 />
@@ -377,7 +519,7 @@ const Habits = () => {
                 </label>
                 <div className="flex gap-3">
                   <button
-                    onClick={() => setNewHabitFrequency('daily')}
+                  onClick={() => setNewHabitFrequency('daily')}
                     className={`flex-1 px-4 py-3 rounded-xl border-2 font-medium transition-colors ${
                       newHabitFrequency === 'daily'
                         ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-gray-900'
@@ -387,7 +529,7 @@ const Habits = () => {
                     Ежедневно
                   </button>
                   <button
-                    onClick={() => setNewHabitFrequency('weekly')}
+                  onClick={() => setNewHabitFrequency('weekly')}
                     className={`flex-1 px-4 py-3 rounded-xl border-2 font-medium transition-colors ${
                       newHabitFrequency === 'weekly'
                         ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-gray-900'
@@ -408,7 +550,7 @@ const Habits = () => {
                 </button>
                 <button
                   onClick={handleCreateHabit}
-                  disabled={!newHabitTitle.trim() || isLoading}
+                  disabled={!newHabitTitle.trim() || isWorking}
                   className="flex-1 px-4 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
                 >
                   Создать
@@ -417,6 +559,20 @@ const Habits = () => {
             </div>
           </div>
         </div>
+      )}
+      {coachRequestOpen && (
+        <CoachRequestModal
+          open={coachRequestOpen}
+          onClose={() => setCoachRequestOpen(false)}
+          context={{
+            screen: 'Habits',
+            userMode: 'Manual',
+            subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+            trustLevel: explainability?.trust_level ?? explainability?.trust_score,
+            adherence: adherenceRate ? adherenceRate / 100 : undefined,
+            streak: Math.max(...Object.values(habitStats).map((stat) => stat?.streak ?? 0), 0),
+          }}
+        />
       )}
     </div>
   );

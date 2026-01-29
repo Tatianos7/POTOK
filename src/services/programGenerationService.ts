@@ -542,6 +542,7 @@ class ProgramGenerationService {
       .update({ program_version: nextVersion })
       .eq('id', program.id);
     if (programUpdateError) throw programUpdateError;
+
   }
 
   async adaptProgram(input: ProgramAdaptationInput): Promise<ProgramAdaptationResult> {

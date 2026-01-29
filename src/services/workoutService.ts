@@ -5,6 +5,7 @@ import { goalService } from './goalService';
 import { userStateService } from './userStateService';
 import { convertWeightToKg } from '../utils/workoutUnits';
 import { aggregateWorkoutEntries, calculateVolume } from '../utils/workoutMetrics';
+import { coachRuntime } from './coachRuntime';
 
 class WorkoutService {
   private readonly WORKOUTS_STORAGE_KEY = 'potok_workout_entries';
@@ -134,6 +135,22 @@ class WorkoutService {
       user_state: (userState ?? {}) as unknown as Record<string, unknown>,
     };
     await aiTrainingPlansService.queueTrainingPlan(userId, context);
+
+    await coachRuntime.handleUserEvent(
+      {
+        type: 'WorkoutCompleted',
+        timestamp: new Date().toISOString(),
+        payload: { date, entries: entries.length },
+        confidence: 0.8,
+        safetyClass: 'normal',
+        trustImpact: 1,
+      },
+      {
+        screen: 'Today',
+        userMode: 'Manual',
+        subscriptionState: 'Free',
+      }
+    );
   }
   /**
    * Получить или создать день тренировки

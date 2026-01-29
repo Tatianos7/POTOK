@@ -8,10 +8,14 @@ import SubscriptionManagement from '../pages/SubscriptionManagement';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import { profileService } from '../services/profileService';
+import type { CoachMode, CoachSettings } from '../types/coachSettings';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
-import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
 import type { BaseExplainabilityDTO } from '../types/explainability';
 import { classifyTrustDecision } from '../services/trustSafetyService';
+import Card from '../ui/components/Card';
+import StateContainer from '../ui/components/StateContainer';
+import TrustBanner from '../ui/components/TrustBanner';
+import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -27,6 +31,8 @@ const Profile = () => {
   const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [entitlements, setEntitlements] = useState<any>(null);
+  const [coachEnabled, setCoachEnabled] = useState(true);
+  const [coachMode, setCoachMode] = useState<CoachMode>('support');
 
   const loadProfileState = useCallback(async () => {
     if (!user?.id) return;
@@ -83,6 +89,20 @@ const Profile = () => {
     loadProfileState();
   }, [loadProfileState]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    profileService
+      .getCoachSettings(user.id)
+      .then((settings) => {
+        setCoachEnabled(settings.coach_enabled);
+        setCoachMode(settings.coach_mode);
+      })
+      .catch(() => {
+        setCoachEnabled(true);
+        setCoachMode('support');
+      });
+  }, [user?.id]);
+
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
@@ -108,6 +128,13 @@ const Profile = () => {
   };
 
   const profile = profileData || user?.profile;
+  const subscriptionLabel = entitlements?.tier
+    ? entitlements.tier.toUpperCase()
+    : profile?.has_premium || user?.hasPremium
+      ? 'PREMIUM'
+      : 'FREE';
+  const subscriptionStatus =
+    entitlements?.status || (profile?.has_premium || user?.hasPremium ? 'active' : 'free');
 
   const formatAge = (value?: number) => {
     if (!value) return '';
@@ -148,6 +175,33 @@ const Profile = () => {
     setIsPrivacyPolicyOpen(true);
   };
 
+  const handleCoachHistory = () => {
+    navigate('/coach-history');
+  };
+
+  const persistCoachSettings = async (settings: CoachSettings) => {
+    if (!user?.id) return;
+    try {
+      await profileService.saveCoachSettings(user.id, settings);
+    } catch (error) {
+      console.warn('[Profile] coach settings save failed', error);
+    }
+  };
+
+  const handleCoachToggle = (enabled: boolean) => {
+    const nextMode = enabled ? (coachMode === 'off' ? 'support' : coachMode) : 'off';
+    setCoachEnabled(enabled);
+    setCoachMode(nextMode);
+    void persistCoachSettings({ coach_enabled: enabled, coach_mode: nextMode });
+  };
+
+  const handleCoachModeChange = (mode: CoachMode) => {
+    setCoachMode(mode);
+    const enabled = mode !== 'off';
+    setCoachEnabled(enabled);
+    void persistCoachSettings({ coach_enabled: enabled, coach_mode: mode });
+  };
+
   const profileMenuItems = [
     { id: 'edit', label: 'РЕДАКТИРОВАТЬ ПРОФИЛЬ', action: handleEdit },
     { id: 'theme', label: 'СМЕНИТЬ ТЕМУ', icon: theme === 'dark' ? Sun : Moon, action: toggleTheme },
@@ -160,212 +214,265 @@ const Profile = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white w-full min-w-[320px]">
+    <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
       <div className="container-responsive">
         {/* Header */}
-        <header className="py-4 flex items-center justify-between border-b border-gray-200">
-          <div className="flex-1"></div>
-          <h1 className="text-lg font-semibold text-gray-900 flex-1 text-center">
+        <header className="py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
+          <div className="flex-1" />
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase">
             Профиль
           </h1>
           <div className="flex-1 flex justify-end">
             <button
               onClick={handleClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
               aria-label="Закрыть"
             >
-              <X className="w-6 h-6 text-gray-700" />
+              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </button>
           </div>
         </header>
 
         {/* Profile Content */}
         <main className="py-4 tablet:py-6">
-          {runtimeStatus === 'offline' && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Работаем офлайн. Данные могут быть неактуальны.
-              <button
-                onClick={() => {
-                  uiRuntimeAdapter.revalidate().finally(loadProfileState);
-                }}
-                className="ml-3 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
-              >
-                Обновить
-              </button>
-            </div>
-          )}
-          {runtimeStatus === 'recovery' && (
-            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-              Идёт восстановление данных. Продолжаем безопасно.
-            </div>
-          )}
-          {runtimeStatus === 'partial' && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              Данные профиля доступны частично. Мы покажем доступное.
-            </div>
-          )}
-          {runtimeStatus === 'error' && (
-            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-              <div className="flex flex-col gap-2 mobile-lg:flex-row mobile-lg:items-center mobile-lg:justify-between">
-                <span>{errorMessage || 'Не удалось загрузить профиль.'}</span>
-                {trustMessage && <span className="text-xs text-red-700">{trustMessage}</span>}
-                <button
-                  onClick={() => {
-                    uiRuntimeAdapter.recover().finally(loadProfileState);
-                  }}
-                  className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100"
-                >
-                  Повторить
-                </button>
-              </div>
-            </div>
-          )}
-          {runtimeStatus === 'loading' && (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-            </div>
-          )}
-          {/* Profile Info */}
-          <div className="flex items-start gap-4 mb-6">
-            {/* Avatar */}
-            <div className="relative">
-              <div
-                onClick={handleAvatarClick}
-                className="w-[90px] h-[90px] rounded-lg bg-gray-200 flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
-              >
-                {avatar ? (
-                  <img
-                    src={avatar}
-                    alt="Avatar"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                    <Camera className="w-8 h-8 text-gray-500" />
-                  </div>
-                )}
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <button
-                onClick={handleAvatarClick}
-                className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center hover:bg-primary-700 transition-colors"
-                aria-label="Загрузить фото"
-              >
-                <Camera className="w-3 h-3 text-white" />
-              </button>
-            </div>
-
-            {/* User Info */}
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">
-                {profile?.lastName && `${profile.lastName} `}
-                {profile?.firstName || user?.name || 'Пользователь'}
-                {profile?.middleName && ` ${profile.middleName}`}
-              </h2>
-              <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  {profile?.birthDate && (
-                    <span className="px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-700">
-                      {new Date(profile.birthDate).toLocaleDateString('ru-RU')}
-                    </span>
-                  )}
-                  {profile?.age && (
-                    <span className="px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-700">
-                      {formatAge(profile.age)}
-                    </span>
-                  )}
-                  {profile?.height && (
-                    <span className="px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-700">
-                      {profile.height} см
-                    </span>
-                  )}
-                  {profile?.goal && (
-                    <span className="px-3 py-1 rounded-full bg-gray-100 text-xs text-gray-700">
-                      Цель: {profile.goal}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Info */}
-          <div className="mb-6 space-y-2 text-sm">
-            <p className="text-gray-900">
-              <span className="font-semibold">Тариф:</span>{' '}
-              <span className={profile?.has_premium || user?.hasPremium ? 'text-primary-600' : 'text-gray-600'}>
-                {profile?.has_premium || user?.hasPremium ? 'PREMIUM' : 'FREE'}
-              </span>
-            </p>
-            <p className="text-gray-600">{profile?.email || 'Email не указан'}</p>
-            <p className="text-gray-600">{profile?.phone || 'Телефон не указан'}</p>
-            {entitlements?.tier && (
-              <p className="text-gray-600">
-                <span className="font-semibold">Entitlement:</span> {entitlements.tier}
-              </p>
-            )}
-          </div>
-
-          {/* Menu Items */}
-          <div className="space-y-2">
-            {profileMenuItems.map((item) => {
-              const IconComponent = item.icon;
-              const isThemeButton = item.id === 'theme';
-              const baseClasses =
-                'w-full py-3 px-4 rounded-[13px] text-center font-semibold text-sm uppercase transition-colors flex items-center justify-center gap-2';
-              let variantClasses = '';
-
-              if (isThemeButton) {
-                variantClasses =
-                  theme === 'light'
-                    ? 'bg-gray-900 text-white border border-gray-900 hover:bg-gray-800'
-                    : 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50';
-              } else if (item.isActive) {
-                variantClasses = 'bg-gray-900 text-white';
+          <StateContainer
+            status={runtimeStatus}
+            message={runtimeStatus === 'empty' ? 'Профиль ещё не заполнен. Мы поможем начать.' : errorMessage || undefined}
+            onRetry={() => {
+              if (runtimeStatus === 'offline') {
+                uiRuntimeAdapter.revalidate().finally(loadProfileState);
               } else {
-                variantClasses = 'bg-white text-gray-900 border border-gray-200 hover:bg-gray-50';
+                uiRuntimeAdapter.recover().finally(loadProfileState);
               }
+            }}
+          >
+            <div className="space-y-4">
+              <Card title="Мой профиль" action={<button onClick={handleEdit} className="text-xs text-gray-500">Редактировать</button>}>
+                <div className="flex items-start gap-4">
+                  <div className="relative">
+                    <div
+                      onClick={handleAvatarClick}
+                      className="w-[90px] h-[90px] rounded-xl bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
+                    >
+                      {avatar ? (
+                        <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-gray-300 dark:bg-gray-700 flex items-center justify-center">
+                          <Camera className="w-8 h-8 text-gray-500 dark:text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={handleAvatarClick}
+                      className="absolute -bottom-1 -right-1 w-6 h-6 bg-gray-900 dark:bg-white rounded-full flex items-center justify-center hover:opacity-90"
+                      aria-label="Загрузить фото"
+                    >
+                      <Camera className="w-3 h-3 text-white dark:text-gray-900" />
+                    </button>
+                  </div>
 
-              return (
+                  <div className="flex-1">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                      {profile?.lastName && `${profile.lastName} `}
+                      {profile?.firstName || user?.name || 'Пользователь'}
+                      {profile?.middleName && ` ${profile.middleName}`}
+                    </h2>
+                    <div className="flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-400">
+                      {profile?.birthDate && (
+                        <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                          {new Date(profile.birthDate).toLocaleDateString('ru-RU')}
+                        </span>
+                      )}
+                      {profile?.age && (
+                        <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                          {formatAge(profile.age)}
+                        </span>
+                      )}
+                      {profile?.height && (
+                        <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                          {profile.height} см
+                        </span>
+                      )}
+                      {profile?.goal && (
+                        <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                          Цель: {profile.goal}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                      Эти данные помогают делать рекомендации точнее и безопаснее.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+
+              <Card title="Подписка">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Вы контролируете подписку и всегда можете изменить решение.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-gray-700 dark:text-gray-300">
+                  <div>Статус: {subscriptionStatus}</div>
+                  <div>Тариф: {subscriptionLabel}</div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={handleSubscription}
+                    className="rounded-xl bg-gray-900 text-white px-4 py-2 text-xs font-semibold uppercase dark:bg-white dark:text-gray-900"
+                  >
+                    Управление подпиской
+                  </button>
+                  <button
+                    onClick={handleHistory}
+                    className="rounded-xl border border-gray-300 px-4 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200"
+                  >
+                    История оплат
+                  </button>
+                </div>
+              </Card>
+
+              <Card title="История платежей">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Прозрачность — основа доверия. Все списания доступны в истории.
+                </p>
                 <button
-                  key={item.id}
-                  className={`${baseClasses} ${variantClasses}`}
-                  onClick={item.action ? () => item.action?.() : undefined}
+                  onClick={handleHistory}
+                  className="mt-3 w-full rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200"
                 >
-                  <span>{item.label}</span>
-                  {IconComponent && (
-                    <IconComponent className="w-4 h-4" />
-                  )}
+                  Открыть историю
                 </button>
-              );
-            })}
-          </div>
-          <div className="mt-6 rounded-2xl border border-gray-200 p-4 space-y-3">
-            <h3 className="text-sm font-semibold text-gray-900">Данные и права</h3>
-            <p className="text-xs text-gray-600">
-              Ваши данные принадлежат вам. Мы обеспечиваем прозрачность и контроль.
-            </p>
-            <div className="flex flex-col gap-2">
-              <button className="rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700">
-                Экспорт данных
-              </button>
-              <button className="rounded-xl border border-red-300 py-2 text-xs font-semibold uppercase text-red-600">
-                Удалить аккаунт
-              </button>
-              <button className="rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700">
-                Юридические согласия (РФ)
-              </button>
+              </Card>
+
+              <Card title="Настройки коуча">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Вы управляете тем, как коуч с вами взаимодействует. Можно изменить в любой момент.
+                </p>
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-300">
+                  <span>Коуч включён</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCoachToggle(!coachEnabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      coachEnabled ? 'bg-gray-900 dark:bg-white' : 'bg-gray-300 dark:bg-gray-700'
+                    }`}
+                    aria-pressed={coachEnabled}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-900 transition-transform ${
+                        coachEnabled ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  {[
+                    { id: 'support', label: 'Поддержка' },
+                    { id: 'on_request', label: 'Только по запросу' },
+                    { id: 'risk_only', label: 'Только при риске' },
+                    { id: 'off', label: 'Выключен' },
+                  ].map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => handleCoachModeChange(option.id as CoachMode)}
+                      className={`rounded-xl border px-3 py-2 font-semibold uppercase transition-colors ${
+                        coachMode === option.id
+                          ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                          : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-200'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </Card>
+
+              <Card title="История рекомендаций коуча">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  История решений и объяснений, чтобы видеть логику и доверять процессу.
+                </p>
+                <button
+                  onClick={handleCoachHistory}
+                  className="mt-3 w-full rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200"
+                >
+                  Открыть историю
+                </button>
+              </Card>
+
+              <Card title="Данные и права">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Вы владеете своими данными. Мы обеспечиваем полный контроль.
+                </p>
+                <div className="mt-3 flex flex-col gap-2">
+                  <button className="rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                    Экспорт данных
+                  </button>
+                  <button className="rounded-xl border border-red-300 py-2 text-xs font-semibold uppercase text-red-600">
+                    Удалить аккаунт
+                  </button>
+                  <button
+                    onClick={handlePrivacyPolicy}
+                    className="rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200"
+                  >
+                    Политика конфиденциальности
+                  </button>
+                  <button className="rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                    Оферта и условия
+                  </button>
+                  <button className="rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                    Юридические согласия (РФ)
+                  </button>
+                </div>
+              </Card>
+
+              <Card title="Безопасность">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleChangePassword}
+                    className="rounded-xl border border-gray-300 px-4 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200"
+                  >
+                    Сменить пароль
+                  </button>
+                  <button className="rounded-xl border border-gray-300 px-4 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                    Активные сессии
+                  </button>
+                  <button className="rounded-xl border border-gray-300 px-4 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                    Устройства
+                  </button>
+                </div>
+              </Card>
+
+              <Card title="Поддержка">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Мы рядом, если нужна помощь. Ответим спокойно и по делу.
+                </p>
+                <button className="mt-3 w-full rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                  Связаться с поддержкой
+                </button>
+              </Card>
+
+              <Card tone="explainable" title="Почему такой доступ?">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Мы объясняем статус, чтобы вы чувствовали контроль.
+                </p>
+                <div className="mt-3">
+                  <ExplainabilityDrawer explainability={explainability} />
+                </div>
+              </Card>
+
+              {trustMessage && (
+                <TrustBanner tone="safety">
+                  {trustMessage}
+                </TrustBanner>
+              )}
             </div>
-          </div>
-          <div className="mt-6">
-            <ExplainabilityDrawer explainability={explainability} />
-          </div>
+          </StateContainer>
         </main>
       </div>
 

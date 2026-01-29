@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -6,11 +6,19 @@ import { ProgressSnapshot, TrendSummary } from '../services/progressAggregatorSe
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import type { ProgressExplainabilityDTO } from '../types/explainability';
 import { classifyTrustDecision } from '../services/trustSafetyService';
+import { coachRuntime } from '../services/coachRuntime';
 import Card from '../ui/components/Card';
 import Timeline from '../ui/components/Timeline';
 import StateContainer from '../ui/components/StateContainer';
 import TrustBanner from '../ui/components/TrustBanner';
 import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
+import CoachMessageCard from '../ui/coach/CoachMessageCard';
+import CoachTimelineComment from '../ui/coach/CoachTimelineComment';
+import { CoachRecoveryDialog } from '../ui/coach/CoachDialog';
+import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import CoachRequestModal from '../ui/coach/CoachRequestModal';
+import type { CoachResponse } from '../services/coachRuntime';
+import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
 const Progress = () => {
   const navigate = useNavigate();
@@ -21,6 +29,10 @@ const Progress = () => {
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
   const [explainability, setExplainability] = useState<ProgressExplainabilityDTO | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
+  const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
+  const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
+  const [coachRequestOpen, setCoachRequestOpen] = useState(false);
+  const lastCoachEventKey = useRef<string | null>(null);
 
   const getTodayDate = () => {
     const today = new Date();
@@ -80,6 +92,7 @@ const Progress = () => {
   const isPlateau = Math.abs(weightTrend) < 0.05;
   const isRegression = weightTrend > 0.1 && (summary?.calorieBalance ?? 0) > 0;
   const isRecovery = volumeTrend < -0.2;
+  const isBreakthrough = weightTrend < -0.2 || volumeTrend > 0.3;
   const weightInsight = isPlateau
     ? 'Плато — это фаза, а не провал. Тело адаптируется.'
     : weightTrend > 0
@@ -87,6 +100,7 @@ const Progress = () => {
       : 'Снижение идёт стабильно. Берегите восстановление.';
 
   const safetyFlags = explainability?.safety_flags ?? [];
+  const trustLevel = explainability?.trust_level ?? explainability?.trust_score;
   const formatPercent = (value?: number | null) => {
     if (value === null || value === undefined) return '—';
     return `${Math.round(value * 100)}%`;
@@ -183,6 +197,94 @@ const Progress = () => {
     },
   ];
 
+  useEffect(() => {
+    if (!user?.id || !summary) return;
+    const key = `${period.end}:${isPlateau}:${isRegression}:${isRecovery}:${isBreakthrough}:${weightTrend}:${volumeTrend}`;
+    if (lastCoachEventKey.current === key) return;
+    lastCoachEventKey.current = key;
+
+    const baseContext = {
+      screen: 'Progress' as const,
+      userMode: snapshot?.programAdherence ? 'Follow Plan' : 'Manual',
+      subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+      trustLevel,
+      safetyFlags,
+    };
+
+    const event = isBreakthrough
+      ? {
+          type: 'Breakthrough',
+          payload: { period: period.end, slope: weightTrend, volumeSlope: volumeTrend },
+          confidence: 0.7,
+        }
+      : isPlateau
+      ? {
+          type: 'PlateauDetected',
+          payload: { period: period.end, slope: weightTrend },
+          confidence: 0.7,
+        }
+      : isRegression
+        ? {
+            type: 'RegressionDetected',
+            payload: { period: period.end, slope: weightTrend },
+            confidence: 0.7,
+          }
+        : {
+            type: 'TrendImproved',
+            payload: { period: period.end, slope: weightTrend },
+            confidence: 0.6,
+          };
+
+    void coachRuntime.handleUserEvent(
+      {
+        type: event.type,
+        timestamp: new Date().toISOString(),
+        payload: event.payload,
+        confidence: event.confidence,
+        safetyClass: isRecovery ? 'caution' : 'normal',
+        trustImpact: isRegression ? -1 : 1,
+      },
+      baseContext
+    );
+  }, [
+    isBreakthrough,
+    isPlateau,
+    isRecovery,
+    isRegression,
+    period.end,
+    snapshot?.programAdherence,
+    summary,
+    trustLevel,
+    user?.hasPremium,
+    user?.id,
+    volumeTrend,
+    weightTrend,
+  ]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const subscriptionState = user?.hasPremium ? 'Premium' : 'Free';
+    uiRuntimeAdapter
+      .getCoachOverlay('Progress', {
+        trustLevel,
+        safetyFlags,
+        subscriptionState,
+        adherence: snapshot?.programAdherence ?? undefined,
+      })
+      .then(setCoachOverlay)
+      .catch(() => setCoachOverlay(null));
+  }, [safetyFlags, snapshot?.programAdherence, snapshot?.gapDays, trustLevel, user?.hasPremium, user?.id]);
+
+  useEffect(() => {
+    const decisionId = explainability?.decision_ref;
+    if (!decisionId) return;
+    const subscriptionState = user?.hasPremium ? 'Premium' : 'Free';
+    uiRuntimeAdapter
+      .getCoachExplainability(decisionId, { subscriptionState })
+      .then(setCoachExplainability)
+      .catch(() => setCoachExplainability(null));
+  }, [explainability?.decision_ref, user?.hasPremium]);
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
       <div className="container-responsive">
@@ -235,6 +337,23 @@ const Progress = () => {
             )}
 
             <div className="space-y-4">
+              <button
+                onClick={() => setCoachRequestOpen(true)}
+                className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
+              >
+                🧠 Спросить коуча
+              </button>
+              {coachOverlay && (
+                <CoachMessageCard
+                  mode={coachOverlay.ui_mode}
+                  message={coachOverlay.coach_message}
+                  footer={
+                    coachOverlay.emotional_state === 'recovering' ? (
+                      <CoachTimelineComment text="Восстановление — это часть прогресса." mode="support" />
+                    ) : null
+                  }
+                />
+              )}
               <Card title="Life Timeline">
                 <p className="text-xs text-gray-600 dark:text-gray-400">
                   Это история вашего пути — не только цифры, но и восстановление, ритм и устойчивость.
@@ -250,6 +369,11 @@ const Progress = () => {
                 <div className="mt-4">
                   <Timeline items={timelineItems} />
                 </div>
+                {coachOverlay && (
+                  <div className="mt-3">
+                    <CoachTimelineComment text={coachOverlay.coach_message} mode={coachOverlay.ui_mode} />
+                  </div>
+                )}
               </Card>
 
               <Card title="Снимок дня">
@@ -281,6 +405,18 @@ const Progress = () => {
                   ))}
                 </div>
               </Card>
+
+              {(isPlateau || isRegression || isRecovery) && user?.hasPremium && (
+                <CoachRecoveryDialog
+                  message={
+                    isPlateau
+                      ? 'Плато — фаза адаптации. Поддержим устойчивость без давления.'
+                      : isRegression
+                        ? 'Регресс — часть пути. Мягко возвращаем ритм.'
+                        : 'Сейчас важна бережная поддержка и восстановление.'
+                  }
+                />
+              )}
 
               {summary && (
                 <Card title="Тренды (30 дней)">
@@ -339,6 +475,15 @@ const Progress = () => {
                 </div>
                 <div className="mt-4">
                   <ExplainabilityDrawer explainability={explainability} />
+                  <div className="mt-3">
+                    <CoachExplainabilityDrawer
+                      decisionId={explainability?.decision_ref}
+                      trace={coachExplainability}
+                      confidence={explainability?.confidence}
+                      trustLevel={String(explainability?.trust_level ?? explainability?.trust_score ?? '—')}
+                      safetyFlags={explainability?.safety_flags ?? []}
+                    />
+                  </div>
                 </div>
               </Card>
 
@@ -351,6 +496,21 @@ const Progress = () => {
           </StateContainer>
         </main>
       </div>
+      {coachRequestOpen && (
+        <CoachRequestModal
+          open={coachRequestOpen}
+          onClose={() => setCoachRequestOpen(false)}
+          context={{
+            screen: 'Progress',
+            userMode: snapshot?.programAdherence ? 'Follow Plan' : 'Manual',
+            subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+            trustLevel,
+            safetyFlags,
+            relapseRisk: isRegression ? 0.7 : undefined,
+            fatigueLevel: isRecovery ? 0.7 : undefined,
+          }}
+        />
+      )}
     </div>
   );
 };

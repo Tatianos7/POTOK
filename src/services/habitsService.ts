@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { trackEvent } from './analyticsService';
+import { coachRuntime } from './coachRuntime';
 import { aiRecommendationsService } from './aiRecommendationsService';
 import type { HabitsExplainabilityDTO } from '../types/explainability';
 
@@ -144,6 +145,37 @@ export async function toggleHabitComplete(params: {
 
   if (log?.completed) {
     await trackEvent({ name: 'complete_habit', userId, metadata: { habit_id: habitId, date } });
+    await coachRuntime.handleUserEvent(
+      {
+        type: 'HabitCompleted',
+        timestamp: new Date().toISOString(),
+        payload: { habit_id: habitId, date },
+        confidence: 0.8,
+        safetyClass: 'normal',
+        trustImpact: 1,
+      },
+      {
+        screen: 'Habits',
+        userMode: 'Manual',
+        subscriptionState: 'Free',
+      }
+    );
+  } else if (log) {
+    await coachRuntime.handleUserEvent(
+      {
+        type: 'HabitBroken',
+        timestamp: new Date().toISOString(),
+        payload: { habit_id: habitId, date },
+        confidence: 0.7,
+        safetyClass: 'normal',
+        trustImpact: -1,
+      },
+      {
+        screen: 'Habits',
+        userMode: 'Manual',
+        subscriptionState: 'Free',
+      }
+    );
   }
 
   return log;

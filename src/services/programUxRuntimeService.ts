@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabaseClient';
 import { profileService } from './profileService';
 import { programDeliveryService } from './programDeliveryService';
 import { entitlementService } from './entitlementService';
+import { coachRuntime, type CoachScreenContext } from './coachRuntime';
 import type { TodayExplainabilityDTO } from '../types/explainability';
 import type {
   ProgramDayCardDTO,
@@ -64,6 +65,18 @@ class ProgramUxRuntimeService {
       .eq('user_id', userId)
       .maybeSingle();
     return Number(data?.trust_score ?? 50);
+  }
+
+  private async buildCoachContext(screen: CoachScreenContext['screen']): Promise<CoachScreenContext> {
+    const userId = await this.getSessionUserId();
+    const tier = await this.resolveTier(userId);
+    const trustLevel = await this.getTrustScore(userId);
+    return {
+      screen,
+      userMode: 'Follow Plan',
+      subscriptionState: tier === 'free' ? 'Free' : 'Premium',
+      trustLevel,
+    };
   }
 
   private async resolveActiveProgram(): Promise<{ programId: string; programType: ProgramType } | null> {
@@ -206,6 +219,18 @@ class ProgramUxRuntimeService {
 
   async completeToday(programId: string, programType: ProgramType, date: string) {
     await programDeliveryService.completeDay(programId, date, programType);
+    const context = await this.buildCoachContext('Today');
+    void coachRuntime.handleUserEvent(
+      {
+        type: 'DayCompleted',
+        timestamp: new Date().toISOString(),
+        payload: { program_id: programId, date, program_type: programType, source: 'ui' },
+        confidence: 0.7,
+        safetyClass: 'normal',
+        trustImpact: 1,
+      },
+      context
+    );
   }
 
   async skipToday(
@@ -215,6 +240,31 @@ class ProgramUxRuntimeService {
     reason: 'fatigue' | 'pose_risk' | 'user_override'
   ) {
     await programDeliveryService.skipDay(programId, date, programType, reason);
+    const context = await this.buildCoachContext('Today');
+    void coachRuntime.handleUserEvent(
+      {
+        type: 'DaySkipped',
+        timestamp: new Date().toISOString(),
+        payload: { program_id: programId, date, program_type: programType, reason, source: 'ui' },
+        confidence: 0.7,
+        safetyClass: reason === 'pose_risk' ? 'caution' : 'normal',
+        trustImpact: -1,
+      },
+      context
+    );
+    if (reason === 'fatigue' || reason === 'pose_risk') {
+      void coachRuntime.handleUserEvent(
+        {
+          type: reason === 'pose_risk' ? 'PainReported' : 'FatigueReported',
+          timestamp: new Date().toISOString(),
+          payload: { program_id: programId, date, program_type: programType, reason, source: 'ui' },
+          confidence: 0.6,
+          safetyClass: 'caution',
+          trustImpact: 0,
+        },
+        context
+      );
+    }
   }
 
   async submitFeedback(payload: {
@@ -228,6 +278,35 @@ class ProgramUxRuntimeService {
     notes?: string;
   }) {
     await programDeliveryService.submitFeedback(payload);
+    const context = await this.buildCoachContext('Today');
+    const fatigueSignal =
+      (payload.energy !== undefined && payload.energy <= 3) ||
+      (payload.difficulty !== undefined && payload.difficulty >= 8);
+    if (payload.pain && payload.pain > 0) {
+      void coachRuntime.handleUserEvent(
+        {
+          type: 'PainReported',
+          timestamp: new Date().toISOString(),
+          payload: { ...payload, source: 'ui' },
+          confidence: 0.6,
+          safetyClass: 'caution',
+          trustImpact: 0,
+        },
+        context
+      );
+    } else if (fatigueSignal) {
+      void coachRuntime.handleUserEvent(
+        {
+          type: 'FatigueReported',
+          timestamp: new Date().toISOString(),
+          payload: { ...payload, source: 'ui' },
+          confidence: 0.6,
+          safetyClass: 'caution',
+          trustImpact: 0,
+        },
+        context
+      );
+    }
   }
 
   async getProgress(programId: string): Promise<ProgramProgressDTO> {
