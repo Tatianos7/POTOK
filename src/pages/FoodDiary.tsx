@@ -27,6 +27,7 @@ import { localAIFoodAnalyzer, LocalIngredient } from '../services/localAIFoodAna
 import { convertDisplayToGrams, FoodDisplayUnit, formatDisplayAmount } from '../utils/foodUnits';
 import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
+import { coachRuntime, type CoachScreenContext } from '../services/coachRuntime';
 import type { BaseExplainabilityDTO } from '../types/explainability';
 
 const FoodDiary = () => {
@@ -106,6 +107,7 @@ const FoodDiary = () => {
   // State для встроенного календаря
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const lastOverEventKey = useRef<string | null>(null);
   
   // Закрытие календаря при клике вне его
   useEffect(() => {
@@ -332,9 +334,57 @@ const FoodDiary = () => {
   // Проверяем, есть ли перебор по любому из показателей
   const hasOverConsumption = overCalories > 0 || overProtein > 0 || overFat > 0 || overCarbs > 0;
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const overKey = `${selectedDate}:${overCalories}:${hasOverConsumption}`;
+    if (!hasOverConsumption || lastOverEventKey.current === overKey) return;
+    lastOverEventKey.current = overKey;
+    void coachRuntime.handleUserEvent(
+      {
+        type: 'CalorieOverTarget',
+        timestamp: new Date().toISOString(),
+        payload: {
+          date: selectedDate,
+          over_calories: overCalories,
+          over_protein: overProtein,
+          over_fat: overFat,
+          over_carbs: overCarbs,
+          source: 'ui',
+        },
+        confidence: 0.55,
+        safetyClass: 'normal',
+        trustImpact: 0,
+      },
+      buildCoachContext()
+    );
+  }, [hasOverConsumption, overCalories, overCarbs, overFat, overProtein, selectedDate, user?.id]);
+
   const reportError = (message: string, error?: unknown) => {
     console.error('[FoodDiary]', message, error);
     setErrorMessage(message);
+  };
+
+  const buildCoachContext = (): CoachScreenContext => ({
+    screen: 'Today',
+    userMode: 'Manual',
+    subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+    trustLevel: explainability?.trust_score,
+    safetyFlags: [],
+  });
+
+  const emitMealLogged = (payload: Record<string, unknown>) => {
+    if (!user?.id) return;
+    void coachRuntime.handleUserEvent(
+      {
+        type: 'MealLogged',
+        timestamp: new Date().toISOString(),
+        payload: { ...payload, source: 'ui' },
+        confidence: 0.6,
+        safetyClass: 'normal',
+        trustImpact: 0,
+      },
+      buildCoachContext()
+    );
   };
 
   const handleMealClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
@@ -419,6 +469,14 @@ const FoodDiary = () => {
       ...prev,
       [mealType]: true,
     }));
+
+    emitMealLogged({
+      date: selectedDate,
+      meal_type: mealType,
+      calories: normalizedEntry.calories,
+      protein: normalizedEntry.protein,
+      food_id: normalizedEntry.foodId,
+    });
     
     setIsConfirmScannedFoodModalOpen(false);
     setScannedFood(null);
@@ -485,6 +543,14 @@ const FoodDiary = () => {
       ...prev,
       [mealTypeToExpand]: true,
     }));
+
+    emitMealLogged({
+      date: selectedDate,
+      meal_type: selectedMealType,
+      calories: normalizedEntry.calories,
+      protein: normalizedEntry.protein,
+      food_id: normalizedEntry.foodId,
+    });
     
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
@@ -1628,6 +1694,21 @@ const FoodDiary = () => {
               ...prev,
               [mealTypeToExpand]: true,
             }));
+
+            const aggregated = entries.reduce(
+              (acc, item) => ({
+                calories: acc.calories + item.calories,
+                protein: acc.protein + item.protein,
+              }),
+              { calories: 0, protein: 0 }
+            );
+            emitMealLogged({
+              date: selectedDate,
+              meal_type: selectedMealType,
+              calories: aggregated.calories,
+              protein: aggregated.protein,
+              food_count: entries.length,
+            });
             
             setIsRecipeResultOpen(false);
             setAnalyzedIngredients([]);
@@ -1785,6 +1866,14 @@ const FoodDiary = () => {
               ...prev,
               [mealType]: true,
             }));
+
+            emitMealLogged({
+              date: selectedDate,
+              meal_type: mealType,
+              calories: entry.calories,
+              protein: entry.protein,
+              food_id: entry.foodId,
+            });
 
             // Сохраняем в фоне
             mealService.addMealEntry(user.id, selectedDate, mealType, entry).catch((error) => {

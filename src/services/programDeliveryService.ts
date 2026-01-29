@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabaseClient';
 import { entitlementService } from './entitlementService';
 import { profileService } from './profileService';
 import { programGenerationService } from './programGenerationService';
+import { coachRuntime } from './coachRuntime';
 import type { ProgramExplainabilityDTO } from '../types/explainability';
 import type { ProgramMyPlanDTO, ProgramPhaseWeekDTO, ProgramTodayDTO, ProgramTier, ProgramWhyDTO } from '../types/programDelivery';
 
@@ -183,6 +184,23 @@ class ProgramDeliveryService {
       .from(programType === 'nutrition' ? 'nutrition_programs' : 'training_programs')
       .update({ status: 'active' })
       .eq('id', programId);
+
+    await coachRuntime.handleUserEvent(
+      {
+        type: 'DayCompleted',
+        timestamp: new Date().toISOString(),
+        payload: { program_id: programId, date, program_type: programType },
+        confidence: 0.9,
+        safetyClass: 'normal',
+        trustImpact: 2,
+      },
+      {
+        screen: 'Today',
+        userMode: 'Follow Plan',
+        subscriptionState: 'Premium',
+        trustLevel: nextTrust,
+      }
+    );
   }
 
   async skipDay(
@@ -216,6 +234,24 @@ class ProgramDeliveryService {
         skip_reason: reason,
       },
     });
+
+    await coachRuntime.handleUserEvent(
+      {
+        type: reason === 'fatigue' ? 'FatigueReported' : 'DaySkipped',
+        timestamp: new Date().toISOString(),
+        payload: { program_id: programId, date, program_type: programType, reason },
+        confidence: 0.8,
+        safetyClass: reason === 'fatigue' ? 'caution' : 'normal',
+        trustImpact: -1,
+      },
+      {
+        screen: 'Today',
+        userMode: 'Follow Plan',
+        subscriptionState: 'Premium',
+        trustLevel: nextTrust,
+        safetyFlags: reason === 'fatigue' ? ['fatigue'] : [],
+      }
+    );
   }
 
   async pauseProgram(programId: string, programType: ProgramType, reason: string) {
@@ -252,6 +288,22 @@ class ProgramDeliveryService {
         safety_notes: { reason },
       },
     });
+
+    await coachRuntime.handleUserEvent(
+      {
+        type: 'PlanPaused',
+        timestamp: new Date().toISOString(),
+        payload: { program_id: programId, program_type: programType, reason },
+        confidence: 0.7,
+        safetyClass: 'normal',
+        trustImpact: 0,
+      },
+      {
+        screen: 'Program',
+        userMode: 'Follow Plan',
+        subscriptionState: 'Premium',
+      }
+    );
   }
 
   async resumeProgram(programId: string, programType: ProgramType) {

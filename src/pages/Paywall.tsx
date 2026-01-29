@@ -3,9 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { X, ShieldCheck } from 'lucide-react';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import { useAuth } from '../context/AuthContext';
-import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
-import type { BaseExplainabilityDTO } from '../types/explainability';
+import type { PaywallExplainabilityDTO } from '../types/explainability';
 import { classifyTrustDecision } from '../services/trustSafetyService';
+import Card from '../ui/components/Card';
+import StateContainer from '../ui/components/StateContainer';
+import TrustBanner from '../ui/components/TrustBanner';
+import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
 
 type PaywallStatus =
   | 'free'
@@ -27,7 +30,7 @@ const Paywall = () => {
   const [paywallPayload, setPaywallPayload] = useState<any>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
-  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
+  const [explainability, setExplainability] = useState<PaywallExplainabilityDTO | null>(null);
 
   const loadPaywall = useCallback(async () => {
     if (!user?.id) return;
@@ -47,7 +50,7 @@ const Paywall = () => {
       const state = await uiRuntimeAdapter.getPaywallState('explainability');
       setRuntimeStatus(state.status);
       setPaywallPayload(state.paywall || null);
-      setExplainability((state.explainability as BaseExplainabilityDTO) ?? null);
+      setExplainability((state.explainability as PaywallExplainabilityDTO) ?? null);
       setTrustMessage(state.trust?.message ?? null);
 
       const paywallData = state.paywall as { status?: string; state?: string; tier?: string } | null;
@@ -74,6 +77,19 @@ const Paywall = () => {
     loadPaywall();
   }, [loadPaywall]);
 
+  const statusLabel: Record<PaywallStatus, string> = {
+    free: 'Free',
+    trial: 'Пробный период',
+    active: 'Premium активен',
+    grace: 'Льготный период',
+    expired: 'Подписка истекла',
+    payment_failed: 'Платёж не прошёл',
+    offline: 'Офлайн',
+    error: 'Ошибка',
+    recovery: 'Восстановление',
+    explainable: 'Объяснение доступно',
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
       <div className="container-responsive">
@@ -94,99 +110,96 @@ const Paywall = () => {
         </header>
 
         <main className="py-4 tablet:py-6">
-          {runtimeStatus === 'offline' && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Работаем офлайн. Данные могут быть неактуальны.
-              <button
-                onClick={() => {
-                  uiRuntimeAdapter.revalidate().finally(loadPaywall);
-                }}
-                className="ml-3 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
-              >
-                Обновить
-              </button>
-            </div>
-          )}
-          {runtimeStatus === 'recovery' && (
-            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-              Идёт восстановление данных. Продолжаем безопасно.
-            </div>
-          )}
-          {runtimeStatus === 'partial' && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              Данные доступны частично. Мы показываем то, что уже есть.
-            </div>
-          )}
-          {runtimeStatus === 'error' && (
-            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
-              <div className="flex flex-col gap-2 mobile-lg:flex-row mobile-lg:items-center mobile-lg:justify-between">
-                <span>{errorMessage || 'Не удалось загрузить paywall.'}</span>
-                {trustMessage && (
-                  <span className="text-xs text-red-700 dark:text-red-200">{trustMessage}</span>
-                )}
-                <button
-                  onClick={() => {
-                    uiRuntimeAdapter.recover().finally(loadPaywall);
-                  }}
-                  className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100 dark:border-red-700 dark:text-red-200 dark:hover:bg-red-900/50"
-                >
-                  Повторить
-                </button>
-              </div>
-            </div>
-          )}
+          <StateContainer
+            status={runtimeStatus}
+            message={
+              runtimeStatus === 'empty'
+                ? 'Premium пока не активен. Вы можете продолжать в Manual Mode.'
+                : errorMessage || undefined
+            }
+            onRetry={() => {
+              if (runtimeStatus === 'offline') {
+                uiRuntimeAdapter.revalidate().finally(loadPaywall);
+              } else {
+                uiRuntimeAdapter.recover().finally(loadPaywall);
+              }
+            }}
+          >
+            {paywallStatus === 'payment_failed' && (
+              <TrustBanner tone="safety">
+                Платёж не прошёл. Мы сохраним ваш прогресс и поможем восстановить доступ без давления.
+              </TrustBanner>
+            )}
+            {paywallStatus === 'grace' && (
+              <TrustBanner tone="recovery">
+                Льготный период активен. У вас есть время спокойно решить, как продолжать.
+              </TrustBanner>
+            )}
 
-          {runtimeStatus === 'loading' && (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-            </div>
-          )}
+            <div className="space-y-4">
+              <Card title="Статус доступа" action={<span className="text-xs text-gray-500">{statusLabel[paywallStatus]}</span>}>
+                <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                  <ShieldCheck className="w-4 h-4" />
+                  Мы показываем прозрачные причины и ценность, без давления.
+                </div>
+                <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+                  Вы уже можете вести дневники и видеть базовую динамику. Premium — это поддержка ритма и адаптация.
+                </p>
+              </Card>
 
-          {runtimeStatus !== 'loading' && (
-            <section className="rounded-2xl border border-gray-200 dark:border-gray-700 p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white mb-2">
-                <ShieldCheck className="w-4 h-4" />
-                Статус: {paywallStatus}
-              </div>
-              <p className="text-sm text-gray-700 dark:text-gray-300">
-                Мы не используем давление. Только прозрачные причины и ценность.
-              </p>
-              <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-gray-600 dark:text-gray-300">
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
-                  <p className="font-semibold mb-1">Free</p>
-                  <p>Базовые дневники</p>
-                  <p>Ручной контроль</p>
-                  <p>Без адаптации</p>
+              <Card title="Что у вас уже есть">
+                <div className="grid grid-cols-1 gap-2 text-xs text-gray-600 dark:text-gray-300">
+                  <div>Manual Mode: питание, тренировки, замеры</div>
+                  <div>Прогресс: базовые тренды и записи</div>
+                  <div>Привычки: старт ритма и самоконтроль</div>
                 </div>
-                <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3">
-                  <p className="font-semibold mb-1">Premium</p>
-                  <p>Адаптация плана</p>
-                  <p>Explainability</p>
-                  <p>Безопасные guard-rails</p>
+              </Card>
+
+              <Card title="Что откроется с Premium" tone="premium">
+                <div className="grid grid-cols-1 gap-2 text-xs text-gray-700 dark:text-gray-300">
+                  <div>Follow Plan: ежедневные планы и адаптация</div>
+                  <div>Today: безопасный сценарий дня</div>
+                  <div>Explainability: «почему так» в каждом решении</div>
+                  <div>Coach Layer: поддержка и ритм восстановления</div>
                 </div>
-              </div>
-              <div className="mt-3 text-xs text-gray-500">
-                Причина блокировки: {explainability?.decision_ref ?? 'premium_required'}
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button className="flex-1 rounded-xl bg-gray-900 text-white py-2 text-xs font-semibold uppercase">
-                  Улучшить до Premium
-                </button>
-                <button className="flex-1 rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700">
-                  Восстановить покупки
-                </button>
-              </div>
-              {paywallPayload && (
-                <pre className="mt-3 rounded-lg bg-gray-50 dark:bg-gray-800 p-3 text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-                  {JSON.stringify(paywallPayload, null, 2)}
-                </pre>
+              </Card>
+
+              <Card title="Ваш выбор" action={<span className="text-xs text-gray-500">без давления</span>}>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Вы можете остаться в Manual Mode. Premium — это ускорение и поддержка, если хотите.
+                </p>
+                <div className="mt-3 flex flex-col gap-2 mobile-lg:flex-row">
+                  <button className="flex-1 rounded-xl bg-gray-900 text-white py-2 text-xs font-semibold uppercase">
+                    Улучшить до Premium
+                  </button>
+                  <button className="flex-1 rounded-xl border border-gray-300 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200">
+                    Восстановить покупки
+                  </button>
+                </div>
+              </Card>
+
+              <Card tone="explainable" title="Почему доступ ограничен?">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Мы объясняем причины доступа, чтобы вы сохраняли контроль.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-gray-700 dark:text-gray-300">
+                  <div>Причина: {explainability?.decision_ref ?? 'premium_required'}</div>
+                  <div>Уверенность: {explainability?.confidence ?? '—'}</div>
+                  <div>Trust: {explainability?.trust_level ?? '—'}</div>
+                  <div>Safety: {explainability?.safety_notes?.join(', ') || '—'}</div>
+                </div>
+                <div className="mt-4">
+                  <ExplainabilityDrawer explainability={explainability} />
+                </div>
+              </Card>
+
+              {trustMessage && (
+                <Card title="Поддержка">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{trustMessage}</p>
+                </Card>
               )}
-            </section>
-          )}
-
-          <div className="mt-6">
-            <ExplainabilityDrawer explainability={explainability} />
-          </div>
+            </div>
+          </StateContainer>
         </main>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { aiRecommendationsService, DayAnalysisContext } from './aiRecommendation
 import { foodIngestionService } from './foodIngestionService';
 import { goalService } from './goalService';
 import { userStateService } from './userStateService';
+import { coachRuntime } from './coachRuntime';
 
 class MealService {
   private readonly MEALS_STORAGE_KEY = 'potok_daily_meals';
@@ -214,6 +215,7 @@ class MealService {
     const periodStart = new Date(new Date(date).getTime() - 29 * 86400000).toISOString().split('T')[0];
     const userState = await userStateService.buildState(userId, { fromDate: periodStart, toDate: periodEnd });
     const context = this.buildDayAnalysisContext(meals, goals);
+    const totals = this.calculateDayTotals(meals);
     const foodIds = Array.from(
       new Set((context.foods || []).map((item) => item.canonical_food_id).filter(Boolean))
     ) as string[];
@@ -229,6 +231,42 @@ class MealService {
       return;
     }
     await aiRecommendationsService.queueDayRecommendation(userId, { ...context, user_state: userState } as any);
+
+    if (goals?.calories && totals.calories > goals.calories) {
+      await coachRuntime.handleUserEvent(
+        {
+          type: 'CalorieOverTarget',
+          timestamp: new Date().toISOString(),
+          payload: { date, calories: totals.calories, goal: goals.calories },
+          confidence: 0.7,
+          safetyClass: 'normal',
+          trustImpact: 0,
+        },
+        {
+          screen: 'Today',
+          userMode: 'Manual',
+          subscriptionState: 'Free',
+        }
+      );
+    }
+
+    if (goals?.protein && totals.protein < goals.protein) {
+      await coachRuntime.handleUserEvent(
+        {
+          type: 'ProteinBelowTarget',
+          timestamp: new Date().toISOString(),
+          payload: { date, protein: totals.protein, goal: goals.protein },
+          confidence: 0.7,
+          safetyClass: 'normal',
+          trustImpact: 0,
+        },
+        {
+          screen: 'Today',
+          userMode: 'Manual',
+          subscriptionState: 'Free',
+        }
+      );
+    }
   }
 
   async reopenDay(userId: string, date: string): Promise<DailyMeals> {
@@ -634,6 +672,28 @@ class MealService {
         calories: entry.calories,
       },
     });
+
+    await coachRuntime.handleUserEvent(
+      {
+        type: 'MealLogged',
+        timestamp: new Date().toISOString(),
+        payload: {
+          date,
+          meal_type: mealType,
+          calories: entry.calories,
+          protein: entry.protein,
+          food_id: entry.foodId,
+        },
+        confidence: 0.8,
+        safetyClass: 'normal',
+        trustImpact: 0,
+      },
+      {
+        screen: 'Today',
+        userMode: 'Manual',
+        subscriptionState: 'Free',
+      }
+    );
   }
 
   async addRecipeEntry(

@@ -144,3 +144,5 @@ export interface DailyMeals {
     snack?: string | null;
   };
 }
+
+export * from './coachMemory';

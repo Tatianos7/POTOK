@@ -23,6 +23,7 @@ import { mealService } from './mealService';
 import { workoutService } from './workoutService';
 import { aggregateWorkoutEntries } from '../utils/workoutMetrics';
 import { classifyTrustDecision, TrustDecision } from './trustSafetyService';
+import { coachRuntime, type CoachResponse, type CoachScreen, type CoachScreenContext } from './coachRuntime';
 
 export type RuntimeStatus =
   | 'loading'
@@ -639,6 +640,43 @@ class UiRuntimeAdapter {
       habitsService.recover(),
       entitlementService.recover(),
     ]);
+  }
+
+  private buildCoachContext(screen: CoachScreen, context: Partial<CoachScreenContext> = {}): CoachScreenContext {
+    const confidenceLevel = context.confidenceLevel ?? (context.trustLevel ? context.trustLevel / 100 : undefined);
+
+    return {
+      screen,
+      userMode: context.userMode ?? 'Manual',
+      subscriptionState: context.subscriptionState ?? 'Free',
+      trustLevel: context.trustLevel,
+      confidenceLevel,
+      fatigueLevel: context.fatigueLevel,
+      relapseRisk: context.relapseRisk,
+      motivationLevel: context.motivationLevel,
+      safetyFlags: context.safetyFlags ?? [],
+      adherence: context.adherence,
+      streak: context.streak,
+      timeGapDays: context.timeGapDays,
+    };
+  }
+
+  async getCoachOverlay(
+    screen: CoachScreen,
+    context: Partial<CoachScreenContext> = {}
+  ): Promise<CoachResponse | null> {
+    const coachContext = this.buildCoachContext(screen, context);
+    return coachRuntime.getCoachOverlay(coachContext);
+  }
+
+  getCoachNudge(type: 'morning' | 'evening' | 'recovery' | 'motivation'): CoachResponse {
+    return coachRuntime.getCoachNudge(type);
+  }
+
+  async getCoachExplainability(decisionId: string, context?: Partial<CoachScreenContext>) {
+    return coachRuntime.getExplainability(decisionId, {
+      subscriptionState: context?.subscriptionState,
+    });
   }
 }
 
