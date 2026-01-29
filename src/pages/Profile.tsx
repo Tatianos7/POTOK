@@ -8,6 +8,7 @@ import SubscriptionManagement from '../pages/SubscriptionManagement';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import { profileService } from '../services/profileService';
+import type { CoachMode, CoachSettings } from '../types/coachSettings';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import type { BaseExplainabilityDTO } from '../types/explainability';
 import { classifyTrustDecision } from '../services/trustSafetyService';
@@ -30,6 +31,8 @@ const Profile = () => {
   const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
   const [profileData, setProfileData] = useState<any>(null);
   const [entitlements, setEntitlements] = useState<any>(null);
+  const [coachEnabled, setCoachEnabled] = useState(true);
+  const [coachMode, setCoachMode] = useState<CoachMode>('support');
 
   const loadProfileState = useCallback(async () => {
     if (!user?.id) return;
@@ -85,6 +88,20 @@ const Profile = () => {
   useEffect(() => {
     loadProfileState();
   }, [loadProfileState]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    profileService
+      .getCoachSettings(user.id)
+      .then((settings) => {
+        setCoachEnabled(settings.coach_enabled);
+        setCoachMode(settings.coach_mode);
+      })
+      .catch(() => {
+        setCoachEnabled(true);
+        setCoachMode('support');
+      });
+  }, [user?.id]);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -156,6 +173,29 @@ const Profile = () => {
 
   const handlePrivacyPolicy = () => {
     setIsPrivacyPolicyOpen(true);
+  };
+
+  const persistCoachSettings = async (settings: CoachSettings) => {
+    if (!user?.id) return;
+    try {
+      await profileService.saveCoachSettings(user.id, settings);
+    } catch (error) {
+      console.warn('[Profile] coach settings save failed', error);
+    }
+  };
+
+  const handleCoachToggle = (enabled: boolean) => {
+    const nextMode = enabled ? (coachMode === 'off' ? 'support' : coachMode) : 'off';
+    setCoachEnabled(enabled);
+    setCoachMode(nextMode);
+    void persistCoachSettings({ coach_enabled: enabled, coach_mode: nextMode });
+  };
+
+  const handleCoachModeChange = (mode: CoachMode) => {
+    setCoachMode(mode);
+    const enabled = mode !== 'off';
+    setCoachEnabled(enabled);
+    void persistCoachSettings({ coach_enabled: enabled, coach_mode: mode });
   };
 
   const profileMenuItems = [
@@ -303,6 +343,50 @@ const Profile = () => {
                 >
                   Открыть историю
                 </button>
+              </Card>
+
+              <Card title="Настройки коуча">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Вы управляете тем, как коуч с вами взаимодействует. Можно изменить в любой момент.
+                </p>
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-300">
+                  <span>Коуч включён</span>
+                  <button
+                    type="button"
+                    onClick={() => handleCoachToggle(!coachEnabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      coachEnabled ? 'bg-gray-900 dark:bg-white' : 'bg-gray-300 dark:bg-gray-700'
+                    }`}
+                    aria-pressed={coachEnabled}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-900 transition-transform ${
+                        coachEnabled ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  {[
+                    { id: 'support', label: 'Поддержка' },
+                    { id: 'on_request', label: 'Только по запросу' },
+                    { id: 'risk_only', label: 'Только при риске' },
+                    { id: 'off', label: 'Выключен' },
+                  ].map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => handleCoachModeChange(option.id as CoachMode)}
+                      className={`rounded-xl border px-3 py-2 font-semibold uppercase transition-colors ${
+                        coachMode === option.id
+                          ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                          : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-200'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </Card>
 
               <Card title="Данные и права">

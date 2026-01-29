@@ -18,6 +18,7 @@ import { habitsService, HabitWithStatus } from './habitsService';
 import { entitlementService } from './entitlementService';
 import { goalService } from './goalService';
 import { profileService, UserProfile } from './profileService';
+import type { CoachSettings } from '../types/coachSettings';
 import { measurementsService } from './measurementsService';
 import { mealService } from './mealService';
 import { workoutService } from './workoutService';
@@ -661,10 +662,33 @@ class UiRuntimeAdapter {
     };
   }
 
+  private readCoachSettings(): CoachSettings {
+    try {
+      const raw = localStorage.getItem('potok_coach_settings');
+      if (!raw) return { coach_enabled: true, coach_mode: 'support' };
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object'
+        ? (parsed as CoachSettings)
+        : { coach_enabled: true, coach_mode: 'support' };
+    } catch {
+      return { coach_enabled: true, coach_mode: 'support' };
+    }
+  }
+
   async getCoachOverlay(
     screen: CoachScreen,
     context: Partial<CoachScreenContext> = {}
   ): Promise<CoachResponse | null> {
+    const settings = this.readCoachSettings();
+    const mode = settings.coach_enabled ? settings.coach_mode : 'off';
+    if (mode === 'off' || mode === 'on_request') return null;
+    if (mode === 'risk_only') {
+      const hasRisk =
+        (context.safetyFlags?.length ?? 0) > 0 ||
+        (context.fatigueLevel ?? 0) > 0.6 ||
+        (context.relapseRisk ?? 0) > 0.6;
+      if (!hasRisk) return null;
+    }
     const coachContext = this.buildCoachContext(screen, context);
     return coachRuntime.getCoachOverlay(coachContext);
   }

@@ -1,5 +1,8 @@
 import type { CoachExplainabilityBinding, CoachMemoryEvent } from '../types/coachMemory';
+import type { CoachMode } from '../types/coachSettings';
 import { createCoachMemoryFacade, type CoachMemoryFacade } from './coachMemoryFacade';
+import { CircuitBreaker } from './coachCircuitBreaker';
+import { coachTelemetry } from './coachTelemetry';
 
 export type CoachScreen = 'Today' | 'Progress' | 'Habits' | 'Program' | 'Paywall';
 
@@ -38,6 +41,15 @@ export interface CoachScreenContext {
   adherence?: number;
   streak?: number;
   timeGapDays?: number;
+}
+
+export interface CoachInterventionPolicy {
+  mode: CoachMode;
+  dailyNudgeLimit: number;
+  minIntervalMinutes: number;
+  cooldownAfterIgnoreHours: number;
+  silent: boolean;
+  respectUserSilence: boolean;
 }
 
 export interface CoachResponse {
@@ -98,40 +110,77 @@ const responseByEvent: Partial<Record<CoachMemoryEvent['type'], { message: strin
 
 class CoachRuntime {
   private readonly dedupeKeys = new Set<string>();
+  private readonly runtimeBreaker = new CircuitBreaker({ name: 'coachRuntime', failureThreshold: 2 });
+  private readonly explainabilityBreaker = new CircuitBreaker({ name: 'explainability', failureThreshold: 2 });
 
   constructor(private readonly facade: CoachMemoryFacade = createCoachMemoryFacade()) {}
 
   async handleUserEvent(event: CoachMemoryEvent, screenContext: CoachScreenContext): Promise<CoachResponse | null> {
+    const policy = this.getInterventionPolicy();
+    if (!this.allowsEvent(policy, event)) {
+      return null;
+    }
+    if (!this.runtimeBreaker.canRequest()) {
+      return null;
+    }
     const dedupeKey = this.buildDedupeKey(event, screenContext);
     if (this.dedupeKeys.has(dedupeKey)) {
       return null;
     }
     this.dedupeKeys.add(dedupeKey);
 
+    const startedAt = performance.now();
     const eventId =
       event.id ??
       (globalThis.crypto?.randomUUID?.() ??
         `${event.type}:${event.timestamp}:${Math.random().toString(36).slice(2)}`);
     const normalizedEvent: CoachMemoryEvent = { ...event, id: eventId };
+    const isSilent = Boolean((event.payload as Record<string, unknown>)?.silent);
+    if (isSilent) {
+      return null;
+    }
 
+    let memoryAvailable = true;
     try {
+      if (policy.mode === 'off') {
+        return null;
+      }
       await this.facade.recordExperience(normalizedEvent, {
         sourceScreen: screenContext.screen,
       });
     } catch (error) {
       console.warn('[coachRuntime] recordExperience failed', error);
+      memoryAvailable = false;
     }
 
-    const emotional_state = this.evaluateEmotionalState(screenContext, normalizedEvent);
-    const baseResponse = this.generateCoachResponse(normalizedEvent, screenContext, emotional_state);
-    const trustLevel = screenContext.trustLevel ?? 50;
+    let emotional_state: CoachEmotionalState = 'neutral';
+    try {
+      emotional_state = this.evaluateEmotionalState(screenContext, normalizedEvent);
+    } catch (error) {
+      console.warn('[coachRuntime] emotional state failed', error);
+      emotional_state = 'neutral';
+    }
+    let response = this.generateCoachResponse(normalizedEvent, screenContext, emotional_state);
+    response = this.applySafetyGuards(response, screenContext, normalizedEvent);
+    if (!memoryAvailable) {
+      response = {
+        ...response,
+        personalization_basis: undefined,
+      };
+    }
 
-    let response = this.applyEntitlementGate(baseResponse, screenContext.subscriptionState);
+    response = this.applyEntitlementGate(response, screenContext.subscriptionState);
     if (this.hasPremiumAccess(screenContext.subscriptionState)) {
+      const trustLevel = screenContext.trustLevel ?? 50;
       response = this.applyTrustModulation(response, trustLevel);
     }
     const decisionId = `${normalizedEvent.type}:${normalizedEvent.timestamp}`;
     const explainability = await this.attachExplainability(response, decisionId, screenContext);
+    coachTelemetry.trackTiming('coach_response_time', performance.now() - startedAt, {
+      screen: screenContext.screen,
+      event: normalizedEvent.type,
+    });
+    this.runtimeBreaker.recordSuccess();
 
     return {
       ...response,
@@ -141,6 +190,13 @@ class CoachRuntime {
   }
 
   async getCoachOverlay(screenContext: CoachScreenContext): Promise<CoachResponse | null> {
+    const policy = this.getInterventionPolicy();
+    if (!this.allowsOverlay(policy, screenContext)) {
+      return null;
+    }
+    if (!this.runtimeBreaker.canRequest()) {
+      return null;
+    }
     const emotional_state = this.evaluateEmotionalState(screenContext);
     const baseMessage = screenContext.screen === 'Progress'
       ? 'Я рядом, чтобы помочь увидеть твой путь ясно.'
@@ -163,6 +219,7 @@ class CoachRuntime {
     if (this.hasPremiumAccess(screenContext.subscriptionState)) {
       gated = this.applyTrustModulation(gated, screenContext.trustLevel ?? 50);
     }
+    this.registerNudge(policy);
     return gated;
   }
 
@@ -187,8 +244,24 @@ class CoachRuntime {
     decisionId: string,
     context?: Pick<CoachScreenContext, 'subscriptionState'>
   ): Promise<CoachExplainabilityBinding | null> {
+    if (!this.explainabilityBreaker.canRequest()) {
+      return {
+        decisionId,
+        memory_refs: [],
+        trust_history: [],
+        emotional_state: 'calm',
+        safety_flags: ['explainability_unavailable'],
+        pattern_matches: [],
+        explainabilityRef: 'explainability_unavailable',
+      };
+    }
+    const startedAt = performance.now();
     try {
       const trace = await this.facade.getExplainableReasoningTrace(decisionId);
+      coachTelemetry.trackTiming('explainability_latency', performance.now() - startedAt, {
+        decisionId,
+      });
+      this.explainabilityBreaker.recordSuccess();
       if (!this.hasPremiumAccess(context?.subscriptionState)) {
         return {
           ...trace,
@@ -200,7 +273,16 @@ class CoachRuntime {
       return trace;
     } catch (error) {
       console.warn('[coachRuntime] explainability trace not available', error);
-      return null;
+      this.explainabilityBreaker.recordFailure();
+      return {
+        decisionId,
+        memory_refs: [],
+        trust_history: [],
+        emotional_state: 'calm',
+        safety_flags: ['explainability_unavailable'],
+        pattern_matches: [],
+        explainabilityRef: 'explainability_unavailable',
+      };
     }
   }
 
@@ -299,8 +381,24 @@ class CoachRuntime {
     decisionId: string,
     context: CoachScreenContext
   ): Promise<CoachExplainabilityBinding | undefined> {
+    if (!this.explainabilityBreaker.canRequest()) {
+      return {
+        decisionId,
+        memory_refs: [],
+        trust_history: [],
+        emotional_state: 'calm',
+        safety_flags: ['explainability_unavailable'],
+        pattern_matches: [],
+        explainabilityRef: 'explainability_unavailable',
+      };
+    }
+    const startedAt = performance.now();
     try {
       const trace = await this.facade.getExplainableReasoningTrace(decisionId);
+      coachTelemetry.trackTiming('explainability_latency', performance.now() - startedAt, {
+        decisionId,
+      });
+      this.explainabilityBreaker.recordSuccess();
       const gatedTrace = this.hasPremiumAccess(context.subscriptionState)
         ? trace
         : {
@@ -311,20 +409,56 @@ class CoachRuntime {
           };
       response.memory_refs = gatedTrace.memory_refs.map((ref) => ref.summary);
       response.data_sources = gatedTrace.memory_refs.map((ref) => ref.ref);
+      if (gatedTrace.memory_refs.length > 0) {
+        coachTelemetry.increment('memory_hits', gatedTrace.memory_refs.length, { decisionId });
+      }
       return gatedTrace;
     } catch (error) {
+      this.explainabilityBreaker.recordFailure();
       const fallbackTrace: CoachExplainabilityBinding = {
         decisionId,
         memory_refs: [],
         trust_history: [],
         emotional_state: 'calm',
-        safety_flags: context.safetyFlags ?? [],
+        safety_flags: [...(context.safetyFlags ?? []), 'explainability_unavailable'],
         pattern_matches: [],
+        explainabilityRef: 'explainability_unavailable',
       };
       return fallbackTrace;
     }
   }
 
+  private applySafetyGuards(
+    response: CoachResponse,
+    context: CoachScreenContext,
+    event: CoachMemoryEvent
+  ): CoachResponse {
+    const payload = event.payload ?? {};
+    const distressSignal =
+      (payload as Record<string, unknown>).emotional_signal === 'distress' ||
+      context.safetyFlags?.includes('distress');
+    if (event.safetyClass === 'medical_risk' || distressSignal) {
+      return {
+        ...response,
+        coach_message:
+          'Сейчас важнее безопасность. Давай замедлимся и поддержим восстановление. Если тяжело — можно обратиться за поддержкой.',
+        emotional_state: 'cautious',
+        ui_mode: 'protect',
+        ui_surface: 'banner',
+        safety_reason: 'crisis_mode',
+      };
+    }
+
+    const guardedCopy = response.coach_message
+      .replace(/должен/gi, 'можно')
+      .replace(/виноват/gi, 'тяжело')
+      .replace(/стыд/gi, 'поддержку');
+
+    return {
+      ...response,
+      coach_message: guardedCopy,
+    };
+  }
   private buildDedupeKey(event: CoachMemoryEvent, context: CoachScreenContext): string {
     const payload = event.payload ?? {};
     const source =
@@ -342,6 +476,89 @@ class CoachRuntime {
     return `${event.type}:${date}:${source}`;
   }
 
+  private getInterventionPolicy(): CoachInterventionPolicy {
+    const settings = this.readCoachSettings();
+    return {
+      mode: settings.coach_enabled ? settings.coach_mode : 'off',
+      dailyNudgeLimit: 3,
+      minIntervalMinutes: 180,
+      cooldownAfterIgnoreHours: 6,
+      silent: false,
+      respectUserSilence: true,
+    };
+  }
+
+  private allowsEvent(policy: CoachInterventionPolicy, event: CoachMemoryEvent): boolean {
+    if (policy.mode === 'off') return false;
+    if (policy.mode === 'on_request') {
+      return (event.payload as Record<string, unknown>)?.source === 'user_request';
+    }
+    if (policy.mode === 'risk_only') {
+      return event.safetyClass !== 'normal';
+    }
+    return true;
+  }
+
+  private allowsOverlay(policy: CoachInterventionPolicy, context: CoachScreenContext): boolean {
+    if (policy.silent) return false;
+    if (policy.mode === 'off' || policy.mode === 'on_request') return false;
+    if (policy.mode === 'risk_only') {
+      const hasRisk =
+        (context.safetyFlags?.length ?? 0) > 0 ||
+        (context.fatigueLevel ?? 0) > 0.6 ||
+        (context.relapseRisk ?? 0) > 0.6;
+      if (!hasRisk) return false;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const countKey = `coach_nudge_count_${today}`;
+    const lastKey = 'coach_last_nudge_at';
+    const count = Number(localStorage.getItem(countKey) ?? 0);
+    if (count >= policy.dailyNudgeLimit) return false;
+
+    const lastAtRaw = localStorage.getItem(lastKey);
+    if (lastAtRaw) {
+      const lastAt = new Date(lastAtRaw).getTime();
+      const minutes = (Date.now() - lastAt) / 60000;
+      if (minutes < policy.minIntervalMinutes) return false;
+    }
+
+    const silenceUntilRaw = localStorage.getItem('coach_silence_until');
+    if (silenceUntilRaw && Date.now() < new Date(silenceUntilRaw).getTime()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private registerNudge(policy: CoachInterventionPolicy) {
+    const today = new Date().toISOString().split('T')[0];
+    const countKey = `coach_nudge_count_${today}`;
+    const count = Number(localStorage.getItem(countKey) ?? 0);
+    localStorage.setItem(countKey, String(count + 1));
+    localStorage.setItem('coach_last_nudge_at', new Date().toISOString());
+    if (policy.respectUserSilence && policy.cooldownAfterIgnoreHours > 0) {
+      const ignoreCount = Number(localStorage.getItem('coach_ignore_count') ?? 0);
+      if (ignoreCount >= 3) {
+        const until = new Date(Date.now() + policy.cooldownAfterIgnoreHours * 3600000).toISOString();
+        localStorage.setItem('coach_silence_until', until);
+      }
+    }
+  }
+
+  private readCoachSettings(): { coach_enabled: boolean; coach_mode: CoachMode } {
+    try {
+      const raw = localStorage.getItem('potok_coach_settings');
+      if (!raw) return { coach_enabled: true, coach_mode: 'support' };
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object'
+        ? (parsed as { coach_enabled: boolean; coach_mode: CoachMode })
+        : { coach_enabled: true, coach_mode: 'support' };
+    } catch {
+      return { coach_enabled: true, coach_mode: 'support' };
+    }
+  }
+
   private hasPremiumAccess(state?: CoachScreenContext['subscriptionState']): boolean {
     if (!state) return false;
     return state === 'Premium' || state === 'Trial' || state === 'Grace';
@@ -353,10 +570,12 @@ class CoachRuntime {
   ): CoachResponse {
     if (this.hasPremiumAccess(subscriptionState)) return response;
 
+    const isSafety = response.ui_mode === 'protect' || response.emotional_state === 'cautious';
+
     return {
       ...response,
-      emotional_state: 'neutral',
-      ui_mode: 'support',
+      emotional_state: isSafety ? response.emotional_state : 'neutral',
+      ui_mode: isSafety ? response.ui_mode : 'support',
       personalization_basis: undefined,
       memory_refs: undefined,
       data_sources: undefined,
