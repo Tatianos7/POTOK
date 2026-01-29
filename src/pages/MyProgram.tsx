@@ -16,7 +16,7 @@ import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
 import CoachMessageCard from '../ui/coach/CoachMessageCard';
 import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
 import CoachRequestModal from '../ui/coach/CoachRequestModal';
-import type { CoachResponse } from '../services/coachRuntime';
+import type { CoachDecisionResponse, CoachResponse } from '../services/coachRuntime';
 import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
 const MyProgram = () => {
@@ -31,6 +31,7 @@ const MyProgram = () => {
   const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
   const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
   const [coachRequestOpen, setCoachRequestOpen] = useState(false);
+  const [decisionSupport, setDecisionSupport] = useState<CoachDecisionResponse | null>(null);
 
   const loadProgram = useCallback(async () => {
     if (!user?.id) return;
@@ -72,6 +73,36 @@ const MyProgram = () => {
   useEffect(() => {
     setSelectedVersion(plan?.programVersion ?? 1);
   }, [plan?.programVersion]);
+
+  useEffect(() => {
+    if (!user || !plan) {
+      setDecisionSupport(null);
+      return;
+    }
+    const status = plan.status?.toLowerCase() ?? '';
+    const decisionType = status.includes('cancel')
+      ? 'plan_drop'
+      : status.includes('pause')
+        ? 'long_pause'
+        : null;
+    if (!decisionType) {
+      setDecisionSupport(null);
+      return;
+    }
+    uiRuntimeAdapter
+      .getDecisionSupport({
+        decision_type: decisionType,
+        emotional_state: status.includes('pause') ? 'recovering' : 'neutral',
+        trust_level: 50,
+        history_pattern: `Соблюдение: ${adherenceRate}%`,
+        user_mode: 'Follow Plan',
+        screen: 'Program',
+        subscription_state: user.hasPremium ? 'Premium' : 'Free',
+        safety_flags: plan.safetyFlags ?? [],
+      })
+      .then(setDecisionSupport)
+      .catch(() => setDecisionSupport(null));
+  }, [user, plan, adherenceRate]);
 
   const versionLabel = plan?.programVersion ? `v${plan.programVersion}` : 'v1';
   const phaseLabels = ['Build', 'Build', 'Deload', 'Recovery'];
@@ -275,6 +306,22 @@ const MyProgram = () => {
                   plan?.status?.toLowerCase().includes('pause')
                     ? 'Мы можем вернуться, когда вы будете готовы.'
                     : undefined
+                }
+              />
+            )}
+            {decisionSupport && (
+              <CoachMessageCard
+                mode={decisionSupport.ui_mode}
+                message={decisionSupport.coach_message}
+                footer={
+                  <CoachExplainabilityDrawer
+                    decisionId={decisionSupport.decision_id}
+                    trace={decisionSupport.explainability}
+                    title="Почему важно решить это сейчас?"
+                    confidence={decisionSupport.confidence}
+                    trustLevel={decisionSupport.trust_state}
+                    safetyFlags={decisionSupport.safety_flags}
+                  />
                 }
               />
             )}

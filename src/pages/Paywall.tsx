@@ -9,6 +9,9 @@ import Card from '../ui/components/Card';
 import StateContainer from '../ui/components/StateContainer';
 import TrustBanner from '../ui/components/TrustBanner';
 import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
+import CoachMessageCard from '../ui/coach/CoachMessageCard';
+import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import type { CoachDecisionResponse } from '../services/coachRuntime';
 
 type PaywallStatus =
   | 'free'
@@ -31,6 +34,7 @@ const Paywall = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const [explainability, setExplainability] = useState<PaywallExplainabilityDTO | null>(null);
+  const [decisionSupport, setDecisionSupport] = useState<CoachDecisionResponse | null>(null);
 
   const loadPaywall = useCallback(async () => {
     if (!user?.id) return;
@@ -76,6 +80,32 @@ const Paywall = () => {
   useEffect(() => {
     loadPaywall();
   }, [loadPaywall]);
+
+  useEffect(() => {
+    const subscriptionState =
+      paywallStatus === 'trial'
+        ? 'Trial'
+        : paywallStatus === 'active'
+          ? 'Premium'
+          : paywallStatus === 'grace'
+            ? 'Grace'
+            : paywallStatus === 'expired'
+              ? 'Expired'
+              : 'Free';
+    uiRuntimeAdapter
+      .getDecisionSupport({
+        decision_type: 'subscription_doubt',
+        emotional_state: 'neutral',
+        trust_level: 50,
+        history_pattern: `Статус подписки: ${paywallStatus}`,
+        user_mode: 'Manual',
+        screen: 'Paywall',
+        subscription_state: subscriptionState,
+        safety_flags: [],
+      })
+      .then(setDecisionSupport)
+      .catch(() => setDecisionSupport(null));
+  }, [paywallStatus]);
 
   const statusLabel: Record<PaywallStatus, string> = {
     free: 'Free',
@@ -137,6 +167,22 @@ const Paywall = () => {
             )}
 
             <div className="space-y-4">
+              {decisionSupport && (
+                <CoachMessageCard
+                  mode={decisionSupport.ui_mode}
+                  message={decisionSupport.coach_message}
+                  footer={
+                    <CoachExplainabilityDrawer
+                      decisionId={decisionSupport.decision_id}
+                      trace={decisionSupport.explainability}
+                      title="Почему коуч вмешался в это решение?"
+                      confidence={decisionSupport.confidence}
+                      trustLevel={decisionSupport.trust_state}
+                      safetyFlags={decisionSupport.safety_flags}
+                    />
+                  }
+                />
+              )}
               <Card title="Статус доступа" action={<span className="text-xs text-gray-500">{statusLabel[paywallStatus]}</span>}>
                 <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
                   <ShieldCheck className="w-4 h-4" />

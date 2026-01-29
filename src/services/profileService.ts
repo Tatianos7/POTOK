@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { ProfileDetails } from '../types';
-import type { CoachMode, CoachSettings } from '../types/coachSettings';
+import type { CoachMode, CoachSettings, CoachVoiceSettings } from '../types/coachSettings';
 
 export interface UserProfile {
   user_id: string;
@@ -23,6 +23,7 @@ export interface UserProfile {
 class ProfileService {
   private readonly AVATAR_STORAGE_KEY = 'potok_user_avatar';
   private readonly COACH_SETTINGS_KEY = 'potok_coach_settings';
+  private readonly VOICE_SETTINGS_KEY = 'potok_voice_settings';
   private userIdColumn: 'user_id' | 'id_user' | null = null;
 
   private async getSessionUserId(userId?: string): Promise<string> {
@@ -378,6 +379,55 @@ class ProfileService {
     }
   }
 
+  async getVoiceSettings(userId: string): Promise<CoachVoiceSettings> {
+    const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = await this.resolveUserIdColumn();
+    const fallback: CoachVoiceSettings = {
+      enabled: false,
+      mode: 'off',
+      style: 'calm',
+      intensity: 'soft',
+    };
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('voice_settings')
+          .eq(userIdColumn, sessionUserId)
+          .maybeSingle();
+        if (!error && data?.voice_settings) {
+          const settings = data.voice_settings as CoachVoiceSettings;
+          this.writeVoiceSettingsCache(sessionUserId, settings);
+          return settings;
+        }
+      } catch (err) {
+        console.warn('[profileService] voice settings load error', err);
+      }
+    }
+
+    return this.readVoiceSettingsCache(sessionUserId) ?? fallback;
+  }
+
+  async saveVoiceSettings(userId: string, settings: CoachVoiceSettings): Promise<void> {
+    const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = await this.resolveUserIdColumn();
+    this.writeVoiceSettingsCache(sessionUserId, settings);
+
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ voice_settings: settings })
+        .eq(userIdColumn, sessionUserId);
+      if (error) {
+        console.warn('[profileService] voice settings save error', error);
+      }
+    } catch (err) {
+      console.warn('[profileService] voice settings save connection error', err);
+    }
+  }
+
   private writeCoachSettingsCache(userId: string, settings: CoachSettings) {
     try {
       localStorage.setItem(`${this.COACH_SETTINGS_KEY}_${userId}`, JSON.stringify(settings));
@@ -395,6 +445,29 @@ class ProfileService {
       return parsed && typeof parsed === 'object' ? (parsed as CoachSettings) : null;
     } catch (error) {
       console.warn('[profileService] Error reading coach settings from localStorage', error);
+      return null;
+    }
+  }
+
+  private writeVoiceSettingsCache(userId: string, settings: CoachVoiceSettings) {
+    try {
+      localStorage.setItem(`${this.VOICE_SETTINGS_KEY}_${userId}`, JSON.stringify(settings));
+      localStorage.setItem(this.VOICE_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.warn('[profileService] Error saving voice settings to localStorage', error);
+    }
+  }
+
+  private readVoiceSettingsCache(userId: string): CoachVoiceSettings | null {
+    try {
+      const raw =
+        localStorage.getItem(`${this.VOICE_SETTINGS_KEY}_${userId}`) ??
+        localStorage.getItem(this.VOICE_SETTINGS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? (parsed as CoachVoiceSettings) : null;
+    } catch (error) {
+      console.warn('[profileService] Error reading voice settings from localStorage', error);
       return null;
     }
   }

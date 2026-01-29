@@ -4086,6 +4086,56 @@ ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
 **Expected Transitions**
 - `delivery_event → audit_logged`.
 
+# Phase 8 — Voice Coach Layer (E2E 306–310)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+306 | Premium voice support | Голосовая поддержка после пропуска | Voice coach | Support | Safe‑tone | Причина | Voice ok
+307 | Free voice gated | Кнопка заблокирована | Voice button | Честно | Без давления | Пояснение | Gate ok
+308 | Safety voice | Тон осторожный | Voice safety | Trust‑safe | Safety‑first | Причина | Safe voice ok
+309 | Voice plan explanation | Голос объясняет адаптацию | Voice explain | Прозрачность | Без давления | Источники | Explain ok
+310 | Voice disabled | Голос выключен | Settings | Уважение | Без давления | — | Voice off
+
+# Phase 8.2.5.1 — Voice UX, Settings & Trust (E2E 311–320)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+311 | Voice toggle on/off | Настройки сохраняются | Profile | Control | Safe | Почему | Saved
+312 | Risk-only | Голос только при риске | Voice | Support | Risk‑only | Сигналы | OK
+313 | Free demo | 1 реплика в неделю | Voice demo | Честно | Safe | Причина | Limit
+314 | Premium dialog | Голос в диалоге | Dialog | Trust | Safe | Причина | Voice dialog
+315 | Silent mode | Голос молчит | Quiet | Respect | Safe | Причина | Silent
+316 | Cooldown after ignore | Пауза после игнора | Quiet | Respect | Safe | Причина | Cooldown
+317 | Voice explainability | Почему голос | Drawer | Trust | Safe | Voice reason | Visible
+318 | Voice tone shift | Тон меняется | Voice | Trust | Safe | Tone reason | OK
+319 | Voice in risk | Без давления, кризисный тон | Voice safety | Trust‑safe | Crisis | Причина | OK
+320 | Paywall reason | Голос = живое сопровождение | Paywall | Честно | Safe | Объяснение | Copy ok
+
+# Phase 8.2.6 — Decision Companion (E2E 321–340)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+321 | Decision under fatigue | Мягкая поддержка | Decision card | Support | Safety | Почему сейчас | OK
+322 | Decision after relapse | Рефрейм без стыда | Decision card | Trust | Safe | Основание | OK
+323 | Decision low trust | Возврат контроля | Decision card | Trust repair | Safe | Почему сейчас | OK
+324 | Decision to pause | Уважение к паузе | Decision card | Respect | Safe | Альтернативы | OK
+325 | Decision to return | Мягкий старт | Decision card | Support | Safe | Основание | OK
+326 | Decision cancel premium | Без давления | Paywall | Trust | Safe | Объяснение | OK
+327 | Goal change | Уточнение цели | GoalResult | Support | Safe | Альтернативы | OK
+328 | Plan cancel | Без обвинений | MyProgram | Trust | Safe | Почему сейчас | OK
+329 | Long pause > N days | Без давления | MyProgram | Support | Safe | Основание | OK
+330 | Plateau choice | План действия | Progress | Trust | Safe | Основание | OK
+331 | Return after pause | Мягкий ритм | Progress | Support | Safe | Альтернативы | OK
+332 | Subscription doubt | Рефрейм ценности | Paywall | Trust | Safe | Объяснение | OK
+333 | Profile reset | Бережный старт | Profile | Support | Safe | Альтернативы | OK
+334 | Decision w/ safety flags | Protect mode | Decision card | Safety | Crisis | Почему | OK
+335 | Decision in Manual | Поддержка без давления | Decision card | Respect | Safe | Основание | OK
+336 | Decision in Follow Plan | Уточнение шага | Decision card | Trust | Safe | Основание | OK
+337 | Premium decision history | История решений | Decision log | Trust | Safe | Следы | OK
+338 | Free decision gating | Без памяти | Decision card | Honest | Safe | Причина | OK
+339 | Voice decision rationale | Тон объяснён | Explainability | Trust | Safe | Voice | OK
+340 | Autonomy preserved | Выбор за пользователем | Decision UI | Respect | Safe | Альтернативы | OK
+
 # Scaling Invariants
 - All reads/writes scoped by `auth.uid()`.
 - Indexes for `(user_id, date)` and `(user_id, created_at desc)` on high-traffic tables.

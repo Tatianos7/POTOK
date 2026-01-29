@@ -8,10 +8,11 @@ interface CoachMessageCardProps {
   message: string;
   mode?: CoachEmotionalMode;
   action?: ReactNode;
+  voiceAction?: ReactNode;
   footer?: ReactNode;
 }
 
-const CoachMessageCard = ({ title, message, mode = 'support', action, footer }: CoachMessageCardProps) => {
+const CoachMessageCard = ({ title, message, mode = 'support', action, voiceAction, footer }: CoachMessageCardProps) => {
   const styles = coachModeStyles[mode];
   const label = title ?? coachModeCopy[mode];
 
@@ -22,7 +23,10 @@ const CoachMessageCard = ({ title, message, mode = 'support', action, footer }: 
           <p className={`${typography.micro} ${styles.accent}`}>{label}</p>
           <h3 className={styles.title}>Calm Power Coach</h3>
         </div>
-        {action}
+        <div className="flex items-center gap-2">
+          {voiceAction}
+          {action}
+        </div>
       </div>
       <p className={styles.body}>{message}</p>
       {footer && <div className="mt-3">{footer}</div>}

@@ -17,7 +17,7 @@ import CoachTimelineComment from '../ui/coach/CoachTimelineComment';
 import { CoachRecoveryDialog } from '../ui/coach/CoachDialog';
 import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
 import CoachRequestModal from '../ui/coach/CoachRequestModal';
-import type { CoachResponse } from '../services/coachRuntime';
+import type { CoachDecisionResponse, CoachResponse } from '../services/coachRuntime';
 import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
 const Progress = () => {
@@ -33,6 +33,7 @@ const Progress = () => {
   const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
   const [coachRequestOpen, setCoachRequestOpen] = useState(false);
   const lastCoachEventKey = useRef<string | null>(null);
+  const [decisionSupport, setDecisionSupport] = useState<CoachDecisionResponse | null>(null);
 
   const getTodayDate = () => {
     const today = new Date();
@@ -86,6 +87,31 @@ const Progress = () => {
   useEffect(() => {
     loadProgress();
   }, [loadProgress]);
+
+  useEffect(() => {
+    if (!user || !summary) {
+      setDecisionSupport(null);
+      return;
+    }
+    const slope = typeof summary.weightSlope === 'number' ? Math.abs(summary.weightSlope) : null;
+    if (slope === null || slope > 0.02) {
+      setDecisionSupport(null);
+      return;
+    }
+    uiRuntimeAdapter
+      .getDecisionSupport({
+        decision_type: 'plateau',
+        emotional_state: 'neutral',
+        trust_level: 50,
+        history_pattern: `Стабильность веса за период ${summary.periodStart}–${summary.periodEnd}`,
+        user_mode: 'Manual',
+        screen: 'Progress',
+        subscription_state: user.hasPremium ? 'Premium' : 'Free',
+        safety_flags: [],
+      })
+      .then(setDecisionSupport)
+      .catch(() => setDecisionSupport(null));
+  }, [user, summary]);
 
   const weightTrend = summary?.weightSlope ?? 0;
   const volumeTrend = summary?.volumeSlope ?? 0;
@@ -351,6 +377,22 @@ const Progress = () => {
                     coachOverlay.emotional_state === 'recovering' ? (
                       <CoachTimelineComment text="Восстановление — это часть прогресса." mode="support" />
                     ) : null
+                  }
+                />
+              )}
+              {decisionSupport && (
+                <CoachMessageCard
+                  mode={decisionSupport.ui_mode}
+                  message={decisionSupport.coach_message}
+                  footer={
+                    <CoachExplainabilityDrawer
+                      decisionId={decisionSupport.decision_id}
+                      trace={decisionSupport.explainability}
+                      title="Почему это момент выбора?"
+                      confidence={decisionSupport.confidence}
+                      trustLevel={decisionSupport.trust_state}
+                      safetyFlags={decisionSupport.safety_flags}
+                    />
                   }
                 />
               )}

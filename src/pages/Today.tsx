@@ -16,6 +16,7 @@ import { CoachDailyNudge } from '../ui/coach/CoachNudge';
 import CoachSafetyBanner from '../ui/coach/CoachSafetyBanner';
 import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
 import CoachRequestModal from '../ui/coach/CoachRequestModal';
+import CoachVoiceButton from '../ui/coach/CoachVoiceButton';
 import type { CoachResponse } from '../services/coachRuntime';
 import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
@@ -128,12 +129,15 @@ const Today = () => {
             }}
           >
             <div className="space-y-3">
-              <button
-                onClick={() => setCoachRequestOpen(true)}
-                className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
-              >
-                🧠 Спросить коуча
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setCoachRequestOpen(true)}
+                  className="rounded-xl border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"
+                >
+                  🧠 Спросить коуча
+                </button>
+                <CoachVoiceButton label="🎧 Голос" disabled />
+              </div>
               {coachOverlay && (
                 <CoachDailyNudge
                   message={coachOverlay.coach_message}
@@ -174,6 +178,7 @@ const Today = () => {
                   <CoachMessageCard
                     mode="celebrate"
                     message="Ты завершил день. Это укрепляет доверие к себе."
+                    voiceAction={<CoachVoiceButton label="🎧 Голос" disabled />}
                     action={<CoachMemoryChip text="Устойчивость растет от маленьких побед" />}
                   />
                 )}
@@ -181,6 +186,7 @@ const Today = () => {
                   <CoachMessageCard
                     mode="support"
                     message="Пропуски — часть пути. Давай вернемся мягко."
+                    voiceAction={<CoachVoiceButton label="🎧 Голос" disabled />}
                     action={<CoachMemoryChip text="Ритм важнее идеальности" />}
                   />
                 )}

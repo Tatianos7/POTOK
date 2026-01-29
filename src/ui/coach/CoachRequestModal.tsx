@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react';
-import CoachDialog from './CoachDialog';
 import CoachExplainabilityDrawer from './CoachExplainabilityDrawer';
+import CoachDialogThread from './CoachDialogThread';
 import { uiRuntimeAdapter } from '../../services/uiRuntimeAdapter';
-import type { CoachResponse, CoachScreenContext } from '../../services/coachRuntime';
+import type {
+  CoachDialogResponse,
+  CoachRequestIntent,
+  CoachScreenContext,
+} from '../../services/coachRuntime';
 
 interface CoachRequestModalProps {
   open: boolean;
@@ -11,7 +15,8 @@ interface CoachRequestModalProps {
 }
 
 const CoachRequestModal = ({ open, onClose, context }: CoachRequestModalProps) => {
-  const [response, setResponse] = useState<CoachResponse | null>(null);
+  const [dialog, setDialog] = useState<CoachDialogResponse | null>(null);
+  const [dialogId, setDialogId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -29,13 +34,14 @@ const CoachRequestModal = ({ open, onClose, context }: CoachRequestModalProps) =
     return base;
   }, [context.screen]);
 
-  const handleRequest = async (intent: string) => {
+  const handleRequest = async (intent: CoachRequestIntent) => {
     setIsLoading(true);
     setNotice(null);
     try {
-      const result = await uiRuntimeAdapter.requestCoachResponse(intent as any, context);
-      setResponse(result);
-      if (!result) {
+      const result = await uiRuntimeAdapter.requestCoachDialogStart(intent, context);
+      setDialog(result);
+      setDialogId(result.dialogId);
+      if (!result.turns.length) {
         setNotice('Коуч сейчас в режиме тишины.');
       }
     } catch (error) {
@@ -43,6 +49,30 @@ const CoachRequestModal = ({ open, onClose, context }: CoachRequestModalProps) =
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleReply = async (reply: string) => {
+    if (!dialogId) return;
+    setIsLoading(true);
+    try {
+      const result = await uiRuntimeAdapter.requestCoachDialogContinue(dialogId, reply);
+      setDialog((prev) =>
+        prev
+          ? { ...prev, turns: [...prev.turns, ...result.turns], status: result.status, allowFollowups: result.allowFollowups }
+          : result
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEnd = async () => {
+    if (dialogId) {
+      await uiRuntimeAdapter.requestCoachDialogEnd(dialogId);
+    }
+    setDialog(null);
+    setDialogId(null);
+    onClose();
   };
 
   if (!open) return null;
@@ -66,7 +96,7 @@ const CoachRequestModal = ({ open, onClose, context }: CoachRequestModalProps) =
             <button
               key={intent.id}
               type="button"
-              onClick={() => handleRequest(intent.id)}
+              onClick={() => handleRequest(intent.id as CoachRequestIntent)}
               className="rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
             >
               {intent.label}
@@ -81,16 +111,21 @@ const CoachRequestModal = ({ open, onClose, context }: CoachRequestModalProps) =
           <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">{notice}</p>
         )}
 
-        {response && (
+        {dialog && (
           <div className="mt-4 space-y-3">
-            <CoachDialog title="Ответ коуча" message={response.coach_message} mode={response.ui_mode} />
-            <CoachExplainabilityDrawer
-              decisionId={response.decision_id}
-              trace={response.explainability ?? null}
-              confidence={response.confidence}
-              trustLevel={response.trust_state}
-              safetyFlags={response.safety_flags}
+            <CoachDialogThread
+              turns={dialog.turns}
+              status={dialog.status}
+              allowFollowups={dialog.allowFollowups}
+              onReply={handleReply}
+              onEnd={handleEnd}
             />
+            {dialog.turns[dialog.turns.length - 1]?.explainability && (
+              <CoachExplainabilityDrawer
+                decisionId={dialog.turns[dialog.turns.length - 1]?.decisionId}
+                trace={dialog.turns[dialog.turns.length - 1]?.explainability ?? null}
+              />
+            )}
           </div>
         )}
       </div>

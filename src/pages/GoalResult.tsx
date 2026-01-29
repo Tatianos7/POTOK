@@ -5,6 +5,10 @@ import { X } from 'lucide-react';
 import { GoalFormData } from '../components/CreateGoalModal';
 import { goalService } from '../services/goalService';
 import { profileService } from '../services/profileService';
+import { uiRuntimeAdapter } from '../services/uiRuntimeAdapter';
+import type { CoachDecisionResponse } from '../services/coachRuntime';
+import CoachMessageCard from '../ui/coach/CoachMessageCard';
+import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
 
 interface CalculatedResult {
   bmr: number;
@@ -152,6 +156,7 @@ const GoalResult = () => {
   const location = useLocation();
   const [formData, setFormData] = useState<GoalFormData | null>(null);
   const [result, setResult] = useState<CalculatedResult | null>(null);
+  const [decisionSupport, setDecisionSupport] = useState<CoachDecisionResponse | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -207,6 +212,23 @@ const GoalResult = () => {
       navigate('/goal');
     }
   }, [user, navigate, location]);
+
+  useEffect(() => {
+    if (!user || !result) return;
+    uiRuntimeAdapter
+      .getDecisionSupport({
+        decision_type: 'goal_change',
+        emotional_state: 'neutral',
+        trust_level: 50,
+        history_pattern: `Оценка срока: ${result.monthsToGoal} мес.`,
+        user_mode: 'Manual',
+        screen: 'GoalResult',
+        subscription_state: user.hasPremium ? 'Premium' : 'Free',
+        safety_flags: [],
+      })
+      .then(setDecisionSupport)
+      .catch(() => setDecisionSupport(null));
+  }, [user, result]);
 
   // Маппинг образа жизни
   const getLifestyleLabel = (lifestyle: string): string => {
@@ -362,6 +384,25 @@ const GoalResult = () => {
               </div>
             )}
           </div>
+
+          {decisionSupport && (
+            <div className="mb-6">
+              <CoachMessageCard
+                mode={decisionSupport.ui_mode}
+                message={decisionSupport.coach_message}
+                footer={
+                  <CoachExplainabilityDrawer
+                    decisionId={decisionSupport.decision_id}
+                    trace={decisionSupport.explainability}
+                    title="Почему это важный выбор?"
+                    confidence={decisionSupport.confidence}
+                    trustLevel={decisionSupport.trust_state}
+                    safetyFlags={decisionSupport.safety_flags}
+                  />
+                }
+              />
+            </div>
+          )}
 
           {/* BMR and TDEE Display */}
           <div className="mb-6 space-y-2">

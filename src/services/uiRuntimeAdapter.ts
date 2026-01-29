@@ -30,6 +30,8 @@ import {
   type CoachScreen,
   type CoachScreenContext,
   type CoachDecisionHistoryQuery,
+  type CoachDecisionContext,
+  type CoachDecisionResponse,
   type CoachRequestIntent,
 } from './coachRuntime';
 
@@ -714,6 +716,23 @@ class UiRuntimeAdapter {
     return coachRuntime.listExplainableDecisions(query);
   }
 
+  async getDecisionSupport(context: CoachDecisionContext): Promise<CoachDecisionResponse> {
+    const coachContext = this.buildCoachContext(context.screen, {
+      userMode: context.user_mode,
+      subscriptionState: context.subscription_state,
+      trustLevel: context.trust_level,
+      safetyFlags: context.safety_flags,
+    });
+    return coachRuntime.getDecisionSupport({
+      ...context,
+      subscription_state: coachContext.subscriptionState,
+      user_mode: coachContext.userMode,
+      screen: coachContext.screen,
+      trust_level: coachContext.trustLevel,
+      safety_flags: coachContext.safetyFlags,
+    });
+  }
+
   async getTrustNarrative() {
     return coachRuntime.buildTrustNarrative();
   }
@@ -726,9 +745,17 @@ class UiRuntimeAdapter {
     return coachRuntime.resetTrustStyle();
   }
 
-  async requestCoachResponse(intent: CoachRequestIntent, context: Partial<CoachScreenContext>) {
+  async requestCoachDialogStart(intent: CoachRequestIntent, context: Partial<CoachScreenContext>) {
     const coachContext = this.buildCoachContext(context.screen ?? 'Today', context);
-    return coachRuntime.handleUserRequest(intent, coachContext);
+    return coachRuntime.startDialog(intent, coachContext);
+  }
+
+  async requestCoachDialogContinue(dialogId: string, reply: string) {
+    return coachRuntime.continueDialog(dialogId, reply);
+  }
+
+  async requestCoachDialogEnd(dialogId: string) {
+    return coachRuntime.endDialog(dialogId);
   }
 }
 
