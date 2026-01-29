@@ -1,10 +1,10 @@
 import type { CoachExplainabilityBinding, CoachMemoryEvent } from '../types/coachMemory';
-import type { CoachMode } from '../types/coachSettings';
+import type { CoachMode, CoachVoiceSettings } from '../types/coachSettings';
 import { createCoachMemoryFacade, type CoachMemoryFacade } from './coachMemoryFacade';
 import { CircuitBreaker } from './coachCircuitBreaker';
 import { coachTelemetry } from './coachTelemetry';
 
-export type CoachScreen = 'Today' | 'Progress' | 'Habits' | 'Program' | 'Paywall';
+export type CoachScreen = 'Today' | 'Progress' | 'Habits' | 'Program' | 'Paywall' | 'Profile' | 'GoalResult';
 
 export type CoachEmotionalState =
   | 'neutral'
@@ -52,12 +52,51 @@ export interface CoachInterventionPolicy {
   respectUserSilence: boolean;
 }
 
+export type CoachDecisionType =
+  | 'goal_change'
+  | 'plan_drop'
+  | 'plateau'
+  | 'long_pause'
+  | 'return_after_pause'
+  | 'subscription_doubt'
+  | 'profile_reset';
+
+export interface CoachDecisionContext {
+  decision_type: CoachDecisionType;
+  emotional_state?: CoachEmotionalState;
+  trust_level?: number;
+  history_pattern?: string;
+  user_mode: 'Manual' | 'Follow Plan';
+  screen: CoachScreen;
+  subscription_state: CoachScreenContext['subscriptionState'];
+  safety_flags?: string[];
+}
+
+export interface CoachDecisionResponse extends CoachResponse {
+  decision_type: CoachDecisionType;
+  alternatives?: string[];
+}
+
+export interface VoiceInterventionPolicy {
+  mode: CoachVoiceSettings['mode'];
+  dailyVoiceLimit: number;
+  silenceAfterIgnoreHours: number;
+  emotionalOverloadGuard: boolean;
+}
+
 export interface CoachResponse {
   decision_id?: string;
   coach_message: string;
   emotional_state: CoachEmotionalState;
   ui_surface: CoachUiSurface;
   ui_mode: CoachUiMode;
+  voice?: {
+    enabled: boolean;
+    mode: 'voice' | 'text';
+    tone?: VoiceEmotionTone;
+    reason?: string;
+    signals?: string[];
+  };
   reasoning?: string;
   memory_refs?: string[];
   trust_state?: string;
@@ -259,6 +298,7 @@ class CoachRuntime {
       const trustLevel = screenContext.trustLevel ?? 50;
       response = this.applyTrustModulation(response, trustLevel);
     }
+    response = this.applyVoicePolicy(response, normalizedEvent, screenContext);
     const decisionId = `${normalizedEvent.type}:${normalizedEvent.timestamp}`;
     const explainability = await this.attachExplainability(response, decisionId, screenContext);
     coachTelemetry.trackTiming('coach_response_time', performance.now() - startedAt, {
@@ -336,6 +376,101 @@ class CoachRuntime {
       ui_surface: 'nudge',
       ui_mode: type === 'recovery' ? 'support' : 'motivate',
     };
+  }
+
+  async getDecisionSupport(context: CoachDecisionContext): Promise<CoachDecisionResponse> {
+    const emotionalState = context.emotional_state ?? this.resolveDecisionEmotionalState(context.trust_level);
+    const decisionConfig = this.buildDecisionMessage(context);
+    const decisionId = `decision:${context.decision_type}:${Date.now()}`;
+    const event: CoachMemoryEvent = {
+      type: 'DecisionSupport',
+      timestamp: new Date().toISOString(),
+      payload: {
+        decision_type: context.decision_type,
+        history_pattern: context.history_pattern,
+        user_mode: context.user_mode,
+        screen: context.screen,
+      },
+      confidence: 0.7,
+      safetyClass: (context.safety_flags?.length ?? 0) > 0 ? 'caution' : 'normal',
+      trustImpact: 0,
+    };
+
+    const screenContext: CoachScreenContext = {
+      screen: context.screen,
+      userMode: context.user_mode,
+      subscriptionState: context.subscription_state,
+      trustLevel: context.trust_level,
+      safetyFlags: context.safety_flags,
+    };
+
+    let response: CoachDecisionResponse = {
+      decision_id: decisionId,
+      decision_type: context.decision_type,
+      coach_message: decisionConfig.message,
+      emotional_state: emotionalState,
+      ui_surface: 'card',
+      ui_mode: decisionConfig.mode,
+      confidence: 0.7,
+      reasoning: decisionConfig.whyNow,
+      memory_refs: decisionConfig.basis,
+      personalization_basis: this.hasPremiumAccess(context.subscription_state) ? 'decision_history' : undefined,
+      alternatives: decisionConfig.alternatives,
+    };
+
+    response = this.applySafetyGuards(response, screenContext, event) as CoachDecisionResponse;
+    response = this.applyEntitlementGate(response, screenContext.subscriptionState) as CoachDecisionResponse;
+    if (this.hasPremiumAccess(screenContext.subscriptionState)) {
+      response = this.applyTrustModulation(response, screenContext.trustLevel ?? 50) as CoachDecisionResponse;
+    }
+    response = this.applyVoicePolicy(response, event, screenContext) as CoachDecisionResponse;
+
+    const explainability = await this.attachExplainability(response, decisionId, screenContext);
+    response.explainability = explainability
+      ? {
+          ...explainability,
+          decision: {
+            whyNow: decisionConfig.whyNow,
+            basis: decisionConfig.basis,
+            alternatives: decisionConfig.alternatives,
+          },
+        }
+      : {
+          decisionId,
+          memory_refs: [],
+          trust_history: [],
+          emotional_state: 'calm',
+          safety_flags: context.safety_flags ?? [],
+          pattern_matches: [],
+          voice: response.voice?.enabled
+            ? {
+                triggered: true,
+                reason: response.voice.reason,
+                tone: response.voice.tone,
+                signals: response.voice.signals,
+              }
+            : undefined,
+          decision: {
+            whyNow: decisionConfig.whyNow,
+            basis: decisionConfig.basis,
+            alternatives: decisionConfig.alternatives,
+          },
+        };
+
+    this.storeDecisionHistory({
+      decisionId,
+      timestamp: event.timestamp,
+      screen: context.screen,
+      decisionType: `decision:${context.decision_type}`,
+      summary: response.coach_message,
+      reason: response.safety_reason ?? response.trust_reason ?? decisionConfig.whyNow,
+      data_sources: response.data_sources ?? [],
+      impact: response.trust_state ? `Тон: ${response.trust_state}` : undefined,
+      trustState: response.trust_state,
+      uiMode: response.ui_mode,
+    });
+
+    return response;
   }
 
   async getExplainability(
@@ -437,6 +572,7 @@ class CoachRuntime {
     if (this.hasPremiumAccess(screenContext.subscriptionState)) {
       response = this.applyTrustModulation(response, screenContext.trustLevel ?? 50);
     }
+    response = this.applyVoicePolicy(response, event, screenContext);
 
     const decisionId = `request:${intent}:${Date.now()}`;
     const explainability = await this.attachExplainability(response, decisionId, screenContext);
@@ -480,18 +616,20 @@ class CoachRuntime {
       personalization_basis: 'user_request',
     };
 
-    response = this.applySafetyGuards(response, screenContext, {
+    const requestEvent: CoachMemoryEvent = {
       type: 'UserRequest',
       timestamp: new Date().toISOString(),
       payload: { intent, source: 'user_request' },
       confidence: 0.7,
       safetyClass: safetyMode ? 'caution' : 'normal',
       trustImpact: 0,
-    });
+    };
+    response = this.applySafetyGuards(response, screenContext, requestEvent);
     response = this.applyEntitlementGate(response, screenContext.subscriptionState);
     if (this.hasPremiumAccess(screenContext.subscriptionState)) {
       response = this.applyTrustModulation(response, screenContext.trustLevel ?? 50);
     }
+    response = this.applyVoicePolicy(response, requestEvent, screenContext);
 
     const explainability = await this.attachExplainability(response, decisionId, screenContext);
     response.explainability = explainability;
@@ -573,14 +711,33 @@ class CoachRuntime {
       decisionId,
     };
 
-    const explainability = await this.attachExplainability(
+    const response: CoachResponse = {
+      decision_id: decisionId,
+      coach_message: responseText,
+      emotional_state: state.emotionalState,
+      ui_surface: 'dialog',
+      ui_mode: 'support',
+    };
+    const responseWithVoice = this.applyVoicePolicy(
+      response,
       {
-        decision_id: decisionId,
-        coach_message: responseText,
-        emotional_state: state.emotionalState,
-        ui_surface: 'dialog',
-        ui_mode: 'support',
+        type: 'UserRequest',
+        timestamp: new Date().toISOString(),
+        payload: { source: 'user_request', reply: userReply },
+        confidence: 0.6,
+        safetyClass: state.safetyMode ? 'caution' : 'normal',
+        trustImpact: 0,
       },
+      {
+        screen: state.screen,
+        userMode: 'Manual',
+        subscriptionState: state.subscriptionState,
+        trustLevel: state.trustLevel,
+        safetyFlags: state.safetyMode ? ['dialog_safety'] : [],
+      }
+    );
+    const explainability = await this.attachExplainability(
+      responseWithVoice,
       decisionId,
       {
         screen: state.screen,
@@ -718,6 +875,82 @@ class CoachRuntime {
     return response;
   }
 
+  private resolveDecisionEmotionalState(trustLevel?: number): CoachEmotionalState {
+    if (trustLevel !== undefined && trustLevel < 40) return 'trust_repair';
+    if (trustLevel !== undefined && trustLevel >= 70) return 'confident';
+    return 'neutral';
+  }
+
+  private buildDecisionMessage(context: CoachDecisionContext): {
+    message: string;
+    mode: CoachUiMode;
+    whyNow: string;
+    basis: string[];
+    alternatives: string[];
+  } {
+    const base = {
+      message: 'Давай спокойно посмотрим на ситуацию и выберем следующий шаг.',
+      mode: 'support' as CoachUiMode,
+      whyNow: 'Это важная точка выбора, где лучше вернуть себе контроль.',
+      basis: context.history_pattern ? [context.history_pattern] : ['Текущие сигналы и контекст'],
+      alternatives: ['Сделать паузу', 'Скорректировать цель', 'Продолжить текущий путь'],
+    };
+
+    const map: Record<CoachDecisionType, typeof base> = {
+      goal_change: {
+        message: 'Если цель меняется, это нормально. Давай уточним, что сейчас важнее всего.',
+        mode: 'guide',
+        whyNow: 'Смена цели влияет на ритм и мотивацию.',
+        basis: base.basis,
+        alternatives: ['Оставить цель', 'Скорректировать срок', 'Сменить фокус'],
+      },
+      plan_drop: {
+        message: 'Если хочется отказаться от плана, важно понять причину без давления.',
+        mode: 'reframe',
+        whyNow: 'Отказ от плана — это сигнал, а не провал.',
+        basis: base.basis,
+        alternatives: ['Пауза', 'Упростить план', 'Перейти в Manual Mode'],
+      },
+      plateau: {
+        message: 'Плато — естественная фаза. Давай решим, что поможет двигаться мягко.',
+        mode: 'guide',
+        whyNow: 'Застой требует тонкой корректировки, а не резких шагов.',
+        basis: base.basis,
+        alternatives: ['Снизить нагрузку', 'Сменить акцент', 'Дать время телу'],
+      },
+      long_pause: {
+        message: 'Перерыв — часть пути. Давай подумаем, как вернуться безопасно.',
+        mode: 'support',
+        whyNow: 'Длительная пауза меняет стартовые условия.',
+        basis: base.basis,
+        alternatives: ['Мягкий возврат', 'Небольшие шаги', 'Новая цель'],
+      },
+      return_after_pause: {
+        message: 'Рад, что вы возвращаетесь. Давай начнём с устойчивого шага.',
+        mode: 'motivate',
+        whyNow: 'Возврат лучше делать постепенно, чтобы сохранить мотивацию.',
+        basis: base.basis,
+        alternatives: ['Лёгкий старт', 'Короткий цикл', 'План без давления'],
+      },
+      subscription_doubt: {
+        message: 'Если есть сомнения, давай разберём, что действительно помогает вам.',
+        mode: 'reframe',
+        whyNow: 'Решение о подписке должно оставаться вашим.',
+        basis: base.basis,
+        alternatives: ['Продлить', 'Сделать паузу', 'Остаться на Free'],
+      },
+      profile_reset: {
+        message: 'Начать заново — это смелый шаг. Давай сделаем его бережно.',
+        mode: 'protect',
+        whyNow: 'Сброс — важное решение, оно влияет на ритм и доверие.',
+        basis: base.basis,
+        alternatives: ['Сбросить частично', 'Сохранить историю', 'Переоценить цель'],
+      },
+    };
+
+    return map[context.decision_type] ?? base;
+  }
+
   async attachExplainability(
     response: CoachResponse,
     decisionId: string,
@@ -749,12 +982,23 @@ class CoachRuntime {
             trust_history: [],
             pattern_matches: [],
           };
-      response.memory_refs = gatedTrace.memory_refs.map((ref) => ref.summary);
-      response.data_sources = gatedTrace.memory_refs.map((ref) => ref.ref);
-      if (gatedTrace.memory_refs.length > 0) {
-        coachTelemetry.increment('memory_hits', gatedTrace.memory_refs.length, { decisionId });
+      const enhancedTrace: CoachExplainabilityBinding = {
+        ...gatedTrace,
+        voice: response.voice?.enabled
+          ? {
+              triggered: true,
+              reason: response.voice.reason,
+              tone: response.voice.tone,
+              signals: response.voice.signals,
+            }
+          : undefined,
+      };
+      response.memory_refs = enhancedTrace.memory_refs.map((ref) => ref.summary);
+      response.data_sources = enhancedTrace.memory_refs.map((ref) => ref.ref);
+      if (enhancedTrace.memory_refs.length > 0) {
+        coachTelemetry.increment('memory_hits', enhancedTrace.memory_refs.length, { decisionId });
       }
-      return gatedTrace;
+      return enhancedTrace;
     } catch (error) {
       this.explainabilityBreaker.recordFailure();
       const fallbackTrace: CoachExplainabilityBinding = {
@@ -764,6 +1008,14 @@ class CoachRuntime {
         emotional_state: 'calm',
         safety_flags: [...(context.safetyFlags ?? []), 'explainability_unavailable'],
         pattern_matches: [],
+        voice: response.voice?.enabled
+          ? {
+              triggered: true,
+              reason: response.voice.reason,
+              tone: response.voice.tone,
+              signals: response.voice.signals,
+            }
+          : undefined,
         explainabilityRef: 'explainability_unavailable',
       };
       return fallbackTrace;
@@ -895,6 +1147,181 @@ class CoachRuntime {
       silent: false,
       respectUserSilence: true,
     };
+  }
+
+  private getVoicePolicy(subscriptionState: CoachScreenContext['subscriptionState']): VoiceInterventionPolicy {
+    const settings = this.readVoiceSettings();
+    const isPremium = this.hasPremiumAccess(subscriptionState);
+    return {
+      mode: isPremium ? settings.mode : 'risk_only',
+      dailyVoiceLimit: isPremium ? 3 : 1,
+      silenceAfterIgnoreHours: 6,
+      emotionalOverloadGuard: true,
+    };
+  }
+
+  private applyVoicePolicy(
+    response: CoachResponse,
+    event: CoachMemoryEvent,
+    context: CoachScreenContext
+  ): CoachResponse {
+    const settings = this.readVoiceSettings();
+    if (!settings.enabled || settings.mode === 'off') return response;
+    const policy = this.getVoicePolicy(context.subscriptionState);
+    const decision = this.resolveVoiceDecision(settings, policy, event, context, response.emotional_state);
+    if (!decision.enabled) return response;
+    this.registerVoiceUsage(policy, decision.isDemo);
+    return {
+      ...response,
+      voice: {
+        enabled: true,
+        mode: 'voice',
+        tone: decision.tone,
+        reason: decision.reason,
+        signals: decision.signals,
+      },
+    };
+  }
+
+  private resolveVoiceDecision(
+    settings: CoachVoiceSettings,
+    policy: VoiceInterventionPolicy,
+    event: CoachMemoryEvent,
+    context: CoachScreenContext,
+    emotionalState: CoachEmotionalState
+  ): { enabled: boolean; tone?: VoiceEmotionTone; reason?: string; signals?: string[]; isDemo?: boolean } {
+    const signals = this.buildVoiceSignals(context, event);
+    const hasRisk = signals.length > 0 || event.safetyClass !== 'normal';
+    const isPremium = this.hasPremiumAccess(context.subscriptionState);
+    const isUserRequest =
+      event.type === 'UserRequest' || (event.payload as Record<string, unknown>)?.source === 'user_request';
+
+    if (policy.mode === 'off') {
+      return { enabled: false, reason: 'voice_off' };
+    }
+    if (policy.mode === 'on_request' && !isUserRequest) {
+      return { enabled: false, reason: 'voice_on_request_only' };
+    }
+    if (policy.mode === 'risk_only' && !hasRisk) {
+      return { enabled: false, reason: 'voice_risk_only' };
+    }
+
+    if (policy.emotionalOverloadGuard && !hasRisk) {
+      if (['fatigued', 'recovering', 'discouraged'].includes(emotionalState)) {
+        return { enabled: false, reason: 'voice_emotional_overload' };
+      }
+    }
+
+    const silenceUntil = localStorage.getItem('voice_silence_until');
+    if (silenceUntil && Date.now() < new Date(silenceUntil).getTime()) {
+      return { enabled: false, reason: 'voice_silenced' };
+    }
+    const coachSilence = localStorage.getItem('coach_silence_until');
+    if (coachSilence && Date.now() < new Date(coachSilence).getTime()) {
+      return { enabled: false, reason: 'coach_silenced' };
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const countKey = `voice_daily_count_${today}`;
+    const count = Number(localStorage.getItem(countKey) ?? 0);
+    if (count >= policy.dailyVoiceLimit) {
+      return { enabled: false, reason: 'voice_daily_limit' };
+    }
+
+    if (!isPremium) {
+      if (!hasRisk) return { enabled: false, reason: 'voice_free_risk_only' };
+      if (!this.isVoiceDemoAvailable()) {
+        return { enabled: false, reason: 'voice_demo_limit' };
+      }
+    }
+
+    return {
+      enabled: true,
+      tone: this.resolveVoiceTone(settings, emotionalState, context, event),
+      reason: hasRisk ? 'voice_risk_support' : 'voice_user_request',
+      signals,
+      isDemo: !isPremium,
+    };
+  }
+
+  private resolveVoiceTone(
+    settings: CoachVoiceSettings,
+    emotionalState: CoachEmotionalState,
+    context: CoachScreenContext,
+    event: CoachMemoryEvent
+  ): VoiceEmotionTone {
+    if (event.safetyClass === 'medical_risk' || (context.safetyFlags?.length ?? 0) > 0) {
+      return 'safety';
+    }
+    if (['fatigued', 'recovering'].includes(emotionalState)) {
+      return 'recovery';
+    }
+    if (settings.style === 'motivational') return 'motivational';
+    if (settings.style === 'supportive') return 'calm';
+    if (settings.style === 'calm') return 'calm';
+    return 'neutral';
+  }
+
+  private buildVoiceSignals(context: CoachScreenContext, event: CoachMemoryEvent): string[] {
+    const signals: string[] = [];
+    if ((context.safetyFlags?.length ?? 0) > 0) signals.push('safety_flags');
+    if ((context.fatigueLevel ?? 0) > 0.6) signals.push('fatigue');
+    if ((context.relapseRisk ?? 0) > 0.6) signals.push('relapse_risk');
+    if (event.safetyClass !== 'normal') signals.push(event.safetyClass);
+    return signals;
+  }
+
+  private registerVoiceUsage(policy: VoiceInterventionPolicy, isDemo?: boolean) {
+    const today = new Date().toISOString().split('T')[0];
+    const countKey = `voice_daily_count_${today}`;
+    const count = Number(localStorage.getItem(countKey) ?? 0);
+    localStorage.setItem(countKey, String(count + 1));
+    localStorage.setItem('voice_last_spoken_at', new Date().toISOString());
+
+    if (isDemo) {
+      this.markVoiceDemoUsed();
+    }
+
+    if (policy.silenceAfterIgnoreHours > 0) {
+      const ignoreCount = Number(localStorage.getItem('voice_ignore_count') ?? 0);
+      if (ignoreCount >= 2) {
+        const until = new Date(Date.now() + policy.silenceAfterIgnoreHours * 3600000).toISOString();
+        localStorage.setItem('voice_silence_until', until);
+      }
+    }
+  }
+
+  private readVoiceSettings(): CoachVoiceSettings {
+    try {
+      const raw = localStorage.getItem('potok_voice_settings');
+      if (!raw) {
+        return { enabled: false, mode: 'off', style: 'calm', intensity: 'soft' };
+      }
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object'
+        ? (parsed as CoachVoiceSettings)
+        : { enabled: false, mode: 'off', style: 'calm', intensity: 'soft' };
+    } catch {
+      return { enabled: false, mode: 'off', style: 'calm', intensity: 'soft' };
+    }
+  }
+
+  private isVoiceDemoAvailable(): boolean {
+    const now = new Date();
+    const weekKey = `${now.getUTCFullYear()}-W${Math.floor((now.getTime() - Date.UTC(now.getUTCFullYear(), 0, 1)) / 604800000)}`;
+    const stored = localStorage.getItem('voice_demo_week');
+    if (stored !== weekKey) {
+      return true;
+    }
+    const used = Number(localStorage.getItem('voice_demo_used') ?? 0);
+    return used < 1;
+  }
+
+  private markVoiceDemoUsed() {
+    const now = new Date();
+    const weekKey = `${now.getUTCFullYear()}-W${Math.floor((now.getTime() - Date.UTC(now.getUTCFullYear(), 0, 1)) / 604800000)}`;
+    localStorage.setItem('voice_demo_week', weekKey);
+    localStorage.setItem('voice_demo_used', '1');
   }
 
   private allowsEvent(policy: CoachInterventionPolicy, event: CoachMemoryEvent): boolean {

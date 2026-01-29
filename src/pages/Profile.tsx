@@ -8,7 +8,17 @@ import SubscriptionManagement from '../pages/SubscriptionManagement';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
 import PrivacyPolicyModal from '../components/PrivacyPolicyModal';
 import { profileService } from '../services/profileService';
-import type { CoachMode, CoachSettings } from '../types/coachSettings';
+import type { CoachDecisionResponse } from '../services/coachRuntime';
+import CoachMessageCard from '../ui/coach/CoachMessageCard';
+import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import type {
+  CoachMode,
+  CoachSettings,
+  CoachVoiceIntensity,
+  CoachVoiceMode,
+  CoachVoiceSettings,
+  CoachVoiceStyle,
+} from '../types/coachSettings';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import type { BaseExplainabilityDTO } from '../types/explainability';
 import { classifyTrustDecision } from '../services/trustSafetyService';
@@ -33,6 +43,11 @@ const Profile = () => {
   const [entitlements, setEntitlements] = useState<any>(null);
   const [coachEnabled, setCoachEnabled] = useState(true);
   const [coachMode, setCoachMode] = useState<CoachMode>('support');
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [voiceMode, setVoiceMode] = useState<CoachVoiceMode>('off');
+  const [voiceStyle, setVoiceStyle] = useState<CoachVoiceStyle>('calm');
+  const [voiceIntensity, setVoiceIntensity] = useState<CoachVoiceIntensity>('soft');
+  const [decisionSupport, setDecisionSupport] = useState<CoachDecisionResponse | null>(null);
 
   const loadProfileState = useCallback(async () => {
     if (!user?.id) return;
@@ -103,6 +118,24 @@ const Profile = () => {
       });
   }, [user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    profileService
+      .getVoiceSettings(user.id)
+      .then((settings) => {
+        setVoiceEnabled(settings.enabled);
+        setVoiceMode(settings.mode);
+        setVoiceStyle(settings.style);
+        setVoiceIntensity(settings.intensity);
+      })
+      .catch(() => {
+        setVoiceEnabled(false);
+        setVoiceMode('off');
+        setVoiceStyle('calm');
+        setVoiceIntensity('soft');
+      });
+  }, [user?.id]);
+
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
@@ -133,8 +166,27 @@ const Profile = () => {
     : profile?.has_premium || user?.hasPremium
       ? 'PREMIUM'
       : 'FREE';
+  const isPremium = subscriptionLabel === 'PREMIUM';
   const subscriptionStatus =
     entitlements?.status || (profile?.has_premium || user?.hasPremium ? 'active' : 'free');
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const subscriptionState = subscriptionLabel === 'PREMIUM' ? 'Premium' : 'Free';
+    uiRuntimeAdapter
+      .getDecisionSupport({
+        decision_type: 'profile_reset',
+        emotional_state: 'neutral',
+        trust_level: 50,
+        history_pattern: 'Настройки и данные профиля',
+        user_mode: 'Manual',
+        screen: 'Profile',
+        subscription_state: subscriptionState,
+        safety_flags: [],
+      })
+      .then(setDecisionSupport)
+      .catch(() => setDecisionSupport(null));
+  }, [user?.id, subscriptionLabel]);
 
   const formatAge = (value?: number) => {
     if (!value) return '';
@@ -188,6 +240,15 @@ const Profile = () => {
     }
   };
 
+  const persistVoiceSettings = async (settings: CoachVoiceSettings) => {
+    if (!user?.id) return;
+    try {
+      await profileService.saveVoiceSettings(user.id, settings);
+    } catch (error) {
+      console.warn('[Profile] voice settings save failed', error);
+    }
+  };
+
   const handleCoachToggle = (enabled: boolean) => {
     const nextMode = enabled ? (coachMode === 'off' ? 'support' : coachMode) : 'off';
     setCoachEnabled(enabled);
@@ -200,6 +261,51 @@ const Profile = () => {
     const enabled = mode !== 'off';
     setCoachEnabled(enabled);
     void persistCoachSettings({ coach_enabled: enabled, coach_mode: mode });
+  };
+
+  const handleVoiceToggle = (enabled: boolean) => {
+    const nextMode = enabled ? (voiceMode === 'off' ? 'on_request' : voiceMode) : 'off';
+    setVoiceEnabled(enabled);
+    setVoiceMode(nextMode);
+    void persistVoiceSettings({
+      enabled,
+      mode: nextMode,
+      style: voiceStyle,
+      intensity: voiceIntensity,
+    });
+  };
+
+  const handleVoiceModeChange = (mode: CoachVoiceMode) => {
+    if (mode === 'always' && !isPremium) return;
+    const enabled = mode !== 'off';
+    setVoiceEnabled(enabled);
+    setVoiceMode(mode);
+    void persistVoiceSettings({
+      enabled,
+      mode,
+      style: voiceStyle,
+      intensity: voiceIntensity,
+    });
+  };
+
+  const handleVoiceStyleChange = (style: CoachVoiceStyle) => {
+    setVoiceStyle(style);
+    void persistVoiceSettings({
+      enabled: voiceEnabled,
+      mode: voiceMode,
+      style,
+      intensity: voiceIntensity,
+    });
+  };
+
+  const handleVoiceIntensityChange = (intensity: CoachVoiceIntensity) => {
+    setVoiceIntensity(intensity);
+    void persistVoiceSettings({
+      enabled: voiceEnabled,
+      mode: voiceMode,
+      style: voiceStyle,
+      intensity,
+    });
   };
 
   const profileMenuItems = [
@@ -393,6 +499,105 @@ const Profile = () => {
                 </div>
               </Card>
 
+              <Card title="Голосовой коуч">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Голос помогает чувствовать поддержку в моменте. Вы можете выбрать стиль и интенсивность.
+                </p>
+                <div className="mt-3 flex items-center justify-between rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-700 dark:border-gray-700 dark:text-gray-300">
+                  <span>Голосовой коуч</span>
+                  <button
+                    type="button"
+                    onClick={() => handleVoiceToggle(!voiceEnabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      voiceEnabled ? 'bg-gray-900 dark:bg-white' : 'bg-gray-300 dark:bg-gray-700'
+                    }`}
+                    aria-pressed={voiceEnabled}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white dark:bg-gray-900 transition-transform ${
+                        voiceEnabled ? 'translate-x-5' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  {[
+                    { id: 'off', label: 'Выключен' },
+                    { id: 'risk_only', label: 'Только при риске' },
+                    { id: 'on_request', label: 'По запросу' },
+                    { id: 'always', label: 'Всегда (Premium)', premium: true },
+                  ].map((option) => {
+                    const disabled = option.premium && !isPremium;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => handleVoiceModeChange(option.id as CoachVoiceMode)}
+                        className={`rounded-xl border px-3 py-2 font-semibold uppercase transition-colors ${
+                          voiceMode === option.id
+                            ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                            : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-200'
+                        } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {!isPremium && (
+                  <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                    Режим «Всегда» доступен в Premium. В Free голос звучит только при риске.
+                  </p>
+                )}
+                <div className="mt-3 grid gap-2 text-xs">
+                  <p className="text-[11px] uppercase text-gray-500 dark:text-gray-400">Выбор голоса</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'calm', label: 'Спокойный' },
+                      { id: 'supportive', label: 'Поддерживающий' },
+                      { id: 'motivational', label: 'Мотивирующий' },
+                    ].map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => handleVoiceStyleChange(option.id as CoachVoiceStyle)}
+                        className={`rounded-xl border px-3 py-2 font-semibold uppercase transition-colors ${
+                          voiceStyle === option.id
+                            ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                            : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-200'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2 text-xs">
+                  <p className="text-[11px] uppercase text-gray-500 dark:text-gray-400">Интенсивность</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'soft', label: 'Мягко' },
+                      { id: 'neutral', label: 'Нейтрально' },
+                      { id: 'leading', label: 'Ведуще' },
+                    ].map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => handleVoiceIntensityChange(option.id as CoachVoiceIntensity)}
+                        className={`rounded-xl border px-3 py-2 font-semibold uppercase transition-colors ${
+                          voiceIntensity === option.id
+                            ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
+                            : 'border-gray-300 text-gray-700 dark:border-gray-700 dark:text-gray-200'
+                        }`}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+
               <Card title="История рекомендаций коуча">
                 <p className="text-xs text-gray-600 dark:text-gray-400">
                   История решений и объяснений, чтобы видеть логику и доверять процессу.
@@ -404,6 +609,23 @@ const Profile = () => {
                   Открыть историю
                 </button>
               </Card>
+
+              {decisionSupport && (
+                <CoachMessageCard
+                  mode={decisionSupport.ui_mode}
+                  message={decisionSupport.coach_message}
+                  footer={
+                    <CoachExplainabilityDrawer
+                      decisionId={decisionSupport.decision_id}
+                      trace={decisionSupport.explainability}
+                      title="Почему коуч помогает с решением?"
+                      confidence={decisionSupport.confidence}
+                      trustLevel={decisionSupport.trust_state}
+                      safetyFlags={decisionSupport.safety_flags}
+                    />
+                  }
+                />
+              )}
 
               <Card title="Данные и права">
                 <p className="text-xs text-gray-600 dark:text-gray-400">

@@ -30,6 +30,8 @@ import {
   type CoachScreen,
   type CoachScreenContext,
   type CoachDecisionHistoryQuery,
+  type CoachDecisionContext,
+  type CoachDecisionResponse,
   type CoachRequestIntent,
 } from './coachRuntime';
 
@@ -712,6 +714,23 @@ class UiRuntimeAdapter {
 
   async getCoachHistory(query: CoachDecisionHistoryQuery) {
     return coachRuntime.listExplainableDecisions(query);
+  }
+
+  async getDecisionSupport(context: CoachDecisionContext): Promise<CoachDecisionResponse> {
+    const coachContext = this.buildCoachContext(context.screen, {
+      userMode: context.user_mode,
+      subscriptionState: context.subscription_state,
+      trustLevel: context.trust_level,
+      safetyFlags: context.safety_flags,
+    });
+    return coachRuntime.getDecisionSupport({
+      ...context,
+      subscription_state: coachContext.subscriptionState,
+      user_mode: coachContext.userMode,
+      screen: coachContext.screen,
+      trust_level: coachContext.trustLevel,
+      safety_flags: coachContext.safetyFlags,
+    });
   }
 
   async getTrustNarrative() {
