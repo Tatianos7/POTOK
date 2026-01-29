@@ -11,6 +11,12 @@ import Card from '../ui/components/Card';
 import StateContainer from '../ui/components/StateContainer';
 import TrustBanner from '../ui/components/TrustBanner';
 import { classifyTrustDecision } from '../services/trustSafetyService';
+import CoachMessageCard, { CoachMemoryChip } from '../ui/coach/CoachMessageCard';
+import { CoachDailyNudge } from '../ui/coach/CoachNudge';
+import CoachSafetyBanner from '../ui/coach/CoachSafetyBanner';
+import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import type { CoachResponse } from '../services/coachRuntime';
+import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
 const Today = () => {
   const { user } = useAuth();
@@ -20,6 +26,8 @@ const Today = () => {
   const [runtimeContext, setRuntimeContext] = useState<RuntimeContext | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
+  const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
+  const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
 
   const loadToday = useCallback(async () => {
     if (!user?.id) return;
@@ -60,6 +68,32 @@ const Today = () => {
   const isRecovery = safetyFlags.includes('recovery_needed');
   const dayTone = isPain ? 'Pain' : isFatigue ? 'Fatigue' : isRecovery ? 'Recovery' : 'Normal';
 
+  useEffect(() => {
+    if (!user?.id) return;
+    const trustLevel = (explainability as any)?.trust_level ?? explainability?.trust_score;
+    const subscriptionState = user?.hasPremium ? 'Premium' : 'Free';
+    uiRuntimeAdapter
+      .getCoachOverlay('Today', {
+        trustLevel,
+        safetyFlags,
+        userMode: today ? 'Follow Plan' : 'Manual',
+        subscriptionState,
+        adherence: today?.day?.status === 'completed' ? 1 : today?.day?.status === 'skipped' ? 0 : undefined,
+      })
+      .then(setCoachOverlay)
+      .catch(() => setCoachOverlay(null));
+  }, [explainability, safetyFlags, today, user?.hasPremium, user?.id]);
+
+  useEffect(() => {
+    const decisionId = explainability?.decision_ref;
+    if (!decisionId) return;
+    const subscriptionState = user?.hasPremium ? 'Premium' : 'Free';
+    uiRuntimeAdapter
+      .getCoachExplainability(decisionId, { subscriptionState })
+      .then(setCoachExplainability)
+      .catch(() => setCoachExplainability(null));
+  }, [explainability?.decision_ref, user?.hasPremium]);
+
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
       <div className="container-responsive">
@@ -91,6 +125,25 @@ const Today = () => {
               }
             }}
           >
+            <div className="space-y-3">
+              {coachOverlay && (
+                <CoachDailyNudge
+                  message={coachOverlay.coach_message}
+                  mode={coachOverlay.ui_mode}
+                  action={<CoachMemoryChip text="Я рядом, чтобы поддержать твой день" />}
+                />
+              )}
+              {isPain && (
+                <CoachSafetyBanner message="Сегодня важна безопасность. Мы снизим нагрузку и поддержим восстановление." />
+              )}
+              {isFatigue && !isPain && (
+                <CoachSafetyBanner message="Усталость — это сигнал. Давай сделаем день более бережным." />
+              )}
+              {isRecovery && !isPain && !isFatigue && (
+                <CoachSafetyBanner message="Фаза восстановления — часть пути. Мы поддержим мягкий темп." />
+              )}
+            </div>
+
             {isPain && (
               <TrustBanner tone="pain">
                 Сегодня важно беречь себя. Мы предлагаем безопасный режим и поддержку.
@@ -109,6 +162,20 @@ const Today = () => {
 
             {today && (
               <div className="space-y-4">
+                {today.day?.status === 'completed' && (
+                  <CoachMessageCard
+                    mode="celebrate"
+                    message="Ты завершил день. Это укрепляет доверие к себе."
+                    action={<CoachMemoryChip text="Устойчивость растет от маленьких побед" />}
+                  />
+                )}
+                {today.day?.status === 'skipped' && (
+                  <CoachMessageCard
+                    mode="support"
+                    message="Пропуски — часть пути. Давай вернемся мягко."
+                    action={<CoachMemoryChip text="Ритм важнее идеальности" />}
+                  />
+                )}
                 <Card title="План дня" action={<span className="text-xs text-gray-500">Состояние: {dayTone}</span>}>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     Сегодня мы держим курс с заботой о восстановлении.
@@ -167,6 +234,15 @@ const Today = () => {
                 </p>
                 <div className="mt-3">
                   <ExplainabilityDrawer explainability={explainability} />
+                  <div className="mt-3">
+                    <CoachExplainabilityDrawer
+                      decisionId={explainability?.decision_ref}
+                      trace={coachExplainability}
+                      confidence={explainability?.confidence}
+                      trustLevel={String((explainability as any)?.trust_level ?? explainability?.trust_score ?? '—')}
+                      safetyFlags={(explainability as any)?.safety_flags ?? []}
+                    />
+                  </div>
                 </div>
               </Card>
             </div>

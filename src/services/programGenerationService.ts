@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { aiTrustService } from './aiTrustService';
+import { coachRuntime } from './coachRuntime';
 import { entitlementService } from './entitlementService';
 
 export type ProgramType = 'nutrition' | 'training';
@@ -542,6 +543,23 @@ class ProgramGenerationService {
       .update({ program_version: nextVersion })
       .eq('id', program.id);
     if (programUpdateError) throw programUpdateError;
+
+    await coachRuntime.handleUserEvent(
+      {
+        type: 'ReplanTriggered',
+        timestamp: new Date().toISOString(),
+        payload: { program_id: program.id, program_type: programType, constraints },
+        confidence: confidence ?? 0.7,
+        safetyClass: 'normal',
+        trustImpact: 0,
+      },
+      {
+        screen: 'Program',
+        userMode: 'Follow Plan',
+        subscriptionState: 'Premium',
+        trustLevel: trustScore,
+      }
+    );
   }
 
   async adaptProgram(input: ProgramAdaptationInput): Promise<ProgramAdaptationResult> {

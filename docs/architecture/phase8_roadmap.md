@@ -48,7 +48,7 @@
 ## 3. Stage Map (8.1–8.5)
 | Sprint | Focus | Key Deliverables | Business Impact (Retention, LTV, Trust, Differentiation, Moat) | Market Milestone (Alpha Coach, Beta Memory, Public Companion, Pro Mode) |
 |---|---|---|---|---|
-| 8.1 | AI Coach Core | базовая личность, explainability в коуч‑сообщениях | Trust, Differentiation | Alpha Coach |
+| 8.1 | AI Coach Core | базовая личность, explainability в коуч‑сообщениях; `sprint_8_1_ai_coach_core.md` | Trust, Differentiation | Alpha Coach |
 | 8.2 | Long‑Term User Model | память, идентичность, доверие и confidence‑сигналы | Retention, Moat | Beta Memory |
 | 8.3 | Emotional Safety | relapse‑петли, burnout‑превенция, recovery‑first UX | Trust, Retention | Public Companion |
 | 8.4 | Devices & Sensors | Apple Health, wearables (сон, восстановление) | LTV, Differentiation | Pro Mode |
