@@ -83,6 +83,9 @@ const responseByEvent: Partial<Record<CoachMemoryEvent['type'], { message: strin
   StrengthPR: { message: 'Сильный шаг. Я вижу рост и устойчивость.', surface: 'timeline_comment' },
   MealLogged: { message: 'Запись питания сделана. Это поддерживает фокус.', surface: 'nudge' },
   CalorieOverTarget: { message: 'Есть перебор по калориям. Без давления — просто скорректируем.', surface: 'card' },
+  ProteinOverTarget: { message: 'Белка стало больше нормы. Мягко вернем баланс без давления.', surface: 'card' },
+  FatOverTarget: { message: 'Жиров больше нормы. Без давления — просто выровняем день.', surface: 'card' },
+  CarbOverTarget: { message: 'Углеводов больше нормы. Сохраним ритм мягко.', surface: 'card' },
   ProteinBelowTarget: { message: 'Белка сегодня мало. Мягко добавим опору для восстановления.', surface: 'card' },
   WorkoutCompleted: { message: 'Тренировка завершена. Хороший вклад в устойчивость.', surface: 'card' },
   TrainingSkipped: { message: 'Пропуск тренировки — сигнал. Поддержим восстановление.', surface: 'card' },
@@ -94,27 +97,44 @@ const responseByEvent: Partial<Record<CoachMemoryEvent['type'], { message: strin
 };
 
 class CoachRuntime {
+  private readonly dedupeKeys = new Set<string>();
+
   constructor(private readonly facade: CoachMemoryFacade = createCoachMemoryFacade()) {}
 
   async handleUserEvent(event: CoachMemoryEvent, screenContext: CoachScreenContext): Promise<CoachResponse | null> {
+    const dedupeKey = this.buildDedupeKey(event, screenContext);
+    if (this.dedupeKeys.has(dedupeKey)) {
+      return null;
+    }
+    this.dedupeKeys.add(dedupeKey);
+
+    const eventId =
+      event.id ??
+      (globalThis.crypto?.randomUUID?.() ??
+        `${event.type}:${event.timestamp}:${Math.random().toString(36).slice(2)}`);
+    const normalizedEvent: CoachMemoryEvent = { ...event, id: eventId };
+
     try {
-      await this.facade.recordExperience(event, {
+      await this.facade.recordExperience(normalizedEvent, {
         sourceScreen: screenContext.screen,
       });
     } catch (error) {
       console.warn('[coachRuntime] recordExperience failed', error);
     }
 
-    const emotional_state = this.evaluateEmotionalState(screenContext, event);
-    const response = this.generateCoachResponse(event, screenContext, emotional_state);
+    const emotional_state = this.evaluateEmotionalState(screenContext, normalizedEvent);
+    const baseResponse = this.generateCoachResponse(normalizedEvent, screenContext, emotional_state);
     const trustLevel = screenContext.trustLevel ?? 50;
 
-    const modulated = this.applyTrustModulation(response, trustLevel);
-    const decisionId = `${event.type}:${event.timestamp}`;
-    const explainability = await this.attachExplainability(modulated, decisionId, screenContext);
+    let response = this.applyEntitlementGate(baseResponse, screenContext.subscriptionState);
+    if (this.hasPremiumAccess(screenContext.subscriptionState)) {
+      response = this.applyTrustModulation(response, trustLevel);
+    }
+    const decisionId = `${normalizedEvent.type}:${normalizedEvent.timestamp}`;
+    const explainability = await this.attachExplainability(response, decisionId, screenContext);
 
     return {
-      ...modulated,
+      ...response,
       decision_id: decisionId,
       explainability,
     };
@@ -139,8 +159,11 @@ class CoachRuntime {
       safety_reason: screenContext.safetyFlags?.length ? 'safety_flags' : undefined,
     };
 
-    const modulated = this.applyTrustModulation(response, screenContext.trustLevel ?? 50);
-    return this.applyEntitlementGate(modulated, screenContext.subscriptionState);
+    let gated = this.applyEntitlementGate(response, screenContext.subscriptionState);
+    if (this.hasPremiumAccess(screenContext.subscriptionState)) {
+      gated = this.applyTrustModulation(gated, screenContext.trustLevel ?? 50);
+    }
+    return gated;
   }
 
   getCoachNudge(type: 'morning' | 'evening' | 'recovery' | 'motivation'): CoachResponse {
@@ -191,7 +214,7 @@ class CoachRuntime {
       surface: 'card',
     };
 
-    const response: CoachResponse = {
+    return {
       decision_id: `${event.type}:${event.timestamp}`,
       coach_message: fallback.message,
       emotional_state,
@@ -204,8 +227,6 @@ class CoachRuntime {
       safety_reason: screenContext.safetyFlags?.length ? 'safety_flags' : undefined,
       personalization_basis: 'history_context',
     };
-
-    return this.applyEntitlementGate(response, screenContext.subscriptionState);
   }
 
   evaluateEmotionalState(
@@ -302,6 +323,23 @@ class CoachRuntime {
       };
       return fallbackTrace;
     }
+  }
+
+  private buildDedupeKey(event: CoachMemoryEvent, context: CoachScreenContext): string {
+    const payload = event.payload ?? {};
+    const source =
+      typeof payload.source === 'string'
+        ? payload.source
+        : context.screen;
+    const date =
+      typeof payload.date === 'string'
+        ? payload.date
+        : typeof (payload as any).day === 'string'
+          ? (payload as any).day
+          : typeof (payload as any).period === 'string'
+            ? (payload as any).period
+            : event.timestamp.split('T')[0];
+    return `${event.type}:${date}:${source}`;
   }
 
   private hasPremiumAccess(state?: CoachScreenContext['subscriptionState']): boolean {

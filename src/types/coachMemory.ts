@@ -20,7 +20,7 @@ export type EmotionalState =
   | 'reframe';
 
 export interface CoachMemoryEvent {
-  id: string;
+  id?: string;
   type: string;
   timestamp: string;
   payload: Record<string, unknown>;

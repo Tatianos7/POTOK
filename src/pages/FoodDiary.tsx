@@ -107,7 +107,7 @@ const FoodDiary = () => {
   // State для встроенного календаря
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
-  const lastOverEventKey = useRef<string | null>(null);
+  const overEventKeys = useRef<Set<string>>(new Set());
   
   // Закрытие календаря при клике вне его
   useEffect(() => {
@@ -336,27 +336,33 @@ const FoodDiary = () => {
 
   useEffect(() => {
     if (!user?.id) return;
-    const overKey = `${selectedDate}:${overCalories}:${hasOverConsumption}`;
-    if (!hasOverConsumption || lastOverEventKey.current === overKey) return;
-    lastOverEventKey.current = overKey;
-    void coachRuntime.handleUserEvent(
-      {
-        type: 'CalorieOverTarget',
-        timestamp: new Date().toISOString(),
-        payload: {
-          date: selectedDate,
-          over_calories: overCalories,
-          over_protein: overProtein,
-          over_fat: overFat,
-          over_carbs: overCarbs,
-          source: 'ui',
+    if (!hasOverConsumption) return;
+    const emitOverTarget = (type: string, value: number) => {
+      if (value <= 0) return;
+      const key = `${selectedDate}:${type}:${value}`;
+      if (overEventKeys.current.has(key)) return;
+      overEventKeys.current.add(key);
+      void coachRuntime.handleUserEvent(
+        {
+          type,
+          timestamp: new Date().toISOString(),
+          payload: {
+            date: selectedDate,
+            over_value: value,
+            source: 'ui',
+          },
+          confidence: 0.55,
+          safetyClass: 'normal',
+          trustImpact: 0,
         },
-        confidence: 0.55,
-        safetyClass: 'normal',
-        trustImpact: 0,
-      },
-      buildCoachContext()
-    );
+        buildCoachContext()
+      );
+    };
+
+    emitOverTarget('CalorieOverTarget', overCalories);
+    emitOverTarget('ProteinOverTarget', overProtein);
+    emitOverTarget('FatOverTarget', overFat);
+    emitOverTarget('CarbOverTarget', overCarbs);
   }, [hasOverConsumption, overCalories, overCarbs, overFat, overProtein, selectedDate, user?.id]);
 
   const reportError = (message: string, error?: unknown) => {
