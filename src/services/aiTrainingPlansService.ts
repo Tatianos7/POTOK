@@ -33,6 +33,9 @@ class AiTrainingPlansService {
   private readonly PROMPT_VERSION = 'v1';
   private readonly GENERATION_PARAMS = { temperature: 0, top_p: 1 };
 
+  // If DB missing input_context column, avoid noisy exceptions and fallback
+  private inputContextMissWarned = false;
+
   private async getSessionUserId(userId?: string): Promise<string> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
@@ -109,21 +112,50 @@ class AiTrainingPlansService {
       return;
     }
 
-    const { error } = await supabase
-      .from('ai_training_plans')
-      .insert({
-        user_id: sessionUserId,
-        model_version: this.MODEL_VERSION,
-        prompt_version: this.PROMPT_VERSION,
-        generation_params: this.GENERATION_PARAMS,
-        input_context: context,
-        input_hash: inputHash,
-        idempotency_key: idempotencyKey ?? inputHash,
-        status: 'queued',
-      });
+    // Try inserting with input_context; if DB lacks column, retry without it once
+    let insertError: any = null;
+    try {
+      const res = await supabase
+        .from('ai_training_plans')
+        .insert({
+          user_id: sessionUserId,
+          model_version: this.MODEL_VERSION,
+          prompt_version: this.PROMPT_VERSION,
+          generation_params: this.GENERATION_PARAMS,
+          input_context: context,
+          input_hash: inputHash,
+          idempotency_key: idempotencyKey ?? inputHash,
+          status: 'queued',
+        });
+      insertError = res.error;
+    } catch (err: any) {
+      insertError = err;
+    }
 
-    if (error) {
-      throw error;
+    if (insertError) {
+      const msg = String(insertError.message ?? '').toLowerCase();
+      const code = String(insertError.code ?? '').toUpperCase();
+      if (code === '42703' || msg.includes('input_context') || msg.includes('does not exist')) {
+        this.inputContextMissing = true;
+        if (!this.inputContextMissWarned) {
+          console.warn('[aiTrainingPlansService] input_context column missing in DB, performing fallback insert without it');
+          this.inputContextMissWarned = true;
+        }
+        const { error: retryError } = await supabase
+          .from('ai_training_plans')
+          .insert({
+            user_id: sessionUserId,
+            model_version: this.MODEL_VERSION,
+            prompt_version: this.PROMPT_VERSION,
+            generation_params: this.GENERATION_PARAMS,
+            input_hash: inputHash,
+            idempotency_key: idempotencyKey ?? inputHash,
+            status: 'queued',
+          });
+        if (retryError) throw retryError;
+      } else {
+        throw insertError;
+      }
     }
   }
 
@@ -134,15 +166,40 @@ class AiTrainingPlansService {
 
     const sessionUserId = await this.getSessionUserId(userId);
 
-    const { error } = await supabase
-      .from('ai_training_plans')
-      .update({ status: 'outdated', updated_at: new Date().toISOString() })
-      .eq('user_id', sessionUserId)
-      .eq('input_context->>date', date)
-      .in('status', ['queued', 'running', 'completed']);
+    // If input_context column is missing, do a safe fallback: log once and skip marking
+    try {
+      const { error } = await supabase
+        .from('ai_training_plans')
+        .update({ status: 'outdated', updated_at: new Date().toISOString() })
+        .eq('user_id', sessionUserId)
+        .eq('input_context->>date', date)
+        .in('status', ['queued', 'running', 'completed']);
 
-    if (error) {
-      throw error;
+      if (error) {
+        const msg = String(error.message ?? '').toLowerCase();
+        const code = String(error.code ?? '').toUpperCase();
+        if (code === '42703' || msg.includes('input_context') || msg.includes('does not exist')) {
+          this.inputContextMissing = true;
+          if (!this.inputContextMissWarned) {
+            console.warn('[aiTrainingPlansService] input_context column missing when marking outdated — skipping operation');
+            this.inputContextMissWarned = true;
+          }
+          return;
+        }
+        throw error;
+      }
+    } catch (err: any) {
+      const msg = String(err?.message ?? '').toLowerCase();
+      const code = String(err?.code ?? '').toUpperCase();
+      if (code === '42703' || msg.includes('input_context') || msg.includes('does not exist')) {
+        this.inputContextMissing = true;
+        if (!this.inputContextMissWarned) {
+          console.warn('[aiTrainingPlansService] input_context column missing when marking outdated — skipping operation');
+          this.inputContextMissWarned = true;
+        }
+        return;
+      }
+      throw err;
     }
   }
 

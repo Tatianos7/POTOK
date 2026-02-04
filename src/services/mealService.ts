@@ -13,8 +13,7 @@ class MealService {
   private readonly MEALS_STORAGE_KEY = 'potok_daily_meals';
   private saveQueue = new Map<string, Promise<void>>();
 
-  // If DB missing unique index for idempotency upsert, avoid noisy repeats and warn once
-  private idempotencyIndexMissing = false;
+  // If DB missing unique index for idempotency upsert, warn once
   private idempotencyIndexWarned = false;
 
   private isValidUUID(value: string | null | undefined): boolean {
@@ -615,7 +614,6 @@ class MealService {
 
             if (uniqueConstraintMissing) {
               // Inform once and avoid repeated noisy attempts — fix must be in DB (index)
-              this.idempotencyIndexMissing = true;
               if (!this.idempotencyIndexWarned) {
                 console.warn('[mealService] Missing unique index for upsert (user_id,idempotency_key). Apply migration supabase/phase8_food_upsert_indexes.sql to fix.');
                 this.idempotencyIndexWarned = true;
