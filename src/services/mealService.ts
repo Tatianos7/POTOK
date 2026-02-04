@@ -13,6 +13,10 @@ class MealService {
   private readonly MEALS_STORAGE_KEY = 'potok_daily_meals';
   private saveQueue = new Map<string, Promise<void>>();
 
+  // If DB missing unique index for idempotency upsert, avoid noisy repeats and warn once
+  private idempotencyIndexMissing = false;
+  private idempotencyIndexWarned = false;
+
   private isValidUUID(value: string | null | undefined): boolean {
     if (!value) return false;
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
@@ -25,6 +29,16 @@ class MealService {
         return await fn();
       } catch (error) {
         lastError = error;
+        // If this is a schema-related error, do not retry (fail fast)
+        try {
+          const { isSchemaError } = await import('./dbUtils');
+          if (isSchemaError(error)) {
+            // rethrow immediately to propagate the schema error
+            throw error;
+          }
+        } catch (e) {
+          // ignore import errors
+        }
         if (attempt === attempts) break;
         await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
       }
@@ -586,12 +600,28 @@ class MealService {
 
           const { error: upsertError } = await upsert(validEntries as Record<string, unknown>[]);
           if (upsertError) {
-            const message = upsertError.message ?? '';
+            const message = String(upsertError.message ?? '').toLowerCase();
+            const code = String(upsertError.code ?? '').toUpperCase();
+
             const missingDisplayFields =
-              upsertError.code === '42703' ||
+              code === '42703' ||
               message.includes('base_unit') ||
               message.includes('display_unit') ||
               message.includes('display_amount');
+
+            const uniqueConstraintMissing =
+              message.includes('no unique or exclusion constraint matching') ||
+              message.includes('no unique constraint matching');
+
+            if (uniqueConstraintMissing) {
+              // Inform once and avoid repeated noisy attempts — fix must be in DB (index)
+              this.idempotencyIndexMissing = true;
+              if (!this.idempotencyIndexWarned) {
+                console.warn('[mealService] Missing unique index for upsert (user_id,idempotency_key). Apply migration supabase/phase8_food_upsert_indexes.sql to fix.');
+                this.idempotencyIndexWarned = true;
+              }
+              return;
+            }
 
             if (missingDisplayFields) {
               const stripped = validEntries.map((entry) => {
