@@ -25,14 +25,20 @@ class AiNotificationScoringService {
   private readonly MAX_SENDS_LOW_TRUST = 1;
   private readonly MODEL_VERSION = 'v1';
   private notificationHistoryAvailable = true;
+  private notificationHistoryWarned = false; // warn once if history table missing
 
-  private isMissingTableError(error: any): boolean {
-    return (
-      error?.code === 'PGRST205' ||
-      error?.code === 'PGRST204' ||
-      error?.message?.includes('404') ||
-      error?.message?.includes('not found')
-    );
+  private async isMissingTableError(error: any): Promise<boolean> {
+    try {
+      const { isTableMissingError } = await import('./dbUtils');
+      return isTableMissingError(error);
+    } catch (e) {
+      return (
+        error?.code === 'PGRST205' ||
+        error?.code === 'PGRST204' ||
+        error?.message?.includes('404') ||
+        error?.message?.includes('not found')
+      );
+    }
   }
 
   private async getSessionUserId(userId?: string): Promise<string> {
@@ -139,8 +145,12 @@ class AiNotificationScoringService {
       .lte('created_at', `${today}T23:59:59.999Z`)
       .in('status', ['queued', 'sent', 'delivered', 'opened']);
 
-    if (error && this.isMissingTableError(error)) {
+    if (error && (await this.isMissingTableError(error))) {
       this.notificationHistoryAvailable = false;
+      if (!this.notificationHistoryWarned) {
+        console.warn('[aiNotificationScoringService] notification_history table missing in DB — silencing history queries');
+        this.notificationHistoryWarned = true;
+      }
       return false;
     }
 

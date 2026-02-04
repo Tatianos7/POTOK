@@ -49,14 +49,21 @@ export type NotificationFeedback = 'positive' | 'neutral' | 'negative';
 
 class NotificationService {
   private notificationHistoryAvailable = true;
+  private notificationHistoryWarned = false; // warn once if history table missing
 
-  private isMissingTableError(error: any): boolean {
-    return (
-      error?.code === 'PGRST205' ||
-      error?.code === 'PGRST204' ||
-      error?.message?.includes('404') ||
-      error?.message?.includes('not found')
-    );
+  private async isMissingTableError(error: any): Promise<boolean> {
+    try {
+      const { isTableMissingError } = await import('./dbUtils');
+      return isTableMissingError(error);
+    } catch (e) {
+      // fallback to basic check
+      return (
+        error?.code === 'PGRST205' ||
+        error?.code === 'PGRST204' ||
+        error?.message?.includes('404') ||
+        error?.message?.includes('not found')
+      );
+    }
   }
 
   private async getSessionUserId(userId?: string): Promise<string> {
@@ -177,8 +184,12 @@ class NotificationService {
       .single();
 
     if (error || !data) {
-      if (this.isMissingTableError(error)) {
+      if (await this.isMissingTableError(error)) {
         this.notificationHistoryAvailable = false;
+        if (!this.notificationHistoryWarned) {
+          console.warn('[notificationService] notification_history table missing in DB — silencing history queries');
+          this.notificationHistoryWarned = true;
+        }
         return `event_local_${Date.now()}`;
       }
       return `event_local_${Date.now()}`;
@@ -202,8 +213,12 @@ class NotificationService {
       .eq('id', eventId)
       .eq('user_id', sessionUserId);
 
-    if (error && this.isMissingTableError(error)) {
+    if (error && (await this.isMissingTableError(error))) {
       this.notificationHistoryAvailable = false;
+      if (!this.notificationHistoryWarned) {
+        console.warn('[notificationService] notification_history table missing in DB — silencing history queries');
+        this.notificationHistoryWarned = true;
+      }
     }
   }
 
@@ -277,8 +292,12 @@ class NotificationService {
       .order('created_at', { ascending: false });
 
     if (error) {
-      if (this.isMissingTableError(error)) {
+      if (await this.isMissingTableError(error)) {
         this.notificationHistoryAvailable = false;
+        if (!this.notificationHistoryWarned) {
+          console.warn('[notificationService] notification_history table missing in DB — silencing history queries');
+          this.notificationHistoryWarned = true;
+        }
         return [];
       }
       return [];
@@ -374,8 +393,12 @@ class NotificationService {
       .single();
 
     if (error || !data) {
-      if (this.isMissingTableError(error)) {
+      if (await this.isMissingTableError(error)) {
         this.notificationHistoryAvailable = false;
+        if (!this.notificationHistoryWarned) {
+          console.warn('[notificationService] notification_history table missing in DB — silencing history queries');
+          this.notificationHistoryWarned = true;
+        }
       }
       return {
         id: `local_${Date.now()}`,
@@ -417,8 +440,12 @@ class NotificationService {
       .maybeSingle();
 
     if (error) {
-      if (this.isMissingTableError(error)) {
+      if (await this.isMissingTableError(error)) {
         this.notificationHistoryAvailable = false;
+        if (!this.notificationHistoryWarned) {
+          console.warn('[notificationService] notification_history table missing in DB — silencing history queries');
+          this.notificationHistoryWarned = true;
+        }
       }
       return null;
     }
@@ -454,18 +481,32 @@ class NotificationService {
       date: date ?? new Date().toISOString(),
     });
 
-    const { error } = await supabase
-      .from('notification_history')
-      .update({
-        explainability: {
-          ...(explainability ?? {}),
-          thread: next,
-        },
-      })
-      .eq('id', notificationId)
-      .eq('user_id', sessionUserId);
-    if (error && this.isMissingTableError(error)) {
-      this.notificationHistoryAvailable = false;
+    try {
+      const { error } = await supabase
+        .from('notification_history')
+        .update({
+          explainability: {
+            ...(explainability ?? {}),
+            thread: next,
+          },
+        })
+        .eq('id', notificationId)
+        .eq('user_id', sessionUserId);
+      if (error && (await this.isMissingTableError(error))) {
+        this.notificationHistoryAvailable = false;
+        if (!this.notificationHistoryWarned) {
+          console.warn('[notificationService] notification_history table missing in DB — silencing history queries');
+          this.notificationHistoryWarned = true;
+        }
+      }
+    } catch (err: any) {
+      if (await this.isMissingTableError(err)) {
+        this.notificationHistoryAvailable = false;
+        if (!this.notificationHistoryWarned) {
+          console.warn('[notificationService] notification_history table missing in DB — silencing history queries');
+          this.notificationHistoryWarned = true;
+        }
+      }
     }
   }
 }

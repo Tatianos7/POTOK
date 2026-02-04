@@ -22,18 +22,23 @@ class MealService {
   }
 
   private async withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 200): Promise<T> {
-    let lastError: unknown;
+    let lastError: any;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
         return await fn();
-      } catch (error) {
+      } catch (error: any) {
         lastError = error;
-        // If this is a schema-related error, do not retry (fail fast)
+        // If this is a schema-related error, do not retry and return error payload for graceful fallback
         try {
           const { isSchemaError } = await import('./dbUtils');
           if (isSchemaError(error)) {
-            // rethrow immediately to propagate the schema error
-            throw error;
+            // warn once that schema is out-of-sync and return an object shaped like Supabase response
+            if (!this.idempotencyIndexWarned && (String(error.message ?? '').toLowerCase().includes('no unique') || String(error.message ?? '').toLowerCase().includes('no unique or exclusion'))) {
+              console.warn('[mealService] Missing unique index for upsert detected — apply migration phase8_food_upsert_indexes.sql');
+              this.idempotencyIndexWarned = true;
+            }
+            // return a Supabase-like response object with error to allow callers to fallback
+            return { data: null, error } as unknown as T;
           }
         } catch (e) {
           // ignore import errors

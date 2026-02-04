@@ -20,6 +20,8 @@ export interface ReportSnapshot {
 }
 
 class ReportService {
+  private reportSchemaWarned = false; // warn once when schema errors block report storage
+
   private async getSessionUserId(userId?: string): Promise<string> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
@@ -37,13 +39,28 @@ class ReportService {
     return data.user.id;
   }
 
+  private schemaWarned = false;
+
   private async withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 200): Promise<T> {
-    let lastError: unknown;
+    let lastError: any;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
         return await fn();
-      } catch (error) {
+      } catch (error: any) {
         lastError = error;
+        try {
+          const { isSchemaError } = await import('./dbUtils');
+          if (isSchemaError(error)) {
+            if (!this.schemaWarned) {
+              console.warn('[reportService] Schema mismatch detected — operations will degrade until migration is applied');
+              this.schemaWarned = true;
+            }
+            // return Supabase-like error payload for graceful fallback
+            return { data: null, error } as unknown as T;
+          }
+        } catch (e) {
+          // ignore
+        }
         if (attempt === attempts) break;
         await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
       }
@@ -67,56 +84,105 @@ class ReportService {
     const supabaseClient = supabase;
     const aggregates = await this.buildAggregates(sessionUserId, period);
 
-    const { data, error } = await this.withRetry(async () =>
-      await supabaseClient
-        .from('report_snapshots')
-        .upsert(
-          {
-            user_id: sessionUserId,
-            period_start: period.startDate,
-            period_end: period.endDate,
-            status: 'ready',
-            aggregates,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,period_start,period_end' }
-        )
-        .select('*')
-        .single()
-    );
-
-    if (error || !data) {
-      throw error || new Error('Failed to create report snapshot');
+    let data: any = null;
+    try {
+      const res = await this.withRetry(async () =>
+        await supabaseClient
+          .from('report_snapshots')
+          .upsert(
+            {
+              user_id: sessionUserId,
+              period_start: period.startDate,
+              period_end: period.endDate,
+              status: 'ready',
+              aggregates,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,period_start,period_end' }
+          )
+          .select('*')
+          .single()
+      );
+      data = res?.data ?? null;
+      if (res?.error) throw res.error;
+    } catch (err: any) {
+      try {
+        const { isSchemaError } = await import('./dbUtils');
+        if (isSchemaError(err)) {
+          if (!this.reportSchemaWarned) {
+            console.warn('[reportService] Schema error while creating report snapshots — skipping persistence');
+            this.reportSchemaWarned = true;
+          }
+          return null;
+        }
+      } catch (e) {
+        // ignore import errors
+      }
+      throw err;
     }
 
-    await this.withRetry(async () =>
-      await supabaseClient
-        .from('report_aggregates')
-        .upsert(
-          {
-            snapshot_id: data.id,
-            user_id: sessionUserId,
-            data: aggregates,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'snapshot_id' }
-        )
-    );
+    try {
+      await this.withRetry(async () =>
+        await supabaseClient
+          .from('report_aggregates')
+          .upsert(
+            {
+              snapshot_id: data.id,
+              user_id: sessionUserId,
+              data: aggregates,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'snapshot_id' }
+          )
+      );
+    } catch (err: any) {
+      try {
+        const { isSchemaError } = await import('./dbUtils');
+        if (isSchemaError(err)) {
+          if (!this.reportSchemaWarned) {
+            console.warn('[reportService] Schema error while writing report aggregates — skipping persistence');
+            this.reportSchemaWarned = true;
+          }
+          // continue without failing
+          return data as ReportSnapshot;
+        }
+      } catch (e) {
+        // ignore
+      }
+      throw err;
+    }
 
-    await this.withRetry(async () =>
-      await supabaseClient
-        .from('progress_trends')
-        .upsert(
-          {
-            user_id: sessionUserId,
-            period_start: period.startDate,
-            period_end: period.endDate,
-            data: aggregates.trends,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,period_start,period_end' }
-        )
-    );
+    try {
+      await this.withRetry(async () =>
+        await supabaseClient
+          .from('progress_trends')
+          .upsert(
+            {
+              user_id: sessionUserId,
+              period_start: period.startDate,
+              period_end: period.endDate,
+              data: aggregates.trends,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,period_start,period_end' }
+          )
+      );
+    } catch (err: any) {
+      try {
+        const { isSchemaError } = await import('./dbUtils');
+        if (isSchemaError(err)) {
+          if (!this.reportSchemaWarned) {
+            console.warn('[reportService] Schema error while writing progress trends — skipping persistence');
+            this.reportSchemaWarned = true;
+          }
+          // continue without failing
+          return data as ReportSnapshot;
+        }
+      } catch (e) {
+        // ignore
+      }
+      throw err;
+    }
 
     return data as ReportSnapshot;
   }
