@@ -13,7 +13,7 @@ class WorkoutService {
   private readonly MAX_REPS = 200;
   private readonly MAX_SETS = 50;
   private readonly MAX_VOLUME = 1000000;
-  private async withRetry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 200): Promise<T> {
+  private async withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 200): Promise<T> {
     let lastError: unknown;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
@@ -267,7 +267,7 @@ class WorkoutService {
       id: entry.id,
       workout_day_id: entry.workout_day_id,
       exercise_id: entry.exercise_id,
-      canonical_exercise_id: entry.canonical_exercise_id ?? null,
+      canonical_exercise_id: entry.exercise?.canonical_exercise_id ?? entry.exercise_id ?? null,
       sets: entry.sets,
       reps: entry.reps,
       weight: Number(entry.weight) || 0,
@@ -363,7 +363,6 @@ class WorkoutService {
     const entries = exercises.map(ex => ({
       workout_day_id: workoutDay.id,
       exercise_id: ex.exercise.id,
-      canonical_exercise_id: ex.exercise.canonical_exercise_id ?? ex.exercise.id,
       sets: ex.sets,
       reps: ex.reps,
       weight: convertWeightToKg(ex.weight, 'кг'),
@@ -409,7 +408,7 @@ class WorkoutService {
       id: entry.id,
       workout_day_id: entry.workout_day_id,
       exercise_id: entry.exercise_id,
-      canonical_exercise_id: entry.canonical_exercise_id ?? null,
+      canonical_exercise_id: entry.exercise?.canonical_exercise_id ?? entry.exercise_id ?? null,
       sets: entry.sets,
       reps: entry.reps,
       weight: entry.weight,

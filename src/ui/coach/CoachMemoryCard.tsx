@@ -1,6 +1,6 @@
 import { coachModeStyles, type CoachEmotionalMode } from './coachStyles';
 import { coachAnimations } from './coachAnimations';
-import { typography } from '../theme/tokens';
+import { colors, radius, spacing, typography } from '../theme/tokens';
 
 interface CoachMemoryCardProps {
   dateLabel: string;
@@ -24,27 +24,43 @@ const CoachMemoryCard = ({
   const styles = coachModeStyles[mode];
 
   return (
-    <section className={`rounded-2xl p-4 ${styles.container} ${coachAnimations.calmEnter}`}>
+    <section
+      className={coachAnimations.calmEnter}
+      style={{
+        ...styles.containerStyle,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+      }}
+    >
       <div className="flex items-center justify-between">
-        <p className={`${typography.micro} ${styles.accent}`}>{dateLabel}</p>
-        <p className={`${typography.micro} text-gray-500 dark:text-gray-400`}>{situation}</p>
+        <p style={{ ...typography.micro, color: styles.accentColor }}>{dateLabel}</p>
+        <p style={{ ...typography.micro, color: colors.text.muted }}>{situation}</p>
       </div>
-      <h4 className={`mt-2 ${styles.title}`}>Что сказал коуч</h4>
-      <p className={`${styles.body} mt-1`}>{message}</p>
+      <h4 style={{ ...styles.titleStyle, marginTop: spacing.sm }}>Что сказал коуч</h4>
+      <p style={{ ...styles.bodyStyle, marginTop: spacing.xs }}>{message}</p>
       {reason && (
-        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Почему: {reason}</p>
+        <p style={{ ...typography.micro, marginTop: spacing.sm }}>Почему: {reason}</p>
       )}
       {sources.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="flex flex-wrap" style={{ gap: spacing.xs, marginTop: spacing.sm }}>
           {sources.map((source) => (
-            <span key={source} className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+            <span
+              key={source}
+              style={{
+                borderRadius: radius.pill,
+                padding: `2px ${spacing.sm}px`,
+                backgroundColor: colors.emotional.support,
+                color: colors.text.secondary,
+                fontSize: typography.micro.fontSize,
+              }}
+            >
               {source}
             </span>
           ))}
         </div>
       )}
       {impact && (
-        <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Влияние: {impact}</p>
+        <p style={{ ...typography.micro, marginTop: spacing.sm }}>Влияние: {impact}</p>
       )}
     </section>
   );

@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { ProfileDetails } from '../types';
-import type { CoachMode, CoachSettings, CoachVoiceSettings } from '../types/coachSettings';
+import type { CoachSettings, CoachVoiceSettings } from '../types/coachSettings';
 
 export interface UserProfile {
   user_id: string;

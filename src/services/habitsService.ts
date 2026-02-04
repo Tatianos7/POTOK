@@ -63,7 +63,7 @@ async function getTrustScore(userId: string): Promise<number> {
   return Number(data?.trust_score ?? 50);
 }
 
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 200): Promise<T> {
+async function withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 200): Promise<T> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {

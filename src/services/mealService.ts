@@ -18,7 +18,7 @@ class MealService {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
   }
 
-  private async withRetry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 200): Promise<T> {
+  private async withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 200): Promise<T> {
     let lastError: unknown;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
@@ -577,15 +577,36 @@ class MealService {
             );
           }
 
-          const { error: upsertError } = await this.withRetry(async () =>
-            await supabase!
-              .from('food_diary_entries')
-              .upsert(validEntries, { onConflict: 'user_id,idempotency_key' })
-          );
+          const upsert = (entries: Record<string, unknown>[]) =>
+            this.withRetry(async () =>
+              await supabase!
+                .from('food_diary_entries')
+                .upsert(entries, { onConflict: 'user_id,idempotency_key' })
+            );
 
+          const { error: upsertError } = await upsert(validEntries as Record<string, unknown>[]);
           if (upsertError) {
-            console.warn('[mealService] Failed to upsert to Supabase:', upsertError.message);
-            return;
+            const message = upsertError.message ?? '';
+            const missingDisplayFields =
+              upsertError.code === '42703' ||
+              message.includes('base_unit') ||
+              message.includes('display_unit') ||
+              message.includes('display_amount');
+
+            if (missingDisplayFields) {
+              const stripped = validEntries.map((entry) => {
+                const { base_unit, display_unit, display_amount, ...rest } = entry as Record<string, unknown>;
+                return rest;
+              });
+              const { error: retryError } = await upsert(stripped);
+              if (retryError) {
+                console.warn('[mealService] Failed to upsert after stripping display fields:', retryError.message);
+                return;
+              }
+            } else {
+              console.warn('[mealService] Failed to upsert to Supabase:', upsertError.message);
+              return;
+            }
           }
 
           this.saveMealsToLocalStorage(sessionUserId, meals);

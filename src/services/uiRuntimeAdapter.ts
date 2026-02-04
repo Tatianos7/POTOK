@@ -11,9 +11,20 @@ import type {
   ProgressExplainabilityDTO,
   TodayExplainabilityDTO,
 } from '../types/explainability';
+import type {
+  CoachRecommendations,
+  HabitsStats,
+  MeasurementsTable,
+  NutritionStats,
+  ProgressPeriod,
+  ProgressSectionResult,
+  ProgressSummary,
+  TrainingStats,
+} from '../types/progressDashboard';
 import { programUxRuntimeService } from './programUxRuntimeService';
 import { programDeliveryService, ProgramType } from './programDeliveryService';
 import { progressAggregatorService, ProgressSnapshot, TrendSummary } from './progressAggregatorService';
+import { progressDashboardService } from './progressDashboardService';
 import { habitsService, HabitWithStatus } from './habitsService';
 import { entitlementService } from './entitlementService';
 import { goalService } from './goalService';
@@ -24,8 +35,11 @@ import { mealService } from './mealService';
 import { workoutService } from './workoutService';
 import { aggregateWorkoutEntries } from '../utils/workoutMetrics';
 import { classifyTrustDecision, TrustDecision } from './trustSafetyService';
+import { coachTelemetry } from './coachTelemetry';
+import { getFeatureFlags, isCoachKillSwitchEnabled } from './featureFlags';
 import {
   coachRuntime,
+  type CoachDialogResponse,
   type CoachResponse,
   type CoachScreen,
   type CoachScreenContext,
@@ -75,6 +89,13 @@ export interface ProgramState {
 export interface ProgressState {
   status: RuntimeStatus;
   message?: string;
+  period?: ProgressPeriod;
+  summary?: ProgressSectionResult<ProgressSummary>;
+  nutrition?: ProgressSectionResult<NutritionStats>;
+  training?: ProgressSectionResult<TrainingStats>;
+  measurements?: ProgressSectionResult<MeasurementsTable>;
+  habits?: ProgressSectionResult<HabitsStats>;
+  coach?: ProgressSectionResult<CoachRecommendations>;
   snapshot?: ProgressSnapshot | null;
   trends?: TrendSummary | null;
   context?: RuntimeContext;
@@ -185,6 +206,10 @@ class UiRuntimeAdapter {
       window.clearTimeout(timer);
       this.loadingTimers.delete(screenName);
     }
+  }
+
+  async refresh(): Promise<void> {
+    await progressAggregatorService.refresh();
   }
 
   private async runWithTimeout<T>(
@@ -443,31 +468,62 @@ class UiRuntimeAdapter {
     }
   }
 
-  async getProgressState(userId: string, date: string): Promise<ProgressState> {
-    const context = await this.buildContext(userId, date);
-    const fromDate = new Date(new Date(date).getTime() - 29 * 86400000).toISOString().split('T')[0];
+  async getProgressState(userId: string, period: ProgressPeriod): Promise<ProgressState> {
+    const context = await this.buildContext(userId, period.end);
+
+    const toErrorSection = <T,>(message: string): ProgressSectionResult<T> => ({
+      status: 'error',
+      data: null,
+      message,
+    });
 
     try {
-      const [snapshot, trends, explainability] = await this.runWithTimeout(
+      const results = await this.runWithTimeout(
         'Progress',
-        ['measurement_history', 'food_diary_entries', 'workout_entries', 'user_goals'],
+        ['measurement_history', 'food_diary_entries', 'workout_entries', 'habit_logs', 'user_goals'],
         () =>
-          Promise.all([
-            progressAggregatorService.progressSnapshot(userId, date),
-            progressAggregatorService.trendSummary(userId, fromDate, date),
+          Promise.allSettled([
+            progressDashboardService.getSummary(period, userId),
+            progressDashboardService.getNutritionStats(period, userId),
+            progressDashboardService.getTrainingStats(period, userId),
+            progressDashboardService.getMeasurementsTable(period, userId),
+            progressDashboardService.getHabitsStats(period, userId),
+            progressDashboardService.getCoachRecommendations(period, userId),
             progressAggregatorService.explain(),
           ])
       );
 
+      const summary = results[0].status === 'fulfilled' ? results[0].value : toErrorSection<ProgressSummary>('Сводка недоступна.');
+      const nutrition = results[1].status === 'fulfilled' ? results[1].value : toErrorSection<NutritionStats>('Питание недоступно.');
+      const training = results[2].status === 'fulfilled' ? results[2].value : toErrorSection<TrainingStats>('Тренировки недоступны.');
+      const measurements =
+        results[3].status === 'fulfilled' ? results[3].value : toErrorSection<MeasurementsTable>('Замеры недоступны.');
+      const habits = results[4].status === 'fulfilled' ? results[4].value : toErrorSection<HabitsStats>('Привычки недоступны.');
+      const coach = results[5].status === 'fulfilled' ? results[5].value : toErrorSection<CoachRecommendations>('Рекомендации недоступны.');
+      const explainability = results[6].status === 'fulfilled' ? results[6].value : undefined;
+
+      const hasAny =
+        Boolean(summary.data) ||
+        Boolean(nutrition.data) ||
+        Boolean(training.data) ||
+        Boolean(measurements.data) ||
+        Boolean(habits.data);
+      const hasError = [summary, nutrition, training, measurements, habits].some((section) => section.status === 'error');
+
       const trust = classifyTrustDecision(undefined, {
-        confidence: explainability.confidence,
-        safetyFlags: explainability.safety_flags,
+        confidence: explainability?.confidence ?? 0.4,
+        safetyFlags: explainability?.safety_flags,
       });
 
       return {
-        status: snapshot && trends ? 'active' : 'partial',
-        snapshot,
-        trends,
+        status: hasAny ? (hasError ? 'partial' : 'active') : 'empty',
+        period,
+        summary,
+        nutrition,
+        training,
+        measurements,
+        habits,
+        coach,
         context,
         explainability,
         trust,
@@ -476,6 +532,7 @@ class UiRuntimeAdapter {
       return {
         status: 'error',
         message: 'Не удалось загрузить прогресс.',
+        period,
         context,
         trust: classifyTrustDecision(error),
       };
@@ -684,10 +741,17 @@ class UiRuntimeAdapter {
     }
   }
 
+  private isCoachAvailable(): boolean {
+    if (isCoachKillSwitchEnabled()) return false;
+    const flags = getFeatureFlags();
+    return flags.coach_enabled;
+  }
+
   async getCoachOverlay(
     screen: CoachScreen,
     context: Partial<CoachScreenContext> = {}
   ): Promise<CoachResponse | null> {
+    if (!this.isCoachAvailable()) return null;
     const settings = this.readCoachSettings();
     const mode = settings.coach_enabled ? settings.coach_mode : 'off';
     if (mode === 'off' || mode === 'on_request') return null;
@@ -702,21 +766,27 @@ class UiRuntimeAdapter {
     return coachRuntime.getCoachOverlay(coachContext);
   }
 
-  getCoachNudge(type: 'morning' | 'evening' | 'recovery' | 'motivation'): CoachResponse {
+  getCoachNudge(type: 'morning' | 'evening' | 'recovery' | 'motivation'): CoachResponse | null {
+    if (!this.isCoachAvailable()) return null;
     return coachRuntime.getCoachNudge(type);
   }
 
   async getCoachExplainability(decisionId: string, context?: Partial<CoachScreenContext>) {
+    if (!this.isCoachAvailable()) return null;
+    coachTelemetry.increment('coach_explainability_opened', 1, { decisionId });
     return coachRuntime.getExplainability(decisionId, {
       subscriptionState: context?.subscriptionState ?? 'Free',
     });
   }
 
   async getCoachHistory(query: CoachDecisionHistoryQuery) {
+    if (!this.isCoachAvailable()) return [];
     return coachRuntime.listExplainableDecisions(query);
   }
 
-  async getDecisionSupport(context: CoachDecisionContext): Promise<CoachDecisionResponse> {
+  async getDecisionSupport(context: CoachDecisionContext): Promise<CoachDecisionResponse | null> {
+    const flags = getFeatureFlags();
+    if (!this.isCoachAvailable() || !flags.coach_decision_support_enabled) return null;
     const coachContext = this.buildCoachContext(context.screen, {
       userMode: context.user_mode,
       subscriptionState: context.subscription_state,
@@ -734,27 +804,42 @@ class UiRuntimeAdapter {
   }
 
   async getTrustNarrative() {
+    if (!this.isCoachAvailable()) {
+      return 'Сейчас коуч отключен. Его можно включить в настройках в любое время.';
+    }
     return coachRuntime.buildTrustNarrative();
   }
 
   async clearCoachHistory() {
+    if (!this.isCoachAvailable()) return;
     return coachRuntime.clearCoachHistory();
   }
 
   async resetCoachTrust() {
+    if (!this.isCoachAvailable()) return;
     return coachRuntime.resetTrustStyle();
   }
 
-  async requestCoachDialogStart(intent: CoachRequestIntent, context: Partial<CoachScreenContext>) {
+  async requestCoachDialogStart(
+    intent: CoachRequestIntent,
+    context: Partial<CoachScreenContext>
+  ): Promise<CoachDialogResponse> {
+    if (!this.isCoachAvailable()) {
+      return { dialogId: '', status: 'cooldown', turns: [], allowFollowups: false };
+    }
     const coachContext = this.buildCoachContext(context.screen ?? 'Today', context);
     return coachRuntime.startDialog(intent, coachContext);
   }
 
-  async requestCoachDialogContinue(dialogId: string, reply: string) {
+  async requestCoachDialogContinue(dialogId: string, reply: string): Promise<CoachDialogResponse> {
+    if (!this.isCoachAvailable()) {
+      return { dialogId, status: 'cooldown', turns: [], allowFollowups: false };
+    }
     return coachRuntime.continueDialog(dialogId, reply);
   }
 
   async requestCoachDialogEnd(dialogId: string) {
+    if (!this.isCoachAvailable()) return;
     return coachRuntime.endDialog(dialogId);
   }
 }

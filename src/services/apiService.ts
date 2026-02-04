@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { supabase } from '../lib/supabaseClient';
+import { getSessionCached, supabase } from '../lib/supabaseClient';
 
 // Базовый URL для API (в продакшене заменить на реальный)
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'https://api.potok-fitness.com';
@@ -10,7 +10,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 10000,
+      timeout: 5000,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -20,7 +20,7 @@ class ApiService {
     this.api.interceptors.request.use(
       async (config) => {
         if (supabase) {
-          const { data } = await supabase.auth.getSession();
+          const { data } = (await getSessionCached()) ?? { data: null };
           const token = data?.session?.access_token;
           if (token) {
             config.headers.Authorization = `Bearer ${token}`;

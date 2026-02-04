@@ -29,6 +29,10 @@ import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import { coachRuntime, type CoachScreenContext } from '../services/coachRuntime';
 import type { BaseExplainabilityDTO } from '../types/explainability';
+import ScreenContainer from '../ui/components/ScreenContainer';
+import Button from '../ui/components/Button';
+import StateContainer from '../ui/components/StateContainer';
+import { colors, spacing, typography } from '../ui/theme/tokens';
 
 const FoodDiary = () => {
   const navigate = useNavigate();
@@ -1200,40 +1204,40 @@ const FoodDiary = () => {
     );
   };
 
+  const statusMessage =
+    runtimeStatus === 'empty'
+      ? 'Пока нет данных для выбранной даты. Добавьте продукты.'
+      : errorMessage
+        ? `${errorMessage}${trustMessage ? ` ${trustMessage}` : ''}`
+        : undefined;
+  const containerStatus = runtimeStatus === 'loading' ? 'loading' : 'active';
+
   return (
     <>
-    <div className="bg-white dark:bg-gray-900 w-full min-w-[320px]">
-      <div className="container-responsive min-h-screen">
-        {/* Header */}
-        <header className="py-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex-1"></div>
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-white uppercase flex-1 text-center whitespace-nowrap">
-              ДНЕВНИК ПИТАНИЯ
+    <ScreenContainer>
+        <header style={{ marginBottom: spacing.lg }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: spacing.sm }}>
+            <div style={{ width: 32 }} />
+            <h1 style={{ ...typography.title, textTransform: 'uppercase', textAlign: 'center' }}>
+              Дневник питания
             </h1>
-            <div className="flex-1 flex justify-end">
-              <button
-                onClick={() => navigate('/')}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                aria-label="Закрыть"
-              >
-                <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-              </button>
-            </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/')} aria-label="Закрыть">
+              <X className="w-5 h-5" style={{ color: colors.text.secondary }} />
+            </Button>
           </div>
           
           {/* Month */}
           <div className="flex items-center justify-between">
-            <div className="relative flex flex-col gap-1 w-full">
-              <button 
+            <div className="relative flex flex-col" style={{ gap: spacing.xs, width: '100%' }}>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                className="flex items-center gap-2 hover:opacity-70 transition-opacity w-fit"
+                style={{ justifyContent: 'flex-start', paddingLeft: 0 }}
               >
-                <Calendar className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {formatSelectedDate()}
-                </span>
-              </button>
+                <Calendar className="w-4 h-4" style={{ color: colors.text.secondary, marginRight: 6 }} />
+                <span style={typography.body}>{formatSelectedDate()}</span>
+              </Button>
               
               {/* Календарь поверх контента */}
               <div
@@ -1259,7 +1263,17 @@ const FoodDiary = () => {
           </div>
         </header>
 
-        <main className="py-4 tablet:py-6">
+        <StateContainer
+          status={containerStatus}
+          message={statusMessage}
+          onRetry={() => {
+            if (runtimeStatus === 'offline') {
+              uiRuntimeAdapter.revalidate().finally(reloadMeals);
+            } else {
+              uiRuntimeAdapter.recover().finally(reloadMeals);
+            }
+          }}
+        >
           {runtimeStatus === 'offline' && !errorMessage && (
             <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               Работаем офлайн. Данные могут быть неактуальны.
@@ -1499,36 +1513,25 @@ const FoodDiary = () => {
           
           {/* Spacer for bottom bar */}
           <div className="h-24"></div>
-        </main>
-      </div>
+        </StateContainer>
+      </ScreenContainer>
 
       {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3 z-50 shadow-lg">
-        <div className="container-responsive">
-          <div className="flex items-center justify-between gap-2 mobile-lg:gap-3">
-            <button
-              onClick={() => setIsBarcodeModalOpen(true)}
-              className="p-2 hover:bg-gray-100 dark:hover-bg-gray-800 rounded-lg transition-colors"
-            >
-              <ScanLine className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            </button>
-            <button
-              onClick={() => setShowAddProductModal(true)}
-              className="flex-1 py-3 px-4 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold text-sm uppercase hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
-            >
+      <div className="fixed bottom-0 left-0 right-0 z-50" style={{ backgroundColor: colors.surface, borderTop: `1px solid ${colors.border}`, padding: spacing.sm }}>
+        <div className="mx-auto" style={{ maxWidth: 560, minWidth: 320, padding: `0 ${spacing.lg}px` }}>
+          <div className="flex items-center justify-between" style={{ gap: spacing.sm }}>
+            <Button variant="ghost" size="sm" onClick={() => setIsBarcodeModalOpen(true)}>
+              <ScanLine className="w-6 h-6" style={{ color: colors.text.secondary }} />
+            </Button>
+            <Button variant="primary" size="lg" onClick={() => setShowAddProductModal(true)} style={{ flex: 1 }}>
               ДОБАВИТЬ ПРОДУКТ
-            </button>
-            <button
-              onClick={() => setIsPhotoFoodAnalyzerOpen(true)}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              title="Анализ продукта по фото"
-            >
-              <Camera className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            </button>
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setIsPhotoFoodAnalyzerOpen(true)} title="Анализ продукта по фото">
+              <Camera className="w-6 h-6" style={{ color: colors.text.secondary }} />
+            </Button>
           </div>
         </div>
       </div>
-    </div>
 
       {/* Modals */}
       {isSearchModalOpen && (
