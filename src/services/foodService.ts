@@ -636,7 +636,7 @@ class FoodService {
         .limit(100);
 
       if (query && query.trim()) {
-        queryBuilder = queryBuilder.textSearch('search_vector', query.trim(), { config: 'russian' });
+        queryBuilder = queryBuilder.textSearch('search_vector', query.trim(), { config: 'russian', type: 'websearch' });
       }
 
       const { data, error } = await queryBuilder.order('popularity', { ascending: false });

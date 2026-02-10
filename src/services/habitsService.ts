@@ -63,13 +63,22 @@ async function getTrustScore(userId: string): Promise<number> {
   return Number(data?.trust_score ?? 50);
 }
 
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 200): Promise<T> {
-  let lastError: unknown;
+async function withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 200): Promise<T> {
+  let lastError: any;
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     try {
       return await fn();
-    } catch (error) {
+    } catch (error: any) {
       lastError = error;
+      try {
+        const { isSchemaError } = await import('./dbUtils');
+        if (isSchemaError(error)) {
+          // Return Supabase-like error payload for graceful fallback
+          return { data: null, error } as unknown as T;
+        }
+      } catch (e) {
+        // ignore
+      }
       if (attempt === attempts) break;
       await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
     }

@@ -10,8 +10,8 @@ const CoachTimelineComment = ({ text, mode = 'support' }: CoachTimelineCommentPr
   const styles = coachModeStyles[mode];
 
   return (
-    <div className={`rounded-xl px-3 py-2 ${styles.container} ${coachAnimations.softSlide}`}>
-      <p className={styles.body}>{text}</p>
+    <div className={`rounded-xl px-3 py-2 ${coachAnimations.softSlide}`} style={styles.containerStyle}>
+      <p style={styles.bodyStyle}>{text}</p>
     </div>
   );
 };

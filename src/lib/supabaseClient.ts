@@ -20,6 +20,20 @@ export const supabase: SupabaseClient | null =
     ? createClient(supabaseUrl, supabaseAnonKey)
     : null;
 
+let sessionCache: Promise<{ data: { session: any } | null; error: any } | null> | null = null;
+let sessionCacheTs = 0;
+
+export const getSessionCached = async (ttlMs = 5000) => {
+  if (!supabase) return null;
+  const now = Date.now();
+  if (sessionCache && now - sessionCacheTs < ttlMs) {
+    return sessionCache;
+  }
+  sessionCacheTs = now;
+  sessionCache = supabase.auth.getSession();
+  return sessionCache;
+};
+
 if (!supabase) {
   // eslint-disable-next-line no-console
   console.warn(

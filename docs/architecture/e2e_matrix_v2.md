@@ -4136,6 +4136,31 @@ ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
 339 | Voice decision rationale | Тон объяснён | Explainability | Trust | Safe | Voice | OK
 340 | Autonomy preserved | Выбор за пользователем | Decision UI | Respect | Safe | Альтернативы | OK
 
+# Phase 8.3 — Production Hardening & Observability (E2E 341–360)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+341 | Runtime timeout | Fallback support‑only | No crash | Stable | Safe | Minimal | OK
+342 | Memory error | Memory bypass | Calm copy | Trust‑safe | Safe | Limited | OK
+343 | Explainability failure | Drawer fallback | UI stable | Trust‑safe | Safe | Disabled | OK
+344 | Feature flag off | Coach absent | No UI errors | Neutral | Safe | N/A | OK
+345 | Kill switch on | Coach fully bypass | Silent | Neutral | Safe | N/A | OK
+346 | Slow network | Offline snapshot | No white screen | Stable | Safe | Deferred | OK
+347 | Budget exceeded (response) | Lightweight response | Visible | Calm | Safe | Limited | OK
+348 | Budget exceeded (explainability) | Skip explainability | Stable | Trust‑safe | Safe | Off | OK
+349 | Overlay timing slow | Telemetry warn | No UI change | Trust‑safe | Safe | N/A | OK
+350 | Telemetry event | Logged without PII | Transparent | Safe | Safe | N/A | OK
+351 | Memory disabled flag | No memory writes | Support only | Trust‑safe | Safe | Minimal | OK
+352 | Dialog disabled flag | Dialog disabled | No crash | Trust‑safe | Safe | N/A | OK
+353 | Voice disabled flag | Voice suppressed | Silent | Trust‑safe | Safe | N/A | OK
+354 | Decision support disabled | No decision card | Neutral | Trust‑safe | Safe | N/A | OK
+355 | Circuit breaker open | Null response | Stable | Trust‑safe | Safe | N/A | OK
+356 | Coach error | Logged + fallback | No crash | Trust‑safe | Safe | Minimal | OK
+357 | User ignores coach | Cooldown applied | Respectful | Trust‑safe | Safe | N/A | OK
+358 | User requests coach | Response logged | Supportive | Trust‑safe | Safe | Explainable | OK
+359 | Memory miss | Telemetry miss | No UI change | Trust‑safe | Safe | Minimal | OK
+360 | Explainability disabled | UI still works | Stable | Trust‑safe | Safe | Off | OK
+
 # Scaling Invariants
 - All reads/writes scoped by `auth.uid()`.
 - Indexes for `(user_id, date)` and `(user_id, created_at desc)` on high-traffic tables.

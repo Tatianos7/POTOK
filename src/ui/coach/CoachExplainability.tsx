@@ -1,5 +1,5 @@
 import { coachModeStyles, type CoachEmotionalMode } from './coachStyles';
-import { typography } from '../theme/tokens';
+import { colors, radius, spacing, typography } from '../theme/tokens';
 
 interface CoachExplainabilityProps {
   title?: string;
@@ -23,16 +23,31 @@ const CoachExplainability = ({
   const styles = coachModeStyles[mode];
 
   return (
-    <section className={`rounded-2xl p-4 ${styles.container}`}>
-      <h4 className={styles.title}>{title}</h4>
-      <p className={`${styles.body} mt-2`}>{reason}</p>
-      <div className="mt-3 space-y-2">
+    <section
+      style={{
+        ...styles.containerStyle,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+      }}
+    >
+      <h4 style={styles.titleStyle}>{title}</h4>
+      <p style={{ ...styles.bodyStyle, marginTop: spacing.sm }}>{reason}</p>
+      <div className="flex flex-col" style={{ gap: spacing.sm, marginTop: spacing.md }}>
         {sources.length > 0 && (
-          <div>
-            <p className={typography.micro}>Sources</p>
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col" style={{ gap: spacing.xs }}>
+            <p style={typography.micro}>Sources</p>
+            <div className="flex flex-wrap" style={{ gap: spacing.xs }}>
               {sources.map((source) => (
-                <span key={source} className="rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                <span
+                  key={source}
+                  style={{
+                    borderRadius: radius.pill,
+                    padding: `2px ${spacing.sm}px`,
+                    backgroundColor: colors.emotional.support,
+                    color: colors.text.secondary,
+                    fontSize: typography.micro.fontSize,
+                  }}
+                >
                   {source}
                 </span>
               ))}
@@ -40,11 +55,11 @@ const CoachExplainability = ({
           </div>
         )}
         {typeof confidence === 'number' && (
-          <p className={typography.micro}>Confidence: {Math.round(confidence * 100)}%</p>
+          <p style={typography.micro}>Confidence: {Math.round(confidence * 100)}%</p>
         )}
-        {trustLevel && <p className={typography.micro}>Trust level: {trustLevel}</p>}
+        {trustLevel && <p style={typography.micro}>Trust level: {trustLevel}</p>}
         {safetyFlags.length > 0 && (
-          <p className={typography.micro}>Safety flags: {safetyFlags.join(', ')}</p>
+          <p style={typography.micro}>Safety flags: {safetyFlags.join(', ')}</p>
         )}
       </div>
     </section>

@@ -30,6 +30,7 @@ export interface CoachMemoryFacade {
   getLongTermNarrative: (userId: string) => Promise<string>;
   getExplainableReasoningTrace: (decisionId: string) => Promise<CoachExplainabilityBinding>;
   getCoachContextForResponse: () => Promise<CoachLongTermContext>;
+  isAvailable: () => boolean;
   clearCoachHistory?: () => Promise<void>;
   clearTrustModel?: () => Promise<void>;
 }
@@ -46,6 +47,7 @@ export const createCoachMemoryFacade = ({
   relationshipRuntime,
 }: CoachMemoryFacadeDeps = {}): CoachMemoryFacade => {
   const memoryBreaker = new CircuitBreaker({ name: 'coachMemoryFacade', failureThreshold: 2 });
+  const isPersistenceAvailable = () => persistenceService.isAvailable?.() !== false;
 
   const minimizePayload = (payload: Record<string, unknown>) => {
     const minimized: Record<string, unknown> = {};
@@ -62,22 +64,23 @@ export const createCoachMemoryFacade = ({
   return {
     recordExperience: async (event, context) => {
       if (!memoryBreaker.canRequest()) {
-        throw new Error('memory_circuit_open');
+        return;
       }
       const minimizedPayload = minimizePayload(event.payload ?? {});
-      try {
-        await persistenceService.persistEventMemory({
-          ...event,
-          payload: {
-            ...minimizedPayload,
-            source_screen: context.sourceScreen,
-            explainability_ref: context.explainabilityRef ?? null,
-          },
-        });
-        memoryBreaker.recordSuccess();
-      } catch (error) {
-        memoryBreaker.recordFailure();
-        throw error;
+      if (isPersistenceAvailable()) {
+        try {
+          await persistenceService.persistEventMemory({
+            ...event,
+            payload: {
+              ...minimizedPayload,
+              source_screen: context.sourceScreen,
+              explainability_ref: context.explainabilityRef ?? null,
+            },
+          });
+          memoryBreaker.recordSuccess();
+        } catch {
+          memoryBreaker.recordFailure();
+        }
       }
       await memoryService.recordEvent(event);
       if (relationshipRuntime?.updateFromEvent) {
@@ -86,28 +89,44 @@ export const createCoachMemoryFacade = ({
     },
     loadCoachContext: async () => {
       if (!memoryBreaker.canRequest()) {
-        throw new Error('memory_circuit_open');
+        return memoryService.getRelationshipProfile();
       }
-      const startedAt = performance.now();
-      const profile = await persistenceService.loadLongTermProfile();
-      coachTelemetry.trackTiming('memory_fetch_time', performance.now() - startedAt, {
-        source: 'loadCoachContext',
-      });
-      return profile;
+      if (!isPersistenceAvailable()) {
+        return memoryService.getRelationshipProfile();
+      }
+      try {
+        const startedAt = performance.now();
+        const profile = await persistenceService.loadLongTermProfile();
+        coachTelemetry.trackTiming('memory_fetch_time', performance.now() - startedAt, {
+          source: 'loadCoachContext',
+        });
+        return profile;
+      } catch {
+        memoryBreaker.recordFailure();
+        return memoryService.getRelationshipProfile();
+      }
     },
     updateTrustModel: async (signal) => {
       const startedAt = performance.now();
-      await persistenceService.updateTrustCurve(signal.delta, signal.reason);
+      if (isPersistenceAvailable()) {
+        try {
+          await persistenceService.updateTrustCurve(signal.delta, signal.reason);
+        } catch {
+          memoryBreaker.recordFailure();
+        }
+      }
       await memoryService.updateTrust(signal.delta, signal.reason);
       coachTelemetry.trackTiming('trust_update_time', performance.now() - startedAt, {
         reason: signal.reason ?? 'unknown',
       });
     },
     getLongTermNarrative: async () => {
+      if (!isPersistenceAvailable()) {
+        return 'Я опираюсь на текущие данные и недавнюю динамику.';
+      }
       try {
         return await persistenceService.summarizeUserJourney();
-      } catch (error) {
-        console.warn('[coachMemoryFacade] summarizeUserJourney failed', error);
+      } catch {
         return 'Ты прошел путь с разными фазами. Я учитываю устойчивость и восстановление.';
       }
     },
@@ -117,13 +136,15 @@ export const createCoachMemoryFacade = ({
         if (!memoryBreaker.canRequest()) {
           throw new Error('memory_circuit_open');
         }
-        const startedAt = performance.now();
-        profile = await persistenceService.loadLongTermProfile();
-        coachTelemetry.trackTiming('memory_fetch_time', performance.now() - startedAt, {
-          source: 'getExplainableReasoningTrace',
-        });
-      } catch (error) {
-        console.warn('[coachMemoryFacade] loadLongTermProfile failed', error);
+        if (isPersistenceAvailable()) {
+          const startedAt = performance.now();
+          profile = await persistenceService.loadLongTermProfile();
+          coachTelemetry.trackTiming('memory_fetch_time', performance.now() - startedAt, {
+            source: 'getExplainableReasoningTrace',
+          });
+        }
+      } catch {
+        profile = null;
       }
 
       const now = Date.now();
@@ -237,15 +258,25 @@ export const createCoachMemoryFacade = ({
       };
     },
     getCoachContextForResponse: async () => {
-      return persistenceService.getCoachContextForResponse();
+      if (!isPersistenceAvailable()) {
+        return memoryService.getLongTermContext();
+      }
+      try {
+        return await persistenceService.getCoachContextForResponse();
+      } catch {
+        return memoryService.getLongTermContext();
+      }
     },
+    isAvailable: () => isPersistenceAvailable() && memoryBreaker.canRequest(),
     clearCoachHistory: async () => {
-      if (persistenceService.clearCoachMemory) {
+      if (isPersistenceAvailable() && persistenceService.clearCoachMemory) {
         await persistenceService.clearCoachMemory();
       }
     },
     clearTrustModel: async () => {
-      await persistenceService.updateTrustCurve(0, 'trust_reset');
+      if (isPersistenceAvailable()) {
+        await persistenceService.updateTrustCurve(0, 'trust_reset');
+      }
       await memoryService.updateTrust(0, 'trust_reset');
     },
   };

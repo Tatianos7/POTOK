@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useTheme } from '../context/ThemeContext';
-import { X, Camera, Moon, Sun } from 'lucide-react';
+import { X, Camera } from 'lucide-react';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 import SubscriptionManagement from '../pages/SubscriptionManagement';
 import PaymentHistoryModal from '../components/PaymentHistoryModal';
@@ -26,10 +25,12 @@ import Card from '../ui/components/Card';
 import StateContainer from '../ui/components/StateContainer';
 import TrustBanner from '../ui/components/TrustBanner';
 import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
+import ScreenContainer from '../ui/components/ScreenContainer';
+import Button from '../ui/components/Button';
+import { colors, spacing, typography } from '../ui/theme/tokens';
 
 const Profile = () => {
   const { user } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -308,38 +309,16 @@ const Profile = () => {
     });
   };
 
-  const profileMenuItems = [
-    { id: 'edit', label: 'РЕДАКТИРОВАТЬ ПРОФИЛЬ', action: handleEdit },
-    { id: 'theme', label: 'СМЕНИТЬ ТЕМУ', icon: theme === 'dark' ? Sun : Moon, action: toggleTheme },
-    { id: 'password', label: 'СМЕНИТЬ ПАРОЛЬ', action: handleChangePassword },
-    { id: 'subscription', label: 'УПРАВЛЕНИЕ ПОДПИСКОЙ', isActive: true, action: handleSubscription },
-    { id: 'history', label: 'ИСТОРИЯ ОПЛАТЫ', action: handleHistory },
-    { id: 'terms', label: 'УСЛОВИЯ ИСПОЛЬЗОВАНИЯ' },
-    { id: 'offer', label: 'ОФЕРТА' },
-    { id: 'privacy', label: 'ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ', action: handlePrivacyPolicy },
-  ];
-
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
-      <div className="container-responsive">
-        {/* Header */}
-        <header className="py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
-          <div className="flex-1" />
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase">
-            Профиль
-          </h1>
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={handleClose}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              aria-label="Закрыть"
-            >
-              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            </button>
-          </div>
+    <ScreenContainer>
+        <header className="flex items-center justify-between" style={{ marginBottom: spacing.lg }}>
+          <div style={{ width: 32 }} />
+          <h1 style={{ ...typography.title, textTransform: 'uppercase', textAlign: 'center' }}>Профиль</h1>
+          <Button variant="ghost" size="sm" onClick={handleClose} aria-label="Закрыть">
+            <X className="w-5 h-5" style={{ color: colors.text.secondary }} />
+          </Button>
         </header>
 
-        {/* Profile Content */}
         <main className="py-4 tablet:py-6">
           <StateContainer
             status={runtimeStatus}
@@ -696,8 +675,6 @@ const Profile = () => {
             </div>
           </StateContainer>
         </main>
-      </div>
-
       {/* Change Password Modal */}
       <ChangePasswordModal
         isOpen={isChangePasswordOpen}
@@ -722,7 +699,7 @@ const Profile = () => {
         isOpen={isPrivacyPolicyOpen}
         onClose={() => setIsPrivacyPolicyOpen(false)}
       />
-    </div>
+    </ScreenContainer>
   );
 };
 

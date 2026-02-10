@@ -13,18 +13,37 @@ class MealService {
   private readonly MEALS_STORAGE_KEY = 'potok_daily_meals';
   private saveQueue = new Map<string, Promise<void>>();
 
+  // If DB missing unique index for idempotency upsert, warn once
+  private idempotencyIndexWarned = false;
+  private upsertErrorLogged = false;
+
   private isValidUUID(value: string | null | undefined): boolean {
     if (!value) return false;
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
   }
 
-  private async withRetry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 200): Promise<T> {
-    let lastError: unknown;
+  private async withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 200): Promise<T> {
+    let lastError: any;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
         return await fn();
-      } catch (error) {
+      } catch (error: any) {
         lastError = error;
+        // If this is a schema-related error, do not retry and return error payload for graceful fallback
+        try {
+          const { isSchemaError } = await import('./dbUtils');
+          if (isSchemaError(error)) {
+            // warn once that schema is out-of-sync and return an object shaped like Supabase response
+            if (!this.idempotencyIndexWarned && (String(error.message ?? '').toLowerCase().includes('no unique') || String(error.message ?? '').toLowerCase().includes('no unique or exclusion'))) {
+              console.warn('[mealService] Missing unique index for upsert detected — apply migration phase8_food_upsert_indexes.sql');
+              this.idempotencyIndexWarned = true;
+            }
+            // return a Supabase-like response object with error to allow callers to fallback
+            return { data: null, error } as unknown as T;
+          }
+        } catch (e) {
+          // ignore import errors
+        }
         if (attempt === attempts) break;
         await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
       }
@@ -71,6 +90,30 @@ class MealService {
   private buildIdempotencyKey(date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', foodId?: string): string {
     const safeFoodId = foodId || 'unknown';
     return `${date}:${mealType}:${safeFoodId}`;
+  }
+
+  private normalizeIdempotencyKey(
+    value: unknown,
+    date: string,
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    foodId?: string
+  ): string {
+    const raw = typeof value === 'string' ? value.trim() : '';
+    return raw.length > 0 ? raw : this.buildIdempotencyKey(date, mealType, foodId);
+  }
+
+  private logUpsertErrorOnce(error: any, context: string): void {
+    if (this.upsertErrorLogged) return;
+    this.upsertErrorLogged = true;
+    const payload = {
+      context,
+      code: error?.code,
+      status: error?.status,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    };
+    console.warn('[mealService] Supabase upsert error:', payload);
   }
 
   // Единый нормализатор Supabase entry → MealEntry
@@ -476,7 +519,7 @@ class MealService {
             : this.isValidUUID(entry.food?.canonical_food_id ?? null)
               ? entry.food?.canonical_food_id ?? null
               : null,
-          idempotency_key: entry.idempotencyKey || this.buildIdempotencyKey(meals.date, mealType, entry.foodId),
+          idempotency_key: this.normalizeIdempotencyKey(entry.idempotencyKey, meals.date, mealType, entry.foodId),
         });
 
         const entriesToInsert = [
@@ -577,15 +620,52 @@ class MealService {
             );
           }
 
-          const { error: upsertError } = await this.withRetry(async () =>
-            await supabase!
-              .from('food_diary_entries')
-              .upsert(validEntries, { onConflict: 'user_id,idempotency_key' })
-          );
+          const upsert = (entries: Record<string, unknown>[]) =>
+            this.withRetry(async () =>
+              await supabase!
+                .from('food_diary_entries')
+                .upsert(entries, { onConflict: 'user_id,idempotency_key' })
+            );
 
+          const { error: upsertError } = await upsert(validEntries as Record<string, unknown>[]);
           if (upsertError) {
-            console.warn('[mealService] Failed to upsert to Supabase:', upsertError.message);
-            return;
+            this.logUpsertErrorOnce(upsertError, 'food_diary_entries upsert');
+            const message = String(upsertError.message ?? '').toLowerCase();
+            const code = String(upsertError.code ?? '').toUpperCase();
+
+            const missingDisplayFields =
+              code === '42703' ||
+              message.includes('base_unit') ||
+              message.includes('display_unit') ||
+              message.includes('display_amount');
+
+            const uniqueConstraintMissing =
+              message.includes('no unique or exclusion constraint matching') ||
+              message.includes('no unique constraint matching');
+
+            if (uniqueConstraintMissing) {
+              // Inform once and avoid repeated noisy attempts — fix must be in DB (index)
+              if (!this.idempotencyIndexWarned) {
+                console.warn('[mealService] Missing unique index for upsert (user_id,idempotency_key). Apply migration supabase/phase8_food_upsert_indexes.sql to fix.');
+                this.idempotencyIndexWarned = true;
+              }
+              return;
+            }
+
+            if (missingDisplayFields) {
+              const stripped = validEntries.map((entry) => {
+                const { base_unit, display_unit, display_amount, ...rest } = entry as Record<string, unknown>;
+                return rest;
+              });
+              const { error: retryError } = await upsert(stripped);
+              if (retryError) {
+                console.warn('[mealService] Failed to upsert after stripping display fields:', retryError.message);
+                return;
+              }
+            } else {
+              console.warn('[mealService] Failed to upsert to Supabase:', upsertError.message);
+              return;
+            }
           }
 
           this.saveMealsToLocalStorage(sessionUserId, meals);
@@ -1067,4 +1147,3 @@ class MealService {
 }
 
 export const mealService = new MealService();
-

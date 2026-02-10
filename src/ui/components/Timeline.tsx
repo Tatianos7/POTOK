@@ -1,4 +1,4 @@
-import { borders, surfaces, typography } from '../theme/tokens';
+import { colors, radius, spacing, typography } from '../theme/tokens';
 
 interface TimelineItem {
   title: string;
@@ -12,27 +12,43 @@ interface TimelineProps {
 }
 
 const statusColor: Record<NonNullable<TimelineItem['status']>, string> = {
-  active: 'bg-emerald-500',
-  done: 'bg-gray-400',
-  upcoming: 'bg-gray-200',
+  active: colors.success,
+  done: colors.text.muted,
+  upcoming: colors.border,
 };
 
 const Timeline = ({ title, items }: TimelineProps) => {
   return (
-    <div className={`rounded-2xl ${surfaces.card} ${borders.base} p-4`}>
-      {title && <h3 className={`${typography.title} mb-3`}>{title}</h3>}
-      <div className="space-y-3">
+    <div
+      className="flex flex-col"
+      style={{
+        borderRadius: radius.lg,
+        border: `1px solid ${colors.border}`,
+        backgroundColor: colors.surface,
+        padding: spacing.lg,
+        gap: spacing.sm,
+      }}
+    >
+      {title && <h3 style={{ ...typography.title, marginBottom: spacing.sm }}>{title}</h3>}
+      <div className="flex flex-col" style={{ gap: spacing.sm }}>
         {items.map((item, index) => (
           <div key={`${item.title}-${index}`} className="flex items-start gap-3">
             <div className="flex flex-col items-center">
               <span
-                className={`w-3 h-3 rounded-full ${statusColor[item.status || 'upcoming']}`}
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: radius.pill,
+                  backgroundColor: statusColor[item.status || 'upcoming'],
+                }}
               />
-              {index < items.length - 1 && <span className="w-px flex-1 bg-gray-200 dark:bg-gray-700" />}
+              {index < items.length - 1 && (
+                <span style={{ width: 1, flex: 1, backgroundColor: colors.border }} />
+              )}
             </div>
             <div>
-              <p className={typography.body}>{item.title}</p>
-              {item.subtitle && <p className={typography.subtitle}>{item.subtitle}</p>}
+              <p style={typography.body}>{item.title}</p>
+              {item.subtitle && <p style={typography.subtitle}>{item.subtitle}</p>}
             </div>
           </div>
         ))}

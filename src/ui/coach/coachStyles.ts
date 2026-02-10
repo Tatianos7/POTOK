@@ -1,4 +1,5 @@
-import { borders, surfaces, typography } from '../theme/tokens';
+import type { CSSProperties } from 'react';
+import { colors, radius, spacing, typography } from '../theme/tokens';
 
 export type CoachEmotionalMode =
   | 'support'
@@ -21,48 +22,83 @@ export const coachModeCopy: Record<CoachEmotionalMode, string> = {
 
 export const coachModeStyles: Record<
   CoachEmotionalMode,
-  { container: string; title: string; body: string; accent: string }
+  { containerStyle: CSSProperties; titleStyle: CSSProperties; bodyStyle: CSSProperties; accentColor: string }
 > = {
   support: {
-    container: `${surfaces.info} ${borders.base}`,
-    title: typography.title,
-    body: typography.body,
-    accent: 'text-sky-700',
+    containerStyle: {
+      backgroundColor: colors.emotional.support,
+      border: `1px solid ${colors.border}`,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+    },
+    titleStyle: typography.title,
+    bodyStyle: typography.body,
+    accentColor: colors.primary,
   },
   motivate: {
-    container: `${surfaces.success} ${borders.success}`,
-    title: typography.title,
-    body: typography.body,
-    accent: 'text-emerald-700',
+    containerStyle: {
+      backgroundColor: colors.emotional.recovery,
+      border: `1px solid ${colors.success}`,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+    },
+    titleStyle: typography.title,
+    bodyStyle: typography.body,
+    accentColor: colors.success,
   },
   stabilize: {
-    container: `${surfaces.muted} ${borders.soft}`,
-    title: typography.title,
-    body: typography.body,
-    accent: 'text-gray-700 dark:text-gray-300',
+    containerStyle: {
+      backgroundColor: colors.emotional.support,
+      border: `1px solid ${colors.border}`,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+    },
+    titleStyle: typography.title,
+    bodyStyle: typography.body,
+    accentColor: colors.text.secondary,
   },
   protect: {
-    container: `${surfaces.error} ${borders.error}`,
-    title: typography.title,
-    body: typography.body,
-    accent: 'text-red-700',
+    containerStyle: {
+      backgroundColor: colors.emotional.fatigue,
+      border: `1px solid ${colors.danger}`,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+    },
+    titleStyle: typography.title,
+    bodyStyle: typography.body,
+    accentColor: colors.danger,
   },
   celebrate: {
-    container: `${surfaces.success} ${borders.success}`,
-    title: typography.title,
-    body: typography.body,
-    accent: 'text-emerald-700',
+    containerStyle: {
+      backgroundColor: colors.emotional.recovery,
+      border: `1px solid ${colors.success}`,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+    },
+    titleStyle: typography.title,
+    bodyStyle: typography.body,
+    accentColor: colors.success,
   },
   guide: {
-    container: `${surfaces.warn} ${borders.warn}`,
-    title: typography.title,
-    body: typography.body,
-    accent: 'text-amber-700',
+    containerStyle: {
+      backgroundColor: colors.emotional.plateau,
+      border: `1px solid ${colors.warning}`,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+    },
+    titleStyle: typography.title,
+    bodyStyle: typography.body,
+    accentColor: colors.warning,
   },
   reframe: {
-    container: `${surfaces.muted} ${borders.base}`,
-    title: typography.title,
-    body: typography.body,
-    accent: 'text-indigo-700',
+    containerStyle: {
+      backgroundColor: colors.emotional.plateau,
+      border: `1px solid ${colors.border}`,
+      borderRadius: radius.lg,
+      padding: spacing.lg,
+    },
+    titleStyle: typography.title,
+    bodyStyle: typography.body,
+    accentColor: colors.primary,
   },
 };
