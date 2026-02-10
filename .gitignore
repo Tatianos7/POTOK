@@ -41,3 +41,8 @@ ios/.DS_Store
 *.mobileprovision
 *.orig.*
 web
+
+# Smoke test artifacts
+scripts/smoke-*.png
+scripts/smoke-results.json
+scripts/smoke_playwright.mjs

@@ -146,3 +146,4 @@ export interface DailyMeals {
 }
 
 export * from './coachMemory';
+export * from './coachSettings';

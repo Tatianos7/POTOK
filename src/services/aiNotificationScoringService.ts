@@ -24,6 +24,22 @@ class AiNotificationScoringService {
   private readonly MAX_SENDS_DEFAULT = 3;
   private readonly MAX_SENDS_LOW_TRUST = 1;
   private readonly MODEL_VERSION = 'v1';
+  private notificationHistoryAvailable = true;
+  private notificationHistoryWarned = false; // warn once if history table missing
+
+  private async isMissingTableError(error: any): Promise<boolean> {
+    try {
+      const { isTableMissingError } = await import('./dbUtils');
+      return isTableMissingError(error);
+    } catch (e) {
+      return (
+        error?.code === 'PGRST205' ||
+        error?.code === 'PGRST204' ||
+        error?.message?.includes('404') ||
+        error?.message?.includes('not found')
+      );
+    }
+  }
 
   private async getSessionUserId(userId?: string): Promise<string> {
     if (!supabase) {
@@ -118,15 +134,25 @@ class AiNotificationScoringService {
 
   private async exceededDailyLimit(userId: string, trustScore: number): Promise<boolean> {
     if (!supabase) return false;
+    if (!this.notificationHistoryAvailable) return false;
     const limit = trustScore < 30 ? this.MAX_SENDS_LOW_TRUST : this.MAX_SENDS_DEFAULT;
     const today = new Date().toISOString().slice(0, 10);
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from('notification_history')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
       .gte('created_at', `${today}T00:00:00.000Z`)
       .lte('created_at', `${today}T23:59:59.999Z`)
       .in('status', ['queued', 'sent', 'delivered', 'opened']);
+
+    if (error && (await this.isMissingTableError(error))) {
+      this.notificationHistoryAvailable = false;
+      if (!this.notificationHistoryWarned) {
+        console.warn('[aiNotificationScoringService] notification_history table missing in DB — silencing history queries');
+        this.notificationHistoryWarned = true;
+      }
+      return false;
+    }
 
     return (count ?? 0) >= limit;
   }

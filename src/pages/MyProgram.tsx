@@ -13,9 +13,13 @@ import Timeline from '../ui/components/Timeline';
 import StateContainer from '../ui/components/StateContainer';
 import TrustBanner from '../ui/components/TrustBanner';
 import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
+import ScreenContainer from '../ui/components/ScreenContainer';
+import Button from '../ui/components/Button';
+import { colors, spacing, typography } from '../ui/theme/tokens';
 import CoachMessageCard from '../ui/coach/CoachMessageCard';
 import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
-import type { CoachResponse } from '../services/coachRuntime';
+import CoachRequestModal from '../ui/coach/CoachRequestModal';
+import type { CoachDecisionResponse, CoachResponse } from '../services/coachRuntime';
 import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
 const MyProgram = () => {
@@ -29,6 +33,8 @@ const MyProgram = () => {
   const [selectedVersion, setSelectedVersion] = useState<number>(1);
   const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
   const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
+  const [coachRequestOpen, setCoachRequestOpen] = useState(false);
+  const [decisionSupport, setDecisionSupport] = useState<CoachDecisionResponse | null>(null);
 
   const loadProgram = useCallback(async () => {
     if (!user?.id) return;
@@ -93,6 +99,37 @@ const MyProgram = () => {
   const completedDays = plan?.dayCards?.filter((day) => day.status === 'completed').length ?? 0;
   const skippedDays = plan?.dayCards?.filter((day) => day.status === 'skipped').length ?? 0;
   const adherenceRate = totalDays ? Math.round((completedDays / totalDays) * 100) : 0;
+  const safetyFlags = explainability?.safety_flags ?? [];
+
+  useEffect(() => {
+    if (!user || !plan) {
+      setDecisionSupport(null);
+      return;
+    }
+    const status = plan.status?.toLowerCase() ?? '';
+    const decisionType = status.includes('cancel')
+      ? 'plan_drop'
+      : status.includes('pause')
+        ? 'long_pause'
+        : null;
+    if (!decisionType) {
+      setDecisionSupport(null);
+      return;
+    }
+    uiRuntimeAdapter
+      .getDecisionSupport({
+        decision_type: decisionType,
+        emotional_state: status.includes('pause') ? 'recovering' : 'neutral',
+        trust_level: 50,
+        history_pattern: `Соблюдение: ${adherenceRate}%`,
+        user_mode: 'Follow Plan',
+        screen: 'Program',
+        subscription_state: user.hasPremium ? 'Premium' : 'Free',
+        safety_flags: safetyFlags,
+      })
+      .then(setDecisionSupport)
+      .catch(() => setDecisionSupport(null));
+  }, [user, plan, adherenceRate, safetyFlags]);
 
   const timelineItems = weeks.map((week, index) => {
     const containsToday = week.days.some((day) => day.date === today);
@@ -114,7 +151,6 @@ const MyProgram = () => {
     };
   });
 
-  const safetyFlags = explainability?.safety_flags ?? [];
   const isPain = safetyFlags.includes('pain');
   const isFatigue = safetyFlags.includes('fatigue');
   const isRecovery = safetyFlags.includes('recovery_needed');
@@ -189,55 +225,63 @@ const MyProgram = () => {
     const isAdapted = !!day.explainabilitySummary && !hasSafety;
 
     if (hasSafety) {
-      return { label: 'safety', className: 'bg-red-50 text-red-700 border-red-200' };
+      return {
+        label: 'safety',
+        style: { backgroundColor: colors.emotional.fatigue, color: colors.danger, borderColor: colors.border },
+      };
     }
     if (isAdapted) {
-      return { label: 'адаптировано', className: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+      return {
+        label: 'адаптировано',
+        style: { backgroundColor: colors.emotional.plateau, color: colors.primary, borderColor: colors.border },
+      };
     }
     if (day.status === 'completed') {
-      return { label: 'выполнено', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+      return {
+        label: 'выполнено',
+        style: { backgroundColor: colors.emotional.recovery, color: colors.success, borderColor: colors.border },
+      };
     }
     if (day.status === 'skipped') {
-      return { label: 'пропущено', className: 'bg-amber-50 text-amber-700 border-amber-200' };
+      return {
+        label: 'пропущено',
+        style: { backgroundColor: colors.emotional.fatigue, color: colors.warning, borderColor: colors.border },
+      };
     }
-    return { label: 'план', className: 'bg-gray-50 text-gray-600 border-gray-200' };
+    return {
+      label: 'план',
+      style: { backgroundColor: colors.emotional.support, color: colors.text.secondary, borderColor: colors.border },
+    };
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
-      <div className="container-responsive">
-        <header className="py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
-          <div className="flex-1" />
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white uppercase text-center flex-1">
-            МОЯ ПРОГРАММА
-          </h1>
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              aria-label="Закрыть"
-            >
-              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            </button>
-          </div>
-        </header>
+    <ScreenContainer>
+      <header className="flex items-center justify-between" style={{ marginBottom: spacing.lg }}>
+        <div style={{ width: 32 }} />
+        <h1 style={{ ...typography.title, textTransform: 'uppercase', textAlign: 'center' }}>Моя программа</h1>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/')} aria-label="Закрыть">
+          <X className="w-5 h-5" style={{ color: colors.text.secondary }} />
+        </Button>
+      </header>
 
-        <main className="py-4 tablet:py-6">
-          <StateContainer
-            status={runtimeStatus}
-            message={
-              runtimeStatus === 'empty'
-                ? 'Активной программы ещё нет. Когда вы выберете режим Follow Plan, мы покажем путь здесь.'
-                : errorMessage || undefined
-            }
-            onRetry={() => {
-              if (runtimeStatus === 'offline') {
-                uiRuntimeAdapter.revalidate().finally(loadProgram);
-              } else {
-                uiRuntimeAdapter.recover().finally(loadProgram);
-              }
-            }}
-          >
+      <StateContainer
+        status={runtimeStatus}
+        message={
+          runtimeStatus === 'empty'
+            ? 'Активной программы ещё нет. Когда вы выберете режим Follow Plan, мы покажем путь здесь.'
+            : errorMessage || undefined
+        }
+        onRetry={() => {
+          if (runtimeStatus === 'offline') {
+            uiRuntimeAdapter.revalidate().finally(loadProgram);
+          } else {
+            uiRuntimeAdapter.recover().finally(loadProgram);
+          }
+        }}
+      >
+        <Button variant="outline" size="sm" onClick={() => setCoachRequestOpen(true)} style={{ marginBottom: spacing.sm }}>
+          🧠 Спросить коуча
+        </Button>
             {isPain && (
               <TrustBanner tone="pain">
                 Мы снизили нагрузку ради безопасности. Это бережное решение, а не откат.
@@ -270,6 +314,22 @@ const MyProgram = () => {
                 }
               />
             )}
+            {decisionSupport && (
+              <CoachMessageCard
+                mode={decisionSupport.ui_mode}
+                message={decisionSupport.coach_message}
+                footer={
+                  <CoachExplainabilityDrawer
+                    decisionId={decisionSupport.decision_id}
+                    trace={decisionSupport.explainability}
+                    title="Почему важно решить это сейчас?"
+                    confidence={decisionSupport.confidence}
+                    trustLevel={decisionSupport.trust_state}
+                    safetyFlags={decisionSupport.safety_flags}
+                  />
+                }
+              />
+            )}
             {plan?.status?.toLowerCase().includes('cancel') && (
               <CoachMessageCard
                 mode="support"
@@ -279,52 +339,50 @@ const MyProgram = () => {
 
             {plan && (
               <div className="space-y-4">
-                <Card
-                  title="Мой путь"
-                  action={<span className="text-xs text-gray-500">Версия {versionLabel}</span>}
-                >
-                  <div className="flex flex-wrap gap-3 text-xs text-gray-600 dark:text-gray-400">
-                    <span>Статус: {plan.status}</span>
-                    <span>Старт: {plan.startDate ?? '—'}</span>
-                    <span>Финиш: {plan.endDate ?? '—'}</span>
+                <Card title="Мой путь" action={<span style={typography.micro}>Версия {versionLabel}</span>}>
+                  <div className="flex flex-wrap" style={{ gap: spacing.sm }}>
+                    <span style={typography.subtitle}>Статус: {plan.status}</span>
+                    <span style={typography.subtitle}>Старт: {plan.startDate ?? '—'}</span>
+                    <span style={typography.subtitle}>Финиш: {plan.endDate ?? '—'}</span>
                   </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-gray-700 dark:text-gray-300">
-                    <div>
-                      Соблюдение: <span className="font-semibold">{adherenceRate}%</span>
+                  <div className="grid grid-cols-2" style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+                    <div style={typography.body}>
+                      Соблюдение: <span style={{ fontWeight: 600 }}>{adherenceRate}%</span>
                     </div>
-                    <div>
-                      Пропущено: <span className="font-semibold">{skippedDays}</span>
+                    <div style={typography.body}>
+                      Пропущено: <span style={{ fontWeight: 600 }}>{skippedDays}</span>
                     </div>
                   </div>
-                  <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+                  <p style={{ ...typography.subtitle, marginTop: spacing.sm }}>
                     План — это гибкий маршрут. Мы меняем его только ради устойчивости и результата.
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => navigate('/today')}
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                    >
+                  <div className="flex flex-wrap" style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+                    <Button variant="outline" size="sm" onClick={() => navigate('/today')}>
                       Сегодняшний день
-                    </button>
-                    <button
-                      onClick={() => navigate('/progress')}
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                    >
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => navigate('/progress')}>
                       Смотреть прогресс по плану
-                    </button>
+                    </Button>
                   </div>
                 </Card>
 
                 <Card title="Версии плана">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <label htmlFor="program-version" className="text-xs text-gray-600 dark:text-gray-400">
+                  <div className="flex flex-wrap items-center" style={{ gap: spacing.sm }}>
+                    <label htmlFor="program-version" style={typography.subtitle}>
                       Выберите версию:
                     </label>
                     <select
                       id="program-version"
                       value={selectedVersion}
                       onChange={(event) => setSelectedVersion(Number(event.target.value))}
-                      className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                      style={{
+                        borderRadius: 8,
+                        border: `1px solid ${colors.border}`,
+                        backgroundColor: colors.surface,
+                        color: colors.text.primary,
+                        padding: '6px 10px',
+                        fontSize: '12px',
+                      }}
                     >
                       {versionOptions.map((version) => (
                         <option key={version} value={version}>
@@ -334,7 +392,7 @@ const MyProgram = () => {
                     </select>
                   </div>
                   {versionOptions.length === 1 && (
-                    <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                    <p style={{ ...typography.subtitle, marginTop: spacing.xs }}>
                       Адаптации создают новые версии. Когда они появятся, здесь можно будет сравнить изменения.
                     </p>
                   )}
@@ -343,25 +401,43 @@ const MyProgram = () => {
                 <Timeline title="Таймлайн пути" items={timelineItems} />
 
                 <Card title="Недели и дни">
-                  <div className="space-y-3">
+                  <div className="flex flex-col" style={{ gap: spacing.sm }}>
                     {weeks.map((week, idx) => (
-                      <div key={`${week.label}-${idx}`} className="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+                      <div
+                        key={`${week.label}-${idx}`}
+                        style={{
+                          borderRadius: 10,
+                          border: `1px solid ${colors.border}`,
+                          padding: spacing.sm,
+                          backgroundColor: colors.surface,
+                        }}
+                      >
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
+                          <span style={{ ...typography.subtitle, fontWeight: 600 }}>
                             Неделя {idx + 1}: {week.label}
                           </span>
-                          <span className="text-xs text-gray-500">{week.days.length} дней</span>
+                          <span style={typography.micro}>{week.days.length} дней</span>
                         </div>
-                        <div className="mt-2 grid grid-cols-2 gap-2 mobile-lg:grid-cols-3">
+                        <div
+                          className="grid grid-cols-2 mobile-lg:grid-cols-3"
+                          style={{ gap: spacing.xs, marginTop: spacing.xs }}
+                        >
                           {week.days.map((day) => {
                             const marker = getDayMarker(day);
                             return (
                               <div
                                 key={day.date}
-                                className={`rounded-lg border px-2 py-1 text-xs ${marker.className}`}
+                                style={{
+                                  borderRadius: 8,
+                                  border: `1px solid ${marker.style.borderColor}`,
+                                  backgroundColor: marker.style.backgroundColor,
+                                  color: marker.style.color,
+                                  padding: '4px 8px',
+                                  fontSize: '12px',
+                                }}
                               >
-                                <div className="font-semibold">{day.date}</div>
-                                <div className="text-[11px]">{marker.label}</div>
+                                <div style={{ fontWeight: 600 }}>{day.date}</div>
+                                <div style={{ fontSize: '11px' }}>{marker.label}</div>
                               </div>
                             );
                           })}
@@ -372,53 +448,48 @@ const MyProgram = () => {
                 </Card>
 
                 <Card title="Управление планом">
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <p style={typography.subtitle}>
                     Вы управляете темпом. Мы бережно сохраняем путь и адаптируемся к вашему состоянию.
                   </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button
-                      onClick={() => handleProgramAction('pause')}
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 disabled:opacity-60 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                      disabled={plan.status === 'paused'}
-                    >
+                  <div className="flex flex-wrap" style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+                    <Button variant="outline" size="sm" onClick={() => handleProgramAction('pause')} disabled={plan.status === 'paused'}>
                       Пауза
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleProgramAction('resume')}
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 disabled:opacity-60 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
                       disabled={plan.status !== 'paused'}
                     >
                       Продолжить
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleProgramAction('replan')}
-                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 disabled:opacity-60 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
                       disabled={plan.status === 'cancelled'}
                     >
                       Перепланировать
-                    </button>
-                    <button
-                      className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-400"
-                      disabled
-                    >
+                    </Button>
+                    <Button variant="ghost" size="sm" disabled>
                       Отменить (скоро)
-                    </button>
+                    </Button>
                   </div>
                 </Card>
 
                 <Card tone="explainable" title="Почему план изменился?">
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                  <p style={typography.subtitle}>
                     Мы объясняем каждую адаптацию: что послужило триггером и как это защищает прогресс.
                   </p>
-                  <div className="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-700 dark:text-gray-300">
-                    <div>Причина: {explainability?.adaptation_reason ?? 'нет данных'}</div>
-                    <div>Решение: {explainability?.decision_ref ?? '—'}</div>
-                    <div>Уверенность: {explainability?.confidence ?? 0}</div>
-                    <div>Safety: {explainability?.safety_notes?.join(', ') || 'нет ограничений'}</div>
+                  <div className="grid grid-cols-1" style={{ gap: spacing.xs, marginTop: spacing.sm }}>
+                    <div style={typography.body}>Причина: {explainability?.adaptation_reason ?? 'нет данных'}</div>
+                    <div style={typography.body}>Решение: {explainability?.decision_ref ?? '—'}</div>
+                    <div style={typography.body}>Уверенность: {explainability?.confidence ?? 0}</div>
+                    <div style={typography.body}>Safety: {explainability?.safety_notes?.join(', ') || 'нет ограничений'}</div>
                   </div>
-                  <div className="mt-4">
+                  <div style={{ marginTop: spacing.md }}>
                     <ExplainabilityDrawer explainability={explainability} />
-                    <div className="mt-3">
+                    <div style={{ marginTop: spacing.sm }}>
                       <CoachExplainabilityDrawer
                         decisionId={explainability?.decision_ref}
                         trace={coachExplainability}
@@ -432,15 +503,27 @@ const MyProgram = () => {
 
                 {trustMessage && (
                   <Card title="Поддержка">
-                    <p className="text-xs text-gray-600 dark:text-gray-400">{trustMessage}</p>
+                    <p style={typography.subtitle}>{trustMessage}</p>
                   </Card>
                 )}
               </div>
             )}
-          </StateContainer>
-        </main>
-      </div>
-    </div>
+      </StateContainer>
+      {coachRequestOpen && (
+        <CoachRequestModal
+          open={coachRequestOpen}
+          onClose={() => setCoachRequestOpen(false)}
+          context={{
+            screen: 'Program',
+            userMode: plan ? 'Follow Plan' : 'Manual',
+            subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+            trustLevel,
+            safetyFlags,
+            adherence: totalDays ? completedDays / totalDays : undefined,
+          }}
+        />
+      )}
+    </ScreenContainer>
   );
 };
 

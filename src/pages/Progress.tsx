@@ -2,50 +2,84 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { ProgressSnapshot, TrendSummary } from '../services/progressAggregatorService';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import type { ProgressExplainabilityDTO } from '../types/explainability';
 import { classifyTrustDecision } from '../services/trustSafetyService';
 import { coachRuntime } from '../services/coachRuntime';
 import Card from '../ui/components/Card';
-import Timeline from '../ui/components/Timeline';
 import StateContainer from '../ui/components/StateContainer';
 import TrustBanner from '../ui/components/TrustBanner';
 import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
-import CoachMessageCard from '../ui/coach/CoachMessageCard';
-import CoachTimelineComment from '../ui/coach/CoachTimelineComment';
-import { CoachRecoveryDialog } from '../ui/coach/CoachDialog';
-import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
-import type { CoachResponse } from '../services/coachRuntime';
+import ScreenContainer from '../ui/components/ScreenContainer';
+import Button from '../ui/components/Button';
+import ProgressTable from '../ui/components/ProgressTable';
+import Chip from '../ui/components/Chip';
+import Divider from '../ui/components/Divider';
+import Section from '../ui/components/Section';
+import Badge from '../ui/components/Badge';
+import Stack from '../ui/components/Stack';
+import Text from '../ui/components/Text';
+import type { CoachDecisionResponse, CoachResponse } from '../services/coachRuntime';
 import type { CoachExplainabilityBinding } from '../types/coachMemory';
+import type {
+  ProgressPeriod,
+  ProgressPeriodKey,
+  ProgressSummary,
+  NutritionStats,
+  TrainingStats,
+  MeasurementsTable,
+  HabitsStats,
+  ProgressSectionResult,
+  CoachRecommendations,
+} from '../types/progressDashboard';
 
 const Progress = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null);
-  const [summary, setSummary] = useState<TrendSummary | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
-  const [explainability, setExplainability] = useState<ProgressExplainabilityDTO | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
+  const [explainability, setExplainability] = useState<ProgressExplainabilityDTO | null>(null);
   const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
   const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
+  const [decisionSupport, setDecisionSupport] = useState<CoachDecisionResponse | null>(null);
   const lastCoachEventKey = useRef<string | null>(null);
 
-  const getTodayDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  const [summary, setSummary] = useState<ProgressSectionResult<ProgressSummary> | null>(null);
+  const [nutrition, setNutrition] = useState<ProgressSectionResult<NutritionStats> | null>(null);
+  const [training, setTraining] = useState<ProgressSectionResult<TrainingStats> | null>(null);
+  const [measurements, setMeasurements] = useState<ProgressSectionResult<MeasurementsTable> | null>(null);
+  const [habits, setHabits] = useState<ProgressSectionResult<HabitsStats> | null>(null);
+  const [coach, setCoach] = useState<ProgressSectionResult<CoachRecommendations> | null>(null);
 
-  const period = useMemo(() => {
-    const end = getTodayDate();
-    const startDate = new Date(new Date(end).getTime() - 29 * 86400000);
-    const start = startDate.toISOString().split('T')[0];
-    return { start, end };
-  }, []);
+  const periodOptions: Array<{ key: ProgressPeriodKey; label: string; days: number }> = [
+    { key: '7d', label: '7д', days: 7 },
+    { key: '14d', label: '14д', days: 14 },
+    { key: '30d', label: '30д', days: 30 },
+    { key: '3m', label: '3м', days: 90 },
+    { key: '6m', label: '6м', days: 180 },
+    { key: '1y', label: 'год', days: 365 },
+    { key: 'custom', label: 'custom', days: 30 },
+  ];
+
+  const [periodKey, setPeriodKey] = useState<ProgressPeriodKey>('30d');
+  const period = useMemo<ProgressPeriod>(() => {
+    const option = periodOptions.find((item) => item.key === periodKey) ?? periodOptions[2];
+    const endDate = new Date();
+    endDate.setHours(0, 0, 0, 0);
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - (option.days - 1));
+    const toDate = (value: Date) => value.toISOString().split('T')[0];
+    const start = toDate(startDate);
+    const end = toDate(endDate);
+    const days: string[] = [];
+    const cursor = new Date(startDate);
+    while (cursor <= endDate) {
+      days.push(toDate(cursor));
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return { key: option.key, label: option.label, start, end, days };
+  }, [periodKey]);
 
   const loadProgress = useCallback(async () => {
     if (!user?.id) return;
@@ -53,7 +87,7 @@ const Progress = () => {
     setErrorMessage(null);
     setTrustMessage(null);
     uiRuntimeAdapter.startLoadingTimer('Progress', {
-      pendingSources: ['measurement_history', 'food_diary_entries', 'workout_entries', 'user_goals'],
+      pendingSources: ['measurement_history', 'food_diary_entries', 'workout_entries', 'habit_logs', 'user_goals'],
       onTimeout: () => {
         const decision = classifyTrustDecision('loading_timeout');
         setRuntimeStatus('error');
@@ -62,10 +96,14 @@ const Progress = () => {
       },
     });
     try {
-      const state = await uiRuntimeAdapter.getProgressState(user.id, period.end);
+      const state = await uiRuntimeAdapter.getProgressState(user.id, period);
       setRuntimeStatus(state.status);
-      setSnapshot(state.snapshot ?? null);
-      setSummary(state.trends ?? null);
+      setSummary(state.summary ?? null);
+      setNutrition(state.nutrition ?? null);
+      setTraining(state.training ?? null);
+      setMeasurements(state.measurements ?? null);
+      setHabits(state.habits ?? null);
+      setCoach(state.coach ?? null);
       setExplainability((state.explainability as ProgressExplainabilityDTO) ?? null);
       setTrustMessage(state.trust?.message ?? null);
       if (state.status === 'error') {
@@ -79,199 +117,63 @@ const Progress = () => {
     } finally {
       uiRuntimeAdapter.clearLoadingTimer('Progress');
     }
-  }, [period.end, user?.id]);
-
-  useEffect(() => {
-    loadProgress();
-  }, [loadProgress]);
-
-  const weightTrend = summary?.weightSlope ?? 0;
-  const volumeTrend = summary?.volumeSlope ?? 0;
-  const isPlateau = Math.abs(weightTrend) < 0.05;
-  const isRegression = weightTrend > 0.1 && (summary?.calorieBalance ?? 0) > 0;
-  const isRecovery = volumeTrend < -0.2;
-  const isBreakthrough = weightTrend < -0.2 || volumeTrend > 0.3;
-  const weightInsight = isPlateau
-    ? 'Плато — это фаза, а не провал. Тело адаптируется.'
-    : weightTrend > 0
-      ? 'Рост идёт устойчиво. Главное — сохранять ритм.'
-      : 'Снижение идёт стабильно. Берегите восстановление.';
-
-  const safetyFlags = explainability?.safety_flags ?? [];
-  const trustLevel = explainability?.trust_level ?? explainability?.trust_score;
-  const formatPercent = (value?: number | null) => {
-    if (value === null || value === undefined) return '—';
-    return `${Math.round(value * 100)}%`;
-  };
-
-  const timelineItems = useMemo(() => {
-    const items = [];
-    if (snapshot?.targets) {
-      items.push({
-        title: 'Старт цели',
-        subtitle: 'Есть ориентиры по КБЖУ и траектории.',
-        status: 'done' as const,
-      });
-    }
-    if (isPlateau) {
-      items.push({
-        title: 'Плато',
-        subtitle: 'Фаза адаптации, без давления.',
-        status: 'active' as const,
-      });
-    }
-    if (isRecovery) {
-      items.push({
-        title: 'Восстановление',
-        subtitle: 'Нагрузка снижена ради устойчивости.',
-        status: 'active' as const,
-      });
-    }
-    if (snapshot?.habitsAdherence !== null && snapshot?.habitsAdherence !== undefined) {
-      items.push({
-        title: snapshot.habitsAdherence < 0.5 ? 'Срыв ритма' : 'Возврат в ритм',
-        subtitle: 'Мы поддерживаем мягкое возвращение.',
-        status: (snapshot.habitsAdherence < 0.5 ? 'active' : 'done') as 'active' | 'done',
-      });
-    }
-    if (explainability?.adaptation_reason) {
-      items.push({
-        title: 'Адаптация плана',
-        subtitle: 'Причина: ' + explainability.adaptation_reason,
-        status: 'active' as const,
-      });
-    }
-    if (items.length === 0) {
-      items.push({
-        title: 'История начинается здесь',
-        subtitle: 'Добавьте замеры, питание или тренировки.',
-        status: 'upcoming' as const,
-      });
-    }
-    return items;
-  }, [snapshot?.targets, snapshot?.habitsAdherence, explainability?.adaptation_reason, isPlateau, isRecovery]);
-
-  const insightCards = [
-    {
-      title: 'Тренд веса',
-      message: weightInsight,
-      meta: `EMA: ${summary?.weightEma ?? '—'} · slope: ${summary?.weightSlope ?? '—'}`,
-    },
-    {
-      title: 'Сила и объём',
-      message:
-        volumeTrend > 0
-          ? 'Сила растёт. Хороший сигнал устойчивости.'
-          : 'Если объём снижается — это может быть период восстановления.',
-      meta: `Склон объёма: ${summary?.volumeSlope ?? '—'}`,
-    },
-    {
-      title: 'Белок и питание',
-      message:
-        summary?.proteinSufficiency !== null && summary?.proteinSufficiency !== undefined
-          ? summary.proteinSufficiency < 0.7
-            ? 'Белка не хватает. Небольшая корректировка усилит восстановление.'
-            : 'Белок в порядке — это поддерживает рост и восстановление.'
-          : 'Добавьте записи питания, и мы покажем баланс.',
-      meta: `Достаточность: ${formatPercent(summary?.proteinSufficiency)}`,
-    },
-    {
-      title: 'Энергия и ритм',
-      message:
-        isRecovery || safetyFlags.includes('recovery_needed')
-          ? 'Мы видим сигналы усталости. Сейчас важна бережная поддержка.'
-          : 'Ритм устойчив. Продолжайте в комфортном темпе.',
-      meta: `Баланс калорий: ${summary?.calorieBalance ?? '—'}`,
-    },
-    {
-      title: 'Соблюдение плана',
-      message:
-        snapshot?.programAdherence !== null && snapshot?.programAdherence !== undefined
-          ? snapshot.programAdherence < 0.6
-            ? 'Соблюдение снизилось — мы можем адаптировать план.'
-            : 'Соблюдение устойчивое. План работает в вашу пользу.'
-          : 'Когда план активен, мы покажем соблюдение.',
-      meta: `Соблюдение: ${formatPercent(snapshot?.programAdherence ?? null)}`,
-    },
-  ];
-
-  useEffect(() => {
-    if (!user?.id || !summary) return;
-    const key = `${period.end}:${isPlateau}:${isRegression}:${isRecovery}:${isBreakthrough}:${weightTrend}:${volumeTrend}`;
-    if (lastCoachEventKey.current === key) return;
-    lastCoachEventKey.current = key;
-
-    const baseContext = {
-      screen: 'Progress' as const,
-      userMode: snapshot?.programAdherence ? 'Follow Plan' : 'Manual',
-      subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
-      trustLevel,
-      safetyFlags,
-    };
-
-    const event = isBreakthrough
-      ? {
-          type: 'Breakthrough',
-          payload: { period: period.end, slope: weightTrend, volumeSlope: volumeTrend },
-          confidence: 0.7,
-        }
-      : isPlateau
-      ? {
-          type: 'PlateauDetected',
-          payload: { period: period.end, slope: weightTrend },
-          confidence: 0.7,
-        }
-      : isRegression
-        ? {
-            type: 'RegressionDetected',
-            payload: { period: period.end, slope: weightTrend },
-            confidence: 0.7,
-          }
-        : {
-            type: 'TrendImproved',
-            payload: { period: period.end, slope: weightTrend },
-            confidence: 0.6,
-          };
-
-    void coachRuntime.handleUserEvent(
-      {
-        type: event.type,
-        timestamp: new Date().toISOString(),
-        payload: event.payload,
-        confidence: event.confidence,
-        safetyClass: isRecovery ? 'caution' : 'normal',
-        trustImpact: isRegression ? -1 : 1,
-      },
-      baseContext
-    );
-  }, [
-    isBreakthrough,
-    isPlateau,
-    isRecovery,
-    isRegression,
-    period.end,
-    snapshot?.programAdherence,
-    summary,
-    trustLevel,
-    user?.hasPremium,
-    user?.id,
-    volumeTrend,
-    weightTrend,
-  ]);
+  }, [period, user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
-    const subscriptionState = user?.hasPremium ? 'Premium' : 'Free';
+    void uiRuntimeAdapter.refresh().finally(loadProgress);
+  }, [loadProgress, period, user?.id]);
+
+  const summaryData = summary?.data;
+  const weightTrend = summaryData?.weightTrend ?? 0;
+  const strengthTrend = summaryData?.strengthTrend ?? 0;
+  const isPlateau = Math.abs(weightTrend) < 0.05;
+  const isRegression = weightTrend > 0.1;
+  const isRecovery = strengthTrend < -0.2;
+  const safetyFlags = explainability?.safety_flags ?? [];
+  const trustLevel = explainability?.trust_level ?? explainability?.trust_score;
+
+  const sectionStatus = (section: ProgressSectionResult<unknown> | null): RuntimeStatus => {
+    if (!section) return runtimeStatus === 'loading' ? 'loading' : 'empty';
+    if (section.status === 'error') return 'error';
+    if (section.status === 'empty') return 'empty';
+    return 'active';
+  };
+
+  const periodLabel = periodOptions.find((option) => option.key === periodKey)?.label ?? '30д';
+  const adherencePercent =
+    summaryData?.adherence !== null && summaryData?.adherence !== undefined
+      ? Math.round(summaryData.adherence * 100)
+      : null;
+  const habitPercent = habits?.data?.adherence ?? null;
+  const workoutsCount = training?.data?.dates?.length ?? 0;
+  const weightDirection = weightTrend > 0.05 ? '↑' : weightTrend < -0.05 ? '↓' : '—';
+  const weightTrendLabel =
+    summaryData?.weightTrend !== null && summaryData?.weightTrend !== undefined
+      ? `${summaryData.weightTrend.toFixed(2)} ${weightDirection}`
+      : '—';
+  const nutritionTopItems = nutrition?.data?.popularItem ? [nutrition.data.popularItem] : [];
+  const decisionSupportTip = decisionSupport?.coach_message ? [decisionSupport.coach_message] : [];
+  const coachTips = [...(coach?.data?.items?.slice(0, 2) ?? []), ...decisionSupportTip].slice(0, 2);
+  const habitsList = habits?.data?.habits ?? [];
+
+  useEffect(() => {
+    if (!user) {
+      setCoachOverlay(null);
+      return;
+    }
+    const adherenceValue = summaryData?.adherence ?? null;
     uiRuntimeAdapter
       .getCoachOverlay('Progress', {
         trustLevel,
         safetyFlags,
-        subscriptionState,
-        adherence: snapshot?.programAdherence ?? undefined,
+        userMode: 'Manual',
+        subscriptionState: user.hasPremium ? 'Premium' : 'Free',
+        adherence: typeof adherenceValue === 'number' ? adherenceValue : undefined,
       })
       .then(setCoachOverlay)
       .catch(() => setCoachOverlay(null));
-  }, [safetyFlags, snapshot?.programAdherence, snapshot?.gapDays, trustLevel, user?.hasPremium, user?.id]);
+  }, [user, trustLevel, safetyFlags, summaryData?.adherence]);
 
   useEffect(() => {
     const decisionId = explainability?.decision_ref;
@@ -283,212 +185,283 @@ const Progress = () => {
       .catch(() => setCoachExplainability(null));
   }, [explainability?.decision_ref, user?.hasPremium]);
 
+  useEffect(() => {
+    if (!user?.id || !summaryData) return;
+    const trendKey = `${period.end}_${summaryData.weightTrend ?? 0}`;
+    if (lastCoachEventKey.current === trendKey) return;
+    lastCoachEventKey.current = trendKey;
+    void coachRuntime.handleUserEvent(
+      {
+        type: 'ProgressViewed',
+        timestamp: new Date().toISOString(),
+        payload: {
+          trend: summaryData.weightTrend ?? 0,
+          adherence: summaryData.adherence ?? 0,
+        },
+        confidence: 0.5,
+        safetyClass: isRegression ? 'caution' : 'normal',
+        trustImpact: isRegression ? -1 : 1,
+      },
+      {
+        screen: 'Progress',
+        userMode: 'Manual',
+        subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+      }
+    );
+  }, [summaryData, period.end, isRegression, user?.hasPremium, user?.id]);
+
+  useEffect(() => {
+    if (!user || !summaryData) {
+      setDecisionSupport(null);
+      return;
+    }
+    const slope = typeof summaryData.weightTrend === 'number' ? Math.abs(summaryData.weightTrend) : null;
+    if (slope === null || slope > 0.02) {
+      setDecisionSupport(null);
+      return;
+    }
+    uiRuntimeAdapter
+      .getDecisionSupport({
+        decision_type: 'plateau',
+        emotional_state: 'neutral',
+        trust_level: 50,
+        history_pattern: `Стабильность веса за период ${period.start}–${period.end}`,
+        user_mode: 'Manual',
+        screen: 'Progress',
+        subscription_state: user.hasPremium ? 'Premium' : 'Free',
+        safety_flags: [],
+      })
+      .then(setDecisionSupport)
+      .catch(() => setDecisionSupport(null));
+  }, [user, summaryData, period.start, period.end]);
+
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
-      <div className="container-responsive">
-        <header className="py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
-          <div className="flex-1" />
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white uppercase text-center flex-1">
-            ПРОГРЕСС
-          </h1>
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              aria-label="Закрыть"
-            >
-              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            </button>
-          </div>
-        </header>
+    <ScreenContainer padding="lg" gap="xl">
+      <Card variant="surface" size="lg">
+        <Section title="Прогресс" subtitle="Твоя динамика и изменения">
+          {null}
+        </Section>
+        <Stack direction="row" gap="sm" wrap>
+          {periodOptions.map((option) => (
+            <Chip key={option.key} onClick={() => setPeriodKey(option.key)} selected={periodKey === option.key}>
+              {option.label}
+            </Chip>
+          ))}
+          <Button variant="outline" size="sm" onClick={() => setPeriodKey('custom')}>
+            Календарь
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/')} aria-label="Закрыть">
+            <X size={18} />
+          </Button>
+        </Stack>
+      </Card>
 
-        <main className="py-4 tablet:py-6">
-          <StateContainer
-            status={runtimeStatus}
-            message={
-              runtimeStatus === 'empty'
-                ? 'Пока нет данных для прогресса. Добавьте замеры, питание или тренировки.'
-                : errorMessage || undefined
-            }
-            onRetry={() => {
-              if (runtimeStatus === 'offline') {
-                uiRuntimeAdapter.revalidate().finally(loadProgress);
-              } else {
-                uiRuntimeAdapter.recover().finally(loadProgress);
-              }
-            }}
-          >
-            {isPlateau && (
-              <TrustBanner tone="plateau">
-                Плато — это фаза, а не провал. Тело адаптируется, и это часть пути.
-              </TrustBanner>
-            )}
-            {isRegression && !isPlateau && (
-              <TrustBanner tone="recovery">
-                Сейчас важно восстановление. Это не откат — это бережная фаза.
-              </TrustBanner>
-            )}
-            {isRecovery && !isRegression && !isPlateau && (
-              <TrustBanner tone="recovery">
-                Мы видим сигналы усталости. Темп можно сохранить мягко и безопасно.
-              </TrustBanner>
-            )}
+      {isPlateau && <TrustBanner tone="plateau">Плато — это фаза, а не провал. Тело адаптируется, и это часть пути.</TrustBanner>}
+      {isRegression && !isPlateau && (
+        <TrustBanner tone="recovery">Сейчас важно восстановление. Это не откат — это бережная фаза.</TrustBanner>
+      )}
+      {isRecovery && !isRegression && !isPlateau && (
+        <TrustBanner tone="recovery">Мы видим сигналы усталости. Темп можно сохранить мягко и безопасно.</TrustBanner>
+      )}
 
-            <div className="space-y-4">
-              {coachOverlay && (
-                <CoachMessageCard
-                  mode={coachOverlay.ui_mode}
-                  message={coachOverlay.coach_message}
-                  footer={
-                    coachOverlay.emotional_state === 'recovering' ? (
-                      <CoachTimelineComment text="Восстановление — это часть прогресса." mode="support" />
-                    ) : null
-                  }
-                />
-              )}
-              <Card title="Life Timeline">
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Это история вашего пути — не только цифры, но и восстановление, ритм и устойчивость.
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-sm text-gray-700 dark:text-gray-300">
-                  <div>Вес: {snapshot?.weight ?? '—'} кг</div>
-                  <div>Фото: {snapshot?.photos ?? 0}</div>
-                  <div>Сила/объём: {snapshot?.volume ?? '—'}</div>
-                  <div>Калории: {snapshot?.calories ?? '—'} ккал</div>
-                  <div>Привычки: {formatPercent(snapshot?.habitsAdherence ?? null)}</div>
-                  <div>Соблюдение плана: {formatPercent(snapshot?.programAdherence ?? null)}</div>
-                </div>
-                <div className="mt-4">
-                  <Timeline items={timelineItems} />
-                </div>
-                {coachOverlay && (
-                  <div className="mt-3">
-                    <CoachTimelineComment text={coachOverlay.coach_message} mode={coachOverlay.ui_mode} />
-                  </div>
-                )}
-              </Card>
-
-              <Card title="Снимок дня">
-                <div className="grid grid-cols-2 gap-3 text-sm text-gray-700 dark:text-gray-300">
-                  <div>Вес: {snapshot?.weight ?? '—'} кг</div>
-                  <div>Калории: {snapshot?.calories ?? '—'} ккал</div>
-                  <div>Белки: {snapshot?.protein ?? '—'} г</div>
-                  <div>Объём трен.: {snapshot?.volume ?? '—'}</div>
-                  <div>Фото: {snapshot?.photos ?? 0}</div>
-                  <div>Привычки: {formatPercent(snapshot?.habitsAdherence ?? null)}</div>
-                </div>
-              </Card>
-
-              <Card title="Insight Engine">
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Мы переводим данные в смыслы: что происходит и как поддержать путь.
-                </p>
-                <div className="mt-3 grid gap-3">
-                  {insightCards.map((card) => (
-                    <Card key={card.title} tone="explainable" title={card.title}>
-                      <p className="text-xs text-gray-700 dark:text-gray-300">{card.message}</p>
-                      <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">{card.meta}</p>
-                      <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
-                        {explainability?.decision_ref
-                          ? `Почему так: ${explainability.decision_ref}`
-                          : 'Почему так: объяснение будет здесь.'}
-                      </p>
-                    </Card>
-                  ))}
-                </div>
-              </Card>
-
-              {(isPlateau || isRegression || isRecovery) && user?.hasPremium && (
-                <CoachRecoveryDialog
-                  message={
-                    isPlateau
-                      ? 'Плато — фаза адаптации. Поддержим устойчивость без давления.'
-                      : isRegression
-                        ? 'Регресс — часть пути. Мягко возвращаем ритм.'
-                        : 'Сейчас важна бережная поддержка и восстановление.'
-                  }
-                />
-              )}
-
-              {summary && (
-                <Card title="Тренды (30 дней)">
-                  <div className="grid grid-cols-2 gap-3 text-sm text-gray-700 dark:text-gray-300">
-                    <div>EMA веса: {summary.weightEma ?? '—'}</div>
-                    <div>Склон веса: {summary.weightSlope ?? '—'}</div>
-                    <div>Склон объёма: {summary.volumeSlope ?? '—'}</div>
-                    <div>Средние калории: {summary.avgCalories ?? '—'}</div>
-                    <div>Баланс калорий: {summary.calorieBalance ?? '—'}</div>
-                    <div>Достаточность белка: {formatPercent(summary.proteinSufficiency ?? null)}</div>
-                  </div>
-                  <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
-                    Мы объясняем тренды, чтобы вы чувствовали контроль и поддержку.
-                  </p>
+      <StateContainer
+        status={runtimeStatus}
+        message={
+          runtimeStatus === 'empty'
+            ? 'Пока нет данных для прогресса. Добавьте замеры, питание или тренировки.'
+            : errorMessage || undefined
+        }
+        onRetry={() => {
+          if (runtimeStatus === 'offline') {
+            uiRuntimeAdapter.revalidate().finally(loadProgress);
+          } else {
+            uiRuntimeAdapter.recover().finally(loadProgress);
+          }
+        }}
+      >
+        <Stack gap="lg">
+          <StateContainer status={sectionStatus(summary)} message={summary?.message}>
+            <Card size="lg">
+              <Section title="Life Overview" subtitle={`Период: ${periodLabel}`}>
+                {null}
+              </Section>
+              <Stack direction="row" gap="sm" wrap>
+                <Card variant="ghost" size="sm">
+                  <Text variant="micro">Вес</Text>
+                  <Text variant="title">{weightTrendLabel}</Text>
                 </Card>
-              )}
-
-              <Card title="Навигация по пути">
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => navigate('/today')}
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                  >
-                    Сегодня
-                  </button>
-                  <button
-                    onClick={() => navigate('/my-program')}
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                  >
-                    Мой план
-                  </button>
-                  <button
-                    onClick={() => navigate('/habits')}
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                  >
-                    Привычки
-                  </button>
-                  <button
-                    onClick={() => navigate('/measurements')}
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-semibold text-gray-800 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                  >
-                    Замеры
-                  </button>
-                </div>
-              </Card>
-
-              <Card tone="explainable" title="Почему я вижу такой прогресс?">
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Мы показываем источники данных и уверенность интерпретации, чтобы вы чувствовали ясность.
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-gray-700 dark:text-gray-300">
-                  <div>Источники: {explainability?.data_sources?.join(', ') || '—'}</div>
-                  <div>Уверенность: {explainability?.confidence ?? '—'}</div>
-                  <div>Trust: {explainability?.trust_level ?? '—'}</div>
-                  <div>Safety: {explainability?.safety_notes?.join(', ') || '—'}</div>
-                </div>
-                <div className="mt-4">
-                  <ExplainabilityDrawer explainability={explainability} />
-                  <div className="mt-3">
-                    <CoachExplainabilityDrawer
-                      decisionId={explainability?.decision_ref}
-                      trace={coachExplainability}
-                      confidence={explainability?.confidence}
-                      trustLevel={String(explainability?.trust_level ?? explainability?.trust_score ?? '—')}
-                      safetyFlags={explainability?.safety_flags ?? []}
-                    />
-                  </div>
-                </div>
-              </Card>
-
-              {trustMessage && (
-                <Card title="Поддержка">
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{trustMessage}</p>
+                <Card variant="ghost" size="sm">
+                  <Text variant="micro">Калории среднее</Text>
+                  <Text variant="title">{summaryData?.avgCalories ?? '—'}</Text>
                 </Card>
-              )}
-            </div>
+                <Card variant="ghost" size="sm">
+                  <Text variant="micro">Тренировок</Text>
+                  <Text variant="title">{workoutsCount}</Text>
+                </Card>
+                <Card variant="ghost" size="sm">
+                  <Text variant="micro">Adherence</Text>
+                  <Text variant="title">{adherencePercent ?? '—'}%</Text>
+                </Card>
+                <Card variant="ghost" size="sm">
+                  <Text variant="micro">Привычки</Text>
+                  <Text variant="title">{habitPercent ?? '—'}%</Text>
+                </Card>
+              </Stack>
+              <Divider />
+              <Text variant="subtitle">
+                {summaryData?.coachInsight ?? coachOverlay?.coach_message ?? 'Вот как изменилась твоя жизнь за период.'}
+              </Text>
+            </Card>
           </StateContainer>
-        </main>
-      </div>
-    </div>
+
+          <StateContainer status={sectionStatus(nutrition)} message={nutrition?.message}>
+            <Card title="Питание">
+              <Stack gap="md">
+                <Stack direction="row" gap="sm" wrap>
+                  <Chip>Средние: {nutrition?.data?.average.calories ?? '—'} ккал</Chip>
+                  <Chip>Б {nutrition?.data?.average.protein ?? '—'} г</Chip>
+                  <Chip>Ж {nutrition?.data?.average.fat ?? '—'} г</Chip>
+                  <Chip>У {nutrition?.data?.average.carbs ?? '—'} г</Chip>
+                </Stack>
+                <Stack direction="row" gap="sm" wrap>
+                  <Chip>Всего: {nutrition?.data?.total.calories ?? '—'} ккал</Chip>
+                  <Chip>Соблюдение цели: —</Chip>
+                </Stack>
+                <Divider />
+                <Stack gap="sm">
+                  <Text variant="subtitle">Популярное</Text>
+                  <Stack direction="row" gap="sm" wrap>
+                    {nutritionTopItems.length > 0 ? (
+                      nutritionTopItems.map((item) => (
+                        <Badge key={item} tone="default">
+                          {item}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Text variant="micro">Нет данных</Text>
+                    )}
+                  </Stack>
+                </Stack>
+                <Divider />
+                <Stack gap="sm">
+                  <Text variant="subtitle">Coach рекомендации</Text>
+                  <Stack direction="row" gap="sm" wrap>
+                    {coachTips.length > 0 ? (
+                      coachTips.map((tip) => (
+                        <Badge key={tip} tone="warning">
+                          {tip}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Text variant="micro">Пока нет рекомендаций</Text>
+                    )}
+                  </Stack>
+                </Stack>
+              </Stack>
+            </Card>
+          </StateContainer>
+
+          <StateContainer status={sectionStatus(training)} message={training?.message}>
+            <Card title="Тренировки">
+              <ProgressTable
+                layout="stacked"
+                rowHeaderLabel="Упражнение"
+                columns={training?.data?.dates ?? []}
+                rows={(training?.data?.rows ?? []).map((row) => ({
+                  id: row.id,
+                  label: row.name,
+                  cells: Object.fromEntries(
+                    (training?.data?.dates ?? []).map((date) => {
+                      const cell = row.cells[date];
+                      const volume = cell ? Math.round(cell.sets * cell.reps * cell.weight) : null;
+                      const value = cell
+                        ? `${cell.sets}×${cell.reps}×${cell.weight} · V ${volume ?? '—'}`
+                        : '—';
+                      return [date, { value, trend: cell?.trend }];
+                    })
+                  ),
+                }))}
+              />
+            </Card>
+          </StateContainer>
+
+          <StateContainer status={sectionStatus(measurements)} message={measurements?.message}>
+            <Card title="Замеры">
+              <ProgressTable
+                layout="stacked"
+                rowHeaderLabel="Дата"
+                columns={measurements?.data?.metrics ?? []}
+                rows={(measurements?.data?.rows ?? []).map((row) => ({
+                  id: row.date,
+                  label: row.date,
+                  cells: Object.fromEntries(
+                    (measurements?.data?.metrics ?? []).map((metric) => {
+                      const value = row.values[metric]?.value;
+                      const formatted = value === null || value === undefined ? '—' : String(value);
+                      return [metric, { value: formatted, trend: row.values[metric]?.trend }];
+                    })
+                  ),
+                }))}
+              />
+              <Divider />
+              <Stack direction="row" gap="sm" wrap>
+                {coachTips.length > 0 ? (
+                  coachTips.map((tip) => (
+                    <Chip key={tip} tone="warning">
+                      {tip}
+                    </Chip>
+                  ))
+                ) : (
+                  <Text variant="micro">Рекомендации появятся после новых замеров.</Text>
+                )}
+              </Stack>
+            </Card>
+          </StateContainer>
+
+          <StateContainer status={sectionStatus(habits)} message={habits?.message}>
+            <Card title="Привычки">
+              <Stack direction="row" gap="sm" wrap>
+                <Chip>Streak: {habits?.data?.streak ?? 0}</Chip>
+                <Chip>Adherence: {habits?.data?.adherence ?? 0}%</Chip>
+              </Stack>
+              <Divider />
+              <Stack direction="row" gap="sm" wrap>
+                {habitsList.length > 0 ? (
+                  habitsList.map((habit) => (
+                    <Badge key={habit.id} tone={habit.adherence >= 0.7 ? 'success' : 'warning'}>
+                      {habit.title} · {Math.round(habit.adherence * 100)}%
+                    </Badge>
+                  ))
+                ) : (
+                  <Text variant="micro">Пока нет привычек</Text>
+                )}
+              </Stack>
+            </Card>
+          </StateContainer>
+
+          <Card tone="explainable" title="Coach Insights">
+            <Stack gap="sm">
+              <Text variant="subtitle">Почему такие рекомендации</Text>
+              <Stack direction="row" gap="sm" wrap>
+                <Chip>Источники: {explainability?.data_sources?.join(', ') || '—'}</Chip>
+                <Chip>Confidence: {explainability?.confidence ?? '—'}</Chip>
+                <Chip>Trust: {explainability?.trust_level ?? '—'}</Chip>
+              </Stack>
+              {coachExplainability?.decision?.whyNow && (
+                <Text variant="micro">{coachExplainability.decision.whyNow}</Text>
+              )}
+              <ExplainabilityDrawer explainability={explainability} />
+            </Stack>
+          </Card>
+
+          {trustMessage && (
+            <Card title="Поддержка">
+              <Text variant="subtitle">{trustMessage}</Text>
+            </Card>
+          )}
+        </Stack>
+      </StateContainer>
+    </ScreenContainer>
   );
 };
 

@@ -9,15 +9,32 @@ export interface CoachMemoryService {
 }
 
 export const createCoachMemoryService = (): CoachMemoryService => {
-  const notImplemented = async () => {
-    throw new Error('CoachMemoryService is not implemented yet.');
+  const now = () => new Date().toISOString();
+  const noop = async () => undefined;
+  const defaultProfile: RelationshipProfile = {
+    stage: 'onboarding',
+    trustLevel: 50,
+    emotionalState: 'calm',
+    resilience: 0.5,
+    autonomy: 0.5,
+    safetyMode: false,
+    confidenceGrowth: 0.2,
+    confidenceDecay: 0.1,
+    lastUpdated: now(),
+  };
+  const defaultContext: CoachLongTermContext = {
+    goals: [],
+    values: [],
+    patterns: [],
+    recoveryHistory: [],
+    trustMilestones: [],
   };
 
   return {
-    recordEvent: notImplemented,
-    updateEmotionalState: notImplemented,
-    updateTrust: notImplemented,
-    getRelationshipProfile: notImplemented,
-    getLongTermContext: notImplemented,
+    recordEvent: noop,
+    updateEmotionalState: noop,
+    updateTrust: noop,
+    getRelationshipProfile: async () => defaultProfile,
+    getLongTermContext: async () => defaultContext,
   };
 };

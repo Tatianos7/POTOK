@@ -10,6 +10,8 @@ import {
   createCoachMemoryPersistenceService,
   type CoachMemoryPersistenceService,
 } from './coachMemoryPersistenceService';
+import { CircuitBreaker } from './coachCircuitBreaker';
+import { coachTelemetry } from './coachTelemetry';
 
 export interface CoachRelationshipRuntime {
   getProfile: () => Promise<RelationshipProfile>;
@@ -28,6 +30,9 @@ export interface CoachMemoryFacade {
   getLongTermNarrative: (userId: string) => Promise<string>;
   getExplainableReasoningTrace: (decisionId: string) => Promise<CoachExplainabilityBinding>;
   getCoachContextForResponse: () => Promise<CoachLongTermContext>;
+  isAvailable: () => boolean;
+  clearCoachHistory?: () => Promise<void>;
+  clearTrustModel?: () => Promise<void>;
 }
 
 interface CoachMemoryFacadeDeps {
@@ -41,42 +46,105 @@ export const createCoachMemoryFacade = ({
   persistenceService = createCoachMemoryPersistenceService(),
   relationshipRuntime,
 }: CoachMemoryFacadeDeps = {}): CoachMemoryFacade => {
+  const memoryBreaker = new CircuitBreaker({ name: 'coachMemoryFacade', failureThreshold: 2 });
+  const isPersistenceAvailable = () => persistenceService.isAvailable?.() !== false;
+
+  const minimizePayload = (payload: Record<string, unknown>) => {
+    const minimized: Record<string, unknown> = {};
+    Object.entries(payload ?? {}).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        minimized[key] = value.length > 500 ? `${value.slice(0, 500)}…` : value;
+        return;
+      }
+      minimized[key] = value;
+    });
+    return minimized;
+  };
+
   return {
     recordExperience: async (event, context) => {
-      await persistenceService.persistEventMemory({
-        ...event,
-        payload: {
-          ...event.payload,
-          source_screen: context.sourceScreen,
-          explainability_ref: context.explainabilityRef ?? null,
-        },
-      });
+      if (!memoryBreaker.canRequest()) {
+        return;
+      }
+      const minimizedPayload = minimizePayload(event.payload ?? {});
+      if (isPersistenceAvailable()) {
+        try {
+          await persistenceService.persistEventMemory({
+            ...event,
+            payload: {
+              ...minimizedPayload,
+              source_screen: context.sourceScreen,
+              explainability_ref: context.explainabilityRef ?? null,
+            },
+          });
+          memoryBreaker.recordSuccess();
+        } catch {
+          memoryBreaker.recordFailure();
+        }
+      }
       await memoryService.recordEvent(event);
       if (relationshipRuntime?.updateFromEvent) {
         await relationshipRuntime.updateFromEvent(event);
       }
     },
     loadCoachContext: async () => {
-      return persistenceService.loadLongTermProfile();
+      if (!memoryBreaker.canRequest()) {
+        return memoryService.getRelationshipProfile();
+      }
+      if (!isPersistenceAvailable()) {
+        return memoryService.getRelationshipProfile();
+      }
+      try {
+        const startedAt = performance.now();
+        const profile = await persistenceService.loadLongTermProfile();
+        coachTelemetry.trackTiming('memory_fetch_time', performance.now() - startedAt, {
+          source: 'loadCoachContext',
+        });
+        return profile;
+      } catch {
+        memoryBreaker.recordFailure();
+        return memoryService.getRelationshipProfile();
+      }
     },
     updateTrustModel: async (signal) => {
-      await persistenceService.updateTrustCurve(signal.delta, signal.reason);
+      const startedAt = performance.now();
+      if (isPersistenceAvailable()) {
+        try {
+          await persistenceService.updateTrustCurve(signal.delta, signal.reason);
+        } catch {
+          memoryBreaker.recordFailure();
+        }
+      }
       await memoryService.updateTrust(signal.delta, signal.reason);
+      coachTelemetry.trackTiming('trust_update_time', performance.now() - startedAt, {
+        reason: signal.reason ?? 'unknown',
+      });
     },
     getLongTermNarrative: async () => {
+      if (!isPersistenceAvailable()) {
+        return 'Я опираюсь на текущие данные и недавнюю динамику.';
+      }
       try {
         return await persistenceService.summarizeUserJourney();
-      } catch (error) {
-        console.warn('[coachMemoryFacade] summarizeUserJourney failed', error);
+      } catch {
         return 'Ты прошел путь с разными фазами. Я учитываю устойчивость и восстановление.';
       }
     },
     getExplainableReasoningTrace: async (decisionId) => {
       let profile: RelationshipProfile | null = null;
       try {
-        profile = await persistenceService.loadLongTermProfile();
-      } catch (error) {
-        console.warn('[coachMemoryFacade] loadLongTermProfile failed', error);
+        if (!memoryBreaker.canRequest()) {
+          throw new Error('memory_circuit_open');
+        }
+        if (isPersistenceAvailable()) {
+          const startedAt = performance.now();
+          profile = await persistenceService.loadLongTermProfile();
+          coachTelemetry.trackTiming('memory_fetch_time', performance.now() - startedAt, {
+            source: 'getExplainableReasoningTrace',
+          });
+        }
+      } catch {
+        profile = null;
       }
 
       const now = Date.now();
@@ -190,7 +258,26 @@ export const createCoachMemoryFacade = ({
       };
     },
     getCoachContextForResponse: async () => {
-      return persistenceService.getCoachContextForResponse();
+      if (!isPersistenceAvailable()) {
+        return memoryService.getLongTermContext();
+      }
+      try {
+        return await persistenceService.getCoachContextForResponse();
+      } catch {
+        return memoryService.getLongTermContext();
+      }
+    },
+    isAvailable: () => isPersistenceAvailable() && memoryBreaker.canRequest(),
+    clearCoachHistory: async () => {
+      if (isPersistenceAvailable() && persistenceService.clearCoachMemory) {
+        await persistenceService.clearCoachMemory();
+      }
+    },
+    clearTrustModel: async () => {
+      if (isPersistenceAvailable()) {
+        await persistenceService.updateTrustCurve(0, 'trust_reset');
+      }
+      await memoryService.updateTrust(0, 'trust_reset');
     },
   };
 };

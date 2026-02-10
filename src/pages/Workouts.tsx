@@ -16,6 +16,11 @@ import { classifyTrustDecision } from '../services/trustSafetyService';
 import { coachRuntime, type CoachScreenContext } from '../services/coachRuntime';
 import { ExerciseCategory, Exercise, SelectedExercise, WorkoutEntry } from '../types/workout';
 import '../utils/checkExercisesData'; // Импортируем для доступа через window
+import ScreenContainer from '../ui/components/ScreenContainer';
+import Button from '../ui/components/Button';
+import ExerciseRow from '../ui/components/ExerciseRow';
+import ExerciseTableHeader from '../ui/components/ExerciseTableHeader';
+import { colors, spacing, typography } from '../ui/theme/tokens';
 
 const Workouts = () => {
   const navigate = useNavigate();
@@ -397,26 +402,18 @@ const Workouts = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden w-full min-w-[320px] max-w-full overflow-x-hidden">
-      <div className="max-w-[768px] mx-auto w-full flex flex-col h-full max-w-full overflow-hidden">
-        {/* Header */}
-        <header className="px-2 min-[376px]:px-4 py-3 min-[376px]:py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0 w-full max-w-full overflow-hidden">
-          <div className="flex-1"></div>
-          <h1 className="text-base min-[376px]:text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase whitespace-nowrap">
-            ДНЕВНИК ТРЕНИРОВОК
+    <ScreenContainer>
+        <header className="flex items-center justify-between" style={{ marginBottom: spacing.lg }}>
+          <div style={{ width: 32 }} />
+          <h1 style={{ ...typography.title, textTransform: 'uppercase', textAlign: 'center' }}>
+            Дневник тренировок
           </h1>
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={handleClose}
-              className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
-              aria-label="Закрыть"
-            >
-              <X className="w-5 h-5 min-[376px]:w-6 min-[376px]:h-6 text-gray-700 dark:text-gray-300" />
-            </button>
-          </div>
+          <Button variant="ghost" size="sm" onClick={handleClose} aria-label="Закрыть">
+            <X className="w-5 h-5" style={{ color: colors.text.secondary }} />
+          </Button>
         </header>
 
-        <main className="flex-1 overflow-y-auto min-h-0 px-2 min-[376px]:px-4 py-3 min-[376px]:py-4 w-full max-w-full">
+        <main className="flex-1 overflow-y-auto min-h-0" style={{ paddingBottom: spacing.lg }}>
           {errorMessage && (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
               <div className="flex flex-col gap-2 min-[376px]:flex-row min-[376px]:items-center min-[376px]:justify-between">
@@ -544,21 +541,7 @@ const Workouts = () => {
               </div>
             </div>
 
-            {/* Table Headers */}
-            <div className="grid grid-cols-4 gap-2 min-[376px]:gap-4 mb-2 min-[376px]:mb-3 pb-2 border-b border-gray-200 dark:border-gray-700 w-full max-w-full">
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-left">
-                Название упражнения
-              </div>
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-center">
-                Подходы
-              </div>
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-center">
-                Повторы
-              </div>
-              <div className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white text-center">
-                Вес (кг)
-              </div>
-            </div>
+            <ExerciseTableHeader />
 
             {/* Workout Entries */}
             {isLoading || runtimeStatus === 'loading' ? (
@@ -572,28 +555,21 @@ const Workouts = () => {
                 </p>
               </div>
             ) : (
-              <div className="w-full max-w-full">
-                {workoutEntries.map((entry) => {
-                  return (
-                    <div
-                      key={entry.id}
-                      className="grid grid-cols-4 gap-2 min-[376px]:gap-4 py-2.5 min-[376px]:py-3 border-b border-gray-200 dark:border-gray-700 last:border-0 w-full max-w-full"
-                    >
-                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-left break-words overflow-wrap-anywhere">
-                        {entry.exercise?.name || 'Неизвестное упражнение'}
-                      </div>
-                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-center">
-                        {entry.sets}
-                      </div>
-                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-center">
-                        {entry.reps}
-                      </div>
-                      <div className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white text-center">
-                        {entry.displayAmount ?? entry.weight} {entry.displayUnit ?? 'кг'}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div>
+                {workoutEntries.map((entry) => (
+                  <ExerciseRow
+                    key={entry.id}
+                    name={entry.exercise?.name || 'Неизвестное упражнение'}
+                    sets={entry.sets}
+                    reps={entry.reps}
+                    weight={entry.displayAmount ?? entry.weight}
+                    unit={entry.displayUnit ?? 'кг'}
+                    onEdit={() => console.log('edit', entry.id)}
+                    onDelete={() => console.log('delete', entry.id)}
+                    onNote={() => console.log('note', entry.id)}
+                    onMedia={() => console.log('media', entry.id)}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -639,8 +615,6 @@ const Workouts = () => {
             </button>
           </div>
         </div>
-      </div>
-
       {/* Exercise Category Sheet */}
       <ExerciseCategorySheet
         isOpen={isExerciseCategorySheetOpen}
@@ -700,7 +674,7 @@ const Workouts = () => {
         }}
         isSaving={isSaving}
       />
-    </div>
+    </ScreenContainer>
   );
 };
 

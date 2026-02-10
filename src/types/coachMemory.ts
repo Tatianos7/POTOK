@@ -20,7 +20,7 @@ export type EmotionalState =
   | 'reframe';
 
 export interface CoachMemoryEvent {
-  id: string;
+  id?: string;
   type: string;
   timestamp: string;
   payload: Record<string, unknown>;
@@ -79,5 +79,16 @@ export interface CoachExplainabilityBinding {
   emotional_state: EmotionalState;
   safety_flags: string[];
   pattern_matches: string[];
+  voice?: {
+    triggered: boolean;
+    reason?: string;
+    tone?: string;
+    signals?: string[];
+  };
+  decision?: {
+    whyNow?: string;
+    basis?: string[];
+    alternatives?: string[];
+  };
   explainabilityRef?: string;
 }

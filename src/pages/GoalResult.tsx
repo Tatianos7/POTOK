@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
 import { GoalFormData } from '../components/CreateGoalModal';
 import { goalService } from '../services/goalService';
 import { profileService } from '../services/profileService';
+import { uiRuntimeAdapter } from '../services/uiRuntimeAdapter';
 
 interface CalculatedResult {
   bmr: number;
@@ -147,11 +148,12 @@ const calculateMonthsToGoal = (
 };
 
 const GoalResult = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [formData, setFormData] = useState<GoalFormData | null>(null);
   const [result, setResult] = useState<CalculatedResult | null>(null);
+  const saveInFlightRef = useRef(false);
 
   useEffect(() => {
     if (!user) {
@@ -208,6 +210,20 @@ const GoalResult = () => {
     }
   }, [user, navigate, location]);
 
+  useEffect(() => {
+    if (!user || !result) return;
+    void uiRuntimeAdapter.getDecisionSupport({
+      decision_type: 'goal_change',
+      emotional_state: 'neutral',
+      trust_level: 50,
+      history_pattern: `Оценка срока: ${result.monthsToGoal} мес.`,
+      user_mode: 'Manual',
+      screen: 'GoalResult',
+      subscription_state: user.hasPremium ? 'Premium' : 'Free',
+      safety_flags: [],
+    });
+  }, [user, result]);
+
   // Маппинг образа жизни
   const getLifestyleLabel = (lifestyle: string): string => {
     const labels: Record<string, string> = {
@@ -232,8 +248,10 @@ const GoalResult = () => {
     return workouts[lifestyle] || '-';
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!user?.id || !formData || !result) return;
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
 
     const goalTypeMap: Record<string, string> = {
       'weight-loss': 'Похудение',
@@ -250,21 +268,6 @@ const GoalResult = () => {
       endDateObj.setMonth(endDateObj.getMonth() + result.monthsToGoal);
       endDate = endDateObj.toISOString().split('T')[0];
     }
-
-    // Save goal macros (source of truth)
-    await goalService.saveUserGoal(user.id, {
-      calories: result.calories,
-      protein: result.proteins,
-      fat: result.fats,
-      carbs: result.carbs,
-    });
-
-    // Persist profile fields used across manual flow
-    await profileService.saveProfile(user.id, {
-      age: Number(formData.age),
-      height: Number(formData.height),
-      goal: goalTypeMap[formData.goal] || formData.goal,
-    });
 
     // Save additional goal data to localStorage (goalType, dates, etc.)
     const goalData = {
@@ -287,6 +290,21 @@ const GoalResult = () => {
     };
 
     localStorage.setItem(`goal_${user.id}`, JSON.stringify(goalData));
+
+    // Fire-and-forget: do not block UI transition on network calls
+    void goalService.saveUserGoal(user.id, {
+      calories: result.calories,
+      protein: result.proteins,
+      fat: result.fats,
+      carbs: result.carbs,
+    });
+
+    void profileService.saveProfile(user.id, {
+      age: Number(formData.age),
+      height: Number(formData.height),
+      goal: goalTypeMap[formData.goal] || formData.goal,
+    });
+
     navigate('/goal');
   };
 
@@ -304,153 +322,122 @@ const GoalResult = () => {
     );
   }
 
+  const isPremium = Boolean(user?.hasPremium ?? profile?.has_premium ?? false);
+
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden" style={{ minWidth: '360px' }}>
-      <div className="max-w-[768px] mx-auto w-full flex flex-col h-full">
-        {/* Header */}
-        <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <div className="flex-1"></div>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase">
+    <div
+      className="flex flex-col bg-white dark:bg-gray-900 overflow-hidden"
+      style={{ minWidth: '320px', maxHeight: '90dvh', height: 'auto' }}
+    >
+      <div className="mx-auto w-full flex flex-col" style={{ maxWidth: 480, maxHeight: '90dvh' }}>
+        <header className="px-4 py-3 flex items-center justify-between">
+          <div className="w-6" />
+          <h1 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
             ВАШИ РЕЗУЛЬТАТЫ
           </h1>
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={handleClose}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              aria-label="Закрыть"
-            >
-              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            </button>
-          </div>
+          <button
+            onClick={handleClose}
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            aria-label="Закрыть"
+          >
+            <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+          </button>
         </header>
 
-        <main className="flex-1 overflow-y-auto min-h-0 px-4 py-6">
-          {/* User Input Summary */}
-          <div className="space-y-3 mb-6">
-            <div>
-              <p className="text-sm text-gray-900 dark:text-white">
-                Ваш возраст: <span className="font-medium">{formData.age} лет</span>
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-900 dark:text-white">
-                Ваш вес: <span className="font-medium">{formData.weight} кг</span>
-              </p>
-            </div>
+        <main className="flex-1 overflow-y-auto min-h-0 px-5 pb-4">
+          <div className="space-y-3 text-sm text-gray-900 dark:text-white">
+            <p>
+              Ваш возраст: <span className="font-medium">{formData.age} лет</span>
+            </p>
+            <p>
+              Ваш вес: <span className="font-medium">{formData.weight} кг</span>
+            </p>
             {formData.goal === 'weight-loss' && formData.targetWeight && (
-              <div>
-                <p className="text-sm text-gray-900 dark:text-white">
-                  Ваша цель: <span className="font-medium">{formData.targetWeight} кг</span>
-                </p>
-              </div>
-            )}
-            <div>
-              <p className="text-sm text-gray-900 dark:text-white">
-                Образ жизни: <span className="font-medium">{getLifestyleLabel(formData.lifestyle)}</span>
+              <p>
+                Ваша цель: <span className="font-medium">{formData.targetWeight} кг</span>
               </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-900 dark:text-white">
-                Кол-во тренировок в неделю: <span className="font-medium">{getWorkoutsPerWeek(formData.lifestyle)}</span>
-              </p>
-            </div>
-            {formData.goal === 'weight-loss' && formData.intensity && (
-              <div>
-                <p className="text-sm text-gray-900 dark:text-white">
-                  Интенсивность похудения: <span className="font-medium">{formData.intensity}%</span>
-                </p>
-              </div>
             )}
+            <p>
+              Образ жизни: <span className="font-medium">{getLifestyleLabel(formData.lifestyle)}</span>
+            </p>
+            <p>
+              Кол-во тренировок в неделю: <span className="font-medium">{getWorkoutsPerWeek(formData.lifestyle)}</span>
+            </p>
           </div>
 
-          {/* BMR and TDEE Display */}
-          <div className="mb-6 space-y-2">
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                BMR (базовый метаболизм): <span className="font-medium text-gray-900 dark:text-white">{result.bmr} ккал</span>
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                TDEE (общий расход энергии): <span className="font-medium text-gray-900 dark:text-white">{result.tdee} ккал</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Goal Achievement Estimate */}
           {formData.goal === 'weight-loss' && result.monthsToGoal > 0 && (
-            <div className="mb-6">
-              <p className="text-sm text-gray-900 dark:text-white">
-                Для достижения цели: понадобится <span className="font-medium">{result.monthsToGoal} {result.monthsToGoal === 1 ? 'месяц' : result.monthsToGoal < 5 ? 'месяца' : 'месяцев'}</span>
-              </p>
-            </div>
+            <p className="mt-4 text-sm text-gray-900 dark:text-white">
+              Для достижения цели: понадобится{' '}
+              <span className="font-medium">
+                {result.monthsToGoal} {result.monthsToGoal === 1 ? 'месяц' : result.monthsToGoal < 5 ? 'месяца' : 'месяцев'}
+              </span>
+            </p>
           )}
 
-          {/* Daily Calorie and Macronutrient Section */}
-          <div className="mb-6">
-            <h2 className="text-sm font-medium text-gray-900 dark:text-white mb-4">
-              Ваш суточный калораж:
-            </h2>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-                  калории
-                </label>
-                <div className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-center font-semibold text-gray-900 dark:text-white">
-                  {result.calories}
-                </div>
+          <div className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
+            <p>
+              BMR (базовый метаболизм):{' '}
+              <span className="font-medium text-gray-900 dark:text-white">{Math.round(result.bmr)} ккал</span>
+            </p>
+            <p>
+              TDEE (общий расход энергии):{' '}
+              <span className="font-medium text-gray-900 dark:text-white">{Math.round(result.tdee)} ккал</span>
+            </p>
+          </div>
+
+          <div className="mt-4 text-sm text-gray-700 dark:text-gray-300">
+            Ваш суточный калораж:
+          </div>
+
+          <div className="mt-2 grid grid-cols-2 min-[360px]:grid-cols-4 gap-2">
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[11px] text-gray-600 dark:text-gray-400">калории</span>
+              <div className="w-full rounded-full border border-gray-300 dark:border-gray-600 px-3 py-1 text-center text-sm font-medium text-gray-900 dark:text-white">
+                {result.calories}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-                  белки
-                </label>
-                <div className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-center font-semibold text-gray-900 dark:text-white">
-                  {result.proteins} г
-                </div>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[11px] text-gray-600 dark:text-gray-400">белки</span>
+              <div className="w-full rounded-full border border-gray-300 dark:border-gray-600 px-3 py-1 text-center text-sm font-medium text-gray-900 dark:text-white">
+                {result.proteins}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-                  жиры
-                </label>
-                <div className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-center font-semibold text-gray-900 dark:text-white">
-                  {result.fats} г
-                </div>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[11px] text-gray-600 dark:text-gray-400">жиры</span>
+              <div className="w-full rounded-full border border-gray-300 dark:border-gray-600 px-3 py-1 text-center text-sm font-medium text-gray-900 dark:text-white">
+                {result.fats}
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
-                  углеводы
-                </label>
-                <div className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-center font-semibold text-gray-900 dark:text-white">
-                  {result.carbs} г
-                </div>
+            </div>
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-[11px] text-gray-600 dark:text-gray-400">углеводы</span>
+              <div className="w-full rounded-full border border-gray-300 dark:border-gray-600 px-3 py-1 text-center text-sm font-medium text-gray-900 dark:text-white">
+                {result.carbs}
               </div>
             </div>
           </div>
 
-          {/* Premium Feature Prompt */}
-          <div className="mb-6 space-y-2">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Советы по питанию
-            </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Советы по тренировкам
-            </p>
-            <p className="text-sm font-medium text-green-600 dark:text-green-400">
-              при подключении тарифа PREMIUM вы получите персональный план питания и тренировок
-            </p>
-          </div>
-
-          {/* Action Button */}
-          <div className="pt-6 pb-6">
+          {!isPremium && (
             <button
-              onClick={handleSave}
-              style={{ height: '45px', minHeight: '45px', maxHeight: '45px', boxSizing: 'border-box' }}
-              className="w-full max-w-full min-[768px]:button-limited mx-1 px-2.5 flex items-center justify-center rounded-xl font-semibold text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              type="button"
+              onClick={() => navigate('/paywall')}
+              className="mt-4 text-sm font-medium text-green-600 dark:text-green-400 break-words text-left cursor-pointer"
             >
-              СОХРАНИТЬ
+              при подключении тарифа PREMIUM вы получите план питания и тренировок под вашу цель
             </button>
-          </div>
+          )}
         </main>
+
+        <div
+          className="px-5 pb-4"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
+        >
+          <button
+            onClick={handleSave}
+            className="w-full rounded-full border border-gray-900 dark:border-gray-300 py-3 text-sm font-semibold uppercase text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            СОХРАНИТЬ
+          </button>
+        </div>
       </div>
     </div>
   );

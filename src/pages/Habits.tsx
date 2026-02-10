@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Plus, Check, Circle, Calendar } from 'lucide-react';
+import { X, Check, Circle, Calendar } from 'lucide-react';
 import { createHabit, toggleHabitComplete, HabitWithStatus, HabitFrequency } from '../services/habitsService';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import type { HabitsExplainabilityDTO } from '../types/explainability';
@@ -11,9 +11,14 @@ import Timeline from '../ui/components/Timeline';
 import StateContainer from '../ui/components/StateContainer';
 import TrustBanner from '../ui/components/TrustBanner';
 import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
+import ScreenContainer from '../ui/components/ScreenContainer';
+import Button from '../ui/components/Button';
+import Input from '../ui/components/Input';
+import { colors, spacing, typography } from '../ui/theme/tokens';
 import CoachMessageCard from '../ui/coach/CoachMessageCard';
 import CoachNudge from '../ui/coach/CoachNudge';
 import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
+import CoachRequestModal from '../ui/coach/CoachRequestModal';
 import { coachRuntime, type CoachResponse, type CoachScreenContext } from '../services/coachRuntime';
 import type { CoachExplainabilityBinding } from '../types/coachMemory';
 
@@ -34,6 +39,7 @@ const Habits = () => {
   const [habitStats, setHabitStats] = useState<Record<string, { streak: number; adherence: number }>>({});
   const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
   const [coachExplainability, setCoachExplainability] = useState<CoachExplainabilityBinding | null>(null);
+  const [coachRequestOpen, setCoachRequestOpen] = useState(false);
 
   const buildCoachContext = (): CoachScreenContext => ({
     screen: 'Habits',
@@ -259,37 +265,29 @@ const Habits = () => {
   }, [explainability?.decision_ref, user?.hasPremium]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
-      <div className="container-responsive">
-        {/* Header */}
-        <header className="py-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
-          <div className="flex-1" />
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white flex-1 text-center uppercase">
-            ПРИВЫЧКИ
-          </h1>
-          <div className="flex-1 flex justify-end">
-            <button
-              onClick={() => navigate('/')}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-              aria-label="Закрыть"
-            >
-              <X className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            </button>
-          </div>
-        </header>
+    <ScreenContainer>
+      <header className="flex items-center justify-between" style={{ marginBottom: spacing.lg }}>
+        <div style={{ width: 32 }} />
+        <h1 style={{ ...typography.title, textTransform: 'uppercase', textAlign: 'center' }}>Привычки</h1>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/')} aria-label="Закрыть">
+          <X className="w-5 h-5" style={{ color: colors.text.secondary }} />
+        </Button>
+      </header>
 
-        <main className="py-4 tablet:py-6">
-          <StateContainer
-            status={runtimeStatus}
-            message={runtimeStatus === 'empty' ? 'Пока нет привычек. Начните с одной опоры.' : errorMessage || undefined}
-            onRetry={() => {
-              if (runtimeStatus === 'offline') {
-                uiRuntimeAdapter.revalidate().finally(loadHabits);
-              } else {
-                uiRuntimeAdapter.recover().finally(loadHabits);
-              }
-            }}
-          >
+      <StateContainer
+        status={runtimeStatus}
+        message={runtimeStatus === 'empty' ? 'Пока нет привычек. Начните с одной опоры.' : errorMessage || undefined}
+        onRetry={() => {
+          if (runtimeStatus === 'offline') {
+            uiRuntimeAdapter.revalidate().finally(loadHabits);
+          } else {
+            uiRuntimeAdapter.recover().finally(loadHabits);
+          }
+        }}
+      >
+        <Button variant="outline" size="sm" onClick={() => setCoachRequestOpen(true)} style={{ marginBottom: spacing.sm }}>
+          🧠 Спросить коуча
+        </Button>
             {coachOverlay && (
               <CoachNudge message={coachOverlay.coach_message} mode={coachOverlay.ui_mode} />
             )}
@@ -312,48 +310,37 @@ const Habits = () => {
             )}
 
             <div className="space-y-4">
-              <Card title="Ритм дня" action={<span className="text-xs text-gray-500">{formatDate(selectedDate)}</span>}>
+              <Card title="Ритм дня" action={<span style={typography.micro}>{formatDate(selectedDate)}</span>}>
                 <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => handleDateChange(-1)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                    aria-label="Предыдущий день"
-                  >
-                    <Calendar className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                  </button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDateChange(-1)} aria-label="Предыдущий день">
+                    <Calendar className="w-5 h-5" style={{ color: colors.text.secondary }} />
+                  </Button>
                   <div className="text-center">
-                    <p className="text-xs text-gray-600 dark:text-gray-400">Выполнено</p>
-                    <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <p style={typography.micro}>Выполнено</p>
+                    <p style={{ ...typography.title, fontSize: '18px' }}>
                       {completedHabits}/{totalHabits}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleDateChange(1)}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                    aria-label="Следующий день"
-                  >
-                    <Calendar className="w-5 h-5 text-gray-700 dark:text-gray-300 rotate-180" />
-                  </button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDateChange(1)} aria-label="Следующий день">
+                    <Calendar className="w-5 h-5 rotate-180" style={{ color: colors.text.secondary }} />
+                  </Button>
                 </div>
-                <div className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+                <div style={{ ...typography.subtitle, marginTop: spacing.sm }}>
                   Устойчивость: {adherenceRate}% · Стрики укрепляют доверие к себе.
                 </div>
               </Card>
 
               <Timeline title="Линия ритма" items={rhythmTimeline} />
 
-              <Card title="Мои привычки" action={<span className="text-xs text-gray-500">{totalHabits} активных</span>}>
+              <Card title="Мои привычки" action={<span style={typography.micro}>{totalHabits} активных</span>}>
                 {totalHabits === 0 ? (
                   <div className="text-center py-6">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    <p style={{ ...typography.body, marginBottom: spacing.sm }}>
                       Привычки — это опора, а не контроль. Начните с одной.
                     </p>
-                    <button
-                      onClick={() => setIsCreateModalOpen(true)}
-                      className="px-4 py-2 rounded-lg border border-gray-300 text-gray-800 text-xs font-semibold hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                    >
+                    <Button variant="outline" size="sm" onClick={() => setIsCreateModalOpen(true)}>
                       Создать первую привычку
-                    </button>
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -370,28 +357,36 @@ const Habits = () => {
                       return (
                         <div
                           key={habit.id}
-                          className="flex items-start justify-between gap-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700"
+                          className="flex items-start justify-between gap-3"
+                          style={{
+                            borderRadius: 10,
+                            border: `1px solid ${colors.border}`,
+                            padding: spacing.sm,
+                            backgroundColor: colors.surface,
+                          }}
                         >
                           <div className="flex-1">
-                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                              {habit.title}
-                            </h3>
+                            <h3 style={typography.body}>{habit.title}</h3>
                             {habit.description && (
-                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                              <p style={{ ...typography.subtitle, marginTop: spacing.xs }}>
                                 {habit.description}
                               </p>
                             )}
-                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                              <span>{habit.frequency === 'daily' ? 'Ежедневно' : 'Еженедельно'}</span>
-                              <span>•</span>
-                              <span>Стрик: {habitStats[habit.id]?.streak ?? 0}</span>
-                              <span>•</span>
-                              <span>Ритм: {Math.round((habitStats[habit.id]?.adherence ?? 0) * 100)}%</span>
-                              <span>•</span>
-                              <span>{statusLabel}</span>
+                            <div className="flex flex-wrap items-center" style={{ gap: spacing.xs, marginTop: spacing.xs }}>
+                              <span style={typography.micro}>
+                                {habit.frequency === 'daily' ? 'Ежедневно' : 'Еженедельно'}
+                              </span>
+                              <span style={typography.micro}>•</span>
+                              <span style={typography.micro}>Стрик: {habitStats[habit.id]?.streak ?? 0}</span>
+                              <span style={typography.micro}>•</span>
+                              <span style={typography.micro}>
+                                Ритм: {Math.round((habitStats[habit.id]?.adherence ?? 0) * 100)}%
+                              </span>
+                              <span style={typography.micro}>•</span>
+                              <span style={typography.micro}>{statusLabel}</span>
                             </div>
                             {status !== 'on_track' && (
-                              <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                              <p style={{ ...typography.micro, marginTop: spacing.xs }}>
                                 Ритм важнее идеальности. Мы поможем вернуться.
                               </p>
                             )}
@@ -399,11 +394,13 @@ const Habits = () => {
                           <button
                             onClick={() => handleToggleHabit(habit.id)}
                             disabled={isWorking}
-                            className={`mt-1 p-2 rounded-lg transition-colors ${
-                              habit.completed
-                                ? 'bg-emerald-500 text-white'
-                                : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-                            }`}
+                            className="mt-1 flex h-9 w-9 items-center justify-center"
+                            style={{
+                              borderRadius: 10,
+                              border: `1px solid ${colors.border}`,
+                              backgroundColor: habit.completed ? colors.success : colors.emotional.support,
+                              color: habit.completed ? '#FFFFFF' : colors.text.secondary,
+                            }}
                             aria-label={habit.completed ? 'Отметить как невыполненное' : 'Отметить как выполненное'}
                           >
                             {habit.completed ? <Check className="w-5 h-5" /> : <Circle className="w-5 h-5" />}
@@ -416,31 +413,33 @@ const Habits = () => {
               </Card>
 
               <Card title="Создать привычку">
-                <p className="text-xs text-gray-600 dark:text-gray-400">
+                <p style={typography.subtitle}>
                   Привычка — это ваш ритм. Мы помогаем удерживать его мягко.
                 </p>
-                <button
+                <Button
+                  variant="primary"
+                  size="lg"
                   onClick={() => setIsCreateModalOpen(true)}
                   disabled={isWorking}
-                  className="mt-3 w-full rounded-xl bg-gray-900 text-white py-3 text-sm font-semibold uppercase hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                  style={{ width: '100%', marginTop: spacing.sm }}
                 >
                   Создать привычку
-                </button>
+                </Button>
               </Card>
 
               <Card tone="explainable" title="Почему привычки важны?">
-                <p className="text-xs text-gray-600 dark:text-gray-400">
+                <p style={typography.subtitle}>
                   Мы объясняем влияние привычек на прогресс и восстановление.
                 </p>
-                <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-gray-700 dark:text-gray-300">
-                  <div>Источники: {explainability?.data_sources?.join(', ') || '—'}</div>
-                  <div>Уверенность: {explainability?.confidence ?? '—'}</div>
-                  <div>Trust: {explainability?.trust_level ?? '—'}</div>
-                  <div>Safety: {explainability?.safety_notes?.join(', ') || '—'}</div>
+                <div className="grid grid-cols-2" style={{ gap: spacing.sm, marginTop: spacing.sm }}>
+                  <div style={typography.body}>Источники: {explainability?.data_sources?.join(', ') || '—'}</div>
+                  <div style={typography.body}>Уверенность: {explainability?.confidence ?? '—'}</div>
+                  <div style={typography.body}>Trust: {explainability?.trust_level ?? '—'}</div>
+                  <div style={typography.body}>Safety: {explainability?.safety_notes?.join(', ') || '—'}</div>
                 </div>
-                <div className="mt-4">
+                <div style={{ marginTop: spacing.md }}>
                   <ExplainabilityDrawer explainability={explainability} />
-                  <div className="mt-3">
+                  <div style={{ marginTop: spacing.sm }}>
                     <CoachExplainabilityDrawer
                       decisionId={explainability?.decision_ref}
                       trace={coachExplainability}
@@ -454,105 +453,108 @@ const Habits = () => {
 
               {trustMessage && (
                 <Card title="Поддержка">
-                  <p className="text-xs text-gray-600 dark:text-gray-400">{trustMessage}</p>
+                  <p style={typography.subtitle}>{trustMessage}</p>
                 </Card>
               )}
             </div>
-          </StateContainer>
-        </main>
-      </div>
+      </StateContainer>
 
       {/* Create Habit Modal */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
-          <div className="w-full max-w-[768px] mx-auto bg-white dark:bg-gray-900 rounded-t-3xl p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Создать привычку
-              </h2>
-              <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
-              >
-                <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-              </button>
+          <div
+            className="w-full max-w-[768px] mx-auto max-h-[90vh] overflow-y-auto"
+            style={{ backgroundColor: colors.surface, borderRadius: 16, padding: spacing.lg }}
+          >
+            <div className="flex items-center justify-between" style={{ marginBottom: spacing.lg }}>
+              <h2 style={typography.title}>Создать привычку</h2>
+              <Button variant="ghost" size="sm" onClick={() => setIsCreateModalOpen(false)}>
+                <X className="w-5 h-5" style={{ color: colors.text.secondary }} />
+              </Button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Название *
-                </label>
-                <input
-                  type="text"
-                  value={newHabitTitle}
-                  onChange={(e) => setNewHabitTitle(e.target.value)}
-                  placeholder="Например: Ложиться спать до 23:00"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                />
-              </div>
+            <div className="flex flex-col" style={{ gap: spacing.md }}>
+              <Input
+                label="Название"
+                value={newHabitTitle}
+                onChange={(e) => setNewHabitTitle(e.target.value)}
+                placeholder="Например: Ложиться спать до 23:00"
+              />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Описание (необязательно)
-                </label>
+              <div className="flex flex-col" style={{ gap: spacing.xs }}>
+                <label style={typography.subtitle}>Описание (необязательно)</label>
                 <textarea
                   value={newHabitDescription}
                   onChange={(e) => setNewHabitDescription(e.target.value)}
                   placeholder="Зачем мне это? Например: больше энергии утром"
                   rows={3}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 resize-none"
+                  style={{
+                    borderRadius: 10,
+                    border: `1px solid ${colors.border}`,
+                    backgroundColor: colors.surface,
+                    color: colors.text.primary,
+                    padding: `10px ${spacing.md}px`,
+                    fontSize: '14px',
+                    resize: 'none',
+                  }}
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Частота
-                </label>
-                <div className="flex gap-3">
-                  <button
-                  onClick={() => setNewHabitFrequency('daily')}
-                    className={`flex-1 px-4 py-3 rounded-xl border-2 font-medium transition-colors ${
-                      newHabitFrequency === 'daily'
-                        ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
-                    }`}
+              <div className="flex flex-col" style={{ gap: spacing.xs }}>
+                <label style={typography.subtitle}>Частота</label>
+                <div className="flex" style={{ gap: spacing.sm }}>
+                  <Button
+                    variant={newHabitFrequency === 'daily' ? 'primary' : 'outline'}
+                    size="md"
+                    onClick={() => setNewHabitFrequency('daily')}
+                    style={{ flex: 1 }}
                   >
                     Ежедневно
-                  </button>
-                  <button
-                  onClick={() => setNewHabitFrequency('weekly')}
-                    className={`flex-1 px-4 py-3 rounded-xl border-2 font-medium transition-colors ${
-                      newHabitFrequency === 'weekly'
-                        ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-gray-900'
-                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
-                    }`}
+                  </Button>
+                  <Button
+                    variant={newHabitFrequency === 'weekly' ? 'primary' : 'outline'}
+                    size="md"
+                    onClick={() => setNewHabitFrequency('weekly')}
+                    style={{ flex: 1 }}
                   >
                     Еженедельно
-                  </button>
+                  </Button>
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setIsCreateModalOpen(false)}
-                  className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
+              <div className="flex" style={{ gap: spacing.sm, paddingTop: spacing.xs }}>
+                <Button variant="outline" size="lg" onClick={() => setIsCreateModalOpen(false)} style={{ flex: 1 }}>
                   Отмена
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
+                  size="lg"
                   onClick={handleCreateHabit}
                   disabled={!newHabitTitle.trim() || isWorking}
-                  className="flex-1 px-4 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  style={{ flex: 1 }}
                 >
                   Создать
-                </button>
+                </Button>
               </div>
             </div>
           </div>
         </div>
       )}
-    </div>
+      {coachRequestOpen && (
+        <CoachRequestModal
+          open={coachRequestOpen}
+          onClose={() => setCoachRequestOpen(false)}
+          context={{
+            screen: 'Habits',
+            userMode: 'Manual',
+            subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
+            trustLevel: explainability?.trust_level ?? explainability?.trust_score,
+            adherence: adherenceRate ? adherenceRate / 100 : undefined,
+            streak: Math.max(...Object.values(habitStats).map((stat) => stat?.streak ?? 0), 0),
+          }}
+        />
+      )}
+    </ScreenContainer>
   );
 };
 

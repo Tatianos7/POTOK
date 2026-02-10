@@ -20,9 +20,14 @@ const CoachDialog = ({
   const styles = coachModeStyles[mode];
 
   return (
-    <section className={`rounded-2xl p-5 ${styles.container} ${coachAnimations.calmEnter}`}>
-      <h3 className={styles.title}>{title}</h3>
-      <p className={`${styles.body} mt-2`}>{message}</p>
+    <section
+      className={`rounded-2xl p-5 ${coachAnimations.calmEnter}`}
+      style={styles.containerStyle}
+    >
+      <h3 style={styles.titleStyle}>{title}</h3>
+      <p className="mt-2" style={styles.bodyStyle}>
+        {message}
+      </p>
       {(primaryAction || secondaryAction) && (
         <div className="mt-4 flex flex-wrap gap-2">
           {primaryAction}

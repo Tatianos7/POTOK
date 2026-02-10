@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { coachModeStyles, type CoachEmotionalMode } from './coachStyles';
 import { coachAnimations } from './coachAnimations';
-import { typography } from '../theme/tokens';
+import { radius, spacing, typography } from '../theme/tokens';
 
 interface CoachNudgeProps {
   label?: string;
@@ -14,11 +14,18 @@ const CoachNudge = ({ label = 'Coach Nudge', message, mode = 'support', action }
   const styles = coachModeStyles[mode];
 
   return (
-    <div className={`rounded-xl px-4 py-3 ${styles.container} ${coachAnimations.gentlePulse}`}>
+    <div
+      className={`${coachAnimations.gentlePulse} ${coachAnimations.softFade}`}
+      style={{
+        ...styles.containerStyle,
+        borderRadius: radius.md,
+        padding: `${spacing.sm}px ${spacing.md}px`,
+      }}
+    >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className={`${typography.micro} ${styles.accent}`}>{label}</p>
-          <p className={styles.body}>{message}</p>
+          <p style={{ ...typography.micro, color: styles.accentColor }}>{label}</p>
+          <p style={styles.bodyStyle}>{message}</p>
         </div>
         {action}
       </div>

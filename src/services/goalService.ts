@@ -10,12 +10,26 @@ export interface UserGoal {
 }
 
 class GoalService {
+  private saveErrorLogged = false;
   private assertGoalValid(goal: UserGoal): void {
     const values = [goal.calories, goal.protein, goal.fat, goal.carbs];
     const invalid = values.some((value) => !Number.isFinite(value) || value < 0);
     if (invalid) {
       throw new Error('[goalService] Invalid goal values');
     }
+  }
+
+  private logSupabaseErrorOnce(context: string, error: any): void {
+    if (this.saveErrorLogged) return;
+    this.saveErrorLogged = true;
+    console.warn('[goalService] Supabase error:', {
+      context,
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+      status: error?.status,
+    });
   }
 
   private async getSessionUserId(userId?: string): Promise<string> {
@@ -121,7 +135,7 @@ class GoalService {
           });
 
         if (error) {
-          console.error('[goalService] Supabase save error:', error);
+          this.logSupabaseErrorOnce('user_goals upsert', error);
         }
 
         const today = new Date().toISOString().split('T')[0];
@@ -155,10 +169,10 @@ class GoalService {
             `goal-${sessionUserId}-${today}`
           );
         } catch (queueError) {
-          console.error('[goalService] Failed to queue AI recommendation:', queueError);
+          this.logSupabaseErrorOnce('ai_recommendations queue', queueError);
         }
       } catch (err) {
-        console.error('[goalService] Supabase save connection error:', err);
+        this.logSupabaseErrorOnce('goalService save connection', err);
       }
     }
 
@@ -182,4 +196,3 @@ class GoalService {
 }
 
 export const goalService = new GoalService();
-

@@ -3963,6 +3963,41 @@ ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
 279 | Trust timeline | Скрыт в Free / виден в Premium | CoachExplainabilityDrawer | Честность | Без давления | Гейтинг доверия | Гейтинг работает
 280 | Эмоциональная глубина | Free: нейтрально, Premium: адаптивно | CoachMessageCard | Мягкий тон | Без давления | Причина тона | Тон различается
 
+# Phase 8 — Production Hardening & Alpha Readiness (E2E 281–300)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+281 | Memory cleared | Сброс тона и памяти | CoachMessageCard | Новый старт | Без давления | Память сброшена | Тон reset
+282 | Crisis input | Safe‑mode включен | CoachSafetyBanner | Поддержка | Safety‑first | Причина | Crisis handled
+283 | Offline runtime | Fallback коуч | CoachNudge | Спокойно | Без риска | Limited explain | Degrade ok
+284 | High latency | Graceful response | CoachMessageCard | Без ожидания | Safe‑tone | Без деталей | SLA ok
+285 | Memory service down | Simplified coach | CoachMessageCard | Trust‑safe | Без риска | Explainable fallback | Works
+286 | Explainability failure | Без деталей | CoachExplainabilityDrawer | Прозрачно | Без риска | “Без деталей” | Copy ok
+287 | Premium downgrade | Снижение глубины | CoachMessageCard | Честно | Без давления | Причина | Depth reduced
+288 | Trust rebuild | Мягкая динамика | CoachMessageCard | Trust‑repair | Без давления | История учтена | Trust grows
+289 | Long absence | Warm return | CoachDialog | Поддержка | Safe‑tone | История учтена | Return ok
+290 | Circuit breaker open | Коуч молчит | No coach UI | Без давления | Без риска | — | Silent ok
+291 | Emotion calc failure | Neutral tone | CoachMessageCard | Без давления | Safe‑tone | Причина | Neutral ok
+292 | Memory TTL | Старые события удалены | CoachExplainabilityDrawer | Честность | Без давления | TTL applied | TTL ok
+293 | Data minimization | Сжатие payload | Backend only | Trust‑safe | Safe‑tone | — | Minimize ok
+294 | Trust telemetry | Метрики обновлены | — | Observed | — | — | Metrics ok
+295 | Explainability latency | Telemetry recorded | — | Observed | — | — | Metrics ok
+296 | Memory hits | Telemetry recorded | — | Observed | — | — | Metrics ok
+297 | Helpfulness score | Captured | — | Observed | — | — | Metric ok
+298 | Engagement loop | Daily return | UX nudge | Support | Safe‑tone | — | Return tracked
+299 | Compliance check | Disclaimer route | CoachSafetyBanner | Без давления | Safety‑first | Причина | Disclaimer ok
+300 | Alpha readiness | All checks pass | — | Trust‑safe | Safe‑tone | Explainable | Ready
+
+# Phase 8 — User‑Initiated Coach Interaction (E2E 301–305)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+301 | Пользователь вызывает коуча | Ответ по запросу | CoachDialog | Уверенность | Safe‑tone | Trace доступен | Ответ есть
+302 | «Почему план изменился» | Разъяснение | Explainability + data_sources | Прозрачность | Без давления | Основание | Пояснение есть
+303 | «Почему у меня плато» | Нормализация | Support + explain | Без стыда | Safe‑tone | Источники | Плато объяснено
+304 | «Поддержи после срыва» | Мягкая поддержка | CoachDialog | Trust‑repair | Без давления | Причина тона | Тон корректен
+305 | Free vs Premium запрос | Разная глубина | CoachDialog | Честность | Без давления | Гейтинг памяти | Разница видна
+
 # Scenario 122 — Blocked day warning (v2)
 
 **Service Assertions**
@@ -4050,6 +4085,81 @@ ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
 
 **Expected Transitions**
 - `delivery_event → audit_logged`.
+
+# Phase 8 — Voice Coach Layer (E2E 306–310)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+306 | Premium voice support | Голосовая поддержка после пропуска | Voice coach | Support | Safe‑tone | Причина | Voice ok
+307 | Free voice gated | Кнопка заблокирована | Voice button | Честно | Без давления | Пояснение | Gate ok
+308 | Safety voice | Тон осторожный | Voice safety | Trust‑safe | Safety‑first | Причина | Safe voice ok
+309 | Voice plan explanation | Голос объясняет адаптацию | Voice explain | Прозрачность | Без давления | Источники | Explain ok
+310 | Voice disabled | Голос выключен | Settings | Уважение | Без давления | — | Voice off
+
+# Phase 8.2.5.1 — Voice UX, Settings & Trust (E2E 311–320)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+311 | Voice toggle on/off | Настройки сохраняются | Profile | Control | Safe | Почему | Saved
+312 | Risk-only | Голос только при риске | Voice | Support | Risk‑only | Сигналы | OK
+313 | Free demo | 1 реплика в неделю | Voice demo | Честно | Safe | Причина | Limit
+314 | Premium dialog | Голос в диалоге | Dialog | Trust | Safe | Причина | Voice dialog
+315 | Silent mode | Голос молчит | Quiet | Respect | Safe | Причина | Silent
+316 | Cooldown after ignore | Пауза после игнора | Quiet | Respect | Safe | Причина | Cooldown
+317 | Voice explainability | Почему голос | Drawer | Trust | Safe | Voice reason | Visible
+318 | Voice tone shift | Тон меняется | Voice | Trust | Safe | Tone reason | OK
+319 | Voice in risk | Без давления, кризисный тон | Voice safety | Trust‑safe | Crisis | Причина | OK
+320 | Paywall reason | Голос = живое сопровождение | Paywall | Честно | Safe | Объяснение | Copy ok
+
+# Phase 8.2.6 — Decision Companion (E2E 321–340)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+321 | Decision under fatigue | Мягкая поддержка | Decision card | Support | Safety | Почему сейчас | OK
+322 | Decision after relapse | Рефрейм без стыда | Decision card | Trust | Safe | Основание | OK
+323 | Decision low trust | Возврат контроля | Decision card | Trust repair | Safe | Почему сейчас | OK
+324 | Decision to pause | Уважение к паузе | Decision card | Respect | Safe | Альтернативы | OK
+325 | Decision to return | Мягкий старт | Decision card | Support | Safe | Основание | OK
+326 | Decision cancel premium | Без давления | Paywall | Trust | Safe | Объяснение | OK
+327 | Goal change | Уточнение цели | GoalResult | Support | Safe | Альтернативы | OK
+328 | Plan cancel | Без обвинений | MyProgram | Trust | Safe | Почему сейчас | OK
+329 | Long pause > N days | Без давления | MyProgram | Support | Safe | Основание | OK
+330 | Plateau choice | План действия | Progress | Trust | Safe | Основание | OK
+331 | Return after pause | Мягкий ритм | Progress | Support | Safe | Альтернативы | OK
+332 | Subscription doubt | Рефрейм ценности | Paywall | Trust | Safe | Объяснение | OK
+333 | Profile reset | Бережный старт | Profile | Support | Safe | Альтернативы | OK
+334 | Decision w/ safety flags | Protect mode | Decision card | Safety | Crisis | Почему | OK
+335 | Decision in Manual | Поддержка без давления | Decision card | Respect | Safe | Основание | OK
+336 | Decision in Follow Plan | Уточнение шага | Decision card | Trust | Safe | Основание | OK
+337 | Premium decision history | История решений | Decision log | Trust | Safe | Следы | OK
+338 | Free decision gating | Без памяти | Decision card | Honest | Safe | Причина | OK
+339 | Voice decision rationale | Тон объяснён | Explainability | Trust | Safe | Voice | OK
+340 | Autonomy preserved | Выбор за пользователем | Decision UI | Respect | Safe | Альтернативы | OK
+
+# Phase 8.3 — Production Hardening & Observability (E2E 341–360)
+
+ID | Trigger | System Reaction | UX | Trust | Safety | Explainability | DoD
+---|---|---|---|---|---|---|---
+341 | Runtime timeout | Fallback support‑only | No crash | Stable | Safe | Minimal | OK
+342 | Memory error | Memory bypass | Calm copy | Trust‑safe | Safe | Limited | OK
+343 | Explainability failure | Drawer fallback | UI stable | Trust‑safe | Safe | Disabled | OK
+344 | Feature flag off | Coach absent | No UI errors | Neutral | Safe | N/A | OK
+345 | Kill switch on | Coach fully bypass | Silent | Neutral | Safe | N/A | OK
+346 | Slow network | Offline snapshot | No white screen | Stable | Safe | Deferred | OK
+347 | Budget exceeded (response) | Lightweight response | Visible | Calm | Safe | Limited | OK
+348 | Budget exceeded (explainability) | Skip explainability | Stable | Trust‑safe | Safe | Off | OK
+349 | Overlay timing slow | Telemetry warn | No UI change | Trust‑safe | Safe | N/A | OK
+350 | Telemetry event | Logged without PII | Transparent | Safe | Safe | N/A | OK
+351 | Memory disabled flag | No memory writes | Support only | Trust‑safe | Safe | Minimal | OK
+352 | Dialog disabled flag | Dialog disabled | No crash | Trust‑safe | Safe | N/A | OK
+353 | Voice disabled flag | Voice suppressed | Silent | Trust‑safe | Safe | N/A | OK
+354 | Decision support disabled | No decision card | Neutral | Trust‑safe | Safe | N/A | OK
+355 | Circuit breaker open | Null response | Stable | Trust‑safe | Safe | N/A | OK
+356 | Coach error | Logged + fallback | No crash | Trust‑safe | Safe | Minimal | OK
+357 | User ignores coach | Cooldown applied | Respectful | Trust‑safe | Safe | N/A | OK
+358 | User requests coach | Response logged | Supportive | Trust‑safe | Safe | Explainable | OK
+359 | Memory miss | Telemetry miss | No UI change | Trust‑safe | Safe | Minimal | OK
+360 | Explainability disabled | UI still works | Stable | Trust‑safe | Safe | Off | OK
 
 # Scaling Invariants
 - All reads/writes scoped by `auth.uid()`.

@@ -41,6 +41,30 @@ class AiRecommendationsService {
   private readonly MODEL_VERSION = 'v1';
   private readonly PROMPT_VERSION = 'v1';
   private readonly GENERATION_PARAMS = { temperature: 0, top_p: 1 };
+  private readonly DEFAULT_TYPE = 'recommendation';
+
+  private buildInsertPayload(
+    sessionUserId: string,
+    context: Record<string, unknown> | DayAnalysisContext,
+    inputHash: string,
+    status: string,
+    idempotencyKey?: string,
+    extra?: Record<string, unknown>
+  ): Record<string, unknown> {
+    return {
+      user_id: sessionUserId,
+      model_version: this.MODEL_VERSION,
+      prompt_version: this.PROMPT_VERSION,
+      generation_params: this.GENERATION_PARAMS,
+      type: this.DEFAULT_TYPE,
+      request_type: this.DEFAULT_TYPE,
+      input_context: context as Record<string, unknown>,
+      input_hash: inputHash,
+      idempotency_key: idempotencyKey ?? inputHash,
+      status,
+      ...extra,
+    };
+  }
 
   private async getSessionUserId(userId?: string): Promise<string> {
     if (!supabase) {
@@ -114,19 +138,20 @@ class AiRecommendationsService {
       return;
     }
 
-    const { count } = await supabase
+    const countQuery = supabase
       .from('ai_recommendations')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', sessionUserId)
       .eq('request_type', 'recommendation')
       .eq('input_context->>date', context.date)
       .in('status', ['queued', 'running']);
+    const { count } = await countQuery;
 
     if ((count ?? 0) >= this.MAX_QUEUED_PER_DAY) {
       throw new Error('[aiRecommendationsService] Rate limit exceeded for day');
     }
 
-    const { data: existing } = await supabase
+    const existingQuery = supabase
       .from('ai_recommendations')
       .select('id,status')
       .eq('user_id', sessionUserId)
@@ -134,6 +159,7 @@ class AiRecommendationsService {
       .eq('input_hash', inputHash)
       .in('status', ['queued', 'running', 'completed'])
       .limit(1);
+    const { data: existing } = await existingQuery;
 
     if (existing && existing.length > 0) {
       return;
@@ -141,17 +167,7 @@ class AiRecommendationsService {
 
     const { error } = await supabase
       .from('ai_recommendations')
-      .insert({
-        user_id: sessionUserId,
-        model_version: this.MODEL_VERSION,
-        prompt_version: this.PROMPT_VERSION,
-        generation_params: this.GENERATION_PARAMS,
-        request_type: 'recommendation',
-        input_context: context,
-        input_hash: inputHash,
-        idempotency_key: idempotencyKey ?? inputHash,
-        status: 'queued',
-      });
+      .insert(this.buildInsertPayload(sessionUserId, context, inputHash, 'queued', idempotencyKey));
 
     if (error) {
       throw error;
@@ -179,20 +195,11 @@ class AiRecommendationsService {
     const sessionUserId = await this.getSessionUserId(userId);
     const inputHash = this.buildInputHash(context);
 
-    const { error } = await supabase
-      .from('ai_recommendations')
-      .insert({
-        user_id: sessionUserId,
-        model_version: this.MODEL_VERSION,
-        prompt_version: this.PROMPT_VERSION,
-        generation_params: this.GENERATION_PARAMS,
-        request_type: 'recommendation',
-        input_context: context,
-        input_hash: inputHash,
-        idempotency_key: idempotencyKey ?? inputHash,
-        status: 'suppressed',
+    const { error } = await supabase.from('ai_recommendations').insert(
+      this.buildInsertPayload(sessionUserId, context, inputHash, 'suppressed', idempotencyKey, {
         explainability: reasons,
-      });
+      })
+    );
 
     if (error) {
       throw error;
@@ -219,18 +226,19 @@ class AiRecommendationsService {
     const sessionUserId = await this.getSessionUserId(userId);
     const inputHash = this.hashString(this.stableStringify(context));
 
-    const { count } = await supabase
+    const countQuery = supabase
       .from('ai_recommendations')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', sessionUserId)
       .eq('request_type', 'recommendation')
       .in('status', ['queued', 'running']);
+    const { count } = await countQuery;
 
     if ((count ?? 0) >= this.MAX_QUEUED_GENERIC) {
       throw new Error('[aiRecommendationsService] Rate limit exceeded');
     }
 
-    const { data: existing } = await supabase
+    const existingQuery = supabase
       .from('ai_recommendations')
       .select('id,status')
       .eq('user_id', sessionUserId)
@@ -238,6 +246,7 @@ class AiRecommendationsService {
       .eq('input_hash', inputHash)
       .in('status', ['queued', 'running', 'completed'])
       .limit(1);
+    const { data: existing } = await existingQuery;
 
     if (existing && existing.length > 0) {
       return;
@@ -245,17 +254,7 @@ class AiRecommendationsService {
 
     const { error } = await supabase
       .from('ai_recommendations')
-      .insert({
-        user_id: sessionUserId,
-        model_version: this.MODEL_VERSION,
-        prompt_version: this.PROMPT_VERSION,
-        generation_params: this.GENERATION_PARAMS,
-        request_type: 'recommendation',
-        input_context: context,
-        input_hash: inputHash,
-        idempotency_key: idempotencyKey ?? inputHash,
-        status: 'queued',
-      });
+      .insert(this.buildInsertPayload(sessionUserId, context, inputHash, 'queued', idempotencyKey));
 
     if (error) {
       throw error;
@@ -269,13 +268,14 @@ class AiRecommendationsService {
 
     const sessionUserId = await this.getSessionUserId(userId);
 
-    const { error } = await supabase
+    const updateQuery = supabase
       .from('ai_recommendations')
       .update({ status: 'outdated', updated_at: new Date().toISOString() })
       .eq('user_id', sessionUserId)
       .eq('request_type', 'recommendation')
       .eq('input_context->>date', date)
       .in('status', ['queued', 'running', 'completed']);
+    const { error } = await updateQuery;
 
     if (error) {
       throw error;

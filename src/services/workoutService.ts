@@ -13,13 +13,28 @@ class WorkoutService {
   private readonly MAX_REPS = 200;
   private readonly MAX_SETS = 50;
   private readonly MAX_VOLUME = 1000000;
-  private async withRetry<T>(fn: () => Promise<T>, attempts = 3, delayMs = 200): Promise<T> {
-    let lastError: unknown;
+  private schemaWarned = false;
+
+  private async withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 200): Promise<T> {
+    let lastError: any;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
         return await fn();
-      } catch (error) {
+      } catch (error: any) {
         lastError = error;
+        // Stop retrying for schema-related errors (missing table/column/index); return error payload for graceful fallback
+        try {
+          const { isSchemaError } = await import('./dbUtils');
+          if (isSchemaError(error)) {
+            if (!this.schemaWarned) {
+              console.warn('[workoutService] Schema error detected — operations will degrade until migration is applied');
+              this.schemaWarned = true;
+            }
+            return { data: null, error } as unknown as T;
+          }
+        } catch (e) {
+          // ignore
+        }
         if (attempt === attempts) break;
         await new Promise((resolve) => setTimeout(resolve, delayMs * attempt));
       }
@@ -181,11 +196,24 @@ class WorkoutService {
     if (createError || !newDay) {
       const errorMessage = createError?.message || 'Ошибка создания дня тренировки';
       console.error('[workoutService] Error creating workout day:', createError);
-      
+
+      try {
+        const { isSchemaError } = await import('./dbUtils');
+        if (createError && isSchemaError(createError)) {
+          if (!this.schemaWarned) {
+            console.warn('[workoutService] Schema error while creating workout day — falling back to local-only mode');
+            this.schemaWarned = true;
+          }
+          return { id: `local-${date}`, user_id: sessionUserId, date } as unknown as WorkoutDay;
+        }
+      } catch (e) {
+        // ignore import errors
+      }
+
       if (createError?.code === '42501' || errorMessage.includes('row-level security')) {
         throw new Error('Ошибка доступа: обновите RLS политики в Supabase SQL Editor. Выполните команды из файла supabase/workout_schema.sql (строки 135-145)');
       }
-      
+
       throw new Error(errorMessage);
     }
 
@@ -267,7 +295,7 @@ class WorkoutService {
       id: entry.id,
       workout_day_id: entry.workout_day_id,
       exercise_id: entry.exercise_id,
-      canonical_exercise_id: entry.canonical_exercise_id ?? null,
+      canonical_exercise_id: entry.exercise?.canonical_exercise_id ?? entry.exercise_id ?? null,
       sets: entry.sets,
       reps: entry.reps,
       weight: Number(entry.weight) || 0,
@@ -363,7 +391,6 @@ class WorkoutService {
     const entries = exercises.map(ex => ({
       workout_day_id: workoutDay.id,
       exercise_id: ex.exercise.id,
-      canonical_exercise_id: ex.exercise.canonical_exercise_id ?? ex.exercise.id,
       sets: ex.sets,
       reps: ex.reps,
       weight: convertWeightToKg(ex.weight, 'кг'),
@@ -396,11 +423,24 @@ class WorkoutService {
     if (error) {
       const errorMessage = error.message || 'Ошибка добавления упражнений';
       console.error('[workoutService] Error adding exercises:', error);
-      
+
+      try {
+        const { isSchemaError } = await import('./dbUtils');
+        if (isSchemaError(error)) {
+          if (!this.schemaWarned) {
+            console.warn('[workoutService] Schema error while upserting exercises — falling back to local-only mode');
+            this.schemaWarned = true;
+          }
+          return merged; // return local-only merged entries
+        }
+      } catch (e) {
+        // ignore
+      }
+
       if (error.code === '42501' || errorMessage.includes('row-level security')) {
         throw new Error('Ошибка доступа: обновите RLS политики в Supabase SQL Editor. Выполните команды из файла supabase/workout_schema.sql (строки 135-145)');
       }
-      
+
       throw new Error(errorMessage);
     }
 
@@ -409,7 +449,7 @@ class WorkoutService {
       id: entry.id,
       workout_day_id: entry.workout_day_id,
       exercise_id: entry.exercise_id,
-      canonical_exercise_id: entry.canonical_exercise_id ?? null,
+      canonical_exercise_id: entry.exercise?.canonical_exercise_id ?? entry.exercise_id ?? null,
       sets: entry.sets,
       reps: entry.reps,
       weight: entry.weight,

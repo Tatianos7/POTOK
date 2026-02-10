@@ -7,7 +7,7 @@ import {
   ProfileUpdatePayload,
   ResetPasswordPayload,
 } from '../types';
-import { supabase } from '../lib/supabaseClient';
+import { getSessionCached, supabase } from '../lib/supabaseClient';
 import { activityService } from '../services/activityService';
 import { profileService, type UserProfile } from '../services/profileService';
 import { useTheme } from './ThemeContext';
@@ -44,12 +44,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [trustScore, setTrustScore] = useState<number | null>(null);
   const { setThemeExplicit } = useTheme();
 
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T | null> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    try {
+      const timeoutPromise = new Promise<null>((resolve) => {
+        timeoutId = setTimeout(() => resolve(null), timeoutMs);
+      });
+      const result = await Promise.race([promise, timeoutPromise]);
+      return result as T | null;
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  };
+
   const buildUser = async (
     sessionUser: SupabaseUser
   ): Promise<{ user: User; profile: UserProfile | null }> => {
     let supabaseProfile: UserProfile | null = null;
     try {
-      supabaseProfile = await profileService.getProfile(sessionUser.id);
+      const profileResult = await withTimeout(profileService.getProfile(sessionUser.id), 5000);
+      supabaseProfile = profileResult ?? null;
     } catch (error) {
       console.warn('[AuthContext] getProfile failed, continue without profile:', error);
     }
@@ -117,25 +131,63 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let isMounted = true;
 
     const init = async () => {
-      const { data, error } = await supabaseClient.auth.getSession();
+      const sessionResult = await withTimeout(getSessionCached(), 5000);
+      if (!isMounted) return;
+      if (!sessionResult) {
+        console.warn('[AuthContext] getSession timeout, falling back to unauthenticated');
+        clearSessionState();
+        return;
+      }
+      const { data, error } = sessionResult;
       if (!isMounted) return;
 
       if (error) {
-        console.error('[AuthContext] getSession error:', error);
+        console.warn('[AuthContext] getSession error:', error);
       }
 
       const currentSession = data?.session ?? null;
 
       if (currentSession?.user) {
         try {
-          const { user: builtUser, profile: builtProfile } = await buildUser(currentSession.user);
+          const built = await withTimeout(buildUser(currentSession.user), 5000);
           if (!isMounted) return;
-          setUser(builtUser);
-          setProfile(builtProfile);
+          if (built) {
+            setUser(built.user);
+            setProfile(built.profile);
+          } else {
+            console.warn('[AuthContext] buildUser timeout, using minimal session user');
+            setUser({
+              id: currentSession.user.id,
+              name:
+                currentSession.user.email ||
+                currentSession.user.phone ||
+                'Пользователь',
+              email: currentSession.user.email ?? undefined,
+              phone: currentSession.user.phone ?? undefined,
+              hasPremium: false,
+              createdAt: currentSession.user.created_at || new Date().toISOString(),
+              profile: {
+                firstName:
+                  (currentSession.user.user_metadata?.first_name as string | undefined) || '',
+                lastName:
+                  (currentSession.user.user_metadata?.last_name as string | undefined) || undefined,
+                middleName:
+                  (currentSession.user.user_metadata?.middle_name as string | undefined) || undefined,
+                birthDate: undefined,
+                age: undefined,
+                height: undefined,
+                goal: undefined,
+                email: currentSession.user.email ?? undefined,
+                phone: currentSession.user.phone ?? undefined,
+              },
+              isAdmin: false,
+            });
+            setProfile(null);
+          }
           setAuthStatus('authenticated');
-          activityService.updateActivity(builtUser.id);
+          activityService.updateActivity(currentSession.user.id);
         } catch (buildError) {
-          console.error('[AuthContext] buildUser error:', buildError);
+          console.warn('[AuthContext] buildUser error:', buildError);
           const fallbackUser: User = {
             id: currentSession.user.id,
             name:
@@ -176,14 +228,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data: authListener } = supabaseClient.auth.onAuthStateChange(async (_event, newSession) => {
       if (newSession?.user) {
         try {
-          const { user: builtUser, profile: builtProfile } = await buildUser(newSession.user);
+          const built = await withTimeout(buildUser(newSession.user), 5000);
           if (!isMounted) return;
-          setUser(builtUser);
-          setProfile(builtProfile);
+          if (built) {
+            setUser(built.user);
+            setProfile(built.profile);
+          } else {
+            setUser({
+              id: newSession.user.id,
+              name:
+                newSession.user.email ||
+                newSession.user.phone ||
+                'Пользователь',
+              email: newSession.user.email ?? undefined,
+              phone: newSession.user.phone ?? undefined,
+              hasPremium: false,
+              createdAt: newSession.user.created_at || new Date().toISOString(),
+              profile: {
+                firstName:
+                  (newSession.user.user_metadata?.first_name as string | undefined) || '',
+                lastName:
+                  (newSession.user.user_metadata?.last_name as string | undefined) || undefined,
+                middleName:
+                  (newSession.user.user_metadata?.middle_name as string | undefined) || undefined,
+                birthDate: undefined,
+                age: undefined,
+                height: undefined,
+                goal: undefined,
+                email: newSession.user.email ?? undefined,
+                phone: newSession.user.phone ?? undefined,
+              },
+              isAdmin: false,
+            });
+            setProfile(null);
+          }
           setAuthStatus('authenticated');
-          activityService.updateActivity(builtUser.id);
+          activityService.updateActivity(newSession.user.id);
         } catch (buildError) {
-          console.error('[AuthContext] buildUser error:', buildError);
+          console.warn('[AuthContext] buildUser error:', buildError);
           const fallbackUser: User = {
             id: newSession.user.id,
             name:
@@ -385,7 +467,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
       const mapProfileToUser = (profile: Record<string, any>): User | null => {
-        const id = profile?.user_id ?? profile?.id_user ?? profile?.id;
+        const id = profile?.id_user ?? profile?.user_id ?? profile?.id;
         if (!id) {
           return null;
         }
@@ -457,22 +539,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const setAdminStatus = async (userId: string, isAdmin: boolean) => {
         if (!supabase) return;
-        const updateByColumn = async (column: 'user_id' | 'id_user') => {
-          return supabase!
-            .from('user_profiles')
-            .update({ is_admin: isAdmin })
-            .eq(column, userId);
-        };
-        const { error } = await updateByColumn('user_id');
+        const { error } = await supabase!
+          .from('user_profiles')
+          .update({ is_admin: isAdmin })
+          .eq('id_user', userId);
         if (error) {
-          if (error.message?.includes('user_profiles.user_id does not exist')) {
-            const fallback = await updateByColumn('id_user');
-            if (fallback.error) {
-              console.warn('[AuthContext] setAdminStatus error:', fallback.error.message || fallback.error);
-            }
-          } else {
-            console.warn('[AuthContext] setAdminStatus error:', error.message || error);
-          }
+          console.warn('[AuthContext] setAdminStatus error:', error.message || error);
         }
       };
 
@@ -513,4 +585,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

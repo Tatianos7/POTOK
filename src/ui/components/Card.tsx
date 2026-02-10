@@ -1,29 +1,58 @@
 import type { ReactNode } from 'react';
-import { borders, surfaces, typography } from '../theme/tokens';
+import { colors, radius, shadows, spacing, typography } from '../theme/tokens';
 
 type CardTone = 'normal' | 'explainable' | 'error' | 'premium' | 'success';
+type CardVariant = 'default' | 'surface' | 'ghost' | 'soft';
+type CardSize = 'sm' | 'md' | 'lg' | 'xl';
 
 interface CardProps {
   title?: string;
   tone?: CardTone;
+  variant?: CardVariant;
+  size?: CardSize;
   children: ReactNode;
   action?: ReactNode;
 }
 
-const toneStyles: Record<CardTone, string> = {
-  normal: `${surfaces.card} ${borders.base}`,
-  explainable: `${surfaces.muted} ${borders.base}`,
-  error: `${surfaces.error} ${borders.error}`,
-  premium: `${surfaces.warn} ${borders.warn}`,
-  success: `${surfaces.success} ${borders.success}`,
+const toneStyles: Record<CardTone, { background: string; border: string; shadow: string }> = {
+  normal: { background: colors.surface, border: colors.border, shadow: shadows.soft },
+  explainable: { background: colors.emotional.support, border: colors.border, shadow: shadows.soft },
+  error: { background: colors.emotional.fatigue, border: colors.danger, shadow: shadows.soft },
+  premium: { background: colors.emotional.plateau, border: colors.premium, shadow: shadows.soft },
+  success: { background: colors.emotional.recovery, border: colors.success, shadow: shadows.soft },
 };
 
-const Card = ({ title, tone = 'normal', children, action }: CardProps) => {
+const variantStyles: Record<CardVariant, { background: string; border: string; shadow: string }> = {
+  default: { background: colors.surface, border: colors.border, shadow: shadows.soft },
+  surface: { background: colors.surface, border: 'transparent', shadow: shadows.none },
+  ghost: { background: 'transparent', border: 'transparent', shadow: shadows.none },
+  soft: { background: colors.emotional.support, border: colors.border, shadow: shadows.soft },
+};
+
+const sizeStyles: Record<CardSize, number> = {
+  sm: spacing.md,
+  md: spacing.lg,
+  lg: spacing.xl,
+  xl: spacing.xl,
+};
+
+const Card = ({ title, tone = 'normal', variant, size = 'md', children, action }: CardProps) => {
+  const toneStyle = variant ? variantStyles[variant] : toneStyles[tone];
   return (
-    <section className={`rounded-2xl ${toneStyles[tone]} p-4`}>
+    <section
+      className="flex flex-col"
+      style={{
+        borderRadius: radius.lg,
+        border: `1px solid ${toneStyle.border}`,
+        backgroundColor: toneStyle.background,
+        padding: sizeStyles[size],
+        boxShadow: toneStyle.shadow,
+        gap: spacing.sm,
+      }}
+    >
       {(title || action) && (
-        <div className="flex items-start justify-between gap-3 mb-2">
-          {title && <h2 className={typography.title}>{title}</h2>}
+        <div className="flex items-start justify-between gap-3">
+          {title && <h2 style={typography.title}>{title}</h2>}
           {action}
         </div>
       )}

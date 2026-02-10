@@ -1,8 +1,10 @@
 import { supabase } from '../lib/supabaseClient';
 import { ProfileDetails } from '../types';
+import type { CoachSettings, CoachVoiceSettings } from '../types/coachSettings';
 
 export interface UserProfile {
-  user_id: string;
+  id_user: string;
+  user_id?: string;
   first_name?: string;
   last_name?: string;
   middle_name?: string;
@@ -21,7 +23,9 @@ export interface UserProfile {
 
 class ProfileService {
   private readonly AVATAR_STORAGE_KEY = 'potok_user_avatar';
-  private userIdColumn: 'user_id' | 'id_user' | null = null;
+  private readonly COACH_SETTINGS_KEY = 'potok_coach_settings';
+  private readonly VOICE_SETTINGS_KEY = 'potok_voice_settings';
+  private readonly userIdColumn: 'id_user' = 'id_user';
 
   private async getSessionUserId(userId?: string): Promise<string> {
     if (!supabase) {
@@ -40,23 +44,6 @@ class ProfileService {
     return data.user.id;
   }
 
-  private async resolveUserIdColumn(): Promise<'user_id' | 'id_user'> {
-    if (this.userIdColumn) {
-      return this.userIdColumn;
-    }
-    if (!supabase) {
-      this.userIdColumn = 'user_id';
-      return this.userIdColumn;
-    }
-    const { error } = await supabase.from('user_profiles').select('user_id').limit(1);
-    if (error?.message?.includes('user_profiles.user_id does not exist')) {
-      this.userIdColumn = 'id_user';
-    } else {
-      this.userIdColumn = 'user_id';
-    }
-    return this.userIdColumn;
-  }
-
   // Получить профиль пользователя
   async getProfile(userId: string): Promise<UserProfile | null> {
     if (!supabase) {
@@ -64,7 +51,7 @@ class ProfileService {
     }
 
     const sessionUserId = await this.getSessionUserId(userId);
-    const userIdColumn = await this.resolveUserIdColumn();
+    const userIdColumn = this.userIdColumn;
 
     // Try Supabase first
     if (supabase) {
@@ -89,7 +76,8 @@ class ProfileService {
           // Fallback to localStorage
         } else if (data) {
           const profile: UserProfile = {
-            user_id: data.user_id ?? data.id_user,
+            id_user: data.id_user,
+            user_id: data.user_id ?? undefined,
             first_name: data.first_name || undefined,
             last_name: data.last_name || undefined,
             middle_name: data.middle_name || undefined,
@@ -126,11 +114,11 @@ class ProfileService {
   // Сохранить/обновить профиль пользователя
   async saveProfile(userId: string, profile: Partial<ProfileDetails>): Promise<void> {
     const sessionUserId = await this.getSessionUserId(userId);
-    const userIdColumn = await this.resolveUserIdColumn();
+    const userIdColumn = this.userIdColumn;
 
     const existingProfile = await this.getProfile(userId);
     const updatedProfile: UserProfile = {
-      user_id: sessionUserId,
+      id_user: sessionUserId,
       first_name: profile.firstName || existingProfile?.first_name,
       last_name: profile.lastName || existingProfile?.last_name,
       middle_name: profile.middleName || existingProfile?.middle_name,
@@ -182,7 +170,7 @@ class ProfileService {
   // Обновить админ статус
   async updateAdminStatus(userId: string, isAdmin: boolean): Promise<void> {
     const sessionUserId = await this.getSessionUserId(userId);
-    const userIdColumn = await this.resolveUserIdColumn();
+    const userIdColumn = this.userIdColumn;
 
     // Try to update in Supabase
     if (supabase) {
@@ -204,7 +192,7 @@ class ProfileService {
   // Обновить премиум статус
   async updatePremiumStatus(userId: string, hasPremium: boolean): Promise<void> {
     const sessionUserId = await this.getSessionUserId(userId);
-    const userIdColumn = await this.resolveUserIdColumn();
+    const userIdColumn = this.userIdColumn;
 
     // Try to update in Supabase
     if (supabase) {
@@ -226,7 +214,7 @@ class ProfileService {
   // Сохранить аватар (base64 или URL)
   async saveAvatar(userId: string, avatarData: string): Promise<void> {
     const sessionUserId = await this.getSessionUserId(userId);
-    const userIdColumn = await this.resolveUserIdColumn();
+    const userIdColumn = this.userIdColumn;
 
     // Try to save to Supabase
     if (supabase) {
@@ -274,7 +262,7 @@ class ProfileService {
   // Получить аватар
   async getAvatar(userId: string): Promise<string | null> {
     const sessionUserId = await this.getSessionUserId(userId);
-    const userIdColumn = await this.resolveUserIdColumn();
+    const userIdColumn = this.userIdColumn;
 
     // Try Supabase first
     if (supabase) {
@@ -330,6 +318,143 @@ class ProfileService {
       email: profile.email,
       phone: profile.phone,
     };
+  }
+
+  async getCoachSettings(userId: string): Promise<CoachSettings> {
+    const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = this.userIdColumn;
+    const fallback: CoachSettings = { coach_enabled: true, coach_mode: 'support' };
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('coach_settings')
+          .eq(userIdColumn, sessionUserId)
+          .maybeSingle();
+        if (!error && data?.coach_settings) {
+          const settings = data.coach_settings as CoachSettings;
+          this.writeCoachSettingsCache(sessionUserId, settings);
+          return settings;
+        }
+      } catch (err) {
+        console.warn('[profileService] coach settings load error', err);
+      }
+    }
+
+    return this.readCoachSettingsCache(sessionUserId) ?? fallback;
+  }
+
+  async saveCoachSettings(userId: string, settings: CoachSettings): Promise<void> {
+    const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = this.userIdColumn;
+    this.writeCoachSettingsCache(sessionUserId, settings);
+
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ coach_settings: settings })
+        .eq(userIdColumn, sessionUserId);
+      if (error) {
+        console.warn('[profileService] coach settings save error', error);
+      }
+    } catch (err) {
+      console.warn('[profileService] coach settings save connection error', err);
+    }
+  }
+
+  async getVoiceSettings(userId: string): Promise<CoachVoiceSettings> {
+    const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = this.userIdColumn;
+    const fallback: CoachVoiceSettings = {
+      enabled: false,
+      mode: 'off',
+      style: 'calm',
+      intensity: 'soft',
+    };
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('voice_settings')
+          .eq(userIdColumn, sessionUserId)
+          .maybeSingle();
+        if (!error && data?.voice_settings) {
+          const settings = data.voice_settings as CoachVoiceSettings;
+          this.writeVoiceSettingsCache(sessionUserId, settings);
+          return settings;
+        }
+      } catch (err) {
+        console.warn('[profileService] voice settings load error', err);
+      }
+    }
+
+    return this.readVoiceSettingsCache(sessionUserId) ?? fallback;
+  }
+
+  async saveVoiceSettings(userId: string, settings: CoachVoiceSettings): Promise<void> {
+    const sessionUserId = await this.getSessionUserId(userId);
+    const userIdColumn = this.userIdColumn;
+    this.writeVoiceSettingsCache(sessionUserId, settings);
+
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ voice_settings: settings })
+        .eq(userIdColumn, sessionUserId);
+      if (error) {
+        console.warn('[profileService] voice settings save error', error);
+      }
+    } catch (err) {
+      console.warn('[profileService] voice settings save connection error', err);
+    }
+  }
+
+  private writeCoachSettingsCache(userId: string, settings: CoachSettings) {
+    try {
+      localStorage.setItem(`${this.COACH_SETTINGS_KEY}_${userId}`, JSON.stringify(settings));
+      localStorage.setItem(this.COACH_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.warn('[profileService] Error saving coach settings to localStorage', error);
+    }
+  }
+
+  private readCoachSettingsCache(userId: string): CoachSettings | null {
+    try {
+      const raw = localStorage.getItem(`${this.COACH_SETTINGS_KEY}_${userId}`) ?? localStorage.getItem(this.COACH_SETTINGS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? (parsed as CoachSettings) : null;
+    } catch (error) {
+      console.warn('[profileService] Error reading coach settings from localStorage', error);
+      return null;
+    }
+  }
+
+  private writeVoiceSettingsCache(userId: string, settings: CoachVoiceSettings) {
+    try {
+      localStorage.setItem(`${this.VOICE_SETTINGS_KEY}_${userId}`, JSON.stringify(settings));
+      localStorage.setItem(this.VOICE_SETTINGS_KEY, JSON.stringify(settings));
+    } catch (error) {
+      console.warn('[profileService] Error saving voice settings to localStorage', error);
+    }
+  }
+
+  private readVoiceSettingsCache(userId: string): CoachVoiceSettings | null {
+    try {
+      const raw =
+        localStorage.getItem(`${this.VOICE_SETTINGS_KEY}_${userId}`) ??
+        localStorage.getItem(this.VOICE_SETTINGS_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? (parsed as CoachVoiceSettings) : null;
+    } catch (error) {
+      console.warn('[profileService] Error reading voice settings from localStorage', error);
+      return null;
+    }
   }
 }
 
