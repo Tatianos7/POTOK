@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import Text from './Text';
 import Button from './Button';
 import ExerciseActionMenu from './ExerciseActionMenu';
 import { colors, spacing, typography } from '../theme/tokens';
@@ -52,17 +51,16 @@ const ExerciseRow = ({ name, sets, reps, weight, unit = 'кг', onEdit, onDelete
   return (
     <div ref={rowRef} style={{ position: 'relative' }}>
       {menuOpen && (
-        <div ref={menuRef}>
-          <ExerciseActionMenu
-            open={menuOpen}
-            anchorRef={rowRef}
-            onClose={() => setMenuOpen(false)}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            onNote={handleNote}
-            onMedia={handleMedia}
-          />
-        </div>
+        <ExerciseActionMenu
+          open={menuOpen}
+          anchorRef={rowRef}
+          menuRef={menuRef}
+          onClose={() => setMenuOpen(false)}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onNote={handleNote}
+          onMedia={handleMedia}
+        />
       )}
       <div
         style={{

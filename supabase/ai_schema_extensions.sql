@@ -3,11 +3,16 @@
 -- ============================================================
 
 alter table public.ai_recommendations
+  add column if not exists request_type text,
   add column if not exists input_hash text,
   add column if not exists idempotency_key text,
   add column if not exists explainability jsonb,
   add column if not exists started_at timestamptz,
   add column if not exists completed_at timestamptz;
+
+update public.ai_recommendations
+  set request_type = 'recommendation'
+  where request_type is null;
 
 create index if not exists ai_recommendations_status_idx
   on public.ai_recommendations (status);

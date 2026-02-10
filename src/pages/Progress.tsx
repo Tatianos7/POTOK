@@ -238,7 +238,9 @@ const Progress = () => {
   return (
     <ScreenContainer padding="lg" gap="xl">
       <Card variant="surface" size="lg">
-        <Section title="Прогресс" subtitle="Твоя динамика и изменения" />
+        <Section title="Прогресс" subtitle="Твоя динамика и изменения">
+          {null}
+        </Section>
         <Stack direction="row" gap="sm" wrap>
           {periodOptions.map((option) => (
             <Chip key={option.key} onClick={() => setPeriodKey(option.key)} selected={periodKey === option.key}>
@@ -280,7 +282,9 @@ const Progress = () => {
         <Stack gap="lg">
           <StateContainer status={sectionStatus(summary)} message={summary?.message}>
             <Card size="lg">
-              <Section title="Life Overview" subtitle={`Период: ${periodLabel}`} />
+              <Section title="Life Overview" subtitle={`Период: ${periodLabel}`}>
+                {null}
+              </Section>
               <Stack direction="row" gap="sm" wrap>
                 <Card variant="ghost" size="sm">
                   <Text variant="micro">Вес</Text>

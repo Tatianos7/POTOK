@@ -5,7 +5,7 @@
 create table if not exists public.notification_history (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
-  score_id uuid references public.notification_scores (id) on delete set null,
+  score_id uuid,
   channel text not null,
   message_id text,
   message text,

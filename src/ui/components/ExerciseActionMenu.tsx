@@ -1,3 +1,5 @@
+import { useLayoutEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Pencil, Trash2, StickyNote, Camera } from 'lucide-react';
 import Button from './Button';
 import Text from './Text';
@@ -6,6 +8,7 @@ import { colors, radius, shadows, spacing } from '../theme/tokens';
 interface ExerciseActionMenuProps {
   open: boolean;
   anchorRef: React.RefObject<HTMLElement>;
+  menuRef?: React.RefObject<HTMLDivElement>;
   onEdit: () => void;
   onDelete: () => void;
   onNote: () => void;
@@ -16,6 +19,7 @@ interface ExerciseActionMenuProps {
 const ExerciseActionMenu = ({
   open,
   anchorRef,
+  menuRef,
   onEdit,
   onDelete,
   onNote,
@@ -24,31 +28,60 @@ const ExerciseActionMenu = ({
 }: ExerciseActionMenuProps) => {
   if (!open) return null;
 
+  const [position, setPosition] = useState<{ top: number; left: number; width: number }>({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const updatePosition = () => {
+      const anchor = anchorRef.current;
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      const maxWidth = Math.min(520, window.innerWidth - spacing.md * 2);
+      setPosition({
+        top: rect.top,
+        left: rect.left + rect.width / 2,
+        width: Math.max(160, maxWidth),
+      });
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [open, anchorRef]);
+
   const handleAction = (action: () => void) => {
     action();
     onClose();
   };
 
-  return (
+  const menu = (
     <div
       role="menu"
       aria-label="Действия упражнения"
+      ref={menuRef}
       style={{
-        position: 'absolute',
-        top: 0,
-        left: '50%',
+        position: 'fixed',
+        top: position.top,
+        left: position.left,
         transform: 'translate(-50%, -100%) translateY(-8px)',
-        width: '100%',
+        width: position.width,
         maxWidth: 520,
-        zIndex: 30,
+        zIndex: 1000,
         backgroundColor: colors.surface,
         borderRadius: radius.md,
         border: `1px solid ${colors.border}`,
         boxShadow: shadows.soft,
         padding: spacing.md,
-        pointerEvents: anchorRef.current ? 'auto' : 'auto',
       }}
     >
+      {/* Portal to body prevents clipping by parent overflow/stacking contexts */}
       <div
         style={{
           display: 'grid',
@@ -85,6 +118,8 @@ const ExerciseActionMenu = ({
       </div>
     </div>
   );
+
+  return createPortal(menu, document.body);
 };
 
 export default ExerciseActionMenu;

@@ -23,8 +23,8 @@ const Badge = ({ children, tone = 'default' }: BadgeProps) => {
         borderRadius: radius.sm,
         padding: `2px ${spacing.sm}px`,
         backgroundColor: style.background,
-        color: style.color,
         ...typography.micro,
+        color: style.color,
       }}
     >
       {children}

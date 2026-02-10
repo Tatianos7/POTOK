@@ -13,20 +13,10 @@ import {
   ProgressPeriod,
   ProgressSectionResult,
   ProgressSummary,
-  TrainingCell,
   TrainingRow,
   TrainingStats,
   TrendDirection,
 } from '../types/progressDashboard';
-
-type WorkoutEntryRow = {
-  id: string;
-  sets: number;
-  reps: number;
-  weight: number | null;
-  workout_day: { date: string } | null;
-  exercise: { name: string } | null;
-};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
@@ -113,7 +103,7 @@ class ProgressDashboardService {
       if (cached) {
         return this.toSectionResult(cached, undefined, true);
       }
-      return this.toSectionResult(null, 'Не удалось загрузить сводку.');
+      return this.toSectionResult<ProgressSummary>(null, 'Не удалось загрузить сводку.');
     }
   }
 
@@ -122,7 +112,7 @@ class ProgressDashboardService {
     try {
       const mealsByPeriod = await mealService.getMealsByPeriod(sessionUserId, period.start, period.end);
       if (mealsByPeriod.length === 0) {
-        return this.toSectionResult(null, undefined);
+        return this.toSectionResult<NutritionStats>(null, undefined);
       }
       const totals: MacroTotals = mealsByPeriod.reduce(
         (acc, day) => {
@@ -185,7 +175,7 @@ class ProgressDashboardService {
       if (cached) {
         return this.toSectionResult(cached, undefined, true);
       }
-      return this.toSectionResult(null, 'Не удалось загрузить питание.');
+      return this.toSectionResult<NutritionStats>(null, 'Не удалось загрузить питание.');
     }
   }
 
@@ -193,7 +183,9 @@ class ProgressDashboardService {
     const sessionUserId = await this.getSessionUserId(userId);
     if (!supabase) {
       const cached = this.loadCache<TrainingStats>(sessionUserId, period, 'training');
-      return cached ? this.toSectionResult(cached, undefined, true) : this.toSectionResult(null, 'Нет данных');
+      return cached
+        ? this.toSectionResult(cached, undefined, true)
+        : this.toSectionResult<TrainingStats>(null, 'Нет данных');
     }
     try {
       const { data, error } = await supabase
@@ -271,7 +263,7 @@ class ProgressDashboardService {
       if (cached) {
         return this.toSectionResult(cached, undefined, true);
       }
-      return this.toSectionResult(null, 'Не удалось загрузить тренировки.');
+      return this.toSectionResult<TrainingStats>(null, 'Не удалось загрузить тренировки.');
     }
   }
 
@@ -281,7 +273,7 @@ class ProgressDashboardService {
       const history = await measurementsService.getMeasurementHistory(sessionUserId);
       const filtered = history.filter((entry) => entry.date >= period.start && entry.date <= period.end);
       if (filtered.length === 0) {
-        return this.toSectionResult(null, undefined);
+        return this.toSectionResult<MeasurementsTable>(null, undefined);
       }
       const dates = filtered.map((entry) => entry.date).sort();
       const metricsSet = new Set<string>();
@@ -318,7 +310,7 @@ class ProgressDashboardService {
       if (cached) {
         return this.toSectionResult(cached, undefined, true);
       }
-      return this.toSectionResult(null, 'Не удалось загрузить замеры.');
+      return this.toSectionResult<MeasurementsTable>(null, 'Не удалось загрузить замеры.');
     }
   }
 
@@ -327,7 +319,7 @@ class ProgressDashboardService {
     try {
       const habits = await habitsService.getHabitsForDate({ userId: sessionUserId, date: period.end });
       if (habits.length === 0) {
-        return this.toSectionResult(null, undefined);
+        return this.toSectionResult<HabitsStats>(null, undefined);
       }
       const stats = await Promise.all(
         habits.map(async (habit) => {
@@ -337,12 +329,13 @@ class ProgressDashboardService {
             fromDate: period.start,
             toDate: period.end,
           });
+          const trend: TrendDirection = habitStats.adherence >= 0.7 ? 'up' : 'down';
           return {
             id: habit.id,
             title: habit.title,
             streak: habitStats.streak,
             adherence: habitStats.adherence,
-            trend: habitStats.adherence >= 0.7 ? 'up' : 'down',
+            trend,
           };
         })
       );
@@ -365,7 +358,7 @@ class ProgressDashboardService {
       if (cached) {
         return this.toSectionResult(cached, undefined, true);
       }
-      return this.toSectionResult(null, 'Не удалось загрузить привычки.');
+      return this.toSectionResult<HabitsStats>(null, 'Не удалось загрузить привычки.');
     }
   }
 

@@ -76,7 +76,7 @@ class ReportService {
     };
   }
 
-  async requestReportSnapshot(userId: string, period: ReportPeriod): Promise<ReportSnapshot> {
+  async requestReportSnapshot(userId: string, period: ReportPeriod): Promise<ReportSnapshot | null> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
     }

@@ -15,6 +15,7 @@ class MealService {
 
   // If DB missing unique index for idempotency upsert, warn once
   private idempotencyIndexWarned = false;
+  private upsertErrorLogged = false;
 
   private isValidUUID(value: string | null | undefined): boolean {
     if (!value) return false;
@@ -89,6 +90,30 @@ class MealService {
   private buildIdempotencyKey(date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', foodId?: string): string {
     const safeFoodId = foodId || 'unknown';
     return `${date}:${mealType}:${safeFoodId}`;
+  }
+
+  private normalizeIdempotencyKey(
+    value: unknown,
+    date: string,
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    foodId?: string
+  ): string {
+    const raw = typeof value === 'string' ? value.trim() : '';
+    return raw.length > 0 ? raw : this.buildIdempotencyKey(date, mealType, foodId);
+  }
+
+  private logUpsertErrorOnce(error: any, context: string): void {
+    if (this.upsertErrorLogged) return;
+    this.upsertErrorLogged = true;
+    const payload = {
+      context,
+      code: error?.code,
+      status: error?.status,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    };
+    console.warn('[mealService] Supabase upsert error:', payload);
   }
 
   // Единый нормализатор Supabase entry → MealEntry
@@ -494,7 +519,7 @@ class MealService {
             : this.isValidUUID(entry.food?.canonical_food_id ?? null)
               ? entry.food?.canonical_food_id ?? null
               : null,
-          idempotency_key: entry.idempotencyKey || this.buildIdempotencyKey(meals.date, mealType, entry.foodId),
+          idempotency_key: this.normalizeIdempotencyKey(entry.idempotencyKey, meals.date, mealType, entry.foodId),
         });
 
         const entriesToInsert = [
@@ -604,6 +629,7 @@ class MealService {
 
           const { error: upsertError } = await upsert(validEntries as Record<string, unknown>[]);
           if (upsertError) {
+            this.logUpsertErrorOnce(upsertError, 'food_diary_entries upsert');
             const message = String(upsertError.message ?? '').toLowerCase();
             const code = String(upsertError.code ?? '').toUpperCase();
 
@@ -1121,4 +1147,3 @@ class MealService {
 }
 
 export const mealService = new MealService();
-

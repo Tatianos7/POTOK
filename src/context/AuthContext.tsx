@@ -467,7 +467,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
       const mapProfileToUser = (profile: Record<string, any>): User | null => {
-        const id = profile?.user_id ?? profile?.id_user ?? profile?.id;
+        const id = profile?.id_user ?? profile?.user_id ?? profile?.id;
         if (!id) {
           return null;
         }
@@ -539,22 +539,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const setAdminStatus = async (userId: string, isAdmin: boolean) => {
         if (!supabase) return;
-        const updateByColumn = async (column: 'user_id' | 'id_user') => {
-          return supabase!
-            .from('user_profiles')
-            .update({ is_admin: isAdmin })
-            .eq(column, userId);
-        };
-        const { error } = await updateByColumn('user_id');
+        const { error } = await supabase!
+          .from('user_profiles')
+          .update({ is_admin: isAdmin })
+          .eq('id_user', userId);
         if (error) {
-          if (error.message?.includes('user_profiles.user_id does not exist')) {
-            const fallback = await updateByColumn('id_user');
-            if (fallback.error) {
-              console.warn('[AuthContext] setAdminStatus error:', fallback.error.message || fallback.error);
-            }
-          } else {
-            console.warn('[AuthContext] setAdminStatus error:', error.message || error);
-          }
+          console.warn('[AuthContext] setAdminStatus error:', error.message || error);
         }
       };
 
@@ -595,4 +585,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

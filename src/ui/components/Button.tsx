@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import { forwardRef, type ButtonHTMLAttributes } from 'react';
 import { animation, colors, radius, spacing } from '../theme/tokens';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
@@ -25,21 +25,25 @@ const variantStyles: Record<ButtonVariant, { background: string; color: string; 
   danger: { background: colors.danger, color: '#FFFFFF', border: colors.danger },
 };
 
-const Button = ({
-  variant = 'primary',
-  size = 'md',
-  fullWidth = false,
-  align = 'center',
-  style,
-  disabled,
-  ...props
-}: ButtonProps) => {
+const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = 'primary',
+    size = 'md',
+    fullWidth = false,
+    align = 'center',
+    style,
+    disabled,
+    ...props
+  }: ButtonProps,
+  ref
+) {
   const sizing = sizeStyles[size];
   const variantStyle = variantStyles[variant];
 
   return (
     <button
       {...props}
+      ref={ref}
       disabled={disabled}
       className="inline-flex items-center justify-center font-semibold transition-transform"
       style={{
@@ -60,6 +64,8 @@ const Button = ({
       }}
     />
   );
-};
+});
+
+(Button as any).displayName = 'Button';
 
 export default Button;

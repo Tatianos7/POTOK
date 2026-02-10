@@ -33,7 +33,6 @@ class AiTrainingPlansService {
   private readonly PROMPT_VERSION = 'v1';
   private readonly GENERATION_PARAMS = { temperature: 0, top_p: 1 };
 
-  // If DB missing input_context column, avoid noisy exceptions and fallback
   private inputContextMissWarned = false;
 
   private async getSessionUserId(userId?: string): Promise<string> {
@@ -136,7 +135,6 @@ class AiTrainingPlansService {
       const msg = String(insertError.message ?? '').toLowerCase();
       const code = String(insertError.code ?? '').toUpperCase();
       if (code === '42703' || msg.includes('input_context') || msg.includes('does not exist')) {
-        this.inputContextMissing = true;
         if (!this.inputContextMissWarned) {
           console.warn('[aiTrainingPlansService] input_context column missing in DB, performing fallback insert without it');
           this.inputContextMissWarned = true;
@@ -179,7 +177,6 @@ class AiTrainingPlansService {
         const msg = String(error.message ?? '').toLowerCase();
         const code = String(error.code ?? '').toUpperCase();
         if (code === '42703' || msg.includes('input_context') || msg.includes('does not exist')) {
-          this.inputContextMissing = true;
           if (!this.inputContextMissWarned) {
             console.warn('[aiTrainingPlansService] input_context column missing when marking outdated — skipping operation');
             this.inputContextMissWarned = true;
@@ -192,7 +189,6 @@ class AiTrainingPlansService {
       const msg = String(err?.message ?? '').toLowerCase();
       const code = String(err?.code ?? '').toUpperCase();
       if (code === '42703' || msg.includes('input_context') || msg.includes('does not exist')) {
-        this.inputContextMissing = true;
         if (!this.inputContextMissWarned) {
           console.warn('[aiTrainingPlansService] input_context column missing when marking outdated — skipping operation');
           this.inputContextMissWarned = true;

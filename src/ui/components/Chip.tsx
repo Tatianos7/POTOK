@@ -21,8 +21,8 @@ const Chip = ({ children, tone = 'default', onClick, selected }: ChipProps) => {
     borderRadius: radius.pill,
     padding: `2px ${spacing.sm}px`,
     backgroundColor: selected ? colors.primary : style.background,
-    color: selected ? '#FFFFFF' : style.color,
     ...typography.micro,
+    color: selected ? '#FFFFFF' : style.color,
   };
   if (onClick) {
     return (
