@@ -18,6 +18,9 @@ Follow these steps after applying Phase 2 guards and Phase 1 schema migrations t
     - SELECT user_id, idempotency_key, count(*) FROM public.food_diary_entries WHERE idempotency_key IS NOT NULL GROUP BY 1,2 HAVING count(*) > 1; (should return 0 rows)
 - Check `notification_history` exists:
   - SELECT 1 FROM public.notification_history LIMIT 1; (should not raise PGRST205)
+ - Refresh PostgREST schema cache after migrations (dev/ops):
+   - SELECT pg_notify('pgrst', 'reload schema');
+   - Or use Supabase Dashboard → API → "Reload schema".
 
 ## Runtime smoke tests (dev server + logs)
 - Start dev server (`npm run dev`) and open these pages in the app (they trigger related services):
