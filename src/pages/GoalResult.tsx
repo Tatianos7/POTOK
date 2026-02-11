@@ -15,6 +15,8 @@ interface CalculatedResult {
   fats: number;
   carbs: number;
   monthsToGoal: number;
+  surplusPerDay?: number;
+  kgPerWeek?: number;
 }
 
 // Расчет BMR по формуле Харриса-Бенедикта
@@ -40,31 +42,38 @@ const getActivityFactor = (lifestyle: string): number => {
   return factors[lifestyle] || 1.2;
 };
 
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value));
+
 // Расчет калорий с учетом цели
 const calculateCalories = (
   bmr: number,
   activityFactor: number,
   goal: string,
   intensity?: string
-): { tdee: number; calories: number } => {
+): { tdee: number; calories: number; surplusPerDay?: number } => {
   // TDEE = BMR × activityFactor
   const tdee = bmr * activityFactor;
 
   let calories = tdee;
+  let surplusPerDay: number | undefined;
 
   if (goal === 'weight-loss') {
     // Похудение: calories = TDEE × (1 - deficitPercent)
     const deficitPercent = intensity ? parseFloat(intensity) / 100 : 0.10; // 10%, 15% или 20%
     calories = tdee * (1 - deficitPercent);
   } else if (goal === 'gain') {
-    // Набор массы: calories = TDEE + 15%
-    calories = tdee * 1.15;
+    // Набор массы: calories = TDEE + профицит (200-500 ккал)
+    const surplusPercent = 0.15;
+    const dailySurplusTarget = clamp(tdee * surplusPercent, 200, 500);
+    calories = tdee + dailySurplusTarget;
+    surplusPerDay = dailySurplusTarget;
   }
   // Для 'maintain' оставляем как есть (calories = tdee)
 
   return {
     tdee: Math.round(tdee),
     calories: Math.round(calories),
+    surplusPerDay: surplusPerDay ? Math.round(surplusPerDay) : undefined,
   };
 };
 
@@ -147,6 +156,26 @@ const calculateMonthsToGoal = (
   return Math.max(1, Math.min(months, 12)); // От 1 до 12 месяцев
 };
 
+const calculateMonthsToGain = (
+  currentWeight: number,
+  targetWeight: number,
+  tdee: number,
+  calories: number
+): number => {
+  const surplus = calories - tdee;
+  if (surplus <= 0) return 0;
+
+  const kgToGain = targetWeight - currentWeight;
+  if (kgToGain <= 0) return 0;
+
+  const kgPerWeek = (surplus * 7) / 7700;
+  if (kgPerWeek <= 0) return 0;
+
+  const weeks = kgToGain / kgPerWeek;
+  const months = weeks / 4.345;
+  return Math.max(1, Math.ceil(months));
+};
+
 const GoalResult = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
@@ -164,51 +193,71 @@ const GoalResult = () => {
     // Получаем данные формы из location.state или localStorage
     const data = location.state?.formData || null;
     if (data) {
-      setFormData(data);
-      
-      // Парсим входные данные
-      const age = parseInt(data.age) || 25;
       const weight = parseFloat(data.weight) || 70;
-      const height = parseFloat(data.height) || 170;
-      
-      // Расчет BMR
-      const bmr = calculateBMR(data.gender, weight, height, age);
-      
-      // Получение коэффициента активности
-      const activityFactor = getActivityFactor(data.lifestyle);
-      
-      // Расчет калорий
-      const { tdee, calories } = calculateCalories(
-        bmr,
-        activityFactor,
-        data.goal,
-        data.intensity
-      );
-      
-      // Расчет макронутриентов
-      const { proteins, fats, carbs } = calculateMacros(weight, calories);
-      
-      // Расчет времени достижения цели (только для похудения)
-      let monthsToGoal = 0;
-      if (data.goal === 'weight-loss' && data.targetWeight) {
-        const targetWeight = parseFloat(data.targetWeight);
-        monthsToGoal = calculateMonthsToGoal(weight, targetWeight, tdee, calories);
+      let targetWeight = parseFloat(data.targetWeight || '');
+
+      if (data.goal === 'gain') {
+        if (!Number.isFinite(targetWeight) || targetWeight <= weight) {
+          targetWeight = Math.min(weight + 5, 150);
+        }
       }
-      
-      setResult({
-        bmr: Math.round(bmr),
-        tdee,
-        calories,
-        proteins,
-        fats,
-        carbs,
-        monthsToGoal,
+
+      setFormData({
+        ...data,
+        targetWeight: Number.isFinite(targetWeight) ? String(targetWeight) : data.targetWeight,
       });
     } else {
       // Если данных нет, возвращаемся на страницу цели
       navigate('/goal');
     }
   }, [user, navigate, location]);
+
+  useEffect(() => {
+    if (!formData) return;
+
+    const age = parseInt(formData.age) || 25;
+    const weight = parseFloat(formData.weight) || 70;
+    const height = parseFloat(formData.height) || 170;
+
+    const bmr = calculateBMR(formData.gender, weight, height, age);
+    const activityFactor = getActivityFactor(formData.lifestyle);
+
+    const { tdee, calories, surplusPerDay } = calculateCalories(
+      bmr,
+      activityFactor,
+      formData.goal,
+      formData.intensity
+    );
+
+    const { proteins, fats, carbs } = calculateMacros(weight, calories);
+
+    let monthsToGoal = 0;
+    let kgPerWeek: number | undefined;
+    const parsedTargetWeight = parseFloat(formData.targetWeight || '');
+
+    if (formData.goal === 'weight-loss' && Number.isFinite(parsedTargetWeight)) {
+      monthsToGoal = calculateMonthsToGoal(weight, parsedTargetWeight, tdee, calories);
+    }
+
+    if (formData.goal === 'gain' && Number.isFinite(parsedTargetWeight)) {
+      monthsToGoal = calculateMonthsToGain(weight, parsedTargetWeight, tdee, calories);
+      if (surplusPerDay && surplusPerDay > 0) {
+        kgPerWeek = (surplusPerDay * 7) / 7700;
+      }
+    }
+
+    setResult({
+      bmr: Math.round(bmr),
+      tdee,
+      calories,
+      proteins,
+      fats,
+      carbs,
+      monthsToGoal,
+      surplusPerDay,
+      kgPerWeek,
+    });
+  }, [formData]);
 
   useEffect(() => {
     if (!user || !result) return;
@@ -283,6 +332,10 @@ const GoalResult = () => {
       startDate: startDate,
       endDate: endDate, // Сохраняем дату окончания
       monthsToGoal: result.monthsToGoal, // Сохраняем месяцы до цели
+      bmr: Math.round(result.bmr),
+      tdee: Math.round(result.tdee),
+      surplusPerDay: result.surplusPerDay,
+      kgPerWeek: result.kgPerWeek,
       calories: result.calories.toString(),
       proteins: result.proteins.toString(),
       fats: result.fats.toString(),
@@ -352,7 +405,7 @@ const GoalResult = () => {
             <p>
               Ваш вес: <span className="font-medium">{formData.weight} кг</span>
             </p>
-            {formData.goal === 'weight-loss' && formData.targetWeight && (
+            {formData.targetWeight && (
               <p>
                 Ваша цель: <span className="font-medium">{formData.targetWeight} кг</span>
               </p>
@@ -373,7 +426,6 @@ const GoalResult = () => {
               </span>
             </p>
           )}
-
           <div className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <p>
               BMR (базовый метаболизм):{' '}

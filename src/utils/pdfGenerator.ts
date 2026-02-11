@@ -1,140 +1,109 @@
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { UserGoalData } from '../types/aiAdvice';
 
-/**
- * Генерирует PDF с рекомендациями по питанию
- */
-export function generateNutritionPDF(advice: string, userData: UserGoalData): void {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  const maxWidth = pageWidth - 2 * margin;
-  let yPosition = margin;
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
-  // Заголовок
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ ПО ПИТАНИЮ', margin, yPosition);
-  yPosition += 15;
+const buildAdviceContainer = (title: string, advice: string, userData: UserGoalData, includeTargets: boolean) => {
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-10000px';
+  container.style.top = '0';
+  container.style.width = '794px';
+  container.style.padding = '24px';
+  container.style.background = '#ffffff';
+  container.style.color = '#111827';
+  container.style.fontFamily = 'Arial, "Helvetica Neue", sans-serif';
+  container.style.fontSize = '12px';
+  container.style.lineHeight = '1.4';
 
-  // Информация о пользователе
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
   const userInfo = `Пол: ${userData.gender === 'male' ? 'Мужчина' : 'Женщина'} | Возраст: ${userData.age} лет | Вес: ${userData.weight} кг | Рост: ${userData.height} см`;
-  doc.text(userInfo, margin, yPosition);
-  yPosition += 10;
-
-  // Целевые показатели
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ВАШИ ЦЕЛЕВЫЕ ПОКАЗАТЕЛИ:', margin, yPosition);
-  yPosition += 8;
-  
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'normal');
   const targets = [
     `Калории: ${userData.calories} ккал/день`,
     `Белки: ${userData.protein} г/день`,
     `Жиры: ${userData.fat} г/день`,
     `Углеводы: ${userData.carbs} г/день`,
   ];
-  targets.forEach((target) => {
-    doc.text(`• ${target}`, margin + 5, yPosition);
-    yPosition += 6;
-  });
-  yPosition += 5;
 
-  // Разбиваем текст совета на части
-  const adviceLines = doc.splitTextToSize(advice, maxWidth - 10) as string[];
-  
-  // Проверяем, нужно ли добавить новую страницу
-  adviceLines.forEach((line) => {
-    if (yPosition > pageHeight - margin - 10) {
-      doc.addPage();
-      yPosition = margin;
+  const adviceHtml = escapeHtml(advice).replace(/\n/g, '<br/>');
+
+  container.innerHTML = `
+    <div style="font-size:18px;font-weight:700;margin-bottom:12px;">${escapeHtml(title)}</div>
+    <div style="font-size:12px;margin-bottom:10px;">${escapeHtml(userInfo)}</div>
+    ${
+      includeTargets
+        ? `<div style="font-size:14px;font-weight:700;margin:10px 0 6px;">ВАШИ ЦЕЛЕВЫЕ ПОКАЗАТЕЛИ:</div>
+           <div style="margin-bottom:10px;">
+             ${targets.map((target) => `<div style="margin:2px 0;">• ${escapeHtml(target)}</div>`).join('')}
+           </div>`
+        : ''
     }
-    doc.setFontSize(10);
-    doc.text(line, margin + 5, yPosition);
-    yPosition += 5;
-  });
+    <div style="font-size:11px;white-space:normal;">${adviceHtml}</div>
+    <div style="margin-top:12px;font-size:9px;color:#6b7280;font-style:italic;">
+      ⚠️ Рекомендации носят информационный характер и не заменяют консультацию врача или специалиста.
+    </div>
+  `;
 
-  // Юридическое предупреждение
-  if (yPosition > pageHeight - margin - 20) {
-    doc.addPage();
-    yPosition = margin;
+  return container;
+};
+
+const renderPdfFromContainer = async (container: HTMLDivElement, fileName: string): Promise<void> => {
+  document.body.appendChild(container);
+  const canvas = await html2canvas(container, { scale: 2, backgroundColor: '#ffffff' });
+  document.body.removeChild(container);
+
+  const imgData = canvas.toDataURL('image/png');
+  const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+  const pdfWidth = pdf.internal.pageSize.getWidth();
+  const pdfHeight = pdf.internal.pageSize.getHeight();
+  const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+  let heightLeft = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+  heightLeft -= pdfHeight;
+
+  while (heightLeft > 0) {
+    position -= pdfHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+    heightLeft -= pdfHeight;
   }
-  yPosition += 10;
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(128, 128, 128);
-  const disclaimer = '⚠️ Рекомендации носят информационный характер и не заменяют консультацию врача или специалиста.';
-  const disclaimerLines = doc.splitTextToSize(disclaimer, maxWidth - 10) as string[];
-  disclaimerLines.forEach((line) => {
-    doc.text(line, margin + 5, yPosition);
-    yPosition += 5;
-  });
 
-  // Сохраняем PDF
+  pdf.save(fileName);
+};
+
+/**
+ * Генерирует PDF с рекомендациями по питанию
+ */
+export async function generateNutritionPDF(advice: string, userData: UserGoalData): Promise<void> {
+  const container = buildAdviceContainer(
+    'ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ ПО ПИТАНИЮ',
+    advice,
+    userData,
+    true
+  );
   const fileName = `Рекомендации_по_питанию_${new Date().toISOString().split('T')[0]}.pdf`;
-  doc.save(fileName);
+  await renderPdfFromContainer(container, fileName);
 }
 
 /**
  * Генерирует PDF с рекомендациями по тренировкам
  */
-export function generateTrainingPDF(advice: string, userData: UserGoalData): void {
-  const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
-  const maxWidth = pageWidth - 2 * margin;
-  let yPosition = margin;
-
-  // Заголовок
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ ПО ТРЕНИРОВКАМ', margin, yPosition);
-  yPosition += 15;
-
-  // Информация о пользователе
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'normal');
-  const userInfo = `Пол: ${userData.gender === 'male' ? 'Мужчина' : 'Женщина'} | Возраст: ${userData.age} лет | Вес: ${userData.weight} кг | Рост: ${userData.height} см`;
-  doc.text(userInfo, margin, yPosition);
-  yPosition += 10;
-
-  // Разбиваем текст совета на части
-  const adviceLines = doc.splitTextToSize(advice, maxWidth - 10) as string[];
-  
-  // Проверяем, нужно ли добавить новую страницу
-  adviceLines.forEach((line) => {
-    if (yPosition > pageHeight - margin - 10) {
-      doc.addPage();
-      yPosition = margin;
-    }
-    doc.setFontSize(10);
-    doc.text(line, margin + 5, yPosition);
-    yPosition += 5;
-  });
-
-  // Юридическое предупреждение
-  if (yPosition > pageHeight - margin - 20) {
-    doc.addPage();
-    yPosition = margin;
-  }
-  yPosition += 10;
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(128, 128, 128);
-  const disclaimer = '⚠️ Рекомендации носят информационный характер и не заменяют консультацию врача или специалиста.';
-  const disclaimerLines = doc.splitTextToSize(disclaimer, maxWidth - 10) as string[];
-  disclaimerLines.forEach((line) => {
-    doc.text(line, margin + 5, yPosition);
-    yPosition += 5;
-  });
-
-  // Сохраняем PDF
+export async function generateTrainingPDF(advice: string, userData: UserGoalData): Promise<void> {
+  const container = buildAdviceContainer(
+    'ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ ПО ТРЕНИРОВКАМ',
+    advice,
+    userData,
+    false
+  );
   const fileName = `Рекомендации_по_тренировкам_${new Date().toISOString().split('T')[0]}.pdf`;
-  doc.save(fileName);
+  await renderPdfFromContainer(container, fileName);
 }
