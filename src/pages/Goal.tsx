@@ -175,7 +175,6 @@ const Goal = () => {
   const deficitValue = derived.deficitPerDay;
   const kgPerWeekValue = derived.kgPerWeek;
   const isGainGoal = derived.isGain;
-  const isLossGoal = derived.isLoss;
   const showWhyBlock =
     Number.isFinite(bmrValue) &&
     Number.isFinite(tdeeValue) &&
