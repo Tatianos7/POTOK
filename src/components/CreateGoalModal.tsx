@@ -13,6 +13,7 @@ export interface GoalFormData {
   weight: string;
   height: string;
   lifestyle: string;
+  trainingPlace: 'home' | 'gym';
   goal: string;
   targetWeight: string;
   intensity: string;
@@ -25,6 +26,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
     weight: '',
     height: '',
     lifestyle: '',
+    trainingPlace: 'home',
     goal: '',
     targetWeight: '55',
     intensity: '10',
@@ -266,6 +268,45 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                         </div>
                       )}
                     </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Goal */}
+          <div className="w-full max-w-full overflow-hidden">
+            <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 min-[376px]:mb-3">
+              Тренировки:
+            </label>
+            <div className="flex flex-wrap gap-3 min-[376px]:gap-4">
+              {[
+                { value: 'home', label: 'Дома / на улице' },
+                { value: 'gym', label: 'В зале' },
+              ].map((option) => {
+                const isChecked = formData.trainingPlace === option.value;
+                return (
+                  <label key={option.value} className="flex items-center gap-1.5 min-[376px]:gap-2 cursor-pointer flex-shrink-0">
+                    <input
+                      type="radio"
+                      name="trainingPlace"
+                      value={option.value}
+                      checked={isChecked}
+                      onChange={handleChange('trainingPlace')}
+                      className="sr-only"
+                    />
+                    <div className={`w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
+                      isChecked
+                        ? 'border-green-500 bg-green-500'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}>
+                      {isChecked && (
+                        <Check className="w-2.5 h-2.5 min-[376px]:w-3 min-[376px]:h-3 text-white" strokeWidth={3} />
+                      )}
+                    </div>
+                    <span className="text-xs min-[376px]:text-sm font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere">
+                      {option.label}
+                    </span>
                   </label>
                 );
               })}

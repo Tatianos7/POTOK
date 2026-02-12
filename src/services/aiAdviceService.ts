@@ -33,6 +33,7 @@ export class AiAdviceService {
   validateUserData(data: Partial<UserGoalData>): data is UserGoalData {
     return (
       typeof data.goal === 'string' &&
+      typeof data.trainingPlace === 'string' &&
       typeof data.calories === 'number' &&
       typeof data.protein === 'number' &&
       typeof data.fat === 'number' &&
@@ -47,4 +48,3 @@ export class AiAdviceService {
 }
 
 export const aiAdviceService = new AiAdviceService();
-

@@ -32,7 +32,7 @@ export function useAiAdvice(): UseAiAdviceReturn {
     }
 
     try {
-      // Загружаем КБЖУ из Supabase
+      // Загружаем цель из Supabase (source of truth)
       const supabaseGoal = await goalService.getUserGoal(user.id);
       
       // Загружаем дополнительные данные из localStorage
@@ -47,7 +47,7 @@ export function useAiAdvice(): UseAiAdviceReturn {
         }
       }
 
-      // Если есть данные из Supabase, используем их
+      // Если есть данные из Supabase, используем их как primary source
       if (supabaseGoal) {
         goalData = {
           ...goalData,
@@ -55,6 +55,15 @@ export function useAiAdvice(): UseAiAdviceReturn {
           proteins: supabaseGoal.protein,
           fats: supabaseGoal.fat,
           carbs: supabaseGoal.carbs,
+          goalType: supabaseGoal.goal_type || goalData.goalType,
+          currentWeight: supabaseGoal.current_weight ?? goalData.currentWeight,
+          targetWeight: supabaseGoal.target_weight ?? goalData.targetWeight,
+          age: supabaseGoal.age ?? goalData.age,
+          height: supabaseGoal.height ?? goalData.height,
+          gender: supabaseGoal.gender ?? goalData.gender,
+          lifestyle: supabaseGoal.lifestyle ?? goalData.lifestyle,
+          intensity: supabaseGoal.intensity ?? goalData.intensity,
+          trainingPlace: supabaseGoal.training_place ?? goalData.trainingPlace ?? 'home',
         };
       }
 
@@ -82,6 +91,7 @@ export function useAiAdvice(): UseAiAdviceReturn {
         // Формируем UserGoalData
         const userGoalData: UserGoalData = {
           goal,
+          trainingPlace: goalData.trainingPlace === 'gym' ? 'gym' : 'home',
           calories: Number(goalData.calories),
           protein: Number(goalData.proteins),
           fat: Number(goalData.fats),
