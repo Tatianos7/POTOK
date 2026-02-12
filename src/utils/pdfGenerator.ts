@@ -80,12 +80,50 @@ const renderPdfFromContainer = async (container: HTMLDivElement, fileName: strin
   pdf.save(fileName);
 };
 
+type TrainingPlace = 'home' | 'gym';
+
+export const getCaloriesBucket = (calories: number): number => {
+  if (!Number.isFinite(calories)) return 1300;
+  if (calories < 1400) return 1300;
+  if (calories < 1600) return 1500;
+  if (calories < 1800) return 1700;
+  if (calories < 2000) return 1900;
+  if (calories < 2200) return 2100;
+  if (calories < 2400) return 2300;
+  if (calories < 2600) return 2500;
+  if (calories < 2800) return 2700;
+  if (calories < 3000) return 2900;
+  if (calories < 3200) return 3100;
+  if (calories < 3400) return 3300;
+  if (calories < 3600) return 3500;
+  if (calories < 3800) return 3700;
+  if (calories < 4000) return 3900;
+  return 4100;
+};
+
+export const getNutritionPdfUrl = (
+  trainingPlace: TrainingPlace,
+  calories: number,
+  goalType: 'lose' | 'gain' | 'maintain'
+): string => {
+  const bucket = getCaloriesBucket(calories);
+  return `/plans/nutrition/${goalType}/${trainingPlace}/${bucket}.pdf`;
+};
+
+export const getWorkoutPdfUrl = (
+  trainingPlace: TrainingPlace,
+  goalType: 'lose' | 'gain' | 'maintain'
+): string => {
+  return `/plans/workouts/${goalType}/${trainingPlace}/base.pdf`;
+};
+
 /**
  * Генерирует PDF с рекомендациями по питанию
  */
 export async function generateNutritionPDF(advice: string, userData: UserGoalData): Promise<void> {
+  const placeLabel = userData.trainingPlace === 'gym' ? 'В ЗАЛЕ' : 'ДОМА / НА УЛИЦЕ';
   const container = buildAdviceContainer(
-    'ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ ПО ПИТАНИЮ',
+    `ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ ПО ПИТАНИЮ (${placeLabel})`,
     advice,
     userData,
     true
@@ -98,8 +136,9 @@ export async function generateNutritionPDF(advice: string, userData: UserGoalDat
  * Генерирует PDF с рекомендациями по тренировкам
  */
 export async function generateTrainingPDF(advice: string, userData: UserGoalData): Promise<void> {
+  const placeLabel = userData.trainingPlace === 'gym' ? 'В ЗАЛЕ' : 'ДОМА / НА УЛИЦЕ';
   const container = buildAdviceContainer(
-    'ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ ПО ТРЕНИРОВКАМ',
+    `ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ ПО ТРЕНИРОВКАМ (${placeLabel})`,
     advice,
     userData,
     false

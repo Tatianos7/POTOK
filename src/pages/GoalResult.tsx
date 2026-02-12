@@ -204,6 +204,7 @@ const GoalResult = () => {
 
       setFormData({
         ...data,
+        trainingPlace: data.trainingPlace ?? 'home',
         targetWeight: Number.isFinite(targetWeight) ? String(targetWeight) : data.targetWeight,
       });
     } else {
@@ -297,6 +298,10 @@ const GoalResult = () => {
     return workouts[lifestyle] || '-';
   };
 
+  const getTrainingPlaceLabel = (trainingPlace: 'home' | 'gym' | string): string => {
+    return trainingPlace === 'gym' ? 'В зале' : 'Дома / на улице';
+  };
+
   const handleSave = () => {
     if (!user?.id || !formData || !result) return;
     if (saveInFlightRef.current) return;
@@ -327,6 +332,7 @@ const GoalResult = () => {
       currentWeight: formData.weight, // Сохраняем текущий вес
       height: formData.height, // Сохраняем рост
       lifestyle: formData.lifestyle, // Сохраняем образ жизни
+      trainingPlace: formData.trainingPlace || 'home',
       targetWeight: formData.targetWeight || formData.weight,
       intensity: formData.intensity, // Сохраняем интенсивность
       startDate: startDate,
@@ -350,6 +356,20 @@ const GoalResult = () => {
       protein: result.proteins,
       fat: result.fats,
       carbs: result.carbs,
+      goal_type: goalTypeMap[formData.goal] || formData.goal,
+      current_weight: Number(formData.weight),
+      target_weight: Number(formData.targetWeight || formData.weight),
+      start_date: startDate,
+      end_date: endDate || undefined,
+      months_to_goal: result.monthsToGoal,
+      bmr: Math.round(result.bmr),
+      tdee: Math.round(result.tdee),
+      training_place: formData.trainingPlace || 'home',
+      gender: formData.gender,
+      age: Number(formData.age),
+      height: Number(formData.height),
+      lifestyle: formData.lifestyle,
+      intensity: formData.intensity,
     });
 
     void profileService.saveProfile(user.id, {
@@ -415,6 +435,9 @@ const GoalResult = () => {
             </p>
             <p>
               Кол-во тренировок в неделю: <span className="font-medium">{getWorkoutsPerWeek(formData.lifestyle)}</span>
+            </p>
+            <p>
+              Тренировки: <span className="font-medium">{getTrainingPlaceLabel(formData.trainingPlace)}</span>
             </p>
           </div>
 

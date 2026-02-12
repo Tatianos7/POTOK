@@ -97,6 +97,7 @@ interface GoalData {
   targetWeight: string;
   startDate: string;
   endDate?: string;
+  trainingPlace?: 'home' | 'gym';
   monthsToGoal?: number;
   bmr?: number;
   tdee?: number;
@@ -117,6 +118,7 @@ const Goal = () => {
     goalType: '',
     targetWeight: '',
     startDate: '',
+    trainingPlace: 'home',
     calories: '',
     proteins: '',
     fats: '',
@@ -143,6 +145,24 @@ const Goal = () => {
         const merged: GoalData = {
           ...prev,
           ...parsed,
+          goalType: state.goal?.goal_type ?? parsed.goalType ?? prev.goalType ?? '',
+          currentWeight:
+            state.goal?.current_weight != null
+              ? String(state.goal.current_weight)
+              : parsed.currentWeight ?? prev.currentWeight ?? '',
+          targetWeight:
+            state.goal?.target_weight != null
+              ? String(state.goal.target_weight)
+              : parsed.targetWeight ?? prev.targetWeight ?? '',
+          startDate: state.goal?.start_date ?? parsed.startDate ?? prev.startDate ?? '',
+          endDate: state.goal?.end_date ?? parsed.endDate ?? prev.endDate ?? '',
+          trainingPlace:
+            state.goal?.training_place === 'gym'
+              ? 'gym'
+              : (parsed.trainingPlace as 'home' | 'gym' | undefined) ?? prev.trainingPlace ?? 'home',
+          bmr: state.goal?.bmr ?? parsed.bmr ?? prev.bmr,
+          tdee: state.goal?.tdee ?? parsed.tdee ?? prev.tdee,
+          monthsToGoal: state.goal?.months_to_goal ?? parsed.monthsToGoal ?? prev.monthsToGoal,
           calories: state.goal?.calories?.toString() ?? parsed.calories ?? prev.calories ?? '',
           proteins: state.goal?.protein?.toString() ?? parsed.proteins ?? parsed.protein ?? prev.proteins ?? '',
           fats: state.goal?.fat?.toString() ?? parsed.fats ?? parsed.fat ?? prev.fats ?? '',
@@ -220,6 +240,15 @@ const Goal = () => {
       protein: Number(data.proteins),
       fat: Number(data.fats),
       carbs: Number(data.carbs),
+      goal_type: goalData.goalType || undefined,
+      current_weight: goalData.currentWeight ? Number(goalData.currentWeight) : undefined,
+      target_weight: goalData.targetWeight ? Number(goalData.targetWeight) : undefined,
+      start_date: goalData.startDate || undefined,
+      end_date: goalData.endDate || undefined,
+      months_to_goal: goalData.monthsToGoal,
+      bmr: goalData.bmr,
+      tdee: goalData.tdee,
+      training_place: goalData.trainingPlace ?? 'home',
     });
 
     // Обновляем данные цели
@@ -411,6 +440,12 @@ const Goal = () => {
                   {weightDifference !== '-' ? `${weightDifference} кг` : '-'}
                 </p>
               </div>
+            </div>
+            <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
+              <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Тренировки:</p>
+              <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
+                {goalData.trainingPlace === 'gym' ? 'В зале' : 'Дома / на улице'}
+              </p>
             </div>
             <div className="grid grid-cols-1 min-[376px]:grid-cols-2 gap-3 min-[376px]:gap-4 w-full max-w-full">
               <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
