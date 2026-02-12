@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
@@ -6,9 +6,90 @@ import CreateGoalModal, { GoalFormData } from '../components/CreateGoalModal';
 import EditGoalModal from '../components/EditGoalModal';
 import { goalService } from '../services/goalService';
 import AiAdviceBlock from '../components/AiAdviceBlock';
-import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
-import type { BaseExplainabilityDTO } from '../types/explainability';
+
+const calculateKgPerWeek = (surplusOrDeficit: number): number => (surplusOrDeficit * 7) / 7700;
+
+const calculateMonthsFromRate = (kgToGoal: number, kgPerWeek: number): number => {
+  if (kgPerWeek <= 0) return 0;
+  const weeks = kgToGoal / kgPerWeek;
+  const months = weeks / 4.345;
+  return Math.max(1, Math.ceil(months));
+};
+
+const computeDerivedGoal = (goal: GoalData) => {
+  const currentWeight = Number(goal.currentWeight);
+  const targetWeight = Number(goal.targetWeight);
+  const tdee = Number(goal.tdee);
+  const calories = Number(goal.calories);
+  const goalType = goal.goalType?.toLowerCase() ?? '';
+  const isGain = goalType.includes('набор');
+  const isLoss = goalType.includes('похуд');
+
+  const hasCoreValues =
+    Number.isFinite(currentWeight) &&
+    Number.isFinite(targetWeight) &&
+    Number.isFinite(tdee) &&
+    Number.isFinite(calories) &&
+    currentWeight > 0 &&
+    targetWeight > 0 &&
+    tdee > 0 &&
+    calories > 0;
+
+  if (!hasCoreValues) {
+    return {
+      isGain,
+      isLoss,
+      surplusPerDay: 0,
+      deficitPerDay: 0,
+      kgPerWeek: 0,
+      monthsToGoal: 0,
+      daysToGoal: 0,
+    };
+  }
+
+  if (isGain) {
+    const surplus = calories - tdee;
+    if (surplus <= 0) {
+      return { isGain, isLoss, surplusPerDay: 0, deficitPerDay: 0, kgPerWeek: 0, monthsToGoal: 0, daysToGoal: 0 };
+    }
+    const kgPerWeek = calculateKgPerWeek(surplus);
+    const kgToGoal = targetWeight - currentWeight;
+    const daysToGoal = kgToGoal > 0 && kgPerWeek > 0 ? (kgToGoal / kgPerWeek) * 7 : 0;
+    const monthsToGoal = kgToGoal > 0 && kgPerWeek > 0 ? calculateMonthsFromRate(kgToGoal, kgPerWeek) : 0;
+    return {
+      isGain,
+      isLoss,
+      surplusPerDay: Math.round(surplus),
+      deficitPerDay: 0,
+      kgPerWeek: Number(kgPerWeek.toFixed(2)),
+      monthsToGoal,
+      daysToGoal,
+    };
+  }
+
+  if (isLoss) {
+    const deficit = tdee - calories;
+    if (deficit <= 0) {
+      return { isGain, isLoss, surplusPerDay: 0, deficitPerDay: 0, kgPerWeek: 0, monthsToGoal: 0, daysToGoal: 0 };
+    }
+    const kgPerWeek = calculateKgPerWeek(deficit);
+    const kgToGoal = currentWeight - targetWeight;
+    const daysToGoal = kgToGoal > 0 && kgPerWeek > 0 ? (kgToGoal / kgPerWeek) * 7 : 0;
+    const monthsToGoal = kgToGoal > 0 && kgPerWeek > 0 ? calculateMonthsFromRate(kgToGoal, kgPerWeek) : 0;
+    return {
+      isGain,
+      isLoss,
+      surplusPerDay: 0,
+      deficitPerDay: Math.round(deficit),
+      kgPerWeek: Number(kgPerWeek.toFixed(2)),
+      monthsToGoal,
+      daysToGoal,
+    };
+  }
+
+  return { isGain, isLoss, surplusPerDay: 0, deficitPerDay: 0, kgPerWeek: 0, monthsToGoal: 0, daysToGoal: 0 };
+};
 
 interface GoalData {
   goalType: string;
@@ -17,6 +98,10 @@ interface GoalData {
   startDate: string;
   endDate?: string;
   monthsToGoal?: number;
+  bmr?: number;
+  tdee?: number;
+  surplusPerDay?: number;
+  kgPerWeek?: number;
   calories: string;
   proteins: string;
   fats: string;
@@ -39,8 +124,8 @@ const Goal = () => {
   });
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
   const [runtimeMessage, setRuntimeMessage] = useState<string | null>(null);
-  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
+  const [isWhyOpen, setIsWhyOpen] = useState(false);
 
   const loadGoalState = useCallback(async () => {
     if (!user?.id) return;
@@ -51,23 +136,52 @@ const Goal = () => {
       const state = await uiRuntimeAdapter.getGoalState(user.id);
       setRuntimeStatus(state.status);
       setRuntimeMessage(state.message || null);
-      setExplainability(state.explainability ?? null);
       setTrustMessage(state.trust?.message ?? null);
-      if (state.goal) {
-        setGoalData((prev) => ({
+      const stored = localStorage.getItem(`goal_${user.id}`);
+      const parsed = stored ? JSON.parse(stored) : {};
+      setGoalData((prev) => {
+        const merged: GoalData = {
           ...prev,
-          calories: state.goal?.calories?.toString() ?? '',
-          proteins: state.goal?.protein?.toString() ?? '',
-          fats: state.goal?.fat?.toString() ?? '',
-          carbs: state.goal?.carbs?.toString() ?? '',
-        }));
-      }
+          ...parsed,
+          calories: state.goal?.calories?.toString() ?? parsed.calories ?? prev.calories ?? '',
+          proteins: state.goal?.protein?.toString() ?? parsed.proteins ?? parsed.protein ?? prev.proteins ?? '',
+          fats: state.goal?.fat?.toString() ?? parsed.fats ?? parsed.fat ?? prev.fats ?? '',
+          carbs: state.goal?.carbs?.toString() ?? parsed.carbs ?? prev.carbs ?? '',
+        };
+        const nextDerived = computeDerivedGoal(merged);
+        const enriched = {
+          ...merged,
+          surplusPerDay: nextDerived.surplusPerDay,
+          kgPerWeek: nextDerived.kgPerWeek,
+          monthsToGoal: nextDerived.monthsToGoal,
+        };
+        localStorage.setItem(`goal_${user.id}`, JSON.stringify(enriched));
+        return enriched;
+      });
     } catch (error) {
       setRuntimeStatus('error');
       setRuntimeMessage('Не удалось загрузить цель.');
       setTrustMessage('Проверьте соединение и попробуйте снова.');
     }
   }, [user?.id]);
+
+  const bmrValue = Number(goalData.bmr);
+  const tdeeValue = Number(goalData.tdee);
+  const caloriesValue = Number(goalData.calories);
+  const derived = useMemo(() => computeDerivedGoal(goalData), [goalData]);
+  const monthsValue = derived.monthsToGoal;
+  const daysToGoalValue = derived.daysToGoal;
+  const surplusValue = derived.surplusPerDay;
+  const deficitValue = derived.deficitPerDay;
+  const kgPerWeekValue = derived.kgPerWeek;
+  const isGainGoal = derived.isGain;
+  const showWhyBlock =
+    Number.isFinite(bmrValue) &&
+    Number.isFinite(tdeeValue) &&
+    Number.isFinite(caloriesValue) &&
+    bmrValue > 0 &&
+    tdeeValue > 0 &&
+    caloriesValue > 0;
 
   useEffect(() => {
     if (!user) {
@@ -76,20 +190,6 @@ const Goal = () => {
     }
 
     loadGoalState();
-
-    // Загружаем дополнительные данные цели из localStorage (goalType, dates, etc.)
-    const savedGoal = localStorage.getItem(`goal_${user.id}`);
-    if (savedGoal) {
-      try {
-        const parsed = JSON.parse(savedGoal);
-        setGoalData((prev) => ({
-          ...prev,
-          ...parsed,
-        }));
-      } catch (error) {
-        console.error('Ошибка загрузки цели:', error);
-      }
-    }
   }, [user, navigate, loadGoalState]);
 
   const handleSetGoal = () => {
@@ -123,13 +223,18 @@ const Goal = () => {
     });
 
     // Обновляем данные цели
-    const updatedGoalData = {
+    const updatedGoalData: GoalData = {
       ...goalData,
       calories: data.calories,
       proteins: data.proteins,
       fats: data.fats,
       carbs: data.carbs,
     };
+
+    const nextDerived = computeDerivedGoal(updatedGoalData);
+    updatedGoalData.surplusPerDay = nextDerived.surplusPerDay;
+    updatedGoalData.kgPerWeek = nextDerived.kgPerWeek;
+    updatedGoalData.monthsToGoal = nextDerived.monthsToGoal;
 
     // Сохраняем в localStorage (для дополнительных данных)
     localStorage.setItem(`goal_${user.id}`, JSON.stringify(updatedGoalData));
@@ -194,6 +299,14 @@ const Goal = () => {
   };
 
   const weightDifference = calculateWeightDifference();
+  const hasDaysToGoal = Number.isFinite(daysToGoalValue) && daysToGoalValue > 0;
+  const hasMonthsToGoal = Number.isFinite(monthsValue) && monthsValue > 0;
+  const remainingLabel =
+    hasDaysToGoal && daysToGoalValue < 31
+      ? formatDays(Math.ceil(daysToGoalValue))
+      : hasMonthsToGoal
+        ? `~${Math.ceil(monthsValue)} месяцев`
+        : null;
 
   // Форматирование даты из YYYY-MM-DD в DD.MM.YYYY
   const formatDate = (dateString: string): string => {
@@ -277,11 +390,6 @@ const Goal = () => {
               Цель ещё не задана. Начните с расчёта.
             </div>
           )}
-          {explainability && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
-              Доступно объяснение: «Почему так?»
-            </div>
-          )}
           {/* Goal Summary Section */}
           <div className="space-y-3 min-[376px]:space-y-4 mb-4 min-[376px]:mb-6 w-full max-w-full overflow-hidden">
             <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
@@ -314,7 +422,7 @@ const Goal = () => {
               <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
                 <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Осталось:</p>
                 <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
-                  {goalData.endDate ? formatDays(daysRemaining) : '-'}
+                  {remainingLabel ?? (goalData.endDate ? formatDays(daysRemaining) : '-')}
                 </p>
               </div>
             </div>
@@ -360,12 +468,88 @@ const Goal = () => {
               </div>
             </div>
           </div>
+          {showWhyBlock && (
+            <div className="mb-4 w-full max-w-full">
+              <button
+                type="button"
+                onClick={() => setIsWhyOpen((prev) => !prev)}
+                className="w-full rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-left text-sm font-semibold text-gray-800 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-200 transition-colors"
+              >
+                Почему так?
+              </button>
+              {isWhyOpen && (
+                <div className="mt-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-gray-700">
+                  {isGainGoal ? (
+                    surplusValue > 0 ? (
+                      <>
+                        <p>Ваш базовый обмен — {Math.round(bmrValue)} ккал.</p>
+                        <p>С учётом активности вы тратите примерно {Math.round(tdeeValue)} ккал в день.</p>
+                        <p>
+                          Для набора массы мы добавили безопасный профицит: +{Math.round(surplusValue)} ккал/день →{' '}
+                          {Math.round(caloriesValue)} ккал/день.
+                        </p>
+                        <p>
+                          Это даёт темп около ~{Number.isFinite(kgPerWeekValue) ? kgPerWeekValue.toFixed(2) : '0.00'} кг/нед — без резкого набора жира.
+                        </p>
+                        {Number.isFinite(monthsValue) && monthsValue > 0 && (
+                          <p>При стабильном соблюдении режима вы выйдете на цель примерно за ~{Math.ceil(monthsValue)} мес.</p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p>Сейчас калораж не даёт профицит относительно вашего расхода.</p>
+                        <p>Чтобы набирать массу, нужно быть в плюсе: хотя бы +150–300 ккал/день.</p>
+                        <p>Попробуйте увеличить калории или выбрать более активный режим тренировок.</p>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <p>Мы рассчитали ваш базовый обмен — {Math.round(bmrValue)} ккал.</p>
+                      <p>С учётом активности ваш расход — {Math.round(tdeeValue)} ккал.</p>
+                      {deficitValue > 0 ? (
+                        <>
+                          <p>
+                            Чтобы снижать вес без стресса, мы заложили дефицит: {Math.round(deficitValue)} ккал/день →{' '}
+                            {Math.round(caloriesValue)} ккал/день.
+                          </p>
+                          {caloriesValue < bmrValue ? (
+                            <>
+                              <p className="text-red-600">
+                                Обратите внимание: калории ниже вашего базового обмена.
+                              </p>
+                              <p className="text-red-600">
+                                Мы не рекомендуем выходить на калории ниже вашего обмена — это может навредить здоровью.
+                              </p>
+                              <p className="text-red-600">
+                                При плохом самочувствии обратитесь к врачу.
+                              </p>
+                            </>
+                          ) : (
+                            <p>
+                              Это даёт темп около ~{Number.isFinite(kgPerWeekValue) ? kgPerWeekValue.toFixed(2) : '0.00'} кг/нед —
+                              без резких скачков.
+                            </p>
+                          )}
+                          {Number.isFinite(monthsValue) && monthsValue > 0 && (
+                            <p>При стабильном соблюдении режима вы выйдете на цель примерно за ~{Math.ceil(monthsValue)} мес.</p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p>Сейчас калораж не даёт дефицит относительно вашего расхода.</p>
+                          <p>Чтобы снижать вес, нужен минус: хотя бы 150–300 ккал/день.</p>
+                          <p>Попробуйте уменьшить калории или выбрать более активный режим тренировок.</p>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* AI Advice Block */}
           <AiAdviceBlock />
-          <div className="mt-4">
-            <ExplainabilityDrawer explainability={explainability} />
-          </div>
 
           {/* Action Buttons */}
           <div className="pt-4 min-[376px]:pt-6 pb-4 min-[376px]:pb-6 w-full max-w-full overflow-hidden">
@@ -411,10 +595,11 @@ const Goal = () => {
           fats: goalData.fats || '',
           carbs: goalData.carbs || '',
         }}
+        bmr={Number.isFinite(bmrValue) ? bmrValue : null}
+        weight={Number.isFinite(Number(goalData.currentWeight)) ? Number(goalData.currentWeight) : null}
       />
     </div>
   );
 };
 
 export default Goal;
-

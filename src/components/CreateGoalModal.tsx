@@ -31,6 +31,23 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
   });
 
   useEffect(() => {
+    const weightValue = Number(formData.weight);
+    if (!Number.isFinite(weightValue) || weightValue <= 0) return;
+    if (formData.goal !== 'gain') return;
+
+    const max = Math.min(weightValue + 30, 150);
+    const min = Math.min(weightValue + 1, max);
+    const currentTarget = Number(formData.targetWeight);
+    if (!Number.isFinite(currentTarget) || currentTarget < min || currentTarget > max) {
+      const fallback = Math.min(weightValue + 5, max);
+      setFormData((prev) => ({
+        ...prev,
+        targetWeight: String(fallback),
+      }));
+    }
+  }, [formData.goal, formData.weight, formData.targetWeight]);
+
+  useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
@@ -66,6 +83,20 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
   };
 
   const isFieldValid = (value: string) => value.trim() !== '';
+  const weightValue = Number(formData.weight);
+  const gainMax = Number.isFinite(weightValue) && weightValue > 0 ? Math.min(weightValue + 30, 150) : 150;
+  const gainMin = Number.isFinite(weightValue) && weightValue > 0 ? Math.min(weightValue + 1, gainMax) : 40;
+  const rawGainTarget = Number(formData.targetWeight);
+  const gainTarget =
+    Number.isFinite(rawGainTarget) && rawGainTarget >= gainMin && rawGainTarget <= gainMax
+      ? rawGainTarget
+      : Math.min((Number.isFinite(weightValue) ? weightValue + 5 : 55), gainMax);
+  const gainRange = gainMax - gainMin;
+  const gainProgress = gainRange > 0 ? (gainTarget - gainMin) / gainRange : 1;
+  const gainProgressClamped = Math.min(0.98, Math.max(0.02, gainProgress));
+  const lossTarget = Number(formData.targetWeight) || 55;
+  const lossProgress = (lossTarget - 40) / (150 - 40);
+  const lossProgressClamped = Math.min(0.98, Math.max(0.02, lossProgress));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 min-[376px]:p-4">
@@ -293,16 +324,27 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
               <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Похудеть до, кг
               </label>
+              <div className="relative h-5 mb-1">
+                <div
+                  className="absolute text-sm font-medium text-gray-900 dark:text-white"
+                  style={{
+                    left: `calc(${lossProgressClamped * 100}%)`,
+                    transform: 'translateX(-50%)',
+                  }}
+                >
+                  {lossTarget}
+                </div>
+              </div>
               <div className="relative">
                 <input
                   type="range"
                   min="40"
                   max="150"
-                  value={formData.targetWeight}
+                  value={lossTarget}
                   onChange={handleSliderChange}
                   className="weight-slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
                   style={{
-                    background: `linear-gradient(to right, #10b981 0%, #10b981 ${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}%, #e5e7eb ${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}%, #e5e7eb 100%)`
+                    background: `linear-gradient(to right, #10b981 0%, #10b981 ${lossProgress * 100}%, #e5e7eb ${lossProgress * 100}%, #e5e7eb 100%)`
                   }}
                 />
                 <style>{`
@@ -347,15 +389,79 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                     color: transparent;
                   }
                 `}</style>
+              </div>
+            </div>
+          )}
+          {formData.goal === 'gain' && (
+            <div className="w-full max-w-full overflow-hidden">
+              <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Набрать до, кг
+              </label>
+              <div className="relative h-5 mb-1">
                 <div
-                  className="absolute top-[100%] mt-2 text-sm font-medium text-gray-900 dark:text-white"
+                  className="absolute text-sm font-medium text-gray-900 dark:text-white"
                   style={{
-                    left: `calc(${(parseInt(formData.targetWeight) - 40) / (150 - 40) * 100}% - 12px)`,
-                    transform: 'translateX(0)'
+                    left: `calc(${gainProgressClamped * 100}%)`,
+                    transform: 'translateX(-50%)',
                   }}
                 >
-                  {formData.targetWeight}
+                  {gainTarget}
                 </div>
+              </div>
+              <div className="relative">
+                <input
+                  type="range"
+                  min={gainMin}
+                  max={gainMax}
+                  value={gainTarget}
+                  onChange={handleSliderChange}
+                  className="weight-slider w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                  style={{
+                    background: `linear-gradient(to right, #10b981 0%, #10b981 ${gainProgress * 100}%, #e5e7eb ${gainProgress * 100}%, #e5e7eb 100%)`
+                  }}
+                />
+                <style>{`
+                  .weight-slider::-webkit-slider-thumb {
+                    -webkit-appearance: none !important;
+                    appearance: none !important;
+                    width: 20px !important;
+                    height: 20px !important;
+                    border-radius: 50% !important;
+                    background: #10b981 !important;
+                    cursor: pointer !important;
+                    border: 2px solid #10b981 !important;
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3) !important;
+                  }
+                  .weight-slider::-webkit-slider-thumb:hover {
+                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2) !important;
+                  }
+                  .weight-slider::-moz-range-thumb {
+                    width: 20px !important;
+                    height: 20px !important;
+                    border-radius: 50% !important;
+                    background: #10b981 !important;
+                    cursor: pointer !important;
+                    border: 2px solid #10b981 !important;
+                    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.3) !important;
+                    -moz-appearance: none !important;
+                  }
+                  .weight-slider::-moz-range-thumb:hover {
+                    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2) !important;
+                  }
+                  .weight-slider::-ms-thumb {
+                    width: 20px !important;
+                    height: 20px !important;
+                    border-radius: 50% !important;
+                    background: #10b981 !important;
+                    cursor: pointer !important;
+                    border: 2px solid #10b981 !important;
+                  }
+                  .weight-slider::-ms-track {
+                    background: transparent;
+                    border-color: transparent;
+                    color: transparent;
+                  }
+                `}</style>
               </div>
             </div>
           )}
@@ -411,4 +517,3 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
 };
 
 export default CreateGoalModal;
-

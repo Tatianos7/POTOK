@@ -19,13 +19,13 @@ const AiAdviceBlock = () => {
 
   const handleDownloadNutritionPDF = () => {
     if (userGoalData && nutritionAdvice) {
-      generateNutritionPDF(nutritionAdvice, userGoalData);
+      void generateNutritionPDF(nutritionAdvice, userGoalData);
     }
   };
 
   const handleDownloadTrainingPDF = () => {
     if (userGoalData && trainingAdvice) {
-      generateTrainingPDF(trainingAdvice, userGoalData);
+      void generateTrainingPDF(trainingAdvice, userGoalData);
     }
   };
 
