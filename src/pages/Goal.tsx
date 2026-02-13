@@ -7,14 +7,13 @@ import EditGoalModal from '../components/EditGoalModal';
 import { goalService } from '../services/goalService';
 import AiAdviceBlock from '../components/AiAdviceBlock';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
+import { calculateGoalTimeline, type GoalMode } from '../utils/goalProjection';
 
-const calculateKgPerWeek = (surplusOrDeficit: number): number => (surplusOrDeficit * 7) / 7700;
-
-const calculateMonthsFromRate = (kgToGoal: number, kgPerWeek: number): number => {
-  if (kgPerWeek <= 0) return 0;
-  const weeks = kgToGoal / kgPerWeek;
-  const months = weeks / 4.345;
-  return Math.max(1, Math.ceil(months));
+const normalizeGoalMode = (goalType?: string): GoalMode => {
+  const value = (goalType || '').toLowerCase();
+  if (value.includes('похуд') || value === 'weight-loss') return 'weight-loss';
+  if (value.includes('набор') || value === 'gain') return 'gain';
+  return 'maintain';
 };
 
 const computeDerivedGoal = (goal: GoalData) => {
@@ -22,73 +21,24 @@ const computeDerivedGoal = (goal: GoalData) => {
   const targetWeight = Number(goal.targetWeight);
   const tdee = Number(goal.tdee);
   const calories = Number(goal.calories);
-  const goalType = goal.goalType?.toLowerCase() ?? '';
-  const isGain = goalType.includes('набор');
-  const isLoss = goalType.includes('похуд');
+  const goalMode = normalizeGoalMode(goal.goalType);
+  const timeline = calculateGoalTimeline({
+    goal: goalMode,
+    currentWeight,
+    targetWeight,
+    tdee,
+    calories,
+  });
 
-  const hasCoreValues =
-    Number.isFinite(currentWeight) &&
-    Number.isFinite(targetWeight) &&
-    Number.isFinite(tdee) &&
-    Number.isFinite(calories) &&
-    currentWeight > 0 &&
-    targetWeight > 0 &&
-    tdee > 0 &&
-    calories > 0;
-
-  if (!hasCoreValues) {
-    return {
-      isGain,
-      isLoss,
-      surplusPerDay: 0,
-      deficitPerDay: 0,
-      kgPerWeek: 0,
-      monthsToGoal: 0,
-      daysToGoal: 0,
-    };
-  }
-
-  if (isGain) {
-    const surplus = calories - tdee;
-    if (surplus <= 0) {
-      return { isGain, isLoss, surplusPerDay: 0, deficitPerDay: 0, kgPerWeek: 0, monthsToGoal: 0, daysToGoal: 0 };
-    }
-    const kgPerWeek = calculateKgPerWeek(surplus);
-    const kgToGoal = targetWeight - currentWeight;
-    const daysToGoal = kgToGoal > 0 && kgPerWeek > 0 ? (kgToGoal / kgPerWeek) * 7 : 0;
-    const monthsToGoal = kgToGoal > 0 && kgPerWeek > 0 ? calculateMonthsFromRate(kgToGoal, kgPerWeek) : 0;
-    return {
-      isGain,
-      isLoss,
-      surplusPerDay: Math.round(surplus),
-      deficitPerDay: 0,
-      kgPerWeek: Number(kgPerWeek.toFixed(2)),
-      monthsToGoal,
-      daysToGoal,
-    };
-  }
-
-  if (isLoss) {
-    const deficit = tdee - calories;
-    if (deficit <= 0) {
-      return { isGain, isLoss, surplusPerDay: 0, deficitPerDay: 0, kgPerWeek: 0, monthsToGoal: 0, daysToGoal: 0 };
-    }
-    const kgPerWeek = calculateKgPerWeek(deficit);
-    const kgToGoal = currentWeight - targetWeight;
-    const daysToGoal = kgToGoal > 0 && kgPerWeek > 0 ? (kgToGoal / kgPerWeek) * 7 : 0;
-    const monthsToGoal = kgToGoal > 0 && kgPerWeek > 0 ? calculateMonthsFromRate(kgToGoal, kgPerWeek) : 0;
-    return {
-      isGain,
-      isLoss,
-      surplusPerDay: 0,
-      deficitPerDay: Math.round(deficit),
-      kgPerWeek: Number(kgPerWeek.toFixed(2)),
-      monthsToGoal,
-      daysToGoal,
-    };
-  }
-
-  return { isGain, isLoss, surplusPerDay: 0, deficitPerDay: 0, kgPerWeek: 0, monthsToGoal: 0, daysToGoal: 0 };
+  return {
+    isGain: goalMode === 'gain',
+    isLoss: goalMode === 'weight-loss',
+    surplusPerDay: timeline.surplusPerDay,
+    deficitPerDay: timeline.deficitPerDay,
+    kgPerWeek: timeline.kgPerWeek,
+    monthsToGoal: timeline.monthsToGoal,
+    daysToGoal: timeline.daysToGoal,
+  };
 };
 
 interface GoalData {
@@ -128,6 +78,8 @@ const Goal = () => {
   const [runtimeMessage, setRuntimeMessage] = useState<string | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const [isWhyOpen, setIsWhyOpen] = useState(false);
+  const [isSaveSubmitting, setIsSaveSubmitting] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const loadGoalState = useCallback(async () => {
     if (!user?.id) return;
@@ -141,32 +93,30 @@ const Goal = () => {
       setTrustMessage(state.trust?.message ?? null);
       const stored = localStorage.getItem(`goal_${user.id}`);
       const parsed = stored ? JSON.parse(stored) : {};
+      const hasRemoteGoal = Boolean(state.goal && (state.goal.calories || state.goal.protein || state.goal.fat || state.goal.carbs));
+      const allowLocalFallback = !hasRemoteGoal && (state.status === 'offline' || state.status === 'error' || state.status === 'recovery');
       setGoalData((prev) => {
+        const source = hasRemoteGoal ? state.goal ?? null : null;
+        const fallback = allowLocalFallback ? parsed : {};
         const merged: GoalData = {
           ...prev,
-          ...parsed,
-          goalType: state.goal?.goal_type ?? parsed.goalType ?? prev.goalType ?? '',
-          currentWeight:
-            state.goal?.current_weight != null
-              ? String(state.goal.current_weight)
-              : parsed.currentWeight ?? prev.currentWeight ?? '',
-          targetWeight:
-            state.goal?.target_weight != null
-              ? String(state.goal.target_weight)
-              : parsed.targetWeight ?? prev.targetWeight ?? '',
-          startDate: state.goal?.start_date ?? parsed.startDate ?? prev.startDate ?? '',
-          endDate: state.goal?.end_date ?? parsed.endDate ?? prev.endDate ?? '',
+          ...fallback,
+          goalType: source?.goal_type ?? fallback.goalType ?? prev.goalType ?? '',
+          currentWeight: source?.current_weight != null ? String(source.current_weight) : fallback.currentWeight ?? prev.currentWeight ?? '',
+          targetWeight: source?.target_weight != null ? String(source.target_weight) : fallback.targetWeight ?? prev.targetWeight ?? '',
+          startDate: source?.start_date ?? fallback.startDate ?? prev.startDate ?? '',
+          endDate: source?.end_date ?? fallback.endDate ?? prev.endDate ?? '',
           trainingPlace:
-            state.goal?.training_place === 'gym'
+            source?.training_place === 'gym'
               ? 'gym'
-              : (parsed.trainingPlace as 'home' | 'gym' | undefined) ?? prev.trainingPlace ?? 'home',
-          bmr: state.goal?.bmr ?? parsed.bmr ?? prev.bmr,
-          tdee: state.goal?.tdee ?? parsed.tdee ?? prev.tdee,
-          monthsToGoal: state.goal?.months_to_goal ?? parsed.monthsToGoal ?? prev.monthsToGoal,
-          calories: state.goal?.calories?.toString() ?? parsed.calories ?? prev.calories ?? '',
-          proteins: state.goal?.protein?.toString() ?? parsed.proteins ?? parsed.protein ?? prev.proteins ?? '',
-          fats: state.goal?.fat?.toString() ?? parsed.fats ?? parsed.fat ?? prev.fats ?? '',
-          carbs: state.goal?.carbs?.toString() ?? parsed.carbs ?? prev.carbs ?? '',
+              : (fallback.trainingPlace as 'home' | 'gym' | undefined) ?? prev.trainingPlace ?? 'home',
+          bmr: source?.bmr ?? fallback.bmr ?? prev.bmr,
+          tdee: source?.tdee ?? fallback.tdee ?? prev.tdee,
+          monthsToGoal: source?.months_to_goal ?? fallback.monthsToGoal ?? prev.monthsToGoal,
+          calories: source?.calories?.toString() ?? fallback.calories ?? prev.calories ?? '',
+          proteins: source?.protein?.toString() ?? fallback.proteins ?? fallback.protein ?? prev.proteins ?? '',
+          fats: source?.fat?.toString() ?? fallback.fats ?? fallback.fat ?? prev.fats ?? '',
+          carbs: source?.carbs?.toString() ?? fallback.carbs ?? prev.carbs ?? '',
         };
         const nextDerived = computeDerivedGoal(merged);
         const enriched = {
@@ -212,6 +162,21 @@ const Goal = () => {
     loadGoalState();
   }, [user, navigate, loadGoalState]);
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    console.debug('[goal:projection][goal-screen]', {
+      weight: Number(goalData.currentWeight),
+      targetWeight: Number(goalData.targetWeight),
+      tdee: Number(goalData.tdee),
+      calories: Number(goalData.calories),
+      deficitPerDay: derived.deficitPerDay,
+      surplusPerDay: derived.surplusPerDay,
+      rateKgPerWeek: derived.kgPerWeek,
+      daysToGoal: derived.daysToGoal,
+      monthsToGoal: derived.monthsToGoal,
+    });
+  }, [goalData, derived]);
+
   const handleSetGoal = () => {
     setIsCreateGoalModalOpen(true);
   };
@@ -233,46 +198,90 @@ const Goal = () => {
 
   const handleSaveEdit = async (data: { calories: string; proteins: string; fats: string; carbs: string }) => {
     if (!user?.id) return;
+    setSaveNotice(null);
+    try {
+      await goalService.saveUserGoal(user.id, {
+        calories: Number(data.calories),
+        protein: Number(data.proteins),
+        fat: Number(data.fats),
+        carbs: Number(data.carbs),
+        goal_type: goalData.goalType || undefined,
+        current_weight: goalData.currentWeight ? Number(goalData.currentWeight) : undefined,
+        target_weight: goalData.targetWeight ? Number(goalData.targetWeight) : undefined,
+        start_date: goalData.startDate || undefined,
+        end_date: goalData.endDate || undefined,
+        months_to_goal: goalData.monthsToGoal,
+        bmr: goalData.bmr,
+        tdee: goalData.tdee,
+        training_place: goalData.trainingPlace ?? 'home',
+      });
 
-    // Save to Supabase
-    await goalService.saveUserGoal(user.id, {
-      calories: Number(data.calories),
-      protein: Number(data.proteins),
-      fat: Number(data.fats),
-      carbs: Number(data.carbs),
-      goal_type: goalData.goalType || undefined,
-      current_weight: goalData.currentWeight ? Number(goalData.currentWeight) : undefined,
-      target_weight: goalData.targetWeight ? Number(goalData.targetWeight) : undefined,
-      start_date: goalData.startDate || undefined,
-      end_date: goalData.endDate || undefined,
-      months_to_goal: goalData.monthsToGoal,
-      bmr: goalData.bmr,
-      tdee: goalData.tdee,
-      training_place: goalData.trainingPlace ?? 'home',
-    });
+      const updatedGoalData: GoalData = {
+        ...goalData,
+        calories: data.calories,
+        proteins: data.proteins,
+        fats: data.fats,
+        carbs: data.carbs,
+      };
 
-    // Обновляем данные цели
-    const updatedGoalData: GoalData = {
-      ...goalData,
-      calories: data.calories,
-      proteins: data.proteins,
-      fats: data.fats,
-      carbs: data.carbs,
-    };
+      const nextDerived = computeDerivedGoal(updatedGoalData);
+      updatedGoalData.surplusPerDay = nextDerived.surplusPerDay;
+      updatedGoalData.kgPerWeek = nextDerived.kgPerWeek;
+      updatedGoalData.monthsToGoal = nextDerived.monthsToGoal;
 
-    const nextDerived = computeDerivedGoal(updatedGoalData);
-    updatedGoalData.surplusPerDay = nextDerived.surplusPerDay;
-    updatedGoalData.kgPerWeek = nextDerived.kgPerWeek;
-    updatedGoalData.monthsToGoal = nextDerived.monthsToGoal;
-
-    // Сохраняем в localStorage (для дополнительных данных)
-    localStorage.setItem(`goal_${user.id}`, JSON.stringify(updatedGoalData));
-    setGoalData(updatedGoalData);
-    setIsEditGoalModalOpen(false);
+      localStorage.setItem(`goal_${user.id}`, JSON.stringify(updatedGoalData));
+      if (import.meta.env.DEV) {
+        console.debug('[goal:projection][edit-save]', {
+          weight: Number(updatedGoalData.currentWeight),
+          targetWeight: Number(updatedGoalData.targetWeight),
+          tdee: Number(updatedGoalData.tdee),
+          calories: Number(updatedGoalData.calories),
+          deficitPerDay: nextDerived.deficitPerDay,
+          surplusPerDay: nextDerived.surplusPerDay,
+          rateKgPerWeek: nextDerived.kgPerWeek,
+          daysToGoal: nextDerived.daysToGoal,
+          monthsToGoal: nextDerived.monthsToGoal,
+        });
+      }
+      setGoalData(updatedGoalData);
+      setSaveNotice({ type: 'success', text: 'Цель сохранена' });
+      setIsEditGoalModalOpen(false);
+    } catch (error) {
+      setSaveNotice({ type: 'error', text: 'Не удалось сохранить цель. Повторите попытку.' });
+      throw error;
+    }
   };
 
   const handleClose = () => {
     navigate('/');
+  };
+
+  const handleSaveGoal = async () => {
+    if (!user?.id || isSaveSubmitting) return;
+    setIsSaveSubmitting(true);
+    setSaveNotice(null);
+    try {
+      await goalService.saveUserGoal(user.id, {
+        calories: Number(goalData.calories || 0),
+        protein: Number(goalData.proteins || 0),
+        fat: Number(goalData.fats || 0),
+        carbs: Number(goalData.carbs || 0),
+        goal_type: goalData.goalType || undefined,
+        current_weight: goalData.currentWeight ? Number(goalData.currentWeight) : undefined,
+        target_weight: goalData.targetWeight ? Number(goalData.targetWeight) : undefined,
+        start_date: goalData.startDate || undefined,
+        end_date: goalData.endDate || undefined,
+        months_to_goal: goalData.monthsToGoal,
+        bmr: goalData.bmr,
+        tdee: goalData.tdee,
+        training_place: goalData.trainingPlace ?? 'home',
+      });
+      setSaveNotice({ type: 'success', text: 'Цель сохранена' });
+    } catch (error) {
+      setSaveNotice({ type: 'error', text: 'Не удалось сохранить цель. Повторите попытку.' });
+    } finally {
+      setIsSaveSubmitting(false);
+    }
   };
 
   // Расчет оставшихся дней до цели
@@ -588,6 +597,17 @@ const Goal = () => {
 
           {/* Action Buttons */}
           <div className="pt-4 min-[376px]:pt-6 pb-4 min-[376px]:pb-6 w-full max-w-full overflow-hidden">
+            {saveNotice && (
+              <div
+                className={`mb-3 rounded-lg px-3 py-2 text-xs ${
+                  saveNotice.type === 'success'
+                    ? 'border border-green-200 bg-green-50 text-green-700'
+                    : 'border border-red-200 bg-red-50 text-red-700'
+                }`}
+              >
+                {saveNotice.text}
+              </div>
+            )}
             <button
               onClick={handleSetGoal}
               style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
@@ -603,10 +623,12 @@ const Goal = () => {
               РЕДАКТИРОВАТЬ ЦЕЛЬ
             </button>
             <button
+              onClick={handleSaveGoal}
+              disabled={isSaveSubmitting}
               style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
-              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              СОХРАНИТЬ
+              {isSaveSubmitting ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
             </button>
           </div>
         </main>
