@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 interface EditGoalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { calories: string; proteins: string; fats: string; carbs: string }) => void;
+  onSave: (data: { calories: string; proteins: string; fats: string; carbs: string }) => Promise<void> | void;
   initialData: {
     calories: string;
     proteins: string;
@@ -133,10 +133,14 @@ const EditGoalModal = ({ isOpen, onClose, onSave, initialData, bmr, weight }: Ed
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
-    onClose();
+    try {
+      await onSave(formData);
+      onClose();
+    } catch {
+      // Keep modal open when save fails; parent shows error message.
+    }
   };
 
   const inputClasses = 'w-full max-w-full px-2 min-[376px]:px-3 py-1.5 min-[376px]:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs min-[376px]:text-sm focus:outline-none focus:ring-2 focus:ring-green-500';

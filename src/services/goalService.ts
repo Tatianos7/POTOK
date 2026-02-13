@@ -1,5 +1,4 @@
 import { supabase } from '../lib/supabaseClient';
-import { aiRecommendationsService, DayAnalysisContext } from './aiRecommendationsService';
 
 export interface UserGoal {
   calories: number;
@@ -25,6 +24,7 @@ export interface UserGoal {
 
 class GoalService {
   private saveErrorLogged = false;
+  private readonly LOGGED_ERROR_KEYS = ['code', 'message', 'details', 'hint', 'status'] as const;
   private assertGoalValid(goal: UserGoal): void {
     const values = [goal.calories, goal.protein, goal.fat, goal.carbs];
     const invalid = values.some((value) => !Number.isFinite(value) || value < 0);
@@ -33,16 +33,20 @@ class GoalService {
     }
   }
 
-  private logSupabaseErrorOnce(context: string, error: any): void {
+  private logSupabaseErrorOnce(context: string, error: unknown): void {
     if (this.saveErrorLogged) return;
     this.saveErrorLogged = true;
+    const errorRecord =
+      error && typeof error === 'object'
+        ? (error as Partial<Record<(typeof this.LOGGED_ERROR_KEYS)[number], unknown>>)
+        : {};
     console.warn('[goalService] Supabase error:', {
       context,
-      code: error?.code,
-      message: error?.message,
-      details: error?.details,
-      hint: error?.hint,
-      status: error?.status,
+      code: errorRecord.code,
+      message: errorRecord.message,
+      details: errorRecord.details,
+      hint: errorRecord.hint,
+      status: errorRecord.status,
     });
   }
 
@@ -69,6 +73,8 @@ class GoalService {
       return null;
     }
 
+    let canUseLocalFallback = true;
+
     // Try Supabase first
     if (supabase) {
       try {
@@ -85,6 +91,9 @@ class GoalService {
           // 406 = Not Acceptable - может быть из-за RLS или других проблем, игнорируем
           if (error.code !== 'PGRST116' && error.code !== 'PGRST406') {
             console.error('[goalService] Supabase error:', error);
+          } else {
+            // Legitimate "no data" from backend should not be replaced by stale local cache.
+            canUseLocalFallback = false;
           }
         } else if (data) {
           const goal: UserGoal = {
@@ -109,11 +118,18 @@ class GoalService {
             updated_at: data.updated_at,
           };
           return goal;
+        } else {
+          canUseLocalFallback = false;
+          return null;
         }
       } catch (err) {
         // Игнорируем ошибки подключения, используем localStorage
         // Не логируем, чтобы не засорять консоль
       }
+    }
+
+    if (!canUseLocalFallback) {
+      return null;
     }
 
     // Fallback to localStorage
@@ -163,7 +179,30 @@ class GoalService {
       try {
         this.assertGoalValid(goal);
         const sessionUserId = await this.getSessionUserId(userId);
-        const payload: Record<string, any> = {
+        interface UserGoalUpsertPayload {
+          user_id: string;
+          calories: number;
+          protein: number;
+          fat: number;
+          carbs: number;
+          updated_at: string;
+          goal_type?: string;
+          current_weight?: number;
+          target_weight?: number;
+          start_date?: string;
+          end_date?: string;
+          months_to_goal?: number;
+          bmr?: number;
+          tdee?: number;
+          training_place?: 'home' | 'gym';
+          gender?: 'male' | 'female';
+          age?: number;
+          height?: number;
+          lifestyle?: string;
+          intensity?: string;
+        }
+
+        const payload: UserGoalUpsertPayload = {
           user_id: sessionUserId,
           calories: Math.round(goal.calories),
           protein: goal.protein,
@@ -195,39 +234,6 @@ class GoalService {
           this.logSupabaseErrorOnce('user_goals upsert', error);
         }
 
-        const today = new Date().toISOString().split('T')[0];
-        const context: DayAnalysisContext = {
-          date: today,
-          totals: {
-            calories: 0,
-            protein: 0,
-            fat: 0,
-            carbs: 0,
-            weight: 0,
-          },
-          meals: {
-            breakfast: 0,
-            lunch: 0,
-            dinner: 0,
-            snack: 0,
-          },
-          goals: {
-            calories: Math.round(goal.calories),
-            protein: goal.protein,
-            fat: goal.fat,
-            carbs: goal.carbs,
-          },
-        };
-
-        try {
-          await aiRecommendationsService.queueDayRecommendation(
-            sessionUserId,
-            context,
-            `goal-${sessionUserId}-${today}`
-          );
-        } catch (queueError) {
-          this.logSupabaseErrorOnce('ai_recommendations queue', queueError);
-        }
       } catch (err) {
         this.logSupabaseErrorOnce('goalService save connection', err);
       }
