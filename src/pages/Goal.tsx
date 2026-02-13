@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
@@ -6,9 +6,40 @@ import CreateGoalModal, { GoalFormData } from '../components/CreateGoalModal';
 import EditGoalModal from '../components/EditGoalModal';
 import { goalService } from '../services/goalService';
 import AiAdviceBlock from '../components/AiAdviceBlock';
-import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
-import type { BaseExplainabilityDTO } from '../types/explainability';
+import { calculateGoalTimeline, type GoalMode } from '../utils/goalProjection';
+
+const normalizeGoalMode = (goalType?: string): GoalMode => {
+  const value = (goalType || '').toLowerCase();
+  if (value.includes('похуд') || value === 'weight-loss') return 'weight-loss';
+  if (value.includes('набор') || value === 'gain') return 'gain';
+  return 'maintain';
+};
+
+const computeDerivedGoal = (goal: GoalData) => {
+  const currentWeight = Number(goal.currentWeight);
+  const targetWeight = Number(goal.targetWeight);
+  const tdee = Number(goal.tdee);
+  const calories = Number(goal.calories);
+  const goalMode = normalizeGoalMode(goal.goalType);
+  const timeline = calculateGoalTimeline({
+    goal: goalMode,
+    currentWeight,
+    targetWeight,
+    tdee,
+    calories,
+  });
+
+  return {
+    isGain: goalMode === 'gain',
+    isLoss: goalMode === 'weight-loss',
+    surplusPerDay: timeline.surplusPerDay,
+    deficitPerDay: timeline.deficitPerDay,
+    kgPerWeek: timeline.kgPerWeek,
+    monthsToGoal: timeline.monthsToGoal,
+    daysToGoal: timeline.daysToGoal,
+  };
+};
 
 interface GoalData {
   goalType: string;
@@ -16,7 +47,12 @@ interface GoalData {
   targetWeight: string;
   startDate: string;
   endDate?: string;
+  trainingPlace?: 'home' | 'gym';
   monthsToGoal?: number;
+  bmr?: number;
+  tdee?: number;
+  surplusPerDay?: number;
+  kgPerWeek?: number;
   calories: string;
   proteins: string;
   fats: string;
@@ -32,6 +68,7 @@ const Goal = () => {
     goalType: '',
     targetWeight: '',
     startDate: '',
+    trainingPlace: 'home',
     calories: '',
     proteins: '',
     fats: '',
@@ -39,8 +76,10 @@ const Goal = () => {
   });
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
   const [runtimeMessage, setRuntimeMessage] = useState<string | null>(null);
-  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
+  const [isWhyOpen, setIsWhyOpen] = useState(false);
+  const [isSaveSubmitting, setIsSaveSubmitting] = useState(false);
+  const [saveNotice, setSaveNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const loadGoalState = useCallback(async () => {
     if (!user?.id) return;
@@ -51,23 +90,68 @@ const Goal = () => {
       const state = await uiRuntimeAdapter.getGoalState(user.id);
       setRuntimeStatus(state.status);
       setRuntimeMessage(state.message || null);
-      setExplainability(state.explainability ?? null);
       setTrustMessage(state.trust?.message ?? null);
-      if (state.goal) {
-        setGoalData((prev) => ({
+      const stored = localStorage.getItem(`goal_${user.id}`);
+      const parsed = stored ? JSON.parse(stored) : {};
+      const hasRemoteGoal = Boolean(state.goal && (state.goal.calories || state.goal.protein || state.goal.fat || state.goal.carbs));
+      const allowLocalFallback = !hasRemoteGoal && (state.status === 'offline' || state.status === 'error' || state.status === 'recovery');
+      setGoalData((prev) => {
+        const source = hasRemoteGoal ? state.goal ?? null : null;
+        const fallback = allowLocalFallback ? parsed : {};
+        const merged: GoalData = {
           ...prev,
-          calories: state.goal?.calories?.toString() ?? '',
-          proteins: state.goal?.protein?.toString() ?? '',
-          fats: state.goal?.fat?.toString() ?? '',
-          carbs: state.goal?.carbs?.toString() ?? '',
-        }));
-      }
+          ...fallback,
+          goalType: source?.goal_type ?? fallback.goalType ?? prev.goalType ?? '',
+          currentWeight: source?.current_weight != null ? String(source.current_weight) : fallback.currentWeight ?? prev.currentWeight ?? '',
+          targetWeight: source?.target_weight != null ? String(source.target_weight) : fallback.targetWeight ?? prev.targetWeight ?? '',
+          startDate: source?.start_date ?? fallback.startDate ?? prev.startDate ?? '',
+          endDate: source?.end_date ?? fallback.endDate ?? prev.endDate ?? '',
+          trainingPlace:
+            source?.training_place === 'gym'
+              ? 'gym'
+              : (fallback.trainingPlace as 'home' | 'gym' | undefined) ?? prev.trainingPlace ?? 'home',
+          bmr: source?.bmr ?? fallback.bmr ?? prev.bmr,
+          tdee: source?.tdee ?? fallback.tdee ?? prev.tdee,
+          monthsToGoal: source?.months_to_goal ?? fallback.monthsToGoal ?? prev.monthsToGoal,
+          calories: source?.calories?.toString() ?? fallback.calories ?? prev.calories ?? '',
+          proteins: source?.protein?.toString() ?? fallback.proteins ?? fallback.protein ?? prev.proteins ?? '',
+          fats: source?.fat?.toString() ?? fallback.fats ?? fallback.fat ?? prev.fats ?? '',
+          carbs: source?.carbs?.toString() ?? fallback.carbs ?? prev.carbs ?? '',
+        };
+        const nextDerived = computeDerivedGoal(merged);
+        const enriched = {
+          ...merged,
+          surplusPerDay: nextDerived.surplusPerDay,
+          kgPerWeek: nextDerived.kgPerWeek,
+          monthsToGoal: nextDerived.monthsToGoal,
+        };
+        localStorage.setItem(`goal_${user.id}`, JSON.stringify(enriched));
+        return enriched;
+      });
     } catch (error) {
       setRuntimeStatus('error');
       setRuntimeMessage('Не удалось загрузить цель.');
       setTrustMessage('Проверьте соединение и попробуйте снова.');
     }
   }, [user?.id]);
+
+  const bmrValue = Number(goalData.bmr);
+  const tdeeValue = Number(goalData.tdee);
+  const caloriesValue = Number(goalData.calories);
+  const derived = useMemo(() => computeDerivedGoal(goalData), [goalData]);
+  const monthsValue = derived.monthsToGoal;
+  const daysToGoalValue = derived.daysToGoal;
+  const surplusValue = derived.surplusPerDay;
+  const deficitValue = derived.deficitPerDay;
+  const kgPerWeekValue = derived.kgPerWeek;
+  const isGainGoal = derived.isGain;
+  const showWhyBlock =
+    Number.isFinite(bmrValue) &&
+    Number.isFinite(tdeeValue) &&
+    Number.isFinite(caloriesValue) &&
+    bmrValue > 0 &&
+    tdeeValue > 0 &&
+    caloriesValue > 0;
 
   useEffect(() => {
     if (!user) {
@@ -76,21 +160,22 @@ const Goal = () => {
     }
 
     loadGoalState();
-
-    // Загружаем дополнительные данные цели из localStorage (goalType, dates, etc.)
-    const savedGoal = localStorage.getItem(`goal_${user.id}`);
-    if (savedGoal) {
-      try {
-        const parsed = JSON.parse(savedGoal);
-        setGoalData((prev) => ({
-          ...prev,
-          ...parsed,
-        }));
-      } catch (error) {
-        console.error('Ошибка загрузки цели:', error);
-      }
-    }
   }, [user, navigate, loadGoalState]);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    console.debug('[goal:projection][goal-screen]', {
+      weight: Number(goalData.currentWeight),
+      targetWeight: Number(goalData.targetWeight),
+      tdee: Number(goalData.tdee),
+      calories: Number(goalData.calories),
+      deficitPerDay: derived.deficitPerDay,
+      surplusPerDay: derived.surplusPerDay,
+      rateKgPerWeek: derived.kgPerWeek,
+      daysToGoal: derived.daysToGoal,
+      monthsToGoal: derived.monthsToGoal,
+    });
+  }, [goalData, derived]);
 
   const handleSetGoal = () => {
     setIsCreateGoalModalOpen(true);
@@ -113,32 +198,90 @@ const Goal = () => {
 
   const handleSaveEdit = async (data: { calories: string; proteins: string; fats: string; carbs: string }) => {
     if (!user?.id) return;
+    setSaveNotice(null);
+    try {
+      await goalService.saveUserGoal(user.id, {
+        calories: Number(data.calories),
+        protein: Number(data.proteins),
+        fat: Number(data.fats),
+        carbs: Number(data.carbs),
+        goal_type: goalData.goalType || undefined,
+        current_weight: goalData.currentWeight ? Number(goalData.currentWeight) : undefined,
+        target_weight: goalData.targetWeight ? Number(goalData.targetWeight) : undefined,
+        start_date: goalData.startDate || undefined,
+        end_date: goalData.endDate || undefined,
+        months_to_goal: goalData.monthsToGoal,
+        bmr: goalData.bmr,
+        tdee: goalData.tdee,
+        training_place: goalData.trainingPlace ?? 'home',
+      });
 
-    // Save to Supabase
-    await goalService.saveUserGoal(user.id, {
-      calories: Number(data.calories),
-      protein: Number(data.proteins),
-      fat: Number(data.fats),
-      carbs: Number(data.carbs),
-    });
+      const updatedGoalData: GoalData = {
+        ...goalData,
+        calories: data.calories,
+        proteins: data.proteins,
+        fats: data.fats,
+        carbs: data.carbs,
+      };
 
-    // Обновляем данные цели
-    const updatedGoalData = {
-      ...goalData,
-      calories: data.calories,
-      proteins: data.proteins,
-      fats: data.fats,
-      carbs: data.carbs,
-    };
+      const nextDerived = computeDerivedGoal(updatedGoalData);
+      updatedGoalData.surplusPerDay = nextDerived.surplusPerDay;
+      updatedGoalData.kgPerWeek = nextDerived.kgPerWeek;
+      updatedGoalData.monthsToGoal = nextDerived.monthsToGoal;
 
-    // Сохраняем в localStorage (для дополнительных данных)
-    localStorage.setItem(`goal_${user.id}`, JSON.stringify(updatedGoalData));
-    setGoalData(updatedGoalData);
-    setIsEditGoalModalOpen(false);
+      localStorage.setItem(`goal_${user.id}`, JSON.stringify(updatedGoalData));
+      if (import.meta.env.DEV) {
+        console.debug('[goal:projection][edit-save]', {
+          weight: Number(updatedGoalData.currentWeight),
+          targetWeight: Number(updatedGoalData.targetWeight),
+          tdee: Number(updatedGoalData.tdee),
+          calories: Number(updatedGoalData.calories),
+          deficitPerDay: nextDerived.deficitPerDay,
+          surplusPerDay: nextDerived.surplusPerDay,
+          rateKgPerWeek: nextDerived.kgPerWeek,
+          daysToGoal: nextDerived.daysToGoal,
+          monthsToGoal: nextDerived.monthsToGoal,
+        });
+      }
+      setGoalData(updatedGoalData);
+      setSaveNotice({ type: 'success', text: 'Цель сохранена' });
+      setIsEditGoalModalOpen(false);
+    } catch (error) {
+      setSaveNotice({ type: 'error', text: 'Не удалось сохранить цель. Повторите попытку.' });
+      throw error;
+    }
   };
 
   const handleClose = () => {
     navigate('/');
+  };
+
+  const handleSaveGoal = async () => {
+    if (!user?.id || isSaveSubmitting) return;
+    setIsSaveSubmitting(true);
+    setSaveNotice(null);
+    try {
+      await goalService.saveUserGoal(user.id, {
+        calories: Number(goalData.calories || 0),
+        protein: Number(goalData.proteins || 0),
+        fat: Number(goalData.fats || 0),
+        carbs: Number(goalData.carbs || 0),
+        goal_type: goalData.goalType || undefined,
+        current_weight: goalData.currentWeight ? Number(goalData.currentWeight) : undefined,
+        target_weight: goalData.targetWeight ? Number(goalData.targetWeight) : undefined,
+        start_date: goalData.startDate || undefined,
+        end_date: goalData.endDate || undefined,
+        months_to_goal: goalData.monthsToGoal,
+        bmr: goalData.bmr,
+        tdee: goalData.tdee,
+        training_place: goalData.trainingPlace ?? 'home',
+      });
+      setSaveNotice({ type: 'success', text: 'Цель сохранена' });
+    } catch (error) {
+      setSaveNotice({ type: 'error', text: 'Не удалось сохранить цель. Повторите попытку.' });
+    } finally {
+      setIsSaveSubmitting(false);
+    }
   };
 
   // Расчет оставшихся дней до цели
@@ -194,6 +337,14 @@ const Goal = () => {
   };
 
   const weightDifference = calculateWeightDifference();
+  const hasDaysToGoal = Number.isFinite(daysToGoalValue) && daysToGoalValue > 0;
+  const hasMonthsToGoal = Number.isFinite(monthsValue) && monthsValue > 0;
+  const remainingLabel =
+    hasDaysToGoal && daysToGoalValue < 31
+      ? formatDays(Math.ceil(daysToGoalValue))
+      : hasMonthsToGoal
+        ? `~${Math.ceil(monthsValue)} месяцев`
+        : null;
 
   // Форматирование даты из YYYY-MM-DD в DD.MM.YYYY
   const formatDate = (dateString: string): string => {
@@ -277,11 +428,6 @@ const Goal = () => {
               Цель ещё не задана. Начните с расчёта.
             </div>
           )}
-          {explainability && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
-              Доступно объяснение: «Почему так?»
-            </div>
-          )}
           {/* Goal Summary Section */}
           <div className="space-y-3 min-[376px]:space-y-4 mb-4 min-[376px]:mb-6 w-full max-w-full overflow-hidden">
             <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
@@ -304,6 +450,12 @@ const Goal = () => {
                 </p>
               </div>
             </div>
+            <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
+              <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Тренировки:</p>
+              <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
+                {goalData.trainingPlace === 'gym' ? 'В зале' : 'Дома / на улице'}
+              </p>
+            </div>
             <div className="grid grid-cols-1 min-[376px]:grid-cols-2 gap-3 min-[376px]:gap-4 w-full max-w-full">
               <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
                 <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Начало:</p>
@@ -314,7 +466,7 @@ const Goal = () => {
               <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
                 <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Осталось:</p>
                 <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
-                  {goalData.endDate ? formatDays(daysRemaining) : '-'}
+                  {remainingLabel ?? (goalData.endDate ? formatDays(daysRemaining) : '-')}
                 </p>
               </div>
             </div>
@@ -360,15 +512,102 @@ const Goal = () => {
               </div>
             </div>
           </div>
+          {showWhyBlock && (
+            <div className="mb-4 w-full max-w-full">
+              <button
+                type="button"
+                onClick={() => setIsWhyOpen((prev) => !prev)}
+                className="w-full rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-left text-sm font-semibold text-gray-800 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-200 transition-colors"
+              >
+                Почему так?
+              </button>
+              {isWhyOpen && (
+                <div className="mt-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-xs text-gray-700">
+                  {isGainGoal ? (
+                    surplusValue > 0 ? (
+                      <>
+                        <p>Ваш базовый обмен — {Math.round(bmrValue)} ккал.</p>
+                        <p>С учётом активности вы тратите примерно {Math.round(tdeeValue)} ккал в день.</p>
+                        <p>
+                          Для набора массы мы добавили безопасный профицит: +{Math.round(surplusValue)} ккал/день →{' '}
+                          {Math.round(caloriesValue)} ккал/день.
+                        </p>
+                        <p>
+                          Это даёт темп около ~{Number.isFinite(kgPerWeekValue) ? kgPerWeekValue.toFixed(2) : '0.00'} кг/нед — без резкого набора жира.
+                        </p>
+                        {Number.isFinite(monthsValue) && monthsValue > 0 && (
+                          <p>При стабильном соблюдении режима вы выйдете на цель примерно за ~{Math.ceil(monthsValue)} мес.</p>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <p>Сейчас калораж не даёт профицит относительно вашего расхода.</p>
+                        <p>Чтобы набирать массу, нужно быть в плюсе: хотя бы +150–300 ккал/день.</p>
+                        <p>Попробуйте увеличить калории или выбрать более активный режим тренировок.</p>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <p>Мы рассчитали ваш базовый обмен — {Math.round(bmrValue)} ккал.</p>
+                      <p>С учётом активности ваш расход — {Math.round(tdeeValue)} ккал.</p>
+                      {deficitValue > 0 ? (
+                        <>
+                          <p>
+                            Чтобы снижать вес без стресса, мы заложили дефицит: {Math.round(deficitValue)} ккал/день →{' '}
+                            {Math.round(caloriesValue)} ккал/день.
+                          </p>
+                          {caloriesValue < bmrValue ? (
+                            <>
+                              <p className="text-red-600">
+                                Обратите внимание: калории ниже вашего базового обмена.
+                              </p>
+                              <p className="text-red-600">
+                                Мы не рекомендуем выходить на калории ниже вашего обмена — это может навредить здоровью.
+                              </p>
+                              <p className="text-red-600">
+                                При плохом самочувствии обратитесь к врачу.
+                              </p>
+                            </>
+                          ) : (
+                            <p>
+                              Это даёт темп около ~{Number.isFinite(kgPerWeekValue) ? kgPerWeekValue.toFixed(2) : '0.00'} кг/нед —
+                              без резких скачков.
+                            </p>
+                          )}
+                          {Number.isFinite(monthsValue) && monthsValue > 0 && (
+                            <p>При стабильном соблюдении режима вы выйдете на цель примерно за ~{Math.ceil(monthsValue)} мес.</p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <p>Сейчас калораж не даёт дефицит относительно вашего расхода.</p>
+                          <p>Чтобы снижать вес, нужен минус: хотя бы 150–300 ккал/день.</p>
+                          <p>Попробуйте уменьшить калории или выбрать более активный режим тренировок.</p>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* AI Advice Block */}
           <AiAdviceBlock />
-          <div className="mt-4">
-            <ExplainabilityDrawer explainability={explainability} />
-          </div>
 
           {/* Action Buttons */}
           <div className="pt-4 min-[376px]:pt-6 pb-4 min-[376px]:pb-6 w-full max-w-full overflow-hidden">
+            {saveNotice && (
+              <div
+                className={`mb-3 rounded-lg px-3 py-2 text-xs ${
+                  saveNotice.type === 'success'
+                    ? 'border border-green-200 bg-green-50 text-green-700'
+                    : 'border border-red-200 bg-red-50 text-red-700'
+                }`}
+              >
+                {saveNotice.text}
+              </div>
+            )}
             <button
               onClick={handleSetGoal}
               style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
@@ -384,10 +623,12 @@ const Goal = () => {
               РЕДАКТИРОВАТЬ ЦЕЛЬ
             </button>
             <button
+              onClick={handleSaveGoal}
+              disabled={isSaveSubmitting}
               style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
-              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              СОХРАНИТЬ
+              {isSaveSubmitting ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
             </button>
           </div>
         </main>
@@ -411,10 +652,11 @@ const Goal = () => {
           fats: goalData.fats || '',
           carbs: goalData.carbs || '',
         }}
+        bmr={Number.isFinite(bmrValue) ? bmrValue : null}
+        weight={Number.isFinite(Number(goalData.currentWeight)) ? Number(goalData.currentWeight) : null}
       />
     </div>
   );
 };
 
 export default Goal;
-

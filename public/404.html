@@ -1,33 +1,21 @@
-<!DOCTYPE html>
-<html lang="ru">
+<!doctype html>
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ПОТОК - Фитнес приложение</title>
+    <meta charset="utf-8" />
+    <title>POTOK</title>
     <script>
-      // Single Page Apps for GitHub Pages
-      // https://github.com/rafgraph/spa-github-pages
-      var pathSegmentsToKeep = 0;
-      var l = window.location;
-      l.replace(
-        l.protocol +
-          '//' +
-          l.hostname +
-          (l.port ? ':' + l.port : '') +
-          l.pathname
-            .split('/')
-            .slice(0, 1 + pathSegmentsToKeep)
-            .join('/') +
-          '/?/' +
-          l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
-          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-          l.hash
-      );
+      // GitHub Pages SPA fallback:
+      // redirect unknown paths back to app entry and preserve route/query/hash.
+      (function () {
+        var path = window.location.pathname;
+        var repoBase = '/POTOK/';
+        var routePath = path.indexOf(repoBase) === 0 ? path.slice(repoBase.length) : '';
+        var query = window.location.search || '';
+        var hash = window.location.hash || '';
+        var redirect = repoBase + '?p=' + encodeURIComponent(routePath + query + hash);
+        window.location.replace(redirect);
+      })();
     </script>
   </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/index.js"></script>
-  </body>
+  <body></body>
 </html>
-

@@ -11,6 +11,7 @@ export function buildNutritionPrompt(data: UserGoalData): string {
   const activityText =
     data.activityLevel === 'low' ? 'низкая активность' :
     data.activityLevel === 'medium' ? 'средняя активность' : 'высокая активность';
+  const trainingPlaceText = data.trainingPlace === 'gym' ? 'в зале' : 'дома/на улице';
 
   return `Создай персональные рекомендации по питанию для ${data.gender === 'male' ? 'мужчины' : 'женщины'} ${data.age} лет.
 
@@ -19,6 +20,7 @@ export function buildNutritionPrompt(data: UserGoalData): string {
 - Вес: ${data.weight} кг
 - Рост: ${data.height} см
 - Уровень активности: ${activityText}
+- Где тренируется: ${trainingPlaceText}
 - Целевые калории: ${data.calories} ккал/день
 - Белки: ${data.protein} г/день
 - Жиры: ${data.fat} г/день
@@ -48,6 +50,7 @@ export function buildTrainingPrompt(data: UserGoalData): string {
   const activityText =
     data.activityLevel === 'low' ? 'низкая активность' :
     data.activityLevel === 'medium' ? 'средняя активность' : 'высокая активность';
+  const trainingPlaceText = data.trainingPlace === 'gym' ? 'в зале' : 'дома/на улице';
 
   return `Создай персональные рекомендации по тренировкам для ${data.gender === 'male' ? 'мужчины' : 'женщины'} ${data.age} лет.
 
@@ -56,6 +59,7 @@ export function buildTrainingPrompt(data: UserGoalData): string {
 - Вес: ${data.weight} кг
 - Рост: ${data.height} см
 - Уровень активности: ${activityText}
+- Где тренируется: ${trainingPlaceText}
 ${data.targetWeight ? `- Целевой вес: ${data.targetWeight} кг` : ''}
 ${data.intensity ? `- Интенсивность: дефицит ${data.intensity}%` : ''}
 
@@ -68,4 +72,3 @@ ${data.intensity ? `- Интенсивность: дефицит ${data.intensit
 
 Формат: структурированный текст с эмодзи для лучшей читаемости.`;
 }
-

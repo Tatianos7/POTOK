@@ -4,22 +4,65 @@ import { X } from 'lucide-react';
 interface EditGoalModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { calories: string; proteins: string; fats: string; carbs: string }) => void;
+  onSave: (data: { calories: string; proteins: string; fats: string; carbs: string }) => Promise<void> | void;
   initialData: {
     calories: string;
     proteins: string;
     fats: string;
     carbs: string;
   };
+  bmr?: number | null;
+  weight?: number | null;
 }
 
-const EditGoalModal = ({ isOpen, onClose, onSave, initialData }: EditGoalModalProps) => {
+const recalculateMacros = (weight: number, calories: number) => {
+  if (!Number.isFinite(weight) || !Number.isFinite(calories) || weight <= 0 || calories <= 0) {
+    return null;
+  }
+
+  const proteins = Math.round(weight * 2);
+  const fats = Math.round(weight * 0.9);
+  const caloriesProtein = proteins * 4;
+  const caloriesFat = fats * 9;
+  const caloriesForCarbs = calories - caloriesProtein - caloriesFat;
+  if (caloriesForCarbs <= 0) {
+    return {
+      proteins,
+      fats,
+      carbs: 0,
+    };
+  }
+  const carbsExact = caloriesForCarbs / 4;
+  const carbsFloor = Math.floor(carbsExact);
+  const carbsCeil = Math.ceil(carbsExact);
+  const totalWithFloor = caloriesProtein + caloriesFat + carbsFloor * 4;
+  const totalWithCeil = caloriesProtein + caloriesFat + carbsCeil * 4;
+  const diffFloor = Math.abs(totalWithFloor - calories);
+  const diffCeil = Math.abs(totalWithCeil - calories);
+  const carbs = diffFloor <= diffCeil ? carbsFloor : carbsCeil;
+  return {
+    proteins,
+    fats,
+    carbs,
+  };
+};
+
+const EditGoalModal = ({ isOpen, onClose, onSave, initialData, bmr, weight }: EditGoalModalProps) => {
   const [formData, setFormData] = useState({
     calories: initialData.calories || '',
     proteins: initialData.proteins || '',
     fats: initialData.fats || '',
     carbs: initialData.carbs || '',
   });
+
+  const bmrValue = Number(bmr);
+  const caloriesValue = Number(formData.calories);
+  const showBmrWarning =
+    Number.isFinite(bmrValue) &&
+    Number.isFinite(caloriesValue) &&
+    bmrValue > 0 &&
+    caloriesValue > 0 &&
+    caloriesValue < bmrValue;
 
   useEffect(() => {
     if (isOpen) {
@@ -41,9 +84,7 @@ const EditGoalModal = ({ isOpen, onClose, onSave, initialData }: EditGoalModalPr
 
   if (!isOpen) return null;
 
-  const handleChange = (field: keyof typeof formData) => (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleChange = (field: keyof typeof formData) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     // Разрешаем только числа
     if (value === '' || /^\d+$/.test(value)) {
@@ -54,10 +95,52 @@ const EditGoalModal = ({ isOpen, onClose, onSave, initialData }: EditGoalModalPr
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleCaloriesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value !== '' && !/^\d+$/.test(value)) return;
+
+    setFormData((prev) => {
+      const nextCalories = value;
+      const next = {
+        ...prev,
+        calories: nextCalories,
+      };
+      const weightValue = Number(weight);
+      const caloriesNumber = Number(nextCalories);
+      const macros = recalculateMacros(weightValue, caloriesNumber);
+      if (macros) {
+        return {
+          ...next,
+          proteins: String(macros.proteins),
+          fats: String(macros.fats),
+          carbs: String(macros.carbs),
+        };
+      }
+      return next;
+    });
+  };
+
+  const handleCaloriesBlur = () => {
+    const weightValue = Number(weight);
+    const caloriesNumber = Number(formData.calories);
+    const macros = recalculateMacros(weightValue, caloriesNumber);
+    if (!macros) return;
+    setFormData((prev) => ({
+      ...prev,
+      proteins: String(macros.proteins),
+      fats: String(macros.fats),
+      carbs: String(macros.carbs),
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
-    onClose();
+    try {
+      await onSave(formData);
+      onClose();
+    } catch {
+      // Keep modal open when save fails; parent shows error message.
+    }
   };
 
   const inputClasses = 'w-full max-w-full px-2 min-[376px]:px-3 py-1.5 min-[376px]:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs min-[376px]:text-sm focus:outline-none focus:ring-2 focus:ring-green-500';
@@ -92,11 +175,17 @@ const EditGoalModal = ({ isOpen, onClose, onSave, initialData }: EditGoalModalPr
               type="text"
               inputMode="numeric"
               value={formData.calories}
-              onChange={handleChange('calories')}
+              onChange={handleCaloriesChange}
+              onBlur={handleCaloriesBlur}
               className={inputClasses}
               style={{ boxSizing: 'border-box' }}
               placeholder="0"
             />
+            {showBmrWarning && (
+              <div className="mt-1 text-[11px] text-red-600">
+                Это ниже базового обмена. Может быть опасно для здоровья.
+              </div>
+            )}
           </div>
 
           {/* Proteins */}
@@ -162,4 +251,3 @@ const EditGoalModal = ({ isOpen, onClose, onSave, initialData }: EditGoalModalPr
 };
 
 export default EditGoalModal;
-

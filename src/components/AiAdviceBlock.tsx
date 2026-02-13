@@ -1,8 +1,14 @@
 import { useAiAdvice } from '../hooks/useAiAdvice';
-import { generateNutritionPDF, generateTrainingPDF } from '../utils/pdfGenerator';
+import {
+  getNutritionPdfUrl,
+  getWorkoutPdfUrl,
+} from '../utils/pdfGenerator';
 import { Download, RefreshCw, AlertCircle } from 'lucide-react';
+import { useState } from 'react';
 
 const AiAdviceBlock = () => {
+  const [nutritionPdfMessage, setNutritionPdfMessage] = useState<string | null>(null);
+  const [workoutPdfMessage, setWorkoutPdfMessage] = useState<string | null>(null);
   const { 
     nutritionAdvice, 
     trainingAdvice, 
@@ -18,15 +24,39 @@ const AiAdviceBlock = () => {
   }
 
   const handleDownloadNutritionPDF = () => {
-    if (userGoalData && nutritionAdvice) {
-      generateNutritionPDF(nutritionAdvice, userGoalData);
-    }
+    if (!userGoalData || !nutritionAdvice) return;
+    setNutritionPdfMessage(null);
+    const templateUrl = getNutritionPdfUrl(userGoalData.trainingPlace, userGoalData.calories, userGoalData.goal);
+    void (async () => {
+      try {
+        const response = await fetch(templateUrl, { method: 'HEAD' });
+        if (response.ok) {
+          window.open(templateUrl, '_blank', 'noopener,noreferrer');
+          return;
+        }
+        setNutritionPdfMessage('План скоро появится. Мы уже готовим PDF под вашу цель.');
+      } catch {
+        setNutritionPdfMessage('План скоро появится. Мы уже готовим PDF под вашу цель.');
+      }
+    })();
   };
 
   const handleDownloadTrainingPDF = () => {
-    if (userGoalData && trainingAdvice) {
-      generateTrainingPDF(trainingAdvice, userGoalData);
-    }
+    if (!userGoalData || !trainingAdvice) return;
+    setWorkoutPdfMessage(null);
+    const templateUrl = getWorkoutPdfUrl(userGoalData.trainingPlace, userGoalData.goal);
+    void (async () => {
+      try {
+        const response = await fetch(templateUrl, { method: 'HEAD' });
+        if (response.ok) {
+          window.open(templateUrl, '_blank', 'noopener,noreferrer');
+          return;
+        }
+        setWorkoutPdfMessage('План скоро появится. Мы уже готовим PDF под вашу цель.');
+      } catch {
+        setWorkoutPdfMessage('План скоро появится. Мы уже готовим PDF под вашу цель.');
+      }
+    })();
   };
 
   // Обрезаем текст для краткого описания (первые 150 символов)
@@ -118,6 +148,11 @@ const AiAdviceBlock = () => {
                 <Download className="w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 flex-shrink-0" />
                 <span>Скачать PDF (питание)</span>
               </button>
+              {nutritionPdfMessage && (
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-400 break-words overflow-wrap-anywhere">
+                  {nutritionPdfMessage}
+                </p>
+              )}
             </div>
           )}
 
@@ -144,6 +179,11 @@ const AiAdviceBlock = () => {
                 <Download className="w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 flex-shrink-0" />
                 <span>Скачать PDF (тренировки)</span>
               </button>
+              {workoutPdfMessage && (
+                <p className="mt-2 text-xs text-amber-700 dark:text-amber-400 break-words overflow-wrap-anywhere">
+                  {workoutPdfMessage}
+                </p>
+              )}
             </div>
           )}
         </div>

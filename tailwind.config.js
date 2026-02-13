@@ -24,6 +24,11 @@ export default {
           green: '#22c55e',
           yellow: '#eab308',
         },
+        explain: {
+          bg: '#ecfdf3',
+          border: '#bbf7d0',
+          hover: '#dcfce7',
+        },
       },
       screens: {
         'mobile': '320px',

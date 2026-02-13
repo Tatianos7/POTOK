@@ -3,6 +3,7 @@
  */
 export interface UserGoalData {
   goal: 'lose' | 'gain' | 'maintain';
+  trainingPlace: 'home' | 'gym';
   calories: number;
   protein: number;
   fat: number;

@@ -6,6 +6,8 @@ import { GoalFormData } from '../components/CreateGoalModal';
 import { goalService } from '../services/goalService';
 import { profileService } from '../services/profileService';
 import { uiRuntimeAdapter } from '../services/uiRuntimeAdapter';
+import { computeGoalPlan } from '../utils/goalProjection';
+import { aiRecommendationsService, type DayAnalysisContext } from '../services/aiRecommendationsService';
 
 interface CalculatedResult {
   bmr: number;
@@ -15,137 +17,11 @@ interface CalculatedResult {
   fats: number;
   carbs: number;
   monthsToGoal: number;
+  daysToGoal: number;
+  deficitPerDay?: number;
+  surplusPerDay?: number;
+  kgPerWeek?: number;
 }
-
-// Расчет BMR по формуле Харриса-Бенедикта
-const calculateBMR = (gender: 'male' | 'female', weight: number, height: number, age: number): number => {
-  if (gender === 'male') {
-    // Мужчина: BMR = 88.362 + (13.397 × вес) + (4.799 × рост) – (5.677 × возраст)
-    return 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
-  } else {
-    // Женщина: BMR = 447.593 + (9.247 × вес) + (3.098 × рост) – (4.330 × возраст)
-    return 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
-  }
-};
-
-// Получение коэффициента активности
-const getActivityFactor = (lifestyle: string): number => {
-  const factors: Record<string, number> = {
-    'sedentary': 1.2,
-    'light': 1.375,
-    'moderate': 1.55,
-    'high': 1.725,
-    'very-high': 1.9,
-  };
-  return factors[lifestyle] || 1.2;
-};
-
-// Расчет калорий с учетом цели
-const calculateCalories = (
-  bmr: number,
-  activityFactor: number,
-  goal: string,
-  intensity?: string
-): { tdee: number; calories: number } => {
-  // TDEE = BMR × activityFactor
-  const tdee = bmr * activityFactor;
-
-  let calories = tdee;
-
-  if (goal === 'weight-loss') {
-    // Похудение: calories = TDEE × (1 - deficitPercent)
-    const deficitPercent = intensity ? parseFloat(intensity) / 100 : 0.10; // 10%, 15% или 20%
-    calories = tdee * (1 - deficitPercent);
-  } else if (goal === 'gain') {
-    // Набор массы: calories = TDEE + 15%
-    calories = tdee * 1.15;
-  }
-  // Для 'maintain' оставляем как есть (calories = tdee)
-
-  return {
-    tdee: Math.round(tdee),
-    calories: Math.round(calories),
-  };
-};
-
-// Расчет макронутриентов
-const calculateMacros = (weight: number, totalCalories: number): { proteins: number; fats: number; carbs: number } => {
-  // Белки: 2 г на кг веса (точное значение)
-  const proteinsExact = weight * 2;
-  
-  // Жиры: 0.9 г на кг веса (точное значение)
-  const fatsExact = weight * 0.9;
-  
-  // Округляем белки и жиры
-  const proteins = Math.round(proteinsExact);
-  const fats = Math.round(fatsExact);
-
-  // Калории от округленных белков и жиров
-  const caloriesProtein = proteins * 4;
-  const caloriesFat = fats * 9;
-  
-  // Рассчитываем калории для углеводов так, чтобы сумма точно совпадала с totalCalories
-  const caloriesForCarbs = totalCalories - caloriesProtein - caloriesFat;
-  
-  // Рассчитываем углеводы (точное значение)
-  const carbsExact = caloriesForCarbs / 4;
-  
-  // Пробуем оба варианта округления и выбираем лучший
-  const carbsFloor = Math.floor(carbsExact);
-  const carbsCeil = Math.ceil(carbsExact);
-  
-  const totalWithFloor = caloriesProtein + caloriesFat + (carbsFloor * 4);
-  const totalWithCeil = caloriesProtein + caloriesFat + (carbsCeil * 4);
-  
-  const diffFloor = Math.abs(totalWithFloor - totalCalories);
-  const diffCeil = Math.abs(totalWithCeil - totalCalories);
-  
-  // Выбираем вариант с минимальной разницей
-  let carbs: number;
-  if (diffFloor <= diffCeil) {
-    carbs = carbsFloor;
-  } else {
-    carbs = carbsCeil;
-  }
-  
-  // Финальная проверка суммы (для отладки, если нужно)
-  // При работе с целыми граммами точное совпадение не всегда возможно
-  // (например, если остаток 515 ккал, то 515/4 = 128.75, и любое округление даст погрешность)
-
-  return {
-    proteins,
-    fats,
-    carbs,
-  };
-};
-
-// Расчет времени достижения цели
-const calculateMonthsToGoal = (
-  currentWeight: number,
-  targetWeight: number,
-  tdee: number,
-  calories: number
-): number => {
-  const weightToLose = currentWeight - targetWeight;
-  
-  if (weightToLose <= 0) return 0;
-  
-  // Дефицит калорий в день
-  const deficit = tdee - calories;
-  
-  if (deficit <= 0) return 0;
-  
-  // 1 кг жира = ~7700 ккал
-  // Дефицит в день * 30 дней = дефицит в месяц
-  const monthlyDeficit = deficit * 30;
-  // Сколько кг можно потерять в месяц
-  const kgPerMonth = monthlyDeficit / 7700;
-  
-  if (kgPerMonth <= 0) return 0;
-  
-  const months = Math.ceil(weightToLose / kgPerMonth);
-  return Math.max(1, Math.min(months, 12)); // От 1 до 12 месяцев
-};
 
 const GoalResult = () => {
   const { user, profile } = useAuth();
@@ -153,6 +29,7 @@ const GoalResult = () => {
   const location = useLocation();
   const [formData, setFormData] = useState<GoalFormData | null>(null);
   const [result, setResult] = useState<CalculatedResult | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const saveInFlightRef = useRef(false);
 
   useEffect(() => {
@@ -164,51 +41,75 @@ const GoalResult = () => {
     // Получаем данные формы из location.state или localStorage
     const data = location.state?.formData || null;
     if (data) {
-      setFormData(data);
-      
-      // Парсим входные данные
-      const age = parseInt(data.age) || 25;
       const weight = parseFloat(data.weight) || 70;
-      const height = parseFloat(data.height) || 170;
-      
-      // Расчет BMR
-      const bmr = calculateBMR(data.gender, weight, height, age);
-      
-      // Получение коэффициента активности
-      const activityFactor = getActivityFactor(data.lifestyle);
-      
-      // Расчет калорий
-      const { tdee, calories } = calculateCalories(
-        bmr,
-        activityFactor,
-        data.goal,
-        data.intensity
-      );
-      
-      // Расчет макронутриентов
-      const { proteins, fats, carbs } = calculateMacros(weight, calories);
-      
-      // Расчет времени достижения цели (только для похудения)
-      let monthsToGoal = 0;
-      if (data.goal === 'weight-loss' && data.targetWeight) {
-        const targetWeight = parseFloat(data.targetWeight);
-        monthsToGoal = calculateMonthsToGoal(weight, targetWeight, tdee, calories);
+      let targetWeight = parseFloat(data.targetWeight || '');
+
+      if (data.goal === 'gain') {
+        if (!Number.isFinite(targetWeight) || targetWeight <= weight) {
+          targetWeight = Math.min(weight + 5, 150);
+        }
       }
-      
-      setResult({
-        bmr: Math.round(bmr),
-        tdee,
-        calories,
-        proteins,
-        fats,
-        carbs,
-        monthsToGoal,
+
+      setFormData({
+        ...data,
+        trainingPlace: data.trainingPlace ?? 'home',
+        targetWeight: Number.isFinite(targetWeight) ? String(targetWeight) : data.targetWeight,
       });
     } else {
       // Если данных нет, возвращаемся на страницу цели
       navigate('/goal');
     }
   }, [user, navigate, location]);
+
+  useEffect(() => {
+    if (!formData) return;
+
+    const age = parseInt(formData.age) || 25;
+    const weight = parseFloat(formData.weight) || 70;
+    const height = parseFloat(formData.height) || 170;
+    const parsedTargetWeight = parseFloat(formData.targetWeight || '');
+    const normalizedGoal = formData.goal === 'weight-loss' || formData.goal === 'gain' || formData.goal === 'maintain'
+      ? formData.goal
+      : 'maintain';
+    const computed = computeGoalPlan({
+      gender: formData.gender,
+      age,
+      weight,
+      height,
+      lifestyle: formData.lifestyle,
+      goal: normalizedGoal,
+      intensity: formData.intensity,
+      targetWeight: Number.isFinite(parsedTargetWeight) ? parsedTargetWeight : weight,
+    });
+
+    if (import.meta.env.DEV) {
+      console.debug('[goal:projection][result]', {
+        weight,
+        targetWeight: Number.isFinite(parsedTargetWeight) ? parsedTargetWeight : weight,
+        tdee: computed.tdee,
+        calories: computed.calories,
+        deficitPerDay: computed.timeline.deficitPerDay,
+        surplusPerDay: computed.timeline.surplusPerDay,
+        rateKgPerWeek: computed.timeline.kgPerWeek,
+        daysToGoal: computed.timeline.daysToGoal,
+        monthsToGoal: computed.timeline.monthsToGoal,
+      });
+    }
+
+    setResult({
+      bmr: computed.bmr,
+      tdee: computed.tdee,
+      calories: computed.calories,
+      proteins: computed.proteins,
+      fats: computed.fats,
+      carbs: computed.carbs,
+      monthsToGoal: computed.timeline.monthsToGoal,
+      daysToGoal: computed.timeline.daysToGoal,
+      deficitPerDay: computed.timeline.deficitPerDay,
+      surplusPerDay: computed.timeline.surplusPerDay,
+      kgPerWeek: computed.timeline.kgPerWeek,
+    });
+  }, [formData]);
 
   useEffect(() => {
     if (!user || !result) return;
@@ -248,64 +149,96 @@ const GoalResult = () => {
     return workouts[lifestyle] || '-';
   };
 
-  const handleSave = () => {
+  const getTrainingPlaceLabel = (trainingPlace: 'home' | 'gym' | string): string => {
+    return trainingPlace === 'gym' ? 'В зале' : 'Дома / на улице';
+  };
+
+  const handleSave = async () => {
     if (!user?.id || !formData || !result) return;
     if (saveInFlightRef.current) return;
     saveInFlightRef.current = true;
+    setSaveError(null);
+    try {
 
-    const goalTypeMap: Record<string, string> = {
-      'weight-loss': 'Похудение',
-      'maintain': 'Поддержка формы',
-      'gain': 'Набор массы',
-    };
+      const goalTypeMap: Record<string, string> = {
+        'weight-loss': 'Похудение',
+        'maintain': 'Поддержка формы',
+        'gain': 'Набор массы',
+      };
 
-    const startDate = new Date().toISOString().split('T')[0];
-    
-    // Рассчитываем дату окончания на основе месяцев до цели
-    let endDate = '';
-    if (formData.goal === 'weight-loss' && result.monthsToGoal > 0) {
-      const endDateObj = new Date();
-      endDateObj.setMonth(endDateObj.getMonth() + result.monthsToGoal);
-      endDate = endDateObj.toISOString().split('T')[0];
+      const startDate = new Date().toISOString().split('T')[0];
+      
+      // Рассчитываем дату окончания на основе месяцев до цели
+      let endDate = '';
+      if (result.monthsToGoal > 0) {
+        const endDateObj = new Date();
+        endDateObj.setMonth(endDateObj.getMonth() + result.monthsToGoal);
+        endDate = endDateObj.toISOString().split('T')[0];
+      }
+
+      if (import.meta.env.DEV) {
+        console.debug('[goal:projection][save]', {
+          weight: Number(formData.weight),
+          targetWeight: Number(formData.targetWeight || formData.weight),
+          tdee: result.tdee,
+          calories: result.calories,
+          deficitPerDay: result.deficitPerDay ?? 0,
+          surplusPerDay: result.surplusPerDay ?? 0,
+          rateKgPerWeek: result.kgPerWeek ?? 0,
+          daysToGoal: result.daysToGoal,
+          monthsToGoal: result.monthsToGoal,
+        });
+      }
+
+      await goalService.saveUserGoal(user.id, {
+        calories: result.calories,
+        protein: result.proteins,
+        fat: result.fats,
+        carbs: result.carbs,
+        goal_type: goalTypeMap[formData.goal] || formData.goal,
+        current_weight: Number(formData.weight),
+        target_weight: Number(formData.targetWeight || formData.weight),
+        start_date: startDate,
+        end_date: endDate || undefined,
+        months_to_goal: result.monthsToGoal,
+        bmr: Math.round(result.bmr),
+        tdee: Math.round(result.tdee),
+        training_place: formData.trainingPlace || 'home',
+        gender: formData.gender,
+        age: Number(formData.age),
+        height: Number(formData.height),
+        lifestyle: formData.lifestyle,
+        intensity: formData.intensity,
+      });
+
+      navigate('/goal');
+
+      const today = new Date().toISOString().split('T')[0];
+      const context: DayAnalysisContext = {
+        date: today,
+        totals: { calories: 0, protein: 0, fat: 0, carbs: 0, weight: 0 },
+        meals: { breakfast: 0, lunch: 0, dinner: 0, snack: 0 },
+        goals: {
+          calories: Math.round(result.calories),
+          protein: result.proteins,
+          fat: result.fats,
+          carbs: result.carbs,
+        },
+      };
+      void aiRecommendationsService
+        .queueDayRecommendation(user.id, context, `goal-${user.id}-${today}`)
+        .catch(() => {});
+
+      void profileService.saveProfile(user.id, {
+        age: Number(formData.age),
+        height: Number(formData.height),
+        goal: goalTypeMap[formData.goal] || formData.goal,
+      });
+    } catch (error) {
+      setSaveError('Не удалось сохранить цель. Проверьте соединение и повторите попытку.');
+    } finally {
+      saveInFlightRef.current = false;
     }
-
-    // Save additional goal data to localStorage (goalType, dates, etc.)
-    const goalData = {
-      goalType: goalTypeMap[formData.goal] || formData.goal,
-      gender: formData.gender, // Сохраняем пол
-      age: formData.age, // Сохраняем возраст
-      weight: formData.weight, // Сохраняем вес
-      currentWeight: formData.weight, // Сохраняем текущий вес
-      height: formData.height, // Сохраняем рост
-      lifestyle: formData.lifestyle, // Сохраняем образ жизни
-      targetWeight: formData.targetWeight || formData.weight,
-      intensity: formData.intensity, // Сохраняем интенсивность
-      startDate: startDate,
-      endDate: endDate, // Сохраняем дату окончания
-      monthsToGoal: result.monthsToGoal, // Сохраняем месяцы до цели
-      calories: result.calories.toString(),
-      proteins: result.proteins.toString(),
-      fats: result.fats.toString(),
-      carbs: result.carbs.toString(),
-    };
-
-    localStorage.setItem(`goal_${user.id}`, JSON.stringify(goalData));
-
-    // Fire-and-forget: do not block UI transition on network calls
-    void goalService.saveUserGoal(user.id, {
-      calories: result.calories,
-      protein: result.proteins,
-      fat: result.fats,
-      carbs: result.carbs,
-    });
-
-    void profileService.saveProfile(user.id, {
-      age: Number(formData.age),
-      height: Number(formData.height),
-      goal: goalTypeMap[formData.goal] || formData.goal,
-    });
-
-    navigate('/goal');
   };
 
   const handleClose = () => {
@@ -352,7 +285,7 @@ const GoalResult = () => {
             <p>
               Ваш вес: <span className="font-medium">{formData.weight} кг</span>
             </p>
-            {formData.goal === 'weight-loss' && formData.targetWeight && (
+            {formData.targetWeight && (
               <p>
                 Ваша цель: <span className="font-medium">{formData.targetWeight} кг</span>
               </p>
@@ -363,9 +296,12 @@ const GoalResult = () => {
             <p>
               Кол-во тренировок в неделю: <span className="font-medium">{getWorkoutsPerWeek(formData.lifestyle)}</span>
             </p>
+            <p>
+              Тренировки: <span className="font-medium">{getTrainingPlaceLabel(formData.trainingPlace)}</span>
+            </p>
           </div>
 
-          {formData.goal === 'weight-loss' && result.monthsToGoal > 0 && (
+          {result.monthsToGoal > 0 && (
             <p className="mt-4 text-sm text-gray-900 dark:text-white">
               Для достижения цели: понадобится{' '}
               <span className="font-medium">
@@ -373,7 +309,6 @@ const GoalResult = () => {
               </span>
             </p>
           )}
-
           <div className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-400">
             <p>
               BMR (базовый метаболизм):{' '}
@@ -416,27 +351,32 @@ const GoalResult = () => {
             </div>
           </div>
 
+        </main>
+
+        <div
+          className="px-5 pt-2 pb-4 border-t border-gray-100 dark:border-gray-800"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
+        >
           {!isPremium && (
             <button
               type="button"
               onClick={() => navigate('/paywall')}
-              className="mt-4 text-sm font-medium text-green-600 dark:text-green-400 break-words text-left cursor-pointer"
+              className="mb-3 text-sm font-medium text-green-600 dark:text-green-400 break-words text-left cursor-pointer w-full"
             >
               при подключении тарифа PREMIUM вы получите план питания и тренировок под вашу цель
             </button>
           )}
-        </main>
-
-        <div
-          className="px-5 pb-4"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
-        >
           <button
             onClick={handleSave}
             className="w-full rounded-full border border-gray-900 dark:border-gray-300 py-3 text-sm font-semibold uppercase text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             СОХРАНИТЬ
           </button>
+          {saveError && (
+            <p className="mt-2 text-xs text-red-600">
+              {saveError}
+            </p>
+          )}
         </div>
       </div>
     </div>
