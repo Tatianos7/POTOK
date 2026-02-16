@@ -21,6 +21,7 @@ import type {
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import type { BaseExplainabilityDTO } from '../types/explainability';
 import { classifyTrustDecision } from '../services/trustSafetyService';
+import { entitlementService } from '../services/entitlementService';
 import Card from '../ui/components/Card';
 import StateContainer from '../ui/components/StateContainer';
 import TrustBanner from '../ui/components/TrustBanner';
@@ -28,11 +29,17 @@ import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
 import ScreenContainer from '../ui/components/ScreenContainer';
 import Button from '../ui/components/Button';
 import { colors, spacing, typography } from '../ui/theme/tokens';
+import { clearPinLock, isPinLockEnabled } from '../services/pinLockService';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const { user, authStatus } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isProfileLoadInFlightRef = useRef(false);
+  const isEntitlementsLoadInFlightRef = useRef(false);
+  const activeProfileRequestIdRef = useRef(0);
+  const profileTimeoutRef = useRef<number | null>(null);
+  const profileDataRef = useRef<any>(null);
   const [avatar, setAvatar] = useState<string | null>(null);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isPrivacyPolicyOpen, setIsPrivacyPolicyOpen] = useState(false);
@@ -49,44 +56,109 @@ const Profile = () => {
   const [voiceStyle, setVoiceStyle] = useState<CoachVoiceStyle>('calm');
   const [voiceIntensity, setVoiceIntensity] = useState<CoachVoiceIntensity>('soft');
   const [decisionSupport, setDecisionSupport] = useState<CoachDecisionResponse | null>(null);
+  const [pinEnabled, setPinEnabled] = useState(false);
+  const [pinNotice, setPinNotice] = useState<string | null>(null);
+  const PROFILE_LOAD_TIMEOUT_MS = 10000;
 
   const loadProfileState = useCallback(async () => {
-    if (!user?.id) return;
-    setRuntimeStatus('loading');
+    if (authStatus !== 'authenticated' || !user?.id) return;
+    if (isProfileLoadInFlightRef.current) return;
+    activeProfileRequestIdRef.current += 1;
+    const requestId = activeProfileRequestIdRef.current;
+    isProfileLoadInFlightRef.current = true;
+    const initialCoreProfile = profileService.getCachedProfile(user.id) ?? user.profile ?? null;
+    if (initialCoreProfile) {
+      setProfileData((prev: typeof initialCoreProfile) => prev ?? initialCoreProfile);
+      setRuntimeStatus('active');
+    } else {
+      setRuntimeStatus('loading');
+    }
     setErrorMessage(null);
     setTrustMessage(null);
-    uiRuntimeAdapter.startLoadingTimer('Profile', {
-      pendingSources: ['user_profiles', 'entitlements'],
-      onTimeout: () => {
-        const decision = classifyTrustDecision('loading_timeout');
+    if (profileTimeoutRef.current) {
+      window.clearTimeout(profileTimeoutRef.current);
+      profileTimeoutRef.current = null;
+    }
+    let timedOut = false;
+    profileTimeoutRef.current = window.setTimeout(() => {
+      if (activeProfileRequestIdRef.current !== requestId) return;
+      timedOut = true;
+      const decision = classifyTrustDecision('loading_timeout');
+      const hasRenderableCore = Boolean(profileService.getCachedProfile(user.id) ?? user.profile ?? profileDataRef.current);
+      if (!hasRenderableCore) {
         setRuntimeStatus('error');
-        setErrorMessage('Загрузка профиля заняла слишком много времени.');
+      }
+      setErrorMessage('Не удалось загрузить профиль за отведённое время.');
+      setTrustMessage(decision.message);
+    }, PROFILE_LOAD_TIMEOUT_MS);
+
+    uiRuntimeAdapter.startLoadingTimer('Profile', {
+      pendingSources: ['user_profiles'],
+      authState: authStatus,
+      onTimeout: () => {
+        if (activeProfileRequestIdRef.current !== requestId) return;
+        const decision = classifyTrustDecision('loading_timeout');
+        const hasRenderableCore = Boolean(profileService.getCachedProfile(user.id) ?? user.profile ?? profileDataRef.current);
+        if (!hasRenderableCore) {
+          setRuntimeStatus('error');
+        }
+        setErrorMessage('Не удалось загрузить профиль за отведённое время.');
         setTrustMessage(decision.message);
       },
     });
     try {
       const state = await uiRuntimeAdapter.getProfileState(user.id);
-      setRuntimeStatus(state.status);
+      if (activeProfileRequestIdRef.current !== requestId) return;
+      if (profileTimeoutRef.current) {
+        window.clearTimeout(profileTimeoutRef.current);
+        profileTimeoutRef.current = null;
+      }
+      const fallbackProfile = profileService.getCachedProfile(user.id);
+      const effectiveProfile = state.profile ?? fallbackProfile ?? user.profile ?? null;
+      const shouldFallback = state.status === 'error' || state.status === 'partial' || state.status === 'empty';
+      setRuntimeStatus(shouldFallback ? 'active' : state.status);
       setExplainability((state.explainability as BaseExplainabilityDTO) ?? null);
       setTrustMessage(state.trust?.message ?? null);
-      setProfileData(state.profile ?? null);
-      setEntitlements(state.entitlements ?? null);
-      if (state.status === 'error') {
+      setProfileData(effectiveProfile);
+      const serviceNotice = profileService.consumeProfileNotice();
+      if (serviceNotice) {
+        setErrorMessage(serviceNotice);
+      } else if (shouldFallback && !effectiveProfile) {
         setErrorMessage(state.message || 'Не удалось загрузить профиль.');
+      } else if (!timedOut) {
+        setErrorMessage(null);
+      } else {
+        setErrorMessage(null);
       }
     } catch (error) {
+      if (activeProfileRequestIdRef.current !== requestId) return;
+      if (profileTimeoutRef.current) {
+        window.clearTimeout(profileTimeoutRef.current);
+        profileTimeoutRef.current = null;
+      }
       const decision = classifyTrustDecision(error);
-      setRuntimeStatus('error');
-      setErrorMessage('Не удалось загрузить профиль.');
+      const fallbackProfile = profileService.getCachedProfile(user.id) ?? user.profile ?? null;
+      setProfileData(fallbackProfile);
+      setRuntimeStatus(fallbackProfile ? 'active' : 'error');
+      setErrorMessage(fallbackProfile ? 'Не удалось загрузить профиль. Показываем последние сохранённые данные.' : 'Не удалось загрузить профиль.');
       setTrustMessage(decision.message);
     } finally {
+      if (activeProfileRequestIdRef.current === requestId && profileTimeoutRef.current) {
+        window.clearTimeout(profileTimeoutRef.current);
+        profileTimeoutRef.current = null;
+      }
       uiRuntimeAdapter.clearLoadingTimer('Profile');
+      isProfileLoadInFlightRef.current = false;
     }
-  }, [user?.id]);
+  }, [PROFILE_LOAD_TIMEOUT_MS, authStatus, user?.id, user?.profile]);
+
+  useEffect(() => {
+    profileDataRef.current = profileData;
+  }, [profileData]);
 
   // Загружаем аватар из Supabase при монтировании
   useEffect(() => {
-    if (user?.id) {
+    if (authStatus === 'authenticated' && user?.id) {
       profileService.getAvatar(user.id).then((avatarUrl) => {
         if (avatarUrl) {
           setAvatar(avatarUrl);
@@ -99,14 +171,48 @@ const Profile = () => {
         }
       });
     }
-  }, [user?.id]);
+  }, [authStatus, user?.id]);
 
   useEffect(() => {
     loadProfileState();
   }, [loadProfileState]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    setPinEnabled(isPinLockEnabled());
+  }, []);
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || !user?.id) return;
+    if (isEntitlementsLoadInFlightRef.current) return;
+    isEntitlementsLoadInFlightRef.current = true;
+    const timeoutId = window.setTimeout(() => {
+      isEntitlementsLoadInFlightRef.current = false;
+    }, 8000);
+    void entitlementService
+      .getEntitlements(user.id)
+      .then((data) => {
+        setEntitlements(data ?? null);
+      })
+      .catch(() => {
+        // background only: do not block profile rendering
+      })
+      .finally(() => {
+        window.clearTimeout(timeoutId);
+        isEntitlementsLoadInFlightRef.current = false;
+      });
+  }, [authStatus, user?.id]);
+
+  useEffect(() => {
+    return () => {
+      if (profileTimeoutRef.current) {
+        window.clearTimeout(profileTimeoutRef.current);
+        profileTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated' || !user?.id) return;
     profileService
       .getCoachSettings(user.id)
       .then((settings) => {
@@ -117,10 +223,10 @@ const Profile = () => {
         setCoachEnabled(true);
         setCoachMode('support');
       });
-  }, [user?.id]);
+  }, [authStatus, user?.id]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (authStatus !== 'authenticated' || !user?.id) return;
     profileService
       .getVoiceSettings(user.id)
       .then((settings) => {
@@ -135,7 +241,7 @@ const Profile = () => {
         setVoiceStyle('calm');
         setVoiceIntensity('soft');
       });
-  }, [user?.id]);
+  }, [authStatus, user?.id]);
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
@@ -172,7 +278,7 @@ const Profile = () => {
     entitlements?.status || (profile?.has_premium || user?.hasPremium ? 'active' : 'free');
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (authStatus !== 'authenticated' || !user?.id) return;
     const subscriptionState = subscriptionLabel === 'PREMIUM' ? 'Premium' : 'Free';
     uiRuntimeAdapter
       .getDecisionSupport({
@@ -187,7 +293,7 @@ const Profile = () => {
       })
       .then(setDecisionSupport)
       .catch(() => setDecisionSupport(null));
-  }, [user?.id, subscriptionLabel]);
+  }, [authStatus, user?.id, subscriptionLabel]);
 
   const formatAge = (value?: number) => {
     if (!value) return '';
@@ -226,6 +332,24 @@ const Profile = () => {
 
   const handlePrivacyPolicy = () => {
     setIsPrivacyPolicyOpen(true);
+  };
+
+  const handleCreatePin = () => {
+    navigate('/pin/setup?from=profile');
+  };
+
+  const handleChangePin = () => {
+    clearPinLock();
+    setPinEnabled(false);
+    setPinNotice(null);
+    navigate('/pin/setup?from=profile');
+  };
+
+  const handleDisablePin = () => {
+    clearPinLock();
+    setPinEnabled(false);
+    setPinNotice('PIN отключён');
+    window.setTimeout(() => setPinNotice(null), 3000);
   };
 
   const handleCoachHistory = () => {
@@ -323,15 +447,20 @@ const Profile = () => {
           <StateContainer
             status={runtimeStatus}
             message={runtimeStatus === 'empty' ? 'Профиль ещё не заполнен. Мы поможем начать.' : errorMessage || undefined}
-            onRetry={() => {
-              if (runtimeStatus === 'offline') {
-                uiRuntimeAdapter.revalidate().finally(loadProfileState);
-              } else {
-                uiRuntimeAdapter.recover().finally(loadProfileState);
-              }
-            }}
+            onRetry={loadProfileState}
           >
             <div className="space-y-4">
+              {errorMessage && (
+                <Card title="Профиль">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">{errorMessage}</p>
+                  <button
+                    onClick={loadProfileState}
+                    className="mt-3 rounded-xl border border-gray-300 px-4 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200"
+                  >
+                    Повторить
+                  </button>
+                </Card>
+              )}
               <Card title="Мой профиль" action={<button onClick={handleEdit} className="text-xs text-gray-500">Редактировать</button>}>
                 <div className="flex items-start gap-4">
                   <div className="relative">
@@ -432,6 +561,42 @@ const Profile = () => {
                 >
                   Открыть историю
                 </button>
+              </Card>
+
+              <Card title="PIN-код">
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  Локальная защита входа на этом устройстве.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {!pinEnabled ? (
+                    <button
+                      onClick={handleCreatePin}
+                      className="rounded-xl bg-gray-900 text-white px-4 py-2 text-xs font-semibold uppercase dark:bg-white dark:text-gray-900"
+                    >
+                      Создать PIN
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleChangePin}
+                        className="rounded-xl border border-gray-300 px-4 py-2 text-xs font-semibold uppercase text-gray-700 dark:border-gray-700 dark:text-gray-200"
+                      >
+                        Сменить PIN
+                      </button>
+                      <button
+                        onClick={handleDisablePin}
+                        className="rounded-xl border border-red-300 px-4 py-2 text-xs font-semibold uppercase text-red-700 dark:border-red-700 dark:text-red-300"
+                      >
+                        Отключить PIN
+                      </button>
+                    </>
+                  )}
+                </div>
+                {pinNotice && (
+                  <p className="mt-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300">
+                    {pinNotice}
+                  </p>
+                )}
               </Card>
 
               <Card title="Настройки коуча">
@@ -704,4 +869,3 @@ const Profile = () => {
 };
 
 export default Profile;
-

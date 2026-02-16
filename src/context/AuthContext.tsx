@@ -43,6 +43,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [entitlements, setEntitlements] = useState<Record<string, boolean> | null>(null);
   const [trustScore, setTrustScore] = useState<number | null>(null);
   const { setThemeExplicit } = useTheme();
+  const isInvalidRefreshTokenError = (error: unknown): boolean => {
+    if (!error || typeof error !== 'object') return false;
+    const message = ((error as { message?: string }).message || '').toLowerCase();
+    return message.includes('invalid refresh token') || message.includes('refresh token not found');
+  };
+
+  const resetInvalidSessionSafely = (client: NonNullable<typeof supabase>) => {
+    void client.auth.signOut().catch(() => undefined);
+    clearSessionState();
+  };
 
   const withTimeout = async <T,>(promise: Promise<T>, timeoutMs: number): Promise<T | null> => {
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -131,17 +141,41 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let isMounted = true;
 
     const init = async () => {
-      const sessionResult = await withTimeout(getSessionCached(), 5000);
+      const sessionResult = await withTimeout(getSessionCached(), 12000);
       if (!isMounted) return;
       if (!sessionResult) {
-        console.warn('[AuthContext] getSession timeout, falling back to unauthenticated');
-        clearSessionState();
+        console.warn('[AuthContext] getSession timeout, retrying direct session fetch');
+        try {
+          const directSession = await withTimeout(supabaseClient.auth.getSession(), 5000);
+          if (!isMounted) return;
+          const directUser = directSession?.data?.session?.user ?? null;
+          if (directUser) {
+            const built = await withTimeout(buildUser(directUser), 8000);
+            if (!isMounted) return;
+            if (built) {
+              setUser(built.user);
+              setProfile(built.profile);
+              setAuthStatus('authenticated');
+              activityService.updateActivity(directUser.id);
+            } else {
+              clearSessionState();
+            }
+          } else {
+            clearSessionState();
+          }
+        } catch {
+          clearSessionState();
+        }
         return;
       }
       const { data, error } = sessionResult;
       if (!isMounted) return;
 
       if (error) {
+        if (isInvalidRefreshTokenError(error)) {
+          resetInvalidSessionSafely(supabaseClient);
+          return;
+        }
         console.warn('[AuthContext] getSession error:', error);
       }
 
@@ -149,7 +183,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (currentSession?.user) {
         try {
-          const built = await withTimeout(buildUser(currentSession.user), 5000);
+          const built = await withTimeout(buildUser(currentSession.user), 8000);
           if (!isMounted) return;
           if (built) {
             setUser(built.user);
@@ -187,6 +221,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setAuthStatus('authenticated');
           activityService.updateActivity(currentSession.user.id);
         } catch (buildError) {
+          if (isInvalidRefreshTokenError(buildError)) {
+            resetInvalidSessionSafely(supabaseClient);
+            return;
+          }
           console.warn('[AuthContext] buildUser error:', buildError);
           const fallbackUser: User = {
             id: currentSession.user.id,
@@ -223,12 +261,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
+    const authInitGuard = window.setTimeout(() => {
+      if (!isMounted) return;
+      setAuthStatus((prev) => (prev === 'loading' ? 'unauthenticated' : prev));
+    }, 20000);
+
     init();
 
     const { data: authListener } = supabaseClient.auth.onAuthStateChange(async (_event, newSession) => {
       if (newSession?.user) {
         try {
-          const built = await withTimeout(buildUser(newSession.user), 5000);
+          const built = await withTimeout(buildUser(newSession.user), 8000);
           if (!isMounted) return;
           if (built) {
             setUser(built.user);
@@ -265,6 +308,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setAuthStatus('authenticated');
           activityService.updateActivity(newSession.user.id);
         } catch (buildError) {
+          if (isInvalidRefreshTokenError(buildError)) {
+            resetInvalidSessionSafely(supabaseClient);
+            return;
+          }
           console.warn('[AuthContext] buildUser error:', buildError);
           const fallbackUser: User = {
             id: newSession.user.id,
@@ -303,6 +350,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => {
       isMounted = false;
+      window.clearTimeout(authInitGuard);
       authListener?.subscription?.unsubscribe();
     };
   }, []);

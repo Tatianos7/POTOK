@@ -52,6 +52,20 @@ npm run dev
 select pg_notify('pgrst', 'reload schema');
 ```
 
+### Supabase Auth Redirect URLs (GitHub Pages + локально)
+
+Для OAuth/OTP callback в `Supabase -> Authentication -> URL Configuration` добавьте:
+
+- `Site URL`:
+  - `https://tatianos7.github.io/POTOK/`
+- `Redirect URLs`:
+  - `http://localhost:5173/auth/callback`
+  - `http://localhost:5176/auth/callback`
+  - `https://tatianos7.github.io/POTOK/auth/callback`
+
+Google OAuth в приложении использует redirect:
+`window.location.origin + import.meta.env.BASE_URL + 'auth/callback'`.
+
 > **Примечание**: Приложение будет работать и без Supabase, но функции привычек и аналитики будут недоступны.
 
 ## 🏗 Сборка для продакшена
