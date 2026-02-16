@@ -4,6 +4,8 @@ import App from './App.tsx'
 import './index.css'
 import { testSupabaseConnection } from './lib/supabaseClient'
 import { initializeExerciseData } from './utils/initializeExerciseData'
+import { ThemeProvider } from './context/ThemeContext'
+import { AuthProvider } from './context/AuthContext'
 
 // Restore original SPA route after GitHub Pages 404 fallback redirect.
 (() => {
@@ -29,6 +31,10 @@ initializeExerciseData().catch((err) => {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <ThemeProvider>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </ThemeProvider>
   </React.StrictMode>,
 )

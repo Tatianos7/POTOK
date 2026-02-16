@@ -1,6 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -31,9 +30,15 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Today from './pages/Today';
 import MyProgram from './pages/MyProgram';
 import Paywall from './pages/Paywall';
+import AuthCallback from './pages/AuthCallback';
+import PinSetup from './pages/PinSetup';
+import PinUnlock from './pages/PinUnlock';
+import PinOffer from './pages/PinOffer';
+import { getPostLoginRoute, isPinLockEnabled, isPinOfferSkipped, isPinSessionUnlocked } from './services/pinLockService';
 
 function AppRoutes() {
   const { authStatus } = useAuth();
+  const location = useLocation();
 
   if (authStatus === 'loading') {
     return (
@@ -43,11 +48,53 @@ function AppRoutes() {
     );
   }
 
+  const pinEnabled = isPinLockEnabled();
+  const pinUnlocked = isPinSessionUnlocked();
+  const isPinUnlockRoute = location.pathname === '/pin/unlock';
+  const isPinOfferRoute = location.pathname === '/pin/offer';
+  const isPinSetupRoute = location.pathname === '/pin/setup';
+  const isAuthCallbackRoute = location.pathname === '/auth/callback';
+  const shouldShowPinOffer = !pinEnabled && !isPinOfferSkipped();
+
+  if (authStatus === 'authenticated' && pinEnabled && !pinUnlocked && !isPinUnlockRoute) {
+    return <Navigate to="/pin/unlock" replace />;
+  }
+
+  if (
+    authStatus === 'authenticated' &&
+    shouldShowPinOffer &&
+    !isPinOfferRoute &&
+    !isPinSetupRoute &&
+    !isAuthCallbackRoute
+  ) {
+    return <Navigate to={getPostLoginRoute()} replace />;
+  }
+
   return (
     <Routes>
       <Route
-        path="/login"
+        path="/auth"
         element={authStatus === 'authenticated' ? <Navigate to="/" replace /> : <Login />}
+      />
+      <Route
+        path="/auth/callback"
+        element={<AuthCallback />}
+      />
+      <Route
+        path="/pin/unlock"
+        element={<PinUnlock />}
+      />
+      <Route
+        path="/pin/offer"
+        element={
+          <ProtectedRoute>
+            <PinOffer />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/login"
+        element={<Navigate to="/auth" replace />}
       />
       <Route
         path="/register"
@@ -265,6 +312,14 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/pin/setup"
+        element={
+          <ProtectedRoute>
+            <PinSetup />
+          </ProtectedRoute>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -279,15 +334,11 @@ function App() {
         v7_relativeSplatPath: true,
       }}
     >
-      <ThemeProvider>
-        <AuthProvider>
-          <div className="app-container">
-            <ErrorBoundary>
-              <AppRoutes />
-            </ErrorBoundary>
-          </div>
-        </AuthProvider>
-      </ThemeProvider>
+      <div className="app-container">
+        <ErrorBoundary>
+          <AppRoutes />
+        </ErrorBoundary>
+      </div>
     </Router>
   );
 }
