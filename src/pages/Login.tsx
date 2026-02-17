@@ -9,6 +9,7 @@ import { getPostLoginRoute } from '../services/pinLockService';
 type AuthTab = 'email' | 'phone';
 const OTP_DEFAULT_COOLDOWN_SEC = 60;
 const OTP_RATE_LIMIT_COOLDOWN_SEC = 90;
+const OTP_COOLDOWN_UNTIL_KEY = 'otp_cooldown_until_v1';
 
 const formatCooldown = (seconds: number): string => {
   const safe = Math.max(0, seconds);
@@ -90,6 +91,11 @@ const Login = () => {
   const phoneSendRequestIdRef = useRef(0);
   const phoneVerifyRequestIdRef = useRef(0);
 
+  const persistCooldownUntil = (seconds: number) => {
+    const untilTs = Date.now() + seconds * 1000;
+    sessionStorage.setItem(OTP_COOLDOWN_UNTIL_KEY, String(untilTs));
+  };
+
   useEffect(() => {
     setThemeExplicit('light');
   }, [setThemeExplicit]);
@@ -99,6 +105,23 @@ const Login = () => {
       navigate(getPostLoginRoute(), { replace: true });
     }
   }, [isAuthenticated, navigate]);
+
+  useEffect(() => {
+    const rawUntil = sessionStorage.getItem(OTP_COOLDOWN_UNTIL_KEY);
+    if (!rawUntil) return;
+    const untilTs = Number(rawUntil);
+    if (!Number.isFinite(untilTs)) {
+      sessionStorage.removeItem(OTP_COOLDOWN_UNTIL_KEY);
+      return;
+    }
+    const remainingSec = Math.ceil((untilTs - Date.now()) / 1000);
+    if (remainingSec > 0) {
+      setEmailResendIn(remainingSec);
+      setPhoneResendIn(remainingSec);
+    } else {
+      sessionStorage.removeItem(OTP_COOLDOWN_UNTIL_KEY);
+    }
+  }, []);
 
   useEffect(() => {
     const query = new URLSearchParams(location.search);
@@ -134,6 +157,12 @@ const Login = () => {
     return () => window.clearInterval(timer);
   }, [phoneResendIn]);
 
+  useEffect(() => {
+    if (emailResendIn <= 0 && phoneResendIn <= 0) {
+      sessionStorage.removeItem(OTP_COOLDOWN_UNTIL_KEY);
+    }
+  }, [emailResendIn, phoneResendIn]);
+
   const handleSendEmailCode = async () => {
     setEmailError('');
     setEmailStatus('');
@@ -161,6 +190,8 @@ const Login = () => {
         if (isRateLimitError(signError)) {
           setEmailError('Слишком много попыток. Подождите немного.');
           setEmailResendIn(OTP_RATE_LIMIT_COOLDOWN_SEC);
+          setPhoneResendIn(OTP_RATE_LIMIT_COOLDOWN_SEC);
+          persistCooldownUntil(OTP_RATE_LIMIT_COOLDOWN_SEC);
           return;
         }
         setEmailError(mapOtpError(signError.message || ''));
@@ -169,6 +200,8 @@ const Login = () => {
       setEmailIsCodeStep(true);
       setEmailStatus('Код отправлен на email.');
       setEmailResendIn(OTP_DEFAULT_COOLDOWN_SEC);
+      setPhoneResendIn(OTP_DEFAULT_COOLDOWN_SEC);
+      persistCooldownUntil(OTP_DEFAULT_COOLDOWN_SEC);
     } catch {
       if (requestId !== emailSendRequestIdRef.current) return;
       setEmailError('Не удалось отправить код. Проверьте соединение и попробуйте снова.');
@@ -262,6 +295,8 @@ const Login = () => {
         if (isRateLimitError(signError)) {
           setPhoneError('Слишком много попыток. Подождите немного.');
           setPhoneResendIn(OTP_RATE_LIMIT_COOLDOWN_SEC);
+          setEmailResendIn(OTP_RATE_LIMIT_COOLDOWN_SEC);
+          persistCooldownUntil(OTP_RATE_LIMIT_COOLDOWN_SEC);
           return;
         }
         setPhoneError(mapOtpError(signError.message || ''));
@@ -270,6 +305,8 @@ const Login = () => {
       setPhoneIsCodeStep(true);
       setPhoneStatus('Код отправлен по SMS.');
       setPhoneResendIn(OTP_DEFAULT_COOLDOWN_SEC);
+      setEmailResendIn(OTP_DEFAULT_COOLDOWN_SEC);
+      persistCooldownUntil(OTP_DEFAULT_COOLDOWN_SEC);
     } catch {
       if (requestId !== phoneSendRequestIdRef.current) return;
       setPhoneError('SMS временно недоступны.');

@@ -8,6 +8,14 @@
   --color-card: #ffffff;
   --color-border: #e2e8f0;
   --color-muted-bg: #f1f5f9;
+  --input-border: #d1d5db;
+  --input-border-focus: #22c55e;
+  --input-border-filled: #22c55e;
+  --input-radius: 0.5rem;
+  --input-bg: #ffffff;
+  --input-text: #111827;
+  --input-placeholder: #9ca3af;
+  --input-transition: border-color 150ms ease, border-width 150ms ease;
 }
 
 :root.dark {
@@ -16,6 +24,12 @@
   --color-card: #111827;
   --color-border: #1f2937;
   --color-muted-bg: #1f2937;
+  --input-border: #4b5563;
+  --input-border-focus: #22c55e;
+  --input-border-filled: #22c55e;
+  --input-bg: #1f2937;
+  --input-text: #f9fafb;
+  --input-placeholder: #9ca3af;
 }
 
 @layer base {
@@ -135,6 +149,41 @@
     @apply w-full px-4 py-3 rounded-lg border border-gray-300 
            focus:outline-none focus:ring-2 focus:ring-primary-500 
            focus:border-transparent transition-all;
+  }
+
+  .base-input {
+    @apply rounded-lg;
+    width: 100%;
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-style: solid;
+    border-radius: var(--input-radius);
+    outline: none;
+    box-shadow: none;
+    box-sizing: border-box;
+    transition: var(--input-transition);
+  }
+
+  .base-input::placeholder {
+    color: var(--input-placeholder);
+  }
+
+  .base-input:focus,
+  .base-input:active {
+    outline: none;
+    box-shadow: none;
+  }
+
+  .base-input[data-state='idle'] {
+    border: 1px solid var(--input-border);
+  }
+
+  .base-input[data-state='focus'] {
+    border: 2px solid var(--input-border-focus);
+  }
+
+  .base-input[data-state='filled'] {
+    border: 1px solid var(--input-border-filled);
   }
 }
 
