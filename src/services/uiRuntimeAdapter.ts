@@ -215,9 +215,10 @@ class UiRuntimeAdapter {
   private async runWithTimeout<T>(
     screenName: string,
     pendingSources: string[],
-    task: () => Promise<T>
+    task: () => Promise<T>,
+    authState?: string
   ): Promise<T> {
-    this.startLoadingTimer(screenName, { pendingSources });
+    this.startLoadingTimer(screenName, { pendingSources, authState });
     let timeoutId: number | undefined;
     const timeoutPromise = new Promise<T>((_, reject) => {
       timeoutId = window.setTimeout(() => {
@@ -645,20 +646,17 @@ class UiRuntimeAdapter {
 
   async getProfileState(userId: string): Promise<ProfileState> {
     try {
-      const [profile, entitlements] = await this.runWithTimeout(
+      const profile = await this.runWithTimeout(
         'Profile',
-        ['user_profiles', 'entitlements'],
-        () =>
-          Promise.all([
-            profileService.getProfile(userId).catch(() => null),
-            entitlementService.getEntitlements(userId).catch(() => null),
-          ])
+        ['user_profiles'],
+        () => profileService.getProfile(userId).catch(() => null),
+        'authenticated'
       );
 
-      const isPartial = !profile || !entitlements;
+      const isPartial = !profile;
       const explainability = this.buildBaseExplainability({
         decisionRef: isPartial ? 'profile:partial' : 'profile:loaded',
-        dataSources: ['user_profiles', 'entitlements'],
+        dataSources: ['user_profiles'],
         confidence: isPartial ? 0.5 : 0.9,
         safetyNotes: isPartial ? ['Часть данных профиля недоступна.'] : [],
       });
@@ -667,7 +665,6 @@ class UiRuntimeAdapter {
       return {
         status: isPartial ? 'partial' : 'active',
         profile,
-        entitlements,
         explainability,
         trust,
       };

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Check } from 'lucide-react';
 import { ACTIVITY_HINTS } from '../constants/activityHints';
+import BaseInput from './ui/BaseInput';
 
 interface CreateGoalModalProps {
   isOpen: boolean;
@@ -150,7 +151,6 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
     onCalculate(formData);
   };
 
-  const isFieldValid = (value: string) => value.trim() !== '';
   const weightValue = Number(formData.weight);
   const gainMax = Number.isFinite(weightValue) && weightValue > 0 ? Math.min(weightValue + 30, 150) : 150;
   const gainMin = Number.isFinite(weightValue) && weightValue > 0 ? Math.min(weightValue + 1, gainMax) : 40;
@@ -242,16 +242,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
               <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Возраст
               </label>
-              <input
+              <BaseInput
                 type="number"
                 value={formData.age}
                 onChange={handleChange('age')}
-                className={`w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 rounded-lg border text-xs min-[376px]:text-sm ${
-                  isFieldValid(formData.age)
-                    ? 'border-green-500'
-                    : 'border-gray-300 dark:border-gray-600'
-                } bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500`}
-                style={{ boxSizing: 'border-box' }}
+                className="w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 text-xs min-[376px]:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 placeholder="0"
               />
             </div>
@@ -259,16 +254,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
               <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Вес, кг
               </label>
-              <input
+              <BaseInput
                 type="number"
                 value={formData.weight}
                 onChange={handleChange('weight')}
-                className={`w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 rounded-lg border text-xs min-[376px]:text-sm ${
-                  isFieldValid(formData.weight)
-                    ? 'border-green-500'
-                    : 'border-gray-300 dark:border-gray-600'
-                } bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500`}
-                style={{ boxSizing: 'border-box' }}
+                className="w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 text-xs min-[376px]:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 placeholder="0"
               />
             </div>
@@ -276,16 +266,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
               <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                 Рост, см
               </label>
-              <input
+              <BaseInput
                 type="number"
                 value={formData.height}
                 onChange={handleChange('height')}
-                className={`w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 rounded-lg border text-xs min-[376px]:text-sm ${
-                  isFieldValid(formData.height)
-                    ? 'border-green-500'
-                    : 'border-gray-300 dark:border-gray-600'
-                } bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500`}
-                style={{ boxSizing: 'border-box' }}
+                className="w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 text-xs min-[376px]:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 placeholder="0"
               />
             </div>

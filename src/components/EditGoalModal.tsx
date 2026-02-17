@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import BaseInput from './ui/BaseInput';
 
 interface EditGoalModalProps {
   isOpen: boolean;
@@ -143,7 +144,8 @@ const EditGoalModal = ({ isOpen, onClose, onSave, initialData, bmr, weight }: Ed
     }
   };
 
-  const inputClasses = 'w-full max-w-full px-2 min-[376px]:px-3 py-1.5 min-[376px]:py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs min-[376px]:text-sm focus:outline-none focus:ring-2 focus:ring-green-500';
+  const inputClasses =
+    'w-full max-w-full px-2 min-[376px]:px-3 py-1.5 min-[376px]:py-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs min-[376px]:text-sm';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 min-[376px]:p-4">
@@ -171,14 +173,13 @@ const EditGoalModal = ({ isOpen, onClose, onSave, initialData, bmr, weight }: Ed
             <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 min-[376px]:mb-2">
               Калории
             </label>
-            <input
+            <BaseInput
               type="text"
               inputMode="numeric"
               value={formData.calories}
               onChange={handleCaloriesChange}
               onBlur={handleCaloriesBlur}
               className={inputClasses}
-              style={{ boxSizing: 'border-box' }}
               placeholder="0"
             />
             {showBmrWarning && (
@@ -193,13 +194,12 @@ const EditGoalModal = ({ isOpen, onClose, onSave, initialData, bmr, weight }: Ed
             <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 min-[376px]:mb-2">
               Белки (г)
             </label>
-            <input
+            <BaseInput
               type="text"
               inputMode="numeric"
               value={formData.proteins}
               onChange={handleChange('proteins')}
               className={inputClasses}
-              style={{ boxSizing: 'border-box' }}
               placeholder="0"
             />
           </div>
@@ -209,13 +209,12 @@ const EditGoalModal = ({ isOpen, onClose, onSave, initialData, bmr, weight }: Ed
             <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 min-[376px]:mb-2">
               Жиры (г)
             </label>
-            <input
+            <BaseInput
               type="text"
               inputMode="numeric"
               value={formData.fats}
               onChange={handleChange('fats')}
               className={inputClasses}
-              style={{ boxSizing: 'border-box' }}
               placeholder="0"
             />
           </div>
@@ -225,13 +224,12 @@ const EditGoalModal = ({ isOpen, onClose, onSave, initialData, bmr, weight }: Ed
             <label className="block text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 min-[376px]:mb-2">
               Углеводы (г)
             </label>
-            <input
+            <BaseInput
               type="text"
               inputMode="numeric"
               value={formData.carbs}
               onChange={handleChange('carbs')}
               className={inputClasses}
-              style={{ boxSizing: 'border-box' }}
               placeholder="0"
             />
           </div>
