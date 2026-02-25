@@ -15,13 +15,13 @@ interface MenuProps {
 
 const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, authStatus } = useAuth();
   const [isSupportFormOpen, setIsSupportFormOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   const refreshNotificationsIndicator = async () => {
-    if (!user?.id) {
+    if (authStatus !== 'authenticated' || !user?.id) {
       setHasUnreadNotifications(false);
       return;
     }
@@ -45,18 +45,22 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
   };
 
   useEffect(() => {
+    if (authStatus !== 'authenticated' || !user?.id) {
+      setHasUnreadNotifications(false);
+      return;
+    }
     void refreshNotificationsIndicator();
-  }, [user?.id]);
+  }, [authStatus, user?.id]);
 
   // Обновляем индикатор при открытии меню
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && authStatus === 'authenticated' && user?.id) {
       void refreshNotificationsIndicator();
     }
-  }, [isOpen, user?.id]);
+  }, [isOpen, authStatus, user?.id]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (authStatus !== 'authenticated' || !user?.id) return;
     
     const handler = (event: Event) => {
       const customEvent = event as CustomEvent<{ userId?: string }>;
@@ -67,7 +71,7 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
     };
     window.addEventListener('notifications-updated', handler as EventListener);
     return () => window.removeEventListener('notifications-updated', handler as EventListener);
-  }, [user?.id]);
+  }, [authStatus, user?.id]);
 
 
   const handleMenuItemClick = (itemId: string) => {
@@ -180,4 +184,3 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
 };
 
 export default Menu;
-
