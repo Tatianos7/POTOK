@@ -275,7 +275,7 @@ const AdminPanel = () => {
     );
   };
 
-  if (authStatus === 'loading') {
+  if (authStatus === 'booting') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">Загрузка...</div>
@@ -730,4 +730,3 @@ const AdminPanel = () => {
 };
 
 export default AdminPanel;
-

@@ -23,6 +23,10 @@ import CreateBrandProductPage from './pages/CreateBrandProductPage';
 import Habits from './pages/Habits';
 import Workouts from './pages/Workouts';
 import Progress from './pages/Progress';
+import ProgressMeasurements from './pages/ProgressMeasurements';
+import ProgressNutrition from './pages/ProgressNutrition';
+import ProgressWorkouts from './pages/ProgressWorkouts';
+import ProgressHabits from './pages/ProgressHabits';
 import ImportExercises from './pages/ImportExercises';
 import PoseCoach from './pages/PoseCoach';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -40,7 +44,7 @@ function AppRoutes() {
   const { authStatus } = useAuth();
   const location = useLocation();
 
-  if (authStatus === 'loading') {
+  if (authStatus === 'booting') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">Загрузка...</div>
@@ -269,6 +273,38 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Progress />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress/measurements"
+        element={
+          <ProtectedRoute>
+            <ProgressMeasurements />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress/nutrition"
+        element={
+          <ProtectedRoute>
+            <ProgressNutrition />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress/workouts"
+        element={
+          <ProtectedRoute>
+            <ProgressWorkouts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress/habits"
+        element={
+          <ProtectedRoute>
+            <ProgressHabits />
           </ProtectedRoute>
         }
       />

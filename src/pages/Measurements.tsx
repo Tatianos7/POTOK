@@ -6,83 +6,296 @@ import {
   measurementsService,
   type Measurement,
   type MeasurementHistory,
-  type PhotoHistory,
 } from '../services/measurementsService';
-import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
-import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
-import type { BaseExplainabilityDTO } from '../types/explainability';
+import { toIsoDay } from '../utils/dateKey';
+
+type MeasurementsLoadStatus = 'loading' | 'active' | 'error';
+const SAVE_TIMEOUT_MS = 10000;
+const MAX_ADDITIONAL_PHOTOS = 3;
+
+const MAX_CUSTOM_MEASUREMENTS = 15;
+const MEASUREMENTS_WHITELIST = [
+  { id: 'weight', name: 'ВЕС' },
+  { id: 'waist', name: 'ТАЛИЯ' },
+  { id: 'hips', name: 'БЕДРА' },
+] as const;
+
+const EMPTY_MEASUREMENTS: Measurement[] = MEASUREMENTS_WHITELIST.map((item) => ({
+  id: item.id,
+  name: item.name,
+  value: '',
+}));
+
+const BASE_MEASUREMENT_IDS = new Set<string>(MEASUREMENTS_WHITELIST.map((item) => item.id));
+
+function normalizeMeasurementName(value: string): string {
+  const collapsed = value.trim().replace(/\s+/g, ' ');
+  if (!collapsed) return '';
+  return collapsed.charAt(0).toUpperCase() + collapsed.slice(1).toLowerCase();
+}
+
+function normalizedNameForCompare(value: string): string {
+  return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ru-RU');
+}
+
+function isSupportedMeasurementId(id: string): boolean {
+  return BASE_MEASUREMENT_IDS.has(id) || id.startsWith('custom_');
+}
+
+function sanitizeMeasurements(input?: Measurement[] | null): Measurement[] {
+  const byId = new Map<string, Measurement>(
+    (input ?? [])
+      .filter((item) => Boolean(item?.id) && isSupportedMeasurementId(item.id))
+      .map((item) => [
+        item.id,
+        {
+          id: item.id,
+          name: item.name || item.id,
+          value: typeof item.value === 'string' ? item.value : String(item.value ?? ''),
+        },
+      ])
+  );
+
+  const baseItems = MEASUREMENTS_WHITELIST.map((item) => {
+    const found = byId.get(item.id);
+    return {
+      id: item.id,
+      name: item.name,
+      value: found?.value ?? '',
+    };
+  });
+
+  const customItems = Array.from(byId.values())
+    .filter((item) => item.id.startsWith('custom_'))
+    .slice(0, MAX_CUSTOM_MEASUREMENTS)
+    .map((item) => ({
+      id: item.id,
+      name: normalizeMeasurementName(item.name || ''),
+      value: item.value ?? '',
+    }))
+    .filter((item) => item.name.length > 0);
+
+  return [...baseItems, ...customItems];
+}
+
+function toEmptyDraftMeasurements(input?: Measurement[] | null): Measurement[] {
+  return sanitizeMeasurements(input).map((item) => ({
+    ...item,
+    value: '',
+  }));
+}
+
+async function runWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeoutId: number | null = null;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error('save_timeout')), timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  }
+}
+
+function maskUserId(userId: string): string {
+  return userId.length <= 6 ? userId : userId.slice(-6);
+}
+
+function devPerfStart(markName: string): void {
+  if (!import.meta.env.DEV || typeof performance === 'undefined') return;
+  performance.mark(markName);
+}
+
+function devPerfEnd(
+  startMark: string,
+  endMark: string,
+  measureName: string,
+  meta?: Record<string, number>
+): void {
+  if (!import.meta.env.DEV || typeof performance === 'undefined') return;
+  performance.mark(endMark);
+  performance.measure(measureName, startMark, endMark);
+  const entries = performance.getEntriesByName(measureName);
+  const last = entries[entries.length - 1];
+  const durationMs = last ? Number(last.duration.toFixed(1)) : 0;
+  console.debug(`[perf] ${measureName}`, { durationMs, ...(meta ?? {}) });
+  performance.clearMarks(startMark);
+  performance.clearMarks(endMark);
+  performance.clearMeasures(measureName);
+}
+
+function toMeasurementMap(entries: Measurement[]): Map<string, Measurement> {
+  return new Map(
+    entries
+      .filter((entry) => Boolean(entry?.id))
+      .map((entry) => [entry.id, { ...entry }])
+  );
+}
+
+function buildNonEmptyPatch(entries: Measurement[]): Measurement[] {
+  return entries
+    .map((entry) => ({ ...entry, value: (entry.value ?? '').trim() }))
+    .filter((entry) => entry.value !== '');
+}
+
+function mergeMeasurementsForDay(existing: Measurement[], patch: Measurement[]): Measurement[] {
+  const merged = toMeasurementMap(existing);
+  for (const next of patch) {
+    merged.set(next.id, { ...next });
+  }
+  return Array.from(merged.values());
+}
 
 const Measurements = () => {
-  const { user } = useAuth();
+  const { user, authStatus } = useAuth();
   const navigate = useNavigate();
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const additionalPhotoRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [measurements, setMeasurements] = useState<Measurement[]>([
-    { id: 'weight', name: 'ВЕС', value: '0' },
-    { id: 'neck', name: 'ШЕЯ', value: '0' },
-    { id: 'shoulders', name: 'ПЛЕЧИ', value: '0' },
-    { id: 'chest', name: 'ГРУДЬ', value: '0' },
-    { id: 'back', name: 'СПИНА', value: '0' },
-  ]);
+  const [draftMeasurements, setDraftMeasurements] = useState<Measurement[]>(EMPTY_MEASUREMENTS);
   const [customData, setCustomData] = useState('');
   const [photos, setPhotos] = useState<string[]>(['', '', '']); // 3 основных фото
   const [additionalPhotos, setAdditionalPhotos] = useState<string[]>([]); // Дополнительные фото (динамические)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [history, setHistory] = useState<MeasurementHistory[]>([]);
-  const [photoHistory, setPhotoHistory] = useState<PhotoHistory[]>([]);
-  const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
-  const [deleteDateId, setDeleteDateId] = useState<string | null>(null);
-  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
+  const [runtimeStatus, setRuntimeStatus] = useState<MeasurementsLoadStatus>('loading');
   const [runtimeMessage, setRuntimeMessage] = useState<string | null>(null);
-  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
-  const [trustMessage, setTrustMessage] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [showSavedPrompt, setShowSavedPrompt] = useState(false);
+  const [customDataError, setCustomDataError] = useState<string | null>(null);
+  const customInputRef = useRef<HTMLInputElement | null>(null);
+  const savedPromptOkButtonRef = useRef<HTMLButtonElement | null>(null);
+  const initReqIdRef = useRef(0);
+  const saveReqIdRef = useRef(0);
+  const didAutoRetryRef = useRef(false);
+  const lastAutoloadUserIdRef = useRef<string | null>(null);
+  const didEditDraftRef = useRef(false);
+  const didEditPhotosRef = useRef(false);
+  const isAuthReady = authStatus === 'authenticated' && Boolean(user?.id);
 
   const photoLabels = ['спереди', 'с боку', 'сзади'];
+  const customMeasurementsCount = draftMeasurements.filter((m) => m.id.startsWith('custom_')).length;
+  const isCustomLimitReached = customMeasurementsCount >= MAX_CUSTOM_MEASUREMENTS;
+  const isAdditionalPhotosLimitReached = additionalPhotos.length >= MAX_ADDITIONAL_PHOTOS;
 
-  const loadMeasurementsState = useCallback(async () => {
-    if (!user?.id) return;
+  const resetDraftAfterSave = useCallback(() => {
+    setDraftMeasurements(EMPTY_MEASUREMENTS);
+    setCustomData('');
+    setCustomDataError(null);
+    setPhotos(['', '', '']);
+    setAdditionalPhotos([]);
+    setOpenMenuId(null);
+    didEditDraftRef.current = false;
+    didEditPhotosRef.current = false;
+  }, []);
+
+  const loadMeasurementsState = useCallback(async (opts?: { silent?: boolean; allowAutoRetry?: boolean; source?: 'autoload' | 'retry' | 'manual' }) => {
+    if (!isAuthReady || !user?.id) return;
+    const reqId = ++initReqIdRef.current;
     setRuntimeStatus('loading');
     setRuntimeMessage(null);
-    setTrustMessage(null);
+    setSaveMessage(null);
+    setSaveError(null);
+    setShowSavedPrompt(false);
+
     try {
-      const state = await uiRuntimeAdapter.getMeasurementsState(user.id);
-      setRuntimeStatus(state.status);
-      setRuntimeMessage(state.message || null);
-      setExplainability(state.explainability ?? null);
-      setTrustMessage(state.trust?.message ?? null);
-      if (state.measurements?.length) {
-        setMeasurements(state.measurements);
+      devPerfStart('m:getCurrentMeasurements:start');
+      const currentMeasurements = await measurementsService.getCurrentMeasurements(user.id);
+      devPerfEnd(
+        'm:getCurrentMeasurements:start',
+        'm:getCurrentMeasurements:end',
+        'Measurements:getCurrentMeasurements',
+        { rows: currentMeasurements.length }
+      );
+      if (reqId !== initReqIdRef.current) return;
+
+      if (!didEditDraftRef.current) {
+        setDraftMeasurements(toEmptyDraftMeasurements(currentMeasurements));
+        setCustomData('');
+        setCustomDataError(null);
       }
-      if (state.photos) {
-        const mainPhotos = state.photos.slice(0, 3);
-        setPhotos([...mainPhotos, ...Array(3 - mainPhotos.length).fill('')].slice(0, 3));
-        setAdditionalPhotos(state.additionalPhotos || []);
+
+      if (!didEditPhotosRef.current) {
+        setPhotos(['', '', '']);
+        setAdditionalPhotos([]);
       }
-      if (state.history) {
-        const processedHistory = state.history.map((entry) => ({
-          ...entry,
-          photos: entry.photos || [],
-          additionalPhotos: entry.additionalPhotos || [],
-        }));
-        setHistory(processedHistory);
-      }
-      if (state.photoHistory) {
-        setPhotoHistory(state.photoHistory);
-      }
+      setRuntimeStatus('active');
+
     } catch (error) {
+      if (reqId !== initReqIdRef.current) return;
+      const canAutoRetry =
+        opts?.allowAutoRetry &&
+        !didAutoRetryRef.current &&
+        typeof navigator !== 'undefined' &&
+        navigator.onLine;
+      if (canAutoRetry) {
+        didAutoRetryRef.current = true;
+        setRuntimeStatus('loading');
+        setRuntimeMessage(null);
+        if (import.meta.env.DEV) {
+          console.debug('[Measurements] one-shot retry', { source: opts?.source ?? 'unknown' });
+        }
+        window.setTimeout(() => {
+          void loadMeasurementsState({ silent: true, allowAutoRetry: false, source: 'retry' });
+        }, 400);
+        return;
+      }
       setRuntimeStatus('error');
       setRuntimeMessage('Не удалось загрузить замеры.');
-      setTrustMessage('Проверьте соединение и попробуйте снова.');
+    } finally {
+      if (reqId === initReqIdRef.current) {
+        setIsInitialLoad(false);
+      }
     }
-  }, [user?.id]);
+  }, [isAuthReady, user?.id]);
 
   useEffect(() => {
-    if (!user) {
+    if (authStatus === 'unauthenticated') {
       navigate('/login');
       return;
     }
-    loadMeasurementsState();
-  }, [user, navigate, loadMeasurementsState]);
+    if (!isAuthReady || !user?.id) return;
+    if (lastAutoloadUserIdRef.current === user.id) return;
+
+    lastAutoloadUserIdRef.current = user.id;
+    didAutoRetryRef.current = false;
+    setIsInitialLoad(true);
+    setRuntimeStatus('loading');
+    setRuntimeMessage(null);
+    if (import.meta.env.DEV) {
+      console.debug('[Measurements] autoload', { source: 'auth-ready' });
+    }
+    void loadMeasurementsState({ allowAutoRetry: true, source: 'autoload' });
+  }, [authStatus, isAuthReady, loadMeasurementsState, navigate, user?.id]);
+
+  useEffect(() => {
+    if (!showSavedPrompt) return;
+    savedPromptOkButtonRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowSavedPrompt(false);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [showSavedPrompt]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        void measurementsService.flushPhotoUploads(4000);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Закрываем меню при клике вне его
   useEffect(() => {
@@ -108,22 +321,24 @@ const Measurements = () => {
   }, [openMenuId]);
 
   const handleIncrement = (id: string) => {
-    setMeasurements((prev) =>
+    didEditDraftRef.current = true;
+    setDraftMeasurements((prev) =>
       prev.map((m) =>
         m.id === id
-          ? { ...m, value: (parseFloat(m.value) + 0.5).toFixed(1) }
+          ? { ...m, value: ((Number.parseFloat(m.value || '0') || 0) + 0.5).toFixed(1) }
           : m
       )
     );
   };
 
   const handleDecrement = (id: string) => {
-    setMeasurements((prev) =>
+    didEditDraftRef.current = true;
+    setDraftMeasurements((prev) =>
       prev.map((m) =>
         m.id === id
           ? {
               ...m,
-              value: Math.max(0, parseFloat(m.value) - 0.5).toFixed(1),
+              value: Math.max(0, (Number.parseFloat(m.value || '0') || 0) - 0.5).toFixed(1),
             }
           : m
       )
@@ -133,14 +348,16 @@ const Measurements = () => {
   const handleInputChange = (id: string, value: string) => {
     // Разрешаем только числа и точку
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
-      setMeasurements((prev) =>
+      didEditDraftRef.current = true;
+      setDraftMeasurements((prev) =>
         prev.map((m) => (m.id === id ? { ...m, value } : m))
       );
     }
   };
 
   const handleInputBlur = (id: string) => {
-    setMeasurements((prev) =>
+    didEditDraftRef.current = true;
+    setDraftMeasurements((prev) =>
       prev.map((m) => {
         if (m.id === id) {
           const numValue = parseFloat(m.value);
@@ -161,6 +378,7 @@ const Measurements = () => {
   const handlePhotoChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      didEditPhotosRef.current = true;
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
@@ -175,24 +393,41 @@ const Measurements = () => {
   };
 
   const handleAddCustomMeasurement = () => {
-    if (!customData.trim() || !user?.id) return;
+    if (!user?.id) return;
+    const normalizedName = normalizeMeasurementName(customData);
+    if (!normalizedName) {
+      setCustomDataError('Введите название замера');
+      return;
+    }
+    if (isCustomLimitReached) {
+      setCustomDataError(`Можно добавить до ${MAX_CUSTOM_MEASUREMENTS} замеров`);
+      return;
+    }
+    const duplicateExists = draftMeasurements.some(
+      (item) => normalizedNameForCompare(item.name) === normalizedNameForCompare(normalizedName)
+    );
+    if (duplicateExists) {
+      setCustomDataError('Уже есть такой замер');
+      return;
+    }
 
     const newMeasurement: Measurement = {
       id: `custom_${Date.now()}`,
-      name: customData.trim().toUpperCase(),
-      value: '0',
+      name: normalizedName,
+      value: '',
     };
 
-    const updated = [...measurements, newMeasurement];
-    setMeasurements(updated);
+    const updated = sanitizeMeasurements([...draftMeasurements, newMeasurement]);
+    didEditDraftRef.current = true;
+    setDraftMeasurements(updated);
     setCustomData('');
-
-    // Сохраняем изменения сразу
-    measurementsService.saveCurrentMeasurements(user.id, updated, photos, additionalPhotos);
+    setCustomDataError(null);
+    customInputRef.current?.focus();
   };
 
   const handleAddAdditionalPhoto = () => {
-    if (additionalPhotos.length < 10) { // Ограничение на 10 дополнительных фото
+    if (additionalPhotos.length < MAX_ADDITIONAL_PHOTOS) {
+      didEditPhotosRef.current = true;
       setAdditionalPhotos((prev) => [...prev, '']);
     }
   };
@@ -200,6 +435,7 @@ const Measurements = () => {
   const handleAdditionalPhotoChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      didEditPhotosRef.current = true;
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
@@ -214,118 +450,186 @@ const Measurements = () => {
   };
 
   const handleDeleteAdditionalPhoto = (index: number) => {
+    didEditPhotosRef.current = true;
     setAdditionalPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleDeleteHistoryEntry = async (entryId: string) => {
-    if (!user?.id) return;
-    
-    await measurementsService.deleteMeasurementHistory(user.id, entryId);
-    const updatedHistory = history.filter((entry) => entry.id !== entryId);
-    setHistory(updatedHistory);
-    setDeleteDateId(null);
-    // История фото остается нетронутой
-  };
-
-  const handleDeletePhotoHistoryEntry = async (entryId: string) => {
-    if (!user?.id) return;
-    
-    await measurementsService.deletePhotoHistory(user.id, entryId);
-    const updatedPhotoHistory = photoHistory.filter((entry) => entry.id !== entryId);
-    setPhotoHistory(updatedPhotoHistory);
-  };
-
   const handleSave = async () => {
-    if (!user?.id) return;
+    if (!user?.id || isSaving) return;
+    const reqId = ++saveReqIdRef.current;
+    setIsSaving(true);
+    setSaveMessage(null);
+    setSaveError(null);
+    setShowSavedPrompt(false);
 
-    // Сохраняем текущие замеры и фото
-    await measurementsService.saveCurrentMeasurements(user.id, measurements, photos, additionalPhotos);
-
-    // Для бесплатных пользователей обрабатываем историю
-    if (!user.hasPremium) {
-      const currentPhotos = photos.filter(p => p !== '');
-      const currentAdditionalPhotos = additionalPhotos.filter(p => p !== '');
-      
-      // Проверяем, изменились ли замеры по сравнению с последней записью
-      const lastEntry = history[0];
-      const measurementsChanged = !lastEntry || 
-        JSON.stringify(lastEntry.measurements.map(m => ({ id: m.id, value: m.value }))) !== 
-        JSON.stringify(measurements.map(m => ({ id: m.id, value: m.value })));
-
-      if (measurementsChanged) {
-        // Если замеры изменились - создаем новую запись
-        const historyEntry: MeasurementHistory = {
-          id: `history_${Date.now()}`,
-          date: new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-          measurements: measurements.map(m => ({ ...m })),
-          photos: currentPhotos,
-          additionalPhotos: currentAdditionalPhotos,
-        };
-        
-        await measurementsService.saveMeasurementHistory(user.id, historyEntry);
-        const updatedHistory = [historyEntry, ...history];
-        setHistory(updatedHistory);
-      } else if (lastEntry && (currentPhotos.length > 0 || currentAdditionalPhotos.length > 0)) {
-        // Если замеры не изменились, но есть фото - обновляем последнюю запись
-        const updatedEntry: MeasurementHistory = {
-          ...lastEntry,
-          photos: currentPhotos.length > 0 ? currentPhotos : lastEntry.photos,
-          additionalPhotos: currentAdditionalPhotos.length > 0 ? currentAdditionalPhotos : lastEntry.additionalPhotos,
-        };
-        
-        await measurementsService.saveMeasurementHistory(user.id, updatedEntry);
-        const updatedHistory = [updatedEntry, ...history.slice(1)];
-        setHistory(updatedHistory);
+    try {
+      if (import.meta.env.DEV) {
+        console.debug('[measurements] save:start', { user: maskUserId(user.id) });
+      }
+      const sanitizedMeasurements = sanitizeMeasurements(draftMeasurements);
+      const safeAdditionalPhotosDraft = additionalPhotos.slice(0, MAX_ADDITIONAL_PHOTOS);
+      const measurementPatch = buildNonEmptyPatch(sanitizedMeasurements);
+      const hasAnyPhoto = photos.some((photo) => photo !== '') || safeAdditionalPhotosDraft.some((photo) => photo !== '');
+      if (additionalPhotos.length > MAX_ADDITIONAL_PHOTOS) {
+        setSaveError(`Можно добавить максимум ${MAX_ADDITIONAL_PHOTOS} дополнительных фото.`);
+        return;
+      }
+      if (import.meta.env.DEV) {
+        console.debug('[measurements] save:build-patch:done', {
+          keys: measurementPatch.map((item) => item.id),
+          hasPhotos: hasAnyPhoto,
+        });
+      }
+      if (measurementPatch.length === 0 && !hasAnyPhoto) {
+        setSaveMessage('Введите хотя бы одно значение');
+        return;
       }
 
-      // Сохраняем фото в отдельную историю фото (независимо от замеров)
-      if (currentPhotos.length > 0 || currentAdditionalPhotos.length > 0) {
-        const currentDate = new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
-        const photoHistoryEntry: PhotoHistory = {
-          id: `photo_history_${Date.now()}`,
-          date: currentDate,
-          photos: currentPhotos,
-          additionalPhotos: currentAdditionalPhotos,
-        };
-        
-        // Проверяем, есть ли уже запись с фото на эту дату
-        const existingPhotoEntry = photoHistory.find(p => p.date === currentDate);
-        if (existingPhotoEntry) {
-          // Обновляем существующую запись
-          const updatedPhotoHistoryEntry: PhotoHistory = {
-            ...existingPhotoEntry,
-            photos: currentPhotos.length > 0 ? currentPhotos : existingPhotoEntry.photos,
-            additionalPhotos: currentAdditionalPhotos.length > 0 ? currentAdditionalPhotos : existingPhotoEntry.additionalPhotos,
-          };
-          await measurementsService.savePhotoHistory(user.id, updatedPhotoHistoryEntry);
-          const updatedPhotoHistory = photoHistory.map(p => 
-            p.date === currentDate ? updatedPhotoHistoryEntry : p
-          );
-          setPhotoHistory(updatedPhotoHistory);
-        } else {
-          // Создаем новую запись
-          await measurementsService.savePhotoHistory(user.id, photoHistoryEntry);
-          const updatedPhotoHistory = [photoHistoryEntry, ...photoHistory];
-          setPhotoHistory(updatedPhotoHistory);
+      if (import.meta.env.DEV) {
+        console.debug('[measurements] save:photos:prepare:start');
+      }
+      await runWithTimeout(
+        measurementsService.saveCurrentMeasurementsValues(user.id, sanitizedMeasurements),
+        SAVE_TIMEOUT_MS
+      );
+      if (import.meta.env.DEV) {
+        console.debug('[measurements] save:photos:prepare:done');
+      }
+
+      const currentPhotos = photos.filter((photo) => photo !== '');
+      const currentAdditionalPhotos = safeAdditionalPhotosDraft.filter((photo) => photo !== '');
+      const currentDate = toIsoDay(new Date());
+      const cachedHistory = measurementsService.getMeasurementHistoryCache(user.id) ?? [];
+      let history = cachedHistory;
+      if (cachedHistory.length === 0) {
+        if (import.meta.env.DEV) {
+          console.debug('[measurements] save:remote:start');
+        }
+        devPerfStart('m:getMeasurementHistory:start');
+        history = await runWithTimeout(measurementsService.getMeasurementHistory(user.id), SAVE_TIMEOUT_MS);
+        devPerfEnd(
+          'm:getMeasurementHistory:start',
+          'm:getMeasurementHistory:end',
+          'Measurements:getMeasurementHistory',
+          { rows: history.length }
+        );
+        if (import.meta.env.DEV) {
+          console.debug('[measurements] save:remote:done');
         }
       }
-    }
+      const existingTodayEntry = history.find((entry) => entry.date === currentDate);
 
-    // Для премиум пользователей перенаправляем на главную, для бесплатных остаемся на странице
-    if (user.hasPremium) {
-      navigate('/');
+      const mergedMeasurements = mergeMeasurementsForDay(existingTodayEntry?.measurements ?? [], measurementPatch);
+      const mergedPhotos = existingTodayEntry?.photos ?? [];
+      const mergedAdditionalPhotos = existingTodayEntry?.additionalPhotos ?? [];
+
+      const shouldSaveHistory =
+        mergedMeasurements.length > 0 || mergedPhotos.length > 0 || mergedAdditionalPhotos.length > 0;
+
+      if (shouldSaveHistory) {
+        if (import.meta.env.DEV) {
+          console.debug('[measurements] save:history:start');
+        }
+        const historyEntry = {
+          id:
+            existingTodayEntry?.id ??
+            (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+              ? crypto.randomUUID()
+              : `history_${Date.now()}`),
+          date: currentDate,
+          measurements: mergedMeasurements,
+          photos: mergedPhotos,
+          additionalPhotos: mergedAdditionalPhotos,
+        };
+        await runWithTimeout(measurementsService.saveMeasurementHistory(user.id, historyEntry), SAVE_TIMEOUT_MS);
+        const optimisticHistory: MeasurementHistory[] = [
+          {
+            ...historyEntry,
+            date: currentDate,
+          },
+          ...history.filter((entry) => entry.date !== currentDate),
+        ];
+        measurementsService.setMeasurementHistoryCache(user.id, optimisticHistory);
+        if (import.meta.env.DEV) {
+          console.debug('[measurements] save:history:done');
+        }
+        window.dispatchEvent(
+          new CustomEvent('potok:measurements:saved', {
+            detail: { userId: user.id, day: currentDate, phase: 'history_saved' },
+          })
+        );
+      }
+
+      // Очищаем форму для следующего ввода только после успешного сохранения.
+      if (reqId !== saveReqIdRef.current) return;
+      resetDraftAfterSave();
+      setShowSavedPrompt(true);
+      if (import.meta.env.DEV) {
+        console.debug('[measurements] save:done');
+      }
+
+      // Фото сохраняем в фоне, чтобы не блокировать UX.
+      if (hasAnyPhoto) {
+        const cachedPhotoHistory = measurementsService.getPhotoHistoryCache(user.id) ?? [];
+        const optimisticPhotoEntryId =
+          cachedPhotoHistory.find((entry) => entry.date === currentDate)?.id ??
+          (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `photo_history_${Date.now()}`);
+        const optimisticPhotoHistory = measurementsService.replacePhotoHistoryDay(
+          cachedPhotoHistory,
+          currentDate,
+          {
+            id: optimisticPhotoEntryId,
+            date: currentDate,
+            photos: currentPhotos,
+            additionalPhotos: currentAdditionalPhotos,
+            _pending: true,
+            _uploadError: false,
+          }
+        );
+        measurementsService.setPhotoHistoryCache(user.id, optimisticPhotoHistory);
+        window.dispatchEvent(
+          new CustomEvent('potok:measurements:saved', {
+            detail: { userId: user.id, day: currentDate, phase: 'photos_pending' },
+          })
+        );
+
+        void measurementsService
+          .enqueuePhotoUpload({
+            userId: user.id,
+            day: currentDate,
+            id: optimisticPhotoEntryId,
+            photos: currentPhotos,
+            additionalPhotos: currentAdditionalPhotos,
+          })
+          .catch(() => {
+            if (reqId === saveReqIdRef.current) {
+              setSaveError('Замеры сохранены, но фото не удалось загрузить. Попробуйте позже.');
+            }
+          });
+      }
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.debug('[measurements] save:error', {
+          reason: error instanceof Error ? error.message : 'unknown',
+        });
+      }
+      setSaveError('Не удалось сохранить. Проверьте интернет и попробуйте ещё раз.');
+    } finally {
+      if (reqId === saveReqIdRef.current) {
+        setIsSaving(false);
+      }
     }
   };
 
   const handleDelete = (id: string) => {
     if (!user?.id) return;
     
-    const updated = measurements.filter((m) => m.id !== id);
-    setMeasurements(updated);
+    const updated = draftMeasurements.filter((m) => m.id !== id);
+    didEditDraftRef.current = true;
+    setDraftMeasurements(updated);
     setOpenMenuId(null);
-    
-    // Сохраняем изменения сразу
-    measurementsService.saveCurrentMeasurements(user.id, updated, photos, additionalPhotos);
   };
 
   const handleClose = () => {
@@ -360,38 +664,17 @@ const Measurements = () => {
         </header>
 
         <main className="flex-1 overflow-y-auto min-h-0 pl-[10px] pr-[10px] sm:px-4 md:px-6 lg:px-8 py-6">
-          {runtimeStatus === 'loading' && (
+          {(authStatus === 'booting' || !isAuthReady || (runtimeStatus === 'loading' && isInitialLoad)) && (
             <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
               Загрузка замеров...
             </div>
           )}
-          {runtimeStatus === 'offline' && (
-            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              Работаем офлайн. Данные могут быть неактуальны.
-              <button
-                onClick={() => {
-                  uiRuntimeAdapter.revalidate().finally(loadMeasurementsState);
-                }}
-                className="ml-3 rounded-lg border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100"
-              >
-                Обновить
-              </button>
-            </div>
-          )}
-          {runtimeStatus === 'recovery' && (
-            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-              Идёт восстановление данных. Продолжаем безопасно.
-            </div>
-          )}
-          {runtimeStatus === 'error' && (
+          {isAuthReady && runtimeStatus === 'error' && (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
               <div className="flex flex-col gap-2">
                 <span>{runtimeMessage || 'Не удалось загрузить данные.'}</span>
-                {trustMessage && <span className="text-xs text-red-700">{trustMessage}</span>}
                 <button
-                  onClick={() => {
-                    uiRuntimeAdapter.recover().finally(loadMeasurementsState);
-                  }}
+                  onClick={() => void loadMeasurementsState({ allowAutoRetry: false, source: 'manual' })}
                   className="w-fit rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-800 hover:bg-red-100"
                 >
                   Повторить
@@ -399,19 +682,9 @@ const Measurements = () => {
               </div>
             </div>
           )}
-          {runtimeStatus === 'empty' && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              Замеры ещё не заполнены.
-            </div>
-          )}
-          {explainability && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
-              Доступно объяснение: «Почему так?»
-            </div>
-          )}
           {/* Measurements Section */}
           <div className="space-y-4 mb-6">
-            {measurements.map((measurement) => (
+            {draftMeasurements.map((measurement) => (
               <div key={measurement.id} className="flex items-center gap-3">
                 <div className="flex items-center gap-2 flex-1 relative">
                   <button
@@ -485,9 +758,13 @@ const Measurements = () => {
             </label>
             <div className="flex items-center gap-2">
               <input
+                ref={customInputRef}
                 type="text"
                 value={customData}
-                onChange={(e) => setCustomData(e.target.value)}
+                onChange={(e) => {
+                  setCustomData(e.target.value);
+                  if (customDataError) setCustomDataError(null);
+                }}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
                     handleAddCustomMeasurement();
@@ -498,11 +775,36 @@ const Measurements = () => {
               />
               <button
                 onClick={handleAddCustomMeasurement}
-                className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+                disabled={isCustomLimitReached}
+                className="w-12 h-12 flex items-center justify-center rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <ArrowRight className="w-5 h-5" />
               </button>
             </div>
+            {customDataError && (
+              <p className="mt-2 text-xs text-red-600 dark:text-red-400">{customDataError}</p>
+            )}
+            {saveMessage && (
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">{saveMessage}</p>
+            )}
+            {saveError && (
+              <div className="mt-2 flex items-center gap-2">
+                <p className="text-xs text-red-600 dark:text-red-400">{saveError}</p>
+                <button
+                  type="button"
+                  onClick={() => void handleSave()}
+                  disabled={isSaving}
+                  className="rounded-lg border border-red-300 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                >
+                  Повторить
+                </button>
+              </div>
+            )}
+            {isCustomLimitReached && (
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                Можно добавить до {MAX_CUSTOM_MEASUREMENTS} замеров
+              </p>
+            )}
           </div>
 
           {/* Add Photo Section */}
@@ -513,12 +815,18 @@ const Measurements = () => {
               </label>
               <button
                 onClick={handleAddAdditionalPhoto}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-white border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-100 transition-colors"
+                disabled={isAdditionalPhotosLimitReached}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-white dark:bg-white border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-900 hover:bg-gray-50 dark:hover:bg-gray-100 transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Добавить дополнительное фото"
               >
                 <Plus className="w-5 h-5" />
               </button>
             </div>
+            {isAdditionalPhotosLimitReached && (
+              <p className="mb-3 text-xs text-amber-700 dark:text-amber-400">
+                Можно добавить ещё 3 фото максимум
+              </p>
+            )}
             
             {/* Основные фото (первые 3) */}
             <div className="mb-4">
@@ -540,6 +848,7 @@ const Measurements = () => {
                         <img
                           src={photo}
                           alt={photoLabels[index]}
+                          loading="lazy"
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -550,6 +859,7 @@ const Measurements = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
+                          didEditPhotosRef.current = true;
                           setPhotos((prev) => {
                             const newPhotos = [...prev];
                             newPhotos[index] = '';
@@ -595,6 +905,7 @@ const Measurements = () => {
                             <img
                               src={photo}
                               alt={`Дополнительное фото ${index + 1}`}
+                              loading="lazy"
                               className="w-full h-full object-cover"
                             />
                           ) : (
@@ -619,208 +930,58 @@ const Measurements = () => {
             )}
           </div>
 
-          {/* History Table (only for free users) - Always on top */}
-          {!user?.hasPremium && (
-            <div className="mb-6">
-              <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-3">
-                История замеров
-              </h2>
-              {history.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-gray-300 dark:border-gray-600">
-                    <thead>
-                      <tr className="bg-gray-100 dark:bg-gray-800">
-                        <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase">
-                          Дата
-                        </th>
-                        {measurements.map((m) => (
-                          <th
-                            key={m.id}
-                            className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase"
-                          >
-                            {m.name}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {history.map((entry) => (
-                        <tr key={entry.id} className="bg-white dark:bg-gray-900">
-                          <td className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white relative">
-                            <button
-                              onClick={() => setDeleteDateId(deleteDateId === entry.id ? null : entry.id)}
-                              className="w-full text-left hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                            >
-                              {entry.date}
-                            </button>
-                          {deleteDateId === entry.id && (
-                            <div className="absolute left-0 bottom-full mb-1 z-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteHistoryEntry(entry.id);
-                                }}
-                                className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors rounded-lg"
-                              >
-                                Удалить
-                              </button>
-                            </div>
-                          )}
-                          </td>
-                          {measurements.map((m) => {
-                            const historyMeasurement = entry.measurements.find((em) => em.id === m.id);
-                            return (
-                              <td
-                                key={m.id}
-                                className="border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white"
-                              >
-                                {historyMeasurement?.value || '-'}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                  Нет сохраненных замеров
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Photo History Section (only for free users) - Always below measurements history */}
-          {!user?.hasPremium && (
-            <div className="mb-6">
-              <h2 className="text-sm font-medium text-gray-900 dark:text-white uppercase mb-3">
-                История фото
-              </h2>
-              {photoHistory.length > 0 ? (
-                <div className="space-y-4">
-                  {photoHistory.map((entry) => (
-                    <div key={entry.id} className="border border-gray-300 dark:border-gray-600 rounded-lg p-4 bg-white dark:bg-gray-900 relative">
-                      {/* Кнопка удаления */}
-                      <button
-                        onClick={() => handleDeletePhotoHistoryEntry(entry.id)}
-                        className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors z-10"
-                        aria-label="Удалить"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-
-                      {/* Дата */}
-                      <div className="mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {entry.date}
-                        </span>
-                      </div>
-
-                      {/* Основные фото */}
-                      {entry.photos.length > 0 && (
-                        <div className="mb-3">
-                          <div className="grid grid-cols-3 gap-3">
-                            {entry.photos.map((photo, index) => {
-                              const photoLabel = photoLabels[index] || '';
-                              return (
-                                <div key={index} className="space-y-1">
-                                  <button
-                                    onClick={() => setSelectedPhoto(photo)}
-                                    className="w-full aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:opacity-80 transition-opacity"
-                                  >
-                                    <img
-                                      src={photo}
-                                      alt={photoLabel || `Фото ${index + 1}`}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  </button>
-                                  {photoLabel && (
-                                    <p className="text-xs text-center text-gray-600 dark:text-gray-400">
-                                      {photoLabel}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Дополнительные фото */}
-                      {entry.additionalPhotos.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">Дополнительные:</p>
-                          <div className="grid grid-cols-3 gap-3">
-                            {entry.additionalPhotos.map((photo, index) => (
-                              <button
-                                key={index}
-                                onClick={() => setSelectedPhoto(photo)}
-                                className="w-full aspect-square rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 hover:opacity-80 transition-opacity"
-                              >
-                                <img
-                                  src={photo}
-                                  alt={`Дополнительное фото ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                  Нет сохраненных фото
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Photo Modal */}
-          {selectedPhoto && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
-              onClick={() => setSelectedPhoto(null)}
-            >
-              <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
-                <button
-                  onClick={() => setSelectedPhoto(null)}
-                  className="absolute top-4 right-4 w-10 h-10 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors z-10"
-                  aria-label="Закрыть"
-                >
-                  <X className="w-6 h-6 text-gray-900 dark:text-white" />
-                </button>
-                <img
-                  src={selectedPhoto}
-                  alt="Увеличенное фото"
-                  className="max-w-full max-h-full object-contain rounded-lg"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-            </div>
-          )}
-
-          <div className="mt-6">
-            <ExplainabilityDrawer explainability={explainability} />
-          </div>
         </main>
 
         {/* Save Button */}
         <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
           <button
             onClick={handleSave}
-            className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors"
+            disabled={isSaving || !user?.id}
+            className="w-full py-4 rounded-xl font-semibold text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            СОХРАНИТЬ
+            {isSaving ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
           </button>
         </div>
       </div>
+
+      {showSavedPrompt && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setShowSavedPrompt(false)}
+        >
+          <div
+            className="w-[min(92vw,420px)] rounded-[18px] bg-white p-4 shadow-xl dark:bg-gray-900 sm:p-5"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Сохранено"
+          >
+            <p className="text-left text-sm font-medium text-gray-900 dark:text-white">Сохранено. Смотри в «Прогресс»</p>
+            <div className="mt-4 flex flex-col gap-2 min-[390px]:flex-row">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSavedPrompt(false);
+                  navigate('/progress/measurements');
+                }}
+                className="w-full rounded-xl bg-gray-900 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+              >
+                Перейти в Прогресс
+              </button>
+              <button
+                ref={savedPromptOkButtonRef}
+                type="button"
+                onClick={() => setShowSavedPrompt(false)}
+                className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                Ок
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Measurements;
-

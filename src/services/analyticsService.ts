@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import type { MeasurementHistory } from './measurementsService';
+import { parseLegacyDay } from '../utils/dateKey';
 
 // Перечень поддерживаемых событий аналитики
 export type AnalyticsEventName = 'create_habit' | 'complete_habit' | 'add_food' | 'save_recipe';
@@ -135,7 +136,14 @@ export async function getProgressTrends(
   }
   const sessionUserId = await getSessionUserId(userId);
 
-  const [foodRes, workoutDaysRes, measurementRes] = await Promise.all([
+  const measurementByDayPromise = supabase
+    .from('measurement_history')
+    .select('day, date, measurements')
+    .eq('user_id', sessionUserId)
+    .gte('day', fromDate)
+    .lte('day', toDate);
+
+  const [foodRes, workoutDaysRes, measurementResByDay] = await Promise.all([
     supabase
       .from('food_diary_entries')
       .select('date, calories, protein, fat, carbs')
@@ -148,17 +156,27 @@ export async function getProgressTrends(
       .eq('user_id', sessionUserId)
       .gte('date', fromDate)
       .lte('date', toDate),
-    supabase
-      .from('measurement_history')
-      .select('date, measurements')
-      .eq('user_id', sessionUserId)
-      .gte('date', fromDate)
-      .lte('date', toDate),
+    measurementByDayPromise,
   ]);
 
   if (foodRes.error) throw foodRes.error;
   if (workoutDaysRes.error) throw workoutDaysRes.error;
-  if (measurementRes.error) throw measurementRes.error;
+  let measurementRows: any[] = [];
+  if (measurementResByDay.error?.code === '42703') {
+    const measurementLegacyRes = await supabase
+      .from('measurement_history')
+      .select('date, measurements')
+      .eq('user_id', sessionUserId);
+    if (measurementLegacyRes.error) throw measurementLegacyRes.error;
+    measurementRows = (measurementLegacyRes.data || []).filter((row: any) => {
+      const day = parseLegacyDay(String(row.date ?? ''));
+      return day !== null && day >= fromDate && day <= toDate;
+    });
+  } else if (measurementResByDay.error) {
+    throw measurementResByDay.error;
+  } else {
+    measurementRows = measurementResByDay.data || [];
+  }
 
   const dayIds = (workoutDaysRes.data || []).map((day) => day.id).filter(Boolean);
   let workoutEntries: any[] = [];
@@ -192,8 +210,9 @@ export async function getProgressTrends(
     pointsMap.set(date, existing);
   });
 
-  (measurementRes.data || []).forEach((row: any) => {
-    const date = row.date;
+  measurementRows.forEach((row: any) => {
+    const date = (typeof row.day === 'string' ? row.day : parseLegacyDay(String(row.date ?? ''))) ?? '';
+    if (!date) return;
     const existing: ProgressPoint = pointsMap.get(date) ?? { date };
     const weight = parseWeight(row.measurements || []);
     if (weight !== null) {
@@ -223,5 +242,4 @@ export function useAnalytics() {
 
   return { trackEvent: safeTrack };
 }
-
 

@@ -12,7 +12,7 @@ import { activityService } from '../services/activityService';
 import { profileService, type UserProfile } from '../services/profileService';
 import { useTheme } from './ThemeContext';
 
-type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+type AuthStatus = 'booting' | 'authenticated' | 'unauthenticated';
 
 interface AuthContextType {
   user: User | null;
@@ -39,7 +39,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [authStatus, setAuthStatus] = useState<AuthStatus>('loading');
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('booting');
   const [entitlements, setEntitlements] = useState<Record<string, boolean> | null>(null);
   const [trustScore, setTrustScore] = useState<number | null>(null);
   const { setThemeExplicit } = useTheme();
@@ -263,7 +263,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const authInitGuard = window.setTimeout(() => {
       if (!isMounted) return;
-      setAuthStatus((prev) => (prev === 'loading' ? 'unauthenticated' : prev));
+      setAuthStatus((prev) => (prev === 'booting' ? 'unauthenticated' : prev));
     }, 20000);
 
     init();
@@ -596,7 +596,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       };
 
-      const isLoading = authStatus === 'loading';
+      const isLoading = authStatus === 'booting';
       const isAuthenticated = authStatus === 'authenticated';
 
       return (

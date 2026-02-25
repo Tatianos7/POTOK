@@ -137,8 +137,6 @@ export interface MeasurementsState {
   additionalPhotos?: string[];
   history?: MeasurementHistory[];
   photoHistory?: PhotoHistory[];
-  explainability?: BaseExplainabilityDTO;
-  trust?: TrustDecision;
 }
 
 export interface FoodDiaryState {
@@ -299,25 +297,23 @@ class UiRuntimeAdapter {
   }
 
   async getMeasurementsState(userId: string): Promise<MeasurementsState> {
+    const loadMeasurements = () =>
+      measurementsService.getCurrentMeasurements(userId).catch(() => [] as Measurement[]);
+    const loadPhotos = () =>
+      measurementsService
+        .getCurrentPhotos(userId)
+        .catch(() => ({ photos: [] as string[], additionalPhotos: [] as string[] }));
+    const loadHistory = () =>
+      measurementsService.getMeasurementHistory(userId).catch(() => [] as MeasurementHistory[]);
+    const loadPhotoHistory = () =>
+      measurementsService.getPhotoHistory(userId).catch(() => [] as PhotoHistory[]);
+
     try {
       const [measurements, photosPayload, history, photoHistory] = await this.runWithTimeout(
         'Measurements',
         ['user_measurements', 'measurement_history', 'measurement_photo_history'],
-        () =>
-          Promise.all([
-            measurementsService.getCurrentMeasurements(userId),
-            measurementsService.getCurrentPhotos(userId),
-            measurementsService.getMeasurementHistory(userId),
-            measurementsService.getPhotoHistory(userId),
-          ])
+        () => Promise.all([loadMeasurements(), loadPhotos(), loadHistory(), loadPhotoHistory()])
       );
-
-      const explainability = this.buildBaseExplainability({
-        decisionRef: 'measurements:loaded',
-        dataSources: ['user_measurements', 'measurement_history', 'measurement_photos'],
-        confidence: 0.8,
-      });
-      const trust = classifyTrustDecision(undefined, { confidence: explainability.confidence });
 
       return {
         status: 'active',
@@ -326,14 +322,55 @@ class UiRuntimeAdapter {
         additionalPhotos: photosPayload?.additionalPhotos ?? [],
         history,
         photoHistory,
-        explainability,
-        trust,
       };
     } catch (error) {
+      // Fallback mode: keep screen usable even if timeout/one source failed.
+      const [mRes, pRes, hRes, phRes] = await Promise.allSettled([
+        loadMeasurements(),
+        loadPhotos(),
+        loadHistory(),
+        loadPhotoHistory(),
+      ]);
+
+      const measurements = mRes.status === 'fulfilled' ? mRes.value : [];
+      const photosPayload =
+        pRes.status === 'fulfilled' ? pRes.value : { photos: [] as string[], additionalPhotos: [] as string[] };
+      const history = hRes.status === 'fulfilled' ? hRes.value : [];
+      const photoHistory = phRes.status === 'fulfilled' ? phRes.value : [];
+
+      const hasData =
+        measurements.length > 0 ||
+        (photosPayload.photos?.length ?? 0) > 0 ||
+        (photosPayload.additionalPhotos?.length ?? 0) > 0 ||
+        history.length > 0 ||
+        photoHistory.length > 0;
+      const hasSuccessfulSource = [mRes, pRes, hRes, phRes].some((result) => result.status === 'fulfilled');
+
+      if (hasData) {
+        return {
+          status: 'active',
+          measurements,
+          photos: photosPayload.photos ?? [],
+          additionalPhotos: photosPayload.additionalPhotos ?? [],
+          history,
+          photoHistory,
+        };
+      }
+
+      if (hasSuccessfulSource) {
+        return {
+          status: 'empty',
+          measurements,
+          photos: photosPayload.photos ?? [],
+          additionalPhotos: photosPayload.additionalPhotos ?? [],
+          history,
+          photoHistory,
+        };
+      }
+
       return {
         status: 'error',
         message: 'Не удалось загрузить замеры.',
-        trust: classifyTrustDecision(error),
       };
     }
   }

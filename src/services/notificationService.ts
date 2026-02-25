@@ -66,20 +66,17 @@ class NotificationService {
     }
   }
 
-  private async getSessionUserId(userId?: string): Promise<string> {
-    if (!supabase) {
-      throw new Error('Supabase не инициализирован');
+  private async getSessionUserId(userId?: string): Promise<string | null> {
+    if (userId && userId.trim().length > 0) {
+      return userId;
     }
-
+    if (!supabase) {
+      return null;
+    }
     const { data, error } = await supabase.auth.getUser();
     if (error || !data?.user?.id) {
-      throw new Error('Пользователь не авторизован');
+      return null;
     }
-
-    if (userId && userId !== data.user.id) {
-      console.warn('[notificationService] Передан userId не совпадает с сессией');
-    }
-
     return data.user.id;
   }
 
@@ -88,6 +85,7 @@ class NotificationService {
       throw new Error('Supabase не инициализирован');
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) return;
 
     const { error } = await supabase
       .from('notification_rules')
@@ -113,6 +111,7 @@ class NotificationService {
       throw new Error('Supabase не инициализирован');
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) return [];
     const { data, error } = await supabase
       .from('notification_rules')
       .select('*')
@@ -132,6 +131,7 @@ class NotificationService {
       throw new Error('Supabase не инициализирован');
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) return;
 
     const { error } = await supabase
       .from('user_attention_state')
@@ -168,6 +168,9 @@ class NotificationService {
       return `event_local_${Date.now()}`;
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) {
+      return `event_local_${Date.now()}`;
+    }
 
     const { data, error } = await supabase
       .from('notification_history')
@@ -206,6 +209,7 @@ class NotificationService {
       return;
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) return;
 
     const { error } = await supabase
       .from('notification_history')
@@ -227,6 +231,7 @@ class NotificationService {
       throw new Error('Supabase не инициализирован');
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) return;
 
     const { error } = await supabase
       .from('notification_feedback')
@@ -285,6 +290,7 @@ class NotificationService {
       return [];
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) return [];
     const { data, error } = await supabase
       .from('notification_history')
       .select('id,message,created_at,channel,explainability,status')
@@ -323,6 +329,7 @@ class NotificationService {
       return;
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) return;
     const supabaseClient = supabase;
 
     await Promise.all(
@@ -372,6 +379,18 @@ class NotificationService {
       };
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) {
+      return {
+        id: `local_${Date.now()}`,
+        title: input.title,
+        message: input.message,
+        date: new Date().toISOString(),
+        category: input.category,
+        isRead: false,
+        isDeleted: false,
+        isArchived: false,
+      };
+    }
 
     const { data, error } = await supabase
       .from('notification_history')
@@ -432,6 +451,7 @@ class NotificationService {
       return null;
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) return null;
     const { data, error } = await supabase
       .from('notification_history')
       .select('explainability')
@@ -472,6 +492,7 @@ class NotificationService {
       return;
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    if (!sessionUserId) return;
     const explainability = await this.getExplainability(userId, notificationId);
     const thread = (explainability?.thread ?? []) as ThreadMessage[];
     const next = thread.concat({
