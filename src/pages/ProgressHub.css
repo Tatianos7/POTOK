@@ -1,0 +1,79 @@
+.progress-hub {
+  min-height: 100vh;
+  padding: 18px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: #ffffff;
+}
+
+.progress-header {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 30px;
+  margin-bottom: 24px;
+}
+
+.progress-title {
+  text-align: center;
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.progress-close {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #555;
+  padding: 2px;
+  line-height: 0;
+}
+
+.progress-card {
+  width: min(100%, 420px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #dcdcdc;
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: #ffffff;
+  text-align: left;
+  transition: transform 0.1s ease;
+  color: inherit;
+}
+
+.progress-card:active {
+  transform: scale(0.98);
+}
+
+.progress-card-icon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.progress-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin: 0;
+}
+
+.progress-card-subtitle {
+  font-size: 13px;
+  color: #777;
+  margin-top: 4px;
+}
