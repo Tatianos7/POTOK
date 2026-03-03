@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check, Heart, Copy, Trash2, StickyNote } from 'lucide-react';
 import { DailyMeals, MealEntry, Food, UserCustomFood } from '../types';
-import { mealService } from '../services/mealService';
+import { mealService, type MealSyncStatus } from '../services/mealService';
 import { foodService } from '../services/foodService';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
 import ProductSearch from '../components/ProductSearch';
@@ -25,27 +25,19 @@ import SaveMealAsRecipeModal from '../components/SaveMealAsRecipeModal';
 import { recipesService } from '../services/recipesService';
 import { localAIFoodAnalyzer, LocalIngredient } from '../services/localAIFoodAnalyzer';
 import { convertDisplayToGrams, FoodDisplayUnit, formatDisplayAmount } from '../utils/foodUnits';
-import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import { coachRuntime, type CoachScreenContext } from '../services/coachRuntime';
-import type { BaseExplainabilityDTO } from '../types/explainability';
 import ScreenContainer from '../ui/components/ScreenContainer';
 import Button from '../ui/components/Button';
 import StateContainer from '../ui/components/StateContainer';
 import { colors, spacing, typography } from '../ui/theme/tokens';
+import { getLocalDayKey } from '../utils/dayKey';
 
 const FoodDiary = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  // Получаем текущую дату в формате YYYY-MM-DD
   // Получаем сегодняшнюю дату в локальном времени (не UTC)
-  const getTodayDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
+  const getTodayDate = () => getLocalDayKey();
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [dailyMeals, setDailyMeals] = useState<DailyMeals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -57,8 +49,7 @@ const FoodDiary = () => {
     carbs: number;
   } | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
-  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
-  const [trustMessage, setTrustMessage] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<MealSyncStatus>('synced');
   
   // Modal states
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -112,6 +103,8 @@ const FoodDiary = () => {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const calendarRef = useRef<HTMLDivElement>(null);
   const overEventKeys = useRef<Set<string>>(new Set());
+  const requestIdRef = useRef(0);
+  const FOOD_DIARY_SYNC_STORAGE_KEY = 'potok_food_diary_changed';
   
   // Закрытие календаря при клике вне его
   useEffect(() => {
@@ -154,13 +147,9 @@ const FoodDiary = () => {
   // Утилита для добавления дней к дате в формате YYYY-MM-DD (без использования Date)
   const addDaysToString = (dateStr: string, days: number): string => {
     const [year, month, day] = dateStr.split('-').map(Number);
-    // Создаем Date только для вычисления, но сразу конвертируем обратно в строку
     const date = new Date(year, month - 1, day);
     date.setDate(date.getDate() + days);
-    const newYear = date.getFullYear();
-    const newMonth = String(date.getMonth() + 1).padStart(2, '0');
-    const newDay = String(date.getDate()).padStart(2, '0');
-    return `${newYear}-${newMonth}-${newDay}`;
+    return getLocalDayKey(date);
   };
 
   // Утилита для получения дня недели из строки YYYY-MM-DD
@@ -208,19 +197,22 @@ const FoodDiary = () => {
     snack: 'Перекус',
   };
 
-  const reloadMeals = useCallback(async () => {
+  const reloadMeals = useCallback(async (options?: { silent?: boolean }) => {
     if (!user?.id) return;
+    const requestId = ++requestIdRef.current;
+    const silent = options?.silent === true;
 
-    setDailyMeals(null);
-    setIsLoading(true);
+    if (!silent) {
+      setDailyMeals(null);
+      setIsLoading(true);
+    }
     setErrorMessage(null);
-    setTrustMessage(null);
 
     try {
       const state = await uiRuntimeAdapter.getFoodDiaryState(user.id, selectedDate);
+      if (requestId !== requestIdRef.current) return;
       setRuntimeStatus(state.status);
-      setExplainability(state.explainability ?? null);
-      setTrustMessage(state.trust?.message ?? null);
+      setSyncStatus(state.syncStatus ?? 'synced');
       setDailyMeals(
         state.meals || {
           date: selectedDate,
@@ -245,8 +237,10 @@ const FoodDiary = () => {
         setErrorMessage(state.message || 'Не удалось загрузить дневник. Проверьте соединение и попробуйте снова.');
       }
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
       console.error('[FoodDiary] Error loading meals:', error);
       setRuntimeStatus('error');
+      setSyncStatus('failed');
       setErrorMessage('Не удалось загрузить дневник. Проверьте соединение и попробуйте снова.');
       setDailyMeals({
         date: selectedDate,
@@ -257,7 +251,10 @@ const FoodDiary = () => {
         water: 0,
       });
     } finally {
-      setIsLoading(false);
+      if (requestId !== requestIdRef.current) return;
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   }, [selectedDate, user?.id]);
 
@@ -286,6 +283,43 @@ const FoodDiary = () => {
       window.removeEventListener('meals-synced', handleMealsSynced as EventListener);
     };
   }, [selectedDate, user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const handleDiaryChanged = (payload: unknown) => {
+      if (!payload || typeof payload !== 'object') return;
+      const message = payload as { type?: string; userId?: string; date?: string };
+      if (message.type !== 'food_diary_changed') return;
+      if (message.userId !== user.id) return;
+      if (message.date !== selectedDate) return;
+      void reloadMeals({ silent: true });
+    };
+
+    let channel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      channel = new BroadcastChannel('potok');
+      channel.onmessage = (event) => handleDiaryChanged(event.data);
+    }
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== FOOD_DIARY_SYNC_STORAGE_KEY || !event.newValue) return;
+      try {
+        const parsed = JSON.parse(event.newValue);
+        handleDiaryChanged(parsed);
+      } catch {
+        // ignore invalid payload
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      if (channel) {
+        channel.close();
+      }
+    };
+  }, [selectedDate, user?.id, reloadMeals]);
 
   // Calculate totals
   const dayTotals = dailyMeals ? mealService.calculateDayTotals(dailyMeals) : { calories: 0, protein: 0, fat: 0, carbs: 0 };
@@ -378,7 +412,7 @@ const FoodDiary = () => {
     screen: 'Today',
     userMode: 'Manual',
     subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
-    trustLevel: explainability?.trust_score,
+    trustLevel: undefined,
     safetyFlags: [],
   });
 
@@ -892,26 +926,17 @@ const FoodDiary = () => {
     
     // Получаем сегодняшнюю дату в локальном времени
     const today = new Date();
-    const todayYear = today.getFullYear();
-    const todayMonth = String(today.getMonth() + 1).padStart(2, '0');
-    const todayDay = String(today.getDate()).padStart(2, '0');
-    const todayStr = `${todayYear}-${todayMonth}-${todayDay}`;
+    const todayStr = getLocalDayKey(today);
     
     // Получаем вчерашнюю дату в локальном времени
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
-    const yesterdayYear = yesterday.getFullYear();
-    const yesterdayMonth = String(yesterday.getMonth() + 1).padStart(2, '0');
-    const yesterdayDay = String(yesterday.getDate()).padStart(2, '0');
-    const yesterdayStr = `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}`;
+    const yesterdayStr = getLocalDayKey(yesterday);
     
     // Получаем завтрашнюю дату в локальном времени
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
-    const tomorrowYear = tomorrow.getFullYear();
-    const tomorrowMonth = String(tomorrow.getMonth() + 1).padStart(2, '0');
-    const tomorrowDay = String(tomorrow.getDate()).padStart(2, '0');
-    const tomorrowStr = `${tomorrowYear}-${tomorrowMonth}-${tomorrowDay}`;
+    const tomorrowStr = getLocalDayKey(tomorrow);
 
     // Парсим выбранную дату для форматирования (используем значения напрямую из строки)
     const [year, month, day] = dateStr.split('-').map(Number);
@@ -1207,14 +1232,12 @@ const FoodDiary = () => {
   const statusMessage =
     runtimeStatus === 'empty'
       ? 'Пока нет данных для выбранной даты. Добавьте продукты.'
-      : errorMessage
-        ? `${errorMessage}${trustMessage ? ` ${trustMessage}` : ''}`
-        : undefined;
+      : errorMessage || undefined;
   const containerStatus = runtimeStatus === 'loading' ? 'loading' : 'active';
 
   return (
     <>
-    <ScreenContainer>
+    <ScreenContainer backgroundColor="#FFFFFF">
         <header style={{ marginBottom: spacing.lg }}>
           <div className="flex items-center justify-between" style={{ marginBottom: spacing.sm }}>
             <div style={{ width: 32 }} />
@@ -1292,13 +1315,20 @@ const FoodDiary = () => {
               Идёт восстановление данных. Продолжаем безопасно.
             </div>
           )}
+          {syncStatus === 'local_only' && (
+            <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              Изменения сохранены локально. Синхронизация будет выполнена при подключении к интернету.
+            </div>
+          )}
+          {syncStatus === 'failed' && !errorMessage && (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
+              Не удалось синхронизировать изменения. Они могут быть сохранены только на этом устройстве.
+            </div>
+          )}
           {errorMessage && (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
               <div className="flex flex-col gap-2 mobile-lg:flex-row mobile-lg:items-center mobile-lg:justify-between">
                 <span>{errorMessage}</span>
-                {trustMessage && (
-                  <span className="text-xs text-red-700 dark:text-red-200">{trustMessage}</span>
-                )}
                 <button
                   onClick={() => {
                     uiRuntimeAdapter.recover().finally(reloadMeals);
@@ -1313,11 +1343,6 @@ const FoodDiary = () => {
           {runtimeStatus === 'empty' && !isLoading && (
             <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
               День пока пустой. Добавьте продукты, чтобы начать.
-            </div>
-          )}
-          {explainability && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
-              Доступно объяснение: «Почему так?»
             </div>
           )}
           {/* Loading indicator */}
@@ -1476,11 +1501,6 @@ const FoodDiary = () => {
             </div>
           </div>
           )}
-
-          {/* Explainability */}
-          <div className="mb-6">
-            <ExplainabilityDrawer explainability={explainability} />
-          </div>
 
           {/* Water Intake Tracker */}
           {!isLoading && (

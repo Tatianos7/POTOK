@@ -8,6 +8,7 @@ import MealTypeSelectorModal from '../components/MealTypeSelectorModal';
 import { recipeDiaryService } from '../services/recipeDiaryService';
 import { recipeNotesService } from '../services/recipeNotesService';
 import RecipeNoteModal from '../components/RecipeNoteModal';
+import { getLocalDayKey } from '../utils/dayKey';
 
 const RecipeDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -419,7 +420,7 @@ const RecipeDetails = () => {
         isOpen={isMealTypeModalOpen}
         onClose={() => setIsMealTypeModalOpen(false)}
         onSelect={handleMealTypeSelected}
-        defaultDate={location.state?.selectedDate || new Date().toISOString().split('T')[0]}
+        defaultDate={location.state?.selectedDate || getLocalDayKey()}
       />
 
       {/* Recipe Note Modal */}
@@ -481,4 +482,3 @@ const RecipeDetails = () => {
 };
 
 export default RecipeDetails;
-

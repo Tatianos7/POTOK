@@ -8,14 +8,27 @@ import { foodIngestionService } from './foodIngestionService';
 import { goalService } from './goalService';
 import { userStateService } from './userStateService';
 import { coachRuntime } from './coachRuntime';
+import { getLocalDayKey } from '../utils/dayKey';
+
+export type MealSyncStatus = 'synced' | 'local_only' | 'failed';
 
 class MealService {
   private readonly MEALS_STORAGE_KEY = 'potok_daily_meals';
+  private readonly FOOD_DIARY_SYNC_CHANNEL = 'potok';
+  private readonly FOOD_DIARY_SYNC_STORAGE_KEY = 'potok_food_diary_changed';
   private saveQueue = new Map<string, Promise<void>>();
+  private inFlightSaveKeys = new Set<string>();
+  private syncStatusByDate = new Map<string, MealSyncStatus>();
+  private syncGeneration = 0;
 
   // If DB missing unique index for idempotency upsert, warn once
   private idempotencyIndexWarned = false;
   private upsertErrorLogged = false;
+
+  private isAuthGuardError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+    return error.message === 'auth_required' || error.message === 'auth_mismatch';
+  }
 
   private isValidUUID(value: string | null | undefined): boolean {
     if (!value) return false;
@@ -24,11 +37,18 @@ class MealService {
 
   private async withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 200): Promise<T> {
     let lastError: any;
+    const generation = this.syncGeneration;
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      if (generation !== this.syncGeneration) {
+        throw new Error('sync_reset');
+      }
       try {
         return await fn();
       } catch (error: any) {
         lastError = error;
+        if (this.isAuthGuardError(error)) {
+          throw error;
+        }
         // If this is a schema-related error, do not retry and return error payload for graceful fallback
         try {
           const { isSchemaError } = await import('./dbUtils');
@@ -53,19 +73,25 @@ class MealService {
 
   private enqueueSave(userId: string, date: string, meals: DailyMeals): Promise<void> {
     const key = `${userId}:${date}`;
+    const generation = this.syncGeneration;
     const previous = this.saveQueue.get(key) || Promise.resolve();
     const next = previous
       .catch(() => undefined)
-      .then(() => this.saveMealsForDate(userId, meals));
+      .then(() => {
+        if (generation !== this.syncGeneration) return;
+        return this.saveMealsForDate(userId, meals);
+      });
 
     this.saveQueue.set(
       key,
       next.finally(() => {
+        this.inFlightSaveKeys.delete(key);
         if (this.saveQueue.get(key) === next) {
           this.saveQueue.delete(key);
         }
       })
     );
+    this.inFlightSaveKeys.add(key);
 
     return next;
   }
@@ -85,6 +111,45 @@ class MealService {
     }
 
     return data.user.id;
+  }
+
+  private async requireSessionUser(expectedUserId: string): Promise<string> {
+    if (!supabase) {
+      throw new Error('auth_required');
+    }
+
+    const { data, error } = await supabase.auth.getUser();
+    const sessionUserId = data?.user?.id ?? null;
+    if (error || !sessionUserId) {
+      throw new Error('auth_required');
+    }
+
+    if (sessionUserId !== expectedUserId) {
+      throw new Error('auth_mismatch');
+    }
+
+    return sessionUserId;
+  }
+
+  resetSyncStateForAuthChange(): void {
+    this.syncGeneration += 1;
+    this.saveQueue.clear();
+    this.inFlightSaveKeys.clear();
+    this.syncStatusByDate.clear();
+    this.idempotencyIndexWarned = false;
+    this.upsertErrorLogged = false;
+  }
+
+  private getSyncStatusKey(userId: string, date: string): string {
+    return `${userId}:${date}`;
+  }
+
+  private setSyncStatus(userId: string, date: string, status: MealSyncStatus): void {
+    this.syncStatusByDate.set(this.getSyncStatusKey(userId, date), status);
+  }
+
+  getSyncStatus(userId: string, date: string): MealSyncStatus {
+    return this.syncStatusByDate.get(this.getSyncStatusKey(userId, date)) ?? 'synced';
   }
 
   private buildIdempotencyKey(date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', foodId?: string): string {
@@ -114,6 +179,35 @@ class MealService {
       hint: error?.hint,
     };
     console.warn('[mealService] Supabase upsert error:', payload);
+  }
+
+  private publishFoodDiaryChanged(payload: { userId: string; date: string }): void {
+    const message = {
+      type: 'food_diary_changed',
+      userId: payload.userId,
+      date: payload.date,
+      ts: Date.now(),
+    };
+
+    if (typeof window === 'undefined') return;
+
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        const channel = new BroadcastChannel(this.FOOD_DIARY_SYNC_CHANNEL);
+        channel.postMessage(message);
+        channel.close();
+        return;
+      }
+    } catch {
+      // fallback to storage event
+    }
+
+    try {
+      localStorage.setItem(this.FOOD_DIARY_SYNC_STORAGE_KEY, JSON.stringify(message));
+      localStorage.removeItem(this.FOOD_DIARY_SYNC_STORAGE_KEY);
+    } catch {
+      // ignore sync publish errors
+    }
   }
 
   // Единый нормализатор Supabase entry → MealEntry
@@ -255,7 +349,10 @@ class MealService {
     const meals = await this.getFoodDiaryByDate(userId, date);
     const goals = await goalService.getUserGoal(userId);
     const periodEnd = date;
-    const periodStart = new Date(new Date(date).getTime() - 29 * 86400000).toISOString().split('T')[0];
+    const [year, month, day] = date.split('-').map(Number);
+    const periodStartDate = new Date(year, month - 1, day);
+    periodStartDate.setDate(periodStartDate.getDate() - 29);
+    const periodStart = getLocalDayKey(periodStartDate);
     const userState = await userStateService.buildState(userId, { fromDate: periodStart, toDate: periodEnd });
     const context = this.buildDayAnalysisContext(meals, goals);
     const totals = this.calculateDayTotals(meals);
@@ -449,25 +546,30 @@ class MealService {
 
   // Check if date is in the future (for planned field)
   private isFutureDate(date: string): boolean {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDayKey();
     return date > today;
   }
 
   // Check if date is in the past (more than today)
   private isPastDate(date: string): boolean {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDayKey();
     return date < today;
   }
 
   // Save meals for a specific date (with Supabase integration)
   async saveMealsForDate(userId: string, meals: DailyMeals): Promise<void> {
     // Always persist local snapshot for manual flow resilience
-    this.saveMealsToLocalStorage(userId, meals);
+    const localSaved = this.saveMealsToLocalStorage(userId, meals);
+    if (!localSaved) {
+      this.setSyncStatus(userId, meals.date, 'failed');
+    }
 
-    // Try to save to Supabase
-    if (supabase) {
-      try {
-        const sessionUserId = await this.getSessionUserId(userId);
+    try {
+      // Try to save to Supabase
+      if (supabase) {
+        try {
+        await this.requireSessionUser(userId);
+        const sessionUserId = userId;
         // Подсчитываем общее количество записей
         const totalEntries = 
           meals.breakfast.length + 
@@ -490,6 +592,7 @@ class MealService {
           } catch (error) {
             console.error('[mealService] Error marking AI recommendation outdated:', error);
           }
+          this.setSyncStatus(userId, meals.date, 'synced');
           return;
         }
 
@@ -563,6 +666,7 @@ class MealService {
 
           if (validEntries.length === 0) {
             console.warn('[mealService] No valid entries to insert after validation');
+            this.setSyncStatus(userId, meals.date, localSaved ? 'local_only' : 'failed');
             return;
           }
 
@@ -649,6 +753,7 @@ class MealService {
                 console.warn('[mealService] Missing unique index for upsert (user_id,idempotency_key). Apply migration supabase/phase8_food_upsert_indexes.sql to fix.');
                 this.idempotencyIndexWarned = true;
               }
+              this.setSyncStatus(userId, meals.date, localSaved ? 'local_only' : 'failed');
               return;
             }
 
@@ -660,10 +765,12 @@ class MealService {
               const { error: retryError } = await upsert(stripped);
               if (retryError) {
                 console.warn('[mealService] Failed to upsert after stripping display fields:', retryError.message);
+                this.setSyncStatus(userId, meals.date, localSaved ? 'local_only' : 'failed');
                 return;
               }
             } else {
               console.warn('[mealService] Failed to upsert to Supabase:', upsertError.message);
+              this.setSyncStatus(userId, meals.date, localSaved ? 'local_only' : 'failed');
               return;
             }
           }
@@ -674,15 +781,26 @@ class MealService {
           } catch (error) {
             console.error('[mealService] Error marking AI recommendation outdated:', error);
           }
+          this.setSyncStatus(userId, meals.date, 'synced');
         }
-      } catch (err) {
-        console.error('[mealService] Supabase save connection error:', err);
+        } catch (err) {
+          if (this.isAuthGuardError(err) || (err instanceof Error && err.message === 'sync_reset')) {
+            this.setSyncStatus(userId, meals.date, localSaved ? 'local_only' : 'failed');
+            return;
+          }
+          console.error('[mealService] Supabase save connection error:', err);
+          this.setSyncStatus(userId, meals.date, localSaved ? 'local_only' : 'failed');
+        }
+      } else {
+        this.setSyncStatus(userId, meals.date, localSaved ? 'local_only' : 'failed');
       }
+    } finally {
+      this.publishFoodDiaryChanged({ userId, date: meals.date });
     }
   }
 
   // Helper: Save to localStorage
-  private saveMealsToLocalStorage(userId: string, meals: DailyMeals): void {
+  private saveMealsToLocalStorage(userId: string, meals: DailyMeals): boolean {
     try {
       const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
       const allMeals: Record<string, DailyMeals> = stored ? JSON.parse(stored) : {};
@@ -696,8 +814,10 @@ class MealService {
         const verifyData = JSON.parse(verify);
         console.log('[mealService] Verified water in storage:', verifyData[meals.date]?.water);
       }
+      return true;
     } catch (error) {
       console.error('[mealService] Error saving meals to localStorage:', error);
+      return false;
     }
   }
 
@@ -812,16 +932,19 @@ class MealService {
 
   // Remove meal entry
   async removeMealEntry(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entryId: string): Promise<void> {
-    let sessionUserId = userId;
+    let canSyncSupabase = false;
     try {
-      sessionUserId = await this.getSessionUserId(userId);
+      await this.requireSessionUser(userId);
+      canSyncSupabase = true;
     } catch (error) {
-      console.warn('[mealService] removeMealEntry: no active session, using local storage only');
+      if (!this.isAuthGuardError(error)) {
+        console.warn('[mealService] removeMealEntry: sync guard failed');
+      }
     }
     // Получаем текущие данные из localStorage для мгновенного обновления
     let meals: DailyMeals;
     try {
-      const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${sessionUserId}`);
+      const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
       if (stored) {
         const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
         meals = allMeals[date] || this.createEmptyMeals(date);
@@ -837,16 +960,22 @@ class MealService {
     meals[mealType] = meals[mealType].filter((entry) => entry.id !== entryId);
     
     // Затем сохраняем в Supabase в фоне
-    await this.enqueueSave(sessionUserId, date, meals);
+    if (!canSyncSupabase) {
+      const localSaved = this.saveMealsToLocalStorage(userId, meals);
+      this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
+      this.publishFoodDiaryChanged({ userId, date });
+      return;
+    }
+    await this.enqueueSave(userId, date, meals);
 
     // Also delete from Supabase if exists and session is valid
-    if (supabase && sessionUserId) {
+    if (supabase && canSyncSupabase && this.isValidUUID(entryId)) {
       try {
         await supabase
           .from('food_diary_entries')
           .delete()
           .eq('id', entryId)
-          .eq('user_id', sessionUserId);
+          .eq('user_id', userId);
       } catch (err) {
         console.error('[mealService] Error deleting from Supabase:', err);
       }
@@ -855,16 +984,19 @@ class MealService {
 
   // Clear all entries from a specific meal type
   async clearMealType(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack'): Promise<void> {
-    let sessionUserId = userId;
+    let canSyncSupabase = false;
     try {
-      sessionUserId = await this.getSessionUserId(userId);
+      await this.requireSessionUser(userId);
+      canSyncSupabase = true;
     } catch (error) {
-      console.warn('[mealService] clearMealType: no active session, using local storage only');
+      if (!this.isAuthGuardError(error)) {
+        console.warn('[mealService] clearMealType: sync guard failed');
+      }
     }
     // Получаем текущие данные из localStorage для мгновенного обновления
     let meals: DailyMeals;
     try {
-      const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${sessionUserId}`);
+      const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
       if (stored) {
         const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
         meals = allMeals[date] || this.createEmptyMeals(date);
@@ -880,10 +1012,16 @@ class MealService {
     meals[mealType] = [];
     
     // Затем сохраняем в Supabase в фоне
-    await this.enqueueSave(sessionUserId, date, meals);
+    if (!canSyncSupabase) {
+      const localSaved = this.saveMealsToLocalStorage(userId, meals);
+      this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
+      this.publishFoodDiaryChanged({ userId, date });
+      return;
+    }
+    await this.enqueueSave(userId, date, meals);
 
     // Также удаляем все записи этого приёма пищи из Supabase, если сессия валидна
-    if (supabase && sessionUserId) {
+    if (supabase && canSyncSupabase) {
       try {
         const mealTypeMap: Record<string, string> = {
           breakfast: 'breakfast',
@@ -895,7 +1033,7 @@ class MealService {
         await supabase
           .from('food_diary_entries')
           .delete()
-          .eq('user_id', sessionUserId)
+          .eq('user_id', userId)
           .eq('date', date)
           .eq('meal_type', mealTypeMap[mealType]);
       } catch (err) {
@@ -906,6 +1044,16 @@ class MealService {
 
   // Save note for a specific meal type
   async saveMealNote(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', note: string): Promise<void> {
+    let canSyncSupabase = false;
+    try {
+      await this.requireSessionUser(userId);
+      canSyncSupabase = true;
+    } catch (error) {
+      if (!this.isAuthGuardError(error)) {
+        console.warn('[mealService] saveMealNote: sync guard failed');
+      }
+    }
+
     // Получаем текущие данные из localStorage
     let meals: DailyMeals;
     try {
@@ -935,11 +1083,27 @@ class MealService {
     meals.notes[mealType] = note.trim() || null;
 
     // Затем сохраняем в Supabase в фоне
+    if (!canSyncSupabase) {
+      const localSaved = this.saveMealsToLocalStorage(userId, meals);
+      this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
+      this.publishFoodDiaryChanged({ userId, date });
+      return;
+    }
     await this.enqueueSave(userId, date, meals);
   }
 
   // Update meal entry (используем локальные данные, чтобы избежать устаревших значений)
   async updateMealEntry(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entryId: string, updatedEntry: MealEntry): Promise<void> {
+    let canSyncSupabase = false;
+    try {
+      await this.requireSessionUser(userId);
+      canSyncSupabase = true;
+    } catch (error) {
+      if (!this.isAuthGuardError(error)) {
+        console.warn('[mealService] updateMealEntry: sync guard failed');
+      }
+    }
+
     // Берём актуальные данные из localStorage (быстрее и не даёт устаревших значений)
     const meals = this.getMealsFromLocalStorage(userId, date) || this.createEmptyMeals(date);
     const index = meals[mealType].findIndex((entry) => entry.id === entryId);
@@ -957,6 +1121,12 @@ class MealService {
         displayAmount: Number(updatedEntry.displayAmount ?? updatedEntry.weight) || 0,
         idempotencyKey: updatedEntry.idempotencyKey || this.buildIdempotencyKey(date, mealType, updatedEntry.foodId),
       };
+    if (!canSyncSupabase) {
+      const localSaved = this.saveMealsToLocalStorage(userId, meals);
+      this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
+      this.publishFoodDiaryChanged({ userId, date });
+      return;
+    }
       await this.enqueueSave(userId, date, meals);
     }
   }
@@ -982,6 +1152,16 @@ class MealService {
     targetMealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
     selectedEntryIds?: string[] // Опциональный массив ID продуктов для копирования
   ): Promise<void> {
+    let canSyncSupabase = false;
+    try {
+      await this.requireSessionUser(userId);
+      canSyncSupabase = true;
+    } catch (error) {
+      if (!this.isAuthGuardError(error)) {
+        console.warn('[mealService] copyMeal: sync guard failed');
+      }
+    }
+
     // Получаем исходный приём пищи (из localStorage для скорости)
     const sourceMeals = await this.getMealsForDate(userId, sourceDate);
     let sourceEntries = sourceMeals[sourceMealType] || [];
@@ -1034,6 +1214,12 @@ class MealService {
     targetMeals[targetMealType] = [...(targetMeals[targetMealType] || []), ...copiedEntries];
 
     // Сохраняем обновлённые данные в Supabase (не ждём завершения)
+    if (!canSyncSupabase) {
+      const localSaved = this.saveMealsToLocalStorage(userId, targetMeals);
+      this.setSyncStatus(userId, targetDate, localSaved ? 'local_only' : 'failed');
+      this.publishFoodDiaryChanged({ userId, date: targetDate });
+      return;
+    }
     this.enqueueSave(userId, targetDate, targetMeals).catch((error) => {
       console.error('[mealService] Error saving copied meals to Supabase:', error);
     });
@@ -1049,6 +1235,7 @@ class MealService {
           
           if (sourceEntry?.note) {
             try {
+              await this.requireSessionUser(userId);
               // Сохраняем заметку для нового entry в Supabase
               await mealEntryNotesService.saveNote(userId, copiedEntry.id, sourceEntry.note);
             } catch (error) {
@@ -1096,13 +1283,15 @@ class MealService {
   // Get meals for a date range (period)
   async getMealsByPeriod(userId: string, fromDate: string, toDate: string): Promise<DailyMeals[]> {
     const meals: DailyMeals[] = [];
-    const startDate = new Date(fromDate);
-    const endDate = new Date(toDate);
+    const [fromYear, fromMonth, fromDay] = fromDate.split('-').map(Number);
+    const [toYear, toMonth, toDay] = toDate.split('-').map(Number);
+    const startDate = new Date(fromYear, fromMonth - 1, fromDay);
+    const endDate = new Date(toYear, toMonth - 1, toDay);
     
     // Iterate through all dates in the range
     const currentDate = new Date(startDate);
     while (currentDate <= endDate) {
-      const dateStr = currentDate.toISOString().split('T')[0];
+      const dateStr = getLocalDayKey(currentDate);
       const dailyMeals = await this.getMealsForDate(userId, dateStr);
       meals.push(dailyMeals);
       currentDate.setDate(currentDate.getDate() + 1);

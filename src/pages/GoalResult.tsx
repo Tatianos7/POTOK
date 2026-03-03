@@ -8,6 +8,7 @@ import { profileService } from '../services/profileService';
 import { uiRuntimeAdapter } from '../services/uiRuntimeAdapter';
 import { computeGoalPlan } from '../utils/goalProjection';
 import { aiRecommendationsService, type DayAnalysisContext } from '../services/aiRecommendationsService';
+import { getLocalDayKey } from '../utils/dayKey';
 
 interface CalculatedResult {
   bmr: number;
@@ -166,14 +167,14 @@ const GoalResult = () => {
         'gain': 'Набор массы',
       };
 
-      const startDate = new Date().toISOString().split('T')[0];
+      const startDate = getLocalDayKey();
       
       // Рассчитываем дату окончания на основе месяцев до цели
       let endDate = '';
       if (result.monthsToGoal > 0) {
         const endDateObj = new Date();
         endDateObj.setMonth(endDateObj.getMonth() + result.monthsToGoal);
-        endDate = endDateObj.toISOString().split('T')[0];
+        endDate = getLocalDayKey(endDateObj);
       }
 
       if (import.meta.env.DEV) {
@@ -213,7 +214,7 @@ const GoalResult = () => {
 
       navigate('/goal');
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDayKey();
       const context: DayAnalysisContext = {
         date: today,
         totals: { calories: 0, protein: 0, fat: 0, carbs: 0, weight: 0 },
