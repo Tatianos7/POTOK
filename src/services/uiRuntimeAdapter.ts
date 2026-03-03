@@ -32,6 +32,7 @@ import { profileService, UserProfile } from './profileService';
 import type { CoachSettings } from '../types/coachSettings';
 import { measurementsService } from './measurementsService';
 import { mealService } from './mealService';
+import type { MealSyncStatus } from './mealService';
 import { workoutService } from './workoutService';
 import { aggregateWorkoutEntries } from '../utils/workoutMetrics';
 import { classifyTrustDecision, TrustDecision } from './trustSafetyService';
@@ -144,6 +145,7 @@ export interface FoodDiaryState {
   message?: string;
   meals?: DailyMeals | null;
   goal?: UserGoal | null;
+  syncStatus?: MealSyncStatus;
   explainability?: BaseExplainabilityDTO;
   trust?: TrustDecision;
 }
@@ -407,6 +409,7 @@ class UiRuntimeAdapter {
         status: isEmpty ? 'empty' : 'active',
         meals,
         goal,
+        syncStatus: mealService.getSyncStatus(userId, date),
         explainability,
         trust,
       };

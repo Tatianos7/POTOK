@@ -7,6 +7,7 @@ import { mealService } from '../services/mealService';
 import { foodService } from '../services/foodService';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
+import { getLocalDayKey } from '../utils/dayKey';
 
 interface LocationState {
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -35,7 +36,7 @@ const FavoritesProductsPage = () => {
   const [defaultWeight, setDefaultWeight] = useState<number | undefined>(undefined);
 
   const selectedDate = useMemo(
-    () => state?.selectedDate || new Date().toISOString().split('T')[0],
+    () => state?.selectedDate || getLocalDayKey(),
     [state?.selectedDate]
   );
   const mealType = state?.mealType || 'breakfast';
@@ -380,4 +381,3 @@ const FavoritesProductsPage = () => {
 };
 
 export default FavoritesProductsPage;
-

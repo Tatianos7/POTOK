@@ -49,6 +49,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return message.includes('invalid refresh token') || message.includes('refresh token not found');
   };
 
+  const resetMealSyncState = () => {
+    void import('../services/mealService')
+      .then(({ mealService }) => {
+        mealService.resetSyncStateForAuthChange();
+      })
+      .catch(() => undefined);
+  };
+
   const resetInvalidSessionSafely = (client: NonNullable<typeof supabase>) => {
     void client.auth.signOut().catch(() => undefined);
     clearSessionState();
@@ -124,6 +132,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const clearSessionState = () => {
+    resetMealSyncState();
     setUser(null);
     setProfile(null);
     setEntitlements(null);
@@ -139,6 +148,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const supabaseClient = supabase;
     let isMounted = true;
+    let lastAuthUserId: string | null = null;
+    const resetSyncIfUserChanged = (nextUserId: string | null) => {
+      if (lastAuthUserId !== nextUserId) {
+        resetMealSyncState();
+        lastAuthUserId = nextUserId;
+      }
+    };
 
     const init = async () => {
       const sessionResult = await withTimeout(getSessionCached(), 12000);
@@ -180,6 +196,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       const currentSession = data?.session ?? null;
+      resetSyncIfUserChanged(currentSession?.user?.id ?? null);
 
       if (currentSession?.user) {
         try {
@@ -269,6 +286,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     init();
 
     const { data: authListener } = supabaseClient.auth.onAuthStateChange(async (_event, newSession) => {
+      resetSyncIfUserChanged(newSession?.user?.id ?? null);
       if (newSession?.user) {
         try {
           const built = await withTimeout(buildUser(newSession.user), 8000);
