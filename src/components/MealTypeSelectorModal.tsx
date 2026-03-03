@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { getLocalDayKey } from '../utils/dayKey';
 
 interface MealTypeSelectorModalProps {
   isOpen: boolean;
@@ -17,7 +18,7 @@ const mealLabels: Record<'breakfast' | 'lunch' | 'dinner' | 'snack', string> = {
 
 const MealTypeSelectorModal = ({ isOpen, onClose, onSelect, defaultDate }: MealTypeSelectorModalProps) => {
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>('breakfast');
-  const [selectedDate, setSelectedDate] = useState(defaultDate || new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(defaultDate || getLocalDayKey());
 
   if (!isOpen) return null;
 
@@ -87,4 +88,3 @@ const MealTypeSelectorModal = ({ isOpen, onClose, onSelect, defaultDate }: MealT
 };
 
 export default MealTypeSelectorModal;
-

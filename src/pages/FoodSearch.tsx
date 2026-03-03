@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { mealService } from '../services/mealService';
 import { foodService } from '../services/foodService';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
+import { getLocalDayKey } from '../utils/dayKey';
 
 interface LocationState {
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -38,7 +39,7 @@ const FoodSearch = () => {
   const [activeTab, setActiveTab] = useState<'search' | 'favorites'>('search');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedDate = useMemo(
-    () => state?.selectedDate || new Date().toISOString().split('T')[0],
+    () => state?.selectedDate || getLocalDayKey(),
     [state?.selectedDate]
   );
 
@@ -318,7 +319,7 @@ const FoodSearch = () => {
 
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 w-full min-w-[320px]">
+    <div className="min-h-screen bg-white w-full min-w-[320px]">
       <div className="container-responsive">
         {/* Header */}
         <header className="pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
@@ -580,4 +581,3 @@ const FoodSearch = () => {
 };
 
 export default FoodSearch;
-

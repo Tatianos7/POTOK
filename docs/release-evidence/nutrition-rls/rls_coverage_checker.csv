@@ -1,0 +1,10 @@
+table_name,rls_enabled,policies_count,has_select,has_insert,has_update,has_delete,has_owner_guard,guard_column,issues,verdict
+favorite_products,true,4,true,true,true,true,true,user_id,[],PASS
+food_aliases,true,4,true,true,true,true,true,created_by_user_id,[],PASS
+food_diary_entries,true,4,true,true,true,true,true,user_id,[],PASS
+food_import_batches,true,4,true,true,true,true,true,user_id,[],PASS
+food_import_conflicts,true,2,true,false,false,false,false,none,[],PASS
+food_import_staging,true,4,true,true,true,true,true,user_id,[],PASS
+foods,true,5,true,true,true,true,true,created_by_user_id,[],PASS
+meal_entry_notes,true,4,true,true,true,true,true,user_id,[],PASS
+recipes,true,4,true,true,true,true,true,user_id,[],PASS

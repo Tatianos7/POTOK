@@ -8,6 +8,7 @@ import SaveRecipeToDiarySheet from '../components/SaveRecipeToDiarySheet';
 import SaveRecipeModal from '../components/SaveRecipeModal';
 import { useAuth } from '../context/AuthContext';
 import { recipesService } from '../services/recipesService';
+import { getLocalDayKey } from '../utils/dayKey';
 
 const placeholderIngredients =
   'Пример: 250 г говядина постная, 1–2 морковки, 1 луковица, 2 дольки чеснока, полтора литра молока, 400 г картофеля';
@@ -35,7 +36,7 @@ const RecipeAnalyzer = () => {
     [totals.per100]
   );
 
-  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const today = useMemo(() => getLocalDayKey(), []);
   const selectedDate = (location.state as any)?.selectedDate || today;
   const defaultMealType = (location.state as any)?.mealType as
     | 'breakfast'
@@ -210,4 +211,3 @@ const RecipeAnalyzer = () => {
 };
 
 export default RecipeAnalyzer;
-

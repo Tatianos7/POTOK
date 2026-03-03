@@ -11,6 +11,13 @@ export interface MealEntryNote {
 }
 
 class MealEntryNotesService {
+  private readonly UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  private isUuid(value: string | null | undefined): boolean {
+    return typeof value === 'string' && this.UUID_RE.test(value);
+  }
+
   private async getSessionUserId(userId?: string): Promise<string> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
@@ -31,6 +38,9 @@ class MealEntryNotesService {
    * Получить заметку для записи приёма пищи
    */
   async getNoteByEntryId(userId: string, mealEntryId: string): Promise<string | null> {
+    if (!this.isUuid(mealEntryId)) {
+      return null;
+    }
     if (!supabase) {
       console.warn('[mealEntryNotesService] Supabase not available');
       return null;
@@ -71,7 +81,8 @@ class MealEntryNotesService {
    * Получить все заметки для массива записей приёма пищи
    */
   async getNotesByEntryIds(userId: string, mealEntryIds: string[]): Promise<Record<string, string>> {
-    if (!supabase || mealEntryIds.length === 0) {
+    const validIds = mealEntryIds.filter((id) => this.isUuid(id));
+    if (!supabase || validIds.length === 0) {
       return {};
     }
 
@@ -82,7 +93,7 @@ class MealEntryNotesService {
         .from('meal_entry_notes')
         .select('meal_entry_id, text')
         .eq('user_id', sessionUserId)
-        .in('meal_entry_id', mealEntryIds);
+        .in('meal_entry_id', validIds);
 
       if (error) {
         // Если таблица не найдена, это значит, что SQL схема не выполнена
@@ -119,6 +130,9 @@ class MealEntryNotesService {
     mealEntryId: string,
     text: string
   ): Promise<void> {
+    if (!this.isUuid(mealEntryId)) {
+      return;
+    }
     if (!supabase) {
       console.warn('[mealEntryNotesService] Supabase not available');
       return;
@@ -159,6 +173,9 @@ class MealEntryNotesService {
    * Удалить заметку для записи приёма пищи
    */
   async deleteNote(userId: string, mealEntryId: string): Promise<void> {
+    if (!this.isUuid(mealEntryId)) {
+      return;
+    }
     if (!supabase) {
       console.warn('[mealEntryNotesService] Supabase not available');
       return;
@@ -191,4 +208,3 @@ class MealEntryNotesService {
 }
 
 export const mealEntryNotesService = new MealEntryNotesService();
-
