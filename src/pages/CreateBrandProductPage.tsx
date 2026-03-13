@@ -7,6 +7,7 @@ import { mealService } from '../services/mealService';
 import { favoritesService } from '../services/favoritesService';
 import { MealEntry, Food } from '../types';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
+import { getInvalidFoodMacroMessage, getInvalidFoodMacroReason } from '../utils/foodNormalizer';
 
 const CreateBrandProductPage = () => {
   const navigate = useNavigate();
@@ -50,8 +51,22 @@ const CreateBrandProductPage = () => {
     const caloriesValue = parseFloat(calories) || 0;
     const weightValue = parseFloat(weight) || 100;
 
-    if (proteinValue === 0 && fatValue === 0 && carbsValue === 0 && caloriesValue === 0) {
-      alert('Заполните хотя бы одно поле КБЖУ');
+    const invalidReason = getInvalidFoodMacroReason(
+      {
+        calories: Number.parseFloat(calories),
+        protein: Number.parseFloat(protein),
+        fat: Number.parseFloat(fat),
+        carbs: Number.parseFloat(carbs),
+      },
+      {
+        calories,
+        protein,
+        fat,
+        carbs,
+      }
+    );
+    if (invalidReason) {
+      alert(getInvalidFoodMacroMessage(invalidReason));
       return;
     }
 
@@ -138,7 +153,7 @@ const CreateBrandProductPage = () => {
       navigate('/nutrition', { replace: true });
     } catch (error) {
       console.error('Error creating brand product:', error);
-      alert('Ошибка при сохранении продукта');
+      alert(error instanceof Error ? error.message : 'Ошибка при сохранении продукта');
     } finally {
       setIsSaving(false);
     }
@@ -396,4 +411,3 @@ const CreateBrandProductPage = () => {
 };
 
 export default CreateBrandProductPage;
-

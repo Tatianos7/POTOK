@@ -1,5 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
-import { buildNormalizedBrand, buildNormalizedName, normalizeFoodText, validateNutrition } from './foodNormalizer';
+import {
+  buildNormalizedBrand,
+  buildNormalizedName,
+  getInvalidFoodMacroReason,
+  normalizeFoodText,
+  validateNutrition,
+} from './foodNormalizer';
 
 export interface FoodImportRow {
   name: string;
@@ -17,6 +23,8 @@ export interface FoodImportRow {
   sourceVersion?: string | null;
   allergens?: string[];
   intolerances?: string[];
+  _line?: number;
+  rawMacros?: Partial<Record<'calories' | 'protein' | 'fat' | 'carbs', string>>;
 }
 
 const parseCsvLine = (line: string): string[] => {
@@ -45,7 +53,7 @@ export const parseCsvToRows = (csv: string): FoodImportRow[] => {
   if (lines.length === 0) return [];
   const headers = parseCsvLine(lines[0]).map((h) => normalizeFoodText(h));
 
-  return lines.slice(1).map((line) => {
+  return lines.slice(1).map((line, index) => {
     const values = parseCsvLine(line);
     const row: Record<string, string> = {};
     headers.forEach((header, idx) => {
@@ -72,6 +80,13 @@ export const parseCsvToRows = (csv: string): FoodImportRow[] => {
       sourceVersion: row['source version'] || row.source_version || row['sourceversion'] || null,
       allergens,
       intolerances,
+      _line: index + 2,
+      rawMacros: {
+        calories: row.calories,
+        protein: row.protein,
+        fat: row.fat,
+        carbs: row.carbs,
+      },
     };
   });
 };
@@ -84,7 +99,7 @@ export async function importFoodsFromRows(rows: FoodImportRow[]): Promise<void> 
   const batchSize = 200;
   for (let i = 0; i < rows.length; i += batchSize) {
     const batch = rows.slice(i, i + batchSize);
-    const payload = batch.map((row) => {
+    const payload = batch.flatMap((row) => {
       const nutrition = {
         calories: Number(row.calories) || 0,
         protein: Number(row.protein) || 0,
@@ -92,9 +107,13 @@ export async function importFoodsFromRows(rows: FoodImportRow[]): Promise<void> 
         carbs: Number(row.carbs) || 0,
         fiber: Number(row.fiber) || 0,
       };
+      const invalidReason = getInvalidFoodMacroReason(nutrition, row.rawMacros);
+      if (invalidReason) {
+        return [];
+      }
       const { suspicious } = validateNutrition(nutrition);
       const name = row.name.trim();
-      return {
+      return [{
         name,
         brand: row.brand || null,
         calories: nutrition.calories,
@@ -116,8 +135,10 @@ export async function importFoodsFromRows(rows: FoodImportRow[]): Promise<void> 
         aliases: row.aliases ?? [],
         auto_filled: false,
         popularity: 0,
-      };
+      }];
     });
+
+    if (payload.length === 0) continue;
 
     const { data, error } = await supabase
       .from('foods')

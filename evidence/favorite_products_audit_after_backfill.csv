@@ -1,0 +1,7 @@
+favorite_id,user_id,product_name,distinct_food_matches,matched_food_ids,matched_food_names,matched_sources,audit_status
+e8457bb9-78e6-4824-9d5e-6819313733d6,6d693735-7835-4316-bc68-75676b7a6676,Салат оливье,0,null,null,null,unmatched
+b2f360e0-99fd-4115-a897-b1de8bd94501,6d693735-7835-4316-bc68-75676b7a6676,Салат Оливье,0,null,null,null,unmatched
+8e08494b-864a-4af6-88c2-f79b2818d304,6d693735-7835-4316-bc68-75676b7a6676,Салат с анансами,0,null,null,null,unmatched
+16a5aea6-c0a9-4506-9835-26aa5269f5db,6d693735-7835-4316-bc68-75676b7a6676,Селедка под шубой,0,null,null,null,unmatched
+aaad4067-cf37-4901-8c45-e8b2e3cb7a15,6d693735-7835-4316-bc68-75676b7a6676,сыр,0,null,null,null,unmatched
+badcfadb-76f3-4db8-a304-eb45aa44d4e0,6d693735-7835-4316-bc68-75676b7a6676,творог,0,null,null,null,unmatched

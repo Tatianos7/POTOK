@@ -15,6 +15,9 @@ interface AddFoodToMealModalProps {
 }
 
 const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: AddFoodToMealModalProps) => {
+  const isValidUUID = (value?: string | null): boolean =>
+    Boolean(value) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value));
+
   const [quantity, setQuantity] = useState(() => {
     // Если передан defaultWeight, используем его, иначе дефолт 100
     return defaultWeight ? defaultWeight.toString() : '100';
@@ -108,6 +111,7 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
       baseUnit: 'г',
       displayUnit: unit,
       displayAmount: quantityNum,
+      canonicalFoodId: isValidUUID(food.canonical_food_id) ? food.canonical_food_id : (isValidUUID(food.id) ? food.id : null),
     };
 
     onAdd(entry);
@@ -330,4 +334,3 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
 };
 
 export default AddFoodToMealModal;
-

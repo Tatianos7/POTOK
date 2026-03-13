@@ -1,0 +1,2 @@
+schema_name,view_name,reloptions
+public,exercises_full_view,"[""security_invoker=true""]"

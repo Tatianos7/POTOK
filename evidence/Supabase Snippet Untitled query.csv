@@ -1,0 +1,11 @@
+recipe_id,recipe_name,ingredient_position,raw_ingredient_name,chosen_food_id,chosen_food_name,chosen_amount_g,existing_food_name,mapping_note,preview_status
+72656369-7065-45f3-b137-363733353137,Салат Весна,1,помидора,null,null,null,null,operator_choice_required,missing_food_choice
+72656369-7065-45f3-b137-363733353137,Салат Весна,2,огурец,null,null,null,null,operator_choice_required,missing_food_choice
+72656369-7065-45f3-b137-363733353137,Салат Весна,3,масло растительное,null,null,10,null,operator_choice_required,missing_food_choice
+72656369-7065-45f3-9137-363732373731,Салат Мемоза 2,1,тунца,e4dbde4f-70b6-4542-b916-0e52b82d5015,Тунец в растительном масле,250,Тунец в растительном масле,safe_food_match_raw_amount_used_as_grams,ready_for_manual_backfill
+72656369-7065-45f3-9137-363732373731,Салат Мемоза 2,2,куриного яйца,f4022e2a-9cf3-42c2-8a1c-6c873c866524,яйцо куриное,null,яйцо куриное,operator_choice_required,invalid_amount_g
+72656369-7065-45f3-9137-363733353132,Салат Оливье,1,куриной грудки,7b2f4b6a-049e-4714-81f4-79199b47ab6b,Куриная грудка,100,Куриная грудка,safe_food_match_raw_amount_used_as_grams,ready_for_manual_backfill
+72656369-7065-45f3-9137-363733353132,Салат Оливье,2,огурца,null,null,null,null,operator_choice_required,missing_food_choice
+72656369-7065-45f3-9137-363733353132,Салат Оливье,3,банка гороха,null,null,null,null,operator_choice_required,missing_food_choice
+72656369-7065-45f3-9137-363733353132,Салат Оливье,4,пучок зелени,null,null,null,null,operator_choice_required,missing_food_choice
+72656369-7065-45f3-9137-363733353132,Салат Оливье,5,% сметана,null,null,10,null,operator_choice_required,missing_food_choice

@@ -128,12 +128,26 @@ const FoodSearch = () => {
 
   const handleAdd = (entry: MealEntry) => {
     if (!user?.id || !selectedMealType) return;
-    mealService.addMealEntry(user.id, selectedDate, selectedMealType, entry);
+    const isValidUUID = (value?: string | null): boolean =>
+      Boolean(value) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value));
+
+    const canonicalFoodId =
+      (isValidUUID(entry.canonicalFoodId) ? entry.canonicalFoodId : null) ||
+      (isValidUUID(entry.food?.canonical_food_id ?? null) ? entry.food?.canonical_food_id ?? null : null) ||
+      (isValidUUID(entry.foodId) ? entry.foodId : null) ||
+      (isValidUUID(entry.food?.id ?? null) ? entry.food.id : null);
+
+    const normalizedEntry: MealEntry = {
+      ...entry,
+      canonicalFoodId,
+    };
+
+    mealService.addMealEntry(user.id, selectedDate, selectedMealType, normalizedEntry);
     
     // Сохраняем продукт в часто используемые с граммами и текущей датой использования
     // Используем getFoodDisplayName для отображения названия с маркой, если есть
     addRecent({
-      foodId: entry.foodId,
+      foodId: normalizedEntry.foodId,
       foodName: getFoodDisplayName(entry.food),
       weight: entry.weight,
       lastUsedAt: new Date().toISOString(),

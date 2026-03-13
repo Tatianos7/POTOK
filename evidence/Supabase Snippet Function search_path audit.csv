@@ -1,0 +1,56 @@
+schema_name,function_name,identity_args,is_security_definer,configured_search_path
+public,get_entitlements,p_user_id uuid,true,"public, pg_temp"
+public,get_paywall_state,"p_feature text, p_user_id uuid",true,"public, pg_temp"
+public,recompute_food_entries_for_food_ids,food_ids uuid[],true,"public, pg_temp"
+public,restore_purchase,"p_user_id uuid, p_provider text, p_receipt text, p_idempotency_key text",true,"public, pg_temp"
+public,rls_auto_enable,,true,pg_catalog
+public,start_purchase,"p_user_id uuid, p_provider text, p_plan text, p_idempotency_key text",true,"public, pg_temp"
+public,food_aliases_normalize,,false,
+public,foods_update_search_vector,,false,
+public,get_active_program,p_program_type text,false,"public, pg_temp"
+public,get_program_day_details,"p_program_id uuid, p_date date",false,"public, pg_temp"
+public,get_program_days,p_program_id uuid,false,"public, pg_temp"
+public,get_program_explainability,"p_program_id uuid, p_version integer",false,"public, pg_temp"
+public,get_program_phases,p_program_id uuid,false,"public, pg_temp"
+public,get_program_status,p_program_id uuid,false,"public, pg_temp"
+public,gin_extract_query_trgm,"text, internal, smallint, internal, internal, internal, internal",false,
+public,gin_extract_value_trgm,"text, internal",false,
+public,gin_trgm_consistent,"internal, smallint, text, integer, internal, internal, internal, internal",false,
+public,gin_trgm_triconsistent,"internal, smallint, text, integer, internal, internal, internal",false,
+public,gtrgm_compress,internal,false,
+public,gtrgm_consistent,"internal, text, smallint, oid, internal",false,
+public,gtrgm_decompress,internal,false,
+public,gtrgm_distance,"internal, text, smallint, oid, internal",false,
+public,gtrgm_in,cstring,false,
+public,gtrgm_options,internal,false,
+public,gtrgm_out,gtrgm,false,
+public,gtrgm_penalty,"internal, internal, internal",false,
+public,gtrgm_picksplit,"internal, internal",false,
+public,gtrgm_same,"gtrgm, gtrgm, internal",false,
+public,gtrgm_union,"internal, internal",false,
+public,normalize_food_text,value text,false,
+public,recipe_ingredients_recompute_trigger,,false,"public, pg_temp"
+public,recompute_recipe_totals,recipe_uuid uuid,false,"public, pg_temp"
+public,replace_recipe_ingredients_atomic,"p_recipe_id uuid, p_user_id uuid, p_rows jsonb, p_servings numeric, p_yield_g numeric",false,"public, pg_temp"
+public,set_limit,real,false,
+public,show_limit,,false,
+public,show_trgm,text,false,
+public,similarity,"text, text",false,
+public,similarity_dist,"text, text",false,
+public,similarity_op,"text, text",false,
+public,strict_word_similarity,"text, text",false,
+public,strict_word_similarity_commutator_op,"text, text",false,
+public,strict_word_similarity_dist_commutator_op,"text, text",false,
+public,strict_word_similarity_dist_op,"text, text",false,
+public,strict_word_similarity_op,"text, text",false,
+public,update_food_import_updated_at,,false,
+public,update_foods_updated_at,,false,
+public,update_meal_entry_notes_updated_at,,false,
+public,update_programs_updated_at,,false,
+public,update_recipe_ingredients_updated_at,,false,"public, pg_temp"
+public,update_updated_at_column,,false,
+public,word_similarity,"text, text",false,
+public,word_similarity_commutator_op,"text, text",false,
+public,word_similarity_dist_commutator_op,"text, text",false,
+public,word_similarity_dist_op,"text, text",false,
+public,word_similarity_op,"text, text",false,

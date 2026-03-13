@@ -1,0 +1,3 @@
+schemaname,tablename,policyname,permissive,roles,cmd,qual,with_check
+public,exercise_categories,Anyone can read exercise categories,PERMISSIVE,{public},SELECT,true,null
+public,exercise_categories,Anyone can insert exercise categories,PERMISSIVE,{public},INSERT,null,true

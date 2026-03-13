@@ -1,0 +1,4 @@
+line,recipe_ref,ingredient_name,brand,barcode,recommendation_sql
+"4","dry-run:Омлет с сыром","сыр твердый","","","select id,name,brand,barcode from public.foods where normalized_name = 'сыр твердый' order by created_at desc limit 20;"
+"5","dry-run:Гречка (каша)","гречка крупа сухая","","","select id,name,brand,barcode from public.foods where normalized_name = 'гречка крупа сухая' order by created_at desc limit 20;"
+"6","dry-run:Гречка (каша)","вода","","","select id,name,brand,barcode from public.foods where normalized_name = 'вода' order by created_at desc limit 20;"

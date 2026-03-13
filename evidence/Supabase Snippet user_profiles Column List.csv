@@ -1,0 +1,18 @@
+column_name,data_type
+id_user,uuid
+first_name,text
+last_name,text
+middle_name,text
+birth_date,date
+age,integer
+height,numeric
+goal,text
+email,text
+phone,text
+avatar_url,text
+has_premium,boolean
+is_admin,boolean
+created_at,timestamp with time zone
+updated_at,timestamp with time zone
+coach_settings,jsonb
+voice_settings,jsonb

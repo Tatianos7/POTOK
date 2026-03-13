@@ -212,12 +212,39 @@ class MealService {
 
   // Единый нормализатор Supabase entry → MealEntry
   // Гарантирует строгую типизацию и полный объект Food
+  private resolveCanonicalFoodId(entry: {
+    canonicalFoodId?: string | null;
+    canonical_food_id?: string | null;
+    foodId?: string | null;
+    food_id?: string | null;
+    food?: { id?: string | null; canonical_food_id?: string | null } | null;
+  }): string | null {
+    const candidates = [
+      entry.canonicalFoodId,
+      entry.canonical_food_id,
+      entry.food?.canonical_food_id ?? null,
+      entry.foodId,
+      entry.food_id,
+      entry.food?.id ?? null,
+    ];
+    for (const candidate of candidates) {
+      if (this.isValidUUID(candidate ?? null)) {
+        return candidate ?? null;
+      }
+    }
+    return null;
+  }
+
   private mapSupabaseEntryToMealEntry(entry: any): MealEntry {
     if (!entry?.id) {
       throw new Error('Supabase entry without id');
     }
 
-    const foodId = String(entry.canonical_food_id ?? entry.id);
+    const canonicalFoodId = this.resolveCanonicalFoodId({
+      canonical_food_id: entry.canonical_food_id ?? null,
+      food_id: entry.food_id ?? null,
+    });
+    const foodId = String(canonicalFoodId ?? entry.id);
     const weight = Number(entry.weight ?? 0);
     const totalCalories = Number(entry.calories ?? 0);
     const totalProtein = Number(entry.protein ?? 0);
@@ -239,7 +266,7 @@ class MealService {
       category: undefined,
       brand: null,
       source: 'user',
-      canonical_food_id: entry.canonical_food_id ?? null,
+      canonical_food_id: canonicalFoodId,
       photo: null,
       aliases: undefined,
       autoFilled: undefined,
@@ -261,7 +288,7 @@ class MealService {
       displayUnit: entry.display_unit ?? 'г',
       displayAmount: Number(entry.display_amount ?? entry.weight ?? 0),
       idempotencyKey: entry.idempotency_key ?? undefined,
-      canonicalFoodId: food.canonical_food_id ?? null,
+      canonicalFoodId,
     };
   }
 
@@ -321,11 +348,7 @@ class MealService {
         ...meals.dinner,
         ...meals.snack,
       ].map((entry) => {
-        const canonicalFoodId = this.isValidUUID(entry.canonicalFoodId ?? null)
-          ? entry.canonicalFoodId ?? null
-          : this.isValidUUID(entry.food?.canonical_food_id ?? null)
-            ? entry.food?.canonical_food_id ?? null
-            : null;
+        const canonicalFoodId = this.resolveCanonicalFoodId(entry);
         return {
           canonical_food_id: canonicalFoodId,
           name: entry.food?.name ?? entry.foodId,
@@ -603,27 +626,26 @@ class MealService {
           return isNaN(num) || !isFinite(num) ? 0 : Math.max(0, num);
         };
 
-        const baseEntry = (entry: MealEntry, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => ({
-          user_id: sessionUserId,
-          date: meals.date,
-          meal_type: mealType,
-          product_name: (entry.food?.name || 'Unknown').trim() || 'Unknown',
-          protein: safeNumber(entry.protein),
-          fat: safeNumber(entry.fat),
-          carbs: safeNumber(entry.carbs),
-          fiber: safeNumber(entry.food?.fiber ?? 0),
-          calories: safeNumber(entry.calories),
-          weight: safeNumber(entry.weight),
-          base_unit: entry.baseUnit ?? 'г',
-          display_unit: entry.displayUnit ?? entry.baseUnit ?? 'г',
-          display_amount: safeNumber(entry.displayAmount ?? entry.weight),
-          canonical_food_id: this.isValidUUID(entry.canonicalFoodId)
-            ? entry.canonicalFoodId
-            : this.isValidUUID(entry.food?.canonical_food_id ?? null)
-              ? entry.food?.canonical_food_id ?? null
-              : null,
-          idempotency_key: this.normalizeIdempotencyKey(entry.idempotencyKey, meals.date, mealType, entry.foodId),
-        });
+        const baseEntry = (entry: MealEntry, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+          const canonicalFoodId = this.resolveCanonicalFoodId(entry);
+          return {
+            user_id: sessionUserId,
+            date: meals.date,
+            meal_type: mealType,
+            product_name: (entry.food?.name || 'Unknown').trim() || 'Unknown',
+            protein: safeNumber(entry.protein),
+            fat: safeNumber(entry.fat),
+            carbs: safeNumber(entry.carbs),
+            fiber: safeNumber(entry.food?.fiber ?? 0),
+            calories: safeNumber(entry.calories),
+            weight: safeNumber(entry.weight),
+            base_unit: entry.baseUnit ?? 'г',
+            display_unit: entry.displayUnit ?? entry.baseUnit ?? 'г',
+            display_amount: safeNumber(entry.displayAmount ?? entry.weight),
+            canonical_food_id: canonicalFoodId,
+            idempotency_key: this.normalizeIdempotencyKey(entry.idempotencyKey, meals.date, mealType, entry.foodId),
+          };
+        };
 
         const entriesToInsert = [
           ...meals.breakfast.map((entry) => baseEntry(entry, 'breakfast')),
@@ -844,6 +866,7 @@ class MealService {
       displayUnit: entry.displayUnit || 'г',
       displayAmount: Number(entry.displayAmount ?? entry.weight) || 0,
       idempotencyKey: entry.idempotencyKey || this.buildIdempotencyKey(date, mealType, entry.foodId),
+      canonicalFoodId: this.resolveCanonicalFoodId(entry),
     };
 
     // Добавляем новую запись или заменяем существующую (idempotency)
@@ -1120,6 +1143,7 @@ class MealService {
         displayUnit: updatedEntry.displayUnit || 'г',
         displayAmount: Number(updatedEntry.displayAmount ?? updatedEntry.weight) || 0,
         idempotencyKey: updatedEntry.idempotencyKey || this.buildIdempotencyKey(date, mealType, updatedEntry.foodId),
+        canonicalFoodId: this.resolveCanonicalFoodId(updatedEntry),
       };
     if (!canSyncSupabase) {
       const localSaved = this.saveMealsToLocalStorage(userId, meals);

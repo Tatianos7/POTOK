@@ -1,0 +1,6 @@
+line,recipe_ref,ingredient_name,food_id,amount_g,status,reason
+"2","UUID рецепта (если уже есть в БД). Если пусто — импортёр может создать новый.","Название ингредиента (для поиска в foods/aliases).","UUID продукта из foods (рекомендуется). Если пусто — искать по ingredient_name/alias.","","skipped","template_instruction_row"
+"4","dry-run:Омлет с сыром","сыр твердый","","50","skipped","food_id_not_resolved"
+"3","dry-run:Омлет с сыром","яйцо куриное","f4022e2a-9cf3-42c2-8a1c-6c873c866524","120","ok","dry_run_validated"
+"5","dry-run:Гречка (каша)","гречка крупа сухая","","80","skipped","food_id_not_resolved"
+"6","dry-run:Гречка (каша)","вода","","240","skipped","food_id_not_resolved"

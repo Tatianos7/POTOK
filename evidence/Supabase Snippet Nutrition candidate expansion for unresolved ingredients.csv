@@ -1,0 +1,225 @@
+recipe_name,ingredient_position,raw_ingredient_name,candidate_food_id,candidate_food_name,matched_source,similarity_score
+Салат Весна,3,масло растительное,e78a84c3-b40f-40c6-964a-b5baf9d4ffb0,масло растительное нерафинированное,food_aliases.normalized_alias_ilike,null
+Салат Весна,3,масло растительное,9deab641-d804-4086-9f5c-b0643a148a2f,масло растительное рафинированное,food_aliases.normalized_alias_ilike,null
+Салат Весна,3,масло растительное,e78a84c3-b40f-40c6-964a-b5baf9d4ffb0,масло растительное нерафинированное,foods.name_ilike,null
+Салат Весна,3,масло растительное,9deab641-d804-4086-9f5c-b0643a148a2f,масло растительное рафинированное,foods.name_ilike,null
+Салат Весна,3,масло растительное,9deab641-d804-4086-9f5c-b0643a148a2f,масло растительное рафинированное,foods.name_similarity,0.6333
+Салат Весна,3,масло растительное,e78a84c3-b40f-40c6-964a-b5baf9d4ffb0,масло растительное нерафинированное,foods.name_similarity,0.5588
+Салат Весна,3,масло растительное,c93002f9-5ebd-4f8d-b7e5-303f24d7cc57,Сельдь в растительном масле,foods.name_similarity,0.4839
+Салат Весна,3,масло растительное,e4dbde4f-70b6-4542-b916-0e52b82d5015,Тунец в растительном масле,foods.name_similarity,0.4839
+Салат Весна,3,масло растительное,9270652d-69aa-4acb-b551-7ce1ef790eae,масло миндальное,foods.name_similarity,0.4000
+Салат Весна,3,масло растительное,e983bbc0-5386-481a-887f-d9bbddcc64b7,масло расторопши,foods.name_similarity,0.3846
+Салат Весна,3,масло растительное,9e6e09a4-086f-4aba-8c17-533d46054a17,масло льняное,foods.name_similarity,0.3750
+Салат Весна,3,масло растительное,989f1485-2faa-4a66-956c-25fcb90881b7,масло рапсовое,foods.name_similarity,0.3600
+Салат Весна,3,масло растительное,d0fb82a3-e1dd-4884-9566-83479df04a71,масло репейное,foods.name_similarity,0.3600
+Салат Весна,3,масло растительное,c6981341-b28c-4dbf-a3bd-1d4eeea47096,масло овсяное,foods.name_similarity,0.3200
+Салат Весна,3,масло растительное,704afe11-6382-411e-8089-e351a313d220,масло лимонное,foods.name_similarity,0.3077
+Салат Весна,3,масло растительное,0ffb5c4c-3a1d-4531-9859-debeb587a452,масло топлёное,foods.name_similarity,0.3077
+Салат Весна,3,масло растительное,91a0ffab-1b2d-4b34-85b6-0938b8351564,масло горчичное,foods.name_similarity,0.2963
+Салат Весна,3,масло растительное,d3027306-08fa-4e78-be72-45da0dbcb090,масло кунжутное,foods.name_similarity,0.2963
+Салат Весна,3,масло растительное,692a77e1-6876-40e5-bbb1-55ed1205f795,масло рыжиковое,foods.name_similarity,0.2963
+Салат Весна,3,масло растительное,a3cb8eb5-6c82-4aee-8c77-25e80afba531,масло тыквенное,foods.name_similarity,0.2963
+Салат Весна,3,масло растительное,a7d37672-02e6-499c-8023-11985d580cd9,масло маковое,foods.name_similarity,0.2917
+Салат Весна,3,масло растительное,dda2e61c-1f8d-49c2-a874-a659f064700b,масло конопляное,foods.name_similarity,0.2857
+Салат Весна,3,масло растительное,0a3921f4-c3d5-435d-aec8-b19d2be0e3e1,масло кукурузное,foods.name_similarity,0.2857
+Салат Весна,3,масло растительное,168d0fe0-82cd-4392-b711-ef128b9f1d0f,масло соевое,foods.name_similarity,0.2800
+Салат Весна,3,масло растительное,a9166b33-adf9-4362-9e69-a6114bf104a3,масло гхи топлёное,foods.name_similarity,0.2667
+Салат Весна,3,масло растительное,f8c41126-6bc0-4f1d-8127-df11d486438e,масло подсолнечное,foods.name_similarity,0.2667
+Салат Весна,3,масло растительное,dbbf1dbb-3ef4-434b-8b7c-acd8ead490af,масло сливочное 60,foods.name_similarity,0.2667
+Салат Весна,3,масло растительное,84eb6aaa-cbdf-468f-a2b1-9575c7792b7d,масло сливочное 67,foods.name_similarity,0.2667
+Салат Весна,3,масло растительное,71a25be7-a6d8-439e-8d0c-de6890faa38f,масло сливочное 82,foods.name_similarity,0.2667
+Салат Весна,3,масло растительное,179c9f5d-515e-4487-bd02-8b23b5bc17b6,масло ореховое,foods.name_similarity,0.2593
+Салат Весна,3,масло растительное,ecc9e60e-981e-42d4-9786-1b3f87e7e6e0,масло кокосовое,foods.name_similarity,0.2500
+Салат Весна,3,масло растительное,b8a0553f-d4fb-4dc7-aba7-8a4583aa61c5,масло оливковое,foods.name_similarity,0.2500
+Салат Весна,3,масло растительное,728f221c-39c8-4472-a5ac-9d10d9c0f739,масло пальмовое,foods.name_similarity,0.2500
+Салат Весна,3,масло растительное,37e779ad-2ef7-4753-9f0a-ef32c6548f02,масло сливочное 72.5,foods.name_similarity,0.2500
+Салат Весна,3,масло растительное,c3aacaac-b257-4c66-a721-d14091ed6949,масло сливочное 82.5,foods.name_similarity,0.2500
+Салат Весна,3,масло растительное,3b25ca6d-1358-4fdc-a07b-cbe21d25c4dc,масло ши (карите),foods.name_similarity,0.2500
+Салат Весна,3,масло растительное,9deab641-d804-4086-9f5c-b0643a148a2f,масло растительное рафинированное,foods.name_word_similarity,0.6333
+Салат Весна,3,масло растительное,e983bbc0-5386-481a-887f-d9bbddcc64b7,масло расторопши,foods.name_word_similarity,0.5882
+Салат Весна,3,масло растительное,e78a84c3-b40f-40c6-964a-b5baf9d4ffb0,масло растительное нерафинированное,foods.name_word_similarity,0.5588
+Салат Весна,3,масло растительное,989f1485-2faa-4a66-956c-25fcb90881b7,масло рапсовое,foods.name_word_similarity,0.5333
+Салат Весна,3,масло растительное,c93002f9-5ebd-4f8d-b7e5-303f24d7cc57,Сельдь в растительном масле,foods.name_word_similarity,0.5172
+Салат Весна,3,масло растительное,e4dbde4f-70b6-4542-b916-0e52b82d5015,Тунец в растительном масле,foods.name_word_similarity,0.5172
+Салат Весна,3,масло растительное,46b1ad14-a8b8-4f64-991c-0590521a61a7,масло какао,foods.name_word_similarity,0.5000
+Салат Весна,3,масло растительное,a7d37672-02e6-499c-8023-11985d580cd9,масло маковое,foods.name_word_similarity,0.5000
+Салат Весна,3,масло растительное,d0fb82a3-e1dd-4884-9566-83479df04a71,масло репейное,foods.name_word_similarity,0.4667
+Салат Весна,3,масло растительное,f4cbdf1c-b0a0-430b-847d-ce272883ce3b,масло канолы,foods.name_word_similarity,0.4615
+Салат Весна,3,масло растительное,168d0fe0-82cd-4392-b711-ef128b9f1d0f,масло соевое,foods.name_word_similarity,0.4615
+Салат Весна,3,масло растительное,692a77e1-6876-40e5-bbb1-55ed1205f795,масло рыжиковое,foods.name_word_similarity,0.4375
+Салат Весна,3,масло растительное,9a752694-32b3-482a-be30-800426fba50c,масло авокадо,foods.name_word_similarity,0.4286
+Салат Весна,3,масло растительное,9e6e09a4-086f-4aba-8c17-533d46054a17,масло льняное,foods.name_word_similarity,0.4286
+Салат Весна,3,масло растительное,1c7f9636-9f99-4f91-8cfb-47064215b644,масло макадамии,foods.name_word_similarity,0.4286
+Салат Весна,3,масло растительное,c6981341-b28c-4dbf-a3bd-1d4eeea47096,масло овсяное,foods.name_word_similarity,0.4286
+Салат Весна,3,масло растительное,05bfbb02-2702-4550-b88c-c02f7210e0b1,масло амаранта,foods.name_word_similarity,0.4000
+Салат Весна,3,масло растительное,704afe11-6382-411e-8089-e351a313d220,масло лимонное,foods.name_word_similarity,0.4000
+Салат Весна,3,масло растительное,9270652d-69aa-4acb-b551-7ce1ef790eae,масло миндальное,foods.name_word_similarity,0.4000
+Салат Весна,3,масло растительное,179c9f5d-515e-4487-bd02-8b23b5bc17b6,масло ореховое,foods.name_word_similarity,0.4000
+Салат Весна,3,масло растительное,0ffb5c4c-3a1d-4531-9859-debeb587a452,масло топлёное,foods.name_word_similarity,0.4000
+Салат Весна,3,масло растительное,91a0ffab-1b2d-4b34-85b6-0938b8351564,масло горчичное,foods.name_word_similarity,0.3750
+Салат Весна,3,масло растительное,ecc9e60e-981e-42d4-9786-1b3f87e7e6e0,масло кокосовое,foods.name_word_similarity,0.3750
+Салат Весна,3,масло растительное,d3027306-08fa-4e78-be72-45da0dbcb090,масло кунжутное,foods.name_word_similarity,0.3750
+Салат Весна,3,масло растительное,b8a0553f-d4fb-4dc7-aba7-8a4583aa61c5,масло оливковое,foods.name_word_similarity,0.3750
+Салат Весна,3,масло растительное,728f221c-39c8-4472-a5ac-9d10d9c0f739,масло пальмовое,foods.name_word_similarity,0.3750
+Салат Весна,3,масло растительное,a3cb8eb5-6c82-4aee-8c77-25e80afba531,масло тыквенное,foods.name_word_similarity,0.3750
+Салат Весна,3,масло растительное,3b25ca6d-1358-4fdc-a07b-cbe21d25c4dc,масло ши (карите),foods.name_word_similarity,0.3750
+Салат Весна,3,масло растительное,b7af8b5b-eef8-471c-ae08-14a26373a930,масло арахисовое,foods.name_word_similarity,0.3529
+Салат Весна,3,масло растительное,dda2e61c-1f8d-49c2-a874-a659f064700b,масло конопляное,foods.name_word_similarity,0.3529
+Салат Весна,3,масло растительное,0a3921f4-c3d5-435d-aec8-b19d2be0e3e1,масло кукурузное,foods.name_word_similarity,0.3529
+Салат Весна,3,масло растительное,e78a84c3-b40f-40c6-964a-b5baf9d4ffb0,масло растительное нерафинированное,foods.normalized_name_ilike,null
+Салат Весна,3,масло растительное,9deab641-d804-4086-9f5c-b0643a148a2f,масло растительное рафинированное,foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,65122c36-033f-4a23-a9dd-0c9fcdd1eee1,омлет (яйцо куриное),food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,0f496118-8fd5-41ca-9c0c-6985da919a64,пашот (яйцо куриное),food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,a4c7cc95-813d-4c19-b5ad-3882501f8ba0,яйцо гусиное,food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,f4022e2a-9cf3-42c2-8a1c-6c873c866524,яйцо куриное,food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,3966953d-c5e1-4110-83fb-e9f636303112,яйцо куриное белок,food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,0672e57a-3841-45ad-bb2d-76300b18d6ba,яйцо куриное вареное вкрутую,food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,60665203-b88a-4608-8e85-5bbc8e0e7593,яйцо куриное вареное всмятку,food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,0e49beb2-5169-449c-bed4-c646228d4458,яйцо куриное жареное,food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,06c35c1c-f729-42e4-a8d4-4d164d4f696f,яйцо куриное жареное (без масла),food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,65937145-2060-4a38-b872-d87d2ce34a1c,яйцо куриное желток,food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,912e0aae-4c84-44e8-97a9-4a2e9154f352,яйцо перепелиное,food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,a895b4b9-077c-48c4-8292-28cae87b8ed6,яйцо страусиное,food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,56fa985c-c29f-4f26-a5a4-08ef4785a9e7,яйцо утиное,food_aliases.normalized_alias_ilike,null
+Салат Мемоза 2,2,куриного яйца,65122c36-033f-4a23-a9dd-0c9fcdd1eee1,омлет (яйцо куриное),foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,0f496118-8fd5-41ca-9c0c-6985da919a64,пашот (яйцо куриное),foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,a4c7cc95-813d-4c19-b5ad-3882501f8ba0,яйцо гусиное,foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,f4022e2a-9cf3-42c2-8a1c-6c873c866524,яйцо куриное,foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,3966953d-c5e1-4110-83fb-e9f636303112,яйцо куриное белок,foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,0672e57a-3841-45ad-bb2d-76300b18d6ba,яйцо куриное вареное вкрутую,foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,60665203-b88a-4608-8e85-5bbc8e0e7593,яйцо куриное вареное всмятку,foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,0e49beb2-5169-449c-bed4-c646228d4458,яйцо куриное жареное,foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,06c35c1c-f729-42e4-a8d4-4d164d4f696f,яйцо куриное жареное (без масла),foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,65937145-2060-4a38-b872-d87d2ce34a1c,яйцо куриное желток,foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,912e0aae-4c84-44e8-97a9-4a2e9154f352,яйцо перепелиное,foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,a895b4b9-077c-48c4-8292-28cae87b8ed6,яйцо страусиное,foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,56fa985c-c29f-4f26-a5a4-08ef4785a9e7,яйцо утиное,foods.name_ilike,null
+Салат Мемоза 2,2,куриного яйца,f4022e2a-9cf3-42c2-8a1c-6c873c866524,яйцо куриное,foods.name_similarity,1.0000
+Салат Мемоза 2,2,куриного яйца,65122c36-033f-4a23-a9dd-0c9fcdd1eee1,омлет (яйцо куриное),foods.name_similarity,0.6842
+Салат Мемоза 2,2,куриного яйца,0f496118-8fd5-41ca-9c0c-6985da919a64,пашот (яйцо куриное),foods.name_similarity,0.6842
+Салат Мемоза 2,2,куриного яйца,3966953d-c5e1-4110-83fb-e9f636303112,яйцо куриное белок,foods.name_similarity,0.6842
+Салат Мемоза 2,2,куриного яйца,0e49beb2-5169-449c-bed4-c646228d4458,яйцо куриное жареное,foods.name_similarity,0.6842
+Салат Мемоза 2,2,куриного яйца,65937145-2060-4a38-b872-d87d2ce34a1c,яйцо куриное желток,foods.name_similarity,0.6500
+Салат Мемоза 2,2,куриного яйца,f4022e2a-9cf3-42c2-8a1c-6c873c866524,яйцо куриное,foods.name_similarity,0.5000
+Салат Мемоза 2,2,куриного яйца,0672e57a-3841-45ad-bb2d-76300b18d6ba,яйцо куриное вареное вкрутую,foods.name_similarity,0.5000
+Салат Мемоза 2,2,куриного яйца,60665203-b88a-4608-8e85-5bbc8e0e7593,яйцо куриное вареное всмятку,foods.name_similarity,0.5000
+Салат Мемоза 2,2,куриного яйца,56fa985c-c29f-4f26-a5a4-08ef4785a9e7,яйцо утиное,foods.name_similarity,0.4706
+Салат Мемоза 2,2,куриного яйца,06c35c1c-f729-42e4-a8d4-4d164d4f696f,яйцо куриное жареное (без масла),foods.name_similarity,0.4483
+Салат Мемоза 2,2,куриного яйца,27d31b68-0c1c-46ff-9f11-d3e9daf2892b,Куриное филе,foods.name_similarity,0.4444
+Салат Мемоза 2,2,куриного яйца,a4c7cc95-813d-4c19-b5ad-3882501f8ba0,яйцо гусиное,foods.name_similarity,0.4444
+Салат Мемоза 2,2,куриного яйца,56fa985c-c29f-4f26-a5a4-08ef4785a9e7,яйцо утиное,foods.name_similarity,0.4167
+Салат Мемоза 2,2,куриного яйца,0f0c3a47-f0de-46a5-8dac-1a017089e2fd,Куриное сердце,foods.name_similarity,0.4000
+Салат Мемоза 2,2,куриного яйца,a4c7cc95-813d-4c19-b5ad-3882501f8ba0,яйцо гусиное,foods.name_similarity,0.3846
+Салат Мемоза 2,2,куриного яйца,f4022e2a-9cf3-42c2-8a1c-6c873c866524,яйцо куриное,foods.name_similarity,0.3846
+Салат Мемоза 2,2,куриного яйца,a895b4b9-077c-48c4-8292-28cae87b8ed6,яйцо страусиное,foods.name_similarity,0.3810
+Салат Мемоза 2,2,куриного яйца,65122c36-033f-4a23-a9dd-0c9fcdd1eee1,омлет (яйцо куриное),foods.name_similarity,0.3750
+Салат Мемоза 2,2,куриного яйца,0f496118-8fd5-41ca-9c0c-6985da919a64,пашот (яйцо куриное),foods.name_similarity,0.3750
+Салат Мемоза 2,2,куриного яйца,3966953d-c5e1-4110-83fb-e9f636303112,яйцо куриное белок,foods.name_similarity,0.3750
+Салат Мемоза 2,2,куриного яйца,0e49beb2-5169-449c-bed4-c646228d4458,яйцо куриное жареное,foods.name_similarity,0.3750
+Салат Мемоза 2,2,куриного яйца,912e0aae-4c84-44e8-97a9-4a2e9154f352,яйцо перепелиное,foods.name_similarity,0.3636
+Салат Мемоза 2,2,куриного яйца,65937145-2060-4a38-b872-d87d2ce34a1c,яйцо куриное желток,foods.name_similarity,0.3600
+Салат Мемоза 2,2,куриного яйца,00ff382d-2f8e-4a9a-b549-7b90089293d5,Куриное филе вареное,foods.name_similarity,0.3333
+Салат Мемоза 2,2,куриного яйца,8bb77bc9-f86c-4c81-bb62-b753859786a2,Курица,foods.name_similarity,0.3125
+Салат Мемоза 2,2,куриного яйца,a895b4b9-077c-48c4-8292-28cae87b8ed6,яйцо страусиное,foods.name_similarity,0.3125
+Салат Мемоза 2,2,куриного яйца,e0cfcddc-8765-480d-b19f-c294478a6773,Куриное сердце вареное,foods.name_similarity,0.3077
+Салат Мемоза 2,2,куриного яйца,912e0aae-4c84-44e8-97a9-4a2e9154f352,яйцо перепелиное,foods.name_similarity,0.2941
+Салат Мемоза 2,2,куриного яйца,0672e57a-3841-45ad-bb2d-76300b18d6ba,яйцо куриное вареное вкрутую,foods.name_similarity,0.2903
+Салат Мемоза 2,2,куриного яйца,60665203-b88a-4608-8e85-5bbc8e0e7593,яйцо куриное вареное всмятку,foods.name_similarity,0.2903
+Салат Мемоза 2,2,куриного яйца,27d31b68-0c1c-46ff-9f11-d3e9daf2892b,Куриное филе,foods.name_similarity,0.2857
+Салат Мемоза 2,2,куриного яйца,06c35c1c-f729-42e4-a8d4-4d164d4f696f,яйцо куриное жареное (без масла),foods.name_similarity,0.2647
+Салат Мемоза 2,2,куриного яйца,65122c36-033f-4a23-a9dd-0c9fcdd1eee1,омлет (яйцо куриное),foods.name_similarity,0.2632
+Салат Мемоза 2,2,куриного яйца,0f496118-8fd5-41ca-9c0c-6985da919a64,пашот (яйцо куриное),foods.name_similarity,0.2632
+Салат Мемоза 2,2,куриного яйца,3966953d-c5e1-4110-83fb-e9f636303112,яйцо куриное белок,foods.name_similarity,0.2632
+Салат Мемоза 2,2,куриного яйца,0e49beb2-5169-449c-bed4-c646228d4458,яйцо куриное жареное,foods.name_similarity,0.2632
+Салат Мемоза 2,2,куриного яйца,0f0c3a47-f0de-46a5-8dac-1a017089e2fd,Куриное сердце,foods.name_similarity,0.2609
+Салат Мемоза 2,2,куриного яйца,1ecd94c0-c9ed-494f-a470-cd4e12371829,Бычьи яйца,foods.name_similarity,0.2500
+Салат Мемоза 2,2,куриного яйца,8bb77bc9-f86c-4c81-bb62-b753859786a2,Курица,foods.name_similarity,0.2500
+Салат Мемоза 2,2,куриного яйца,65937145-2060-4a38-b872-d87d2ce34a1c,яйцо куриное желток,foods.name_similarity,0.2500
+Салат Мемоза 2,2,куриного яйца,f4022e2a-9cf3-42c2-8a1c-6c873c866524,яйцо куриное,foods.name_word_similarity,1.0000
+Салат Мемоза 2,2,куриного яйца,65122c36-033f-4a23-a9dd-0c9fcdd1eee1,омлет (яйцо куриное),foods.name_word_similarity,0.6842
+Салат Мемоза 2,2,куриного яйца,0f496118-8fd5-41ca-9c0c-6985da919a64,пашот (яйцо куриное),foods.name_word_similarity,0.6842
+Салат Мемоза 2,2,куриного яйца,3966953d-c5e1-4110-83fb-e9f636303112,яйцо куриное белок,foods.name_word_similarity,0.6842
+Салат Мемоза 2,2,куриного яйца,0e49beb2-5169-449c-bed4-c646228d4458,яйцо куриное жареное,foods.name_word_similarity,0.6842
+Салат Мемоза 2,2,куриного яйца,65937145-2060-4a38-b872-d87d2ce34a1c,яйцо куриное желток,foods.name_word_similarity,0.6500
+Салат Мемоза 2,2,куриного яйца,27d31b68-0c1c-46ff-9f11-d3e9daf2892b,Куриное филе,foods.name_word_similarity,0.6154
+Салат Мемоза 2,2,куриного яйца,8bb77bc9-f86c-4c81-bb62-b753859786a2,Курица,foods.name_word_similarity,0.5714
+Салат Мемоза 2,2,куриного яйца,f4022e2a-9cf3-42c2-8a1c-6c873c866524,яйцо куриное,foods.name_word_similarity,0.5625
+Салат Мемоза 2,2,куриного яйца,0f0c3a47-f0de-46a5-8dac-1a017089e2fd,Куриное сердце,foods.name_word_similarity,0.5333
+Салат Мемоза 2,2,куриного яйца,0672e57a-3841-45ad-bb2d-76300b18d6ba,яйцо куриное вареное вкрутую,foods.name_word_similarity,0.5000
+Салат Мемоза 2,2,куриного яйца,60665203-b88a-4608-8e85-5bbc8e0e7593,яйцо куриное вареное всмятку,foods.name_word_similarity,0.5000
+Салат Мемоза 2,2,куриного яйца,56fa985c-c29f-4f26-a5a4-08ef4785a9e7,яйцо утиное,foods.name_word_similarity,0.4706
+Салат Мемоза 2,2,куриного яйца,27d31b68-0c1c-46ff-9f11-d3e9daf2892b,Куриное филе,foods.name_word_similarity,0.4615
+Салат Мемоза 2,2,куриного яйца,1ecd94c0-c9ed-494f-a470-cd4e12371829,Бычьи яйца,foods.name_word_similarity,0.4545
+Салат Мемоза 2,2,куриного яйца,06c35c1c-f729-42e4-a8d4-4d164d4f696f,яйцо куриное жареное (без масла),foods.name_word_similarity,0.4483
+Салат Мемоза 2,2,куриного яйца,a4c7cc95-813d-4c19-b5ad-3882501f8ba0,яйцо гусиное,foods.name_word_similarity,0.4444
+Салат Мемоза 2,2,куриного яйца,00ff382d-2f8e-4a9a-b549-7b90089293d5,Куриное филе вареное,foods.name_word_similarity,0.4211
+Салат Мемоза 2,2,куриного яйца,56fa985c-c29f-4f26-a5a4-08ef4785a9e7,яйцо утиное,foods.name_word_similarity,0.4167
+Салат Мемоза 2,2,куриного яйца,65122c36-033f-4a23-a9dd-0c9fcdd1eee1,омлет (яйцо куриное),foods.name_word_similarity,0.4091
+Салат Мемоза 2,2,куриного яйца,0f496118-8fd5-41ca-9c0c-6985da919a64,пашот (яйцо куриное),foods.name_word_similarity,0.4091
+Салат Мемоза 2,2,куриного яйца,3966953d-c5e1-4110-83fb-e9f636303112,яйцо куриное белок,foods.name_word_similarity,0.4091
+Салат Мемоза 2,2,куриного яйца,0e49beb2-5169-449c-bed4-c646228d4458,яйцо куриное жареное,foods.name_word_similarity,0.4091
+Салат Мемоза 2,2,куриного яйца,0f0c3a47-f0de-46a5-8dac-1a017089e2fd,Куриное сердце,foods.name_word_similarity,0.4000
+Салат Мемоза 2,2,куриного яйца,65937145-2060-4a38-b872-d87d2ce34a1c,яйцо куриное желток,foods.name_word_similarity,0.3913
+Салат Мемоза 2,2,куриного яйца,18d4f77b-ff43-4705-a7ac-185ea08d8562,Куриный фарш,foods.name_word_similarity,0.3846
+Салат Мемоза 2,2,куриного яйца,a4c7cc95-813d-4c19-b5ad-3882501f8ba0,яйцо гусиное,foods.name_word_similarity,0.3846
+Салат Мемоза 2,2,куриного яйца,f4022e2a-9cf3-42c2-8a1c-6c873c866524,яйцо куриное,foods.name_word_similarity,0.3846
+Салат Мемоза 2,2,куриного яйца,e0cfcddc-8765-480d-b19f-c294478a6773,Куриное сердце вареное,foods.name_word_similarity,0.3810
+Салат Мемоза 2,2,куриного яйца,a895b4b9-077c-48c4-8292-28cae87b8ed6,яйцо страусиное,foods.name_word_similarity,0.3810
+Салат Мемоза 2,2,куриного яйца,912e0aae-4c84-44e8-97a9-4a2e9154f352,яйцо перепелиное,foods.name_word_similarity,0.3636
+Салат Мемоза 2,2,куриного яйца,5c99429d-87dd-4dcc-91c2-cba95d2e2bfc,Куриные бедра,foods.name_word_similarity,0.3571
+Салат Мемоза 2,2,куриного яйца,566a7010-1701-483e-9ef9-23053a1094aa,Куриные шейки,foods.name_word_similarity,0.3571
+Салат Мемоза 2,2,куриного яйца,65122c36-033f-4a23-a9dd-0c9fcdd1eee1,омлет (яйцо куриное),foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,0f496118-8fd5-41ca-9c0c-6985da919a64,пашот (яйцо куриное),foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,a4c7cc95-813d-4c19-b5ad-3882501f8ba0,яйцо гусиное,foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,f4022e2a-9cf3-42c2-8a1c-6c873c866524,яйцо куриное,foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,3966953d-c5e1-4110-83fb-e9f636303112,яйцо куриное белок,foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,0672e57a-3841-45ad-bb2d-76300b18d6ba,яйцо куриное вареное вкрутую,foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,60665203-b88a-4608-8e85-5bbc8e0e7593,яйцо куриное вареное всмятку,foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,0e49beb2-5169-449c-bed4-c646228d4458,яйцо куриное жареное,foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,06c35c1c-f729-42e4-a8d4-4d164d4f696f,яйцо куриное жареное (без масла),foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,65937145-2060-4a38-b872-d87d2ce34a1c,яйцо куриное желток,foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,912e0aae-4c84-44e8-97a9-4a2e9154f352,яйцо перепелиное,foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,a895b4b9-077c-48c4-8292-28cae87b8ed6,яйцо страусиное,foods.normalized_name_ilike,null
+Салат Мемоза 2,2,куриного яйца,56fa985c-c29f-4f26-a5a4-08ef4785a9e7,яйцо утиное,foods.normalized_name_ilike,null
+Салат Оливье,5,% сметана,a6d41004-fe33-46ce-98db-4e9d30a7746e,сметана 10,food_aliases.normalized_alias_ilike,null
+Салат Оливье,5,% сметана,947d23e3-368f-4d40-8989-c2c54e92d0f7,сметана 12,food_aliases.normalized_alias_ilike,null
+Салат Оливье,5,% сметана,33a004e7-9710-444e-aea9-2db390578f1f,сметана 15,food_aliases.normalized_alias_ilike,null
+Салат Оливье,5,% сметана,99d17981-400f-4085-8eea-2ca01fcff1de,сметана 18,food_aliases.normalized_alias_ilike,null
+Салат Оливье,5,% сметана,f3f41b69-8a0c-4276-b9d4-257deccaeb40,сметана 20,food_aliases.normalized_alias_ilike,null
+Салат Оливье,5,% сметана,66d951b0-9625-4484-9575-d7423cb6ac4e,сметана 25,food_aliases.normalized_alias_ilike,null
+Салат Оливье,5,% сметана,d3acb154-cc3f-4a14-beef-ada547a13c2f,сметана 30,food_aliases.normalized_alias_ilike,null
+Салат Оливье,5,% сметана,b7f5dbe6-ce47-40cf-be2a-8ddfdc9ca6df,сметана 40,food_aliases.normalized_alias_ilike,null
+Салат Оливье,5,% сметана,a6d41004-fe33-46ce-98db-4e9d30a7746e,сметана 10,foods.name_ilike,null
+Салат Оливье,5,% сметана,947d23e3-368f-4d40-8989-c2c54e92d0f7,сметана 12,foods.name_ilike,null
+Салат Оливье,5,% сметана,33a004e7-9710-444e-aea9-2db390578f1f,сметана 15,foods.name_ilike,null
+Салат Оливье,5,% сметана,99d17981-400f-4085-8eea-2ca01fcff1de,сметана 18,foods.name_ilike,null
+Салат Оливье,5,% сметана,f3f41b69-8a0c-4276-b9d4-257deccaeb40,сметана 20,foods.name_ilike,null
+Салат Оливье,5,% сметана,66d951b0-9625-4484-9575-d7423cb6ac4e,сметана 25,foods.name_ilike,null
+Салат Оливье,5,% сметана,d3acb154-cc3f-4a14-beef-ada547a13c2f,сметана 30,foods.name_ilike,null
+Салат Оливье,5,% сметана,b7f5dbe6-ce47-40cf-be2a-8ddfdc9ca6df,сметана 40,foods.name_ilike,null
+Салат Оливье,5,% сметана,a6d41004-fe33-46ce-98db-4e9d30a7746e,сметана 10,foods.name_similarity,0.7273
+Салат Оливье,5,% сметана,947d23e3-368f-4d40-8989-c2c54e92d0f7,сметана 12,foods.name_similarity,0.7273
+Салат Оливье,5,% сметана,33a004e7-9710-444e-aea9-2db390578f1f,сметана 15,foods.name_similarity,0.7273
+Салат Оливье,5,% сметана,99d17981-400f-4085-8eea-2ca01fcff1de,сметана 18,foods.name_similarity,0.7273
+Салат Оливье,5,% сметана,f3f41b69-8a0c-4276-b9d4-257deccaeb40,сметана 20,foods.name_similarity,0.7273
+Салат Оливье,5,% сметана,66d951b0-9625-4484-9575-d7423cb6ac4e,сметана 25,foods.name_similarity,0.7273
+Салат Оливье,5,% сметана,d3acb154-cc3f-4a14-beef-ada547a13c2f,сметана 30,foods.name_similarity,0.7273
+Салат Оливье,5,% сметана,b7f5dbe6-ce47-40cf-be2a-8ddfdc9ca6df,сметана 40,foods.name_similarity,0.7273
+Салат Оливье,5,% сметана,7674f413-4e05-4f08-ba01-7674344338aa,Сельдь в сметане,foods.name_similarity,0.3333
+Салат Оливье,5,% сметана,a6d41004-fe33-46ce-98db-4e9d30a7746e,сметана 10,foods.name_word_similarity,0.7273
+Салат Оливье,5,% сметана,947d23e3-368f-4d40-8989-c2c54e92d0f7,сметана 12,foods.name_word_similarity,0.7273
+Салат Оливье,5,% сметана,33a004e7-9710-444e-aea9-2db390578f1f,сметана 15,foods.name_word_similarity,0.7273
+Салат Оливье,5,% сметана,99d17981-400f-4085-8eea-2ca01fcff1de,сметана 18,foods.name_word_similarity,0.7273
+Салат Оливье,5,% сметана,f3f41b69-8a0c-4276-b9d4-257deccaeb40,сметана 20,foods.name_word_similarity,0.7273
+Салат Оливье,5,% сметана,66d951b0-9625-4484-9575-d7423cb6ac4e,сметана 25,foods.name_word_similarity,0.7273
+Салат Оливье,5,% сметана,d3acb154-cc3f-4a14-beef-ada547a13c2f,сметана 30,foods.name_word_similarity,0.7273
+Салат Оливье,5,% сметана,b7f5dbe6-ce47-40cf-be2a-8ddfdc9ca6df,сметана 40,foods.name_word_similarity,0.7273
+Салат Оливье,5,% сметана,7674f413-4e05-4f08-ba01-7674344338aa,Сельдь в сметане,foods.name_word_similarity,0.3750
+Салат Оливье,5,% сметана,a6d41004-fe33-46ce-98db-4e9d30a7746e,сметана 10,foods.normalized_name_ilike,null
+Салат Оливье,5,% сметана,947d23e3-368f-4d40-8989-c2c54e92d0f7,сметана 12,foods.normalized_name_ilike,null
+Салат Оливье,5,% сметана,33a004e7-9710-444e-aea9-2db390578f1f,сметана 15,foods.normalized_name_ilike,null
+Салат Оливье,5,% сметана,99d17981-400f-4085-8eea-2ca01fcff1de,сметана 18,foods.normalized_name_ilike,null
+Салат Оливье,5,% сметана,f3f41b69-8a0c-4276-b9d4-257deccaeb40,сметана 20,foods.normalized_name_ilike,null
+Салат Оливье,5,% сметана,66d951b0-9625-4484-9575-d7423cb6ac4e,сметана 25,foods.normalized_name_ilike,null
+Салат Оливье,5,% сметана,d3acb154-cc3f-4a14-beef-ada547a13c2f,сметана 30,foods.normalized_name_ilike,null
+Салат Оливье,5,% сметана,b7f5dbe6-ce47-40cf-be2a-8ddfdc9ca6df,сметана 40,foods.normalized_name_ilike,null

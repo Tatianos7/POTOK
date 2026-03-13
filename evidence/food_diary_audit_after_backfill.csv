@@ -1,0 +1,75 @@
+entry_id,user_id,date,product_name,distinct_food_matches,matched_food_ids,matched_food_names,matched_sources,audit_status
+64fc90e7-5f4e-4d88-9f93-810eaa30081d,68878a0f-73db-48b7-9452-89b22a89d3de,2026-03-03,сметана 40,0,null,null,null,already_linked
+405661a0-46d7-432b-89ef-3953958e1725,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-28,молоко 1.5,0,null,null,null,already_linked
+e10085a9-abb6-4686-b311-dde93292d2a3,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-27,молоко 1.5,0,null,null,null,already_linked
+36fe4877-fd21-4019-8e91-2854db17c234,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-27,яйцо куриное жареное,0,null,null,null,already_linked
+8a728d14-8c06-486c-b6d3-b8a0264eb7fc,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-26,сметана 12,0,null,null,null,already_linked
+6cdded63-19fb-49cf-9012-600100856bc2,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-18,яйцо куриное жареное (без масла),0,null,null,null,already_linked
+6f48a476-6c2d-443f-9b72-661c663935d5,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-17,яйцо куриное жареное (без масла),0,null,null,null,already_linked
+ea2b9f5c-1ec3-455a-b342-ea5fceafc0c1,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-10,масло горчичное,0,null,null,null,already_linked
+3a383c48-bea6-4c64-9528-e5ce211ffa4d,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-09,масло горчичное,0,null,null,null,already_linked
+843af631-f761-4fd9-af51-6bb372558f03,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-09,молоко 0.7,0,null,null,null,already_linked
+6a34fa89-dd12-4df0-8321-5b0716e4e048,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-09,сметана 10,0,null,null,null,already_linked
+c84764e4-74ca-4978-b1bf-057d71bb0047,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-09,сметана 10,0,null,null,null,already_linked
+2bec7fd3-e413-4b73-9b03-cb19ae957554,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-06,сметана 12,0,null,null,null,already_linked
+e49090dc-5420-4568-aa30-f92367bc6420,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-06,сметана 12,0,null,null,null,already_linked
+f386eeef-72a5-470f-b5ca-e5206e2700cf,68878a0f-73db-48b7-9452-89b22a89d3de,2026-02-06,сметана 12,0,null,null,null,already_linked
+993a14dd-4841-4fd2-8c9a-821e480d7f47,286bd239-d3f3-434a-96ce-46d0b1fe2c70,2026-01-20,яичница глазунья,0,null,null,null,already_linked
+39490196-8526-4698-97ab-c2080e50b861,6d693735-7835-4316-bc68-75676b7a6676,2025-12-27,Говядина постная,0,null,null,null,already_linked
+f3d75406-896e-4a0d-acd0-7e80f1d82616,6d693735-7835-4316-bc68-75676b7a6676,2025-12-26,Говядина постная,0,null,null,null,already_linked
+6ec0b0c8-88e3-45d5-84b5-92fa19a0eedd,6d693735-7835-4316-bc68-75676b7a6676,2025-12-26,Яйцо куриное,0,null,null,null,already_linked
+3962be38-8f39-47ac-8688-c835209b96e3,6d6a636d-7066-4743-876e-733139786f69,2025-12-22,Яйцо куриное,0,null,null,null,already_linked
+0d8b43ea-33b0-4415-92a7-6ed110d273ce,6d6a636d-7066-4743-876e-733139786f69,2025-12-19,Яйцо куриное,0,null,null,null,already_linked
+811e3548-1650-4f7b-889c-b9f4679ce52d,6d6a636d-7066-4743-876e-733139786f69,2025-12-19,Яйцо куриное,0,null,null,null,already_linked
+7018c364-ea4f-4c0d-8b28-44108a83f1b7,6d6b6768-6630-4673-9536-6f70746d7a64,2026-01-16,Яблоко,0,null,null,null,unmatched
+40d5ccf2-a9db-4e79-a6b3-22f7a79d4779,6d693735-7835-4316-bc68-75676b7a6676,2026-01-07,Рецепт,0,null,null,null,unmatched
+72fd3764-bb7e-41b2-ad93-36f659dd9eaa,6d693735-7835-4316-bc68-75676b7a6676,2026-01-07,Рецепт,0,null,null,null,unmatched
+db186ffd-d4ea-4c9a-a8b2-9ccb95e607c9,6d693735-7835-4316-bc68-75676b7a6676,2026-01-07,Салат Мемоза 2,0,null,null,null,unmatched
+54918ffd-649b-4204-b95b-27de4bb1bbd3,6d693735-7835-4316-bc68-75676b7a6676,2026-01-07,Салат обычный,0,null,null,null,unmatched
+6a4518e2-6c15-4d25-92da-49991c2f77d3,6d693735-7835-4316-bc68-75676b7a6676,2026-01-07,Салат оливье,0,null,null,null,unmatched
+9e274832-1842-4bd0-aaaa-f747dccee72c,6d693735-7835-4316-bc68-75676b7a6676,2026-01-06,Салат оливье,0,null,null,null,unmatched
+6566d5dc-1cfb-4622-9d8a-41c604cf40ec,6d693735-7835-4316-bc68-75676b7a6676,2026-01-04,Рыба белая,0,null,null,null,unmatched
+bd369337-3456-4375-bf6d-77faa6c178c0,6d693735-7835-4316-bc68-75676b7a6676,2026-01-04,Рыба белая,0,null,null,null,unmatched
+f27979fa-4f64-466b-a848-9679238a186d,6d693735-7835-4316-bc68-75676b7a6676,2026-01-04,Рыба белая,0,null,null,null,unmatched
+68d8964b-d89b-42a5-8838-7b107ea11efd,6d6a7772-326d-4677-b332-346a6a646c61,2026-01-03,Йогурт натуральный,0,null,null,null,unmatched
+d1e2aaaa-7cc1-4ed2-b90e-206a016490b5,6d693735-7835-4316-bc68-75676b7a6676,2026-01-03,Кабачок,0,null,null,null,unmatched
+435ac034-39ca-4ce1-a27e-28f721f53c06,6d6a7772-326d-4677-b332-346a6a646c61,2026-01-03,Помидор,0,null,null,null,unmatched
+c6f55afc-98d8-4dfe-9854-629a8a5c09fb,6d693735-7835-4316-bc68-75676b7a6676,2026-01-03,Рыба белая,0,null,null,null,unmatched
+c9dcb094-5ca0-48f6-9f50-b341bdad5295,6d6a7772-326d-4677-b332-346a6a646c61,2026-01-02,Йогурт натуральный,0,null,null,null,unmatched
+6897b85b-dea2-4617-8113-7f9217f989f5,6d6a7772-326d-4677-b332-346a6a646c61,2026-01-02,Огурец,0,null,null,null,unmatched
+e5366677-d7cf-41ac-ab72-2e5c9bd7ccc1,6d6a7772-326d-4677-b332-346a6a646c61,2026-01-02,Помидор,0,null,null,null,unmatched
+d5cf624d-2fb9-463c-bc07-bc4c1f84adeb,6d693735-7835-4316-bc68-75676b7a6676,2026-01-02,Рецепт,0,null,null,null,unmatched
+4c01e41c-6b2f-4995-b2f7-3591238b4c6b,6d6a7772-326d-4677-b332-346a6a646c61,2026-01-02,Салат Весна,0,null,null,null,unmatched
+62158f80-8f9c-4ba1-875c-21bff3eab418,6d693735-7835-4316-bc68-75676b7a6676,2026-01-02,Салат оливье,0,null,null,null,unmatched
+b09f4707-af19-4e89-a70e-639c5d8830c5,6d693735-7835-4316-bc68-75676b7a6676,2026-01-02,творог,0,null,null,null,unmatched
+cf645677-80c0-47cb-9472-bdeaf564ede8,6d6a7772-326d-4677-b332-346a6a646c61,2026-01-02,Творог 5%,0,null,null,null,unmatched
+a8bb8214-f232-42bf-b60f-73a8ca0830c7,6d693735-7835-4316-bc68-75676b7a6676,2026-01-01,Салат Мемоза 2,0,null,null,null,unmatched
+118f38c2-df06-48d9-bfd4-b2b7bc0e56eb,6d693735-7835-4316-bc68-75676b7a6676,2026-01-01,Салат оливье,0,null,null,null,unmatched
+fc8e0d96-7e49-47e2-b178-d65097a66969,6d693735-7835-4316-bc68-75676b7a6676,2026-01-01,сыр,0,null,null,null,unmatched
+7a0dd996-16e5-454c-b32d-f025e38b1fcf,6d693735-7835-4316-bc68-75676b7a6676,2026-01-01,творог,0,null,null,null,unmatched
+ba0cd5b7-ef36-4198-98ee-7b252a74d72a,6d693735-7835-4316-bc68-75676b7a6676,2025-12-31,Салат оливье,0,null,null,null,unmatched
+4f79d01b-916c-4284-9957-7d98645ce205,6d693735-7835-4316-bc68-75676b7a6676,2025-12-31,Салат Оливье,0,null,null,null,unmatched
+0f6df236-f312-40a3-8254-fb07a71e83d1,6d693735-7835-4316-bc68-75676b7a6676,2025-12-31,сыр,0,null,null,null,unmatched
+d2d52104-8108-43f5-88d4-c1abac9f8d92,6d693735-7835-4316-bc68-75676b7a6676,2025-12-27,Брокколи,0,null,null,null,unmatched
+8c48ed88-e62a-4548-99a0-bb59ee7ba934,6d693735-7835-4316-bc68-75676b7a6676,2025-12-27,Куриная грудка (сырая),0,null,null,null,unmatched
+651dcf84-9559-43fb-99e9-b24a72830fa8,6d693735-7835-4316-bc68-75676b7a6676,2025-12-27,Масло сливочное,0,null,null,null,unmatched
+32e53231-1fd0-45dc-a993-bba0d6629c3c,6d693735-7835-4316-bc68-75676b7a6676,2025-12-26,Куриная грудка (сырая),0,null,null,null,unmatched
+03335350-572f-4edc-a5c0-c5cead88b32d,6d6a636d-7066-4743-876e-733139786f69,2025-12-26,Лосось,0,null,null,null,unmatched
+90d6ed1e-9174-4792-ad19-b174e6417016,6d693735-7835-4316-bc68-75676b7a6676,2025-12-25,Брокколи,0,null,null,null,unmatched
+8a578e0c-b2d3-4c75-af80-387716c07dfa,6d693735-7835-4316-bc68-75676b7a6676,2025-12-25,Куриная грудка (сырая),0,null,null,null,unmatched
+59c423b7-b08c-4258-9da4-192fe3aac0f8,6d693735-7835-4316-bc68-75676b7a6676,2025-12-25,Масло сливочное,0,null,null,null,unmatched
+cb859c96-a29c-4b83-97a6-831f07513d82,6d693735-7835-4316-bc68-75676b7a6676,2025-12-25,Масло сливочное,0,null,null,null,unmatched
+8cddfa62-023b-4ca3-b569-0a0c81f359fd,6d693735-7835-4316-bc68-75676b7a6676,2025-12-24,Брокколи,0,null,null,null,unmatched
+d2e2ee48-0f4c-474a-85cb-99260a2ff709,6d693735-7835-4316-bc68-75676b7a6676,2025-12-24,Брокколи,0,null,null,null,unmatched
+666f1bdf-0afc-45b7-916c-c6a3f8e07c4a,6d693735-7835-4316-bc68-75676b7a6676,2025-12-24,Масло сливочное,0,null,null,null,unmatched
+e60c7a51-6815-414e-9557-54c71b8af921,6d693735-7835-4316-bc68-75676b7a6676,2025-12-24,Масло сливочное,0,null,null,null,unmatched
+31994090-9cd9-4f1a-8788-ed2607a46f5b,6d693735-7835-4316-bc68-75676b7a6676,2025-12-23,Брокколи,0,null,null,null,unmatched
+2a06d3fe-5a80-4ad7-98ca-4f181ac898f5,6d693735-7835-4316-bc68-75676b7a6676,2025-12-23,Куриная грудка (сырая),0,null,null,null,unmatched
+163a3e09-d9c8-4cf7-9573-d64e7e3923be,6d6a636d-7066-4743-876e-733139786f69,2025-12-22,Брокколи,0,null,null,null,unmatched
+2c1a49e9-e3ab-41cc-86c1-8ab2b7f58768,6d6a636d-7066-4743-876e-733139786f69,2025-12-22,Лосось,0,null,null,null,unmatched
+3cd70604-864c-42c7-b72a-3f6cd39b48b3,6d6a636d-7066-4743-876e-733139786f69,2025-12-22,Лосось,0,null,null,null,unmatched
+a4cdb036-c0aa-40cd-be43-41ae8d9710dc,6d693735-7835-4316-bc68-75676b7a6676,2025-12-19,Брокколи,0,null,null,null,unmatched
+dae5f10d-acd7-4a8f-98f9-4b6889917594,6d6a636d-7066-4743-876e-733139786f69,2025-12-19,Брокколи,0,null,null,null,unmatched
+f3993771-7544-4f11-93d8-dd12d4e865cf,6d6a636d-7066-4743-876e-733139786f69,2025-12-19,Брокколи,0,null,null,null,unmatched
+99a23b4d-5777-4653-8a39-1f83363a355b,6d693735-7835-4316-bc68-75676b7a6676,2025-12-19,Масло сливочное,0,null,null,null,unmatched
+71dba137-8f77-4c8d-a377-63c66a22e49e,6d693735-7835-4316-bc68-75676b7a6676,2025-12-19,Салат обычный,0,null,null,null,unmatched
