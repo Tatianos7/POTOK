@@ -1,0 +1,6 @@
+line,recipe_ref,ingredient_name,food_id,amount_g,status,reason
+"2","dry-run:Омлет с творогом","Творог домашний (из молока 1%)","bc03e5c8-e00a-4106-83b9-4b3c247c7d11","100","ok","dry_run_validated"
+"3","dry-run:Омлет с творогом","Яйца куриные (2–3 шт)","f4022e2a-9cf3-42c2-8a1c-6c873c866524","150","ok","dry_run_validated"
+"4","dry-run:Конвертики творожные","Творог домашний (из молока 1%)","bc03e5c8-e00a-4106-83b9-4b3c247c7d11","200","ok","dry_run_validated"
+"5","dry-run:Конвертики творожные","Яйцо куриное","f4022e2a-9cf3-42c2-8a1c-6c873c866524","60","ok","dry_run_validated"
+"6","dry-run:Конвертики творожные","Сыр Эмменталь","9e7cf54a-8460-4315-8957-c1faa28a837d","60","ok","dry_run_validated"

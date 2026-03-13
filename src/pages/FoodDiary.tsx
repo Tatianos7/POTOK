@@ -654,6 +654,17 @@ const FoodDiary = () => {
     return `${selectedDate}:${mealType}:${foodId}`;
   };
 
+  const resolveCanonicalFoodId = (entry: MealEntry): string | null => {
+    const isValidUUID = (value?: string | null): boolean =>
+      Boolean(value) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value));
+
+    if (isValidUUID(entry.canonicalFoodId)) return entry.canonicalFoodId ?? null;
+    if (isValidUUID(entry.food?.canonical_food_id ?? null)) return entry.food?.canonical_food_id ?? null;
+    if (isValidUUID(entry.foodId)) return entry.foodId;
+    if (isValidUUID(entry.food?.id ?? null)) return entry.food?.id ?? null;
+    return null;
+  };
+
   // Нормализация числовых полей записи, чтобы вес/КБЖУ сразу были числами
   const normalizeEntry = (entry: MealEntry): MealEntry => ({
     ...entry,
@@ -667,6 +678,7 @@ const FoodDiary = () => {
     displayUnit: entry.displayUnit || 'г',
     displayAmount: Number(entry.displayAmount ?? entry.weight) || 0,
     idempotencyKey: entry.idempotencyKey,
+    canonicalFoodId: resolveCanonicalFoodId(entry),
   });
 
   const handleUpdateEntry = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', updatedEntry: MealEntry) => {

@@ -1,0 +1,7 @@
+schema_name,function_name,identity_args,configured_search_path
+public,get_entitlements,p_user_id uuid,"public, pg_temp"
+public,get_paywall_state,"p_feature text, p_user_id uuid","public, pg_temp"
+public,recompute_food_entries_for_food_ids,food_ids uuid[],"public, pg_temp"
+public,restore_purchase,"p_user_id uuid, p_provider text, p_receipt text, p_idempotency_key text","public, pg_temp"
+public,rls_auto_enable,,"public, pg_temp"
+public,start_purchase,"p_user_id uuid, p_provider text, p_plan text, p_idempotency_key text","public, pg_temp"

@@ -1,0 +1,7 @@
+line,recipe_ref,ingredient_name,food_id,amount_g,status,reason
+"2","Омлет с творогом","Творог","REPLACE_WITH_FOOD_ID","100","skipped","invalid_food_id_uuid"
+"3","Омлет с творогом","Яйца куриные (2–3 шт)","REPLACE_WITH_FOOD_ID","150","skipped","invalid_food_id_uuid"
+"4","Конвертики творожные","Творог","REPLACE_WITH_FOOD_ID","200","skipped","invalid_food_id_uuid"
+"5","Конвертики творожные","Яйцо куриное","REPLACE_WITH_FOOD_ID","60","skipped","invalid_food_id_uuid"
+"6","Конвертики творожные","Сыр «Радость вкуса» Большой куш 20%","REPLACE_WITH_FOOD_ID","60","skipped","invalid_food_id_uuid"
+"7","Конвертики творожные","Тартильи (5 шт)","REPLACE_WITH_FOOD_ID","300","skipped","invalid_food_id_uuid"

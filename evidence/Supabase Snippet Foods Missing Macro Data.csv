@@ -1,0 +1,3 @@
+id,name,source,created_by_user_id,calories,protein,fat,carbs,has_null_macros,all_zero_macros,recipe_refs,diary_refs,favorite_refs,severity
+9e7cf54a-8460-4315-8957-c1faa28a837d,Сыр Эмменталь,core,696569f6-76a3-45e3-870a-96c52d11d082,0.00,0.00,0.00,0.00,false,true,1,0,0,critical
+bc03e5c8-e00a-4106-83b9-4b3c247c7d11,Творог домашний (из молока 1%),core,696569f6-76a3-45e3-870a-96c52d11d082,0.00,0.00,0.00,0.00,false,true,2,0,0,critical
