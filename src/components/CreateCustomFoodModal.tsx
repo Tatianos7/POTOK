@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { UserCustomFood } from '../types';
 import { foodService } from '../services/foodService';
 import { X } from 'lucide-react';
+import { getInvalidFoodMacroMessage, getInvalidFoodMacroReason } from '../utils/foodNormalizer';
 
 interface CreateCustomFoodModalProps {
   isOpen: boolean;
@@ -23,30 +24,51 @@ const CreateCustomFoodModal = ({ isOpen, onClose, onCreated, userId }: CreateCus
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const food = await foodService.createCustomFood(userId, {
-      name: formData.name.trim(),
-      brand: formData.brand.trim() || null,
-      calories: parseFloat(formData.calories) || 0,
-      protein: parseFloat(formData.protein) || 0,
-      fat: parseFloat(formData.fat) || 0,
-      carbs: parseFloat(formData.carbs) || 0,
-      barcode: null,
-      photo: null,
+    const nutrition = {
+      calories: Number.parseFloat(formData.calories),
+      protein: Number.parseFloat(formData.protein),
+      fat: Number.parseFloat(formData.fat),
+      carbs: Number.parseFloat(formData.carbs),
+    };
+    const invalidReason = getInvalidFoodMacroReason(nutrition, {
+      calories: formData.calories,
+      protein: formData.protein,
+      fat: formData.fat,
+      carbs: formData.carbs,
     });
+    if (invalidReason) {
+      alert(getInvalidFoodMacroMessage(invalidReason));
+      return;
+    }
 
-    onCreated(food);
-    
-    // Reset form
-    setFormData({
-      name: '',
-      brand: '',
-      calories: '',
-      protein: '',
-      fat: '',
-      carbs: '',
-    });
-    
-    onClose();
+    try {
+      const food = await foodService.createCustomFood(userId, {
+        name: formData.name.trim(),
+        brand: formData.brand.trim() || null,
+        calories: nutrition.calories,
+        protein: nutrition.protein,
+        fat: nutrition.fat,
+        carbs: nutrition.carbs,
+        barcode: null,
+        photo: null,
+      });
+
+      onCreated(food);
+
+      setFormData({
+        name: '',
+        brand: '',
+        calories: '',
+        protein: '',
+        fat: '',
+        carbs: '',
+      });
+
+      onClose();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Ошибка при сохранении продукта';
+      alert(message);
+    }
   };
 
   if (!isOpen) return null;
@@ -192,4 +214,3 @@ const CreateCustomFoodModal = ({ isOpen, onClose, onCreated, userId }: CreateCus
 };
 
 export default CreateCustomFoodModal;
-

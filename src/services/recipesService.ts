@@ -5,6 +5,98 @@ import { aiMealPlansService } from './aiMealPlansService';
 import { normalizeFoodText } from '../utils/foodNormalizer';
 
 class RecipesService {
+  private mapGraphRowToIngredient(row: any) {
+    const grams = Number(row.amount_g) || 0;
+    const calories100 = Number(row.food?.calories) || 0;
+    const proteins100 = Number(row.food?.protein) || 0;
+    const fats100 = Number(row.food?.fat) || 0;
+    const carbs100 = Number(row.food?.carbs) || 0;
+    const k = grams / 100;
+
+    return {
+      name: row.food?.name || 'Unknown',
+      canonical_food_id: row.food_id ?? null,
+      quantity: grams,
+      unit: 'г',
+      grams,
+      calories: calories100 * k,
+      proteins: proteins100 * k,
+      fats: fats100 * k,
+      carbs: carbs100 * k,
+    };
+  }
+
+  private async loadIngredientsFromGraph(recipeIds: string[]): Promise<Map<string, Recipe['ingredients']>> {
+    const map = new Map<string, Recipe['ingredients']>();
+    if (!supabase || recipeIds.length === 0) return map;
+
+    const { data, error } = await supabase
+      .from('recipe_ingredients')
+      .select('recipe_id, food_id, amount_g, food:foods(id,name,calories,protein,fat,carbs)')
+      .in('recipe_id', recipeIds);
+
+    if (error || !data) {
+      return map;
+    }
+
+    for (const row of data) {
+      const recipeId = String((row as any).recipe_id ?? '');
+      if (!recipeId) continue;
+      if (!map.has(recipeId)) map.set(recipeId, []);
+      const list = map.get(recipeId)!;
+      list.push(this.mapGraphRowToIngredient(row));
+    }
+
+    return map;
+  }
+
+  private applyGraphIngredients(recipes: Recipe[], graph: Map<string, Recipe['ingredients']>): Recipe[] {
+    return recipes.map((recipe) => {
+      const graphIngredients = graph.get(recipe.id);
+      if (graphIngredients && graphIngredients.length > 0) {
+        return {
+          ...recipe,
+          ingredients: graphIngredients,
+        };
+      }
+      return recipe;
+    });
+  }
+
+  private async logZeroTotalsDiagnostics(recipeId: string): Promise<void> {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from('recipe_ingredients')
+      .select('food_id, amount_g, food:foods(id,name,calories,protein,fat,carbs)')
+      .eq('recipe_id', recipeId);
+    if (error || !data) return;
+
+    const invalidRows = data
+      .map((row: any) => ({
+        food_id: row.food_id,
+        food_name: row.food?.name || 'unknown',
+        amount_g: Number(row.amount_g) || 0,
+        calories: Number(row.food?.calories),
+        protein: Number(row.food?.protein),
+        fat: Number(row.food?.fat),
+        carbs: Number(row.food?.carbs),
+      }))
+      .filter((row) =>
+        !Number.isFinite(row.calories) ||
+        !Number.isFinite(row.protein) ||
+        !Number.isFinite(row.fat) ||
+        !Number.isFinite(row.carbs) ||
+        ((row.calories || 0) === 0 && (row.protein || 0) === 0 && (row.fat || 0) === 0 && (row.carbs || 0) === 0)
+      );
+
+    if (invalidRows.length > 0) {
+      console.warn('[recipesService] recompute_recipe_totals produced zero/invalid nutrients for foods:', {
+        recipeId,
+        invalidRows,
+      });
+    }
+  }
+
   private isValidUUID(id: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
   }
@@ -149,7 +241,9 @@ class RecipesService {
       throw error;
     }
 
-    return (data || []).map((row) => this.mapRowToRecipe(row));
+    const recipes = (data || []).map((row) => this.mapRowToRecipe(row));
+    const graph = await this.loadIngredientsFromGraph(recipes.map((recipe) => recipe.id));
+    return this.applyGraphIngredients(recipes, graph);
   }
 
   async getRecipesByTab(tab: RecipeTab, userId?: string): Promise<Recipe[]> {
@@ -188,7 +282,9 @@ class RecipesService {
         throw recipesError;
       }
 
-      return (data || []).map((row) => this.mapRowToRecipe(row));
+      const recipes = (data || []).map((row) => this.mapRowToRecipe(row));
+      const graph = await this.loadIngredientsFromGraph(recipes.map((recipe) => recipe.id));
+      return this.applyGraphIngredients(recipes, graph);
     }
 
     if (tab === 'collection') {
@@ -212,7 +308,9 @@ class RecipesService {
         throw recipesError;
       }
 
-      return (data || []).map((row) => this.mapRowToRecipe(row));
+      const recipes = (data || []).map((row) => this.mapRowToRecipe(row));
+      const graph = await this.loadIngredientsFromGraph(recipes.map((recipe) => recipe.id));
+      return this.applyGraphIngredients(recipes, graph);
     }
 
     return [];
@@ -301,6 +399,12 @@ class RecipesService {
       })
     );
     this.assertIngredients(enrichedIngredients);
+    const unresolvedIngredients = enrichedIngredients.filter(
+      (ingredient) => !ingredient.canonical_food_id || !this.isValidUUID(ingredient.canonical_food_id)
+    );
+    if (unresolvedIngredients.length > 0) {
+      throw new Error('[recipesService] Some ingredients are not matched to foods catalog');
+    }
     const totals = this.calcTotals(enrichedIngredients);
 
     const payload: any = {
@@ -339,6 +443,50 @@ class RecipesService {
         throw error;
       }
       saved = this.mapRowToRecipe(data);
+    }
+
+    const ingredientRows = enrichedIngredients.map((ingredient) => ({
+      recipe_id: saved.id,
+      food_id: ingredient.canonical_food_id as string,
+      amount_g: Number(ingredient.grams) || 0,
+    }));
+
+    const { error: deleteIngredientsError } = await supabase
+      .from('recipe_ingredients')
+      .delete()
+      .eq('recipe_id', saved.id);
+    if (deleteIngredientsError) {
+      throw deleteIngredientsError;
+    }
+
+    if (ingredientRows.length > 0) {
+      const { error: insertIngredientsError } = await supabase
+        .from('recipe_ingredients')
+        .insert(ingredientRows);
+      if (insertIngredientsError) {
+        throw insertIngredientsError;
+      }
+    }
+
+    const { error: recomputeError } = await supabase.rpc('recompute_recipe_totals', {
+      recipe_id: saved.id,
+    });
+    if (recomputeError) {
+      throw recomputeError;
+    }
+
+    const { data: refreshedRecipe, error: refreshError } = await supabase
+      .from('recipes')
+      .select('*')
+      .eq('id', saved.id)
+      .eq('user_id', sessionUserId)
+      .single();
+    if (!refreshError && refreshedRecipe) {
+      saved = this.mapRowToRecipe(refreshedRecipe);
+    }
+
+    if ((saved.totalCalories ?? 0) === 0 && ingredientRows.length > 0) {
+      await this.logZeroTotalsDiagnostics(saved.id);
     }
 
     void trackEvent({
@@ -498,7 +646,10 @@ class RecipesService {
       return null;
     }
 
-    return this.mapRowToRecipe(data);
+    const recipe = this.mapRowToRecipe(data);
+    const graph = await this.loadIngredientsFromGraph([recipe.id]);
+    const withGraph = this.applyGraphIngredients([recipe], graph);
+    return withGraph[0] ?? recipe;
   }
 }
 

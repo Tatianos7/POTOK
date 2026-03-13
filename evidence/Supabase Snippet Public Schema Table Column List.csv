@@ -1,0 +1,56 @@
+table_name,column_name,data_type
+analytics_events,id,uuid
+analytics_events,user_id,uuid
+analytics_events,event_name,text
+analytics_events,metadata,jsonb
+analytics_events,created_at,timestamp with time zone
+habit_logs,id,uuid
+habit_logs,habit_id,uuid
+habit_logs,user_id,uuid
+habit_logs,date,date
+habit_logs,completed,boolean
+habit_logs,created_at,timestamp with time zone
+habits,id,uuid
+habits,user_id,uuid
+habits,title,text
+habits,description,text
+habits,frequency,text
+habits,created_at,timestamp with time zone
+habits,is_active,boolean
+user_goals,user_id,uuid
+user_goals,calories,integer
+user_goals,protein,numeric
+user_goals,fat,numeric
+user_goals,carbs,numeric
+user_goals,updated_at,timestamp with time zone
+user_goals,goal_type,text
+user_goals,current_weight,numeric
+user_goals,target_weight,numeric
+user_goals,start_date,date
+user_goals,end_date,date
+user_goals,months_to_goal,integer
+user_goals,bmr,integer
+user_goals,tdee,integer
+user_goals,training_place,text
+user_goals,gender,text
+user_goals,age,integer
+user_goals,height,numeric
+user_goals,lifestyle,text
+user_goals,intensity,text
+user_profiles,id_user,uuid
+user_profiles,first_name,text
+user_profiles,last_name,text
+user_profiles,middle_name,text
+user_profiles,birth_date,date
+user_profiles,age,integer
+user_profiles,height,numeric
+user_profiles,goal,text
+user_profiles,email,text
+user_profiles,phone,text
+user_profiles,avatar_url,text
+user_profiles,has_premium,boolean
+user_profiles,is_admin,boolean
+user_profiles,created_at,timestamp with time zone
+user_profiles,updated_at,timestamp with time zone
+user_profiles,coach_settings,jsonb
+user_profiles,voice_settings,jsonb

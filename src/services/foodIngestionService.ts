@@ -1,6 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
 import { FoodImportRow, parseCsvToRows } from '../utils/foodImportPipeline';
-import { buildNormalizedBrand, buildNormalizedName, validateNutrition } from '../utils/foodNormalizer';
+import {
+  buildNormalizedBrand,
+  buildNormalizedName,
+  getInvalidFoodMacroReason,
+  validateNutrition,
+} from '../utils/foodNormalizer';
 import { aiRecommendationsService } from './aiRecommendationsService';
 
 export type IngestionSource = 'excel' | 'usda' | 'open_food_facts' | 'brand' | 'exercise_library';
@@ -66,12 +71,17 @@ class FoodIngestionService {
     return data as ImportBatch;
   }
 
-  async stageCsv(batchId: string, csv: string, options?: { source?: 'core' | 'brand'; sourceVersion?: string | null }): Promise<{ staged: number; conflicts: number } > {
+  async stageCsv(
+    batchId: string,
+    csv: string,
+    options?: { source?: 'core' | 'brand'; sourceVersion?: string | null }
+  ): Promise<{ staged: number; conflicts: number; rejectedInvalidMacros: number }> {
     if (!supabase) throw new Error('Supabase не инициализирован');
     const userId = await this.getSessionUserId();
     const rows = parseCsvToRows(csv);
-    if (rows.length === 0) return { staged: 0, conflicts: 0 };
+    if (rows.length === 0) return { staged: 0, conflicts: 0, rejectedInvalidMacros: 0 };
 
+    let rejectedInvalidMacros = 0;
     const payload = rows.map((row) => {
       const nutrition = {
         calories: Number(row.calories) || 0,
@@ -80,6 +90,10 @@ class FoodIngestionService {
         carbs: Number(row.carbs) || 0,
         fiber: Number(row.fiber) || 0,
       };
+      const invalidMacroReason = getInvalidFoodMacroReason(nutrition, row.rawMacros);
+      if (invalidMacroReason) {
+        rejectedInvalidMacros += 1;
+      }
       const { suspicious } = validateNutrition(nutrition);
       const name = row.name.trim();
       const normalizedName = buildNormalizedName(name);
@@ -107,7 +121,8 @@ class FoodIngestionService {
         confidence_score: confidence,
         verified: row.verified ?? false,
         suspicious,
-        status: 'pending',
+        status: invalidMacroReason ? 'rejected_invalid_macros' : 'pending',
+        conflict_reason: invalidMacroReason ?? null,
         raw_data: row,
       };
     });
@@ -116,7 +131,7 @@ class FoodIngestionService {
     if (error) throw error;
 
     const conflicts = await this.detectConflicts(batchId);
-    return { staged: payload.length, conflicts };
+    return { staged: payload.length, conflicts, rejectedInvalidMacros };
   }
 
   private macrosDiff(a: Record<string, number>, b: Record<string, number>): number {

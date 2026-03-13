@@ -1,0 +1,6 @@
+table_name,columns_present,owner_column_used,policy_mode
+analytics_events,"{created_at,event_name,id,metadata,user_id}",user_id,insert_only_direct_owner
+habit_logs,"{completed,created_at,date,habit_id,id,user_id}",user_id,direct_plus_habit_join
+habits,"{created_at,description,frequency,id,is_active,title,user_id}",user_id,direct_owner
+user_goals,"{age,bmr,calories,carbs,current_weight,end_date,fat,gender,goal_type,height,intensity,lifestyle,months_to_goal,protein,start_date,target_weight,tdee,training_place,updated_at,user_id}",user_id,direct_owner
+user_profiles,"{age,avatar_url,birth_date,coach_settings,created_at,email,first_name,goal,has_premium,height,id_user,is_admin,last_name,middle_name,phone,updated_at,voice_settings}",id_user,direct_owner

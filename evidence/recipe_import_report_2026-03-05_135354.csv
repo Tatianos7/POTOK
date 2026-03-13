@@ -1,0 +1,6 @@
+line,recipe_ref,ingredient_name,food_id,amount_g,status,reason
+"2","UUID рецепта (если уже есть в БД). Если пусто — импортёр может создать новый.","Название ингредиента (для поиска в foods/aliases).","UUID продукта из foods (рекомендуется). Если пусто — искать по ingredient_name/alias.","","skipped","invalid_recipe_id_uuid"
+"3","Омлет с сыром","яйцо куриное","","120","skipped","missing_food_id"
+"4","Омлет с сыром","сыр твердый","","50","skipped","missing_food_id"
+"5","Гречка (каша)","гречка крупа сухая","","80","skipped","missing_food_id"
+"6","Гречка (каша)","вода","","240","skipped","missing_food_id"

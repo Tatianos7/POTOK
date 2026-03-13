@@ -2,7 +2,13 @@ import { Food, UserCustomFood } from '../types';
 import { CATEGORY_DEFAULTS } from '../data/categoryDefaults';
 import { barcodeLookupService } from './barcodeLookupService';
 import { supabase } from '../lib/supabaseClient';
-import { buildNormalizedBrand, buildNormalizedName, normalizeFoodText, validateNutrition } from '../utils/foodNormalizer';
+import {
+  assertValidFoodMacros,
+  buildNormalizedBrand,
+  buildNormalizedName,
+  normalizeFoodText,
+  validateNutrition,
+} from '../utils/foodNormalizer';
 // TODO: Re-enable Open Food Facts / USDA when stable
 // import { openFoodFactsService } from './openFoodFactsService';
 // import { usdaService } from './usdaService';
@@ -563,7 +569,7 @@ class FoodService {
       brand: row.brand || null,
       source: row.source as Food['source'],
       created_by_user_id: row.created_by_user_id || null,
-      canonical_food_id: row.canonical_food_id || null,
+      canonical_food_id: row.canonical_food_id || row.id || null,
       normalized_name: row.normalized_name || undefined,
       normalized_brand: row.normalized_brand || null,
       nutrition_version: row.nutrition_version ?? 1,
@@ -673,6 +679,13 @@ class FoodService {
       throw new Error('Supabase не инициализирован');
     }
     const sessionUserId = await this.getSessionUserId(userId);
+    assertValidFoodMacros({
+      calories: Number(food.calories),
+      protein: Number(food.protein),
+      fat: Number(food.fat),
+      carbs: Number(food.carbs),
+      fiber: Number(food.fiber) || 0,
+    });
     const userFood: UserCustomFood = {
       ...this.normalizeFood(food),
       id: '',
@@ -720,6 +733,18 @@ class FoodService {
       if (!data?.id) {
         throw new Error('[FoodService] Supabase did not return id for created food');
       }
+      if (!data.canonical_food_id) {
+        const { error: canonicalError } = await supabase
+          .from('foods')
+          .update({ canonical_food_id: data.id })
+          .eq('id', data.id)
+          .eq('created_by_user_id', sessionUserId);
+        if (canonicalError) {
+          console.warn('[FoodService] Failed to backfill canonical_food_id for user food:', canonicalError.message);
+        } else {
+          data.canonical_food_id = data.id;
+        }
+      }
       userFood.id = data.id;
       userFood.canonical_food_id = data.canonical_food_id || data.id;
       const userFoods = this.loadUserFoods(sessionUserId);
@@ -756,6 +781,14 @@ class FoodService {
         created_by_user_id: userFoods[index].created_by_user_id, // Сохраняем существующий created_by_user_id
         updatedAt: new Date().toISOString(),
       };
+
+      assertValidFoodMacros({
+        calories: Number(updated.calories),
+        protein: Number(updated.protein),
+        fat: Number(updated.fat),
+        carbs: Number(updated.carbs),
+        fiber: Number(updated.fiber) || 0,
+      });
 
       try {
         if (!this.isValidUUID(foodId)) {

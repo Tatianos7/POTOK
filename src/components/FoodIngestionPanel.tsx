@@ -21,9 +21,13 @@ const FoodIngestionPanel = () => {
         filename: file.name,
         sourceVersion,
       });
-      const { staged, conflicts: conflictCount } = await foodIngestionService.stageCsv(batch.id, text, { source, sourceVersion });
+      const {
+        staged,
+        conflicts: conflictCount,
+        rejectedInvalidMacros,
+      } = await foodIngestionService.stageCsv(batch.id, text, { source, sourceVersion });
       setBatchId(batch.id);
-      setStatus(`Загружено: ${staged}, конфликтов: ${conflictCount}`);
+      setStatus(`Загружено: ${staged}, конфликтов: ${conflictCount}, отклонено по КБЖУ: ${rejectedInvalidMacros}`);
       const list = await foodIngestionService.listConflicts(batch.id);
       setConflicts(list);
     } catch (error) {

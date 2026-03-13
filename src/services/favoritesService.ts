@@ -47,9 +47,60 @@ const isValidUUID = (value?: string | null): boolean => {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 };
 
+const isMissingCanonicalColumnError = (error: any): boolean => {
+  const code = String(error?.code ?? '').toUpperCase();
+  const message = String(error?.message ?? '').toLowerCase();
+  return code === '42703' || message.includes('canonical_food_id');
+};
+
 const resolveFavoriteKey = (userId: string, productId: string): string => {
   const food = foodService.getFoodById(productId, userId);
   return food?.name?.trim() || productId;
+};
+
+const resolveCanonicalFavoriteId = async (
+  userId: string,
+  productId: string,
+  food?: Food | null
+): Promise<string | null> => {
+  if (isValidUUID(food?.canonical_food_id ?? null)) return food?.canonical_food_id ?? null;
+  if (isValidUUID(food?.id ?? null)) return food?.id ?? null;
+  if (isValidUUID(productId)) return productId;
+
+  const lookupName = food?.name?.trim() || productId.trim();
+  if (!lookupName) return null;
+
+  try {
+    const candidates = await foodService.search(lookupName, { userId, limit: 5 });
+    const exact = candidates.find((item) => item.name?.trim().toLowerCase() === lookupName.toLowerCase());
+    if (exact && isValidUUID(exact.canonical_food_id ?? null)) return exact.canonical_food_id ?? null;
+    if (exact && isValidUUID(exact.id)) return exact.id;
+    const first = candidates[0];
+    if (first && isValidUUID(first.canonical_food_id ?? null)) return first.canonical_food_id ?? null;
+    if (first && isValidUUID(first.id)) return first.id;
+  } catch {
+    // fallback handled by null
+  }
+
+  return null;
+};
+
+const resolveFoodByFavoriteEntry = (userId: string, entry: FavoriteEntry): Food | null => {
+  if (isValidUUID(entry.canonicalFoodId ?? null)) {
+    const byCanonical = foodService.getFoodById(entry.canonicalFoodId as string, userId);
+    if (byCanonical) return byCanonical;
+  }
+
+  if (isValidUUID(entry.productId)) {
+    const byId = foodService.getFoodById(entry.productId, userId);
+    if (byId) return byId;
+  }
+
+  return (
+    foodService.getFoodById(entry.productId, userId) ||
+    foodService.getAllFoods(userId).find((f) => f.name === entry.productId) ||
+    null
+  );
 };
 
 export const favoritesService = {
@@ -72,7 +123,7 @@ export const favoritesService = {
         } else if (data) {
           // Convert Supabase data to FavoriteEntry format
           const entries: FavoriteEntry[] = data.map((item) => ({
-            productId: item.product_name,
+            productId: item.canonical_food_id || item.product_name,
             usage: item.usage_count || 0,
             addedAt: item.created_at,
             canonicalFoodId: item.canonical_food_id ?? null,
@@ -108,20 +159,31 @@ export const favoritesService = {
     // Try to save to Supabase
     if (supabase) {
       try {
-        const { error } = await supabase
+        const canonicalFoodId = await resolveCanonicalFavoriteId(sessionUserId, productId, food);
+        const payload: any = {
+          user_id: sessionUserId,
+          product_name: favoriteKey,
+          canonical_food_id: canonicalFoodId,
+          protein: food.protein,
+          fat: food.fat,
+          carbs: food.carbs,
+          calories: food.calories,
+          usage_count: 0,
+        };
+
+        let { error } = await supabase
           .from('favorite_products')
-          .upsert({
-            user_id: sessionUserId,
-            product_name: favoriteKey,
-            canonical_food_id: isValidUUID(food.canonical_food_id) ? food.canonical_food_id : null,
-            protein: food.protein,
-            fat: food.fat,
-            carbs: food.carbs,
-            calories: food.calories,
-            usage_count: 0,
-          }, {
+          .upsert(payload, {
             onConflict: 'user_id,product_name',
           });
+
+        if (error && isMissingCanonicalColumnError(error)) {
+          const { canonical_food_id, ...fallbackPayload } = payload;
+          const retry = await supabase
+            .from('favorite_products')
+            .upsert(fallbackPayload, { onConflict: 'user_id,product_name' });
+          error = retry.error;
+        }
 
         if (error) {
           console.error('[favoritesService] Supabase save error:', error);
@@ -132,10 +194,10 @@ export const favoritesService = {
         const idx = list.findIndex((f) => f.productId === productId || f.productId === favoriteKey);
         if (idx >= 0) return;
         list.push({
-          productId,
+          productId: canonicalFoodId || productId,
           usage: 0,
           addedAt: new Date().toISOString(),
-          canonicalFoodId: food.canonical_food_id ?? null,
+          canonicalFoodId,
         });
         all[sessionUserId] = list;
         saveAll(all);
@@ -154,11 +216,25 @@ export const favoritesService = {
     // Try to delete from Supabase
     if (supabase) {
       try {
-        const { error } = await supabase
+        const canonicalFoodId = await resolveCanonicalFavoriteId(sessionUserId, productId, food);
+        let query = supabase
           .from('favorite_products')
           .delete()
-          .eq('user_id', sessionUserId)
-          .eq('product_name', food?.name || favoriteKey);
+          .eq('user_id', sessionUserId);
+        if (canonicalFoodId) {
+          query = query.eq('canonical_food_id', canonicalFoodId);
+        } else {
+          query = query.eq('product_name', food?.name || favoriteKey);
+        }
+        let { error } = await query;
+        if (error && canonicalFoodId && isMissingCanonicalColumnError(error)) {
+          const retry = await supabase
+            .from('favorite_products')
+            .delete()
+            .eq('user_id', sessionUserId)
+            .eq('product_name', food?.name || favoriteKey);
+          error = retry.error;
+        }
 
         if (error) {
           console.error('[favoritesService] Supabase delete error:', error);
@@ -185,21 +261,53 @@ export const favoritesService = {
     // Try to update in Supabase
     if (supabase) {
       try {
+        const canonicalFoodId = await resolveCanonicalFavoriteId(sessionUserId, productId, food);
         // First get current usage_count
-        const { data: existing } = await supabase
+        let selectQuery = supabase
           .from('favorite_products')
           .select('usage_count')
-          .eq('user_id', sessionUserId)
-          .eq('product_name', food?.name || favoriteKey)
-          .single();
+          .eq('user_id', sessionUserId);
+        if (canonicalFoodId) {
+          selectQuery = selectQuery.eq('canonical_food_id', canonicalFoodId);
+        } else {
+          selectQuery = selectQuery.eq('product_name', food?.name || favoriteKey);
+        }
+        let { data: existing, error: selectError } = await selectQuery.single();
+        if (selectError && canonicalFoodId && isMissingCanonicalColumnError(selectError)) {
+          const retry = await supabase
+            .from('favorite_products')
+            .select('usage_count')
+            .eq('user_id', sessionUserId)
+            .eq('product_name', food?.name || favoriteKey)
+            .single();
+          existing = retry.data;
+          selectError = retry.error;
+        }
+        if (selectError) {
+          console.error('[favoritesService] Supabase select error:', selectError);
+          return;
+        }
 
         const newUsage = (existing?.usage_count || 0) + 1;
 
-        const { error } = await supabase
+        let updateQuery = supabase
           .from('favorite_products')
           .update({ usage_count: newUsage })
-          .eq('user_id', sessionUserId)
-          .eq('product_name', food?.name || favoriteKey);
+          .eq('user_id', sessionUserId);
+        if (canonicalFoodId) {
+          updateQuery = updateQuery.eq('canonical_food_id', canonicalFoodId);
+        } else {
+          updateQuery = updateQuery.eq('product_name', food?.name || favoriteKey);
+        }
+        let { error } = await updateQuery;
+        if (error && canonicalFoodId && isMissingCanonicalColumnError(error)) {
+          const retry = await supabase
+            .from('favorite_products')
+            .update({ usage_count: newUsage })
+            .eq('user_id', sessionUserId)
+            .eq('product_name', food?.name || favoriteKey);
+          error = retry.error;
+        }
 
         if (error) {
           console.error('[favoritesService] Supabase update error:', error);
@@ -229,9 +337,7 @@ export const favoritesService = {
     const entries = await this.getFavorites(userId);
     const resolved = entries
       .map((entry) => {
-        const food =
-          foodService.getFoodById(entry.productId, userId) ||
-          foodService.getAllFoods(userId).find((f) => f.name === entry.productId);
+        const food = resolveFoodByFavoriteEntry(userId, entry);
         if (!food) return null;
         return { ...food, usage: entry.usage };
       })

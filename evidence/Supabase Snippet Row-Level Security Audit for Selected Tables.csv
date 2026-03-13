@@ -1,0 +1,12 @@
+table_name,rls_enabled,rls_forced,policy_count,policies
+analytics_events,true,true,1,{analytics_events_insert_own}
+favorite_products,true,true,4,"{favorite_products_delete_own,favorite_products_insert_own,favorite_products_select_own,favorite_products_update_own}"
+food_diary_entries,true,true,4,"{food_diary_entries_delete_own,food_diary_entries_insert_own,food_diary_entries_select_own,food_diary_entries_update_own}"
+foods,true,true,5,"{foods_delete_own,foods_insert_own,foods_select_catalog,foods_select_own,foods_update_own}"
+habit_logs,true,true,4,"{habit_logs_delete_own,habit_logs_insert_own,habit_logs_select_own,habit_logs_update_own}"
+habits,true,true,4,"{habits_delete_own,habits_insert_own,habits_select_own,habits_update_own}"
+meal_entry_notes,true,true,4,"{meal_entry_notes_delete_own,meal_entry_notes_insert_own,meal_entry_notes_select_own,meal_entry_notes_update_own}"
+recipe_ingredients,true,true,4,"{recipe_ingredients_delete_own,recipe_ingredients_insert_own,recipe_ingredients_select_own,recipe_ingredients_update_own}"
+recipes,true,true,4,"{recipes_delete_own,recipes_insert_own,recipes_select_own,recipes_update_own}"
+user_goals,true,true,3,"{user_goals_insert_own,user_goals_select_own,user_goals_update_own}"
+user_profiles,true,true,3,"{user_profiles_insert_own,user_profiles_select_own,user_profiles_update_own}"
