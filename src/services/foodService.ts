@@ -38,6 +38,162 @@ const toNumber = (value: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+const getSourcePriority = (source: Food['source']): number => {
+  switch (source) {
+    case 'user':
+      return 3;
+    case 'core':
+      return 2;
+    case 'brand':
+    default:
+      return 1;
+  }
+};
+
+const VALID_ZERO_MACRO_FOOD_NAMES = new Set([
+  'вода',
+  'water',
+]);
+
+export const hasUsableFoodNutrition = (
+  food: Pick<Food, 'calories' | 'protein' | 'fat' | 'carbs' | 'fiber'>
+): boolean => {
+  const calories = toNumber(food.calories);
+  const protein = toNumber(food.protein);
+  const fat = toNumber(food.fat);
+  const carbs = toNumber(food.carbs);
+  const fiber = toNumber(food.fiber);
+
+  if ([calories, protein, fat, carbs, fiber].some((value) => value < 0)) {
+    return false;
+  }
+
+  return calories > 0 || protein > 0 || fat > 0 || carbs > 0 || fiber > 0;
+};
+
+export const isAllZeroMacroFood = (
+  food: Pick<Food, 'calories' | 'protein' | 'fat' | 'carbs'>
+): boolean => {
+  return (
+    toNumber(food.calories) === 0 &&
+    toNumber(food.protein) === 0 &&
+    toNumber(food.fat) === 0 &&
+    toNumber(food.carbs) === 0
+  );
+};
+
+export const isAllowedZeroMacroFood = (
+  food: Pick<Food, 'name' | 'calories' | 'protein' | 'fat' | 'carbs'>
+): boolean => {
+  if (!isAllZeroMacroFood(food)) {
+    return false;
+  }
+
+  return VALID_ZERO_MACRO_FOOD_NAMES.has(buildNormalizedName(food.name));
+};
+
+export const isSuspiciousAllZeroCatalogFood = (
+  food: Pick<Food, 'name' | 'source' | 'calories' | 'protein' | 'fat' | 'carbs'>
+): boolean => {
+  if (food.source !== 'core' && food.source !== 'brand') {
+    return false;
+  }
+
+  return isAllZeroMacroFood(food) && !isAllowedZeroMacroFood(food);
+};
+
+export const shouldApplySearchNutritionFallback = (food: Food): boolean => {
+  if (food.source !== 'user') {
+    return false;
+  }
+
+  return !hasUsableFoodNutrition(food);
+};
+
+export const preferSearchFoodCandidate = (existing: Food, candidate: Food): Food => {
+  const existingHasNutrition = hasUsableFoodNutrition(existing);
+  const candidateHasNutrition = hasUsableFoodNutrition(candidate);
+
+  if (!existingHasNutrition && candidateHasNutrition) {
+    return candidate;
+  }
+
+  if (existingHasNutrition && !candidateHasNutrition) {
+    return existing;
+  }
+
+  const existingPriority = getSourcePriority(existing.source);
+  const candidatePriority = getSourcePriority(candidate.source);
+
+  if (candidatePriority > existingPriority) {
+    return candidate;
+  }
+
+  if (existingPriority > candidatePriority) {
+    return existing;
+  }
+
+  if ((candidate.verified ?? false) && !(existing.verified ?? false)) {
+    return candidate;
+  }
+
+  if ((existing.verified ?? false) && !(candidate.verified ?? false)) {
+    return existing;
+  }
+
+  if ((candidate.popularity ?? 0) > (existing.popularity ?? 0)) {
+    return candidate;
+  }
+
+  return existing;
+};
+
+export const finalizeFoodSearchResults = (foods: Food[], query: string, limit = 30): Food[] => {
+  const byKey = new Map<string, Food>();
+  const normalizedQuery = query.toLowerCase().trim();
+
+  for (const food of foods) {
+    if (isSuspiciousAllZeroCatalogFood(food)) {
+      continue;
+    }
+
+    const key = `${buildNormalizedName(food.name)}_${buildNormalizedBrand(food.brand ?? null)}`;
+    const existing = byKey.get(key);
+    byKey.set(key, existing ? preferSearchFoodCandidate(existing, food) : food);
+  }
+
+  const results = Array.from(byKey.values()).map((food) => (
+    shouldApplySearchNutritionFallback(food) ? {
+      ...food,
+      ...CATEGORY_DEFAULTS[food.category || 'vegetables'] || CATEGORY_DEFAULTS.vegetables,
+      fiber: food.fiber ?? 0,
+      autoFilled: true,
+      updatedAt: new Date().toISOString(),
+    } : food
+  ));
+
+  results.sort((a, b) => {
+    const aIsUser = a.source === 'user';
+    const bIsUser = b.source === 'user';
+    if (aIsUser && !bIsUser) return -1;
+    if (!aIsUser && bIsUser) return 1;
+
+    if (!aIsUser && !bIsUser) {
+      if (a.source === 'core' && b.source === 'brand') return -1;
+      if (a.source === 'brand' && b.source === 'core') return 1;
+    }
+
+    const aExact = a.name.toLowerCase() === normalizedQuery || a.name_original?.toLowerCase() === normalizedQuery;
+    const bExact = b.name.toLowerCase() === normalizedQuery || b.name_original?.toLowerCase() === normalizedQuery;
+    if (aExact && !bExact) return -1;
+    if (!aExact && bExact) return 1;
+
+    return (b.popularity ?? 0) - (a.popularity ?? 0);
+  });
+
+  return results.slice(0, limit);
+};
+
 class FoodService {
   constructor() {
     this.initializeStorage();
@@ -148,6 +304,22 @@ class FoodService {
     }
   }
 
+  private mergeAndSavePublicFoods(foods: Food[]) {
+    const current = this.loadAll();
+    const byId = new Map<string, Food>();
+
+    current.forEach((food) => {
+      byId.set(food.id, food);
+    });
+
+    foods.forEach((food) => {
+      const existing = byId.get(food.id);
+      byId.set(food.id, existing ? preferSearchFoodCandidate(existing, food) : food);
+    });
+
+    this.saveAll(Array.from(byId.values()));
+  }
+
   private loadUserFoods(userId: string): UserCustomFood[] {
     try {
       const stored = localStorage.getItem(`${USER_CUSTOM_PRODUCTS_KEY}_${userId}`);
@@ -174,22 +346,6 @@ class FoodService {
   }
 
   // === Вспомогательные функции ===
-
-  private applyCategoryDefaults(food: Food): Food {
-    if (food.calories && food.protein && food.fat && food.carbs) return food;
-    const categoryKey = food.category || 'vegetables';
-    const defaults = CATEGORY_DEFAULTS[categoryKey] || CATEGORY_DEFAULTS.vegetables;
-    return {
-      ...food,
-      calories: food.calories || defaults.calories,
-      protein: food.protein || defaults.protein,
-      fat: food.fat || defaults.fat,
-      carbs: food.carbs || defaults.carbs,
-      fiber: food.fiber ?? 0,
-      autoFilled: true,
-      updatedAt: new Date().toISOString(),
-    };
-  }
 
   // ВРЕМЕННО НЕ ИСПОЛЬЗУЮТСЯ: для mockFoodDatabase используем простой includes
   // Функции оставлены для будущего использования с реальной базой
@@ -248,7 +404,7 @@ class FoodService {
     // 1) прямое попадание в ean_index
     const eanEntry = barcodeLookupService.findProductId(cleaned);
     if (eanEntry?.productId) {
-      const product = this.getFoodById(eanEntry.productId);
+      const product = await this.getFoodByIdFresh(eanEntry.productId, _userId);
       if (product) return product;
     }
 
@@ -325,27 +481,10 @@ class FoodService {
       }
     }
 
-    // 2. Локальный cache (read-only), если он уже заполнен из Supabase
-    // Фильтруем: показываем только core/brand или user продукты текущего пользователя
-    try {
-      const localFoods = this.searchLocal(query, category).filter(
-        (f) => {
-          if (f.source === 'user') {
-            // Показываем только пользовательские продукты текущего пользователя
-            return userId && f.created_by_user_id === userId;
-          }
-          // Показываем core и brand продукты всем
-          return f.source === 'core' || f.source === 'brand';
-        }
-      );
-      allResults.push(...localFoods);
-    } catch (error) {
-      // Продолжаем работу даже при ошибке
-    }
-
-    // 3. Supabase (открытые базы) - полнотекстовый поиск
+    // 2. Supabase (открытые базы) - полнотекстовый поиск
     // Пробуем загрузить, но не блокируем основной поиск при ошибках
     const foodsTableExists = await this.checkFoodsTableExists();
+    let hasPublicSupabaseResults = false;
     if (supabase && q && foodsTableExists) {
       try {
         const supabaseFoods = await Promise.race([
@@ -355,6 +494,7 @@ class FoodService {
         const filtered = category 
           ? supabaseFoods.filter((f) => f.category === category)
           : supabaseFoods;
+        hasPublicSupabaseResults = filtered.length > 0;
         filtered.forEach((food) => {
           if (!allResults.find((f) => this.isDuplicate(f, food))) {
             allResults.push(food);
@@ -388,41 +528,27 @@ class FoodService {
       }
     }
 
+    // 3. Локальный cache для публичных продуктов используем только как fallback,
+    // чтобы stale cache не подменял актуальные данные из Supabase.
+    if (!hasPublicSupabaseResults) {
+      try {
+        const localFoods = this.searchLocal(query, category).filter((f) => {
+          if (f.source === 'user') {
+            return userId && f.created_by_user_id === userId;
+          }
+          return f.source === 'core' || f.source === 'brand';
+        });
+        allResults.push(...localFoods);
+      } catch (error) {
+        // Продолжаем работу даже при ошибке
+      }
+    }
+
     // TODO: Re-enable Open Food Facts / USDA when stable
     // 5. Open Food Facts API - ОТКЛЮЧЕНО
     // 6. USDA API - ОТКЛЮЧЕНО
 
-    // Удаляем дубликаты по name + calories + macros
-    const unique = this.removeDuplicates(allResults);
-
-    // Автодополнение макросов при необходимости
-    const normalized = unique.map((f) => (f.calories ? f : this.applyCategoryDefaults(f)));
-
-    // Сортируем: пользовательские продукты всегда выше, затем core, затем brand, затем по популярности
-    normalized.sort((a, b) => {
-      // Приоритет пользовательских продуктов
-      const aIsUser = a.source === 'user';
-      const bIsUser = b.source === 'user';
-      if (aIsUser && !bIsUser) return -1;
-      if (!aIsUser && bIsUser) return 1;
-
-      // Приоритет core над brand
-      if (!aIsUser && !bIsUser) {
-        if (a.source === 'core' && b.source === 'brand') return -1;
-        if (a.source === 'brand' && b.source === 'core') return 1;
-      }
-
-      // Точное совпадение
-      const aExact = a.name.toLowerCase() === q || a.name_original?.toLowerCase() === q;
-      const bExact = b.name.toLowerCase() === q || b.name_original?.toLowerCase() === q;
-      if (aExact && !bExact) return -1;
-      if (!aExact && bExact) return 1;
-
-      // Популярность
-      return (b.popularity ?? 0) - (a.popularity ?? 0);
-    });
-
-    return normalized.slice(0, limit);
+    return finalizeFoodSearchResults(allResults, q, limit);
   }
 
   /**
@@ -436,25 +562,6 @@ class FoodService {
       buildNormalizedBrand(food1.brand ?? null) === buildNormalizedBrand(food2.brand ?? null);
 
     return nameMatch && brandMatch;
-  }
-
-  /**
-   * Удаляет дубликаты из массива продуктов
-   */
-  private removeDuplicates(foods: Food[]): Food[] {
-    const seen = new Set<string>();
-    const unique: Food[] = [];
-
-    for (const food of foods) {
-      const key = `${buildNormalizedName(food.name)}_${buildNormalizedBrand(food.brand ?? null)}`;
-      
-      if (!seen.has(key)) {
-        seen.add(key);
-        unique.push(food);
-      }
-    }
-
-    return unique;
   }
 
   /**
@@ -481,16 +588,7 @@ class FoodService {
 
     // Сортировка внутри каждой группы
     const sortFoods = (foods: Food[]) => {
-      return foods
-        .map((f) => (f.calories ? f : this.applyCategoryDefaults(f)))
-        .sort((a, b) => {
-          const aExact = a.name.toLowerCase() === q || a.name_original?.toLowerCase() === q;
-          const bExact = b.name.toLowerCase() === q || b.name_original?.toLowerCase() === q;
-          if (aExact && !bExact) return -1;
-          if (!aExact && bExact) return 1;
-          return (b.popularity ?? 0) - (a.popularity ?? 0);
-        })
-        .slice(0, limit);
+      return finalizeFoodSearchResults(foods, q, limit);
     };
 
     return {
@@ -658,12 +756,85 @@ class FoodService {
       if (!data) return [];
 
       const mapped = data.map((row) => this.mapSupabaseRowToFood(row));
-      this.saveAll(mapped);
+      this.mergeAndSavePublicFoods(mapped);
       return mapped;
     } catch (error) {
       // Продолжаем работу без Supabase
       return [];
     }
+  }
+
+  private async loadFoodByIdFromSupabase(foodId: string, userId?: string): Promise<Food | null> {
+    if (!supabase || !this.isValidUUID(foodId)) return null;
+
+    const foodsTableExists = await this.checkFoodsTableExists();
+    if (!foodsTableExists) return null;
+
+    try {
+      let sessionUserId: string | undefined;
+      if (userId) {
+        try {
+          sessionUserId = await this.getSessionUserId(userId);
+        } catch {
+          sessionUserId = userId;
+        }
+      }
+
+      const { data, error } = await supabase
+        .from('foods')
+        .select('*')
+        .eq('id', foodId)
+        .maybeSingle();
+
+      if (error || !data) {
+        return null;
+      }
+
+      const mapped = this.mapSupabaseRowToFood(data);
+      if (mapped.source === 'user' && sessionUserId && mapped.created_by_user_id !== sessionUserId) {
+        return null;
+      }
+
+      if (mapped.source === 'user' && sessionUserId) {
+        const cachedUserFoods = this.loadUserFoods(sessionUserId);
+        const nextUserFoods = cachedUserFoods.filter((food) => food.id !== mapped.id);
+        nextUserFoods.push({
+          ...mapped,
+          userId: sessionUserId,
+          source: 'user',
+          created_by_user_id: sessionUserId,
+        });
+        this.saveUserFoods(sessionUserId, nextUserFoods as UserCustomFood[]);
+      } else {
+        this.mergeAndSavePublicFoods([mapped]);
+      }
+
+      return mapped;
+    } catch {
+      return null;
+    }
+  }
+
+  async getFoodByIdFresh(id: string, userId?: string): Promise<Food | null> {
+    const fresh = await this.loadFoodByIdFromSupabase(id, userId);
+    if (fresh) return fresh;
+    return this.getFoodById(id, userId);
+  }
+
+  async hydrateFoodForDiarySelection(food: Food, userId?: string): Promise<Food> {
+    const candidateIds = [
+      food.id,
+      food.canonical_food_id ?? null,
+    ].filter((value, index, arr): value is string => Boolean(value) && arr.indexOf(value) === index);
+
+    for (const candidateId of candidateIds) {
+      const fresh = await this.getFoodByIdFresh(candidateId, userId);
+      if (fresh && hasUsableFoodNutrition(fresh)) {
+        return fresh;
+      }
+    }
+
+    return food;
   }
 
   // === Пользовательские продукты ===
