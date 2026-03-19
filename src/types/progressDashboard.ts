@@ -38,6 +38,37 @@ export interface NutritionStats {
   popularItem?: string | null;
   recommendations?: string[];
   dailyCalories?: Array<{ date: string; calories: number }>;
+  anchorDate?: string;
+  periodKind?: 'day' | 'week' | 'month';
+  calories?: {
+    total: number;
+    has_data: boolean;
+  };
+  macros?: {
+    protein_g: number;
+    fat_g: number;
+    carbs_g: number;
+    has_data: boolean;
+  };
+  deficit?: {
+    value: number | null;
+    has_data: boolean;
+    is_visible: boolean;
+    target_calories: number | null;
+  };
+  topFoods?: Array<{
+    canonical_food_id: string;
+    product_name: string;
+    total_weight_g: number;
+    entry_count: number;
+    total_calories: number;
+  }>;
+  coverage?: {
+    included_canonical_count: number;
+    included_recipe_snapshot_count: number;
+    excluded_fallback_count: number;
+    excluded_unresolved_count: number;
+  };
 }
 
 export interface TrainingCell {

@@ -1,13 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
-import { mealService } from './mealService';
-import { goalService } from './goalService';
 import { measurementsService } from './measurementsService';
 import { habitsService } from './habitsService';
 import { progressAggregatorService } from './progressAggregatorService';
+import { progressNutritionService, type NutritionProgressPeriod } from './progressNutritionService';
 import {
   CoachRecommendations,
   HabitsStats,
-  MacroTotals,
   MeasurementsTable,
   NutritionStats,
   ProgressPeriod,
@@ -110,64 +108,12 @@ class ProgressDashboardService {
   async getNutritionStats(period: ProgressPeriod, userId?: string): Promise<ProgressSectionResult<NutritionStats>> {
     const sessionUserId = await this.getSessionUserId(userId);
     try {
-      const mealsByPeriod = await mealService.getMealsByPeriod(sessionUserId, period.start, period.end);
-      if (mealsByPeriod.length === 0) {
+      const periodKind: NutritionProgressPeriod =
+        period.days.length <= 1 ? 'day' : period.days.length <= 7 ? 'week' : 'month';
+      const nutrition = await progressNutritionService.getNutritionProgress(sessionUserId, period.end, periodKind);
+      if (!nutrition.calories?.has_data) {
         return this.toSectionResult<NutritionStats>(null, undefined);
       }
-      const totals: MacroTotals = mealsByPeriod.reduce(
-        (acc, day) => {
-          const dayTotals = mealService.calculateDayTotals(day);
-          return {
-            calories: acc.calories + dayTotals.calories,
-            protein: acc.protein + dayTotals.protein,
-            fat: acc.fat + dayTotals.fat,
-            carbs: acc.carbs + dayTotals.carbs,
-          };
-        },
-        { calories: 0, protein: 0, fat: 0, carbs: 0 }
-      );
-      const daysCount = mealsByPeriod.length || 1;
-      const average: MacroTotals = {
-        calories: Math.round(totals.calories / daysCount),
-        protein: Math.round(totals.protein / daysCount),
-        fat: Math.round(totals.fat / daysCount),
-        carbs: Math.round(totals.carbs / daysCount),
-      };
-      const foodCounts = new Map<string, number>();
-      mealsByPeriod.forEach((day) => {
-        const entries = [...day.breakfast, ...day.lunch, ...day.dinner, ...day.snack];
-        entries.forEach((entry) => {
-          const name = entry.food?.name ?? entry.foodId;
-          foodCounts.set(name, (foodCounts.get(name) ?? 0) + 1);
-        });
-      });
-      const popularItem = [...foodCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-      const goal = await goalService.getUserGoal(sessionUserId).catch(() => null);
-      const deviations = goal
-        ? {
-            calories: average.calories - (goal.calories ?? 0),
-            protein: average.protein - (goal.protein ?? 0),
-            fat: average.fat - (goal.fat ?? 0),
-            carbs: average.carbs - (goal.carbs ?? 0),
-          }
-        : null;
-      const dailyCalories = mealsByPeriod.map((day) => {
-        const dayTotals = mealService.calculateDayTotals(day);
-        return { date: day.date, calories: Math.round(dayTotals.calories) };
-      });
-      const nutrition: NutritionStats = {
-        average,
-        total: {
-          calories: Math.round(totals.calories),
-          protein: Math.round(totals.protein),
-          fat: Math.round(totals.fat),
-          carbs: Math.round(totals.carbs),
-        },
-        deviations,
-        popularItem,
-        recommendations: [],
-        dailyCalories,
-      };
       this.saveCache(sessionUserId, period, 'nutrition', nutrition);
       return this.toSectionResult(nutrition);
     } catch (error) {

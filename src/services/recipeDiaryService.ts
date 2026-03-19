@@ -50,6 +50,8 @@ class RecipeDiaryService {
       baseUnit: 'г',
       displayUnit: 'г',
       displayAmount: weight,
+      recipeId,
+      canonicalFoodId: null,
     };
 
     mealService.addMealEntry(userId, date, mealType, entry);

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check, Heart, Copy, Trash2, StickyNote } from 'lucide-react';
 import { DailyMeals, MealEntry, Food, UserCustomFood } from '../types';
 import { mealService, type MealSyncStatus } from '../services/mealService';
-import { foodService } from '../services/foodService';
+import { foodService, isSuspiciousAllZeroCatalogFood } from '../services/foodService';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
 import ProductSearch from '../components/ProductSearch';
 import BarcodeScanner from '../components/BarcodeScanner';
@@ -436,8 +436,13 @@ const FoodDiary = () => {
     navigate('/nutrition/search', { state: { mealType, selectedDate } });
   };
 
-  const handleFoodSelect = (food: Food) => {
-    setSelectedFood(food);
+  const handleFoodSelect = async (food: Food) => {
+    const hydrated = await foodService.hydrateFoodForDiarySelection(food, user?.id);
+    if (isSuspiciousAllZeroCatalogFood(hydrated)) {
+      alert('Этот продукт временно скрыт: в каталоге повреждены КБЖУ. Выберите другой продукт.');
+      return;
+    }
+    setSelectedFood(hydrated);
     setIsSearchModalOpen(false);
     setIsBarcodeModalOpen(false);
     setIsAddFoodModalOpen(true);

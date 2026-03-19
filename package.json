@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "test:diary": "tsx --test src/services/__tests__/diaryCreateService.test.ts src/services/__tests__/mealService.diary-enforcement.test.ts",
+    "test:diary:bugfix": "tsx --test src/services/__tests__/foodService.search-mapping.test.ts src/services/__tests__/diaryCreateService.test.ts src/services/__tests__/mealService.diary-enforcement.test.ts",
+    "test:diary:integration": "tsx --test src/services/__tests__/diaryCreateService.integration.test.ts",
+    "test:progress:nutrition": "tsx --test src/services/__tests__/progressNutritionService.test.ts",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "build:mobile": "npm run build && npx cap sync",

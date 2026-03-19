@@ -91,8 +91,15 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!food || !quantity || parseFloat(quantity) <= 0) {
+      return;
+    }
+
+    const canonicalFoodId =
+      isValidUUID(food.canonical_food_id) ? food.canonical_food_id : (isValidUUID(food.id) ? food.id : null);
+
+    if (!canonicalFoodId) {
       return;
     }
 
@@ -111,7 +118,7 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
       baseUnit: 'г',
       displayUnit: unit,
       displayAmount: quantityNum,
-      canonicalFoodId: isValidUUID(food.canonical_food_id) ? food.canonical_food_id : (isValidUUID(food.id) ? food.id : null),
+      canonicalFoodId,
     };
 
     onAdd(entry);
@@ -121,6 +128,11 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
   };
 
   if (!isOpen || !food) return null;
+
+  const canSubmit =
+    Boolean(quantity) &&
+    parseFloat(quantity) > 0 &&
+    (isValidUUID(food.canonical_food_id) || isValidUUID(food.id));
 
   return (
     <div
@@ -321,7 +333,7 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
             </button>
             <button
               type="submit"
-              disabled={!quantity || parseFloat(quantity) <= 0}
+              disabled={!canSubmit}
               className="flex-1 min-w-0 py-3 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Добавить
