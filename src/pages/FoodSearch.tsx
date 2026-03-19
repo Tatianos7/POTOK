@@ -7,7 +7,7 @@ import AddFoodToMealModal from '../components/AddFoodToMealModal';
 import { Food, MealEntry, UserCustomFood } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { mealService } from '../services/mealService';
-import { foodService } from '../services/foodService';
+import { foodService, isSuspiciousAllZeroCatalogFood } from '../services/foodService';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
 import { getLocalDayKey } from '../utils/dayKey';
 
@@ -61,8 +61,13 @@ const FoodSearch = () => {
    * Обработчик выбора продукта из результатов поиска
    * Использует единый обработчик для всех продуктов
    */
-  const handleSelect = (food: Food | UserCustomFood) => {
-    openAddProductSheet(food);
+  const handleSelect = async (food: Food | UserCustomFood) => {
+    const hydrated = await foodService.hydrateFoodForDiarySelection(food as Food, user?.id);
+    if (isSuspiciousAllZeroCatalogFood(hydrated)) {
+      alert('Этот продукт временно скрыт: в каталоге повреждены КБЖУ. Выберите другой продукт.');
+      return;
+    }
+    openAddProductSheet(hydrated);
     // Не добавляем в recent здесь, т.к. граммы еще не известны
     // Добавим в handleAdd после добавления продукта с граммами
   };
@@ -110,10 +115,15 @@ const FoodSearch = () => {
       }
       
       if (food) {
+        const hydrated = await foodService.hydrateFoodForDiarySelection(food, user?.id);
+        if (isSuspiciousAllZeroCatalogFood(hydrated)) {
+          alert(`Продукт "${recentFood.foodName}" временно скрыт: в каталоге повреждены КБЖУ.`);
+          return;
+        }
         // Нашли продукт - открываем модальное окно добавления
         // Передаем сохраненные граммы для предзаполнения
-        setSelectedId(food.id);
-        setSelectedFood(food);
+        setSelectedId(hydrated.id);
+        setSelectedFood(hydrated);
         setDefaultWeight(recentFood.weight);
         setIsAddFoodModalOpen(true);
       } else {
@@ -141,6 +151,11 @@ const FoodSearch = () => {
       ...entry,
       canonicalFoodId,
     };
+
+    if (!canonicalFoodId) {
+      console.warn('[FoodSearch] Cannot save diary entry without resolved canonical food id');
+      return;
+    }
 
     mealService.addMealEntry(user.id, selectedDate, selectedMealType, normalizedEntry);
     

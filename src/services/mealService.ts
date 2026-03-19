@@ -9,6 +9,15 @@ import { goalService } from './goalService';
 import { userStateService } from './userStateService';
 import { coachRuntime } from './coachRuntime';
 import { getLocalDayKey } from '../utils/dayKey';
+import {
+  buildDiaryInsertPayload,
+  DiaryCreateService,
+  DiaryCreateServiceError,
+  type CreateDiaryEntryRequest,
+  type DiaryEntryRecord,
+  type DiaryFoodRecord,
+  type DiaryInsertPayload,
+} from './diaryCreateService';
 
 export type MealSyncStatus = 'synced' | 'local_only' | 'failed';
 
@@ -16,8 +25,6 @@ class MealService {
   private readonly MEALS_STORAGE_KEY = 'potok_daily_meals';
   private readonly FOOD_DIARY_SYNC_CHANNEL = 'potok';
   private readonly FOOD_DIARY_SYNC_STORAGE_KEY = 'potok_food_diary_changed';
-  private saveQueue = new Map<string, Promise<void>>();
-  private inFlightSaveKeys = new Set<string>();
   private syncStatusByDate = new Map<string, MealSyncStatus>();
   private syncGeneration = 0;
 
@@ -71,31 +78,6 @@ class MealService {
     throw lastError;
   }
 
-  private enqueueSave(userId: string, date: string, meals: DailyMeals): Promise<void> {
-    const key = `${userId}:${date}`;
-    const generation = this.syncGeneration;
-    const previous = this.saveQueue.get(key) || Promise.resolve();
-    const next = previous
-      .catch(() => undefined)
-      .then(() => {
-        if (generation !== this.syncGeneration) return;
-        return this.saveMealsForDate(userId, meals);
-      });
-
-    this.saveQueue.set(
-      key,
-      next.finally(() => {
-        this.inFlightSaveKeys.delete(key);
-        if (this.saveQueue.get(key) === next) {
-          this.saveQueue.delete(key);
-        }
-      })
-    );
-    this.inFlightSaveKeys.add(key);
-
-    return next;
-  }
-
   private async getSessionUserId(userId?: string): Promise<string> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
@@ -133,8 +115,6 @@ class MealService {
 
   resetSyncStateForAuthChange(): void {
     this.syncGeneration += 1;
-    this.saveQueue.clear();
-    this.inFlightSaveKeys.clear();
     this.syncStatusByDate.clear();
     this.idempotencyIndexWarned = false;
     this.upsertErrorLogged = false;
@@ -233,6 +213,227 @@ class MealService {
       }
     }
     return null;
+  }
+
+  private isCanonicalDiaryEntry(entry: MealEntry): boolean {
+    return !entry.recipeId;
+  }
+
+  private toDiaryCreateRequest(
+    userId: string,
+    date: string,
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    entry: MealEntry
+  ): CreateDiaryEntryRequest {
+    const canonicalFoodId = this.resolveCanonicalFoodId(entry);
+    if (!canonicalFoodId || !this.isValidUUID(canonicalFoodId)) {
+      throw new DiaryCreateServiceError('resolver_not_resolved', 'canonical_food_id is required for canonical diary create');
+    }
+
+    return {
+      user_id: userId,
+      date,
+      meal_type: mealType,
+      weight_g: Number(entry.weight) || 0,
+      product_name: (entry.food?.name || 'Unknown').trim() || 'Unknown',
+      resolver: {
+        status: 'resolved',
+        canonical_food_id: canonicalFoodId,
+        matched_by: 'manual_choice',
+        confidence: 1,
+      },
+      idempotency_key: this.normalizeIdempotencyKey(entry.idempotencyKey, date, mealType, entry.foodId),
+      base_unit: (entry.baseUnit ?? 'г') as 'g' | 'г',
+      display_unit: entry.displayUnit ?? entry.baseUnit ?? 'г',
+      display_amount: Number(entry.displayAmount ?? entry.weight) || 0,
+      calories: entry.calories,
+      protein: entry.protein,
+      fat: entry.fat,
+      carbs: entry.carbs,
+      fiber: Number(entry.food?.fiber ?? 0),
+    };
+  }
+
+  private async createDiaryEntryWithEnforcement(
+    authUserId: string,
+    request: CreateDiaryEntryRequest
+  ): Promise<{ entry: DiaryEntryRecord; idempotent_replay: boolean }> {
+    const { diaryRepo, foodsRepo } = this.getDiaryRepositories();
+    const service = new DiaryCreateService({ diaryRepo, foodsRepo });
+    return service.create(authUserId, request);
+  }
+
+  private getDiaryRepositories() {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+    const sb = supabase;
+
+    return {
+      diaryRepo: {
+        findByUserAndIdempotencyKey: async (userId: string, idempotencyKey: string): Promise<DiaryEntryRecord | null> => {
+          const { data, error } = await sb
+            .from('food_diary_entries')
+            .select('id,user_id,date,meal_type,canonical_food_id,product_name,weight,calories,protein,fat,carbs,fiber,idempotency_key,created_at')
+            .eq('user_id', userId)
+            .eq('idempotency_key', idempotencyKey)
+            .maybeSingle();
+
+          if (error) throw error;
+          return (data as DiaryEntryRecord | null) ?? null;
+        },
+        insert: async (payload: DiaryInsertPayload): Promise<DiaryEntryRecord> => {
+          const { data, error } = await sb
+            .from('food_diary_entries')
+            .insert(payload)
+            .select('id,user_id,date,meal_type,canonical_food_id,product_name,weight,calories,protein,fat,carbs,fiber,idempotency_key,created_at')
+            .single();
+
+          if (error) throw error;
+          return data as DiaryEntryRecord;
+        },
+      },
+      foodsRepo: {
+        findById: async (foodId: string): Promise<DiaryFoodRecord | null> => {
+          const { data, error } = await sb
+            .from('foods')
+            .select('id,canonical_food_id,source,created_by_user_id,calories,protein,fat,carbs,fiber')
+            .eq('id', foodId)
+            .maybeSingle();
+
+          if (error) throw error;
+          if (!data) return null;
+          return {
+            id: String(data.id),
+            canonical_food_id: data.canonical_food_id ? String(data.canonical_food_id) : null,
+            source: data.source as DiaryFoodRecord['source'],
+            created_by_user_id: data.created_by_user_id ? String(data.created_by_user_id) : null,
+            calories: Number(data.calories) || 0,
+            protein: Number(data.protein) || 0,
+            fat: Number(data.fat) || 0,
+            carbs: Number(data.carbs) || 0,
+            fiber: data.fiber == null ? null : Number(data.fiber) || 0,
+          };
+        },
+      },
+      supabase: sb,
+    };
+  }
+
+  private async updateCanonicalDiaryEntryWithEnforcement(
+    authUserId: string,
+    entryId: string,
+    request: CreateDiaryEntryRequest
+  ): Promise<DiaryEntryRecord> {
+    const { foodsRepo, supabase: sb } = this.getDiaryRepositories();
+    const payload = await buildDiaryInsertPayload(authUserId, request, foodsRepo);
+    const { data, error } = await sb
+      .from('food_diary_entries')
+      .update(payload)
+      .eq('id', entryId)
+      .eq('user_id', authUserId)
+      .select('id,user_id,date,meal_type,canonical_food_id,product_name,weight,calories,protein,fat,carbs,fiber,idempotency_key,created_at')
+      .single();
+
+    if (error) throw error;
+    return data as DiaryEntryRecord;
+  }
+
+  private async createRecipeDiaryEntry(
+    authUserId: string,
+    date: string,
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    entry: MealEntry
+  ): Promise<DiaryEntryRecord> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+
+    const safeNumber = (value: number | undefined | null): number => {
+      const num = Number(value);
+      return isNaN(num) || !isFinite(num) ? 0 : Math.max(0, num);
+    };
+
+    const idempotencyKey = this.normalizeIdempotencyKey(entry.idempotencyKey, date, mealType, entry.foodId);
+    const { data: existing, error: existingError } = await supabase
+      .from('food_diary_entries')
+      .select('id,user_id,date,meal_type,canonical_food_id,product_name,weight,calories,protein,fat,carbs,fiber,idempotency_key,created_at')
+      .eq('user_id', authUserId)
+      .eq('idempotency_key', idempotencyKey)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+    if (existing) {
+      const samePayload =
+        existing.date === date &&
+        existing.meal_type === mealType &&
+        existing.canonical_food_id === null &&
+        Number(existing.weight) === safeNumber(entry.weight) &&
+        existing.product_name === ((entry.food?.name || 'Unknown').trim() || 'Unknown');
+      if (!samePayload) {
+        throw new DiaryCreateServiceError(
+          'idempotency_conflict_payload_mismatch',
+          'Existing idempotency key has a different payload'
+        );
+      }
+      return existing as DiaryEntryRecord;
+    }
+
+    const payload = {
+      user_id: authUserId,
+      date,
+      meal_type: mealType,
+      canonical_food_id: null,
+      product_name: (entry.food?.name || 'Unknown').trim() || 'Unknown',
+      protein: safeNumber(entry.protein),
+      fat: safeNumber(entry.fat),
+      carbs: safeNumber(entry.carbs),
+      fiber: safeNumber(entry.food?.fiber ?? 0),
+      calories: safeNumber(entry.calories),
+      weight: safeNumber(entry.weight),
+      base_unit: entry.baseUnit ?? 'г',
+      display_unit: entry.displayUnit ?? entry.baseUnit ?? 'г',
+      display_amount: safeNumber(entry.displayAmount ?? entry.weight),
+      idempotency_key: idempotencyKey,
+    };
+
+    const { data, error } = await supabase
+      .from('food_diary_entries')
+      .insert(payload)
+      .select('id,user_id,date,meal_type,canonical_food_id,product_name,weight,calories,protein,fat,carbs,fiber,idempotency_key,created_at')
+      .single();
+
+    if (error) throw error;
+    return data as DiaryEntryRecord;
+  }
+
+  private reconcileLocalDiaryEntry(
+    userId: string,
+    date: string,
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    idempotencyKey: string,
+    record: DiaryEntryRecord
+  ): void {
+    const meals = this.getMealsFromLocalStorage(userId, date) || this.createEmptyMeals(date);
+    const reconciled = this.mapSupabaseEntryToMealEntry(record);
+    const index = meals[mealType].findIndex((entry) => entry.idempotencyKey === idempotencyKey);
+
+    if (index >= 0) {
+      meals[mealType][index] = {
+        ...meals[mealType][index],
+        ...reconciled,
+        idempotencyKey,
+      };
+    } else {
+      meals[mealType].push({
+        ...reconciled,
+        idempotencyKey,
+      });
+    }
+
+    const localSaved = this.saveMealsToLocalStorage(userId, meals);
+    this.setSyncStatus(userId, date, localSaved ? 'synced' : 'failed');
+    this.publishFoodDiaryChanged({ userId, date });
   }
 
   private mapSupabaseEntryToMealEntry(entry: any): MealEntry {
@@ -653,6 +854,10 @@ class MealService {
           ...meals.dinner.map((entry) => baseEntry(entry, 'dinner')),
           ...meals.snack.map((entry) => baseEntry(entry, 'snack')),
         ];
+        const hasCanonicalOrRecipeEntries =
+          [...meals.breakfast, ...meals.lunch, ...meals.dinner, ...meals.snack].some(
+            (entry) => this.isCanonicalDiaryEntry(entry) || Boolean(entry.recipeId)
+          );
         const entryIds = [
           ...meals.breakfast.map((entry) => entry.id),
           ...meals.lunch.map((entry) => entry.id),
@@ -664,6 +869,12 @@ class MealService {
         [...meals.breakfast, ...meals.lunch, ...meals.dinner, ...meals.snack].forEach((entry) =>
           this.assertMealEntryValid(entry)
         );
+
+        if (hasCanonicalOrRecipeEntries) {
+          console.warn('[mealService] saveMealsForDate skipped: canonical/recipe diary entries must use dedicated write paths');
+          this.setSyncStatus(userId, meals.date, localSaved ? 'local_only' : 'failed');
+          return;
+        }
 
         if (entriesToInsert.length > 0) {
           const validEntries = entriesToInsert.filter((entry) => {
@@ -845,21 +1056,6 @@ class MealService {
 
   // Add meal entry to a specific meal type
   async addMealEntry(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entry: MealEntry): Promise<void> {
-    // Получаем текущие данные из localStorage для мгновенного обновления
-    let meals: DailyMeals;
-    try {
-      const stored = localStorage.getItem(`${this.MEALS_STORAGE_KEY}_${userId}`);
-      if (stored) {
-        const allMeals: Record<string, DailyMeals> = JSON.parse(stored);
-        meals = allMeals[date] || this.createEmptyMeals(date);
-      } else {
-        meals = this.createEmptyMeals(date);
-      }
-    } catch (error) {
-      console.error('[mealService] Error loading from localStorage:', error);
-      meals = this.createEmptyMeals(date);
-    }
-
     const entryWithKey: MealEntry = {
       ...entry,
       baseUnit: entry.baseUnit || 'г',
@@ -869,53 +1065,59 @@ class MealService {
       canonicalFoodId: this.resolveCanonicalFoodId(entry),
     };
 
-    // Добавляем новую запись или заменяем существующую (idempotency)
-    const existingIndex = meals[mealType].findIndex(
-      (item) => item.idempotencyKey && item.idempotencyKey === entryWithKey.idempotencyKey
-    );
-    if (existingIndex >= 0) {
-      meals[mealType][existingIndex] = entryWithKey;
-    } else {
-      meals[mealType].push(entryWithKey);
-    }
-    
-    // Затем сохраняем в Supabase в фоне
-    await this.enqueueSave(userId, date, meals);
+    if (this.isCanonicalDiaryEntry(entryWithKey)) {
+      const sessionUserId = await this.requireSessionUser(userId);
+      const request = this.toDiaryCreateRequest(sessionUserId, date, mealType, entryWithKey);
+      const result = await this.createDiaryEntryWithEnforcement(sessionUserId, request);
 
-    // Аналитика: пользователь добавил еду
-    // Не блокируем основной флоу, ошибки логируем в консоль
-    void trackEvent({
-      name: 'add_food',
-      userId,
-      metadata: {
-        date,
-        meal_type: mealType,
-        food_id: entry.foodId,
-        food_name: entry.food?.name,
-        calories: entry.calories,
-      },
-    });
+      this.reconcileLocalDiaryEntry(sessionUserId, date, mealType, request.idempotency_key ?? '', result.entry);
 
-    await coachRuntime.handleUserEvent(
-      {
-        type: 'MealLogged',
-        timestamp: new Date().toISOString(),
-        payload: {
+      void trackEvent({
+        name: 'add_food',
+        userId,
+        metadata: {
           date,
           meal_type: mealType,
-          calories: entry.calories,
-          protein: entry.protein,
           food_id: entry.foodId,
+          food_name: entry.food?.name,
+          calories: result.entry.calories,
         },
-        confidence: 0.8,
-        safetyClass: 'normal',
-        trustImpact: 0,
-      },
-      {
-        screen: 'Today',
-        userMode: 'Manual',
-        subscriptionState: 'Free',
-      }
+      });
+
+      await coachRuntime.handleUserEvent(
+        {
+          type: 'MealLogged',
+          timestamp: new Date().toISOString(),
+          payload: {
+            date,
+            meal_type: mealType,
+            calories: result.entry.calories,
+            protein: result.entry.protein,
+            food_id: result.entry.canonical_food_id,
+          },
+          confidence: 0.8,
+          safetyClass: 'normal',
+          trustImpact: 0,
+        },
+        {
+          screen: 'Today',
+          userMode: 'Manual',
+          subscriptionState: 'Free',
+        }
+      );
+      return;
+    }
+
+    if (entryWithKey.recipeId) {
+      const sessionUserId = await this.requireSessionUser(userId);
+      const record = await this.createRecipeDiaryEntry(sessionUserId, date, mealType, entryWithKey);
+      this.reconcileLocalDiaryEntry(sessionUserId, date, mealType, entryWithKey.idempotencyKey ?? '', record);
+      return;
+    }
+
+    throw new DiaryCreateServiceError(
+      'resolver_not_resolved',
+      'Legacy diary create path without resolved canonical identity is blocked'
     );
   }
 
@@ -982,17 +1184,14 @@ class MealService {
     // Удаляем запись
     meals[mealType] = meals[mealType].filter((entry) => entry.id !== entryId);
     
-    // Затем сохраняем в Supabase в фоне
+    const localSaved = this.saveMealsToLocalStorage(userId, meals);
+    this.setSyncStatus(userId, date, localSaved ? (canSyncSupabase ? 'synced' : 'local_only') : 'failed');
+    this.publishFoodDiaryChanged({ userId, date });
     if (!canSyncSupabase) {
-      const localSaved = this.saveMealsToLocalStorage(userId, meals);
-      this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
-      this.publishFoodDiaryChanged({ userId, date });
       return;
     }
-    await this.enqueueSave(userId, date, meals);
 
-    // Also delete from Supabase if exists and session is valid
-    if (supabase && canSyncSupabase && this.isValidUUID(entryId)) {
+    if (supabase && this.isValidUUID(entryId)) {
       try {
         await supabase
           .from('food_diary_entries')
@@ -1034,17 +1233,14 @@ class MealService {
     // Очищаем все записи выбранного приёма пищи
     meals[mealType] = [];
     
-    // Затем сохраняем в Supabase в фоне
+    const localSaved = this.saveMealsToLocalStorage(userId, meals);
+    this.setSyncStatus(userId, date, localSaved ? (canSyncSupabase ? 'synced' : 'local_only') : 'failed');
+    this.publishFoodDiaryChanged({ userId, date });
     if (!canSyncSupabase) {
-      const localSaved = this.saveMealsToLocalStorage(userId, meals);
-      this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
-      this.publishFoodDiaryChanged({ userId, date });
       return;
     }
-    await this.enqueueSave(userId, date, meals);
 
-    // Также удаляем все записи этого приёма пищи из Supabase, если сессия валидна
-    if (supabase && canSyncSupabase) {
+    if (supabase) {
       try {
         const mealTypeMap: Record<string, string> = {
           breakfast: 'breakfast',
@@ -1067,16 +1263,6 @@ class MealService {
 
   // Save note for a specific meal type
   async saveMealNote(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', note: string): Promise<void> {
-    let canSyncSupabase = false;
-    try {
-      await this.requireSessionUser(userId);
-      canSyncSupabase = true;
-    } catch (error) {
-      if (!this.isAuthGuardError(error)) {
-        console.warn('[mealService] saveMealNote: sync guard failed');
-      }
-    }
-
     // Получаем текущие данные из localStorage
     let meals: DailyMeals;
     try {
@@ -1105,14 +1291,9 @@ class MealService {
     // Сохраняем заметку
     meals.notes[mealType] = note.trim() || null;
 
-    // Затем сохраняем в Supabase в фоне
-    if (!canSyncSupabase) {
-      const localSaved = this.saveMealsToLocalStorage(userId, meals);
-      this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
-      this.publishFoodDiaryChanged({ userId, date });
-      return;
-    }
-    await this.enqueueSave(userId, date, meals);
+    const localSaved = this.saveMealsToLocalStorage(userId, meals);
+    this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
+    this.publishFoodDiaryChanged({ userId, date });
   }
 
   // Update meal entry (используем локальные данные, чтобы избежать устаревших значений)
@@ -1131,7 +1312,7 @@ class MealService {
     const meals = this.getMealsFromLocalStorage(userId, date) || this.createEmptyMeals(date);
     const index = meals[mealType].findIndex((entry) => entry.id === entryId);
     if (index !== -1) {
-      meals[mealType][index] = {
+      const normalizedEntry: MealEntry = {
         ...updatedEntry,
         weight: Number(updatedEntry.weight) || 0,
         calories: Number(updatedEntry.calories) || 0,
@@ -1145,13 +1326,56 @@ class MealService {
         idempotencyKey: updatedEntry.idempotencyKey || this.buildIdempotencyKey(date, mealType, updatedEntry.foodId),
         canonicalFoodId: this.resolveCanonicalFoodId(updatedEntry),
       };
-    if (!canSyncSupabase) {
-      const localSaved = this.saveMealsToLocalStorage(userId, meals);
-      this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
-      this.publishFoodDiaryChanged({ userId, date });
-      return;
-    }
-      await this.enqueueSave(userId, date, meals);
+      meals[mealType][index] = normalizedEntry;
+
+      if (!canSyncSupabase) {
+        const localSaved = this.saveMealsToLocalStorage(userId, meals);
+        this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
+        this.publishFoodDiaryChanged({ userId, date });
+        return;
+      }
+
+      const sessionUserId = userId;
+      if (this.isCanonicalDiaryEntry(normalizedEntry)) {
+        const request = this.toDiaryCreateRequest(sessionUserId, date, mealType, normalizedEntry);
+        const record = await this.updateCanonicalDiaryEntryWithEnforcement(sessionUserId, entryId, request);
+        this.reconcileLocalDiaryEntry(sessionUserId, date, mealType, request.idempotency_key ?? '', record);
+        return;
+      }
+
+      if (normalizedEntry.recipeId) {
+        if (!supabase) {
+          throw new Error('Supabase не инициализирован');
+        }
+        const { data, error } = await supabase
+          .from('food_diary_entries')
+          .update({
+            product_name: (normalizedEntry.food?.name || 'Unknown').trim() || 'Unknown',
+            protein: Number(normalizedEntry.protein) || 0,
+            fat: Number(normalizedEntry.fat) || 0,
+            carbs: Number(normalizedEntry.carbs) || 0,
+            fiber: Number(normalizedEntry.food?.fiber ?? 0),
+            calories: Number(normalizedEntry.calories) || 0,
+            weight: Number(normalizedEntry.weight) || 0,
+            base_unit: normalizedEntry.baseUnit || 'г',
+            display_unit: normalizedEntry.displayUnit || normalizedEntry.baseUnit || 'г',
+            display_amount: Number(normalizedEntry.displayAmount ?? normalizedEntry.weight) || 0,
+            canonical_food_id: null,
+          })
+          .eq('id', entryId)
+          .eq('user_id', sessionUserId)
+          .select('id,user_id,date,meal_type,canonical_food_id,product_name,weight,calories,protein,fat,carbs,fiber,idempotency_key,created_at')
+          .single();
+
+        if (error) throw error;
+        this.reconcileLocalDiaryEntry(sessionUserId, date, mealType, normalizedEntry.idempotencyKey ?? '', data as DiaryEntryRecord);
+        return;
+      }
+
+      throw new DiaryCreateServiceError(
+        'resolver_not_resolved',
+        'Legacy diary update path without resolved canonical identity is blocked'
+      );
     }
   }
 
@@ -1162,7 +1386,9 @@ class MealService {
     console.log('[mealService] Current meals water before update:', meals.water);
     meals.water = glasses;
     console.log('[mealService] Setting water to:', meals.water);
-    await this.enqueueSave(userId, date, meals);
+    const localSaved = this.saveMealsToLocalStorage(userId, meals);
+    this.setSyncStatus(userId, date, localSaved ? 'local_only' : 'failed');
+    this.publishFoodDiaryChanged({ userId, date });
     console.log('[mealService] Water saved successfully');
     // Note: water is stored in localStorage only, not in Supabase schema
   }
@@ -1231,22 +1457,18 @@ class MealService {
       return copiedEntry;
     });
 
-    // Получаем целевой приём пищи (из localStorage для мгновенного обновления)
-    const targetMeals = await this.getMealsForDate(userId, targetDate);
-
-    // Добавляем скопированные записи к существующим (если есть)
-    targetMeals[targetMealType] = [...(targetMeals[targetMealType] || []), ...copiedEntries];
-
-    // Сохраняем обновлённые данные в Supabase (не ждём завершения)
     if (!canSyncSupabase) {
+      const targetMeals = await this.getMealsForDate(userId, targetDate);
+      targetMeals[targetMealType] = [...(targetMeals[targetMealType] || []), ...copiedEntries];
       const localSaved = this.saveMealsToLocalStorage(userId, targetMeals);
       this.setSyncStatus(userId, targetDate, localSaved ? 'local_only' : 'failed');
       this.publishFoodDiaryChanged({ userId, date: targetDate });
       return;
     }
-    this.enqueueSave(userId, targetDate, targetMeals).catch((error) => {
-      console.error('[mealService] Error saving copied meals to Supabase:', error);
-    });
+
+    for (const copiedEntry of copiedEntries) {
+      await this.addMealEntry(userId, targetDate, targetMealType, copiedEntry);
+    }
 
     // Копируем заметки в Supabase для скопированных продуктов
     if (supabase) {

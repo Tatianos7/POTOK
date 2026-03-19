@@ -1,0 +1,1 @@
+food_id,name,brand,source,category,created_at,current_calories,current_protein,current_fat,current_carbs,repo_candidate_count,repo_candidate_sources,proposed_target_calories,proposed_target_protein,proposed_target_fat,proposed_target_carbs,authoritative_source,reviewer,approval_timestamp,notes
