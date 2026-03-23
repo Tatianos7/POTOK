@@ -12,8 +12,11 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
  * Если переменные окружения не заданы, клиент будет null,
  * и приложение продолжит работать (только Supabase-фичи не будут доступны).
  */
-const supabaseUrl = (import.meta.env as { VITE_SUPABASE_URL?: string }).VITE_SUPABASE_URL;
-const supabaseAnonKey = (import.meta.env as { VITE_SUPABASE_ANON_KEY?: string }).VITE_SUPABASE_ANON_KEY;
+const viteEnv =
+  typeof import.meta !== 'undefined' ? (((import.meta as unknown as { env?: Record<string, string | undefined> }).env) ?? {}) : {};
+
+const supabaseUrl = viteEnv.VITE_SUPABASE_URL;
+const supabaseAnonKey = viteEnv.VITE_SUPABASE_ANON_KEY;
 
 export const supabase: SupabaseClient | null = 
   supabaseUrl && supabaseAnonKey
@@ -89,4 +92,3 @@ export async function testSupabaseConnection() {
     return null;
   }
 }
-

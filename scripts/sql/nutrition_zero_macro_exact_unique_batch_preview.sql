@@ -1,0 +1,249 @@
+-- Nutrition zero-macro exact unique batch preview
+-- Read-only
+-- Purpose:
+-- - classify 2026-03-05 zero-macro incident rows using exact unique repo nutrition matches
+-- - separate whitelist-valid zero rows from autofix batch and manual review
+
+with repo_exact_unique_reference (
+  name,
+  target_calories,
+  target_protein,
+  target_fat,
+  target_carbs,
+  authoritative_source
+) as (
+  values
+    ('Абрикос', 48, 1.4, 0.4, 11.1, 'src/data/foodsDatabaseGenerator.ts:106'),
+    ('Авокадо', 160, 2, 14.7, 8.5, 'src/data/foodsDatabaseGenerator.ts:124'),
+    ('Ананас', 50, 0.5, 0.1, 13.1, 'src/data/foodsDatabaseGenerator.ts:121'),
+    ('Арахис', 567, 25.8, 49.2, 16.1, 'src/data/foodsDatabase.ts:338; src/data/foodsDatabaseGenerator.ts:332'),
+    ('Арбуз', 30, 0.6, 0.2, 7.6, 'src/data/foodsDatabaseGenerator.ts:118'),
+    ('Артишок', 47, 3.3, 0.2, 10.5, 'src/data/foodsDatabaseGenerator.ts:70'),
+    ('Базилик', 22, 3.2, 0.6, 2.6, 'src/data/foodsDatabaseGenerator.ts:65'),
+    ('Баклажан', 24, 1, 0.2, 5.7, 'src/data/foodsDatabaseGenerator.ts:53'),
+    ('Банан', 89, 1.1, 0.3, 22.8, 'src/data/foodsDatabase.ts:303; src/data/foodsDatabaseGenerator.ts:98; src/data/baseFoods.ts:221'),
+    ('Баранина', 294, 25, 21, 0, 'src/data/foodsDatabaseGenerator.ts:161'),
+    ('Батон', 265, 9, 3.2, 49, 'src/data/foodsDatabaseGenerator.ts:290'),
+    ('Брюссельская капуста', 43, 3.4, 0.3, 8.9, 'src/data/foodsDatabaseGenerator.ts:71'),
+    ('Булгур', 342, 12.3, 1.3, 75.9, 'src/data/foodsDatabaseGenerator.ts:265'),
+    ('Булочка', 274, 8, 4.2, 50, 'src/data/foodsDatabaseGenerator.ts:291'),
+    ('Виноград', 69, 0.7, 0.2, 17.2, 'src/data/foodsDatabaseGenerator.ts:117'),
+    ('Вишня', 50, 1, 0.3, 12.2, 'src/data/foodsDatabaseGenerator.ts:108'),
+    ('Говядина нежирная', 131, 26, 2.6, 0, 'src/data/foodsDatabaseGenerator.ts:154'),
+    ('Говяжий фарш', 250, 26, 15, 0, 'src/data/foodsDatabaseGenerator.ts:158'),
+    ('Горошек зеленый', 81, 5.4, 0.4, 14.5, 'src/data/foodsDatabaseGenerator.ts:75'),
+    ('Гранат', 83, 1.7, 1.2, 18.7, 'src/data/foodsDatabaseGenerator.ts:125'),
+    ('Грейпфрут', 42, 0.8, 0.1, 10.7, 'src/data/foodsDatabaseGenerator.ts:100'),
+    ('Грецкие орехи', 654, 15.2, 65.2, 13.7, 'src/data/foodsDatabaseGenerator.ts:333'),
+    ('Гречка отварная', 101, 4.2, 1.1, 18.6, 'src/data/foodsDatabaseGenerator.ts:252'),
+    ('Груша', 57, 0.4, 0.1, 15.2, 'src/data/foodsDatabaseGenerator.ts:104'),
+    ('Дыня', 34, 0.8, 0.2, 8.2, 'src/data/foodsDatabaseGenerator.ts:119'),
+    ('Ежевика', 43, 1.4, 0.5, 9.6, 'src/data/foodsDatabaseGenerator.ts:113'),
+    ('Имбирь', 80, 1.8, 0.8, 17.8, 'src/data/foodsDatabaseGenerator.ts:67'),
+    ('Инжир', 74, 0.8, 0.3, 19.2, 'src/data/foodsDatabaseGenerator.ts:127'),
+    ('Кабачок', 17, 1.2, 0.3, 3.1, 'src/data/foodsDatabaseGenerator.ts:52'),
+    ('Кальмар', 92, 18, 1.4, 3, 'src/data/foodsDatabaseGenerator.ts:193'),
+    ('Камбала', 83, 16.5, 1.8, 0, 'src/data/foodsDatabaseGenerator.ts:191'),
+    ('Капуста белокочанная', 27, 1.8, 0.1, 4.7, 'src/data/foodsDatabase.ts:73; src/data/foodsDatabaseGenerator.ts:49'),
+    ('Карп', 127, 18, 5.3, 0, 'src/data/foodsDatabaseGenerator.ts:190'),
+    ('Картофель', 77, 2, 0.4, 16.1, 'src/data/baseFoods.ts:109'),
+    ('Кефир', 41, 3, 1, 4, 'src/data/foodsDatabaseGenerator.ts:228'),
+    ('Кешью', 553, 18.2, 43.9, 30.2, 'src/data/foodsDatabaseGenerator.ts:334'),
+    ('Киви', 61, 1.1, 0.5, 14.7, 'src/data/foodsDatabaseGenerator.ts:120'),
+    ('Кинза', 23, 2.1, 0.5, 3.7, 'src/data/foodsDatabaseGenerator.ts:64'),
+    ('Киноа', 368, 14.1, 6.1, 64.2, 'src/data/foodsDatabaseGenerator.ts:264'),
+    ('Клубника', 32, 0.7, 0.3, 7.7, 'src/data/foodsDatabaseGenerator.ts:110'),
+    ('Кокос', 354, 3.3, 33.5, 15.2, 'src/data/foodsDatabaseGenerator.ts:129'),
+    ('Кольраби', 27, 1.7, 0.1, 6.2, 'src/data/foodsDatabaseGenerator.ts:72'),
+    ('Кофе черный', 2, 0.1, 0, 0.3, 'src/data/foodsDatabaseGenerator.ts:310'),
+    ('Краб', 87, 18, 1, 0.1, 'src/data/foodsDatabaseGenerator.ts:196'),
+    ('Креветки', 99, 24, 0.3, 0, 'src/data/foodsDatabaseGenerator.ts:192'),
+    ('Кролик', 183, 21, 11, 0, 'src/data/foodsDatabaseGenerator.ts:163'),
+    ('Крыжовник', 44, 0.9, 0.6, 10.2, 'src/data/foodsDatabaseGenerator.ts:116'),
+    ('Кукуруза', 86, 3.3, 1.2, 19, 'src/data/foodsDatabaseGenerator.ts:74'),
+    ('Кукурузная крупа', 337, 8.3, 1.2, 75, 'src/data/foodsDatabaseGenerator.ts:262'),
+    ('Куриная грудка', 165, 31, 3.6, 0, 'src/data/foodsDatabase.ts:97; src/data/foodsDatabaseGenerator.ts:150; src/data/baseFoods.ts:13'),
+    ('Куриное бедро', 209, 26, 10.9, 0, 'src/data/foodsDatabase.ts:108; src/data/foodsDatabaseGenerator.ts:151'),
+    ('Куриное филе', 165, 31, 3.6, 0, 'src/data/foodsDatabaseGenerator.ts:152'),
+    ('Куриный фарш', 143, 27, 3.5, 0, 'src/data/foodsDatabaseGenerator.ts:160'),
+    ('Кускус', 376, 12.8, 0.6, 77.4, 'src/data/foodsDatabaseGenerator.ts:266'),
+    ('Лайм', 30, 0.7, 0.2, 10.5, 'src/data/foodsDatabaseGenerator.ts:102'),
+    ('Лимон', 29, 1.1, 0.3, 9.3, 'src/data/foodsDatabaseGenerator.ts:101'),
+    ('Лосось', 208, 20, 13, 0, 'src/data/foodsDatabase.ts:154; src/data/foodsDatabaseGenerator.ts:182'),
+    ('Лук репчатый', 47, 1.4, 0, 10.4, 'src/data/foodsDatabase.ts:62; src/data/foodsDatabaseGenerator.ts:48'),
+    ('Макароны отварные', 112, 3.5, 0.4, 23.2, 'src/data/foodsDatabaseGenerator.ts:256'),
+    ('Малина', 52, 1.2, 0.7, 11.9, 'src/data/foodsDatabaseGenerator.ts:111'),
+    ('Манго', 60, 0.8, 0.4, 15, 'src/data/foodsDatabaseGenerator.ts:122'),
+    ('Мандарин', 53, 0.8, 0.3, 13.3, 'src/data/foodsDatabaseGenerator.ts:103'),
+    ('Манка', 333, 10.3, 1, 70.6, 'src/data/foodsDatabaseGenerator.ts:263'),
+    ('Масло оливковое', 884, 0, 100, 0, 'src/data/foodsDatabase.ts:351; src/data/foodsDatabaseGenerator.ts:353; src/data/baseFoods.ts:333'),
+    ('Масло подсолнечное', 884, 0, 100, 0, 'src/data/foodsDatabase.ts:362; src/data/foodsDatabaseGenerator.ts:354'),
+    ('Масло сливочное', 748, 0.5, 82.5, 0.8, 'src/data/foodsDatabaseGenerator.ts:355; src/data/baseFoods.ts:317'),
+    ('Мёд', 304, 0.3, 0, 82.4, 'src/data/baseFoods.ts:365'),
+    ('Мидии', 77, 11.9, 2.2, 3.7, 'src/data/foodsDatabaseGenerator.ts:194'),
+    ('Миндаль', 579, 21.2, 49.9, 21.6, 'src/data/foodsDatabase.ts:327; src/data/foodsDatabaseGenerator.ts:331'),
+    ('Молоко', 64, 3.2, 3.6, 4.8, 'src/data/foodsDatabase.ts:189; src/data/foodsDatabaseGenerator.ts:217; src/data/baseFoods.ts:157'),
+    ('Молоко 2.5%', 53, 2.8, 2.5, 4.7, 'src/data/foodsDatabaseGenerator.ts:218'),
+    ('Молоко 3.2%', 64, 3.2, 3.6, 4.8, 'src/data/foodsDatabaseGenerator.ts:219'),
+    ('Овсянка отварная', 88, 3, 1.7, 15, 'src/data/foodsDatabaseGenerator.ts:254'),
+    ('Окунь', 91, 19.4, 0.9, 0, 'src/data/foodsDatabaseGenerator.ts:187'),
+    ('Оленина', 158, 30, 3.2, 0, 'src/data/foodsDatabaseGenerator.ts:164'),
+    ('Орехи грецкие', 654, 15.2, 65.2, 7, 'src/data/baseFoods.ts:381'),
+    ('Папайя', 43, 0.5, 0.3, 10.8, 'src/data/foodsDatabaseGenerator.ts:123'),
+    ('Патиссон', 18, 1.2, 0.2, 3.8, 'src/data/foodsDatabaseGenerator.ts:78'),
+    ('Перец болгарский', 27, 1, 0.3, 5.3, 'src/data/foodsDatabase.ts:29; src/data/foodsDatabaseGenerator.ts:46'),
+    ('Перловка', 324, 9.3, 1.1, 73.7, 'src/data/foodsDatabaseGenerator.ts:259'),
+    ('Перловка отварная', 109, 3.1, 0.4, 22.9, 'src/data/foodsDatabaseGenerator.ts:260'),
+    ('Персик', 39, 0.9, 0.3, 9.5, 'src/data/foodsDatabaseGenerator.ts:105'),
+    ('Петрушка', 36, 3.7, 0.4, 7.6, 'src/data/foodsDatabaseGenerator.ts:62'),
+    ('Помидор', 18, 0.9, 0.2, 3.9, 'src/data/foodsDatabase.ts:18; src/data/foodsDatabaseGenerator.ts:44; src/data/baseFoods.ts:269'),
+    ('Простокваша', 41, 3.3, 1, 4.7, 'src/data/foodsDatabaseGenerator.ts:230'),
+    ('Пшено', 348, 11.5, 3.3, 69.3, 'src/data/foodsDatabaseGenerator.ts:257'),
+    ('Пшено отварное', 90, 3, 0.9, 17, 'src/data/foodsDatabaseGenerator.ts:258'),
+    ('Редис', 16, 0.7, 0.1, 3.4, 'src/data/foodsDatabaseGenerator.ts:56'),
+    ('Редис дайкон', 18, 0.6, 0.1, 4.1, 'src/data/foodsDatabaseGenerator.ts:73'),
+    ('Редька', 36, 1.2, 0.2, 7, 'src/data/foodsDatabaseGenerator.ts:57'),
+    ('Репа', 28, 1, 0.1, 6.2, 'src/data/foodsDatabaseGenerator.ts:58'),
+    ('Рис', 365, 7, 0.6, 78, 'src/data/foodsDatabase.ts:246; src/data/foodsDatabaseGenerator.ts:249'),
+    ('Рис белый', 365, 7.5, 0.6, 78.9, 'src/data/baseFoods.ts:45'),
+    ('Рис отварной', 130, 2.7, 0.3, 28.2, 'src/data/foodsDatabaseGenerator.ts:250'),
+    ('Руккола', 25, 2.6, 0.7, 3.7, 'src/data/foodsDatabaseGenerator.ts:61'),
+    ('Рыба белая', 78, 16.5, 0.7, 0, 'src/data/baseFoods.ts:397'),
+    ('Рыба красная', 208, 20.8, 12.9, 0, 'src/data/baseFoods.ts:413'),
+    ('Ряженка', 67, 3, 4, 4.2, 'src/data/foodsDatabaseGenerator.ts:229'),
+    ('Салат листовой', 15, 1.4, 0.2, 2.9, 'src/data/foodsDatabaseGenerator.ts:60'),
+    ('Сахар', 387, 0, 0, 99.8, 'src/data/baseFoods.ts:349'),
+    ('Свекла', 43, 1.6, 0.2, 9.6, 'src/data/foodsDatabaseGenerator.ts:55'),
+    ('Свинина нежирная', 143, 27, 4, 0, 'src/data/foodsDatabaseGenerator.ts:156'),
+    ('Свиной фарш', 242, 27, 14, 0, 'src/data/foodsDatabaseGenerator.ts:159'),
+    ('Сельдерей', 16, 0.7, 0.2, 3, 'src/data/foodsDatabaseGenerator.ts:68'),
+    ('Сельдь', 158, 18, 9, 0, 'src/data/foodsDatabaseGenerator.ts:186'),
+    ('Скумбрия', 205, 18, 13.9, 0, 'src/data/foodsDatabaseGenerator.ts:185'),
+    ('Слива', 46, 0.7, 0.3, 11.4, 'src/data/foodsDatabaseGenerator.ts:107'),
+    ('Сметана', 206, 2.8, 20, 3.2, 'src/data/foodsDatabaseGenerator.ts:226'),
+    ('Сметана 15%', 162, 2.8, 15, 3.2, 'src/data/foodsDatabaseGenerator.ts:227'),
+    ('Смородина красная', 56, 1.4, 0.2, 13.8, 'src/data/foodsDatabaseGenerator.ts:115'),
+    ('Смородина черная', 63, 1, 0.4, 15.4, 'src/data/foodsDatabaseGenerator.ts:114'),
+    ('Сок апельсиновый', 45, 0.7, 0.2, 10.4, 'src/data/foodsDatabaseGenerator.ts:312'),
+    ('Сок яблочный', 46, 0.1, 0.1, 11.3, 'src/data/foodsDatabaseGenerator.ts:313'),
+    ('Спаржа', 20, 2.2, 0.1, 3.9, 'src/data/foodsDatabaseGenerator.ts:69'),
+    ('Спаржа зеленая', 20, 2.2, 0.1, 3.9, 'src/data/foodsDatabaseGenerator.ts:77'),
+    ('Судак', 84, 18.4, 1.1, 0, 'src/data/foodsDatabaseGenerator.ts:188'),
+    ('Сыр мягкий', 300, 20, 22, 2, 'src/data/foodsDatabaseGenerator.ts:225'),
+    ('Сыр твердый', 363, 25, 27, 2, 'src/data/foodsDatabaseGenerator.ts:224'),
+    ('Творог обезжиренный', 72, 16.7, 0.6, 1.8, 'src/data/foodsDatabaseGenerator.ts:222'),
+    ('Телятина', 172, 24, 7, 0, 'src/data/foodsDatabaseGenerator.ts:162'),
+    ('Треска', 82, 18, 0.7, 0, 'src/data/foodsDatabase.ts:176; src/data/foodsDatabaseGenerator.ts:184'),
+    ('Тунец', 144, 30, 1, 0, 'src/data/foodsDatabase.ts:165; src/data/foodsDatabaseGenerator.ts:183'),
+    ('Тыква', 26, 1, 0.1, 6.5, 'src/data/foodsDatabaseGenerator.ts:54'),
+    ('Укроп', 40, 2.5, 0.5, 6.3, 'src/data/foodsDatabaseGenerator.ts:63'),
+    ('Устрицы', 68, 9, 2, 4.2, 'src/data/foodsDatabaseGenerator.ts:195'),
+    ('Фасоль', 298, 21, 2, 47, 'src/data/baseFoods.ts:477'),
+    ('Фасоль стручковая', 31, 1.8, 0.1, 7, 'src/data/foodsDatabaseGenerator.ts:76'),
+    ('Финик', 282, 2.5, 0.4, 75, 'src/data/foodsDatabaseGenerator.ts:128'),
+    ('Фисташки', 560, 20, 45.3, 27.2, 'src/data/foodsDatabaseGenerator.ts:335'),
+    ('Хлеб цельнозерновой', 247, 13, 3.3, 49, 'src/data/foodsDatabaseGenerator.ts:289'),
+    ('Хлеб черный', 214, 6.6, 1.2, 41, 'src/data/foodsDatabaseGenerator.ts:288'),
+    ('Хурма', 127, 0.8, 0.4, 33.5, 'src/data/foodsDatabaseGenerator.ts:126'),
+    ('Цветная капуста', 25, 1.9, 0.3, 4.2, 'src/data/foodsDatabaseGenerator.ts:51'),
+    ('Цуккини', 17, 1.2, 0.3, 3.1, 'src/data/foodsDatabaseGenerator.ts:79'),
+    ('Чай черный', 1, 0, 0, 0.3, 'src/data/foodsDatabaseGenerator.ts:311'),
+    ('Черешня', 63, 1, 0.2, 16, 'src/data/foodsDatabaseGenerator.ts:109'),
+    ('Черника', 57, 0.7, 0.3, 14.5, 'src/data/foodsDatabaseGenerator.ts:112'),
+    ('Чеснок', 149, 6.4, 0.5, 33.1, 'src/data/foodsDatabaseGenerator.ts:66'),
+    ('Шпинат', 23, 2.9, 0.4, 3.6, 'src/data/foodsDatabaseGenerator.ts:59'),
+    ('Щука', 84, 18.4, 1.1, 0, 'src/data/foodsDatabaseGenerator.ts:189'),
+    ('Яйцо куриное', 157, 12.7, 11.5, 0.7, 'src/data/foodsDatabase.ts:233; src/data/foodsDatabaseGenerator.ts:231; src/data/baseFoods.ts:29'),
+    ('Ячневая крупа', 313, 10, 1.3, 65.4, 'src/data/foodsDatabaseGenerator.ts:261')
+),
+incident_zero_foods as (
+  select
+    f.id,
+    f.name,
+    f.brand,
+    f.source,
+    f.category,
+    f.created_at,
+    f.updated_at
+  from public.foods f
+  where f.created_at::date = date '2026-03-05'
+    and coalesce(f.calories, 0) = 0
+    and coalesce(f.protein, 0) = 0
+    and coalesce(f.fat, 0) = 0
+    and coalesce(f.carbs, 0) = 0
+),
+whitelist_valid_zero as (
+  select *
+  from incident_zero_foods
+  where lower(coalesce(name, '')) in ('вода', 'water')
+),
+autofix_batch as (
+  select
+    f.id,
+    f.name,
+    f.brand,
+    f.source,
+    f.category,
+    r.target_calories,
+    r.target_protein,
+    r.target_fat,
+    r.target_carbs,
+    r.authoritative_source
+  from incident_zero_foods f
+  join repo_exact_unique_reference r
+    on lower(r.name) = lower(f.name)
+  where f.source in ('core', 'brand')
+    and lower(coalesce(f.name, '')) not in ('вода', 'water')
+),
+manual_review as (
+  select
+    f.id,
+    f.name,
+    f.brand,
+    f.source,
+    f.category,
+    case
+      when f.source not in ('core', 'brand') then 'out_of_catalog_repair_scope'
+      else 'no_exact_unique_repo_match'
+    end as review_reason
+  from incident_zero_foods f
+  where not exists (
+      select 1
+      from whitelist_valid_zero w
+      where w.id = f.id
+    )
+    and not exists (
+      select 1
+      from autofix_batch a
+      where a.id = f.id
+    )
+)
+select
+  (select count(*) from incident_zero_foods) as incident_zero_rows,
+  (select count(*) from whitelist_valid_zero) as whitelist_valid_zero_rows,
+  (select count(*) from autofix_batch) as autofix_batch_rows,
+  (select count(*) from manual_review) as manual_review_rows;
+
+select
+  id,
+  name,
+  brand,
+  source,
+  category,
+  target_calories,
+  target_protein,
+  target_fat,
+  target_carbs,
+  authoritative_source
+from autofix_batch
+order by name, id;
+
+select
+  id,
+  name,
+  brand,
+  source,
+  category,
+  review_reason
+from manual_review
+order by name, id;
