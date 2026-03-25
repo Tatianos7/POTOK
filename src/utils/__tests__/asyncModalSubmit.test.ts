@@ -208,3 +208,23 @@ test('meal note local-only path remains consistent and synchronous', async () =>
   assert.equal(result, true);
   assert.deepEqual(calls, ['meal-note:save', 'modal:close']);
 });
+
+test('workout day note failed action does not look like success', async () => {
+  const lock = { current: false };
+  const calls: string[] = [];
+
+  await assert.rejects(() =>
+    submitModalAction(
+      lock,
+      async () => {
+        calls.push('workout-day-note:start');
+        throw new Error('workout day note failed');
+      },
+      () => {
+        calls.push('modal:close');
+      },
+    ),
+  );
+
+  assert.deepEqual(calls, ['workout-day-note:start']);
+});
