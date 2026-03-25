@@ -8,6 +8,7 @@ import { favoritesService } from '../services/favoritesService';
 import { MealEntry, Food } from '../types';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
 import { getInvalidFoodMacroMessage, getInvalidFoodMacroReason } from '../utils/foodNormalizer';
+import { buildDiaryReturnNavigationState } from '../utils/manualFoodFlow';
 
 const CreateCustomProductPage = () => {
   const navigate = useNavigate();
@@ -149,7 +150,7 @@ const CreateCustomProductPage = () => {
       await mealService.addMealEntry(user.id, selectedDate, category, entry);
 
       // 4. Возвращаемся в дневник питания
-      navigate('/nutrition', { replace: true });
+      navigate('/nutrition', { replace: true, state: buildDiaryReturnNavigationState(selectedDate) });
     } catch (error) {
       console.error('Error creating custom food:', error);
       alert(error instanceof Error ? error.message : 'Ошибка при сохранении продукта');

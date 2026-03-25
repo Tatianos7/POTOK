@@ -3,8 +3,72 @@ import { trackEvent } from './analyticsService';
 import { supabase } from '../lib/supabaseClient';
 import { aiMealPlansService } from './aiMealPlansService';
 import { normalizeFoodText } from '../utils/foodNormalizer';
+import {
+  getOptionalSupabaseResourceState,
+  isOptionalSupabaseResourceMissingError,
+  setOptionalSupabaseResourceState,
+} from '../utils/optionalSupabaseResource';
+
+export class RecipeSaveValidationError extends Error {
+  code: 'unresolved_ingredients';
+  unresolvedIngredients: string[];
+
+  constructor(message: string, unresolvedIngredients: string[]) {
+    super(message);
+    this.name = 'RecipeSaveValidationError';
+    this.code = 'unresolved_ingredients';
+    this.unresolvedIngredients = unresolvedIngredients;
+  }
+}
+
+export function ensureRecipeIngredientsResolved(
+  ingredients: Array<{ name: string; canonical_food_id?: string | null }>
+): void {
+  const isValidUUID = (value: unknown): value is string =>
+    typeof value === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+
+  const unresolvedIngredients = ingredients
+    .filter((ingredient) => !ingredient.canonical_food_id || !isValidUUID(ingredient.canonical_food_id))
+    .map((ingredient) => ingredient.name)
+    .filter(Boolean);
+
+  if (unresolvedIngredients.length > 0) {
+    throw new RecipeSaveValidationError('Some ingredients are not matched to foods catalog', unresolvedIngredients);
+  }
+}
 
 class RecipesService {
+  private async listOptionalRelationRecipeIds(
+    table: 'favorite_recipes' | 'recipe_collections',
+    userId: string
+  ): Promise<string[]> {
+    if (!supabase) {
+      return [];
+    }
+
+    const cachedState = getOptionalSupabaseResourceState(table);
+    if (cachedState === 'missing') {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from(table)
+      .select('recipe_id')
+      .eq('user_id', userId);
+
+    if (error) {
+      if (isOptionalSupabaseResourceMissingError(error)) {
+        setOptionalSupabaseResourceState(table, 'missing');
+        return [];
+      }
+      throw error;
+    }
+
+    setOptionalSupabaseResourceState(table, 'present');
+    return (data || []).map((row: any) => row.recipe_id).filter(Boolean);
+  }
+
   private mapGraphRowToIngredient(row: any) {
     const grams = Number(row.amount_g) || 0;
     const calories100 = Number(row.food?.calories) || 0;
@@ -262,16 +326,10 @@ class RecipesService {
     }
 
     if (tab === 'favorites') {
-      const { data: favorites, error } = await supabase
-        .from('favorite_recipes')
-        .select('recipe_id')
-        .eq('user_id', sessionUserId);
-
-      if (error || !favorites || favorites.length === 0) {
+      const ids = await this.listOptionalRelationRecipeIds('favorite_recipes', sessionUserId);
+      if (ids.length === 0) {
         return [];
       }
-
-      const ids = favorites.map((f: any) => f.recipe_id);
       const { data, error: recipesError } = await supabase
         .from('recipes')
         .select('*')
@@ -288,16 +346,10 @@ class RecipesService {
     }
 
     if (tab === 'collection') {
-      const { data: collection, error } = await supabase
-        .from('recipe_collections')
-        .select('recipe_id')
-        .eq('user_id', sessionUserId);
-
-      if (error || !collection || collection.length === 0) {
+      const ids = await this.listOptionalRelationRecipeIds('recipe_collections', sessionUserId);
+      if (ids.length === 0) {
         return [];
       }
-
-      const ids = collection.map((f: any) => f.recipe_id);
       const { data, error: recipesError } = await supabase
         .from('recipes')
         .select('*')
@@ -399,12 +451,7 @@ class RecipesService {
       })
     );
     this.assertIngredients(enrichedIngredients);
-    const unresolvedIngredients = enrichedIngredients.filter(
-      (ingredient) => !ingredient.canonical_food_id || !this.isValidUUID(ingredient.canonical_food_id)
-    );
-    if (unresolvedIngredients.length > 0) {
-      throw new Error('[recipesService] Some ingredients are not matched to foods catalog');
-    }
+    ensureRecipeIngredientsResolved(enrichedIngredients);
     const totals = this.calcTotals(enrichedIngredients);
 
     const payload: any = {

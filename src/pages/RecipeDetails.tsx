@@ -143,21 +143,26 @@ const RecipeDetails = () => {
     }
   };
 
-  const handleMealTypeSelected = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', date: string) => {
+  const handleMealTypeSelected = async (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', date: string) => {
     if (!user?.id || !recipe) return;
 
-    recipeDiaryService.saveRecipeEntry({
-      userId: user.id,
-      date,
-      mealType,
-      recipeName: recipe.name,
-      weight,
-      per100: macrosPer100,
-      totals: calculatedMacros,
-    });
+    try {
+      await recipeDiaryService.saveRecipeEntry({
+        userId: user.id,
+        date,
+        mealType,
+        recipeName: recipe.name,
+        weight,
+        per100: macrosPer100,
+        totals: calculatedMacros,
+      });
 
-    setIsMealTypeModalOpen(false);
-    navigate('/nutrition', { state: { selectedDate: date } });
+      setIsMealTypeModalOpen(false);
+      navigate('/nutrition', { state: { selectedDate: date } });
+    } catch (error) {
+      console.error('[RecipeDetails] Error saving recipe to diary:', error);
+      alert('Не удалось сохранить рецепт в меню');
+    }
   };
 
   if (!recipe) {
@@ -455,6 +460,7 @@ const RecipeDetails = () => {
               }
               
               alert(errorMessage);
+              throw error;
             }
           }}
           onDelete={async () => {
@@ -473,6 +479,7 @@ const RecipeDetails = () => {
               }
               
               alert(errorMessage);
+              throw error;
             }
           }}
         />

@@ -10,6 +10,7 @@ import { mealService } from '../services/mealService';
 import { foodService, isSuspiciousAllZeroCatalogFood } from '../services/foodService';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
 import { getLocalDayKey } from '../utils/dayKey';
+import { saveDiaryEntryForReturnToDiary } from '../utils/diaryAddNavigation';
 
 interface LocationState {
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -136,7 +137,7 @@ const FoodSearch = () => {
     }
   };
 
-  const handleAdd = (entry: MealEntry) => {
+  const handleAdd = async (entry: MealEntry) => {
     if (!user?.id || !selectedMealType) return;
     const isValidUUID = (value?: string | null): boolean =>
       Boolean(value) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value));
@@ -157,8 +158,22 @@ const FoodSearch = () => {
       return;
     }
 
-    mealService.addMealEntry(user.id, selectedDate, selectedMealType, normalizedEntry);
-    
+    let diaryNavigationState: { selectedDate: string };
+    try {
+      diaryNavigationState = await saveDiaryEntryForReturnToDiary({
+        addMealEntry: (userId, date, mealType, mealEntry) =>
+          mealService.addMealEntry(userId, date, mealType, mealEntry),
+        userId: user.id,
+        selectedDate,
+        mealType: selectedMealType,
+        entry: normalizedEntry,
+      });
+    } catch (error) {
+      console.error('[FoodSearch] Failed to save diary entry:', error);
+      alert('Не удалось сохранить продукт. Проверьте соединение и попробуйте снова.');
+      return;
+    }
+
     // Сохраняем продукт в часто используемые с граммами и текущей датой использования
     // Используем getFoodDisplayName для отображения названия с маркой, если есть
     addRecent({
@@ -172,7 +187,7 @@ const FoodSearch = () => {
     setSelectedFood(null);
     setSelectedId(null);
     setDefaultWeight(undefined);
-    navigate('/nutrition');
+    navigate('/nutrition', { state: diaryNavigationState });
   };
 
   const handleVoice = () => {

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { recipeDiaryService } from '../services/recipeDiaryService';
 import { useAuth } from '../context/AuthContext';
+import type { MealEntry } from '../types';
 
 interface SaveRecipeToDiarySheetProps {
   isOpen: boolean;
@@ -11,6 +12,12 @@ interface SaveRecipeToDiarySheetProps {
   defaultMealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
   date: string;
   onSaved?: () => void;
+  onSaveOverride?: (params: {
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    weight: number;
+    per100: { calories: number; proteins: number; fats: number; carbs: number };
+    totals: { calories: number; proteins: number; fats: number; carbs: number };
+  }) => Promise<{ closeSheet?: boolean; triggerOnSaved?: boolean } | void>;
 }
 
 const mealLabels: Record<'breakfast' | 'lunch' | 'dinner' | 'snack', string> = {
@@ -20,6 +27,13 @@ const mealLabels: Record<'breakfast' | 'lunch' | 'dinner' | 'snack', string> = {
   snack: 'Перекус',
 };
 
+const isSheetSaveControlResult = (
+  value: void | MealEntry | { closeSheet?: boolean; triggerOnSaved?: boolean }
+): value is { closeSheet?: boolean; triggerOnSaved?: boolean } =>
+  typeof value === 'object' &&
+  value !== null &&
+  ('closeSheet' in value || 'triggerOnSaved' in value);
+
 const SaveRecipeToDiarySheet = ({
   isOpen,
   onClose,
@@ -28,10 +42,12 @@ const SaveRecipeToDiarySheet = ({
   defaultMealType,
   date,
   onSaved,
+  onSaveOverride,
 }: SaveRecipeToDiarySheetProps) => {
   const { user } = useAuth();
   const [weight, setWeight] = useState<number>(100);
   const [mealType, setMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack'>(defaultMealType || 'breakfast');
+  const [isSaving, setIsSaving] = useState(false);
 
   const multiplier = useMemo(() => (weight && weight > 0 ? weight / 100 : 0), [weight]);
   const calories = useMemo(() => Math.round(per100.calories * multiplier), [per100.calories, multiplier]);
@@ -41,20 +57,40 @@ const SaveRecipeToDiarySheet = ({
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
-    if (!user?.id) return;
+  const handleSave = async () => {
+    if (!user?.id || isSaving) return;
     const targetMeal = defaultMealType || mealType;
-    recipeDiaryService.saveRecipeEntry({
-      userId: user.id,
-      date,
-      mealType: targetMeal,
-      recipeName: recipeName?.trim() || 'Рецепт',
-      weight: weight || 0,
-      per100,
-      totals: { calories, proteins, fats, carbs },
-    });
-    onClose();
-    onSaved?.();
+    setIsSaving(true);
+    try {
+      const result = onSaveOverride
+        ? await onSaveOverride({
+            mealType: targetMeal,
+            weight: weight || 0,
+            per100,
+            totals: { calories, proteins, fats, carbs },
+          })
+        : await recipeDiaryService.saveRecipeEntry({
+            userId: user.id,
+            date,
+            mealType: targetMeal,
+            recipeName: recipeName?.trim() || 'Рецепт',
+            weight: weight || 0,
+            per100,
+            totals: { calories, proteins, fats, carbs },
+          });
+
+      if (!isSheetSaveControlResult(result) || result.closeSheet !== false) {
+        onClose();
+      }
+      if (!isSheetSaveControlResult(result) || result.triggerOnSaved !== false) {
+        onSaved?.();
+      }
+    } catch (error) {
+      console.error('[SaveRecipeToDiarySheet] Error saving recipe to diary:', error);
+      alert('Не удалось сохранить рецепт в меню');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -89,6 +125,7 @@ const SaveRecipeToDiarySheet = ({
               value={weight}
               onChange={(e) => setWeight(Math.max(0, Number(e.target.value) || 0))}
               className="w-20 h-8 border border-gray-300 rounded-md px-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+              disabled={isSaving}
             />
           </div>
         </div>
@@ -118,6 +155,7 @@ const SaveRecipeToDiarySheet = ({
               <button
                 key={m}
                 onClick={() => setMealType(m)}
+                disabled={isSaving}
                 className={`py-2 rounded-lg border text-center ${
                   mealType === m ? 'border-green-500 text-green-600' : 'border-gray-300 text-gray-700'
                 }`}
@@ -131,12 +169,14 @@ const SaveRecipeToDiarySheet = ({
         <div className="space-y-2 pt-2">
           <button
             onClick={handleSave}
+            disabled={isSaving}
             className="w-full py-3 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800"
           >
-            СОХРАНИТЬ
+            {isSaving ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
           </button>
           <button
             onClick={onClose}
+            disabled={isSaving}
             className="w-full py-3 rounded-xl border border-gray-400 text-sm font-semibold text-gray-800 dark:text-gray-200"
           >
             УДАЛИТЬ

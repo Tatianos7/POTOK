@@ -27,6 +27,9 @@ export function analyzeRecipeTextDemo(text: string): CalculatedIngredient[] {
         fats: 0,
         carbs: 0,
         calories: 0,
+        canonical_food_id: null,
+        resolution_status: 'unresolved',
+        resolution_reason: 'catalog_unmatched',
       } as CalculatedIngredient;
     }
     const k = grams / 100;
@@ -36,7 +39,9 @@ export function analyzeRecipeTextDemo(text: string): CalculatedIngredient[] {
       fats: prod.fat * k,
       carbs: prod.carbs * k,
       calories: prod.calories * k,
+      canonical_food_id: null,
+      resolution_status: 'unresolved',
+      resolution_reason: 'demo_match_only',
     } as CalculatedIngredient;
   });
 }
-

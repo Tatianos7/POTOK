@@ -8,9 +8,17 @@ interface Props {
   onSaveMenu: () => void;
   onSaveRecipes: () => void;
   onSaveBoth: () => void;
+  unresolvedIngredientNames?: string[];
 }
 
-const RecipeAnalyzerResult: React.FC<Props> = ({ items, totals, onSaveMenu, onSaveRecipes, onSaveBoth }) => {
+const RecipeAnalyzerResult: React.FC<Props> = ({
+  items,
+  totals,
+  onSaveMenu,
+  onSaveRecipes,
+  onSaveBoth,
+  unresolvedIngredientNames = [],
+}) => {
   const hasItems = items.length > 0;
 
   return (
@@ -55,10 +63,17 @@ const RecipeAnalyzerResult: React.FC<Props> = ({ items, totals, onSaveMenu, onSa
         >
           СОХРАНИТЬ В МОИ РЕЦЕПТЫ И В МЕНЮ
         </button>
+        {unresolvedIngredientNames.length > 0 && (
+          <div className="px-1 text-[11px] text-amber-700">
+            Для сохранения в рецепты нужно подтвердить ингредиенты из каталога. Не готовы к сохранению:
+            {' '}
+            {unresolvedIngredientNames.slice(0, 3).join(', ')}
+            {unresolvedIngredientNames.length > 3 ? '...' : ''}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default RecipeAnalyzerResult;
-

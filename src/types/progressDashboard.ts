@@ -40,6 +40,9 @@ export interface NutritionStats {
   dailyCalories?: Array<{ date: string; calories: number }>;
   anchorDate?: string;
   periodKind?: 'day' | 'week' | 'month';
+  periodStart?: string;
+  periodEnd?: string;
+  periodDays?: number;
   calories?: {
     total: number;
     has_data: boolean;
@@ -55,6 +58,10 @@ export interface NutritionStats {
     has_data: boolean;
     is_visible: boolean;
     target_calories: number | null;
+  };
+  periodCoverage?: {
+    days_with_data: number;
+    coverage_ratio: number;
   };
   topFoods?: Array<{
     canonical_food_id: string;

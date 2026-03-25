@@ -1,4 +1,9 @@
 import { supabase } from '../lib/supabaseClient';
+import {
+  getOptionalSupabaseResourceState,
+  isOptionalSupabaseResourceMissingError,
+  setOptionalSupabaseResourceState,
+} from '../utils/optionalSupabaseResource';
 
 export interface RecipeNote {
   id: string;
@@ -11,6 +16,7 @@ export interface RecipeNote {
 
 // Кэш для отслеживания доступности таблицы в Supabase
 let tableExistsCache: boolean | null = null;
+const RECIPE_NOTES_RESOURCE = 'recipe_notes';
 
 class RecipeNotesService {
   private async getSessionUserId(userId?: string): Promise<string> {
@@ -35,6 +41,16 @@ class RecipeNotesService {
       return tableExistsCache;
     }
 
+    const cachedState = getOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE);
+    if (cachedState === 'missing') {
+      tableExistsCache = false;
+      return false;
+    }
+    if (cachedState === 'present') {
+      tableExistsCache = true;
+      return true;
+    }
+
     if (!supabase) {
       tableExistsCache = false;
       return false;
@@ -49,17 +65,20 @@ class RecipeNotesService {
 
       if (error) {
         // PGRST205 = table not found, 404 = Not Found
-        if (error.code === 'PGRST205' || error.code === 'PGRST204' || error.message?.includes('404')) {
+        if (isOptionalSupabaseResourceMissingError(error)) {
           // Таблица не найдена
           tableExistsCache = false;
+          setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
           return false;
         }
         // Другая ошибка - считаем, что таблица существует, но есть проблема с доступом
         tableExistsCache = true;
+        setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'present');
         return true;
       }
 
       tableExistsCache = true;
+      setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'present');
       return true;
     } catch (error) {
       tableExistsCache = false;
@@ -91,8 +110,9 @@ class RecipeNotesService {
             return null;
           }
           // Если таблица не найдена, сбрасываем кэш
-          if (error.code === 'PGRST205') {
+          if (isOptionalSupabaseResourceMissingError(error)) {
             tableExistsCache = false;
+            setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
           }
           return null;
         }
@@ -130,8 +150,9 @@ class RecipeNotesService {
           .in('recipe_id', recipeIds);
 
         if (error) {
-          if (error.code === 'PGRST205') {
+          if (isOptionalSupabaseResourceMissingError(error)) {
             tableExistsCache = false;
+            setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
           }
           return {};
         }
@@ -199,8 +220,9 @@ class RecipeNotesService {
 
           if (error) {
             // Если таблица не найдена, сбрасываем кэш и используем только localStorage
-            if (error.code === 'PGRST205') {
+            if (isOptionalSupabaseResourceMissingError(error)) {
               tableExistsCache = false;
+              setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
               return; // Уже сохранено в localStorage
             }
             // Не бросаем ошибку, так как уже сохранено в localStorage
@@ -221,8 +243,9 @@ class RecipeNotesService {
 
           if (error) {
             // Если таблица не найдена, сбрасываем кэш и используем только localStorage
-            if (error.code === 'PGRST205') {
+            if (isOptionalSupabaseResourceMissingError(error)) {
               tableExistsCache = false;
+              setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
               return; // Уже сохранено в localStorage
             }
             // Не бросаем ошибку, так как уже сохранено в localStorage
@@ -260,8 +283,9 @@ class RecipeNotesService {
 
         if (error) {
           // Если таблица не найдена, сбрасываем кэш и используем только localStorage
-          if (error.code === 'PGRST205') {
+          if (isOptionalSupabaseResourceMissingError(error)) {
             tableExistsCache = false;
+            setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
             return; // Уже удалено из localStorage
           }
           // Не бросаем ошибку, так как уже удалено из localStorage
@@ -302,4 +326,3 @@ class RecipeNotesService {
 }
 
 export const recipeNotesService = new RecipeNotesService();
-

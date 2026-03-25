@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import type { DailyMeals, MealEntry } from '../../types';
 import { mealService } from '../mealService';
+import { mealEntryNotesService } from '../mealEntryNotesService';
 import { recipeDiaryService } from '../recipeDiaryService';
 import { DiaryCreateServiceError } from '../diaryCreateService';
 
@@ -157,6 +158,7 @@ test('copyMeal replays entries through addMealEntry instead of batch save', asyn
   };
   svc.addMealEntry = async (_userId: string, _date: string, _mealType: string, entry: MealEntry) => {
     copied.push(entry);
+    return entry;
   };
 
   try {
@@ -169,17 +171,161 @@ test('copyMeal replays entries through addMealEntry instead of batch save', asyn
   }
 });
 
-test('recipe diary flow does not invent canonical food identity', async () => {
+test('copyMeal copies note using persisted new entry id', async () => {
+  const svc = mealService as any;
+  const original = {
+    requireSessionUser: svc.requireSessionUser,
+    getMealsForDate: svc.getMealsForDate,
+    addMealEntry: svc.addMealEntry,
+  };
+  const originalSaveNote = mealEntryNotesService.saveNote;
+
+  const saveCalls: Array<{ entryId: string; note: string }> = [];
+
+  svc.requireSessionUser = async () => 'user-1';
+  svc.getMealsForDate = async () => {
+    const meals = createEmptyMeals('2026-03-18');
+    meals.breakfast.push({
+      ...createCanonicalEntry(),
+      note: 'источник белка',
+    });
+    return meals;
+  };
+  svc.addMealEntry = async () =>
+    ({
+      ...createCanonicalEntry(),
+      id: 'persisted-entry-1',
+    }) as MealEntry;
+  (mealEntryNotesService as any).saveNote = async (_userId: string, entryId: string, note: string) => {
+    saveCalls.push({ entryId, note });
+  };
+
+  try {
+    await mealService.copyMeal('user-1', '2026-03-18', 'breakfast', '2026-03-19', 'lunch');
+    assert.deepEqual(saveCalls, [{ entryId: 'persisted-entry-1', note: 'источник белка' }]);
+  } finally {
+    Object.assign(svc, original);
+    (mealEntryNotesService as any).saveNote = originalSaveNote;
+  }
+});
+
+test('copyMeal skips note persistence when source note is absent', async () => {
+  const svc = mealService as any;
+  const original = {
+    requireSessionUser: svc.requireSessionUser,
+    getMealsForDate: svc.getMealsForDate,
+    addMealEntry: svc.addMealEntry,
+  };
+  const originalSaveNote = mealEntryNotesService.saveNote;
+
+  let saveCalled = false;
+
+  svc.requireSessionUser = async () => 'user-1';
+  svc.getMealsForDate = async () => {
+    const meals = createEmptyMeals('2026-03-18');
+    meals.breakfast.push(createCanonicalEntry());
+    return meals;
+  };
+  svc.addMealEntry = async () => createCanonicalEntry();
+  (mealEntryNotesService as any).saveNote = async () => {
+    saveCalled = true;
+  };
+
+  try {
+    await mealService.copyMeal('user-1', '2026-03-18', 'breakfast', '2026-03-19', 'lunch');
+    assert.equal(saveCalled, false);
+  } finally {
+    Object.assign(svc, original);
+    (mealEntryNotesService as any).saveNote = originalSaveNote;
+  }
+});
+
+test('copyMeal assigns notes to matching persisted entries for multiple copied rows', async () => {
+  const svc = mealService as any;
+  const original = {
+    requireSessionUser: svc.requireSessionUser,
+    getMealsForDate: svc.getMealsForDate,
+    addMealEntry: svc.addMealEntry,
+  };
+  const originalSaveNote = mealEntryNotesService.saveNote;
+
+  const saveCalls: Array<{ entryId: string; note: string }> = [];
+  let addIndex = 0;
+
+  svc.requireSessionUser = async () => 'user-1';
+  svc.getMealsForDate = async () => {
+    const meals = createEmptyMeals('2026-03-18');
+    meals.breakfast.push({
+      ...createCanonicalEntry(),
+      id: 'source-1',
+      note: 'первая',
+    });
+    meals.breakfast.push({
+      ...createCanonicalEntry(),
+      id: 'source-2',
+      foodId: '22222222-2222-4222-8222-222222222222',
+      canonicalFoodId: '22222222-2222-4222-8222-222222222222',
+      food: {
+        ...createCanonicalEntry().food,
+        id: '22222222-2222-4222-8222-222222222222',
+        canonical_food_id: '22222222-2222-4222-8222-222222222222',
+        name: 'Творог',
+      },
+      note: null,
+    });
+    meals.breakfast.push({
+      ...createCanonicalEntry(),
+      id: 'source-3',
+      foodId: '33333333-3333-4333-8333-333333333333',
+      canonicalFoodId: '33333333-3333-4333-8333-333333333333',
+      food: {
+        ...createCanonicalEntry().food,
+        id: '33333333-3333-4333-8333-333333333333',
+        canonical_food_id: '33333333-3333-4333-8333-333333333333',
+        name: 'Йогурт',
+      },
+      note: 'третья',
+    });
+    return meals;
+  };
+  svc.addMealEntry = async () => {
+    addIndex += 1;
+    return {
+      ...createCanonicalEntry(),
+      id: `persisted-${addIndex}`,
+    } as MealEntry;
+  };
+  (mealEntryNotesService as any).saveNote = async (_userId: string, entryId: string, note: string) => {
+    saveCalls.push({ entryId, note });
+  };
+
+  try {
+    await mealService.copyMeal('user-1', '2026-03-18', 'breakfast', '2026-03-19', 'lunch');
+    assert.deepEqual(saveCalls, [
+      { entryId: 'persisted-1', note: 'первая' },
+      { entryId: 'persisted-3', note: 'третья' },
+    ]);
+  } finally {
+    Object.assign(svc, original);
+    (mealEntryNotesService as any).saveNote = originalSaveNote;
+  }
+});
+
+test('recipe diary flow waits for authoritative persistence and keeps canonical food identity null', async () => {
   const svc = mealService as any;
   const originalAddMealEntry = svc.addMealEntry;
   let captured: MealEntry | null = null;
 
   svc.addMealEntry = async (_userId: string, _date: string, _mealType: string, entry: MealEntry) => {
     captured = entry;
+    return {
+      ...entry,
+      id: 'persisted-recipe-entry-1',
+    } as MealEntry;
   };
 
   try {
-    recipeDiaryService.saveRecipeEntry({
+    const persisted = await recipeDiaryService.saveRecipeEntry({
       userId: 'user-1',
       date: '2026-03-18',
       mealType: 'dinner',
@@ -193,6 +339,35 @@ test('recipe diary flow does not invent canonical food identity', async () => {
     const capturedEntry = captured as MealEntry;
     assert.equal(capturedEntry.recipeId?.startsWith('recipe_'), true);
     assert.equal(capturedEntry.canonicalFoodId ?? null, null);
+    assert.equal(persisted.id, 'persisted-recipe-entry-1');
+    assert.equal(persisted.canonicalFoodId ?? null, null);
+  } finally {
+    svc.addMealEntry = originalAddMealEntry;
+  }
+});
+
+test('recipe diary flow propagates persistence failures instead of returning false success', async () => {
+  const svc = mealService as any;
+  const originalAddMealEntry = svc.addMealEntry;
+
+  svc.addMealEntry = async () => {
+    throw new Error('db write failed');
+  };
+
+  try {
+    await assert.rejects(
+      () =>
+        recipeDiaryService.saveRecipeEntry({
+          userId: 'user-1',
+          date: '2026-03-18',
+          mealType: 'dinner',
+          recipeName: 'Омлет',
+          weight: 250,
+          per100: { calories: 120, proteins: 10, fats: 8, carbs: 3 },
+          totals: { calories: 300, proteins: 25, fats: 20, carbs: 7.5 },
+        }),
+      /db write failed/
+    );
   } finally {
     svc.addMealEntry = originalAddMealEntry;
   }

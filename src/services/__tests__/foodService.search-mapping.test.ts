@@ -156,6 +156,48 @@ test('selected product hydration preserves authoritative nutrition metadata', as
   }
 });
 
+test('selected product hydration returns authoritative zero-macro row so zero-shield can block it', async () => {
+  const { foodService } = await import('../foodService');
+  const svc = foodService as any;
+  const original = svc.getFoodByIdFresh;
+
+  svc.getFoodByIdFresh = async (id: string) => {
+    if (id !== 'food-incident') return null;
+    return buildFood({
+      id: 'food-incident',
+      name: 'Антрекот из говядины',
+      calories: 0,
+      protein: 0,
+      fat: 0,
+      carbs: 0,
+      source: 'core',
+    });
+  };
+
+  try {
+    const hydrated = await foodService.hydrateFoodForDiarySelection(
+      buildFood({
+        id: 'food-incident',
+        name: 'Антрекот из говядины',
+        calories: 312,
+        protein: 19.4,
+        fat: 26.1,
+        carbs: 0,
+        source: 'core',
+      }) as any,
+      'user-1'
+    );
+
+    assert.equal(hydrated.id, 'food-incident');
+    assert.equal(hydrated.calories, 0);
+    assert.equal(hydrated.protein, 0);
+    assert.equal(hydrated.fat, 0);
+    assert.equal(hydrated.carbs, 0);
+  } finally {
+    svc.getFoodByIdFresh = original;
+  }
+});
+
 test('suspicious all-zero catalog foods are excluded from actionable search results', async () => {
   const { finalizeFoodSearchResults } = await import('../foodService');
 

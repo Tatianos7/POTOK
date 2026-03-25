@@ -1,17 +1,35 @@
+import { useRef, useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
+import { submitModalAction } from '../utils/asyncModalSubmit';
 
 interface DeleteMealConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: () => Promise<void> | void;
 }
 
 const DeleteMealConfirmModal = ({ isOpen, onClose, onConfirm }: DeleteMealConfirmModalProps) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const submitLock = useRef({ current: false });
+
   if (!isOpen) return null;
 
-  const handleConfirm = () => {
-    onConfirm();
-    onClose();
+  const handleConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      await submitModalAction(
+        submitLock.current,
+        () => onConfirm(),
+        () => {
+          onClose();
+        }
+      );
+    } catch (error) {
+      console.error('[DeleteMealConfirmModal] Failed to clear meal:', error);
+      alert('Не удалось удалить приём пищи. Проверьте соединение и попробуйте снова.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -24,7 +42,8 @@ const DeleteMealConfirmModal = ({ isOpen, onClose, onConfirm }: DeleteMealConfir
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            disabled={isDeleting}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
             aria-label="Закрыть"
           >
             <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
@@ -49,15 +68,17 @@ const DeleteMealConfirmModal = ({ isOpen, onClose, onConfirm }: DeleteMealConfir
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 py-3 px-4 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            disabled={isDeleting}
+            className="flex-1 py-3 px-4 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             Отмена
           </button>
           <button
             onClick={handleConfirm}
-            className="flex-1 py-3 px-4 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
-          >
-            Удалить
+            disabled={isDeleting}
+            className="flex-1 py-3 px-4 rounded-lg bg-red-600 text-white font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+>
+            {isDeleting ? 'УДАЛЕНИЕ...' : 'Удалить'}
           </button>
         </div>
       </div>

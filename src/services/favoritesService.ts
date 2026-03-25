@@ -9,6 +9,16 @@ interface FavoriteEntry {
   canonicalFoodId?: string | null;
 }
 
+interface FavoriteProductsTableClient {
+  upsert(payload: any, options: { onConflict: string }): Promise<{ error: any }>;
+  selectIdByKey(params: {
+    userId: string;
+    canonicalFoodId: string | null;
+    productName: string;
+  }): Promise<{ data: { id: string } | null; error: any }>;
+  insert(payload: any): Promise<{ error: any }>;
+}
+
 const STORAGE_KEY = 'potok_favorites_v1';
 
 const loadAll = (): Record<string, FavoriteEntry[]> => {
@@ -51,6 +61,11 @@ const isMissingCanonicalColumnError = (error: any): boolean => {
   const code = String(error?.code ?? '').toUpperCase();
   const message = String(error?.message ?? '').toLowerCase();
   return code === '42703' || message.includes('canonical_food_id');
+};
+
+const isMissingOnConflictConstraintError = (error: any): boolean => {
+  const message = String(error?.message ?? '').toLowerCase();
+  return message.includes('no unique or exclusion constraint matching the on conflict specification');
 };
 
 const resolveFavoriteKey = (userId: string, productId: string): string => {
@@ -102,6 +117,61 @@ const resolveFoodByFavoriteEntry = (userId: string, entry: FavoriteEntry): Food 
     null
   );
 };
+
+export async function saveFavoriteProductWithFallback(
+  client: FavoriteProductsTableClient,
+  params: {
+    userId: string;
+    canonicalFoodId: string | null;
+    productName: string;
+    payload: any;
+  }
+): Promise<{ error: any; usedFallback: boolean }> {
+  let usedFallback = false;
+  let { error } = await client.upsert(params.payload, { onConflict: 'user_id,product_name' });
+
+  if (error && isMissingCanonicalColumnError(error)) {
+    const { canonical_food_id, ...fallbackPayload } = params.payload;
+    const retry = await client.upsert(fallbackPayload, { onConflict: 'user_id,product_name' });
+    error = retry.error;
+  }
+
+  if (error && isMissingOnConflictConstraintError(error)) {
+    usedFallback = true;
+    let { data: existing, error: selectError } = await client.selectIdByKey({
+      userId: params.userId,
+      canonicalFoodId: params.canonicalFoodId,
+      productName: params.productName,
+    });
+
+    if (selectError && params.canonicalFoodId && isMissingCanonicalColumnError(selectError)) {
+      const retry = await client.selectIdByKey({
+        userId: params.userId,
+        canonicalFoodId: null,
+        productName: params.productName,
+      });
+      existing = retry.data;
+      selectError = retry.error;
+    }
+
+    if (selectError) {
+      return { error: selectError, usedFallback };
+    }
+
+    if (!existing?.id) {
+      let insertResult = await client.insert(params.payload);
+      if (insertResult.error && isMissingCanonicalColumnError(insertResult.error)) {
+        const { canonical_food_id, ...fallbackPayload } = params.payload;
+        insertResult = await client.insert(fallbackPayload);
+      }
+      error = insertResult.error;
+    } else {
+      error = null;
+    }
+  }
+
+  return { error, usedFallback };
+}
 
 export const favoritesService = {
   async getFavorites(userId: string): Promise<FavoriteEntry[]> {
@@ -159,6 +229,7 @@ export const favoritesService = {
     // Try to save to Supabase
     if (supabase) {
       try {
+        const supabaseClient = supabase;
         const canonicalFoodId = await resolveCanonicalFavoriteId(sessionUserId, productId, food);
         const payload: any = {
           user_id: sessionUserId,
@@ -171,19 +242,34 @@ export const favoritesService = {
           usage_count: 0,
         };
 
-        let { error } = await supabase
-          .from('favorite_products')
-          .upsert(payload, {
-            onConflict: 'user_id,product_name',
-          });
-
-        if (error && isMissingCanonicalColumnError(error)) {
-          const { canonical_food_id, ...fallbackPayload } = payload;
-          const retry = await supabase
-            .from('favorite_products')
-            .upsert(fallbackPayload, { onConflict: 'user_id,product_name' });
-          error = retry.error;
-        }
+        const { error } = await saveFavoriteProductWithFallback(
+          {
+            upsert: async (favoritePayload, options) => {
+              const result = await supabaseClient.from('favorite_products').upsert(favoritePayload, options);
+              return { error: result.error };
+            },
+            selectIdByKey: async ({ userId, canonicalFoodId, productName }) => {
+              let query = supabaseClient.from('favorite_products').select('id').eq('user_id', userId);
+              if (canonicalFoodId) {
+                query = query.eq('canonical_food_id', canonicalFoodId);
+              } else {
+                query = query.eq('product_name', productName);
+              }
+              const result = await query.maybeSingle();
+              return { data: result.data as { id: string } | null, error: result.error };
+            },
+            insert: async (favoritePayload) => {
+              const result = await supabaseClient.from('favorite_products').insert(favoritePayload);
+              return { error: result.error };
+            },
+          },
+          {
+            userId: sessionUserId,
+            canonicalFoodId,
+            productName: favoriteKey,
+            payload,
+          }
+        );
 
         if (error) {
           console.error('[favoritesService] Supabase save error:', error);

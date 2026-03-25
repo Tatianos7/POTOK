@@ -10,7 +10,7 @@ interface SaveRecipeModalProps {
   totalProteins: number;
   totalFats: number;
   totalCarbs: number;
-  onSave: (name: string) => void;
+  onSave: (name: string) => void | Promise<void>;
 }
 
 const SaveRecipeModal = ({
@@ -25,22 +25,29 @@ const SaveRecipeModal = ({
   onSave,
 }: SaveRecipeModalProps) => {
   const [name, setName] = useState(initialName);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setName(initialName);
+      setIsSaving(false);
     }
   }, [isOpen, initialName]);
 
   if (!isOpen) return null;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const trimmedName = name.trim();
     if (!trimmedName) {
       alert('Введите название рецепта');
       return;
     }
-    onSave(trimmedName);
+    setIsSaving(true);
+    try {
+      await onSave(trimmedName);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -73,6 +80,7 @@ const SaveRecipeModal = ({
             onChange={(e) => setName(e.target.value)}
             placeholder="Введите название рецепта"
             className="w-full h-12 rounded-xl border border-gray-300 dark:border-gray-700 px-3 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={isSaving}
           />
         </div>
 
@@ -114,9 +122,10 @@ const SaveRecipeModal = ({
         {/* Save Button */}
         <button
           onClick={handleSave}
+          disabled={isSaving}
           className="w-full py-3 rounded-xl bg-black text-white text-sm font-semibold hover:bg-gray-800 transition-colors"
         >
-          СОХРАНИТЬ
+          {isSaving ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
         </button>
       </div>
     </div>
@@ -124,4 +133,3 @@ const SaveRecipeModal = ({
 };
 
 export default SaveRecipeModal;
-
