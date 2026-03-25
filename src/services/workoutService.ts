@@ -6,6 +6,7 @@ import { userStateService } from './userStateService';
 import { convertWeightToKg } from '../utils/workoutUnits';
 import { aggregateWorkoutEntries, calculateVolume } from '../utils/workoutMetrics';
 import { coachRuntime } from './coachRuntime';
+import { clearWorkoutEntriesForDay, removeWorkoutEntryFromList, updateWorkoutEntryInList } from '../utils/workoutDiaryMutations';
 
 class WorkoutService {
   private readonly WORKOUTS_STORAGE_KEY = 'potok_workout_entries';
@@ -85,6 +86,47 @@ class WorkoutService {
       console.error('[workoutService] Error loading workouts from localStorage:', error);
       return null;
     }
+  }
+
+  private emitWorkoutsSynced(date: string, entries: WorkoutEntry[]): void {
+    try {
+      window.dispatchEvent(new CustomEvent('workouts-synced', { detail: { date, entries } }));
+    } catch {
+      // ignore if window is not available
+    }
+  }
+
+  private updateLocalWorkoutEntries(userId: string, date: string, updater: (entries: WorkoutEntry[]) => WorkoutEntry[]): WorkoutEntry[] {
+    const current = this.getWorkoutsFromLocalStorage(userId, date) || [];
+    const next = updater(current);
+    this.saveWorkoutsToLocalStorage(userId, date, next);
+    this.emitWorkoutsSynced(date, next);
+    return next;
+  }
+
+  private mapWorkoutEntryRow(entry: any): WorkoutEntry {
+    return {
+      id: entry.id,
+      workout_day_id: entry.workout_day_id,
+      exercise_id: entry.exercise_id,
+      canonical_exercise_id: entry.exercise?.canonical_exercise_id ?? entry.exercise_id ?? null,
+      sets: Number(entry.sets) || 0,
+      reps: Number(entry.reps) || 0,
+      weight: Number(entry.weight) || 0,
+      baseUnit: entry.base_unit ?? 'кг',
+      displayUnit: entry.display_unit ?? 'кг',
+      displayAmount: Number(entry.display_amount ?? entry.weight ?? 0),
+      idempotencyKey: entry.idempotency_key ?? undefined,
+      created_at: entry.created_at,
+      updated_at: entry.updated_at,
+      exercise: entry.exercise
+        ? {
+            ...entry.exercise,
+            muscles: entry.exercise.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
+          }
+        : undefined,
+      workout_day: entry.workout_day,
+    };
   }
 
   private assertEntryNumbers(entry: { sets?: number; reps?: number; weight?: number }): void {
@@ -220,6 +262,43 @@ class WorkoutService {
     return newDay;
   }
 
+  async getWorkoutDay(userId: string, date: string): Promise<WorkoutDay | null> {
+    if (!supabase) {
+      return null;
+    }
+
+    let sessionUserId: string;
+    try {
+      sessionUserId = await this.getSessionUserId(userId);
+    } catch {
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('workout_days')
+      .select('*')
+      .eq('user_id', sessionUserId)
+      .eq('date', date)
+      .maybeSingle();
+
+    if (error) {
+      if (error.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout day:', error);
+      }
+      return null;
+    }
+
+    return data ?? null;
+  }
+
+  async getOrCreatePersistedWorkoutDay(userId: string, date: string): Promise<WorkoutDay> {
+    const workoutDay = await this.getOrCreateWorkoutDay(userId, date);
+    if (!workoutDay?.id || String(workoutDay.id).startsWith('local-')) {
+      throw new Error('Не удалось создать persisted workout day для заметки');
+    }
+    return workoutDay;
+  }
+
   /**
    * Получить все записи тренировки за день
    */
@@ -291,35 +370,10 @@ class WorkoutService {
     }
 
     // Преобразуем данные
-    const entries: WorkoutEntry[] = (data || []).map((entry: any) => ({
-      id: entry.id,
-      workout_day_id: entry.workout_day_id,
-      exercise_id: entry.exercise_id,
-      canonical_exercise_id: entry.exercise?.canonical_exercise_id ?? entry.exercise_id ?? null,
-      sets: entry.sets,
-      reps: entry.reps,
-      weight: Number(entry.weight) || 0,
-      baseUnit: entry.base_unit ?? 'кг',
-      displayUnit: entry.display_unit ?? 'кг',
-      displayAmount: Number(entry.display_amount ?? entry.weight ?? 0),
-      idempotencyKey: entry.idempotency_key ?? undefined,
-      created_at: entry.created_at,
-      updated_at: entry.updated_at,
-      exercise: entry.exercise ? {
-        ...entry.exercise,
-        muscles: entry.exercise.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
-      } : undefined,
-      workout_day: entry.workout_day,
-    }));
+    const entries: WorkoutEntry[] = (data || []).map((entry: any) => this.mapWorkoutEntryRow(entry));
 
     this.saveWorkoutsToLocalStorage(sessionUserId, date, entries);
-    try {
-      window.dispatchEvent(
-        new CustomEvent('workouts-synced', { detail: { date, entries } })
-      );
-    } catch {
-      // ignore if window is not available
-    }
+    this.emitWorkoutsSynced(date, entries);
 
     return entries;
   }
@@ -445,25 +499,7 @@ class WorkoutService {
     }
 
     // Преобразуем данные
-    const workoutEntries: WorkoutEntry[] = (data || []).map((entry: any) => ({
-      id: entry.id,
-      workout_day_id: entry.workout_day_id,
-      exercise_id: entry.exercise_id,
-      canonical_exercise_id: entry.exercise?.canonical_exercise_id ?? entry.exercise_id ?? null,
-      sets: entry.sets,
-      reps: entry.reps,
-      weight: entry.weight,
-      baseUnit: entry.base_unit ?? 'кг',
-      displayUnit: entry.display_unit ?? 'кг',
-      displayAmount: Number(entry.display_amount ?? entry.weight ?? 0),
-      idempotencyKey: entry.idempotency_key ?? undefined,
-      created_at: entry.created_at,
-      updated_at: entry.updated_at,
-      exercise: entry.exercise ? {
-        ...entry.exercise,
-        muscles: entry.exercise.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
-      } : undefined,
-    }));
+    const workoutEntries: WorkoutEntry[] = (data || []).map((entry: any) => this.mapWorkoutEntryRow(entry));
 
     this.saveWorkoutsToLocalStorage(userId, date, workoutEntries);
 
@@ -482,14 +518,66 @@ class WorkoutService {
   async updateWorkoutEntry(
     entryId: string,
     updates: { sets?: number; reps?: number; weight?: number },
-    expectedUpdatedAt?: string
+    expectedUpdatedAt?: string,
+    context?: { userId?: string; date?: string }
   ): Promise<WorkoutEntry> {
     if (!supabase) {
+      if (context?.userId && context?.date) {
+        const localEntries = this.getWorkoutsFromLocalStorage(context.userId, context.date) || [];
+        const currentEntry = localEntries.find((entry) => entry.id === entryId);
+        if (!currentEntry) {
+          throw new Error('Запись тренировки не найдена');
+        }
+        const mergedEntry: WorkoutEntry = {
+          ...currentEntry,
+          sets: updates.sets ?? currentEntry.sets,
+          reps: updates.reps ?? currentEntry.reps,
+          weight: updates.weight ?? currentEntry.weight,
+          displayAmount: updates.weight ?? currentEntry.displayAmount ?? currentEntry.weight,
+        };
+        this.updateLocalWorkoutEntries(context.userId, context.date, (entries) =>
+          updateWorkoutEntryInList(entries, entryId, {
+            sets: mergedEntry.sets,
+            reps: mergedEntry.reps,
+            weight: mergedEntry.weight,
+            displayAmount: mergedEntry.displayAmount ?? mergedEntry.weight,
+          }),
+        );
+        return mergedEntry;
+      }
       throw new Error('Supabase не инициализирован');
     }
 
     try {
-      const sessionUserId = await this.getSessionUserId();
+      let sessionUserId: string;
+      try {
+        sessionUserId = await this.getSessionUserId(context?.userId);
+      } catch (error) {
+        if (context?.userId && context?.date) {
+          const localEntries = this.getWorkoutsFromLocalStorage(context.userId, context.date) || [];
+          const currentEntry = localEntries.find((entry) => entry.id === entryId);
+          if (!currentEntry) {
+            throw new Error('Запись тренировки не найдена');
+          }
+          const mergedEntry: WorkoutEntry = {
+            ...currentEntry,
+            sets: updates.sets ?? currentEntry.sets,
+            reps: updates.reps ?? currentEntry.reps,
+            weight: updates.weight ?? currentEntry.weight,
+            displayAmount: updates.weight ?? currentEntry.displayAmount ?? currentEntry.weight,
+          };
+          this.updateLocalWorkoutEntries(context.userId, context.date, (entries) =>
+            updateWorkoutEntryInList(entries, entryId, {
+              sets: mergedEntry.sets,
+              reps: mergedEntry.reps,
+              weight: mergedEntry.weight,
+              displayAmount: mergedEntry.displayAmount ?? mergedEntry.weight,
+            }),
+          );
+          return mergedEntry;
+        }
+        throw error;
+      }
       this.assertEntryNumbers(updates);
       if (expectedUpdatedAt) {
         const { data: current, error: currentError } = await supabase
@@ -533,13 +621,21 @@ class WorkoutService {
         }
       }
 
-      return {
-        ...data,
-        exercise: data.exercise ? {
-          ...data.exercise,
-          muscles: data.exercise.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
-        } : undefined,
-      };
+      const mapped = this.mapWorkoutEntryRow(data);
+
+      const workoutDate = Array.isArray(data.workout_day) ? data.workout_day?.[0]?.date : data.workout_day?.date;
+      if (sessionUserId && workoutDate) {
+        this.updateLocalWorkoutEntries(sessionUserId, workoutDate, (entries) =>
+          updateWorkoutEntryInList(entries, entryId, {
+            sets: mapped.sets,
+            reps: mapped.reps,
+            weight: mapped.weight,
+            displayAmount: mapped.displayAmount ?? mapped.weight,
+          }),
+        );
+      }
+
+      return mapped;
     } catch (error) {
       console.error('[workoutService] Error:', error);
       throw error;
@@ -652,12 +748,25 @@ class WorkoutService {
   /**
    * Удалить запись тренировки
    */
-  async deleteWorkoutEntry(entryId: string): Promise<void> {
+  async deleteWorkoutEntry(entryId: string, userId?: string, date?: string): Promise<void> {
     if (!supabase) {
+      if (userId && date) {
+        this.updateLocalWorkoutEntries(userId, date, (entries) => removeWorkoutEntryFromList(entries, entryId));
+        return;
+      }
       throw new Error('Supabase не инициализирован. Проверьте переменные окружения VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY');
     }
 
-    const sessionUserId = await this.getSessionUserId();
+    let sessionUserId: string;
+    try {
+      sessionUserId = await this.getSessionUserId(userId);
+    } catch (error) {
+      if (userId && date) {
+        this.updateLocalWorkoutEntries(userId, date, (entries) => removeWorkoutEntryFromList(entries, entryId));
+        return;
+      }
+      throw error;
+    }
 
     const { data, error } = await supabase
       .from('workout_entries')
@@ -681,6 +790,9 @@ class WorkoutService {
     const workoutDate = Array.isArray(workoutDayData)
       ? workoutDayData?.[0]?.date
       : workoutDayData?.date;
+    if (sessionUserId && workoutDate) {
+      this.updateLocalWorkoutEntries(sessionUserId, workoutDate, (entries) => removeWorkoutEntryFromList(entries, entryId));
+    }
     if (workoutDate) {
       try {
         await aiTrainingPlansService.markTrainingPlanOutdated(sessionUserId, workoutDate);
@@ -690,8 +802,78 @@ class WorkoutService {
     }
   }
 
+  async deleteWorkoutDay(userId: string, date: string): Promise<void> {
+    if (!supabase) {
+      this.updateLocalWorkoutEntries(userId, date, () => clearWorkoutEntriesForDay());
+      return;
+    }
+
+    let sessionUserId: string;
+    try {
+      sessionUserId = await this.getSessionUserId(userId);
+    } catch (error) {
+      this.updateLocalWorkoutEntries(userId, date, () => clearWorkoutEntriesForDay());
+      return;
+    }
+
+    const { data: workoutDay, error: workoutDayError } = await supabase
+      .from('workout_days')
+      .select('id')
+      .eq('user_id', sessionUserId)
+      .eq('date', date)
+      .maybeSingle();
+
+    if (workoutDayError) {
+      const errorMessage = workoutDayError.message || 'Ошибка удаления тренировки';
+      console.error('[workoutService] Error fetching workout day for delete:', workoutDayError);
+      if (workoutDayError.code === '42501' || errorMessage.includes('row-level security')) {
+        throw new Error('Ошибка доступа: обновите RLS политики в Supabase SQL Editor. Выполните команды из файла supabase/workout_schema.sql (строки 135-145)');
+      }
+      throw new Error(errorMessage);
+    }
+
+    if (!workoutDay?.id) {
+      this.updateLocalWorkoutEntries(sessionUserId, date, () => clearWorkoutEntriesForDay());
+      return;
+    }
+
+    const { error: entriesError } = await supabase
+      .from('workout_entries')
+      .delete()
+      .eq('workout_day_id', workoutDay.id);
+
+    if (entriesError) {
+      const errorMessage = entriesError.message || 'Ошибка удаления упражнений тренировки';
+      console.error('[workoutService] Error deleting workout day entries:', entriesError);
+      if (entriesError.code === '42501' || errorMessage.includes('row-level security')) {
+        throw new Error('Ошибка доступа: обновите RLS политики в Supabase SQL Editor. Выполните команды из файла supabase/workout_schema.sql (строки 135-145)');
+      }
+      throw new Error(errorMessage);
+    }
+
+    const { error: workoutDayDeleteError } = await supabase
+      .from('workout_days')
+      .delete()
+      .eq('id', workoutDay.id);
+
+    if (workoutDayDeleteError) {
+      const errorMessage = workoutDayDeleteError.message || 'Ошибка удаления тренировки';
+      console.error('[workoutService] Error deleting workout day container:', workoutDayDeleteError);
+      if (workoutDayDeleteError.code === '42501' || errorMessage.includes('row-level security')) {
+        throw new Error('Ошибка доступа: обновите RLS политики в Supabase SQL Editor. Выполните команды из файла supabase/workout_schema.sql (строки 135-145)');
+      }
+      throw new Error(errorMessage);
+    }
+
+    this.updateLocalWorkoutEntries(sessionUserId, date, () => clearWorkoutEntriesForDay());
+
+    try {
+      await aiTrainingPlansService.markTrainingPlanOutdated(sessionUserId, date);
+    } catch (aiError) {
+      console.error('[workoutService] Error marking AI training plan outdated:', aiError);
+    }
+  }
+
 }
 
 export const workoutService = new WorkoutService();
-
-

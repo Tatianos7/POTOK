@@ -1,17 +1,19 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Calendar, Edit, Trash2, Clock, Plus, CheckCircle } from 'lucide-react';
+import { X, Calendar, Edit, Trash2, Clock, Plus, CheckCircle, StickyNote } from 'lucide-react';
 import InlineCalendar from '../components/InlineCalendar';
 import ExerciseCategorySheet from '../components/ExerciseCategorySheet';
 import ExerciseListSheet from '../components/ExerciseListSheet';
 import SelectedExercisesEditor from '../components/SelectedExercisesEditor';
 import CreateExerciseModal from '../components/CreateExerciseModal';
+import EditWorkoutEntryModal from '../components/EditWorkoutEntryModal';
+import MealNoteModal from '../components/MealNoteModal';
 import { exerciseService } from '../services/exerciseService';
 import { workoutService } from '../services/workoutService';
+import { workoutEntryNotesService } from '../services/workoutEntryNotesService';
+import { workoutDayNotesService } from '../services/workoutDayNotesService';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
-import ExplainabilityDrawer from '../components/ExplainabilityDrawer';
-import type { BaseExplainabilityDTO } from '../types/explainability';
 import { classifyTrustDecision } from '../services/trustSafetyService';
 import { coachRuntime, type CoachScreenContext } from '../services/coachRuntime';
 import { ExerciseCategory, Exercise, SelectedExercise, WorkoutEntry } from '../types/workout';
@@ -21,6 +23,7 @@ import Button from '../ui/components/Button';
 import ExerciseRow from '../ui/components/ExerciseRow';
 import ExerciseTableHeader from '../ui/components/ExerciseTableHeader';
 import { colors, spacing, typography } from '../ui/theme/tokens';
+import { clearWorkoutEntriesForDay, removeWorkoutEntryFromList } from '../utils/workoutDiaryMutations';
 
 const Workouts = () => {
   const navigate = useNavigate();
@@ -48,16 +51,26 @@ const Workouts = () => {
   const [workoutEntries, setWorkoutEntries] = useState<WorkoutEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingEntry, setIsUpdatingEntry] = useState(false);
+  const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
+  const [isDeletingWorkout, setIsDeletingWorkout] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<WorkoutEntry | null>(null);
+  const [noteEntry, setNoteEntry] = useState<WorkoutEntry | null>(null);
+  const [entryNote, setEntryNote] = useState<string | null>(null);
+  const [isLoadingEntryNote, setIsLoadingEntryNote] = useState(false);
+  const [isWorkoutDayNoteOpen, setIsWorkoutDayNoteOpen] = useState(false);
+  const [workoutDayNote, setWorkoutDayNote] = useState<string | null>(null);
+  const [workoutDayNoteDayId, setWorkoutDayNoteDayId] = useState<string | null>(null);
+  const [isLoadingWorkoutDayNote, setIsLoadingWorkoutDayNote] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
-  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const buildCoachContext = (): CoachScreenContext => ({
     screen: 'Today',
     userMode: 'Manual',
     subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
-    trustLevel: explainability?.trust_score,
+    trustLevel: undefined,
     safetyFlags: [],
   });
   const prStorageKey = (userId: string) => `workout_pr_${userId}`;
@@ -211,7 +224,6 @@ const Workouts = () => {
     try {
       const state = await uiRuntimeAdapter.getTrainingDiaryState(user.id, selectedDate);
       setRuntimeStatus(state.status);
-      setExplainability(state.explainability ?? null);
       setTrustMessage(state.trust?.message ?? null);
       setWorkoutEntries(state.entries ?? []);
       if (state.status === 'error') {
@@ -275,9 +287,167 @@ const Workouts = () => {
     console.log('Редактировать тренировку');
   };
 
-  const handleDeleteWorkout = () => {
-    // TODO: Реализовать удаление тренировки
-    console.log('Удалить тренировку');
+  const handleEditEntry = (entryId: string) => {
+    if (isUpdatingEntry || deletingEntryId || isDeletingWorkout) return;
+    const entry = workoutEntries.find((item) => item.id === entryId);
+    if (!entry) {
+      setErrorMessage('Не удалось найти запись упражнения для редактирования');
+      return;
+    }
+    setEditingEntry(entry);
+  };
+
+  const handleSaveEditedEntry = async (updates: { sets: number; reps: number; weight: number }) => {
+    if (!editingEntry || !user?.id || isUpdatingEntry) return;
+
+    setIsUpdatingEntry(true);
+    setErrorMessage(null);
+    try {
+      const updatedEntry = await workoutService.updateWorkoutEntry(
+        editingEntry.id,
+        updates,
+        editingEntry.updated_at,
+        { userId: user.id, date: selectedDate },
+      );
+      setWorkoutEntries((current) => current.map((entry) => (entry.id === updatedEntry.id ? updatedEntry : entry)));
+      setEditingEntry(null);
+      setRuntimeStatus('active');
+    } catch (error: any) {
+      console.error('Ошибка редактирования упражнения:', error);
+      const message = error?.message || 'Ошибка при обновлении упражнения';
+      setErrorMessage(message);
+      await reloadWorkoutEntries();
+      alert(message);
+    } finally {
+      setIsUpdatingEntry(false);
+    }
+  };
+
+  const handleDeleteWorkout = async () => {
+    if (!user?.id || isDeletingWorkout || isSaving || isLoading || workoutEntries.length === 0) return;
+    const confirmed = window.confirm('Удалить всю тренировку за выбранный день?');
+    if (!confirmed) return;
+
+    setIsDeletingWorkout(true);
+    setErrorMessage(null);
+    try {
+      await workoutService.deleteWorkoutDay(user.id, selectedDate);
+      setWorkoutEntries(clearWorkoutEntriesForDay());
+      setRuntimeStatus('empty');
+    } catch (error: any) {
+      console.error('Ошибка удаления тренировки:', error);
+      const message = error?.message || 'Ошибка при удалении тренировки';
+      setErrorMessage(message);
+      await reloadWorkoutEntries();
+      alert(message);
+    } finally {
+      setIsDeletingWorkout(false);
+    }
+  };
+
+  const handleOpenWorkoutDayNote = async () => {
+    if (!user?.id || isLoadingWorkoutDayNote || isSaving || isUpdatingEntry || deletingEntryId || isDeletingWorkout) return;
+
+    setIsLoadingWorkoutDayNote(true);
+    setErrorMessage(null);
+    try {
+      const workoutDay = await workoutService.getWorkoutDay(user.id, selectedDate);
+      const note = workoutDay?.id
+        ? await workoutDayNotesService.getNoteByWorkoutDayId(user.id, workoutDay.id)
+        : null;
+
+      setWorkoutDayNoteDayId(workoutDay?.id ?? null);
+      setWorkoutDayNote(note);
+      setIsWorkoutDayNoteOpen(true);
+    } catch (error: any) {
+      console.error('Ошибка загрузки заметки тренировки:', error);
+      const message = error?.message || 'Ошибка при загрузке заметки тренировки';
+      setErrorMessage(message);
+      alert(message);
+    } finally {
+      setIsLoadingWorkoutDayNote(false);
+    }
+  };
+
+  const handleSaveWorkoutDayNote = async (note: string) => {
+    if (!user?.id) return;
+
+    let workoutDayId = workoutDayNoteDayId;
+    if (!workoutDayId) {
+      const workoutDay = await workoutService.getOrCreatePersistedWorkoutDay(user.id, selectedDate);
+      workoutDayId = workoutDay.id;
+      setWorkoutDayNoteDayId(workoutDayId);
+    }
+
+    await workoutDayNotesService.saveNote(user.id, workoutDayId, note);
+    setWorkoutDayNote(note);
+  };
+
+  const handleDeleteWorkoutDayNote = async () => {
+    if (!user?.id || !workoutDayNoteDayId) return;
+    await workoutDayNotesService.deleteNote(user.id, workoutDayNoteDayId);
+    setWorkoutDayNote(null);
+  };
+
+  const handleOpenEntryNote = async (entryId: string) => {
+    if (!user?.id || isLoadingEntryNote || isUpdatingEntry || deletingEntryId || isDeletingWorkout) return;
+    const entry = workoutEntries.find((item) => item.id === entryId);
+    if (!entry) {
+      setErrorMessage('Не удалось найти запись упражнения для заметки');
+      return;
+    }
+
+    setIsLoadingEntryNote(true);
+    setErrorMessage(null);
+    try {
+      const note = await workoutEntryNotesService.getNoteByEntryId(user.id, entryId);
+      setEntryNote(note);
+      setNoteEntry(entry);
+    } catch (error: any) {
+      console.error('Ошибка загрузки заметки:', error);
+      const message = error?.message || 'Ошибка при загрузке заметки';
+      setErrorMessage(message);
+      alert(message);
+    } finally {
+      setIsLoadingEntryNote(false);
+    }
+  };
+
+  const handleSaveEntryNote = async (note: string) => {
+    if (!user?.id || !noteEntry) return;
+    await workoutEntryNotesService.saveNote(user.id, noteEntry.id, note);
+    setEntryNote(note);
+    setNoteEntry(null);
+  };
+
+  const handleDeleteEntryNote = async () => {
+    if (!user?.id || !noteEntry) return;
+    await workoutEntryNotesService.deleteNote(user.id, noteEntry.id);
+    setEntryNote(null);
+    setNoteEntry(null);
+  };
+
+  const handleDeleteEntry = async (entryId: string) => {
+    if (!user?.id || deletingEntryId || isDeletingWorkout || isSaving) return;
+    const confirmed = window.confirm('Удалить упражнение из тренировки?');
+    if (!confirmed) return;
+
+    setDeletingEntryId(entryId);
+    setErrorMessage(null);
+    try {
+      await workoutService.deleteWorkoutEntry(entryId, user.id, selectedDate);
+      const nextEntries = removeWorkoutEntryFromList(workoutEntries, entryId);
+      setWorkoutEntries(nextEntries);
+      setRuntimeStatus(nextEntries.length > 0 ? 'active' : 'empty');
+    } catch (error: any) {
+      console.error('Ошибка удаления упражнения:', error);
+      const message = error?.message || 'Ошибка при удалении упражнения';
+      setErrorMessage(message);
+      await reloadWorkoutEntries();
+      alert(message);
+    } finally {
+      setDeletingEntryId(null);
+    }
   };
 
 
@@ -453,11 +623,6 @@ const Workouts = () => {
               Данные доступны частично. Мы покажем то, что уже есть.
             </div>
           )}
-          {explainability && (
-            <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-xs text-gray-600">
-              Доступно объяснение: «Почему так?»
-            </div>
-          )}
           {/* Calendar Section */}
           <div className="mb-4 min-[376px]:mb-6 w-full max-w-full">
             {/* Month */}
@@ -525,6 +690,14 @@ const Workouts = () => {
               </h2>
               <div className="flex items-center gap-2 min-[376px]:gap-3">
                 <button
+                  onClick={() => void handleOpenWorkoutDayNote()}
+                  disabled={isLoadingWorkoutDayNote || isDeletingWorkout || isSaving || isLoading}
+                  className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Заметка к тренировке"
+                >
+                  <StickyNote className="w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 text-gray-700 dark:text-gray-300" />
+                </button>
+                <button
                   onClick={handleEditWorkout}
                   className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   aria-label="Редактировать"
@@ -533,6 +706,7 @@ const Workouts = () => {
                 </button>
                 <button
                   onClick={handleDeleteWorkout}
+                  disabled={isDeletingWorkout || isSaving || isLoading || workoutEntries.length === 0}
                   className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
                   aria-label="Удалить"
                 >
@@ -564,17 +738,14 @@ const Workouts = () => {
                     reps={entry.reps}
                     weight={entry.displayAmount ?? entry.weight}
                     unit={entry.displayUnit ?? 'кг'}
-                    onEdit={() => console.log('edit', entry.id)}
-                    onDelete={() => console.log('delete', entry.id)}
-                    onNote={() => console.log('note', entry.id)}
+                    onEdit={() => handleEditEntry(entry.id)}
+                    onDelete={() => void handleDeleteEntry(entry.id)}
+                    onNote={() => void handleOpenEntryNote(entry.id)}
                     onMedia={() => console.log('media', entry.id)}
                   />
                 ))}
               </div>
             )}
-          </div>
-          <div className="mt-4">
-            <ExplainabilityDrawer explainability={explainability} />
           </div>
         </main>
 
@@ -674,9 +845,42 @@ const Workouts = () => {
         }}
         isSaving={isSaving}
       />
+
+      <EditWorkoutEntryModal
+        isOpen={editingEntry !== null}
+        entry={editingEntry}
+        isSaving={isUpdatingEntry}
+        onClose={() => {
+          if (isUpdatingEntry) return;
+          setEditingEntry(null);
+        }}
+        onSave={handleSaveEditedEntry}
+      />
+
+      <MealNoteModal
+        isOpen={noteEntry !== null}
+        onClose={() => {
+          if (isLoadingEntryNote) return;
+          setNoteEntry(null);
+          setEntryNote(null);
+        }}
+        initialNote={entryNote}
+        onSave={handleSaveEntryNote}
+        onDelete={entryNote ? handleDeleteEntryNote : undefined}
+      />
+
+      <MealNoteModal
+        isOpen={isWorkoutDayNoteOpen}
+        onClose={() => {
+          if (isLoadingWorkoutDayNote) return;
+          setIsWorkoutDayNoteOpen(false);
+        }}
+        initialNote={workoutDayNote}
+        onSave={handleSaveWorkoutDayNote}
+        onDelete={workoutDayNoteDayId && workoutDayNote ? handleDeleteWorkoutDayNote : undefined}
+      />
     </ScreenContainer>
   );
 };
 
 export default Workouts;
-
