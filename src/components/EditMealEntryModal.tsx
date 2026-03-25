@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { MealEntry } from '../types';
 import { X, Pencil, Camera } from 'lucide-react';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
 import { mealEntryNotesService } from '../services/mealEntryNotesService';
 import { useAuth } from '../context/AuthContext';
 import MealNoteModal from './MealNoteModal';
-import { convertDisplayToGrams, FoodDisplayUnit, foodDisplayUnits } from '../utils/foodUnits';
+import { convertDisplayToGrams, FoodDisplayUnit } from '../utils/foodUnits';
+import { getQuickFoodPresets, getSafeDisplayUnit, getSupportedFoodDisplayUnits } from '../utils/foodMeasurementPresets';
+import FoodSourceBadge from './FoodSourceBadge';
+import { submitModalAction } from '../utils/asyncModalSubmit';
 
 interface EditMealEntryModalProps {
   entry: MealEntry | null;
@@ -13,8 +16,8 @@ interface EditMealEntryModalProps {
   date: string;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', updatedEntry: MealEntry) => void;
-  onDelete: () => void;
+  onSave: (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', updatedEntry: MealEntry) => Promise<void> | void;
+  onDelete: () => Promise<void> | void;
   source?: 'meal' | 'search' | 'favorites' | 'analyzer'; // Источник открытия карточки
 }
 
@@ -38,6 +41,8 @@ const EditMealEntryModal = ({
   const { user } = useAuth();
   const [amount, setAmount] = useState<string>('');
   const [unit, setUnit] = useState<FoodDisplayUnit>('г');
+  const [isSaving, setIsSaving] = useState(false);
+  const submitLock = useRef({ current: false });
   const [calculated, setCalculated] = useState({
     calories: 0,
     protein: 0,
@@ -46,10 +51,23 @@ const EditMealEntryModal = ({
   });
   const [note, setNote] = useState<string>('');
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const supportedUnits = useMemo(
+    () => (entry?.food ? getSupportedFoodDisplayUnits(entry.food) : (['г'] as FoodDisplayUnit[])),
+    [entry?.food]
+  );
+  const quickPresets = useMemo(
+    () =>
+      (entry?.food
+        ? getQuickFoodPresets(entry.food)
+        : [{ quantity: 100, unit: 'г' as FoodDisplayUnit, label: '100 г' }]).filter(
+        (preset) => !(preset.unit === 'г' && preset.quantity === 100)
+      ),
+    [entry?.food]
+  );
 
   useEffect(() => {
     if (entry) {
-      const displayUnit = (entry.displayUnit as FoodDisplayUnit) || 'г';
+      const displayUnit = getSafeDisplayUnit(entry.displayUnit as FoodDisplayUnit, supportedUnits);
       const displayAmount = entry.displayAmount ?? entry.weight;
       setUnit(displayUnit);
       setAmount(displayAmount.toString());
@@ -58,7 +76,18 @@ const EditMealEntryModal = ({
       // Загружаем заметку, если она есть
       setNote(entry.note || '');
     }
-  }, [entry]);
+  }, [entry, supportedUnits]);
+
+  useEffect(() => {
+    if (!entry) return;
+    const safeUnit = getSafeDisplayUnit(unit, supportedUnits);
+    if (safeUnit !== unit) {
+      setUnit(safeUnit);
+      const amountNum = parseFloat(amount) || 0;
+      const grams = convertDisplayToGrams(amountNum, safeUnit, entry.food?.name);
+      calculateNutrients(grams);
+    }
+  }, [entry, unit, amount, supportedUnits]);
 
   // Загружаем заметку из Supabase при открытии модального окна
   useEffect(() => {
@@ -108,7 +137,7 @@ const EditMealEntryModal = ({
     return `${weekday} ${day} ${month}`;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!entry || !amount || parseFloat(amount) <= 0) {
       return;
     }
@@ -127,15 +156,41 @@ const EditMealEntryModal = ({
       displayAmount: amountNum,
     };
 
-    if (mealType) {
-      onSave(mealType, updatedEntry);
+    if (!mealType) return;
+
+    setIsSaving(true);
+    try {
+      await submitModalAction(
+        submitLock.current,
+        () => onSave(mealType, updatedEntry),
+        () => {
+          onClose();
+        }
+      );
+    } catch (error) {
+      console.error('[EditMealEntryModal] Failed to update entry:', error);
+      alert('Не удалось сохранить изменения. Проверьте соединение и попробуйте снова.');
+    } finally {
+      setIsSaving(false);
     }
-    onClose();
   };
 
-  const handleDelete = () => {
-    onDelete();
-    onClose();
+  const handleDelete = async () => {
+    setIsSaving(true);
+    try {
+      await submitModalAction(
+        submitLock.current,
+        () => onDelete(),
+        () => {
+          onClose();
+        }
+      );
+    } catch (error) {
+      console.error('[EditMealEntryModal] Failed to delete entry:', error);
+      alert('Не удалось удалить продукт. Проверьте соединение и попробуйте снова.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleNoteClick = () => {
@@ -181,7 +236,7 @@ const EditMealEntryModal = ({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
-      onClick={onClose}
+      onClick={() => { if (!isSaving) onClose(); }}
     >
       <div
         className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-[calc(100vw-24px)] mobile-lg:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden"
@@ -199,8 +254,9 @@ const EditMealEntryModal = ({
             </p>
           </div>
           <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ml-4"
+            onClick={() => { if (!isSaving) onClose(); }}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors ml-4 disabled:opacity-50"
+            disabled={isSaving}
           >
             <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           </button>
@@ -210,17 +266,21 @@ const EditMealEntryModal = ({
         <div className="space-y-6" style={{ padding: '10px' }}>
           {/* Food Name and Weight Input */}
           <div className="flex items-center justify-between gap-3 mobile-lg:gap-4 w-full max-w-full overflow-hidden">
-            <p 
-              className="text-base font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0"
-            >
-              {getFoodDisplayName(entry.food)}
-            </p>
+            <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
+              <p 
+                className="text-base font-medium text-gray-900 dark:text-white truncate min-w-0"
+              >
+                {getFoodDisplayName(entry.food)}
+              </p>
+              <FoodSourceBadge food={entry.food} className="flex-shrink-0" />
+            </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">Количество</span>
               <input
                 type="number"
                 value={amount}
                 onChange={(e) => handleAmountChange(e.target.value)}
+                disabled={isSaving}
                 min="0"
                 step="1"
                 className="w-20 px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 text-center flex-shrink-0"
@@ -229,6 +289,7 @@ const EditMealEntryModal = ({
               />
               <select
                 value={unit}
+                disabled={isSaving}
                 onChange={(e) => {
                   const nextUnit = e.target.value as FoodDisplayUnit;
                   setUnit(nextUnit);
@@ -238,13 +299,32 @@ const EditMealEntryModal = ({
                 }}
                 className="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
               >
-                {foodDisplayUnits.map((option) => (
+                {supportedUnits.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="flex gap-2 flex-wrap">
+            {quickPresets.map((preset) => (
+              <button
+                key={`${preset.quantity}-${preset.unit}`}
+                type="button"
+                onClick={() => {
+                  setAmount(preset.quantity.toString());
+                  setUnit(preset.unit);
+                  const grams = convertDisplayToGrams(preset.quantity, preset.unit, entry.food?.name);
+                  calculateNutrients(grams);
+                }}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                disabled={isSaving}
+              >
+                {preset.label}
+              </button>
+            ))}
           </div>
 
           {/* Nutritional Information Cards */}
@@ -297,6 +377,7 @@ const EditMealEntryModal = ({
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Заметка:</h3>
                 <button
                   onClick={handleNoteClick}
+                disabled={isSaving}
                   className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   aria-label="Редактировать заметку"
                 >
@@ -316,6 +397,7 @@ const EditMealEntryModal = ({
               <button
                 type="button"
                 onClick={handleNoteClick}
+                disabled={isSaving}
                 className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 <Pencil className="w-5 h-5 text-gray-700 dark:text-gray-300" />
@@ -329,7 +411,8 @@ const EditMealEntryModal = ({
             {source !== 'meal' && (
               <button
                 type="button"
-                className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                className="flex flex-col items-center gap-2 p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                disabled={isSaving}
               >
                 <Camera className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                 <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
@@ -344,17 +427,19 @@ const EditMealEntryModal = ({
             <button
               type="button"
               onClick={handleDelete}
-              className="w-full py-3 px-4 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              УДАЛИТЬ
+              disabled={isSaving}
+              className="w-full py-3 px-4 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+>
+              {isSaving ? 'УДАЛЕНИЕ...' : 'УДАЛИТЬ'}
             </button>
 
             <button
               type="button"
               onClick={handleSave}
-              className="w-full py-3 px-4 rounded-lg bg-gray-900 dark:bg-gray-700 text-white font-medium hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
-            >
-              СОХРАНИТЬ
+              disabled={isSaving}
+              className="w-full py-3 px-4 rounded-lg bg-gray-900 dark:bg-gray-700 text-white font-medium hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+>
+              {isSaving ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
             </button>
           </div>
         </div>
@@ -389,4 +474,3 @@ const EditMealEntryModal = ({
 };
 
 export default EditMealEntryModal;
-

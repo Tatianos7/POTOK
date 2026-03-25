@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Food, MealEntry } from '../types';
 import { X } from 'lucide-react';
-import { convertDisplayToGrams, FoodDisplayUnit, foodDisplayUnits } from '../utils/foodUnits';
+import { convertDisplayToGrams, FoodDisplayUnit } from '../utils/foodUnits';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
+import FoodSourceBadge from './FoodSourceBadge';
+import { getQuickFoodPresets, getSafeDisplayUnit, getSupportedFoodDisplayUnits } from '../utils/foodMeasurementPresets';
+import { submitModalAction } from '../utils/asyncModalSubmit';
 
 type Unit = FoodDisplayUnit;
 
@@ -10,7 +13,7 @@ interface AddFoodToMealModalProps {
   food: Food | null;
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (entry: MealEntry) => void;
+  onAdd: (entry: MealEntry) => Promise<void> | void;
   defaultWeight?: number; // Предзаполненные граммы для часто используемых продуктов
 }
 
@@ -32,18 +35,39 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
       setQuantity('100');
     }
   }, [food, defaultWeight]);
+  const [isSaving, setIsSaving] = useState(false);
+  const submitLock = useRef({ current: false });
   const [calculated, setCalculated] = useState({
     calories: 0,
     protein: 0,
     fat: 0,
     carbs: 0,
   });
+  const supportedUnits = useMemo(
+    () => (food ? getSupportedFoodDisplayUnits(food) : (['г'] as Unit[])),
+    [food]
+  );
+  const quickPresets = useMemo(
+    () =>
+      (food ? getQuickFoodPresets(food) : [{ quantity: 100, unit: 'г' as Unit, label: '100 г' }]).filter(
+        (preset) => !(preset.unit === 'г' && preset.quantity === 100)
+      ),
+    [food]
+  );
 
   useEffect(() => {
     if (food) {
       calculateNutrients();
     }
   }, [food, quantity, unit]);
+
+  useEffect(() => {
+    if (!food) return;
+    const safeUnit = getSafeDisplayUnit(unit, supportedUnits);
+    if (safeUnit !== unit) {
+      setUnit(safeUnit);
+    }
+  }, [food, supportedUnits, unit]);
 
   // Конвертируем количество в граммы для расчета КБЖУ
   const calculateNutrients = () => {
@@ -67,29 +91,7 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
     setUnit(u);
   };
 
-  // Проверка, поддерживает ли продукт данную единицу измерения
-  const isUnitSupported = (u: Unit): boolean => {
-    if (!food) return false;
-    
-    // Все продукты поддерживают граммы, миллилитры и литры
-    if (u === 'г' || u === 'мл' || u === 'л') return true;
-
-    // Для штук проверяем категорию или название продукта
-    if (u === 'шт') {
-      const foodName = food.name.toLowerCase();
-      const pieceCategories = ['яйцо', 'яблоко', 'банан', 'помидор', 'огурец', 'морковь', 'картофель', 'лук'];
-      return pieceCategories.some(cat => foodName.includes(cat)) || food.category === 'fruits' || food.category === 'vegetables';
-    }
-
-    // Для ложек и порций разрешаем по умолчанию
-    if (u === 'ст.л' || u === 'ч.л' || u === 'порция') {
-      return true;
-    }
-    
-    return false;
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!food || !quantity || parseFloat(quantity) <= 0) {
@@ -121,10 +123,23 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
       canonicalFoodId,
     };
 
-    onAdd(entry);
-    setQuantity('100');
-    setUnit('г');
-    onClose();
+    setIsSaving(true);
+    try {
+      await submitModalAction(
+        submitLock.current,
+        () => onAdd(entry),
+        () => {
+          setQuantity('100');
+          setUnit('г');
+          onClose();
+        }
+      );
+    } catch (error) {
+      console.error('[AddFoodToMealModal] Failed to save entry:', error);
+      alert('Не удалось сохранить продукт. Проверьте соединение и попробуйте снова.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!isOpen || !food) return null;
@@ -137,7 +152,7 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-3 mobile-lg:p-4"
-      onClick={onClose}
+      onClick={() => { if (!isSaving) onClose(); }}
     >
       <div
         className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-[calc(100vw-24px)] mobile-lg:max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden"
@@ -150,8 +165,9 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
             Добавить продукт
           </h2>
           <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            onClick={() => { if (!isSaving) onClose(); }}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
+            disabled={isSaving}
           >
             <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
           </button>
@@ -180,6 +196,7 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
                 >
                   {getFoodDisplayName(food)}
                 </h3>
+                <FoodSourceBadge food={food} className="flex-shrink-0" />
                 <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap flex-shrink-0">
                   {Math.round(food.calories)} ккал / 100г
                 </p>
@@ -196,6 +213,7 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
               <input
                 type="number"
                 value={quantity}
+                disabled={isSaving}
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value === '' || (!isNaN(parseFloat(value)) && parseFloat(value) >= 0)) {
@@ -212,11 +230,12 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
               <select
                 value={unit}
                 onChange={(e) => setUnit(e.target.value as Unit)}
+                disabled={isSaving}
                 className="px-3 mobile-lg:px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 flex-shrink-0"
                 style={{ boxSizing: 'border-box' }}
               >
-                {foodDisplayUnits.map((option) => (
-                  <option key={option} value={option} disabled={!isUnitSupported(option)}>
+                {supportedUnits.map((option) => (
+                  <option key={option} value={option}>
                     {option}
                   </option>
                 ))}
@@ -226,59 +245,17 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
 
           {/* Quick Amount Buttons */}
           <div className="flex gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => handleQuickButton(100, 'г')}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              100 г
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickButton(1, 'шт')}
-              disabled={!isUnitSupported('шт')}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              1 шт
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickButton(100, 'мл')}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              100 мл
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickButton(1, 'ст.л')}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              1 ст.л
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickButton(1, 'ч.л')}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              1 ч.л
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickButton(1, 'порция')}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              1 порция
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setQuantity('1');
-                setUnit('л');
-              }}
-              className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            >
-              1 л
-            </button>
+            {quickPresets.map((preset) => (
+              <button
+                key={`${preset.quantity}-${preset.unit}`}
+                type="button"
+                onClick={() => handleQuickButton(preset.quantity, preset.unit)}
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                disabled={isSaving}
+              >
+                {preset.label}
+              </button>
+            ))}
           </div>
 
           {/* Calculated Nutrients */}
@@ -326,14 +303,14 @@ const AddFoodToMealModal = ({ food, isOpen, onClose, onAdd, defaultWeight }: Add
           <div className="flex gap-2 mobile-lg:gap-3 w-full max-w-full">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => { if (!isSaving) onClose(); }}
               className="flex-1 min-w-0 py-3 rounded-lg border-2 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Отмена
             </button>
             <button
               type="submit"
-              disabled={!canSubmit}
+              disabled={!canSubmit || isSaving}
               className="flex-1 min-w-0 py-3 rounded-lg bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Добавить

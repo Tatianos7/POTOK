@@ -21,7 +21,7 @@ const uuid = () => {
 };
 
 class RecipeDiaryService {
-  saveRecipeEntry(params: SaveRecipeParams): MealEntry {
+  async saveRecipeEntry(params: SaveRecipeParams): Promise<MealEntry> {
     const { userId, date, mealType, recipeName, weight, per100, totals } = params;
     const recipeId = `recipe_${uuid()}`;
     const now = new Date().toISOString();
@@ -54,8 +54,7 @@ class RecipeDiaryService {
       canonicalFoodId: null,
     };
 
-    mealService.addMealEntry(userId, date, mealType, entry);
-    return entry;
+    return mealService.addMealEntry(userId, date, mealType, entry);
   }
 }
 

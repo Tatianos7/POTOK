@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check, Heart, Copy, Trash2, StickyNote } from 'lucide-react';
 import { DailyMeals, MealEntry, Food, UserCustomFood } from '../types';
@@ -17,6 +17,7 @@ import RecipeAnalyzePicker from '../components/RecipeAnalyzePicker';
 import RecipeAnalyzeResultSheet from '../components/RecipeAnalyzeResultSheet';
 import PhotoFoodAnalyzerModal from '../components/PhotoFoodAnalyzerModal';
 import EditMealEntryModal from '../components/EditMealEntryModal';
+import FoodSourceBadge from '../components/FoodSourceBadge';
 import InlineCalendar from '../components/InlineCalendar';
 import CopyMealModal from '../components/CopyMealModal';
 import DeleteMealConfirmModal from '../components/DeleteMealConfirmModal';
@@ -32,13 +33,17 @@ import Button from '../ui/components/Button';
 import StateContainer from '../ui/components/StateContainer';
 import { colors, spacing, typography } from '../ui/theme/tokens';
 import { getLocalDayKey } from '../utils/dayKey';
+import { resolveDiarySelectedDateFromState } from '../utils/foodDiaryNavigation';
 
 const FoodDiary = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   // Получаем сегодняшнюю дату в локальном времени (не UTC)
   const getTodayDate = () => getLocalDayKey();
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [selectedDate, setSelectedDate] = useState(() =>
+    resolveDiarySelectedDateFromState(location.state, getTodayDate())
+  );
   const [dailyMeals, setDailyMeals] = useState<DailyMeals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -177,11 +182,11 @@ const FoodDiary = () => {
     return datesList;
   }, []); // Календарь не зависит от selectedDate, всегда показывает текущую неделю
   
-  // Инициализация: при первом рендере выбираем сегодняшнюю дату
+  // Синхронизация с navigation state, если экран открыт с выбранной датой
   useEffect(() => {
-    const currentToday = getTodayDate();
-    setSelectedDate(currentToday);
-  }, []); // Выполняем только при монтировании компонента
+    const nextDate = resolveDiarySelectedDateFromState(location.state, getTodayDate());
+    setSelectedDate((prev) => (prev === nextDate ? prev : nextDate));
+  }, [location.state]);
 
   const meals = [
     { id: 'breakfast', name: 'ЗАВТРАК', icon: Coffee },
@@ -545,7 +550,7 @@ const FoodDiary = () => {
     setScannedFood(null);
   };
 
-  const handleAddFood = (entry: MealEntry) => {
+  const handleAddFood = async (entry: MealEntry) => {
     if (!user?.id || !selectedMealType || !dailyMeals) {
       console.warn('[FoodDiary] handleAddFood: missing required data', { user: !!user?.id, selectedMealType, dailyMeals: !!dailyMeals });
       return;
@@ -601,18 +606,17 @@ const FoodDiary = () => {
       food_id: normalizedEntry.foodId,
     });
     
-    setIsAddFoodModalOpen(false);
-    setSelectedFood(null);
-    setSelectedMealType(null);
-
-    // Сохраняем в фоне
-    mealService.addMealEntry(user.id, selectedDate, selectedMealType, normalizedEntry).catch((error) => {
+    try {
+      await mealService.addMealEntry(user.id, selectedDate, selectedMealType, normalizedEntry);
+      setIsAddFoodModalOpen(false);
+      setSelectedFood(null);
+      setSelectedMealType(null);
+    } catch (error) {
       reportError('Не удалось сохранить продукт. Проверьте соединение и попробуйте снова.', error);
-      // В случае ошибки откатываем изменение
-      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
-        setDailyMeals(meals);
-      });
-    });
+      const meals = await mealService.getFoodDiaryByDate(user.id, selectedDate);
+      setDailyMeals(meals);
+      throw error;
+    }
   };
 
 
@@ -686,7 +690,7 @@ const FoodDiary = () => {
     canonicalFoodId: resolveCanonicalFoodId(entry),
   });
 
-  const handleUpdateEntry = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', updatedEntry: MealEntry) => {
+  const handleUpdateEntry = async (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', updatedEntry: MealEntry) => {
     if (!user?.id || !dailyMeals) return;
     const normalizedEntry = normalizeEntry({
       ...updatedEntry,
@@ -705,21 +709,20 @@ const FoodDiary = () => {
       return updated;
     });
     
-    setIsEditEntryModalOpen(false);
-    setEditingEntry(null);
-    setSelectedMealType(null);
-
-    // Сохраняем в фоне
-    mealService.updateMealEntry(user.id, selectedDate, mealType, updatedEntry.id, normalizedEntry).catch((error) => {
+    try {
+      await mealService.updateMealEntry(user.id, selectedDate, mealType, updatedEntry.id, normalizedEntry);
+      setIsEditEntryModalOpen(false);
+      setEditingEntry(null);
+      setSelectedMealType(null);
+    } catch (error) {
       reportError('Не удалось обновить продукт. Проверьте соединение и попробуйте снова.', error);
-      // В случае ошибки откатываем изменение
-      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
-        setDailyMeals(meals);
-      });
-    });
+      const meals = await mealService.getFoodDiaryByDate(user.id, selectedDate);
+      setDailyMeals(meals);
+      throw error;
+    }
   };
 
-  const handleDeleteEntry = () => {
+  const handleDeleteEntry = async () => {
     if (!user?.id || !selectedMealType || !editingEntry || !dailyMeals) {
       console.warn('[FoodDiary] handleDeleteEntry: missing required data', { 
         user: !!user?.id, 
@@ -749,19 +752,17 @@ const FoodDiary = () => {
       return updated;
     });
     
-    // Закрываем модальное окно после обновления состояния
-    setIsEditEntryModalOpen(false);
-    setEditingEntry(null);
-    setSelectedMealType(null);
-
-    // Сохраняем в фоне (не перезагружаем данные, чтобы не потерять оптимистичное обновление)
-    mealService.removeMealEntry(user.id, selectedDate, mealTypeToDelete, entryIdToDelete).catch((error) => {
+    try {
+      await mealService.removeMealEntry(user.id, selectedDate, mealTypeToDelete, entryIdToDelete);
+      setIsEditEntryModalOpen(false);
+      setEditingEntry(null);
+      setSelectedMealType(null);
+    } catch (error) {
       reportError('Не удалось удалить продукт. Проверьте соединение и попробуйте снова.', error);
-      // В случае ошибки откатываем изменение
-      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
-        setDailyMeals(meals);
-      });
-    });
+      const meals = await mealService.getFoodDiaryByDate(user.id, selectedDate);
+      setDailyMeals(meals);
+      throw error;
+    }
   };
 
   const handleDeleteMealClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
@@ -770,7 +771,7 @@ const FoodDiary = () => {
     setIsDeleteMealModalOpen(true);
   };
 
-  const handleClearMeal = () => {
+  const handleClearMeal = async () => {
     if (!user?.id || !dailyMeals || !deletingMealType) {
       console.warn('[FoodDiary] handleClearMeal: missing required data', { user: !!user?.id, dailyMeals: !!dailyMeals, deletingMealType });
       return;
@@ -791,18 +792,16 @@ const FoodDiary = () => {
       return updated;
     });
 
-    // Сохраняем в фоне
-    mealService.clearMealType(user.id, selectedDate, mealType).catch((error) => {
+    try {
+      await mealService.clearMealType(user.id, selectedDate, mealType);
+      setIsDeleteMealModalOpen(false);
+      setDeletingMealType(null);
+    } catch (error) {
       reportError('Не удалось очистить приём пищи. Проверьте соединение и попробуйте снова.', error);
-      // В случае ошибки откатываем изменение
-      mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
-        setDailyMeals(meals);
-      });
-    });
-
-    // Закрываем модальное окно
-    setIsDeleteMealModalOpen(false);
-    setDeletingMealType(null);
+      const meals = await mealService.getFoodDiaryByDate(user.id, selectedDate);
+      setDailyMeals(meals);
+      throw error;
+    }
   };
 
   const handleNoteClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
@@ -811,7 +810,7 @@ const FoodDiary = () => {
     setIsNoteModalOpen(true);
   };
 
-  const handleSaveNote = (note: string) => {
+  const handleSaveNote = async (note: string) => {
     if (!user?.id || !noteMealType) {
       console.warn('[FoodDiary] handleSaveNote: missing required data', { user: !!user?.id, noteMealType });
       return;
@@ -849,7 +848,7 @@ const FoodDiary = () => {
     });
   };
 
-  const handleDeleteNote = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
+  const handleDeleteNote = async (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
     if (!user?.id || !dailyMeals) {
       console.warn('[FoodDiary] handleDeleteNote: missing required data', { user: !!user?.id, dailyMeals: !!dailyMeals });
       return;
@@ -1197,10 +1196,11 @@ const FoodDiary = () => {
                       className="flex-1 min-w-0 max-w-full cursor-pointer overflow-hidden"
                       onClick={() => handleEntryClick(entry, mealType)}
                     >
-                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 inline-flex items-center flex-nowrap">
-                        <span>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5 inline-flex items-center gap-1.5 max-w-full">
+                        <span className="min-w-0 truncate">
                           {getFoodDisplayName(entry.food)}
                         </span>
+                        <FoodSourceBadge food={entry.food} className="flex-shrink-0" />
                         <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap" style={{ marginLeft: '10px' }}>
                           {formatDisplayAmount(entry.displayAmount, entry.displayUnit) || `${Math.round(Number(entry.weight) || 0)} г`}
                         </span>

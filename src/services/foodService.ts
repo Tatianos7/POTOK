@@ -827,14 +827,24 @@ class FoodService {
       food.canonical_food_id ?? null,
     ].filter((value, index, arr): value is string => Boolean(value) && arr.indexOf(value) === index);
 
+    let freshestCandidate: Food | null = null;
+
     for (const candidateId of candidateIds) {
       const fresh = await this.getFoodByIdFresh(candidateId, userId);
-      if (fresh && hasUsableFoodNutrition(fresh)) {
+      if (!fresh) {
+        continue;
+      }
+
+      if (!freshestCandidate) {
+        freshestCandidate = fresh;
+      }
+
+      if (hasUsableFoodNutrition(fresh)) {
         return fresh;
       }
     }
 
-    return food;
+    return freshestCandidate ?? food;
   }
 
   // === Пользовательские продукты ===
@@ -1066,6 +1076,18 @@ class FoodService {
     };
 
     return this.createUserFood(food, userId);
+  }
+
+  /**
+   * Manual branded product remains a private user-owned food row.
+   * `brand` is stored as an attribute, but the row still uses `source='user'`.
+   * It must not be treated as a shared/public `source='brand'` catalog product.
+   */
+  async createManualBrandedFood(
+    userId: string,
+    data: Omit<Food, 'id' | 'source' | 'created_by_user_id' | 'createdAt' | 'updatedAt'>
+  ): Promise<UserCustomFood> {
+    return this.createCustomFood(userId, data);
   }
 
   saveFood(food: Food): void {

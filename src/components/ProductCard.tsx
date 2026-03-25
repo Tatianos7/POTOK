@@ -1,6 +1,7 @@
 import { Food } from '../types';
 import { Package } from 'lucide-react';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
+import FoodSourceBadge from './FoodSourceBadge';
 
 interface ProductCardProps {
   food: Food;
@@ -34,16 +35,19 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
 
       {/* Info */}
       <div className="flex-1 min-w-0 max-w-full overflow-hidden">
-        <h3 
-          className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white break-words overflow-wrap-anywhere line-clamp-2"
-          style={{ 
-            wordBreak: 'break-word',
-            overflowWrap: 'anywhere',
-            hyphens: 'auto'
-          }}
-        >
-          {getFoodDisplayName(food)}
-        </h3>
+        <div className="flex items-start gap-1.5 min-w-0">
+          <h3 
+            className="text-xs min-[376px]:text-sm font-semibold text-gray-900 dark:text-white break-words overflow-wrap-anywhere line-clamp-2 min-w-0"
+            style={{ 
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
+              hyphens: 'auto'
+            }}
+          >
+            {getFoodDisplayName(food)}
+          </h3>
+          <FoodSourceBadge food={food} className="mt-0.5 flex-shrink-0" />
+        </div>
         <div className="grid grid-cols-2 mobile-lg:flex mobile-lg:items-center gap-1 min-[376px]:gap-1.5 mobile-lg:flex-wrap mt-1 w-full max-w-full">
           <span className="text-[10px] min-[376px]:text-xs text-gray-600 dark:text-gray-300 shrink-0">
             {Math.round(food.calories || 0)}
@@ -70,4 +74,3 @@ const ProductCard = ({ food, onClick }: ProductCardProps) => {
 };
 
 export default ProductCard;
-

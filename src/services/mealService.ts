@@ -1055,7 +1055,12 @@ class MealService {
   }
 
   // Add meal entry to a specific meal type
-  async addMealEntry(userId: string, date: string, mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack', entry: MealEntry): Promise<void> {
+  async addMealEntry(
+    userId: string,
+    date: string,
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
+    entry: MealEntry
+  ): Promise<MealEntry> {
     const entryWithKey: MealEntry = {
       ...entry,
       baseUnit: entry.baseUnit || 'г',
@@ -1071,6 +1076,7 @@ class MealService {
       const result = await this.createDiaryEntryWithEnforcement(sessionUserId, request);
 
       this.reconcileLocalDiaryEntry(sessionUserId, date, mealType, request.idempotency_key ?? '', result.entry);
+      const persistedEntry = this.mapSupabaseEntryToMealEntry(result.entry);
 
       void trackEvent({
         name: 'add_food',
@@ -1105,14 +1111,14 @@ class MealService {
           subscriptionState: 'Free',
         }
       );
-      return;
+      return persistedEntry;
     }
 
     if (entryWithKey.recipeId) {
       const sessionUserId = await this.requireSessionUser(userId);
       const record = await this.createRecipeDiaryEntry(sessionUserId, date, mealType, entryWithKey);
       this.reconcileLocalDiaryEntry(sessionUserId, date, mealType, entryWithKey.idempotencyKey ?? '', record);
-      return;
+      return this.mapSupabaseEntryToMealEntry(record);
     }
 
     throw new DiaryCreateServiceError(
@@ -1126,7 +1132,7 @@ class MealService {
     date: string,
     mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack',
     recipe: Recipe
-  ): Promise<void> {
+  ): Promise<MealEntry> {
     const totalWeight =
       recipe.ingredients?.reduce((sum, ing) => sum + (Number(ing.grams) || 0), 0) || 0;
     const weight = totalWeight > 0 ? totalWeight : 100;
@@ -1152,7 +1158,7 @@ class MealService {
       recipeId: recipe.id,
     };
 
-    await this.addMealEntry(userId, date, mealType, entry);
+    return this.addMealEntry(userId, date, mealType, entry);
   }
 
   // Remove meal entry
@@ -1466,38 +1472,23 @@ class MealService {
       return;
     }
 
-    for (const copiedEntry of copiedEntries) {
-      await this.addMealEntry(userId, targetDate, targetMealType, copiedEntry);
+    const copiedPairs: Array<{ sourceEntry: MealEntry; persistedEntry: MealEntry }> = [];
+    for (let index = 0; index < copiedEntries.length; index += 1) {
+      const copiedEntry = copiedEntries[index];
+      const persistedEntry = await this.addMealEntry(userId, targetDate, targetMealType, copiedEntry);
+      copiedPairs.push({ sourceEntry: sourceEntries[index], persistedEntry });
     }
 
-    // Копируем заметки в Supabase для скопированных продуктов
-    if (supabase) {
+    for (const { sourceEntry, persistedEntry } of copiedPairs) {
+      const note = sourceEntry?.note?.trim();
+      if (!note) {
+        continue;
+      }
+
       try {
-        // Копируем заметки для каждого скопированного продукта
-        // Используем индекс, так как порядок сохранён при копировании
-        const noteCopyPromises = copiedEntries.map(async (copiedEntry, index) => {
-          // Находим исходный entry по индексу (порядок сохранён)
-          const sourceEntry = sourceEntries[index];
-          
-          if (sourceEntry?.note) {
-            try {
-              await this.requireSessionUser(userId);
-              // Сохраняем заметку для нового entry в Supabase
-              await mealEntryNotesService.saveNote(userId, copiedEntry.id, sourceEntry.note);
-            } catch (error) {
-              console.error('[mealService] Error copying note to Supabase:', error);
-              // Продолжаем работу, даже если заметка не скопировалась
-            }
-          }
-        });
-        
-        // Выполняем копирование заметок в фоне (не блокируем основной процесс)
-        Promise.all(noteCopyPromises).catch((error) => {
-          console.error('[mealService] Error copying notes:', error);
-        });
+        await mealEntryNotesService.saveNote(userId, persistedEntry.id, note);
       } catch (error) {
-        console.error('[mealService] Error in note copying process:', error);
-        // Продолжаем работу, даже если копирование заметок не удалось
+        console.error('[mealService] Error copying note to Supabase:', error);
       }
     }
   }

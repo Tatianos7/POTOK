@@ -7,8 +7,10 @@ import RecipeAnalyzerResult from '../components/RecipeAnalyzerResult';
 import SaveRecipeToDiarySheet from '../components/SaveRecipeToDiarySheet';
 import SaveRecipeModal from '../components/SaveRecipeModal';
 import { useAuth } from '../context/AuthContext';
-import { recipesService } from '../services/recipesService';
+import { RecipeSaveValidationError, recipesService } from '../services/recipesService';
+import { recipeDiaryService } from '../services/recipeDiaryService';
 import { getLocalDayKey } from '../utils/dayKey';
+import { runCombinedRecipeSave } from '../utils/recipeCombinedSave';
 
 const placeholderIngredients =
   'Пример: 250 г говядина постная, 1–2 морковки, 1 луковица, 2 дольки чеснока, полтора литра молока, 400 г картофеля';
@@ -24,6 +26,8 @@ const RecipeAnalyzer = () => {
   const [isSaveOpen, setIsSaveOpen] = useState(false);
   const [isSaveRecipeModalOpen, setIsSaveRecipeModalOpen] = useState(false);
   const [recipeImage, setRecipeImage] = useState<string | null>(null);
+  const [saveMode, setSaveMode] = useState<'recipe' | 'combined' | null>(null);
+  const [pendingCombinedRecipeName, setPendingCombinedRecipeName] = useState<string | null>(null);
 
   const totals = calcTotals(items);
   const per100 = useMemo(
@@ -34,6 +38,14 @@ const RecipeAnalyzer = () => {
       carbs: totals.per100.carbs || 0,
     }),
     [totals.per100]
+  );
+  const unresolvedIngredientNames = useMemo(
+    () =>
+      items
+        .filter((item) => item.resolution_status !== 'resolved' || !item.canonical_food_id)
+        .map((item) => item.name)
+        .filter(Boolean),
+    [items]
   );
 
   const today = useMemo(() => getLocalDayKey(), []);
@@ -66,6 +78,20 @@ const RecipeAnalyzer = () => {
     }
   };
 
+  const buildAnalyzerIngredients = () =>
+    items.map((item) => ({
+      name: item.name,
+      quantity: item.amount || 0,
+      unit: item.unit || 'g',
+      grams: item.amountGrams,
+      calories: item.calories,
+      proteins: item.proteins,
+      fats: item.fats,
+      carbs: item.carbs,
+      display_amount: item.displayAmount ?? item.amountText ?? null,
+      display_unit: item.displayUnit ?? null,
+    }));
+
   const handleSaveToRecipes = () => {
     if (!user?.id) {
       alert('Необходимо войти в систему');
@@ -75,38 +101,134 @@ const RecipeAnalyzer = () => {
       alert('Сначала проанализируйте рецепт');
       return;
     }
+    if (unresolvedIngredientNames.length > 0) {
+      alert(
+        `Нельзя сохранить рецепт: не все ингредиенты подтверждены каталогом.\nПроблемные ингредиенты: ${unresolvedIngredientNames.join(', ')}`
+      );
+      return;
+    }
+    setSaveMode('recipe');
+    setIsSaveRecipeModalOpen(true);
+  };
+
+  const handleSaveBoth = () => {
+    if (!user?.id) {
+      alert('Необходимо войти в систему');
+      return;
+    }
+    if (items.length === 0) {
+      alert('Сначала проанализируйте рецепт');
+      return;
+    }
+    if (unresolvedIngredientNames.length > 0) {
+      alert(
+        `Нельзя сохранить рецепт в "Мои рецепты": не все ингредиенты подтверждены каталогом.\nПроблемные ингредиенты: ${unresolvedIngredientNames.join(', ')}`
+      );
+      return;
+    }
+    setSaveMode('combined');
     setIsSaveRecipeModalOpen(true);
   };
 
   const handleSaveRecipe = async (recipeName: string) => {
     if (!user?.id || items.length === 0) return;
 
-    await recipesService.createRecipeFromAnalyzer({
-      name: recipeName,
-      image: recipeImage,
-      totalCalories: totals.total.calories,
-      totalProteins: totals.total.proteins,
-      totalFats: totals.total.fats,
-      totalCarbs: totals.total.carbs,
-      ingredients: items.map((item) => ({
-        name: item.name,
-        quantity: item.amount || 0,
-        unit: item.unit || 'g',
-        grams: item.amountGrams,
-        calories: item.calories,
-        proteins: item.proteins,
-        fats: item.fats,
-        carbs: item.carbs,
-        display_amount: item.displayAmount ?? item.amountText ?? null,
-        display_unit: item.displayUnit ?? null,
-      })),
-      userId: user.id,
+    if (saveMode === 'combined') {
+      setPendingCombinedRecipeName(recipeName);
+      setIsSaveRecipeModalOpen(false);
+      setIsSaveOpen(true);
+      return;
+    }
+
+    try {
+      await recipesService.createRecipeFromAnalyzer({
+        name: recipeName,
+        image: recipeImage,
+        totalCalories: totals.total.calories,
+        totalProteins: totals.total.proteins,
+        totalFats: totals.total.fats,
+        totalCarbs: totals.total.carbs,
+        ingredients: buildAnalyzerIngredients(),
+        userId: user.id,
+      });
+
+      setIsSaveRecipeModalOpen(false);
+      setSaveMode(null);
+      alert('Рецепт сохранен в "Мои рецепты"');
+    } catch (error) {
+      console.error('[RecipeAnalyzer] Error saving recipe:', error);
+      if (error instanceof RecipeSaveValidationError && error.unresolvedIngredients.length > 0) {
+        alert(
+          `Не удалось сохранить рецепт: не все ингредиенты подтверждены каталогом.\nПроблемные ингредиенты: ${error.unresolvedIngredients.join(', ')}`
+        );
+      } else {
+        alert('Не удалось сохранить рецепт в "Мои рецепты"');
+      }
+      throw error;
+    }
+  };
+
+  const handleCombinedSave = async (params: {
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack';
+    weight: number;
+    per100: { calories: number; proteins: number; fats: number; carbs: number };
+    totals: { calories: number; proteins: number; fats: number; carbs: number };
+  }) => {
+    if (!user?.id || items.length === 0) {
+      throw new Error('missing_combined_save_context');
+    }
+
+    const recipeName = pendingCombinedRecipeName?.trim() || name.trim() || 'Рецепт';
+    const result = await runCombinedRecipeSave({
+      saveRecipe: () =>
+        recipesService.createRecipeFromAnalyzer({
+          name: recipeName,
+          image: recipeImage,
+          totalCalories: totals.total.calories,
+          totalProteins: totals.total.proteins,
+          totalFats: totals.total.fats,
+          totalCarbs: totals.total.carbs,
+          ingredients: buildAnalyzerIngredients(),
+          userId: user.id,
+        }),
+      saveDiary: () =>
+        recipeDiaryService.saveRecipeEntry({
+          userId: user.id,
+          date: selectedDate,
+          mealType: params.mealType,
+          recipeName,
+          weight: params.weight,
+          per100: params.per100,
+          totals: params.totals,
+        }),
     });
 
-    setIsSaveRecipeModalOpen(false);
-    alert('Рецепт сохранен в "Мои рецепты"');
-    // Можно перейти на страницу рецептов или остаться здесь
-    // navigate('/nutrition/recipes');
+    setPendingCombinedRecipeName(null);
+    setSaveMode(null);
+
+    if (result.recipe.status === 'fulfilled' && result.diary.status === 'fulfilled') {
+      alert('Рецепт сохранён в "Мои рецепты" и добавлен в меню');
+      return;
+    }
+
+    if (result.recipe.status === 'fulfilled' && result.diary.status === 'rejected') {
+      console.error('[RecipeAnalyzer] Combined save partial success: diary failed', result.diary.reason);
+      alert('Рецепт сохранён в "Мои рецепты", но не удалось добавить его в меню');
+      return { closeSheet: true, triggerOnSaved: false };
+    }
+
+    if (result.recipe.status === 'rejected' && result.diary.status === 'fulfilled') {
+      console.error('[RecipeAnalyzer] Combined save partial success: recipe failed', result.recipe.reason);
+      alert('Рецепт добавлен в меню, но не удалось сохранить его в "Мои рецепты"');
+      return { closeSheet: true, triggerOnSaved: true };
+    }
+
+    console.error('[RecipeAnalyzer] Combined save failed', {
+      recipeError: result.recipe.reason,
+      diaryError: result.diary.reason,
+    });
+    alert('Не удалось сохранить рецепт ни в меню, ни в "Мои рецепты"');
+    return { closeSheet: false, triggerOnSaved: false };
   };
 
   const handleSaved = () => {
@@ -177,27 +299,37 @@ const RecipeAnalyzer = () => {
           totals={totals}
           onSaveMenu={() => setIsSaveOpen(true)}
           onSaveRecipes={handleSaveToRecipes}
-          onSaveBoth={() => {
-            // При сохранении в оба места сначала сохраняем в рецепты, потом в меню
-            handleSaveToRecipes();
-            setIsSaveOpen(true);
-          }}
+          onSaveBoth={handleSaveBoth}
+          unresolvedIngredientNames={unresolvedIngredientNames}
         />
       </main>
 
       <SaveRecipeToDiarySheet
         isOpen={isSaveOpen && !!user}
-        onClose={() => setIsSaveOpen(false)}
+        onClose={() => {
+          setIsSaveOpen(false);
+          if (saveMode === 'combined') {
+            setPendingCombinedRecipeName(null);
+            setSaveMode(null);
+          }
+        }}
         recipeName={name || 'Рецепт'}
         per100={per100}
         defaultMealType={defaultMealType}
         date={selectedDate}
         onSaved={handleSaved}
+        onSaveOverride={saveMode === 'combined' ? handleCombinedSave : undefined}
       />
 
       <SaveRecipeModal
         isOpen={isSaveRecipeModalOpen}
-        onClose={() => setIsSaveRecipeModalOpen(false)}
+        onClose={() => {
+          setIsSaveRecipeModalOpen(false);
+          if (saveMode === 'combined') {
+            setPendingCombinedRecipeName(null);
+            setSaveMode(null);
+          }
+        }}
         recipeName={name || 'Рецепт'}
         recipeImage={recipeImage}
         totalCalories={totals.total.calories}

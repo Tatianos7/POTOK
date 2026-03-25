@@ -4,10 +4,13 @@ import { X, ArrowRight, Check, Circle, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { Food, MealEntry } from '../types';
 import { mealService } from '../services/mealService';
-import { foodService } from '../services/foodService';
+import { foodService, isSuspiciousAllZeroCatalogFood } from '../services/foodService';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
+import { saveDiaryEntryForReturnToDiary } from '../utils/diaryAddNavigation';
 import { getLocalDayKey } from '../utils/dayKey';
+import { resolveFavoriteFoodForAdd } from '../utils/favoritesFoodSelection';
+import FoodSourceBadge from '../components/FoodSourceBadge';
 
 interface LocationState {
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -146,31 +149,21 @@ const FavoritesProductsPage = () => {
     }
 
     try {
-      let food: Food | null = null;
-      
-      // Если есть foodId - ищем по ID
-      if (recentFood.foodId && recentFood.foodId.trim()) {
-        food = foodService.getFoodById(recentFood.foodId, user?.id);
-      }
-      
-      // Если не нашли по ID или foodId пустой - ищем по имени
-      if (!food) {
-        const searchResults = await foodService.search(recentFood.foodName.trim(), { limit: 5 });
-        if (searchResults.length > 0) {
-          // Используем первый результат (наиболее релевантный)
-          food = searchResults[0];
-        }
-      }
-      
-      if (food) {
-        // Нашли продукт - открываем модальное окно добавления
-        // Передаем сохраненные граммы для предзаполнения
-        setSelectedId(food.id);
-        setSelectedFood(food);
+      const result = await resolveFavoriteFoodForAdd(recentFood, user?.id, {
+        getFoodById: (foodId, userId) => foodService.getFoodById(foodId, userId),
+        search: (query, options) => foodService.search(query, options),
+        hydrateFoodForDiarySelection: (food, userId) => foodService.hydrateFoodForDiarySelection(food, userId),
+        isSuspiciousFood: (food) => isSuspiciousAllZeroCatalogFood(food),
+      });
+
+      if (result.kind === 'resolved') {
+        setSelectedId(result.food.id);
+        setSelectedFood(result.food);
         setDefaultWeight(recentFood.weight);
         setIsAddFoodModalOpen(true);
+      } else if (result.kind === 'blocked_suspicious_zero') {
+        alert(`Продукт "${recentFood.foodName}" временно скрыт: в каталоге повреждены КБЖУ.`);
       } else {
-        // Продукт не найден - показываем сообщение пользователю
         alert(`Продукт "${recentFood.foodName}" не найден в базе. Попробуйте найти его через поиск.`);
       }
     } catch (error) {
@@ -179,10 +172,43 @@ const FavoritesProductsPage = () => {
     }
   };
 
-  const handleAdd = (entry: MealEntry) => {
+  const handleAdd = async (entry: MealEntry) => {
     if (!user?.id || !mealType) return;
-    mealService.addMealEntry(user.id, selectedDate, mealType, entry);
-    
+    const isValidUUID = (value?: string | null): boolean =>
+      Boolean(value) && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value));
+
+    const canonicalFoodId =
+      (isValidUUID(entry.canonicalFoodId) ? entry.canonicalFoodId : null) ||
+      (isValidUUID(entry.food?.canonical_food_id ?? null) ? entry.food?.canonical_food_id ?? null : null) ||
+      (isValidUUID(entry.foodId) ? entry.foodId : null) ||
+      (isValidUUID(entry.food?.id ?? null) ? entry.food.id : null);
+
+    const normalizedEntry: MealEntry = {
+      ...entry,
+      canonicalFoodId,
+    };
+
+    if (!canonicalFoodId) {
+      console.warn('[FavoritesProductsPage] Cannot save diary entry without resolved canonical food id');
+      return;
+    }
+
+    let diaryNavigationState: { selectedDate: string };
+    try {
+      diaryNavigationState = await saveDiaryEntryForReturnToDiary({
+        addMealEntry: (userId, date, targetMealType, mealEntry) =>
+          mealService.addMealEntry(userId, date, targetMealType, mealEntry),
+        userId: user.id,
+        selectedDate,
+        mealType,
+        entry: normalizedEntry,
+      });
+    } catch (error) {
+      console.error('[FavoritesProductsPage] Failed to save diary entry:', error);
+      alert('Не удалось сохранить продукт. Проверьте соединение и попробуйте снова.');
+      return;
+    }
+
     // Используем функциональное обновление состояния для корректной дедупликации
     setRecentFoods((currentRecentFoods) => {
       const normalizedNewName = entry.food.name.toLowerCase().trim();
@@ -213,7 +239,7 @@ const FavoritesProductsPage = () => {
       // Используем getFoodDisplayName для отображения названия с маркой, если есть
       const updated = [
         {
-          foodId: entry.foodId,
+          foodId: normalizedEntry.foodId,
           foodName: getFoodDisplayName(entry.food),
           weight: entry.weight,
           lastUsedAt: new Date().toISOString(),
@@ -230,7 +256,7 @@ const FavoritesProductsPage = () => {
     setIsAddFoodModalOpen(false);
     setSelectedFood(null);
     setDefaultWeight(undefined);
-    navigate('/nutrition');
+    navigate('/nutrition', { state: diaryNavigationState });
   };
 
   /**
@@ -324,13 +350,14 @@ const FavoritesProductsPage = () => {
                   className="flex-1 min-w-0 max-w-full text-left overflow-hidden"
                 >
                   <div 
-                    className="text-sm font-semibold text-gray-900 dark:text-white mb-1 break-words overflow-wrap-anywhere"
+                    className="text-sm font-semibold text-gray-900 dark:text-white mb-1 break-words overflow-wrap-anywhere flex items-start gap-1.5"
                     style={{ 
                       wordBreak: 'break-word',
                       overflowWrap: 'anywhere'
                     }}
                   >
-                    {recentFood.foodName}
+                    <span className="min-w-0">{recentFood.foodName}</span>
+                    {food && <FoodSourceBadge food={food} className="mt-0.5 flex-shrink-0" />}
                   </div>
                   <div className="text-[11px] flex gap-2 flex-wrap">
                     <span className="text-green-600 dark:text-green-400 shrink-0">
