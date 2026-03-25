@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabaseClient';
 import { measurementsService } from './measurementsService';
 import { habitsService } from './habitsService';
 import { progressAggregatorService } from './progressAggregatorService';
-import { progressNutritionService, type NutritionProgressPeriod } from './progressNutritionService';
+import { progressNutritionService } from './progressNutritionService';
 import {
   CoachRecommendations,
   HabitsStats,
@@ -108,9 +108,11 @@ class ProgressDashboardService {
   async getNutritionStats(period: ProgressPeriod, userId?: string): Promise<ProgressSectionResult<NutritionStats>> {
     const sessionUserId = await this.getSessionUserId(userId);
     try {
-      const periodKind: NutritionProgressPeriod =
-        period.days.length <= 1 ? 'day' : period.days.length <= 7 ? 'week' : 'month';
-      const nutrition = await progressNutritionService.getNutritionProgress(sessionUserId, period.end, periodKind);
+      const nutrition = await progressNutritionService.getNutritionProgressForRange(
+        sessionUserId,
+        period.start,
+        period.end
+      );
       if (!nutrition.calories?.has_data) {
         return this.toSectionResult<NutritionStats>(null, undefined);
       }

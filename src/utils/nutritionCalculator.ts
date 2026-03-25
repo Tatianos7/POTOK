@@ -5,6 +5,9 @@ export interface CalculatedIngredient extends ParsedRecipeIngredient {
   fats: number;
   carbs: number;
   calories: number;
+  canonical_food_id?: string | null;
+  resolution_status?: 'resolved' | 'unresolved';
+  resolution_reason?: 'catalog_match' | 'catalog_unmatched' | 'demo_match_only';
 }
 
 export interface NutritionTotals {
@@ -51,4 +54,3 @@ export function calcTotals(items: CalculatedIngredient[]): NutritionTotals {
     },
   };
 }
-

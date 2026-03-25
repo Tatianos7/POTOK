@@ -8,6 +8,7 @@ import { favoritesService } from '../services/favoritesService';
 import { MealEntry, Food } from '../types';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
 import { getInvalidFoodMacroMessage, getInvalidFoodMacroReason } from '../utils/foodNormalizer';
+import { buildDiaryReturnNavigationState } from '../utils/manualFoodFlow';
 
 const CreateBrandProductPage = () => {
   const navigate = useNavigate();
@@ -74,7 +75,7 @@ const CreateBrandProductPage = () => {
 
     try {
       // 1. Создаём продукт через foodService с указанием марки
-      const customFood = await foodService.createCustomFood(user.id, {
+      const customFood = await foodService.createManualBrandedFood(user.id, {
         name: name.trim(),
         brand: brandName.trim() || null,
         calories: caloriesValue,
@@ -150,7 +151,7 @@ const CreateBrandProductPage = () => {
       await mealService.addMealEntry(user.id, selectedDate, category, entry);
 
       // 4. Возвращаемся в дневник питания
-      navigate('/nutrition', { replace: true });
+      navigate('/nutrition', { replace: true, state: buildDiaryReturnNavigationState(selectedDate) });
     } catch (error) {
       console.error('Error creating brand product:', error);
       alert(error instanceof Error ? error.message : 'Ошибка при сохранении продукта');
