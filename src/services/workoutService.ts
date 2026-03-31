@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
-import { WorkoutDay, WorkoutEntry, SelectedExercise } from '../types/workout';
+import { WorkoutDay, WorkoutEntry, SelectedExercise, WorkoutHistoryDaySummary } from '../types/workout';
 import { aiTrainingPlansService, TrainingDayContext } from './aiTrainingPlansService';
 import { goalService } from './goalService';
 import { userStateService } from './userStateService';
@@ -7,6 +7,51 @@ import { convertWeightToKg } from '../utils/workoutUnits';
 import { aggregateWorkoutEntries, calculateVolume } from '../utils/workoutMetrics';
 import { coachRuntime } from './coachRuntime';
 import { clearWorkoutEntriesForDay, removeWorkoutEntryFromList, updateWorkoutEntryInList } from '../utils/workoutDiaryMutations';
+
+type WorkoutHistoryAggregateRow = {
+  workout_day_id: string;
+  date: string;
+  sets: number;
+  reps: number;
+  weight: number;
+  exercise_id?: string | null;
+};
+
+export function buildWorkoutHistoryDaySummaries(rows: WorkoutHistoryAggregateRow[]): WorkoutHistoryDaySummary[] {
+  const dayMap = new Map<string, WorkoutHistoryDaySummary & { exerciseIds: Set<string> }>();
+
+  rows.forEach((row) => {
+    if (!row.workout_day_id || !row.date) return;
+
+    const current = dayMap.get(row.workout_day_id) ?? {
+      workout_day_id: row.workout_day_id,
+      date: row.date,
+      exercise_count: 0,
+      total_sets: 0,
+      total_volume: 0,
+      exerciseIds: new Set<string>(),
+    };
+
+    const sets = Number(row.sets) || 0;
+    const reps = Number(row.reps) || 0;
+    const weight = Number(row.weight) || 0;
+    const exerciseId = row.exercise_id || null;
+
+    current.total_sets += sets;
+    current.total_volume += calculateVolume(sets, reps, weight);
+
+    if (exerciseId && !current.exerciseIds.has(exerciseId)) {
+      current.exerciseIds.add(exerciseId);
+      current.exercise_count += 1;
+    }
+
+    dayMap.set(row.workout_day_id, current);
+  });
+
+  return Array.from(dayMap.values())
+    .map(({ exerciseIds: _exerciseIds, ...summary }) => summary)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
 
 class WorkoutService {
   private readonly WORKOUTS_STORAGE_KEY = 'potok_workout_entries';
@@ -63,6 +108,12 @@ class WorkoutService {
   private buildIdempotencyKey(date: string, exerciseId: string): string {
     const safeExerciseId = exerciseId || 'unknown';
     return `${date}:${safeExerciseId}`;
+  }
+
+  private buildRepeatIdempotencyKey(targetDate: string, sourceEntryId: string, exerciseId: string, operationId: string): string {
+    const safeSourceEntryId = sourceEntryId || 'unknown-source';
+    const safeExerciseId = exerciseId || 'unknown-exercise';
+    return `repeat:${targetDate}:${safeSourceEntryId}:${safeExerciseId}:${operationId}`;
   }
 
   private saveWorkoutsToLocalStorage(userId: string, date: string, entries: WorkoutEntry[]): void {
@@ -314,6 +365,79 @@ class WorkoutService {
     return this.getWorkoutEntriesFromSupabase(userId, date);
   }
 
+  async getWorkoutEntriesPersisted(userId: string, date: string): Promise<WorkoutEntry[]> {
+    return this.getWorkoutEntriesFromSupabase(userId, date);
+  }
+
+  async getWorkoutHistoryDays(
+    userId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<WorkoutHistoryDaySummary[]> {
+    if (!supabase) {
+      console.warn('[workoutService] Supabase not available, history day summaries require persisted source');
+      return [];
+    }
+
+    let sessionUserId: string;
+    try {
+      sessionUserId = await this.getSessionUserId(userId);
+    } catch {
+      return [];
+    }
+
+    const { data: workoutDays, error: workoutDaysError } = await supabase
+      .from('workout_days')
+      .select('id, date')
+      .eq('user_id', sessionUserId)
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: false });
+
+    if (workoutDaysError) {
+      if (workoutDaysError.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout history days:', workoutDaysError);
+      }
+      return [];
+    }
+
+    const dayIds = (workoutDays || []).map((day) => day.id).filter(Boolean);
+    if (dayIds.length === 0) {
+      return [];
+    }
+
+    const dayDateMap = new Map<string, string>(
+      (workoutDays || [])
+        .filter((day): day is { id: string; date: string } => Boolean(day?.id && day?.date))
+        .map((day) => [day.id, day.date]),
+    );
+
+    const { data: entryRows, error: entriesError } = await supabase
+      .from('workout_entries')
+      .select('workout_day_id, exercise_id, sets, reps, weight')
+      .in('workout_day_id', dayIds);
+
+    if (entriesError) {
+      if (entriesError.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout history entries:', entriesError);
+      }
+      return [];
+    }
+
+    const aggregateRows: WorkoutHistoryAggregateRow[] = (entryRows || [])
+      .map((row: any) => ({
+        workout_day_id: row.workout_day_id,
+        date: dayDateMap.get(row.workout_day_id) || '',
+        exercise_id: row.exercise_id,
+        sets: Number(row.sets) || 0,
+        reps: Number(row.reps) || 0,
+        weight: Number(row.weight) || 0,
+      }))
+      .filter((row) => row.date !== '');
+
+    return buildWorkoutHistoryDaySummaries(aggregateRows);
+  }
+
   private async getWorkoutEntriesFromSupabase(userId: string, date: string): Promise<WorkoutEntry[]> {
     if (!supabase) {
       console.warn('[workoutService] Supabase not available, returning empty workouts');
@@ -510,6 +634,113 @@ class WorkoutService {
     }
 
     return workoutEntries;
+  }
+
+  async copyWorkoutEntriesToDate(
+    userId: string,
+    sourceDate: string,
+    targetDate: string,
+    exerciseIds: string[],
+  ): Promise<WorkoutEntry[]> {
+    const selectedExerciseIds = new Set(exerciseIds.filter(Boolean));
+    if (selectedExerciseIds.size === 0) {
+      throw new Error('Не выбраны упражнения для повторения');
+    }
+
+    const sourceEntries = supabase
+      ? await this.getWorkoutEntriesPersisted(userId, sourceDate)
+      : this.getWorkoutsFromLocalStorage(userId, sourceDate) || [];
+
+    const entriesToCopy = sourceEntries.filter((entry) => selectedExerciseIds.has(entry.exercise_id));
+    if (entriesToCopy.length === 0) {
+      throw new Error('Не удалось найти выбранные упражнения в исходной тренировке');
+    }
+
+    const operationId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    if (!supabase) {
+      const existingTargetEntries = this.getWorkoutsFromLocalStorage(userId, targetDate) || [];
+      const copiedEntries = entriesToCopy.map((entry, index) => ({
+        ...entry,
+        id: `local-repeat-${operationId}-${index}`,
+        workout_day_id: `local-${targetDate}`,
+        idempotencyKey: this.buildRepeatIdempotencyKey(targetDate, entry.id, entry.exercise_id, operationId),
+      }));
+      const nextEntries = [...existingTargetEntries, ...copiedEntries];
+      this.saveWorkoutsToLocalStorage(userId, targetDate, nextEntries);
+      this.emitWorkoutsSynced(targetDate, nextEntries);
+      return nextEntries;
+    }
+
+    const supabaseClient = supabase;
+    let workoutDay: WorkoutDay;
+    try {
+      workoutDay = await this.getOrCreateWorkoutDay(userId, targetDate);
+    } catch (error) {
+      const existingTargetEntries = this.getWorkoutsFromLocalStorage(userId, targetDate) || [];
+      const copiedEntries = entriesToCopy.map((entry, index) => ({
+        ...entry,
+        id: `local-repeat-${operationId}-${index}`,
+        workout_day_id: `local-${targetDate}`,
+        idempotencyKey: this.buildRepeatIdempotencyKey(targetDate, entry.id, entry.exercise_id, operationId),
+      }));
+      const nextEntries = [...existingTargetEntries, ...copiedEntries];
+      this.saveWorkoutsToLocalStorage(userId, targetDate, nextEntries);
+      this.emitWorkoutsSynced(targetDate, nextEntries);
+      return nextEntries;
+    }
+    const rows = entriesToCopy.map((entry) => {
+      const displayUnit = entry.displayUnit === 'lb' ? 'lb' : 'кг';
+      const displayAmount = entry.displayAmount ?? entry.weight;
+      return {
+        workout_day_id: workoutDay.id,
+        exercise_id: entry.exercise_id,
+        sets: entry.sets,
+        reps: entry.reps,
+        weight: convertWeightToKg(displayAmount, displayUnit),
+        base_unit: entry.baseUnit === 'lb' ? 'lb' : 'кг',
+        display_unit: displayUnit,
+        display_amount: displayAmount,
+        idempotency_key: this.buildRepeatIdempotencyKey(targetDate, entry.id, entry.exercise_id, operationId),
+      };
+    });
+
+    const totalVolume = rows.reduce((sum, row) => sum + calculateVolume(row.sets, row.reps, row.weight), 0);
+    if (totalVolume > this.MAX_VOLUME) {
+      throw new Error('[workoutService] Suspicious volume spike');
+    }
+
+    const { error } = await this.withRetry(async () =>
+      await supabaseClient
+        .from('workout_entries')
+        .insert(rows)
+        .select(`
+          *,
+          exercise:exercises(
+            *,
+            category:exercise_categories(*),
+            exercise_muscles(
+              muscle:muscles(*)
+            )
+          ),
+          workout_day:workout_days(*)
+        `),
+    );
+
+    if (error) {
+      const errorMessage = error.message || 'Ошибка повторения тренировки';
+      console.error('[workoutService] Error copying workout entries:', error);
+      throw new Error(errorMessage);
+    }
+
+    const targetEntries = await this.getWorkoutEntriesFromSupabase(userId, targetDate);
+    try {
+      await aiTrainingPlansService.markTrainingPlanOutdated(userId, targetDate);
+    } catch (aiError) {
+      console.error('[workoutService] Error marking AI training plan outdated:', aiError);
+    }
+
+    return targetEntries;
   }
 
   /**

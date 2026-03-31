@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X, Calendar, Edit, Trash2, Clock, Plus, CheckCircle, StickyNote } from 'lucide-react';
 import InlineCalendar from '../components/InlineCalendar';
@@ -9,6 +9,7 @@ import SelectedExercisesEditor from '../components/SelectedExercisesEditor';
 import CreateExerciseModal from '../components/CreateExerciseModal';
 import EditWorkoutEntryModal from '../components/EditWorkoutEntryModal';
 import MealNoteModal from '../components/MealNoteModal';
+import WorkoutDayNoteBlock from '../components/WorkoutDayNoteBlock';
 import { exerciseService } from '../services/exerciseService';
 import { workoutService } from '../services/workoutService';
 import { workoutEntryNotesService } from '../services/workoutEntryNotesService';
@@ -24,8 +25,30 @@ import ExerciseRow from '../ui/components/ExerciseRow';
 import ExerciseTableHeader from '../ui/components/ExerciseTableHeader';
 import { colors, spacing, typography } from '../ui/theme/tokens';
 import { clearWorkoutEntriesForDay, removeWorkoutEntryFromList } from '../utils/workoutDiaryMutations';
+import {
+  buildExclusiveWorkoutFlowState,
+  getFlowLayerAfterCategoryExercisesLoad,
+  getFlowLayerAfterExerciseSelection,
+  shouldReturnToCategorySheetAfterCreateExerciseClose,
+  shouldReturnToCategorySheetAfterExerciseListClose,
+  type CreateExerciseModalMode,
+  type CreateExerciseModalCloseReason,
+} from '../utils/workoutAddFlowNavigation';
+import { resolveDiarySelectedDateFromState } from '../utils/foodDiaryNavigation';
+import {
+  WORKOUT_BOTTOM_BAR_CLASS,
+  WORKOUT_MAIN_CONTAINER_CLASS,
+  WORKOUT_SCREEN_BACKGROUND,
+} from '../utils/workoutLayout';
+
+const CUSTOM_EXERCISES_CATEGORY: ExerciseCategory = {
+  id: 'custom-exercises',
+  name: 'Мои упражнения',
+  order: 999,
+};
 
 const Workouts = () => {
+  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
   
@@ -38,16 +61,21 @@ const Workouts = () => {
     return `${year}-${month}-${day}`;
   };
 
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [selectedDate, setSelectedDate] = useState(() =>
+    resolveDiarySelectedDateFromState(location.state, getTodayDate()),
+  );
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isExerciseCategorySheetOpen, setIsExerciseCategorySheetOpen] = useState(false);
   const [isExerciseListSheetOpen, setIsExerciseListSheetOpen] = useState(false);
   const [isSelectedExercisesEditorOpen, setIsSelectedExercisesEditorOpen] = useState(false);
   const [isCreateExerciseModalOpen, setIsCreateExerciseModalOpen] = useState(false);
+  const [editingCustomExercise, setEditingCustomExercise] = useState<Exercise | null>(null);
   const [categories, setCategories] = useState<ExerciseCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
+  const [editorInitialExercises, setEditorInitialExercises] = useState<SelectedExercise[]>([]);
+  const [editorMode, setEditorMode] = useState<'add' | 'editWorkout'>('add');
   const [workoutEntries, setWorkoutEntries] = useState<WorkoutEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,6 +90,7 @@ const Workouts = () => {
   const [workoutDayNote, setWorkoutDayNote] = useState<string | null>(null);
   const [workoutDayNoteDayId, setWorkoutDayNoteDayId] = useState<string | null>(null);
   const [isLoadingWorkoutDayNote, setIsLoadingWorkoutDayNote] = useState(false);
+  const [isDeletingWorkoutDayNote, setIsDeletingWorkoutDayNote] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
@@ -172,11 +201,9 @@ const Workouts = () => {
     return base;
   };
 
-  // Инициализация: при первом рендере выбираем сегодняшнюю дату
   useEffect(() => {
-    const currentToday = getTodayDate();
-    setSelectedDate(currentToday);
-  }, []); // Выполняем только при монтировании компонента
+    setSelectedDate(resolveDiarySelectedDateFromState(location.state, getTodayDate()));
+  }, [location.state]); // синхронизация с навигацией из истории
 
   // Загружаем категории при монтировании (с автоматической инициализацией)
   useEffect(() => {
@@ -242,10 +269,38 @@ const Workouts = () => {
     }
   }, [user?.id, selectedDate]);
 
+  const reloadWorkoutDayNote = useCallback(async () => {
+    if (!user?.id) return;
+
+    setIsLoadingWorkoutDayNote(true);
+    try {
+      const workoutDay = await workoutService.getWorkoutDay(user.id, selectedDate);
+      if (!workoutDay?.id) {
+        setWorkoutDayNoteDayId(null);
+        setWorkoutDayNote(null);
+        return;
+      }
+
+      const note = await workoutDayNotesService.getNoteByWorkoutDayId(user.id, workoutDay.id);
+      setWorkoutDayNoteDayId(workoutDay.id);
+      setWorkoutDayNote(note);
+    } catch (error) {
+      console.error('Ошибка загрузки заметки тренировки:', error);
+      setWorkoutDayNoteDayId(null);
+      setWorkoutDayNote(null);
+    } finally {
+      setIsLoadingWorkoutDayNote(false);
+    }
+  }, [user?.id, selectedDate]);
+
   // Загружаем упражнения тренировки при изменении даты
   useEffect(() => {
     reloadWorkoutEntries();
   }, [reloadWorkoutEntries]);
+
+  useEffect(() => {
+    reloadWorkoutDayNote();
+  }, [reloadWorkoutDayNote]);
 
   // Обновляем данные при фоновом sync
   useEffect(() => {
@@ -282,9 +337,30 @@ const Workouts = () => {
     navigate('/');
   };
 
+  const applyFlowLayer = (target: 'root' | 'category' | 'list' | 'editor' | 'create') => {
+    const next = buildExclusiveWorkoutFlowState(target);
+    setIsExerciseCategorySheetOpen(next.isExerciseCategorySheetOpen);
+    setIsExerciseListSheetOpen(next.isExerciseListSheetOpen);
+    setIsCreateExerciseModalOpen(next.isCreateExerciseModalOpen);
+    setIsSelectedExercisesEditorOpen(next.isSelectedExercisesEditorOpen);
+  };
+
   const handleEditWorkout = () => {
-    // TODO: Реализовать редактирование тренировки
-    console.log('Редактировать тренировку');
+    if (workoutEntries.length === 0) return;
+
+    const initialExercises = workoutEntries
+      .filter((entry) => entry.exercise)
+      .map((entry) => ({
+        exercise: entry.exercise as Exercise,
+        sets: entry.sets,
+        reps: entry.reps,
+        weight: entry.weight,
+      }));
+
+    setEditorMode('editWorkout');
+    setEditorInitialExercises(initialExercises);
+    setSelectedExercises(initialExercises.map((item) => item.exercise));
+    applyFlowLayer('editor');
   };
 
   const handleEditEntry = (entryId: string) => {
@@ -333,6 +409,9 @@ const Workouts = () => {
     try {
       await workoutService.deleteWorkoutDay(user.id, selectedDate);
       setWorkoutEntries(clearWorkoutEntriesForDay());
+      setWorkoutDayNote(null);
+      setWorkoutDayNoteDayId(null);
+      setIsWorkoutDayNoteOpen(false);
       setRuntimeStatus('empty');
     } catch (error: any) {
       console.error('Ошибка удаления тренировки:', error);
@@ -387,6 +466,27 @@ const Workouts = () => {
     if (!user?.id || !workoutDayNoteDayId) return;
     await workoutDayNotesService.deleteNote(user.id, workoutDayNoteDayId);
     setWorkoutDayNote(null);
+  };
+
+  const handleDeleteWorkoutDayNoteFromBlock = async () => {
+    if (!user?.id || !workoutDayNoteDayId || isDeletingWorkoutDayNote) return;
+    const confirmed = window.confirm('Удалить заметку ко всей тренировке?');
+    if (!confirmed) return;
+
+    setIsDeletingWorkoutDayNote(true);
+    setErrorMessage(null);
+    try {
+      await workoutDayNotesService.deleteNote(user.id, workoutDayNoteDayId);
+      setWorkoutDayNote(null);
+      setIsWorkoutDayNoteOpen(false);
+    } catch (error: any) {
+      console.error('Ошибка удаления заметки тренировки:', error);
+      const message = error?.message || 'Ошибка при удалении заметки тренировки';
+      setErrorMessage(message);
+      alert(message);
+    } finally {
+      setIsDeletingWorkoutDayNote(false);
+    }
   };
 
   const handleOpenEntryNote = async (entryId: string) => {
@@ -452,20 +552,85 @@ const Workouts = () => {
 
 
   const handleAdd = () => {
-    setIsExerciseCategorySheetOpen(true);
+    setSelectedCategory(null);
+    setExercises([]);
+    setSelectedExercises([]);
+    setEditorInitialExercises([]);
+    setEditorMode('add');
+    applyFlowLayer('category');
   };
+
+  const handleOpenCustomExercises = async () => {
+    if (!user?.id) return;
+
+    setSelectedCategory(CUSTOM_EXERCISES_CATEGORY);
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const customExercises = await exerciseService.getCustomExercises(user.id);
+      setExercises(customExercises);
+      applyFlowLayer(getFlowLayerAfterCategoryExercisesLoad(true));
+    } catch (error: any) {
+      console.error('Ошибка загрузки моих упражнений:', error);
+      setErrorMessage(error?.message || 'Не удалось загрузить мои упражнения');
+      applyFlowLayer(getFlowLayerAfterCategoryExercisesLoad(false));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCloseExerciseListSheet = () => {
+    setExercises([]);
+    setSelectedCategory(null);
+    setEditorMode('add');
+    setEditorInitialExercises([]);
+    if (shouldReturnToCategorySheetAfterExerciseListClose()) {
+      applyFlowLayer('category');
+    }
+  };
+
+  const handleCloseCreateExerciseModal = (reason: CreateExerciseModalCloseReason = 'cancel') => {
+    const mode: CreateExerciseModalMode = editingCustomExercise ? 'edit' : 'create';
+    setEditingCustomExercise(null);
+
+    if (shouldReturnToCategorySheetAfterCreateExerciseClose(reason, mode)) {
+      applyFlowLayer('category');
+      return;
+    }
+
+    if (mode === 'edit') {
+      applyFlowLayer('list');
+    } else {
+      applyFlowLayer('root');
+    }
+  };
+
+  const handleEditCustomExercise = (exercise: Exercise) => {
+    if (!user?.id) return;
+    if (!exercise.is_custom || exercise.created_by_user_id !== user.id) {
+      setErrorMessage('Можно редактировать только свои пользовательские упражнения');
+      return;
+    }
+
+    setEditingCustomExercise(exercise);
+    applyFlowLayer('create');
+  };
+
 
   const handleCategorySelect = async (category: ExerciseCategory) => {
     setSelectedCategory(category);
-    setIsExerciseCategorySheetOpen(false);
+    setEditorMode('add');
+    setEditorInitialExercises([]);
     setIsLoading(true);
     
     try {
       const exs = await exerciseService.getExercisesByCategory(category.id, user?.id);
       setExercises(exs);
-      setIsExerciseListSheetOpen(true);
+      applyFlowLayer(getFlowLayerAfterCategoryExercisesLoad(true));
     } catch (error) {
       console.error('Ошибка загрузки упражнений:', error);
+      applyFlowLayer(getFlowLayerAfterCategoryExercisesLoad(false));
     } finally {
       setIsLoading(false);
     }
@@ -481,9 +646,9 @@ const Workouts = () => {
       const newExercises = selected.filter(ex => !existingIds.has(ex.id));
       return [...prev, ...newExercises];
     });
-    setIsExerciseListSheetOpen(false);
-    // Открываем редактор после выбора упражнений
-    setIsSelectedExercisesEditorOpen(true);
+    setEditorMode('add');
+    setEditorInitialExercises([]);
+    applyFlowLayer(getFlowLayerAfterExerciseSelection());
   };
 
   const handleSaveSelectedExercises = async (exercises: SelectedExercise[]) => {
@@ -492,64 +657,82 @@ const Workouts = () => {
     setIsSaving(true);
     setErrorMessage(null);
     try {
-      await workoutService.addExercisesToWorkout(user.id, selectedDate, exercises);
+      if (editorMode === 'editWorkout') {
+        const editableEntries = workoutEntries.filter((entry) => entry.exercise);
+        await Promise.all(
+          exercises.map((exercise, index) =>
+            workoutService.updateWorkoutEntry(
+              editableEntries[index].id,
+              { sets: exercise.sets, reps: exercise.reps, weight: exercise.weight },
+              editableEntries[index].updated_at,
+              { userId: user.id, date: selectedDate },
+            ),
+          ),
+        );
+      } else {
+        await workoutService.addExercisesToWorkout(user.id, selectedDate, exercises);
+      }
       
       // Перезагружаем записи тренировки
       const entries = await workoutService.getWorkoutEntries(user.id, selectedDate);
       setWorkoutEntries(entries);
 
-      const totalSets = exercises.reduce((sum, item) => sum + item.sets, 0);
-      const totalVolume = exercises.reduce((sum, item) => sum + item.sets * item.reps * item.weight, 0);
-      void coachRuntime.handleUserEvent(
-        {
-          type: 'WorkoutCompleted',
-          timestamp: new Date().toISOString(),
-          payload: {
-            date: selectedDate,
-            exercise_count: exercises.length,
-            total_sets: totalSets,
-            total_volume: totalVolume,
-            source: 'ui',
-          },
-          confidence: 0.6,
-          safetyClass: 'normal',
-          trustImpact: 1,
-        },
-        buildCoachContext()
-      );
-
-      const prMap = readPrMap(user.id);
-      const newPrs = exercises.filter((item) => {
-        const exerciseId = item.exercise.id;
-        const currentMax = prMap[exerciseId] ?? 0;
-        if (item.weight > currentMax) {
-          prMap[exerciseId] = item.weight;
-          return true;
-        }
-        return false;
-      });
-      if (newPrs.length > 0) {
-        writePrMap(user.id, prMap);
+      if (editorMode === 'add') {
+        const totalSets = exercises.reduce((sum, item) => sum + item.sets, 0);
+        const totalVolume = exercises.reduce((sum, item) => sum + item.sets * item.reps * item.weight, 0);
         void coachRuntime.handleUserEvent(
           {
-            type: 'StrengthPR',
+            type: 'WorkoutCompleted',
             timestamp: new Date().toISOString(),
             payload: {
               date: selectedDate,
-              exercise_ids: newPrs.map((item) => item.exercise.id),
-              exercise_names: newPrs.map((item) => item.exercise.name),
+              exercise_count: exercises.length,
+              total_sets: totalSets,
+              total_volume: totalVolume,
               source: 'ui',
             },
-            confidence: 0.55,
+            confidence: 0.6,
             safetyClass: 'normal',
             trustImpact: 1,
           },
           buildCoachContext()
         );
+
+        const prMap = readPrMap(user.id);
+        const newPrs = exercises.filter((item) => {
+          const exerciseId = item.exercise.id;
+          const currentMax = prMap[exerciseId] ?? 0;
+          if (item.weight > currentMax) {
+            prMap[exerciseId] = item.weight;
+            return true;
+          }
+          return false;
+        });
+        if (newPrs.length > 0) {
+          writePrMap(user.id, prMap);
+          void coachRuntime.handleUserEvent(
+            {
+              type: 'StrengthPR',
+              timestamp: new Date().toISOString(),
+              payload: {
+                date: selectedDate,
+                exercise_ids: newPrs.map((item) => item.exercise.id),
+                exercise_names: newPrs.map((item) => item.exercise.name),
+                source: 'ui',
+              },
+              confidence: 0.55,
+              safetyClass: 'normal',
+              trustImpact: 1,
+            },
+            buildCoachContext()
+          );
+        }
       }
       
-      setIsSelectedExercisesEditorOpen(false);
+      applyFlowLayer('root');
       setSelectedExercises([]);
+      setEditorInitialExercises([]);
+      setEditorMode('add');
     } catch (error: any) {
       console.error('Ошибка сохранения упражнений:', error);
       const errorMessage = error?.message || 'Ошибка при сохранении упражнений';
@@ -562,8 +745,7 @@ const Workouts = () => {
 
 
   const handleHistory = () => {
-    // TODO: Реализовать переход на историю
-    console.log('История');
+    navigate('/workouts/history');
   };
 
   const handleSchedule = () => {
@@ -572,7 +754,10 @@ const Workouts = () => {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer
+      backgroundColor={WORKOUT_SCREEN_BACKGROUND}
+      contentClassName={WORKOUT_MAIN_CONTAINER_CLASS}
+    >
         <header className="flex items-center justify-between" style={{ marginBottom: spacing.lg }}>
           <div style={{ width: 32 }} />
           <h1 style={{ ...typography.title, textTransform: 'uppercase', textAlign: 'center' }}>
@@ -746,11 +931,20 @@ const Workouts = () => {
                 ))}
               </div>
             )}
+
+            {workoutDayNote?.trim() ? (
+              <WorkoutDayNoteBlock
+                note={workoutDayNote}
+                isDeleting={isDeletingWorkoutDayNote}
+                onEdit={() => setIsWorkoutDayNoteOpen(true)}
+                onDelete={() => void handleDeleteWorkoutDayNoteFromBlock()}
+              />
+            ) : null}
           </div>
         </main>
 
         {/* Bottom Navigation */}
-        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0 w-full max-w-full overflow-hidden">
+        <div className={WORKOUT_BOTTOM_BAR_CLASS}>
           <div className="flex items-center justify-around px-2 min-[376px]:px-4 py-3 min-[376px]:py-4 w-full max-w-full">
             <button
               onClick={handleHistory}
@@ -789,12 +983,14 @@ const Workouts = () => {
       {/* Exercise Category Sheet */}
       <ExerciseCategorySheet
         isOpen={isExerciseCategorySheetOpen}
-        onClose={() => setIsExerciseCategorySheetOpen(false)}
+        onClose={() => applyFlowLayer('root')}
         categories={categories}
         onCategorySelect={handleCategorySelect}
+        onMyExercisesSelect={handleOpenCustomExercises}
         onCreateExercise={() => {
-          setIsExerciseCategorySheetOpen(false);
-          setIsCreateExerciseModalOpen(true);
+          setEditorMode('add');
+          setEditingCustomExercise(null);
+          applyFlowLayer('create');
         }}
       />
 
@@ -802,48 +998,61 @@ const Workouts = () => {
       {user?.id && (
         <CreateExerciseModal
           isOpen={isCreateExerciseModalOpen}
-          onClose={() => setIsCreateExerciseModalOpen(false)}
-          onExerciseCreated={async () => {
-            // Перезагружаем категории и упражнения
+          onClose={handleCloseCreateExerciseModal}
+          onExerciseSaved={async () => {
             const cats = await exerciseService.getCategories();
             setCategories(cats);
-            if (selectedCategory) {
-              const exs = await exerciseService.getExercisesByCategory(selectedCategory.id, user.id);
-              setExercises(exs);
+
+            if (editingCustomExercise && selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id && user?.id) {
+              const customExercises = await exerciseService.getCustomExercises(user.id);
+              setExercises(customExercises);
+              applyFlowLayer('list');
+              return;
             }
+
+            setSelectedCategory(null);
+            setExercises([]);
+            setSelectedExercises([]);
+            setEditorInitialExercises([]);
+            setEditorMode('add');
+            applyFlowLayer('category');
           }}
           userId={user.id}
+          mode={editingCustomExercise ? 'edit' : 'create'}
+          initialExercise={editingCustomExercise}
         />
       )}
 
       {/* Exercise List Sheet */}
       <ExerciseListSheet
         isOpen={isExerciseListSheetOpen}
-        onClose={() => {
-          setIsExerciseListSheetOpen(false);
-          setSelectedCategory(null);
-          setExercises([]);
-        }}
+        onClose={handleCloseExerciseListSheet}
         category={selectedCategory}
         exercises={exercises}
         onExercisesSelect={handleExercisesSelect}
+        onEditExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id ? handleEditCustomExercise : undefined}
       />
 
       {/* Selected Exercises Editor */}
       <SelectedExercisesEditor
         isOpen={isSelectedExercisesEditorOpen}
         onClose={() => {
-          setIsSelectedExercisesEditorOpen(false);
+          applyFlowLayer('root');
           setSelectedExercises([]);
+          setEditorInitialExercises([]);
+          setEditorMode('add');
         }}
         exercises={selectedExercises}
+        initialSelectedExercises={editorInitialExercises}
         onSave={handleSaveSelectedExercises}
-        onAddExercise={() => {
-          // Закрываем редактор и открываем выбор категории
-          setIsSelectedExercisesEditorOpen(false);
-          setIsExerciseCategorySheetOpen(true);
-        }}
+        onAddExercise={editorMode === 'add'
+          ? () => {
+              setEditorInitialExercises([]);
+              applyFlowLayer('category');
+            }
+          : undefined}
         isSaving={isSaving}
+        title={editorMode === 'editWorkout' ? 'РЕДАКТИРОВАТЬ ТРЕНИРОВКУ' : 'ВЫБРАННЫЕ УПРАЖНЕНИЯ'}
       />
 
       <EditWorkoutEntryModal

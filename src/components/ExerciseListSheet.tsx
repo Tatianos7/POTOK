@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react';
-import { X, Search, Check, Filter } from 'lucide-react';
-import { Exercise, ExerciseCategory, Muscle } from '../types/workout';
-import { normalizeMuscleName } from '../utils/muscleNormalizer';
+import { useState, useEffect, useMemo, type KeyboardEvent, type MouseEvent } from 'react';
+import { X, Search, Check, Filter, Edit } from 'lucide-react';
+import { Exercise, ExerciseCategory } from '../types/workout';
+import { deriveAvailableMuscles, filterExercisesForList } from '../utils/exerciseListFilters';
 
 interface ExerciseListSheetProps {
   isOpen: boolean;
@@ -9,9 +9,12 @@ interface ExerciseListSheetProps {
   category: ExerciseCategory | null;
   exercises: Exercise[];
   onExercisesSelect: (exercises: Exercise[]) => void;
+  onEditExercise?: (exercise: Exercise) => void;
   searchTerm?: string;
   onSearchChange?: (term: string) => void;
 }
+
+export const isExerciseRowActivationKey = (key: string) => key === 'Enter' || key === ' ';
 
 const ExerciseListSheet = ({
   isOpen,
@@ -19,6 +22,7 @@ const ExerciseListSheet = ({
   category,
   exercises,
   onExercisesSelect,
+  onEditExercise,
   searchTerm = '',
   onSearchChange,
 }: ExerciseListSheetProps) => {
@@ -26,7 +30,6 @@ const ExerciseListSheet = ({
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
   const [selectedMuscles, setSelectedMuscles] = useState<Set<string>>(new Set());
   const [tempSelectedMuscles, setTempSelectedMuscles] = useState<Set<string>>(new Set());
-  const [availableMuscles, setAvailableMuscles] = useState<Muscle[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
@@ -53,118 +56,13 @@ const ExerciseListSheet = ({
   useEffect(() => {
     setLocalSearchTerm(searchTerm);
   }, [searchTerm]);
-
-  // Загружаем доступные мышцы для категории с нормализацией
-  useEffect(() => {
-    const loadMuscles = async () => {
-      if (category && exercises.length > 0) {
-        // Собираем все мышцы из упражнений этой категории и нормализуем их
-        const musclesSet = new Map<string, string>(); // Map: normalizedName -> originalName (для отображения)
-        
-        exercises.forEach(ex => {
-          ex.muscles?.forEach(m => {
-            if (m.name) {
-              const normalized = normalizeMuscleName(m.name);
-              // Сохраняем нормализованное название, используя его как ключ
-              if (!musclesSet.has(normalized)) {
-                musclesSet.set(normalized, normalized);
-              }
-            }
-          });
-        });
-        
-        // Преобразуем в массив Muscle с нормализованными названиями
-        const muscles: Muscle[] = Array.from(musclesSet.values())
-          .sort()
-          .map(name => ({
-            id: name, // Используем нормализованное name как id
-            name: name, // Отображаем нормализованное название
-          }));
-        
-        setAvailableMuscles(muscles);
-      }
-    };
-    
-    loadMuscles();
-  }, [category, exercises]);
+  const availableMuscles = useMemo(() => deriveAvailableMuscles(exercises), [exercises]);
 
   // Фильтруем и дедуплицируем упражнения по поисковому запросу и выбранным мышцам
-  const filteredExercises = useMemo(() => {
-    // Сначала дедуплицируем упражнения по названию
-    const exercisesMap = new Map<string, Exercise>();
-    
-    exercises.forEach((ex) => {
-      const exerciseName = ex.name.trim();
-      const hasMuscles = ex.muscles && ex.muscles.length > 0;
-      
-      if (!exercisesMap.has(exerciseName)) {
-        // Если упражнения еще нет, добавляем его
-        exercisesMap.set(exerciseName, ex);
-      } else {
-        // Если упражнение уже есть, проверяем версии
-        const existing = exercisesMap.get(exerciseName)!;
-        const existingHasMuscles = existing.muscles && existing.muscles.length > 0;
-        
-        // Приоритет: версия с мышцами > версия без мышц
-        if (hasMuscles && !existingHasMuscles) {
-          // Заменяем версию без мышц на версию с мышцами
-          exercisesMap.set(exerciseName, ex);
-        } else if (hasMuscles && existingHasMuscles && existing.muscles && ex.muscles) {
-          // Если обе версии с мышцами, объединяем уникальные мышцы
-          const existingMuscles = existing.muscles; // TypeScript guard
-          const exMuscles = ex.muscles; // TypeScript guard
-          if (existingMuscles && exMuscles) {
-            const existingMuscleNames = new Set(existingMuscles.map(m => m.name || m.id));
-            const newMuscles = exMuscles.filter(m => {
-              const key = m.name || m.id;
-              return key && !existingMuscleNames.has(key);
-            });
-            
-            if (newMuscles.length > 0) {
-              exercisesMap.set(exerciseName, {
-                ...existing,
-                muscles: [...existingMuscles, ...newMuscles],
-              });
-            }
-          }
-        }
-        // Если новая версия без мышц, а существующая с мышцами - игнорируем новую
-      }
-    });
-
-    // Конвертируем Map в массив
-    let deduplicated = Array.from(exercisesMap.values());
-    
-    // Фильтруем упражнения без мышц, если есть версии с мышцами
-    const exercisesWithMuscles = deduplicated.filter(ex => ex.muscles && ex.muscles.length > 0);
-    if (exercisesWithMuscles.length > 0) {
-      deduplicated = exercisesWithMuscles;
-    }
-
-    // Фильтр по поисковому запросу
-    if (localSearchTerm.trim()) {
-      const term = localSearchTerm.toLowerCase();
-      deduplicated = deduplicated.filter(ex =>
-        ex.name.toLowerCase().includes(term) ||
-        ex.muscles?.some(m => (m.name || '').toLowerCase().includes(term))
-      );
-    }
-
-    // Фильтр по выбранным мышцам (с нормализацией)
-    if (selectedMuscles.size > 0) {
-      deduplicated = deduplicated.filter(ex => {
-        if (!ex.muscles || ex.muscles.length === 0) return false;
-        return ex.muscles.some(m => {
-          const muscleName = m.name || '';
-          const normalized = normalizeMuscleName(muscleName);
-          // Проверяем как по исходному, так и по нормализованному названию
-          return selectedMuscles.has(muscleName) || selectedMuscles.has(normalized);
-        });
-      });
-    }
-
-    return deduplicated;
-  }, [exercises, localSearchTerm, selectedMuscles]);
+  const filteredExercises = useMemo(
+    () => filterExercisesForList(exercises, localSearchTerm, selectedMuscles),
+    [exercises, localSearchTerm, selectedMuscles],
+  );
 
   const handleToggleExercise = (exerciseId: string) => {
     const newSelected = new Set(selectedExercises);
@@ -176,12 +74,22 @@ const ExerciseListSheet = ({
     setSelectedExercises(newSelected);
   };
 
+  const handleEditExercise = (event: MouseEvent, exercise: Exercise) => {
+    event.stopPropagation();
+    onEditExercise?.(exercise);
+  };
+
+  const handleExerciseRowKeyDown = (event: KeyboardEvent<HTMLDivElement>, exerciseId: string) => {
+    if (!isExerciseRowActivationKey(event.key)) return;
+    event.preventDefault();
+    handleToggleExercise(exerciseId);
+  };
+
   const handleSelect = () => {
     const selected = exercises.filter(ex => selectedExercises.has(ex.id));
     onExercisesSelect(selected);
     setSelectedExercises(new Set());
     setLocalSearchTerm('');
-    onClose();
   };
 
   const handleSearchChange = (value: string) => {
@@ -418,14 +326,18 @@ const ExerciseListSheet = ({
                 const uniqueKey = `${exercise.name}-${exercise.id}-${index}`;
 
                 return (
-                  <button
+                  <div
                     key={uniqueKey}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleToggleExercise(exercise.id)}
-                    className={`w-full px-3 min-[376px]:px-4 py-2.5 min-[376px]:py-3 text-left rounded-xl transition-colors flex items-start gap-2 min-[376px]:gap-3 ${
+                    onKeyDown={(event) => handleExerciseRowKeyDown(event, exercise.id)}
+                    className={`w-full px-3 min-[376px]:px-4 py-2.5 min-[376px]:py-3 text-left rounded-xl transition-colors flex items-start gap-2 min-[376px]:gap-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500 ${
                       isSelected
                         ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500'
                         : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-2 border-transparent'
                     }`}
+                    aria-pressed={isSelected}
                   >
                     <div
                       className={`flex-shrink-0 w-5 h-5 min-[376px]:w-6 min-[376px]:h-6 rounded border-2 flex items-center justify-center ${
@@ -444,7 +356,18 @@ const ExerciseListSheet = ({
                         )}
                       </p>
                     </div>
-                  </button>
+                    {onEditExercise && exercise.is_custom && (
+                      <button
+                        type="button"
+                        onClick={(event) => handleEditExercise(event, exercise)}
+                        className="flex-shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-white/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-900/60 transition-colors"
+                        aria-label={`Редактировать ${exercise.name}`}
+                        title="Редактировать упражнение"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -473,4 +396,3 @@ const ExerciseListSheet = ({
 };
 
 export default ExerciseListSheet;
-
