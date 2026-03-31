@@ -6,9 +6,11 @@ interface SelectedExercisesEditorProps {
   isOpen: boolean;
   onClose: () => void;
   exercises: Exercise[];
+  initialSelectedExercises?: SelectedExercise[];
   onSave: (exercises: SelectedExercise[]) => void;
   onAddExercise?: () => void;
   isSaving?: boolean;
+  title?: string;
 }
 
 const weekDays = [
@@ -25,9 +27,11 @@ const SelectedExercisesEditor = ({
   isOpen,
   onClose,
   exercises,
+  initialSelectedExercises,
   onSave,
   onAddExercise,
   isSaving = false,
+  title = 'ВЫБРАННЫЕ УПРАЖНЕНИЯ',
 }: SelectedExercisesEditorProps) => {
   const [editedExercises, setEditedExercises] = useState<SelectedExercise[]>([]);
   const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number | null>(null);
@@ -54,7 +58,13 @@ const SelectedExercisesEditor = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    if (!isInitializedRef.current && exercises.length > 0) {
+    if (!isInitializedRef.current && initialSelectedExercises && initialSelectedExercises.length > 0) {
+      setEditedExercises(initialSelectedExercises);
+      setSelectedDayOfWeek(null);
+      setSaveForEachWeek(false);
+      isInitializedRef.current = true;
+      previousExercisesRef.current = initialSelectedExercises.map((item) => item.exercise);
+    } else if (!isInitializedRef.current && exercises.length > 0) {
       // Первая инициализация
       setEditedExercises(
         exercises.map(ex => ({
@@ -84,7 +94,7 @@ const SelectedExercisesEditor = ({
         previousExercisesRef.current = exercises;
       }
     }
-  }, [exercises, isOpen]);
+  }, [exercises, initialSelectedExercises, isOpen]);
 
   const handleUpdate = (index: number, field: 'sets' | 'reps' | 'weight', value: number) => {
     const updated = [...editedExercises];
@@ -126,7 +136,7 @@ const SelectedExercisesEditor = ({
           {/* Header */}
           <div className="px-2 min-[376px]:px-3 sm:px-4 py-2 min-[376px]:py-2.5 sm:py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
             <h2 className="text-xs min-[376px]:text-sm sm:text-lg font-semibold text-gray-900 dark:text-white uppercase">
-              ВЫБРАННЫЕ УПРАЖНЕНИЯ
+              {title}
             </h2>
             <button
               onClick={onClose}
@@ -276,12 +286,14 @@ const SelectedExercisesEditor = ({
 
           {/* Footer */}
           <div className="px-2 min-[376px]:px-3 sm:px-4 py-2.5 min-[376px]:py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col gap-2 min-[376px]:gap-2.5 sm:gap-3 flex-shrink-0">
-            <button
-              onClick={handleAddExercise}
-              className="w-full py-2.5 min-[376px]:py-3 sm:py-3 px-3 min-[376px]:px-4 rounded-lg sm:rounded-xl font-semibold text-[11px] min-[376px]:text-xs sm:text-sm uppercase bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-            >
-              ДОБАВИТЬ УПРАЖНЕНИЕ
-            </button>
+            {onAddExercise && (
+              <button
+                onClick={handleAddExercise}
+                className="w-full py-2.5 min-[376px]:py-3 sm:py-3 px-3 min-[376px]:px-4 rounded-lg sm:rounded-xl font-semibold text-[11px] min-[376px]:text-xs sm:text-sm uppercase bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              >
+                ДОБАВИТЬ УПРАЖНЕНИЕ
+              </button>
+            )}
             <button
               onClick={handleSave}
               disabled={editedExercises.length === 0 || isSaving}
@@ -297,4 +309,3 @@ const SelectedExercisesEditor = ({
 };
 
 export default SelectedExercisesEditor;
-

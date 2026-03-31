@@ -7,14 +7,20 @@ interface ExerciseCategorySheetProps {
   onClose: () => void;
   categories: ExerciseCategory[];
   onCategorySelect: (category: ExerciseCategory) => void;
+  onMyExercisesSelect?: () => void;
   onCreateExercise?: () => void;
 }
+
+export const runMyExercisesAction = (onMyExercisesSelect?: () => void) => {
+  onMyExercisesSelect?.();
+};
 
 const ExerciseCategorySheet = ({
   isOpen,
   onClose,
   categories,
   onCategorySelect,
+  onMyExercisesSelect,
   onCreateExercise,
 }: ExerciseCategorySheetProps) => {
   useEffect(() => {
@@ -36,11 +42,7 @@ const ExerciseCategorySheet = ({
   };
 
   const handleMyExercisesClick = () => {
-    // "МОИ УПРАЖНЕНИЯ" - это не категория, а специальная опция
-    // Можно обработать отдельно или просто закрыть модальное окно
-    if (onCreateExercise) {
-      onCreateExercise();
-    }
+    runMyExercisesAction(onMyExercisesSelect);
     onClose();
   };
 
@@ -180,4 +182,3 @@ const ExerciseCategorySheet = ({
 };
 
 export default ExerciseCategorySheet;
-

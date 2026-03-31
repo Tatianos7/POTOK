@@ -5,9 +5,19 @@ interface InlineCalendarProps {
   selectedDate: string; // YYYY-MM-DD
   onDateSelect: (date: string) => void;
   onClose: () => void;
+  minDate?: string;
+  maxDate?: string;
+  closeOnSelect?: boolean;
 }
 
-const InlineCalendar = ({ selectedDate, onDateSelect, onClose }: InlineCalendarProps) => {
+const InlineCalendar = ({
+  selectedDate,
+  onDateSelect,
+  onClose,
+  minDate,
+  maxDate,
+  closeOnSelect = true,
+}: InlineCalendarProps) => {
   const [currentMonth, setCurrentMonth] = useState(() => {
     // Парсим selectedDate (YYYY-MM-DD) в локальное время
     const [year, month, day] = selectedDate.split('-').map(Number);
@@ -44,8 +54,8 @@ const InlineCalendar = ({ selectedDate, onDateSelect, onClose }: InlineCalendarP
 
   // Определяем диапазон доступных дат: today - 30 дней до today + 14 дней (в формате строк)
   const todayStr = getTodayDateString();
-  const minDateStr = getDateStringDaysAgo(todayStr, -30);
-  const maxDateStr = getDateStringDaysAgo(todayStr, 14);
+  const minDateStr = minDate ?? getDateStringDaysAgo(todayStr, -30);
+  const maxDateStr = maxDate ?? getDateStringDaysAgo(todayStr, 14);
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
@@ -98,7 +108,9 @@ const InlineCalendar = ({ selectedDate, onDateSelect, onClose }: InlineCalendarP
     }
     
     onDateSelect(dateString);
-    onClose();
+    if (closeOnSelect) {
+      onClose();
+    }
   };
 
   const goToPreviousMonth = () => {
@@ -208,4 +220,3 @@ const InlineCalendar = ({ selectedDate, onDateSelect, onClose }: InlineCalendarP
 };
 
 export default InlineCalendar;
-

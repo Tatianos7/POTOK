@@ -1,20 +1,25 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { ExerciseCategory, Muscle, CreateExerciseData } from '../types/workout';
+import { ExerciseCategory, Muscle, CreateExerciseData, Exercise } from '../types/workout';
 import { exerciseService } from '../services/exerciseService';
+import type { CreateExerciseModalCloseReason } from '../utils/workoutAddFlowNavigation';
 
 interface CreateExerciseModalProps {
   isOpen: boolean;
-  onClose: () => void;
-  onExerciseCreated: () => void;
+  onClose: (reason?: CreateExerciseModalCloseReason) => void;
+  onExerciseSaved: () => Promise<void> | void;
   userId: string;
+  mode?: 'create' | 'edit';
+  initialExercise?: Exercise | null;
 }
 
 const CreateExerciseModal = ({
   isOpen,
   onClose,
-  onExerciseCreated,
+  onExerciseSaved,
   userId,
+  mode = 'create',
+  initialExercise = null,
 }: CreateExerciseModalProps) => {
   const [categories, setCategories] = useState<ExerciseCategory[]>([]);
   const [muscles, setMuscles] = useState<Muscle[]>([]);
@@ -31,6 +36,12 @@ const CreateExerciseModal = ({
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       loadData();
+      setFormData({
+        name: initialExercise?.name || '',
+        category_id: initialExercise?.category_id || '',
+        description: initialExercise?.description || '',
+        muscle_ids: initialExercise?.muscles?.map((muscle) => muscle.id).filter(Boolean) || [],
+      });
     } else {
       document.body.style.overflow = '';
       // Сброс формы при закрытии
@@ -45,7 +56,7 @@ const CreateExerciseModal = ({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen]);
+  }, [isOpen, initialExercise]);
 
   const loadData = async () => {
     try {
@@ -78,11 +89,15 @@ const CreateExerciseModal = ({
     setError(null);
 
     try {
-      await exerciseService.createCustomExercise(userId, formData);
-      onExerciseCreated();
-      onClose();
+      if (mode === 'edit' && initialExercise?.id) {
+        await exerciseService.updateCustomExercise(userId, initialExercise.id, formData);
+      } else {
+        await exerciseService.createCustomExercise(userId, formData);
+      }
+      await onExerciseSaved();
+      onClose('saved');
     } catch (error: any) {
-      setError(error.message || 'Ошибка создания упражнения');
+      setError(error.message || (mode === 'edit' ? 'Ошибка обновления упражнения' : 'Ошибка создания упражнения'));
     } finally {
       setIsLoading(false);
     }
@@ -105,10 +120,10 @@ const CreateExerciseModal = ({
         {/* Header */}
         <header className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-900 z-10">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white uppercase">
-            Создать упражнение
+            {mode === 'edit' ? 'Редактировать упражнение' : 'Создать упражнение'}
           </h2>
           <button
-            onClick={onClose}
+            onClick={() => onClose('cancel')}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
             aria-label="Закрыть"
           >
@@ -202,7 +217,7 @@ const CreateExerciseModal = ({
           <div className="flex gap-3 pt-2">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => onClose('cancel')}
               className="flex-1 py-3 px-4 rounded-xl font-semibold text-sm uppercase bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             >
               Отмена
@@ -212,7 +227,7 @@ const CreateExerciseModal = ({
               disabled={isLoading}
               className="flex-1 py-3 px-4 rounded-xl font-semibold text-sm uppercase bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Создание...' : 'Создать'}
+              {isLoading ? (mode === 'edit' ? 'Сохранение...' : 'Создание...') : mode === 'edit' ? 'Сохранить' : 'Создать'}
             </button>
           </div>
         </form>
@@ -222,4 +237,3 @@ const CreateExerciseModal = ({
 };
 
 export default CreateExerciseModal;
-

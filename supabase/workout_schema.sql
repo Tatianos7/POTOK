@@ -136,7 +136,46 @@ CREATE POLICY "Users can update their custom exercises"
 DROP POLICY IF EXISTS "Users can delete their custom exercises" ON exercises;
 CREATE POLICY "Users can delete their custom exercises"
   ON exercises FOR DELETE
-  USING (created_by_user_id = auth.uid());
+  USING (
+    created_by_user_id = auth.uid()
+    AND is_custom = true
+    AND NOT EXISTS (
+      SELECT 1
+      FROM workout_entries we
+      WHERE we.exercise_id = exercises.id
+    )
+  );
+
+DROP POLICY IF EXISTS "Anyone can read exercise muscle links" ON exercise_muscles;
+CREATE POLICY "Anyone can read exercise muscle links"
+  ON exercise_muscles FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Users can create muscle links for their custom exercises" ON exercise_muscles;
+CREATE POLICY "Users can create muscle links for their custom exercises"
+  ON exercise_muscles FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM exercises e
+      WHERE e.id = exercise_id
+        AND e.is_custom = true
+        AND e.created_by_user_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can delete muscle links for their custom exercises" ON exercise_muscles;
+CREATE POLICY "Users can delete muscle links for their custom exercises"
+  ON exercise_muscles FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM exercises e
+      WHERE e.id = exercise_id
+        AND e.is_custom = true
+        AND e.created_by_user_id = auth.uid()
+    )
+  );
 
 DROP POLICY IF EXISTS "Users can manage their workout days" ON workout_days;
 CREATE POLICY "Users can manage their workout days"
@@ -982,4 +1021,3 @@ ORDER BY e.name, c.name;
 SELECT * FROM exercise_categories ORDER BY "order";
 SELECT * FROM muscles ORDER BY name;
 SELECT exercise_name, category FROM exercises_full_view ORDER BY category, exercise_name;
-
