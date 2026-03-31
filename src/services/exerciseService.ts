@@ -2,11 +2,177 @@ import { supabase } from '../lib/supabaseClient';
 import { Exercise, ExerciseCategory, Muscle, CreateExerciseData } from '../types/workout';
 import { normalizeMuscleNames } from '../utils/muscleNormalizer';
 
+export function canEditCustomExercise(exercise: Pick<Exercise, 'is_custom' | 'created_by_user_id'>, sessionUserId: string): boolean {
+  return exercise.is_custom === true && exercise.created_by_user_id === sessionUserId;
+}
+
+export function canDeleteCustomExercise(exercise: Pick<Exercise, 'is_custom' | 'created_by_user_id'>, sessionUserId: string): boolean {
+  return canEditCustomExercise(exercise, sessionUserId);
+}
+
+export function buildExerciseMuscleLinkRows(exerciseId: string, muscleIds: string[]) {
+  return muscleIds.map((muscleId) => ({
+    exercise_id: exerciseId,
+    muscle_id: muscleId,
+  }));
+}
+
 class ExerciseService {
+  private getCategoryExercisesStorageKey(categoryId: string): string {
+    return `exercises_${categoryId}`;
+  }
+
+  private getCustomExercisesStorageKey(userId: string, categoryId?: string): string {
+    return categoryId
+      ? `custom_exercises_${userId}_${categoryId}`
+      : `custom_exercises_${userId}`;
+  }
+
+  private saveExercisesByCategoryToLocalStorage(categoryId: string, exercises: Exercise[]): void {
+    try {
+      localStorage.setItem(this.getCategoryExercisesStorageKey(categoryId), JSON.stringify(exercises));
+    } catch (error) {
+      console.error('[exerciseService] Error saving category exercises to localStorage:', error);
+    }
+  }
+
+  private saveCustomExercisesToLocalStorage(userId: string, exercises: Exercise[], categoryId?: string): void {
+    try {
+      localStorage.setItem(this.getCustomExercisesStorageKey(userId, categoryId), JSON.stringify(exercises));
+    } catch (error) {
+      console.error('[exerciseService] Error saving custom exercises to localStorage:', error);
+    }
+  }
+
   private normalizeMuscles(muscles: Muscle[]): Muscle[] {
-    const names = muscles.map((m) => m.name).filter(Boolean);
-    const normalized = normalizeMuscleNames(names);
-    return normalized.map((name) => ({ id: '', name }));
+    const normalizedMap = new Map<string, string>();
+
+    muscles.forEach((muscle) => {
+      const rawName = muscle.name || '';
+      const normalizedNames = normalizeMuscleNames([rawName]);
+      normalizedNames.forEach((normalizedName) => {
+        if (!normalizedMap.has(normalizedName)) {
+          normalizedMap.set(normalizedName, muscle.id || normalizedName);
+        }
+      });
+    });
+
+    return Array.from(normalizedMap.entries()).map(([name, id]) => ({ id, name }));
+  }
+
+  private extractNormalizedMusclesFromViewRow(muscles: unknown): Muscle[] {
+    if (!Array.isArray(muscles) || muscles.length === 0) {
+      return [];
+    }
+
+    const rawNames =
+      typeof muscles[0] === 'string'
+        ? muscles.filter((m): m is string => typeof m === 'string' && m.trim() !== '')
+        : muscles
+            .map((m: any) => m?.name || m)
+            .filter((m: unknown): m is string => typeof m === 'string' && m.trim() !== '');
+
+    return normalizeMuscleNames(rawNames).map((name) => ({ id: '', name }));
+  }
+
+  private mergeExerciseRecords(exercises: Exercise[]): Exercise[] {
+    const exercisesMap = new Map<string, Exercise>();
+
+    exercises.forEach((exercise) => {
+      const exerciseName = exercise.name.trim();
+      if (!exerciseName) return;
+
+      const current: Exercise = {
+        ...exercise,
+        name: exerciseName,
+        muscles: exercise.muscles ? this.normalizeMuscles(exercise.muscles) : [],
+      };
+
+      const existing = exercisesMap.get(exerciseName);
+      if (!existing) {
+        exercisesMap.set(exerciseName, current);
+        return;
+      }
+
+      const existingMuscles = existing.muscles || [];
+      const currentMuscles = current.muscles || [];
+      const existingHasMuscles = existingMuscles.length > 0;
+      const currentHasMuscles = currentMuscles.length > 0;
+
+      if (currentHasMuscles && !existingHasMuscles) {
+        exercisesMap.set(exerciseName, { ...current, muscles: currentMuscles });
+        return;
+      }
+
+      if (!currentHasMuscles && existingHasMuscles) {
+        return;
+      }
+
+      const mergedMuscleNames = normalizeMuscleNames([
+        ...existingMuscles.map((m) => m.name),
+        ...currentMuscles.map((m) => m.name),
+      ]);
+
+      exercisesMap.set(exerciseName, {
+        ...existing,
+        canonical_exercise_id: existing.canonical_exercise_id ?? current.canonical_exercise_id ?? current.id,
+        normalized_name: existing.normalized_name ?? current.normalized_name ?? null,
+        movement_pattern: existing.movement_pattern ?? current.movement_pattern ?? undefined,
+        equipment_type: existing.equipment_type ?? current.equipment_type ?? null,
+        difficulty_level: existing.difficulty_level ?? current.difficulty_level ?? null,
+        is_compound: existing.is_compound ?? current.is_compound ?? false,
+        energy_system: existing.energy_system ?? current.energy_system ?? undefined,
+        metabolic_equivalent: existing.metabolic_equivalent ?? current.metabolic_equivalent ?? null,
+        muscles: mergedMuscleNames.map((name) => ({ id: '', name })),
+      });
+    });
+
+    return Array.from(exercisesMap.values());
+  }
+
+  private mapExerciseFromViewRow(categoryId: string, ex: any): Exercise | null {
+    const exerciseName = (ex.exercise_name || '').trim();
+    if (!exerciseName) return null;
+
+    return {
+      id: ex.id,
+      name: exerciseName,
+      category_id: categoryId,
+      description: undefined,
+      is_custom: false,
+      created_by_user_id: undefined,
+      canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
+      normalized_name: ex.normalized_name ?? null,
+      movement_pattern: ex.movement_pattern ?? null,
+      equipment_type: ex.equipment_type ?? null,
+      difficulty_level: ex.difficulty_level ?? null,
+      is_compound: ex.is_compound ?? false,
+      energy_system: ex.energy_system ?? null,
+      metabolic_equivalent: ex.metabolic_equivalent ?? null,
+      muscles: this.extractNormalizedMusclesFromViewRow(ex.muscles),
+    };
+  }
+
+  private mapExerciseFromDirectRow(ex: any): Exercise {
+    const muscles = ex.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [];
+    return {
+      id: ex.id,
+      name: ex.name,
+      category_id: ex.category_id,
+      description: ex.description,
+      is_custom: ex.is_custom,
+      created_by_user_id: ex.created_by_user_id,
+      canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
+      normalized_name: ex.normalized_name ?? null,
+      movement_pattern: ex.movement_pattern ?? null,
+      equipment_type: ex.equipment_type ?? null,
+      difficulty_level: ex.difficulty_level ?? null,
+      is_compound: ex.is_compound ?? false,
+      energy_system: ex.energy_system ?? null,
+      metabolic_equivalent: ex.metabolic_equivalent ?? null,
+      category: ex.category,
+      muscles: this.normalizeMuscles(muscles),
+    };
   }
 
   private async getSessionUserId(userId?: string): Promise<string> {
@@ -124,111 +290,12 @@ class ExerciseService {
         return this.getExercisesByCategoryDirect(categoryId, userId);
       }
 
-      // Преобразуем данные из view в формат Exercise с дедупликацией
-      const exercisesMap = new Map<string, Exercise>();
-      
-      (data || []).forEach((ex: any) => {
-        const exerciseName = (ex.exercise_name || '').trim();
-        if (!exerciseName) return; // Пропускаем упражнения без названия
-        
-        // Обрабатываем мышцы: может быть массив строк или уже объекты
-        let musclesArray: string[] = [];
-        if (Array.isArray(ex.muscles)) {
-          if (ex.muscles.length > 0 && typeof ex.muscles[0] === 'string') {
-            // Если это массив строк
-            musclesArray = ex.muscles.filter((m: any) => m && typeof m === 'string' && m.trim() !== '');
-          } else if (ex.muscles.length > 0 && typeof ex.muscles[0] === 'object') {
-            // Если это массив объектов, извлекаем name
-            musclesArray = ex.muscles
-              .map((m: any) => m?.name || m)
-              .filter((m: any) => m && typeof m === 'string' && m.trim() !== '');
-          }
-        }
-        
-        // Если упражнение уже есть в мапе
-        if (exercisesMap.has(exerciseName)) {
-          const existing = exercisesMap.get(exerciseName)!;
-          const existingHasMuscles = existing.muscles && existing.muscles.length > 0;
-          const currentHasMuscles = musclesArray.length > 0;
-          
-          // Приоритет: версия с мышцами > версия без мышц
-          if (currentHasMuscles && !existingHasMuscles) {
-            // Заменяем версию без мышц на версию с мышцами
-            exercisesMap.set(exerciseName, {
-              id: ex.id,
-              name: exerciseName,
-              category_id: categoryId,
-              description: undefined,
-              is_custom: false,
-              created_by_user_id: undefined,
-              canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
-              normalized_name: ex.normalized_name ?? null,
-              movement_pattern: ex.movement_pattern ?? null,
-              equipment_type: ex.equipment_type ?? null,
-              difficulty_level: ex.difficulty_level ?? null,
-              is_compound: ex.is_compound ?? false,
-              energy_system: ex.energy_system ?? null,
-              metabolic_equivalent: ex.metabolic_equivalent ?? null,
-              muscles: normalizeMuscleNames(musclesArray).map((muscleName: string) => ({
-                id: '',
-                name: muscleName,
-              })),
-            });
-          } else if (currentHasMuscles && existingHasMuscles && existing.muscles && existing.muscles.length > 0) {
-            // Если обе версии с мышцами, объединяем уникальные мышцы (с нормализацией)
-            const existingMuscles = existing.muscles; // TypeScript guard
-            if (existingMuscles) {
-              const normalizedExisting = normalizeMuscleNames(existingMuscles.map((m: Muscle) => m.name));
-              const normalizedNew = normalizeMuscleNames(musclesArray);
-              
-              // Объединяем нормализованные массивы и убираем дубликаты
-              const allNormalized = normalizeMuscleNames([...normalizedExisting, ...normalizedNew]);
-              
-              if (allNormalized.length > normalizedExisting.length) {
-                exercisesMap.set(exerciseName, {
-                  ...existing,
-                  muscles: allNormalized.map((muscleName: string) => ({
-                    id: '',
-                    name: muscleName,
-                  })),
-                });
-              }
-            }
-          }
-          // Если новая версия без мышц, а существующая с мышцами - игнорируем новую
-        } else {
-          // Добавляем новое упражнение с нормализацией мышц
-          const normalizedMuscles = normalizeMuscleNames(musclesArray);
-          exercisesMap.set(exerciseName, {
-            id: ex.id,
-            name: exerciseName,
-            category_id: categoryId,
-            description: undefined,
-            is_custom: false,
-            created_by_user_id: undefined,
-            canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
-            normalized_name: ex.normalized_name ?? null,
-            movement_pattern: ex.movement_pattern ?? null,
-            equipment_type: ex.equipment_type ?? null,
-            difficulty_level: ex.difficulty_level ?? null,
-            is_compound: ex.is_compound ?? false,
-            energy_system: ex.energy_system ?? null,
-            metabolic_equivalent: ex.metabolic_equivalent ?? null,
-            muscles: normalizedMuscles.map((muscleName: string) => ({
-              id: '',
-              name: muscleName,
-            })),
-          });
-        }
-      });
-
-      // Конвертируем Map в массив и фильтруем: если есть упражнения с мышцами, возвращаем только их
-      const exercisesArray = Array.from(exercisesMap.values());
-      const exercisesWithMuscles = exercisesArray.filter(ex => ex.muscles && ex.muscles.length > 0);
-      const exercisesWithoutMuscles = exercisesArray.filter(ex => !ex.muscles || ex.muscles.length === 0);
-      
-      // Если есть упражнения с мышцами, возвращаем только их. Иначе возвращаем все (на случай, если все без мышц)
-      return exercisesWithMuscles.length > 0 ? exercisesWithMuscles : exercisesWithoutMuscles;
+      const mapped = (data || [])
+        .map((ex: any) => this.mapExerciseFromViewRow(categoryId, ex))
+        .filter((exercise: Exercise | null): exercise is Exercise => exercise !== null);
+      const deduplicated = this.mergeExerciseRecords(mapped);
+      this.saveExercisesByCategoryToLocalStorage(categoryId, deduplicated);
+      return deduplicated;
     } catch (error) {
       console.error('[exerciseService] Error:', error);
       // Fallback на прямой запрос
@@ -270,77 +337,9 @@ class ExerciseService {
         return this.getExercisesByCategoryFromLocalStorage(categoryId);
       }
 
-      // Преобразуем данные и дедуплицируем
-      const exercisesMap = new Map<string, Exercise>();
-      
-      (data || []).forEach((ex: any) => {
-        const exerciseName = ex.name;
-        const muscles = ex.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [];
-        const normalizedMuscles = this.normalizeMuscles(muscles);
-        
-        // Если упражнение уже есть в мапе
-        if (exercisesMap.has(exerciseName)) {
-          const existing = exercisesMap.get(exerciseName)!;
-          
-          // Приоритет: оставляем версию с мышцами
-          if (normalizedMuscles.length > 0 && (!existing.muscles || existing.muscles.length === 0)) {
-            // Заменяем версию без мышц на версию с мышцами
-            exercisesMap.set(exerciseName, {
-              id: ex.id,
-              name: exerciseName,
-              category_id: ex.category_id,
-              description: ex.description,
-              is_custom: ex.is_custom,
-              created_by_user_id: ex.created_by_user_id,
-              category: ex.category,
-              muscles: normalizedMuscles,
-            });
-          } else if (normalizedMuscles.length > 0 && existing.muscles && existing.muscles.length > 0) {
-            // Если обе версии с мышцами, объединяем уникальные мышцы
-            const existingMuscleNames = new Set(existing.muscles.map((m: Muscle) => m.name));
-            const newMuscles = normalizedMuscles.filter((m: Muscle) => {
-              const key = m.name;
-              return key && !existingMuscleNames.has(key);
-            });
-            
-            if (newMuscles.length > 0) {
-              exercisesMap.set(exerciseName, {
-                ...existing,
-                muscles: [...existing.muscles, ...newMuscles],
-              });
-            }
-          }
-          // Если новая версия без мышц, а существующая с мышцами - игнорируем новую
-        } else {
-          // Добавляем новое упражнение
-          exercisesMap.set(exerciseName, {
-            id: ex.id,
-            name: exerciseName,
-            category_id: ex.category_id,
-            description: ex.description,
-            is_custom: ex.is_custom,
-            created_by_user_id: ex.created_by_user_id,
-            canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
-            normalized_name: ex.normalized_name ?? null,
-            movement_pattern: ex.movement_pattern ?? null,
-            equipment_type: ex.equipment_type ?? null,
-            difficulty_level: ex.difficulty_level ?? null,
-            is_compound: ex.is_compound ?? false,
-            energy_system: ex.energy_system ?? null,
-            metabolic_equivalent: ex.metabolic_equivalent ?? null,
-            category: ex.category,
-            muscles: normalizedMuscles,
-          });
-        }
-      });
-
-      // Конвертируем Map в массив и фильтруем упражнения без мышц, если есть версии с мышцами
-      const exercisesArray = Array.from(exercisesMap.values());
-      const exercisesWithMuscles = exercisesArray.filter(ex => ex.muscles && ex.muscles.length > 0);
-      const exercisesWithoutMuscles = exercisesArray.filter(ex => !ex.muscles || ex.muscles.length === 0);
-      
-      // Если есть упражнения с мышцами, возвращаем только их. Иначе возвращаем все
-      return exercisesWithMuscles.length > 0 ? exercisesWithMuscles : exercisesWithoutMuscles;
+      const deduplicated = this.mergeExerciseRecords((data || []).map((ex: any) => this.mapExerciseFromDirectRow(ex)));
+      this.saveExercisesByCategoryToLocalStorage(categoryId, deduplicated);
+      return deduplicated;
     } catch (error) {
       console.error('[exerciseService] Error:', error);
       return this.getExercisesByCategoryFromLocalStorage(categoryId);
@@ -386,71 +385,53 @@ class ExerciseService {
       }
 
       // Преобразуем данные и дедуплицируем
-      const exercisesMap = new Map<string, Exercise>();
-      
-      (data || []).forEach((ex: any) => {
-        const exerciseName = ex.name;
-        const muscles = ex.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [];
-        const normalizedMuscles = this.normalizeMuscles(muscles);
-        
-        // Если упражнение уже есть в мапе
-        if (exercisesMap.has(exerciseName)) {
-          const existing = exercisesMap.get(exerciseName)!;
-          
-          // Приоритет: оставляем версию с мышцами
-          if (normalizedMuscles.length > 0 && (!existing.muscles || existing.muscles.length === 0)) {
-            // Заменяем версию без мышц на версию с мышцами
-            exercisesMap.set(exerciseName, {
-              id: ex.id,
-              name: exerciseName,
-              category_id: ex.category_id,
-              description: ex.description,
-              is_custom: ex.is_custom,
-              created_by_user_id: ex.created_by_user_id,
-              category: ex.category,
-              muscles: normalizedMuscles,
-            });
-          } else if (normalizedMuscles.length > 0 && existing.muscles && existing.muscles.length > 0) {
-            // Если обе версии с мышцами, объединяем уникальные мышцы
-            const existingMuscleNames = new Set(existing.muscles.map((m: Muscle) => m.name));
-            const newMuscles = normalizedMuscles.filter((m: Muscle) => {
-              const key = m.name;
-              return key && !existingMuscleNames.has(key);
-            });
-            
-            if (newMuscles.length > 0) {
-              exercisesMap.set(exerciseName, {
-                ...existing,
-                muscles: [...existing.muscles, ...newMuscles],
-              });
-            }
-          }
-          // Если новая версия без мышц, а существующая с мышцами - игнорируем новую
-        } else {
-          // Добавляем новое упражнение
-          exercisesMap.set(exerciseName, {
-            id: ex.id,
-            name: exerciseName,
-            category_id: ex.category_id,
-            description: ex.description,
-            is_custom: ex.is_custom,
-            created_by_user_id: ex.created_by_user_id,
-            category: ex.category,
-            muscles: normalizedMuscles,
-          });
-        }
-      });
-
-      // Конвертируем Map в массив и фильтруем упражнения без мышц, если есть версии с мышцами
-      const exercisesArray = Array.from(exercisesMap.values());
-      const exercisesWithMuscles = exercisesArray.filter(ex => ex.muscles && ex.muscles.length > 0);
-      const exercisesWithoutMuscles = exercisesArray.filter(ex => !ex.muscles || ex.muscles.length === 0);
-      
-      // Если есть упражнения с мышцами, возвращаем только их. Иначе возвращаем все
-      return exercisesWithMuscles.length > 0 ? exercisesWithMuscles : exercisesWithoutMuscles;
+      return this.mergeExerciseRecords((data || []).map((ex: any) => this.mapExerciseFromDirectRow(ex)));
     } catch (error) {
       console.error('[exerciseService] Error:', error);
       return [];
+    }
+  }
+
+  async getCustomExercises(userId: string, categoryId?: string): Promise<Exercise[]> {
+    if (!supabase) {
+      return this.getCustomExercisesFromLocalStorage(userId, categoryId);
+    }
+
+    try {
+      const sessionUserId = await this.getSessionUserId(userId);
+      let query = supabase
+        .from('exercises')
+        .select(`
+          *,
+          category:exercise_categories(*),
+          exercise_muscles(
+            muscle:muscles(*)
+          )
+        `)
+        .eq('is_custom', true)
+        .eq('created_by_user_id', sessionUserId)
+        .order('name', { ascending: true })
+        .limit(500);
+
+      if (categoryId) {
+        query = query.eq('category_id', categoryId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('[exerciseService] Error fetching custom exercises:', error);
+        return this.getCustomExercisesFromLocalStorage(sessionUserId, categoryId);
+      }
+
+      const customExercises = this.mergeExerciseRecords(
+        (data || []).map((ex: any) => this.mapExerciseFromDirectRow(ex)),
+      );
+      this.saveCustomExercisesToLocalStorage(sessionUserId, customExercises, categoryId);
+      return customExercises;
+    } catch (error) {
+      console.error('[exerciseService] Error:', error);
+      return this.getCustomExercisesFromLocalStorage(userId, categoryId);
     }
   }
 
@@ -487,10 +468,7 @@ class ExerciseService {
 
       // Создаем связи с мышцами
       if (data.muscle_ids.length > 0) {
-        const exerciseMuscles = data.muscle_ids.map(muscleId => ({
-          exercise_id: exercise.id,
-          muscle_id: muscleId,
-        }));
+        const exerciseMuscles = buildExerciseMuscleLinkRows(exercise.id, data.muscle_ids);
 
         const { error: linkError } = await supabase
           .from('exercise_muscles')
@@ -498,6 +476,12 @@ class ExerciseService {
 
         if (linkError) {
           console.error('[exerciseService] Error creating muscle links:', linkError);
+          await supabase
+            .from('exercises')
+            .delete()
+            .eq('id', exercise.id)
+            .eq('created_by_user_id', sessionUserId);
+          throw new Error('Не удалось сохранить целевые мышцы упражнения');
         }
       }
 
@@ -537,6 +521,174 @@ class ExerciseService {
     }
   }
 
+  async updateCustomExercise(userId: string, exerciseId: string, data: CreateExerciseData): Promise<Exercise> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+
+    try {
+      const sessionUserId = await this.getSessionUserId(userId);
+
+      const { data: existingExercise, error: existingError } = await supabase
+        .from('exercises')
+        .select('id, is_custom, created_by_user_id')
+        .eq('id', exerciseId)
+        .single();
+
+      if (existingError || !existingExercise) {
+        throw new Error(existingError?.message || 'Упражнение не найдено');
+      }
+
+      if (!canEditCustomExercise(existingExercise, sessionUserId)) {
+        throw new Error('Можно редактировать только свои пользовательские упражнения');
+      }
+
+      const { data: existingLinks, error: existingLinksError } = await supabase
+        .from('exercise_muscles')
+        .select('muscle_id')
+        .eq('exercise_id', exerciseId);
+
+      if (existingLinksError) {
+        throw new Error(existingLinksError.message || 'Не удалось загрузить текущие связи мышц упражнения');
+      }
+
+      const { error: updateError } = await supabase
+        .from('exercises')
+        .update({
+          name: data.name,
+          category_id: data.category_id,
+          description: data.description,
+        })
+        .eq('id', exerciseId)
+        .eq('created_by_user_id', sessionUserId)
+        .eq('is_custom', true);
+
+      if (updateError) {
+        throw new Error(updateError.message || 'Не удалось обновить упражнение');
+      }
+
+      const { error: deleteLinksError } = await supabase
+        .from('exercise_muscles')
+        .delete()
+        .eq('exercise_id', exerciseId);
+
+      if (deleteLinksError) {
+        throw new Error(deleteLinksError.message || 'Не удалось обновить целевые мышцы упражнения');
+      }
+
+      if (data.muscle_ids.length > 0) {
+        const { error: insertLinksError } = await supabase
+          .from('exercise_muscles')
+          .insert(buildExerciseMuscleLinkRows(exerciseId, data.muscle_ids));
+
+        if (insertLinksError) {
+          const previousMuscleIds = (existingLinks || []).map((link: any) => link.muscle_id).filter(Boolean);
+          if (previousMuscleIds.length > 0) {
+            await supabase
+              .from('exercise_muscles')
+              .insert(buildExerciseMuscleLinkRows(exerciseId, previousMuscleIds));
+          }
+          throw new Error('Не удалось обновить целевые мышцы упражнения');
+        }
+      }
+
+      const { data: fullExercise, error: fetchError } = await supabase
+        .from('exercises')
+        .select(`
+          *,
+          category:exercise_categories(*),
+          exercise_muscles(
+            muscle:muscles(*)
+          )
+        `)
+        .eq('id', exerciseId)
+        .single();
+
+      if (fetchError || !fullExercise) {
+        throw new Error(fetchError?.message || 'Не удалось перечитать обновлённое упражнение');
+      }
+
+      const updatedExercise = this.mapExerciseFromDirectRow(fullExercise);
+      const cachedCustomExercises = this.getCustomExercisesFromLocalStorage(sessionUserId);
+      const nextCachedCustomExercises = cachedCustomExercises.some((exercise) => exercise.id === updatedExercise.id)
+        ? cachedCustomExercises.map((exercise) => (exercise.id === updatedExercise.id ? updatedExercise : exercise))
+        : [...cachedCustomExercises, updatedExercise];
+      this.saveCustomExercisesToLocalStorage(sessionUserId, this.mergeExerciseRecords(nextCachedCustomExercises));
+      this.saveCustomExercisesToLocalStorage(
+        sessionUserId,
+        this.mergeExerciseRecords(
+          nextCachedCustomExercises.filter((exercise) => exercise.category_id === updatedExercise.category_id),
+        ),
+        updatedExercise.category_id,
+      );
+
+      return updatedExercise;
+    } catch (error) {
+      console.error('[exerciseService] Error updating custom exercise:', error);
+      throw error;
+    }
+  }
+
+  async deleteCustomExercise(userId: string, exerciseId: string): Promise<void> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+
+    try {
+      const sessionUserId = await this.getSessionUserId(userId);
+
+      const { data: existingExercise, error: existingError } = await supabase
+        .from('exercises')
+        .select('id, is_custom, created_by_user_id, category_id')
+        .eq('id', exerciseId)
+        .single();
+
+      if (existingError || !existingExercise) {
+        throw new Error(existingError?.message || 'Упражнение не найдено');
+      }
+
+      if (!canDeleteCustomExercise(existingExercise, sessionUserId)) {
+        throw new Error('Можно удалять только свои пользовательские упражнения');
+      }
+
+      const { count: referencesCount, error: referencesError } = await supabase
+        .from('workout_entries')
+        .select('id', { count: 'exact', head: true })
+        .eq('exercise_id', exerciseId);
+
+      if (referencesError) {
+        throw new Error(referencesError.message || 'Не удалось проверить использование упражнения в тренировках');
+      }
+
+      if ((referencesCount || 0) > 0) {
+        throw new Error('Нельзя удалить упражнение, которое уже использовалось в тренировках');
+      }
+
+      const { error: deleteError } = await supabase
+        .from('exercises')
+        .delete()
+        .eq('id', exerciseId)
+        .eq('created_by_user_id', sessionUserId)
+        .eq('is_custom', true);
+
+      if (deleteError) {
+        throw new Error(deleteError.message || 'Не удалось удалить упражнение');
+      }
+
+      const cachedCustomExercises = this.getCustomExercisesFromLocalStorage(sessionUserId);
+      const nextCachedCustomExercises = cachedCustomExercises.filter((exercise) => exercise.id !== exerciseId);
+      this.saveCustomExercisesToLocalStorage(sessionUserId, nextCachedCustomExercises);
+      this.saveCustomExercisesToLocalStorage(
+        sessionUserId,
+        nextCachedCustomExercises.filter((exercise) => exercise.category_id === existingExercise.category_id),
+        existingExercise.category_id,
+      );
+    } catch (error) {
+      console.error('[exerciseService] Error deleting custom exercise:', error);
+      throw error;
+    }
+  }
+
   // Fallback методы для localStorage
   private getCategoriesFromLocalStorage(): ExerciseCategory[] {
     try {
@@ -558,7 +710,7 @@ class ExerciseService {
 
   private getExercisesByCategoryFromLocalStorage(categoryId: string): Exercise[] {
     try {
-      const stored = localStorage.getItem(`exercises_${categoryId}`);
+      const stored = localStorage.getItem(this.getCategoryExercisesStorageKey(categoryId));
       return stored ? JSON.parse(stored) : [];
     } catch {
       return [];
@@ -572,7 +724,29 @@ class ExerciseService {
       ex.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }
+
+  private getCustomExercisesFromLocalStorage(userId: string, categoryId?: string): Exercise[] {
+    try {
+      const specific = localStorage.getItem(this.getCustomExercisesStorageKey(userId, categoryId));
+      if (specific) {
+        return JSON.parse(specific);
+      }
+
+      const allCustom = localStorage.getItem(this.getCustomExercisesStorageKey(userId));
+      if (!allCustom) {
+        return [];
+      }
+
+      const parsed = JSON.parse(allCustom) as Exercise[];
+      if (!categoryId) {
+        return parsed;
+      }
+
+      return parsed.filter((exercise) => exercise.category_id === categoryId);
+    } catch {
+      return [];
+    }
+  }
 }
 
 export const exerciseService = new ExerciseService();
-

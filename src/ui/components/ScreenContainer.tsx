@@ -4,6 +4,7 @@ import { colors, spacing } from '../theme/tokens';
 interface ScreenContainerProps {
   children: ReactNode;
   className?: string;
+  contentClassName?: string;
   padding?: keyof typeof spacing;
   gap?: keyof typeof spacing;
   backgroundColor?: string;
@@ -12,6 +13,7 @@ interface ScreenContainerProps {
 const ScreenContainer = ({
   children,
   className,
+  contentClassName,
   padding = 'lg',
   gap,
   backgroundColor = colors.background,
@@ -27,7 +29,7 @@ const ScreenContainer = ({
   return (
     <div className={`min-h-screen w-full ${className || ''}`} style={{ backgroundColor }}>
       <div
-        className="mx-auto w-full"
+        className={`mx-auto w-full ${contentClassName || ''}`}
         style={{
           maxWidth: 560,
           minWidth: 320,

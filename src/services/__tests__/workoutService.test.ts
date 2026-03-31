@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { workoutService } from '../workoutService';
+import { buildWorkoutHistoryDaySummaries, workoutService } from '../workoutService';
 import { supabase } from '../../lib/supabaseClient';
 import type { WorkoutEntry } from '../../types/workout';
 
@@ -9,24 +9,31 @@ const USER_ID = 'user-1';
 const DATE = '2026-03-25';
 const STORAGE_KEY = `potok_workout_entries_${USER_ID}`;
 
-function createEntry(id: string, name: string): WorkoutEntry {
+function createEntry(
+  id: string,
+  name: string,
+  overrides: Partial<WorkoutEntry> = {},
+): WorkoutEntry {
   return {
     id,
-    workout_day_id: `day-${DATE}`,
-    exercise_id: `exercise-${id}`,
-    canonical_exercise_id: `exercise-${id}`,
-    sets: 3,
-    reps: 10,
-    weight: 50,
-    displayAmount: 50,
-    displayUnit: 'кг',
-    baseUnit: 'кг',
+    workout_day_id: overrides.workout_day_id ?? `day-${DATE}`,
+    exercise_id: overrides.exercise_id ?? `exercise-${id}`,
+    canonical_exercise_id: overrides.canonical_exercise_id ?? overrides.exercise_id ?? `exercise-${id}`,
+    sets: overrides.sets ?? 3,
+    reps: overrides.reps ?? 10,
+    weight: overrides.weight ?? 50,
+    displayAmount: overrides.displayAmount ?? overrides.weight ?? 50,
+    displayUnit: overrides.displayUnit ?? 'кг',
+    baseUnit: overrides.baseUnit ?? 'кг',
+    idempotencyKey: overrides.idempotencyKey,
     exercise: {
-      id: `exercise-${id}`,
-      name,
-      category_id: 'category-1',
-      is_custom: false,
+      id: overrides.exercise?.id ?? overrides.exercise_id ?? `exercise-${id}`,
+      name: overrides.exercise?.name ?? name,
+      category_id: overrides.exercise?.category_id ?? 'category-1',
+      is_custom: overrides.exercise?.is_custom ?? false,
     },
+    created_at: overrides.created_at,
+    updated_at: overrides.updated_at,
   };
 }
 
@@ -206,4 +213,257 @@ test('failed edit without persistence context does not mutate local state', asyn
   assert.equal(stored[DATE][0].sets, 3);
   assert.equal(stored[DATE][0].reps, 10);
   assert.equal(stored[DATE][0].weight, 50);
+});
+
+test('repeat copy creates new workout entries on target date', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  const sourceDate = '2026-03-20';
+  const targetDate = '2026-03-25';
+  seedWorkoutStorage({
+    [sourceDate]: [
+      createEntry('source-1', 'Жим', {
+        workout_day_id: `day-${sourceDate}`,
+        exercise_id: 'exercise-bench',
+        sets: 4,
+        reps: 8,
+        weight: 70,
+      }),
+    ],
+    [targetDate]: [],
+  });
+
+  const copied = await workoutService.copyWorkoutEntriesToDate(
+    USER_ID,
+    sourceDate,
+    targetDate,
+    ['exercise-bench'],
+  );
+
+  assert.equal(copied.length, 1);
+  assert.equal(copied[0].exercise_id, 'exercise-bench');
+  assert.equal(copied[0].sets, 4);
+  assert.equal(copied[0].reps, 8);
+  assert.equal(copied[0].weight, 70);
+  assert.match(copied[0].idempotencyKey ?? '', /^repeat:/);
+});
+
+test('repeat copy does not mutate source historical day', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  const sourceDate = '2026-03-20';
+  const sourceEntry = createEntry('source-1', 'Тяга', {
+    workout_day_id: `day-${sourceDate}`,
+    exercise_id: 'exercise-deadlift',
+    sets: 5,
+    reps: 5,
+    weight: 100,
+  });
+
+  seedWorkoutStorage({
+    [sourceDate]: [sourceEntry],
+    [DATE]: [],
+  });
+
+  await workoutService.copyWorkoutEntriesToDate(USER_ID, sourceDate, DATE, ['exercise-deadlift']);
+
+  const stored = readWorkoutStorage();
+  assert.equal(stored[sourceDate].length, 1);
+  assert.equal(stored[sourceDate][0].id, 'source-1');
+  assert.equal(stored[sourceDate][0].sets, 5);
+  assert.equal(stored[sourceDate][0].reps, 5);
+  assert.equal(stored[sourceDate][0].weight, 100);
+});
+
+test('repeat copy preserves sets reps and weight from source entries', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  const sourceDate = '2026-03-20';
+  seedWorkoutStorage({
+    [sourceDate]: [
+      createEntry('source-1', 'Армейский жим', {
+        workout_day_id: `day-${sourceDate}`,
+        exercise_id: 'exercise-press',
+        sets: 3,
+        reps: 12,
+        weight: 30,
+      }),
+    ],
+    [DATE]: [],
+  });
+
+  const copied = await workoutService.copyWorkoutEntriesToDate(USER_ID, sourceDate, DATE, ['exercise-press']);
+  const copiedEntry = copied.find((entry) => entry.exercise_id === 'exercise-press');
+
+  assert.equal(copiedEntry?.sets, 3);
+  assert.equal(copiedEntry?.reps, 12);
+  assert.equal(copiedEntry?.weight, 30);
+});
+
+test('repeat copy does not silently replace existing target day entries with same exercise', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  const sourceDate = '2026-03-20';
+  const targetDate = '2026-03-25';
+  const existingTargetEntry = createEntry('target-1', 'Жим', {
+    workout_day_id: `day-${targetDate}`,
+    exercise_id: 'exercise-bench',
+    sets: 2,
+    reps: 6,
+    weight: 80,
+    idempotencyKey: `${targetDate}:exercise-bench`,
+  });
+
+  seedWorkoutStorage({
+    [sourceDate]: [
+      createEntry('source-1', 'Жим', {
+        workout_day_id: `day-${sourceDate}`,
+        exercise_id: 'exercise-bench',
+        sets: 4,
+        reps: 10,
+        weight: 60,
+      }),
+    ],
+    [targetDate]: [existingTargetEntry],
+  });
+
+  const copied = await workoutService.copyWorkoutEntriesToDate(
+    USER_ID,
+    sourceDate,
+    targetDate,
+    ['exercise-bench'],
+  );
+
+  assert.equal(copied.length, 2);
+  const sameExerciseEntries = copied.filter((entry) => entry.exercise_id === 'exercise-bench');
+  assert.equal(sameExerciseEntries.length, 2);
+  assert.ok(sameExerciseEntries.some((entry) => entry.id === 'target-1'));
+  assert.ok(sameExerciseEntries.some((entry) => entry.id !== 'target-1' && entry.sets === 4 && entry.reps === 10 && entry.weight === 60));
+});
+
+test('returns workout history day summaries for date range', () => {
+  const summaries = buildWorkoutHistoryDaySummaries([
+    {
+      workout_day_id: 'day-1',
+      date: '2026-03-20',
+      exercise_id: 'exercise-1',
+      sets: 3,
+      reps: 10,
+      weight: 50,
+    },
+    {
+      workout_day_id: 'day-1',
+      date: '2026-03-20',
+      exercise_id: 'exercise-2',
+      sets: 4,
+      reps: 8,
+      weight: 60,
+    },
+    {
+      workout_day_id: 'day-2',
+      date: '2026-03-19',
+      exercise_id: 'exercise-3',
+      sets: 5,
+      reps: 5,
+      weight: 100,
+    },
+  ]);
+
+  assert.equal(summaries.length, 2);
+  assert.equal(summaries[0].workout_day_id, 'day-1');
+  assert.equal(summaries[1].workout_day_id, 'day-2');
+});
+
+test('excludes empty days without workout entries', () => {
+  const summaries = buildWorkoutHistoryDaySummaries([]);
+  assert.deepEqual(summaries, []);
+});
+
+test('computes exercise_count correctly', () => {
+  const summaries = buildWorkoutHistoryDaySummaries([
+    {
+      workout_day_id: 'day-1',
+      date: '2026-03-20',
+      exercise_id: 'exercise-1',
+      sets: 3,
+      reps: 10,
+      weight: 50,
+    },
+    {
+      workout_day_id: 'day-1',
+      date: '2026-03-20',
+      exercise_id: 'exercise-1',
+      sets: 3,
+      reps: 12,
+      weight: 52.5,
+    },
+    {
+      workout_day_id: 'day-1',
+      date: '2026-03-20',
+      exercise_id: 'exercise-2',
+      sets: 4,
+      reps: 8,
+      weight: 60,
+    },
+  ]);
+
+  assert.equal(summaries[0].exercise_count, 2);
+});
+
+test('computes total_sets correctly', () => {
+  const summaries = buildWorkoutHistoryDaySummaries([
+    {
+      workout_day_id: 'day-1',
+      date: '2026-03-20',
+      exercise_id: 'exercise-1',
+      sets: 3,
+      reps: 10,
+      weight: 50,
+    },
+    {
+      workout_day_id: 'day-1',
+      date: '2026-03-20',
+      exercise_id: 'exercise-2',
+      sets: 4,
+      reps: 8,
+      weight: 60,
+    },
+  ]);
+
+  assert.equal(summaries[0].total_sets, 7);
+});
+
+test('computes total_volume correctly', () => {
+  const summaries = buildWorkoutHistoryDaySummaries([
+    {
+      workout_day_id: 'day-1',
+      date: '2026-03-20',
+      exercise_id: 'exercise-1',
+      sets: 3,
+      reps: 10,
+      weight: 50,
+    },
+    {
+      workout_day_id: 'day-1',
+      date: '2026-03-20',
+      exercise_id: 'exercise-2',
+      sets: 4,
+      reps: 8,
+      weight: 60,
+    },
+  ]);
+
+  assert.equal(summaries[0].total_volume, 3 * 10 * 50 + 4 * 8 * 60);
 });

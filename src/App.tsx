@@ -22,6 +22,7 @@ import CreateCustomProductPage from './pages/CreateCustomProductPage';
 import CreateBrandProductPage from './pages/CreateBrandProductPage';
 import Habits from './pages/Habits';
 import Workouts from './pages/Workouts';
+import WorkoutHistory from './pages/WorkoutHistory';
 import Progress from './pages/Progress';
 import ProgressMeasurements from './pages/ProgressMeasurements';
 import ProgressNutrition from './pages/ProgressNutrition';
@@ -265,6 +266,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Workouts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/workouts/history"
+        element={
+          <ProtectedRoute>
+            <WorkoutHistory />
           </ProtectedRoute>
         }
       />

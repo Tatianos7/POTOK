@@ -52,6 +52,14 @@ export interface WorkoutDay {
   updated_at?: string;
 }
 
+export interface WorkoutHistoryDaySummary {
+  workout_day_id: string;
+  date: string;
+  exercise_count: number;
+  total_sets: number;
+  total_volume: number;
+}
+
 export interface WorkoutEntry {
   id: string;
   workout_day_id: string;
@@ -83,4 +91,3 @@ export interface CreateExerciseData {
   description?: string;
   muscle_ids: string[];
 }
-
