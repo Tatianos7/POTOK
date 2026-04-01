@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildWorkoutHistoryDaySummaries, workoutService } from '../workoutService';
+import { buildWorkoutEntryUpdatePatch, buildWorkoutHistoryDaySummaries, workoutService } from '../workoutService';
 import { supabase } from '../../lib/supabaseClient';
 import type { WorkoutEntry } from '../../types/workout';
 
@@ -213,6 +213,13 @@ test('failed edit without persistence context does not mutate local state', asyn
   assert.equal(stored[DATE][0].sets, 3);
   assert.equal(stored[DATE][0].reps, 10);
   assert.equal(stored[DATE][0].weight, 50);
+});
+
+test('workout entry edit updates weight patch correctly for persisted read-side', () => {
+  const patch = buildWorkoutEntryUpdatePatch({ weight: 72.5 });
+
+  assert.equal(patch.weight, 72.5);
+  assert.equal(patch.display_amount, 72.5);
 });
 
 test('repeat copy creates new workout entries on target date', async (t) => {

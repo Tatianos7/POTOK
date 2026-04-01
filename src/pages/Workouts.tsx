@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Calendar, Edit, Trash2, Clock, Plus, CheckCircle, StickyNote } from 'lucide-react';
+import { X, Calendar, Edit, Trash2, Clock, Plus, StickyNote } from 'lucide-react';
 import InlineCalendar from '../components/InlineCalendar';
 import ExerciseCategorySheet from '../components/ExerciseCategorySheet';
 import ExerciseListSheet from '../components/ExerciseListSheet';
@@ -40,6 +40,10 @@ import {
   WORKOUT_MAIN_CONTAINER_CLASS,
   WORKOUT_SCREEN_BACKGROUND,
 } from '../utils/workoutLayout';
+import {
+  buildWorkoutEntryNotesById,
+  pruneWorkoutEntryNoteSet,
+} from '../utils/workoutEntryNotesUi';
 
 const CUSTOM_EXERCISES_CATEGORY: ExerciseCategory = {
   id: 'custom-exercises',
@@ -86,6 +90,9 @@ const Workouts = () => {
   const [noteEntry, setNoteEntry] = useState<WorkoutEntry | null>(null);
   const [entryNote, setEntryNote] = useState<string | null>(null);
   const [isLoadingEntryNote, setIsLoadingEntryNote] = useState(false);
+  const [entryNotesById, setEntryNotesById] = useState<Record<string, string>>({});
+  const [expandedEntryNotes, setExpandedEntryNotes] = useState<Set<string>>(new Set());
+  const [activeNoteEntryId, setActiveNoteEntryId] = useState<string | null>(null);
   const [isWorkoutDayNoteOpen, setIsWorkoutDayNoteOpen] = useState(false);
   const [workoutDayNote, setWorkoutDayNote] = useState<string | null>(null);
   const [workoutDayNoteDayId, setWorkoutDayNoteDayId] = useState<string | null>(null);
@@ -302,6 +309,37 @@ const Workouts = () => {
     reloadWorkoutDayNote();
   }, [reloadWorkoutDayNote]);
 
+  useEffect(() => {
+    if (!user?.id) {
+      setEntryNotesById({});
+      setExpandedEntryNotes(new Set());
+      setActiveNoteEntryId(null);
+      return;
+    }
+
+    const entryIds = workoutEntries.map((entry) => entry.id);
+    if (entryIds.length === 0) {
+      setEntryNotesById({});
+      setExpandedEntryNotes(new Set());
+      setActiveNoteEntryId((current) => (current && entryIds.includes(current) ? current : null));
+      return;
+    }
+
+    let isCancelled = false;
+    void (async () => {
+      const notesMap = await workoutEntryNotesService.getNotesByEntryIds(user.id, entryIds);
+      if (isCancelled) return;
+
+      setEntryNotesById(buildWorkoutEntryNotesById(entryIds, notesMap));
+      setExpandedEntryNotes((current) => pruneWorkoutEntryNoteSet(entryIds, current));
+      setActiveNoteEntryId((current) => (current && entryIds.includes(current) ? current : null));
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [user?.id, workoutEntries]);
+
   // Обновляем данные при фоновом sync
   useEffect(() => {
     const handleWorkoutsSynced = (event: CustomEvent) => {
@@ -499,14 +537,26 @@ const Workouts = () => {
 
     setIsLoadingEntryNote(true);
     setErrorMessage(null);
+    setActiveNoteEntryId(entryId);
+    setEntryNote(entryNotesById[entryId] ?? null);
     try {
       const note = await workoutEntryNotesService.getNoteByEntryId(user.id, entryId);
       setEntryNote(note);
+      setEntryNotesById((current) => {
+        const next = { ...current };
+        if (note && note.trim().length > 0) {
+          next[entryId] = note;
+        } else {
+          delete next[entryId];
+        }
+        return next;
+      });
       setNoteEntry(entry);
     } catch (error: any) {
       console.error('Ошибка загрузки заметки:', error);
       const message = error?.message || 'Ошибка при загрузке заметки';
       setErrorMessage(message);
+      setActiveNoteEntryId(null);
       alert(message);
     } finally {
       setIsLoadingEntryNote(false);
@@ -515,16 +565,40 @@ const Workouts = () => {
 
   const handleSaveEntryNote = async (note: string) => {
     if (!user?.id || !noteEntry) return;
-    await workoutEntryNotesService.saveNote(user.id, noteEntry.id, note);
-    setEntryNote(note);
+    const trimmedNote = note.trim();
+    await workoutEntryNotesService.saveNote(user.id, noteEntry.id, trimmedNote);
+    setEntryNote(trimmedNote);
+    setEntryNotesById((current) => ({
+      ...current,
+      [noteEntry.id]: trimmedNote,
+    }));
+    if (!expandedEntryNotes.has(noteEntry.id)) {
+      setExpandedEntryNotes((current) => {
+        const next = new Set(current);
+        next.add(noteEntry.id);
+        return next;
+      });
+    }
     setNoteEntry(null);
+    setActiveNoteEntryId(null);
   };
 
   const handleDeleteEntryNote = async () => {
     if (!user?.id || !noteEntry) return;
     await workoutEntryNotesService.deleteNote(user.id, noteEntry.id);
     setEntryNote(null);
+    setEntryNotesById((current) => {
+      const next = { ...current };
+      delete next[noteEntry.id];
+      return next;
+    });
+    setExpandedEntryNotes((current) => {
+      const next = new Set(current);
+      next.delete(noteEntry.id);
+      return next;
+    });
     setNoteEntry(null);
+    setActiveNoteEntryId(null);
   };
 
   const handleDeleteEntry = async (entryId: string) => {
@@ -748,11 +822,6 @@ const Workouts = () => {
     navigate('/workouts/history');
   };
 
-  const handleSchedule = () => {
-    // TODO: Реализовать планирование тренировки
-    console.log('Запланировать');
-  };
-
   return (
     <ScreenContainer
       backgroundColor={WORKOUT_SCREEN_BACKGROUND}
@@ -875,6 +944,13 @@ const Workouts = () => {
               </h2>
               <div className="flex items-center gap-2 min-[376px]:gap-3">
                 <button
+                  onClick={handleHistory}
+                  className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  aria-label="История тренировок"
+                >
+                  <Clock className="w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 text-gray-700 dark:text-gray-300" />
+                </button>
+                <button
                   onClick={() => void handleOpenWorkoutDayNote()}
                   disabled={isLoadingWorkoutDayNote || isDeletingWorkout || isSaving || isLoading}
                   className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -945,37 +1021,16 @@ const Workouts = () => {
 
         {/* Bottom Navigation */}
         <div className={WORKOUT_BOTTOM_BAR_CLASS}>
-          <div className="flex items-center justify-around px-2 min-[376px]:px-4 py-3 min-[376px]:py-4 w-full max-w-full">
-            <button
-              onClick={handleHistory}
-              className="flex flex-col items-center justify-center gap-1 min-[376px]:gap-1.5 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors flex-1 min-w-0"
-            >
-              <div className="relative flex items-center justify-center">
-                <Clock className="w-5 h-5 min-[376px]:w-6 min-[376px]:h-6" />
-                <Calendar className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4 absolute -bottom-0.5 -right-0.5 bg-white dark:bg-gray-900 rounded-full p-0.5" />
-              </div>
-              <span className="text-[10px] min-[376px]:text-xs font-medium uppercase break-words overflow-wrap-anywhere">
-                ИСТОРИЯ
-              </span>
-            </button>
+          <div className="flex items-center justify-center px-2 min-[376px]:px-4 py-3 min-[376px]:py-4 w-full max-w-full">
             <button
               onClick={handleAdd}
-              className="flex flex-col items-center justify-center gap-1 min-[376px]:gap-1.5 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 transition-colors flex-1 min-w-0"
+              className="flex flex-col items-center justify-center gap-1 min-[376px]:gap-1.5 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 transition-colors min-w-0"
             >
               <div className="w-10 h-10 min-[376px]:w-12 min-[376px]:h-12 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 flex items-center justify-center">
                 <Plus className="w-5 h-5 min-[376px]:w-6 min-[376px]:h-6" />
               </div>
               <span className="text-[10px] min-[376px]:text-xs font-medium uppercase break-words overflow-wrap-anywhere">
                 ДОБАВИТЬ
-              </span>
-            </button>
-            <button
-              onClick={handleSchedule}
-              className="flex flex-col items-center justify-center gap-1 min-[376px]:gap-1.5 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors flex-1 min-w-0"
-            >
-              <CheckCircle className="w-5 h-5 min-[376px]:w-6 min-[376px]:h-6" />
-              <span className="text-[10px] min-[376px]:text-xs font-medium uppercase break-words overflow-wrap-anywhere">
-                ЗАПЛАНИРОВАТЬ
               </span>
             </button>
           </div>
@@ -1067,15 +1122,16 @@ const Workouts = () => {
       />
 
       <MealNoteModal
-        isOpen={noteEntry !== null}
+        isOpen={activeNoteEntryId !== null && noteEntry !== null}
         onClose={() => {
           if (isLoadingEntryNote) return;
           setNoteEntry(null);
           setEntryNote(null);
+          setActiveNoteEntryId(null);
         }}
         initialNote={entryNote}
         onSave={handleSaveEntryNote}
-        onDelete={entryNote ? handleDeleteEntryNote : undefined}
+        onDelete={noteEntry && (entryNote ?? entryNotesById[noteEntry.id]) ? handleDeleteEntryNote : undefined}
       />
 
       <MealNoteModal
