@@ -13,16 +13,6 @@ interface SelectedExercisesEditorProps {
   title?: string;
 }
 
-const weekDays = [
-  { label: 'П', dayOfWeek: 1, fullName: 'Понедельник' },
-  { label: 'В', dayOfWeek: 2, fullName: 'Вторник' },
-  { label: 'С', dayOfWeek: 3, fullName: 'Среда' },
-  { label: 'Ч', dayOfWeek: 4, fullName: 'Четверг' },
-  { label: 'П', dayOfWeek: 5, fullName: 'Пятница' },
-  { label: 'С', dayOfWeek: 6, fullName: 'Суббота' },
-  { label: 'В', dayOfWeek: 0, fullName: 'Воскресенье' },
-];
-
 const SelectedExercisesEditor = ({
   isOpen,
   onClose,
@@ -34,8 +24,6 @@ const SelectedExercisesEditor = ({
   title = 'ВЫБРАННЫЕ УПРАЖНЕНИЯ',
 }: SelectedExercisesEditorProps) => {
   const [editedExercises, setEditedExercises] = useState<SelectedExercise[]>([]);
-  const [selectedDayOfWeek, setSelectedDayOfWeek] = useState<number | null>(null);
-  const [saveForEachWeek, setSaveForEachWeek] = useState(false);
   const previousExercisesRef = useRef<Exercise[]>([]);
   const isInitializedRef = useRef(false);
 
@@ -60,8 +48,6 @@ const SelectedExercisesEditor = ({
 
     if (!isInitializedRef.current && initialSelectedExercises && initialSelectedExercises.length > 0) {
       setEditedExercises(initialSelectedExercises);
-      setSelectedDayOfWeek(null);
-      setSaveForEachWeek(false);
       isInitializedRef.current = true;
       previousExercisesRef.current = initialSelectedExercises.map((item) => item.exercise);
     } else if (!isInitializedRef.current && exercises.length > 0) {
@@ -74,8 +60,6 @@ const SelectedExercisesEditor = ({
           weight: 20,
         }))
       );
-      setSelectedDayOfWeek(null);
-      setSaveForEachWeek(false);
       isInitializedRef.current = true;
       previousExercisesRef.current = exercises;
     } else if (isInitializedRef.current && exercises.length > 0) {
@@ -238,50 +222,6 @@ const SelectedExercisesEditor = ({
               </div>
             )}
 
-            {/* Week Day Selection */}
-            <div className="mb-3 sm:mb-4">
-              <p className="text-xs min-[376px]:text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 min-[376px]:mb-3">
-                Выбрать день недели тренировки:
-              </p>
-              <div className="flex items-center justify-center gap-1.5 min-[376px]:gap-2 sm:gap-3">
-                {weekDays.map((day) => {
-                  const isSelected = selectedDayOfWeek === day.dayOfWeek;
-                  return (
-                    <button
-                      key={day.dayOfWeek}
-                      onClick={() => setSelectedDayOfWeek(day.dayOfWeek)}
-                      className={`w-8 h-8 min-[376px]:w-9 min-[376px]:h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-[11px] min-[376px]:text-xs sm:text-sm font-semibold transition-colors ${
-                        isSelected
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-                      }`}
-                      title={day.fullName}
-                    >
-                      {isSelected ? '✓' : day.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Save for each week checkbox */}
-            {selectedDayOfWeek !== null && (
-              <div className="mb-3 sm:mb-4 flex items-center gap-1.5 min-[376px]:gap-2">
-                <input
-                  type="checkbox"
-                  id="saveForEachWeek"
-                  checked={saveForEachWeek}
-                  onChange={(e) => setSaveForEachWeek(e.target.checked)}
-                  className="w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 rounded border-gray-300 dark:border-gray-600 text-green-500 focus:ring-green-500 flex-shrink-0"
-                />
-                <label
-                  htmlFor="saveForEachWeek"
-                  className="text-xs min-[376px]:text-sm text-gray-700 dark:text-gray-300 cursor-pointer break-words overflow-wrap-anywhere"
-                >
-                  Сохранить на каждый {weekDays.find(d => d.dayOfWeek === selectedDayOfWeek)?.label || ''}?
-                </label>
-              </div>
-            )}
           </div>
 
           {/* Footer */}
