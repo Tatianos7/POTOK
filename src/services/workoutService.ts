@@ -17,6 +17,13 @@ type WorkoutHistoryAggregateRow = {
   exercise_id?: string | null;
 };
 
+type WorkoutEntryUpdatePatch = {
+  sets?: number;
+  reps?: number;
+  weight?: number;
+  display_amount?: number;
+};
+
 export function buildWorkoutHistoryDaySummaries(rows: WorkoutHistoryAggregateRow[]): WorkoutHistoryDaySummary[] {
   const dayMap = new Map<string, WorkoutHistoryDaySummary & { exerciseIds: Set<string> }>();
 
@@ -51,6 +58,21 @@ export function buildWorkoutHistoryDaySummaries(rows: WorkoutHistoryAggregateRow
   return Array.from(dayMap.values())
     .map(({ exerciseIds: _exerciseIds, ...summary }) => summary)
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function buildWorkoutEntryUpdatePatch(updates: { sets?: number; reps?: number; weight?: number }): WorkoutEntryUpdatePatch {
+  const patch: WorkoutEntryUpdatePatch = {};
+  if (updates.sets !== undefined) {
+    patch.sets = updates.sets;
+  }
+  if (updates.reps !== undefined) {
+    patch.reps = updates.reps;
+  }
+  if (updates.weight !== undefined) {
+    patch.weight = updates.weight;
+    patch.display_amount = updates.weight;
+  }
+  return patch;
 }
 
 class WorkoutService {
@@ -823,9 +845,10 @@ class WorkoutService {
           throw new Error('[workoutService] Conflict detected: entry was updated');
         }
       }
+      const patch = buildWorkoutEntryUpdatePatch(updates);
       const { data, error } = await supabase
         .from('workout_entries')
-        .update(updates)
+        .update(patch)
         .eq('id', entryId)
         .select(`
           *,

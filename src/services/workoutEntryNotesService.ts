@@ -74,6 +74,44 @@ class WorkoutEntryNotesService {
     }
   }
 
+  async getNotesByEntryIds(userId: string, workoutEntryIds: string[]): Promise<Record<string, string>> {
+    const validIds = workoutEntryIds.filter((id) => this.isUuid(id));
+    const client = this.getSupabaseClient();
+    if (!client || validIds.length === 0) {
+      return {};
+    }
+
+    try {
+      const sessionUserId = await this.getSessionUserId(userId);
+      const { data, error } = await client
+        .from('workout_entry_notes')
+        .select('workout_entry_id, text')
+        .eq('user_id', sessionUserId)
+        .in('workout_entry_id', validIds);
+
+      if (error) {
+        if (error.code === 'PGRST205') {
+          console.warn('[workoutEntryNotesService] Table workout_entry_notes not found. Please run SQL schema from supabase/workout_entry_notes_schema.sql');
+          return {};
+        }
+        console.error('[workoutEntryNotesService] Error getting notes:', error);
+        return {};
+      }
+
+      const notesMap: Record<string, string> = {};
+      if (data) {
+        data.forEach((note) => {
+          notesMap[String(note.workout_entry_id)] = note.text;
+        });
+      }
+
+      return notesMap;
+    } catch (error) {
+      console.error('[workoutEntryNotesService] Error getting notes:', error);
+      return {};
+    }
+  }
+
   async saveNote(userId: string, workoutEntryId: string, text: string): Promise<void> {
     if (!this.isUuid(workoutEntryId)) {
       return;
