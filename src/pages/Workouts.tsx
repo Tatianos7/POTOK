@@ -10,6 +10,8 @@ import CreateExerciseModal from '../components/CreateExerciseModal';
 import EditWorkoutEntryModal from '../components/EditWorkoutEntryModal';
 import MealNoteModal from '../components/MealNoteModal';
 import WorkoutDayNoteBlock from '../components/WorkoutDayNoteBlock';
+import WorkoutEntryNoteComposer from '../components/WorkoutEntryNoteComposer';
+import WorkoutEntryInlineNote from '../components/WorkoutEntryInlineNote';
 import { exerciseService } from '../services/exerciseService';
 import { workoutService } from '../services/workoutService';
 import { workoutEntryNotesService } from '../services/workoutEntryNotesService';
@@ -41,9 +43,15 @@ import {
   WORKOUT_SCREEN_BACKGROUND,
 } from '../utils/workoutLayout';
 import {
+  applyDeletedWorkoutEntryNote,
+  applySavedWorkoutEntryNote,
   buildWorkoutEntryNotesById,
+  cancelWorkoutEntryNoteComposer,
+  openWorkoutEntryNoteComposer,
   pruneWorkoutEntryNoteSet,
+  toggleWorkoutEntryNoteExpanded,
 } from '../utils/workoutEntryNotesUi';
+import { submitModalAction } from '../utils/asyncModalSubmit';
 
 const CUSTOM_EXERCISES_CATEGORY: ExerciseCategory = {
   id: 'custom-exercises',
@@ -87,12 +95,14 @@ const Workouts = () => {
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
   const [isDeletingWorkout, setIsDeletingWorkout] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkoutEntry | null>(null);
-  const [noteEntry, setNoteEntry] = useState<WorkoutEntry | null>(null);
-  const [entryNote, setEntryNote] = useState<string | null>(null);
+  const [entryNoteDraft, setEntryNoteDraft] = useState('');
   const [isLoadingEntryNote, setIsLoadingEntryNote] = useState(false);
+  const [isSavingEntryNote, setIsSavingEntryNote] = useState(false);
+  const [isDeletingEntryNote, setIsDeletingEntryNote] = useState(false);
   const [entryNotesById, setEntryNotesById] = useState<Record<string, string>>({});
   const [expandedEntryNotes, setExpandedEntryNotes] = useState<Set<string>>(new Set());
   const [activeNoteEntryId, setActiveNoteEntryId] = useState<string | null>(null);
+  const [entryNoteDeleteConfirmEntryId, setEntryNoteDeleteConfirmEntryId] = useState<string | null>(null);
   const [isWorkoutDayNoteOpen, setIsWorkoutDayNoteOpen] = useState(false);
   const [workoutDayNote, setWorkoutDayNote] = useState<string | null>(null);
   const [workoutDayNoteDayId, setWorkoutDayNoteDayId] = useState<string | null>(null);
@@ -102,6 +112,8 @@ const Workouts = () => {
   const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
+  const entryNoteSaveLock = useRef({ current: false });
+  const entryNoteDeleteLock = useRef({ current: false });
   const buildCoachContext = (): CoachScreenContext => ({
     screen: 'Today',
     userMode: 'Manual',
@@ -159,6 +171,11 @@ const Workouts = () => {
     }
     return datesList;
   }, []); // Календарь не зависит от selectedDate, всегда показывает текущую неделю
+
+  const activeWorkoutEntryForNote = useMemo(
+    () => workoutEntries.find((entry) => entry.id === activeNoteEntryId) ?? null,
+    [activeNoteEntryId, workoutEntries],
+  );
 
   // Форматирование выбранной даты для отображения
   const formatSelectedDate = (): string => {
@@ -314,6 +331,8 @@ const Workouts = () => {
       setEntryNotesById({});
       setExpandedEntryNotes(new Set());
       setActiveNoteEntryId(null);
+      setEntryNoteDeleteConfirmEntryId(null);
+      setEntryNoteDraft('');
       return;
     }
 
@@ -322,6 +341,7 @@ const Workouts = () => {
       setEntryNotesById({});
       setExpandedEntryNotes(new Set());
       setActiveNoteEntryId((current) => (current && entryIds.includes(current) ? current : null));
+      setEntryNoteDeleteConfirmEntryId((current) => (current && entryIds.includes(current) ? current : null));
       return;
     }
 
@@ -333,6 +353,7 @@ const Workouts = () => {
       setEntryNotesById(buildWorkoutEntryNotesById(entryIds, notesMap));
       setExpandedEntryNotes((current) => pruneWorkoutEntryNoteSet(entryIds, current));
       setActiveNoteEntryId((current) => (current && entryIds.includes(current) ? current : null));
+      setEntryNoteDeleteConfirmEntryId((current) => (current && entryIds.includes(current) ? current : null));
     })();
 
     return () => {
@@ -528,7 +549,7 @@ const Workouts = () => {
   };
 
   const handleOpenEntryNote = async (entryId: string) => {
-    if (!user?.id || isLoadingEntryNote || isUpdatingEntry || deletingEntryId || isDeletingWorkout) return;
+    if (!user?.id || isLoadingEntryNote || isSavingEntryNote || isDeletingEntryNote || isUpdatingEntry || deletingEntryId || isDeletingWorkout) return;
     const entry = workoutEntries.find((item) => item.id === entryId);
     if (!entry) {
       setErrorMessage('Не удалось найти запись упражнения для заметки');
@@ -537,11 +558,13 @@ const Workouts = () => {
 
     setIsLoadingEntryNote(true);
     setErrorMessage(null);
-    setActiveNoteEntryId(entryId);
-    setEntryNote(entryNotesById[entryId] ?? null);
+    setEntryNoteDeleteConfirmEntryId(null);
+    const openedState = openWorkoutEntryNoteComposer(entryId, entryNotesById);
+    setActiveNoteEntryId(openedState.activeNoteEntryId);
+    setEntryNoteDraft(openedState.draft);
     try {
       const note = await workoutEntryNotesService.getNoteByEntryId(user.id, entryId);
-      setEntryNote(note);
+      setEntryNoteDraft(note ?? '');
       setEntryNotesById((current) => {
         const next = { ...current };
         if (note && note.trim().length > 0) {
@@ -551,54 +574,109 @@ const Workouts = () => {
         }
         return next;
       });
-      setNoteEntry(entry);
     } catch (error: any) {
       console.error('Ошибка загрузки заметки:', error);
       const message = error?.message || 'Ошибка при загрузке заметки';
       setErrorMessage(message);
-      setActiveNoteEntryId(null);
+      const cancelledState = cancelWorkoutEntryNoteComposer();
+      setActiveNoteEntryId(cancelledState.activeNoteEntryId);
+      setEntryNoteDraft(cancelledState.draft);
       alert(message);
     } finally {
       setIsLoadingEntryNote(false);
     }
   };
 
-  const handleSaveEntryNote = async (note: string) => {
-    if (!user?.id || !noteEntry) return;
-    const trimmedNote = note.trim();
-    await workoutEntryNotesService.saveNote(user.id, noteEntry.id, trimmedNote);
-    setEntryNote(trimmedNote);
-    setEntryNotesById((current) => ({
-      ...current,
-      [noteEntry.id]: trimmedNote,
-    }));
-    if (!expandedEntryNotes.has(noteEntry.id)) {
-      setExpandedEntryNotes((current) => {
-        const next = new Set(current);
-        next.add(noteEntry.id);
-        return next;
-      });
-    }
-    setNoteEntry(null);
-    setActiveNoteEntryId(null);
+  const handleCancelEntryNoteComposer = () => {
+    if (isLoadingEntryNote || isSavingEntryNote || isDeletingEntryNote) return;
+    const cancelledState = cancelWorkoutEntryNoteComposer();
+    setActiveNoteEntryId(cancelledState.activeNoteEntryId);
+    setEntryNoteDraft(cancelledState.draft);
   };
 
-  const handleDeleteEntryNote = async () => {
-    if (!user?.id || !noteEntry) return;
-    await workoutEntryNotesService.deleteNote(user.id, noteEntry.id);
-    setEntryNote(null);
-    setEntryNotesById((current) => {
-      const next = { ...current };
-      delete next[noteEntry.id];
-      return next;
-    });
-    setExpandedEntryNotes((current) => {
-      const next = new Set(current);
-      next.delete(noteEntry.id);
-      return next;
-    });
-    setNoteEntry(null);
-    setActiveNoteEntryId(null);
+  const handleSaveEntryNote = async () => {
+    if (!user?.id || !activeNoteEntryId) return;
+
+    const trimmedNote = entryNoteDraft.trim();
+    if (trimmedNote.length === 0) {
+      handleCancelEntryNoteComposer();
+      return;
+    }
+
+    setIsSavingEntryNote(true);
+    try {
+      await submitModalAction(
+        entryNoteSaveLock.current,
+        async () => {
+          await workoutEntryNotesService.saveNote(user.id, activeNoteEntryId, trimmedNote);
+        },
+        () => {
+          const nextState = applySavedWorkoutEntryNote(
+            activeNoteEntryId,
+            trimmedNote,
+            entryNotesById,
+            expandedEntryNotes,
+          );
+          setEntryNotesById(nextState.notesById);
+          setExpandedEntryNotes(nextState.expandedEntryIds);
+          setActiveNoteEntryId(nextState.activeNoteEntryId);
+          setEntryNoteDraft(nextState.draft);
+        },
+      );
+    } catch (error: any) {
+      console.error('Ошибка сохранения заметки:', error);
+      const message = error?.message || 'Не удалось сохранить заметку';
+      setErrorMessage(message);
+      alert(message);
+    } finally {
+      setIsSavingEntryNote(false);
+    }
+  };
+
+  const handleToggleEntryNote = (entryId: string) => {
+    setExpandedEntryNotes((current) => toggleWorkoutEntryNoteExpanded(entryId, current));
+  };
+
+  const handleRequestDeleteEntryNote = (entryId: string) => {
+    if (isDeletingEntryNote) return;
+    setEntryNoteDeleteConfirmEntryId(entryId);
+  };
+
+  const handleCancelDeleteEntryNote = () => {
+    if (isDeletingEntryNote) return;
+    setEntryNoteDeleteConfirmEntryId(null);
+  };
+
+  const handleDeleteEntryNote = async (entryId: string) => {
+    if (!user?.id) return;
+
+    setIsDeletingEntryNote(true);
+    try {
+      await submitModalAction(
+        entryNoteDeleteLock.current,
+        async () => {
+          await workoutEntryNotesService.deleteNote(user.id, entryId);
+        },
+        () => {
+          const nextState = applyDeletedWorkoutEntryNote(entryId, entryNotesById, expandedEntryNotes);
+          setEntryNotesById(nextState.notesById);
+          setExpandedEntryNotes(nextState.expandedEntryIds);
+          setEntryNoteDeleteConfirmEntryId(null);
+          if (activeNoteEntryId === entryId) {
+            const cancelledState = cancelWorkoutEntryNoteComposer();
+            setActiveNoteEntryId(cancelledState.activeNoteEntryId);
+            setEntryNoteDraft(cancelledState.draft);
+          }
+        },
+      );
+    } catch (error: any) {
+      console.error('Ошибка удаления заметки:', error);
+      const message = error?.message || 'Не удалось удалить заметку';
+      setErrorMessage(message);
+      alert(message);
+    } finally {
+      setIsDeletingEntryNote(false);
+    }
   };
 
   const handleDeleteEntry = async (entryId: string) => {
@@ -976,37 +1054,73 @@ const Workouts = () => {
               </div>
             </div>
 
-            <ExerciseTableHeader />
+            <div className="relative">
+              <ExerciseTableHeader />
 
-            {/* Workout Entries */}
-            {isLoading || runtimeStatus === 'loading' ? (
-              <div className="flex items-center justify-center py-12 min-[376px]:py-16 w-full max-w-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-              </div>
-            ) : workoutEntries.length === 0 ? (
-              <div className="flex items-center justify-center py-12 min-[376px]:py-16 w-full max-w-full">
-                <p className="text-sm min-[376px]:text-base text-gray-500 dark:text-gray-400 text-center break-words overflow-wrap-anywhere">
-                  Здесь будет ваша тренировка....
-                </p>
-              </div>
-            ) : (
-              <div>
-                {workoutEntries.map((entry) => (
-                  <ExerciseRow
-                    key={entry.id}
-                    name={entry.exercise?.name || 'Неизвестное упражнение'}
-                    sets={entry.sets}
-                    reps={entry.reps}
-                    weight={entry.displayAmount ?? entry.weight}
-                    unit={entry.displayUnit ?? 'кг'}
-                    onEdit={() => handleEditEntry(entry.id)}
-                    onDelete={() => void handleDeleteEntry(entry.id)}
-                    onNote={() => void handleOpenEntryNote(entry.id)}
-                    onMedia={() => console.log('media', entry.id)}
-                  />
-                ))}
-              </div>
-            )}
+              {activeWorkoutEntryForNote ? (
+                <div className="pointer-events-none absolute left-0 right-0 top-0 z-20 px-2">
+                  <div className="pointer-events-auto mx-auto w-full max-w-[372px]">
+                    <WorkoutEntryNoteComposer
+                      isOpen={activeWorkoutEntryForNote !== null}
+                      value={entryNoteDraft}
+                      isSaving={isSavingEntryNote}
+                      onChange={setEntryNoteDraft}
+                      onCancel={handleCancelEntryNoteComposer}
+                      onSave={handleSaveEntryNote}
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Workout Entries */}
+              {isLoading || runtimeStatus === 'loading' ? (
+                <div className="flex items-center justify-center py-12 min-[376px]:py-16 w-full max-w-full">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+                </div>
+              ) : workoutEntries.length === 0 ? (
+                <div className="flex items-center justify-center py-12 min-[376px]:py-16 w-full max-w-full">
+                  <p className="text-sm min-[376px]:text-base text-gray-500 dark:text-gray-400 text-center break-words overflow-wrap-anywhere">
+                    Здесь будет ваша тренировка....
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  {workoutEntries.map((entry) => {
+                    const note = entryNotesById[entry.id];
+                    const isExpanded = expandedEntryNotes.has(entry.id);
+                    const isDeleteConfirmOpen = entryNoteDeleteConfirmEntryId === entry.id;
+
+                    return (
+                      <div key={entry.id}>
+                        <ExerciseRow
+                          name={entry.exercise?.name || 'Неизвестное упражнение'}
+                          sets={entry.sets}
+                          reps={entry.reps}
+                          weight={entry.displayAmount ?? entry.weight}
+                          unit={entry.displayUnit ?? 'кг'}
+                          onEdit={() => handleEditEntry(entry.id)}
+                          onDelete={() => void handleDeleteEntry(entry.id)}
+                          onNote={() => void handleOpenEntryNote(entry.id)}
+                          onMedia={() => console.log('media', entry.id)}
+                        />
+                        {note ? (
+                          <WorkoutEntryInlineNote
+                            note={note}
+                            isExpanded={isExpanded}
+                            isDeleteConfirmOpen={isDeleteConfirmOpen}
+                            isDeleting={isDeletingEntryNote}
+                            onToggle={() => handleToggleEntryNote(entry.id)}
+                            onRequestDelete={() => handleRequestDeleteEntryNote(entry.id)}
+                            onConfirmDelete={() => handleDeleteEntryNote(entry.id)}
+                            onCancelDelete={handleCancelDeleteEntryNote}
+                          />
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {workoutDayNote?.trim() ? (
               <WorkoutDayNoteBlock
@@ -1119,19 +1233,6 @@ const Workouts = () => {
           setEditingEntry(null);
         }}
         onSave={handleSaveEditedEntry}
-      />
-
-      <MealNoteModal
-        isOpen={activeNoteEntryId !== null && noteEntry !== null}
-        onClose={() => {
-          if (isLoadingEntryNote) return;
-          setNoteEntry(null);
-          setEntryNote(null);
-          setActiveNoteEntryId(null);
-        }}
-        initialNote={entryNote}
-        onSave={handleSaveEntryNote}
-        onDelete={noteEntry && (entryNote ?? entryNotesById[noteEntry.id]) ? handleDeleteEntryNote : undefined}
       />
 
       <MealNoteModal
