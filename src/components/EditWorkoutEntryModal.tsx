@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import type { WorkoutEntry } from '../types/workout';
+import {
+  buildWorkoutIntegerDraft,
+  getWorkoutIntegerInputProps,
+  parseWorkoutIntegerInput,
+  sanitizeWorkoutIntegerInput,
+} from '../utils/workoutNumericInput';
+import {
+  buildWorkoutWeightDraft,
+  getWorkoutWeightInputProps,
+  parseWorkoutWeightInput,
+  sanitizeWorkoutWeightInput,
+} from '../utils/workoutEntryWeightInput';
 
 interface EditWorkoutEntryModalProps {
   isOpen: boolean;
@@ -17,9 +29,9 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
 
   useEffect(() => {
     if (!isOpen || !entry) return;
-    setSets(String(entry.sets));
-    setReps(String(entry.reps));
-    setWeight(String(entry.displayAmount ?? entry.weight));
+    setSets(buildWorkoutIntegerDraft(entry.sets));
+    setReps(buildWorkoutIntegerDraft(entry.reps));
+    setWeight(buildWorkoutWeightDraft(entry.displayAmount ?? entry.weight));
   }, [isOpen, entry]);
 
   useEffect(() => {
@@ -32,9 +44,9 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
 
   const parsed = useMemo(
     () => ({
-      sets: Math.max(0, Number(sets) || 0),
-      reps: Math.max(0, Number(reps) || 0),
-      weight: Math.max(0, Number(weight) || 0),
+      sets: parseWorkoutIntegerInput(sets),
+      reps: parseWorkoutIntegerInput(reps),
+      weight: parseWorkoutWeightInput(weight),
     }),
     [sets, reps, weight],
   );
@@ -75,12 +87,10 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
             <label className="block">
               <span className="mb-1 block text-xs font-medium uppercase text-gray-600 dark:text-gray-300">Подходы</span>
               <input
-                type="number"
-                min="1"
-                inputMode="numeric"
+                {...getWorkoutIntegerInputProps()}
                 value={sets}
                 disabled={isSaving}
-                onChange={(event) => setSets(event.target.value)}
+                onChange={(event) => setSets(sanitizeWorkoutIntegerInput(event.target.value))}
                 className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-green-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
               />
             </label>
@@ -88,12 +98,10 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
             <label className="block">
               <span className="mb-1 block text-xs font-medium uppercase text-gray-600 dark:text-gray-300">Повторы</span>
               <input
-                type="number"
-                min="0"
-                inputMode="numeric"
+                {...getWorkoutIntegerInputProps()}
                 value={reps}
                 disabled={isSaving}
-                onChange={(event) => setReps(event.target.value)}
+                onChange={(event) => setReps(sanitizeWorkoutIntegerInput(event.target.value))}
                 className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-green-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
               />
             </label>
@@ -101,13 +109,10 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
             <label className="block">
               <span className="mb-1 block text-xs font-medium uppercase text-gray-600 dark:text-gray-300">Вес, кг</span>
               <input
-                type="number"
-                min="0"
-                step="0.5"
-                inputMode="decimal"
+                {...getWorkoutWeightInputProps()}
                 value={weight}
                 disabled={isSaving}
-                onChange={(event) => setWeight(event.target.value)}
+                onChange={(event) => setWeight(sanitizeWorkoutWeightInput(event.target.value))}
                 className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-green-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
               />
             </label>

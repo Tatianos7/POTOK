@@ -1244,6 +1244,7 @@ const Workouts = () => {
         initialNote={workoutDayNote}
         onSave={handleSaveWorkoutDayNote}
         onDelete={workoutDayNoteDayId && workoutDayNote ? handleDeleteWorkoutDayNote : undefined}
+        textareaVariant="paleGreen"
       />
     </ScreenContainer>
   );

@@ -7,9 +7,17 @@ interface MealNoteModalProps {
   onSave: (note: string) => Promise<void> | void;
   initialNote?: string | null;
   onDelete?: () => Promise<void> | void; // Опциональная функция для удаления заметки
+  textareaVariant?: 'default' | 'paleGreen';
 }
 
-const MealNoteModal = ({ isOpen, onClose, onSave, initialNote, onDelete }: MealNoteModalProps) => {
+const MealNoteModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  initialNote,
+  onDelete,
+  textareaVariant = 'default',
+}: MealNoteModalProps) => {
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const submitLock = useRef({ current: false });
@@ -60,6 +68,11 @@ const MealNoteModal = ({ isOpen, onClose, onSave, initialNote, onDelete }: MealN
     }
   };
 
+  const textareaClassName =
+    textareaVariant === 'paleGreen'
+      ? 'w-full min-h-[200px] px-4 py-3 border border-emerald-100/70 rounded-lg bg-emerald-50/70 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none'
+      : 'w-full min-h-[200px] px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none';
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => { if (!isSaving) onClose(); }}>
       <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -77,7 +90,7 @@ const MealNoteModal = ({ isOpen, onClose, onSave, initialNote, onDelete }: MealN
             onChange={(e) => setNote(e.target.value)}
             disabled={isSaving}
             placeholder="Заметка..."
-            className="w-full min-h-[200px] px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+            className={textareaClassName}
             autoFocus
           />
         </div>
@@ -116,4 +129,3 @@ const MealNoteModal = ({ isOpen, onClose, onSave, initialNote, onDelete }: MealN
 };
 
 export default MealNoteModal;
-

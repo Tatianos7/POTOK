@@ -1,6 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { Exercise, SelectedExercise } from '../types/workout';
+import {
+  buildWorkoutIntegerDraft,
+  getWorkoutIntegerInputProps,
+  parseWorkoutIntegerInput,
+  sanitizeWorkoutIntegerInput,
+} from '../utils/workoutNumericInput';
+import {
+  buildWorkoutWeightDraft,
+  getWorkoutWeightInputProps,
+  parseWorkoutWeightInput,
+  sanitizeWorkoutWeightInput,
+} from '../utils/workoutEntryWeightInput';
+import { updateSelectedExerciseField } from '../utils/workoutEditorState';
 
 interface SelectedExercisesEditorProps {
   isOpen: boolean;
@@ -12,6 +25,94 @@ interface SelectedExercisesEditorProps {
   isSaving?: boolean;
   title?: string;
 }
+
+interface SelectedExerciseEditorRowProps {
+  item: SelectedExercise;
+  index: number;
+  onIntegerChange: (index: number, field: 'sets' | 'reps', rawValue: string) => void;
+  onWeightChange: (index: number, rawValue: string) => void;
+}
+
+const SelectedExerciseEditorRow = memo(function SelectedExerciseEditorRow({
+  item,
+  index,
+  onIntegerChange,
+  onWeightChange,
+}: SelectedExerciseEditorRowProps) {
+  const [setsDraft, setSetsDraft] = useState(() => buildWorkoutIntegerDraft(item.sets));
+  const [repsDraft, setRepsDraft] = useState(() => buildWorkoutIntegerDraft(item.reps));
+  const [weightDraft, setWeightDraft] = useState(() => buildWorkoutWeightDraft(item.weight));
+
+  useEffect(() => {
+    setSetsDraft(buildWorkoutIntegerDraft(item.sets));
+  }, [item.sets]);
+
+  useEffect(() => {
+    setRepsDraft(buildWorkoutIntegerDraft(item.reps));
+  }, [item.reps]);
+
+  useEffect(() => {
+    setWeightDraft(buildWorkoutWeightDraft(item.weight));
+  }, [item.weight]);
+
+  const primaryMuscle = item.exercise.muscles?.[0]?.name || '';
+
+  return (
+    <tr className="border-b border-gray-100 dark:border-gray-800">
+      <td className="py-2 min-[376px]:py-3 px-1 min-[376px]:px-2">
+        <div className="min-w-0 max-w-[140px] min-[376px]:max-w-none">
+          <div className="text-[11px] min-[376px]:text-xs sm:text-sm font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere">
+            {item.exercise.name}
+          </div>
+          {primaryMuscle && (
+            <div className="text-[10px] min-[376px]:text-xs text-gray-500 dark:text-gray-400 mt-0.5 break-words overflow-wrap-anywhere">
+              {primaryMuscle}
+            </div>
+          )}
+        </div>
+      </td>
+      <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
+        <div className="flex items-center justify-end">
+          <input
+            {...getWorkoutIntegerInputProps()}
+            value={setsDraft}
+            onChange={(e) => {
+              setSetsDraft(sanitizeWorkoutIntegerInput(e.target.value));
+              onIntegerChange(index, 'sets', e.target.value);
+            }}
+            className="w-12 min-[376px]:w-14 px-1.5 min-[376px]:px-2 py-1 min-[376px]:py-1.5 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
+          />
+        </div>
+      </td>
+      <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
+        <div className="flex items-center justify-end">
+          <input
+            {...getWorkoutIntegerInputProps()}
+            value={repsDraft}
+            onChange={(e) => {
+              setRepsDraft(sanitizeWorkoutIntegerInput(e.target.value));
+              onIntegerChange(index, 'reps', e.target.value);
+            }}
+            className="w-12 min-[376px]:w-14 px-1.5 min-[376px]:px-2 py-1 min-[376px]:py-1.5 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
+          />
+        </div>
+      </td>
+      <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
+        <div className="flex items-center justify-center">
+          <input
+            {...getWorkoutWeightInputProps()}
+            value={weightDraft}
+            onChange={(e) => {
+              setWeightDraft(sanitizeWorkoutWeightInput(e.target.value));
+              onWeightChange(index, e.target.value);
+            }}
+            className="w-12 min-[376px]:w-14 px-1.5 min-[376px]:px-2 py-1 min-[376px]:py-1.5 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
+          />
+        </div>
+      </td>
+    </tr>
+  );
+});
 
 const SelectedExercisesEditor = ({
   isOpen,
@@ -52,14 +153,13 @@ const SelectedExercisesEditor = ({
       previousExercisesRef.current = initialSelectedExercises.map((item) => item.exercise);
     } else if (!isInitializedRef.current && exercises.length > 0) {
       // Первая инициализация
-      setEditedExercises(
-        exercises.map(ex => ({
+      const nextExercises = exercises.map(ex => ({
           exercise: ex,
           sets: 3,
           reps: 12,
           weight: 20,
-        }))
-      );
+        }));
+      setEditedExercises(nextExercises);
       isInitializedRef.current = true;
       previousExercisesRef.current = exercises;
     } else if (isInitializedRef.current && exercises.length > 0) {
@@ -80,19 +180,25 @@ const SelectedExercisesEditor = ({
     }
   }, [exercises, initialSelectedExercises, isOpen]);
 
-  const handleUpdate = (index: number, field: 'sets' | 'reps' | 'weight', value: number) => {
-    const updated = [...editedExercises];
-    updated[index] = {
-      ...updated[index],
-      [field]: Math.max(0, value),
-    };
-    setEditedExercises(updated);
-  };
+  const handleIntegerDraftChange = useCallback((
+    index: number,
+    field: 'sets' | 'reps',
+    rawValue: string,
+  ) => {
+    setEditedExercises((current) =>
+      updateSelectedExerciseField(current, index, field, parseWorkoutIntegerInput(rawValue)),
+    );
+  }, []);
+
+  const handleWeightDraftChange = useCallback((index: number, rawValue: string) => {
+    setEditedExercises((current) =>
+      updateSelectedExerciseField(current, index, 'weight', parseWorkoutWeightInput(rawValue)),
+    );
+  }, []);
 
   const handleSave = () => {
     if (isSaving) return;
     onSave(editedExercises);
-    onClose();
   };
 
   const handleAddExercise = () => {
@@ -162,59 +268,14 @@ const SelectedExercisesEditor = ({
                   </thead>
                   <tbody>
                     {editedExercises.map((item, index) => {
-                      const primaryMuscle = item.exercise.muscles?.[0]?.name || '';
                       return (
-                        <tr
+                        <SelectedExerciseEditorRow
                           key={`${item.exercise.id}-${index}`}
-                          className="border-b border-gray-100 dark:border-gray-800"
-                        >
-                          <td className="py-2 min-[376px]:py-3 px-1 min-[376px]:px-2">
-                            <div className="min-w-0 max-w-[140px] min-[376px]:max-w-none">
-                              <div className="text-[11px] min-[376px]:text-xs sm:text-sm font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere">
-                                {item.exercise.name}
-                              </div>
-                              {primaryMuscle && (
-                                <div className="text-[10px] min-[376px]:text-xs text-gray-500 dark:text-gray-400 mt-0.5 break-words overflow-wrap-anywhere">
-                                  {primaryMuscle}
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
-                            <div className="flex items-center justify-end">
-                              <input
-                                type="number"
-                                min="0"
-                                value={item.sets}
-                                onChange={(e) => handleUpdate(index, 'sets', parseInt(e.target.value) || 0)}
-                                className="w-12 min-[376px]:w-14 px-1.5 min-[376px]:px-2 py-1 min-[376px]:py-1.5 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
-                              />
-                            </div>
-                          </td>
-                          <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
-                            <div className="flex items-center justify-end">
-                              <input
-                                type="number"
-                                min="0"
-                                value={item.reps}
-                                onChange={(e) => handleUpdate(index, 'reps', parseInt(e.target.value) || 0)}
-                                className="w-12 min-[376px]:w-14 px-1.5 min-[376px]:px-2 py-1 min-[376px]:py-1.5 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
-                              />
-                            </div>
-                          </td>
-                          <td className="py-2 min-[376px]:py-3 pl-1 min-[376px]:pl-2 pr-2 min-[376px]:pr-3">
-                            <div className="flex items-center justify-center">
-                              <input
-                                type="number"
-                                min="0"
-                                step="0.5"
-                                value={item.weight}
-                                onChange={(e) => handleUpdate(index, 'weight', parseFloat(e.target.value) || 0)}
-                                className="w-12 min-[376px]:w-14 px-1.5 min-[376px]:px-2 py-1 min-[376px]:py-1.5 text-center text-[11px] min-[376px]:text-xs sm:text-sm font-medium rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500"
-                              />
-                            </div>
-                          </td>
-                        </tr>
+                          item={item}
+                          index={index}
+                          onIntegerChange={handleIntegerDraftChange}
+                          onWeightChange={handleWeightDraftChange}
+                        />
                       );
                     })}
                   </tbody>
