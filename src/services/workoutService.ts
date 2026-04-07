@@ -1,5 +1,11 @@
 import { supabase } from '../lib/supabaseClient';
-import { WorkoutDay, WorkoutEntry, SelectedExercise, WorkoutHistoryDaySummary } from '../types/workout';
+import {
+  WorkoutDay,
+  WorkoutEntry,
+  SelectedExercise,
+  WorkoutHistoryDaySummary,
+  WorkoutProgressObservation,
+} from '../types/workout';
 import { aiTrainingPlansService, TrainingDayContext } from './aiTrainingPlansService';
 import { goalService } from './goalService';
 import { userStateService } from './userStateService';
@@ -22,6 +28,21 @@ type WorkoutEntryUpdatePatch = {
   reps?: number;
   weight?: number;
   display_amount?: number;
+};
+
+type WorkoutProgressObservationRow = {
+  id?: string | null;
+  workout_day_id?: string | null;
+  created_at?: string | null;
+  exercise_id?: string | null;
+  sets?: number | string | null;
+  reps?: number | string | null;
+  weight?: number | string | null;
+  exercise?: {
+    id?: string | null;
+    name?: string | null;
+    canonical_exercise_id?: string | null;
+  } | null;
 };
 
 export function buildWorkoutHistoryDaySummaries(rows: WorkoutHistoryAggregateRow[]): WorkoutHistoryDaySummary[] {
@@ -73,6 +94,45 @@ export function buildWorkoutEntryUpdatePatch(updates: { sets?: number; reps?: nu
     patch.display_amount = updates.weight;
   }
   return patch;
+}
+
+export function buildWorkoutProgressObservations(
+  rows: WorkoutProgressObservationRow[],
+  dayDateMap: Map<string, string>,
+): WorkoutProgressObservation[] {
+  const observations: WorkoutProgressObservation[] = [];
+
+  rows.forEach((row) => {
+    const exerciseId = String(row.exercise?.id ?? row.exercise_id ?? '').trim();
+    const exerciseName = String(row.exercise?.name ?? 'Unknown').trim() || 'Unknown';
+    const canonicalExerciseId = String(row.exercise?.canonical_exercise_id ?? '').trim();
+    const entryId = String(row.id ?? '').trim();
+    const workoutDayId = typeof row.workout_day_id === 'string' ? row.workout_day_id : '';
+    const date = dayDateMap.get(workoutDayId) ?? '';
+    const exerciseGroupKey = canonicalExerciseId || exerciseId || exerciseName;
+
+    if (!exerciseGroupKey || !exerciseId || !entryId || !date) {
+      return;
+    }
+
+    observations.push({
+      exerciseGroupKey,
+      exerciseId,
+      exerciseName,
+      date,
+      entryId,
+      createdAt: typeof row.created_at === 'string' ? row.created_at : undefined,
+      sets: Number(row.sets) || 0,
+      reps: Number(row.reps) || 0,
+      weight: Number(row.weight) || 0,
+    });
+  });
+
+  return observations.sort((a, b) =>
+    a.date.localeCompare(b.date) ||
+    (a.createdAt ?? '').localeCompare(b.createdAt ?? '') ||
+    a.entryId.localeCompare(b.entryId),
+  );
 }
 
 class WorkoutService {
@@ -458,6 +518,75 @@ class WorkoutService {
       .filter((row) => row.date !== '');
 
     return buildWorkoutHistoryDaySummaries(aggregateRows);
+  }
+
+  async getWorkoutProgressObservations(
+    userId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<WorkoutProgressObservation[]> {
+    if (!supabase) {
+      console.warn('[workoutService] Supabase not available, workout progress observations require persisted source');
+      return [];
+    }
+
+    let sessionUserId: string;
+    try {
+      sessionUserId = await this.getSessionUserId(userId);
+    } catch {
+      return [];
+    }
+
+    const { data: workoutDays, error: workoutDaysError } = await supabase
+      .from('workout_days')
+      .select('id, date')
+      .eq('user_id', sessionUserId)
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: true });
+
+    if (workoutDaysError) {
+      if (workoutDaysError.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout progress days:', workoutDaysError);
+      }
+      return [];
+    }
+
+    const dayIds = (workoutDays || []).map((day) => day.id).filter(Boolean);
+    if (dayIds.length === 0) {
+      return [];
+    }
+
+    const dayDateMap = new Map<string, string>(
+      (workoutDays || [])
+        .filter((day): day is { id: string; date: string } => Boolean(day?.id && day?.date))
+        .map((day) => [day.id, day.date]),
+    );
+
+    const { data, error } = await supabase
+      .from('workout_entries')
+      .select(`
+        id,
+        workout_day_id,
+        created_at,
+        exercise_id,
+        sets,
+        reps,
+        weight,
+        exercise:exercises(id,name)
+      `)
+      .in('workout_day_id', dayIds)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      if (error.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout progress observations:', error);
+      }
+      return [];
+    }
+
+    const rows = Array.isArray(data) ? (data as WorkoutProgressObservationRow[]) : [];
+    return buildWorkoutProgressObservations(rows, dayDateMap);
   }
 
   private async getWorkoutEntriesFromSupabase(userId: string, date: string): Promise<WorkoutEntry[]> {
