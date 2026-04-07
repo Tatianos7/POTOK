@@ -60,6 +60,32 @@ export interface WorkoutHistoryDaySummary {
   total_volume: number;
 }
 
+export interface WorkoutProgressObservation {
+  exerciseGroupKey: string;
+  exerciseId: string;
+  exerciseName: string;
+  date: string;
+  entryId: string;
+  createdAt?: string;
+  sets: number;
+  reps: number;
+  weight: number;
+}
+
+export type WorkoutProgressMetricTrend = 'up' | 'down' | 'return' | 'neutral';
+
+export interface WorkoutProgressRow {
+  exerciseGroupKey: string;
+  exerciseName: string;
+  latestSets: number;
+  latestReps: number;
+  latestWeight: number;
+  setsTrend: WorkoutProgressMetricTrend;
+  repsTrend: WorkoutProgressMetricTrend;
+  weightTrend: WorkoutProgressMetricTrend;
+  lastDate: string;
+}
+
 export interface WorkoutEntry {
   id: string;
   workout_day_id: string;
