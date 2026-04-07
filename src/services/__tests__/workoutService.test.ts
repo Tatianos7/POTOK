@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildWorkoutEntryUpdatePatch, buildWorkoutHistoryDaySummaries, workoutService } from '../workoutService';
+import {
+  buildWorkoutEntryUpdatePatch,
+  buildWorkoutHistoryDaySummaries,
+  buildWorkoutProgressObservations,
+  workoutService,
+} from '../workoutService';
 import { supabase } from '../../lib/supabaseClient';
 import type { WorkoutEntry } from '../../types/workout';
 
@@ -220,6 +225,78 @@ test('workout entry edit updates weight patch correctly for persisted read-side'
 
   assert.equal(patch.weight, 72.5);
   assert.equal(patch.display_amount, 72.5);
+});
+
+test('getWorkoutProgressObservations returns persisted observation rows for period mapping', () => {
+  const observations = buildWorkoutProgressObservations(
+    [
+      {
+        id: 'entry-2',
+        workout_day_id: 'day-2',
+        created_at: '2026-03-21T08:00:00.000Z',
+        exercise_id: 'exercise-bench',
+        sets: 4,
+        reps: 8,
+        weight: 80,
+        exercise: {
+          id: 'exercise-bench',
+          name: 'Жим лежа',
+          canonical_exercise_id: 'canonical-bench',
+        },
+      },
+      {
+        id: 'entry-1',
+        workout_day_id: 'day-1',
+        created_at: '2026-03-20T08:00:00.000Z',
+        exercise_id: 'exercise-bench',
+        sets: 3,
+        reps: 10,
+        weight: 70,
+        exercise: {
+          id: 'exercise-bench',
+          name: 'Жим лежа',
+          canonical_exercise_id: 'canonical-bench',
+        },
+      },
+    ],
+    new Map([
+      ['day-1', '2026-03-20'],
+      ['day-2', '2026-03-21'],
+    ]),
+  );
+
+  assert.equal(observations.length, 2);
+  assert.equal(observations[0].exerciseGroupKey, 'canonical-bench');
+  assert.equal(observations[0].exerciseId, 'exercise-bench');
+  assert.equal(observations[0].exerciseName, 'Жим лежа');
+  assert.equal(observations[0].date, '2026-03-20');
+  assert.equal(observations[1].date, '2026-03-21');
+});
+
+test('getWorkoutProgressObservations mapping safely falls back to exercise_id when canonical_exercise_id is absent', () => {
+  const observations = buildWorkoutProgressObservations(
+    [
+      {
+        id: 'entry-1',
+        workout_day_id: 'day-1',
+        created_at: '2026-03-20T08:00:00.000Z',
+        exercise_id: 'exercise-superman',
+        sets: 2,
+        reps: 30,
+        weight: 3,
+        exercise: {
+          id: 'exercise-superman',
+          name: 'Супермен',
+        },
+      },
+    ],
+    new Map([['day-1', '2026-03-20']]),
+  );
+
+  assert.equal(observations.length, 1);
+  assert.equal(observations[0].exerciseGroupKey, 'exercise-superman');
+  assert.equal(observations[0].exerciseId, 'exercise-superman');
+  assert.equal(observations[0].exerciseName, 'Супермен');
 });
 
 test('repeat copy creates new workout entries on target date', async (t) => {
