@@ -5,8 +5,14 @@ import { useAuth } from '../context/AuthContext';
 import WorkoutProgressMonthPicker from '../components/WorkoutProgressMonthPicker';
 import WorkoutProgressList from '../components/WorkoutProgressList';
 import { workoutService } from '../services/workoutService';
-import type { WorkoutProgressRow } from '../types/workout';
-import { buildWorkoutProgressList } from '../utils/workoutProgress';
+import type { WorkoutProgressObservation, WorkoutProgressRow } from '../types/workout';
+import { buildWorkoutProgressList, filterWorkoutProgressObservationsByRange } from '../utils/workoutProgress';
+import {
+  cacheCoversWorkoutProgressPeriod,
+  getWorkoutProgressHistoryFetchRange,
+  mergeWorkoutProgressObservationCache,
+  type WorkoutProgressObservationCache,
+} from '../utils/workoutProgressCache';
 import {
   applyWorkoutProgressMonthSelection,
   formatWorkoutProgressMonthLabel,
@@ -19,6 +25,8 @@ import { colors, spacing, typography } from '../ui/theme/tokens';
 import { WORKOUT_SCREEN_BACKGROUND } from '../utils/workoutLayout';
 import { getDefaultWorkoutHistoryRange } from '../utils/workoutHistoryRange';
 
+let progressObservationsCache: WorkoutProgressObservationCache | null = null;
+
 const ProgressWorkouts: FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -27,13 +35,17 @@ const ProgressWorkouts: FC = () => {
   const pickerRef = useRef<HTMLDivElement>(null);
   const [selectedMonthDate, setSelectedMonthDate] = useState(defaultDate);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const [rows, setRows] = useState<WorkoutProgressRow[]>([]);
+  const [observations, setObservations] = useState<WorkoutProgressObservation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const period = useMemo(() => getWorkoutProgressMonthPeriod(selectedMonthDate), [selectedMonthDate]);
   const periodLabel = useMemo(() => formatWorkoutProgressMonthLabel(selectedMonthDate), [selectedMonthDate]);
   const trendHistoryStart = '1900-01-01';
+  const rows = useMemo<WorkoutProgressRow[]>(() => {
+    const displayObservations = filterWorkoutProgressObservationsByRange(observations, period.from, period.to);
+    return buildWorkoutProgressList(displayObservations, observations);
+  }, [observations, period.from, period.to]);
 
   useEffect(() => {
     if (!isCalendarOpen) return;
@@ -52,21 +64,50 @@ const ProgressWorkouts: FC = () => {
     if (!user?.id) return;
 
     let isMounted = true;
-    setIsLoading(true);
     setErrorMessage(null);
 
-    Promise.all([
-      workoutService.getWorkoutProgressObservations(user.id, period.from, period.to),
-      workoutService.getWorkoutProgressObservations(user.id, trendHistoryStart, period.to),
-    ])
-      .then(([displayObservations, trendHistoryObservations]) => {
+    if (cacheCoversWorkoutProgressPeriod(progressObservationsCache, user.id, period.to)) {
+      setObservations(progressObservationsCache!.observations);
+      setIsLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    const fetchRange = getWorkoutProgressHistoryFetchRange(
+      progressObservationsCache,
+      user.id,
+      period.to,
+      trendHistoryStart,
+    );
+
+    if (!fetchRange.shouldFetch) {
+      setIsLoading(false);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setIsLoading(true);
+
+    workoutService
+      .getWorkoutProgressObservations(user.id, fetchRange.from, fetchRange.to)
+      .then((nextObservations) => {
         if (!isMounted) return;
-        setRows(buildWorkoutProgressList(displayObservations, trendHistoryObservations));
+        progressObservationsCache = mergeWorkoutProgressObservationCache(
+          progressObservationsCache,
+          user.id,
+          period.to,
+          nextObservations,
+        );
+        setObservations(progressObservationsCache.observations);
       })
       .catch((error: any) => {
         if (!isMounted) return;
         console.error('[ProgressWorkouts] load failed', error);
-        setRows([]);
+        if (!progressObservationsCache || progressObservationsCache.userId !== user.id) {
+          setObservations([]);
+        }
         setErrorMessage(error?.message || 'Не удалось загрузить прогресс тренировок');
       })
       .finally(() => {

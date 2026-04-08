@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildWorkoutProgressList,
+  filterWorkoutProgressObservationsByRange,
   getWorkoutMetricTrend,
   groupWorkoutProgressRows,
 } from '../workoutProgress';
@@ -84,6 +85,23 @@ test('latest sets reps and weight are chosen correctly', () => {
   assert.equal(rows[0].latestReps, 6);
   assert.equal(rows[0].latestWeight, 90);
   assert.equal(rows[0].lastDate, '2026-03-22');
+});
+
+test('derived progress rows remain correct when display window is filtered from full history input', () => {
+  const allObservations = [
+    createObservation('bench', '2026-02-20', { sets: 3, reps: 10, weight: 70 }),
+    createObservation('bench', '2026-03-20', { sets: 4, reps: 8, weight: 80 }),
+    createObservation('bench', '2026-04-20', { sets: 5, reps: 6, weight: 90 }),
+  ];
+
+  const displayObservations = filterWorkoutProgressObservationsByRange(allObservations, '2026-04-01', '2026-04-30');
+  const rows = buildWorkoutProgressList(displayObservations, allObservations);
+
+  assert.equal(displayObservations.length, 1);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].latestSets, 5);
+  assert.equal(rows[0].latestReps, 6);
+  assert.equal(rows[0].latestWeight, 90);
 });
 
 test('progress row latest values still come from selected month', () => {
