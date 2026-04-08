@@ -34,6 +34,35 @@ function buildMonthDate(year: number, monthIndex: number): string {
   return `${year}-${pad2(monthIndex + 1)}-01`;
 }
 
+export function clampMonthDateForBounds(
+  monthDate: string,
+  minMonthKey: string | null,
+  maxMonthKey: string | null,
+): string {
+  const monthKey = toMonthKey(monthDate);
+  if (minMonthKey !== null && monthKey < minMonthKey) {
+    return `${minMonthKey}-01`;
+  }
+  if (maxMonthKey !== null && monthKey > maxMonthKey) {
+    return `${maxMonthKey}-01`;
+  }
+  return monthDate;
+}
+
+export function getYearNavigationTargetMonthDate(
+  currentYear: number,
+  selectedMonthIndex: number,
+  deltaYears: -1 | 1,
+  minMonthKey: string | null,
+  maxMonthKey: string | null,
+): string {
+  return clampMonthDateForBounds(
+    buildMonthDate(currentYear + deltaYears, selectedMonthIndex - 1),
+    minMonthKey,
+    maxMonthKey,
+  );
+}
+
 const WorkoutProgressMonthPicker = ({
   selectedMonthDate,
   minDate,
@@ -46,8 +75,10 @@ const WorkoutProgressMonthPicker = ({
   const minMonthKey = minDate ? toMonthKey(minDate) : null;
   const maxMonthKey = maxDate ? toMonthKey(maxDate) : null;
 
-  const canGoPrevYear = !minMonthKey || `${currentYear - 1}-12` >= minMonthKey;
-  const canGoNextYear = !maxMonthKey || `${currentYear + 1}-01` <= maxMonthKey;
+  const prevYearTarget = getYearNavigationTargetMonthDate(currentYear, selectedMonthIndex, -1, minMonthKey, maxMonthKey);
+  const nextYearTarget = getYearNavigationTargetMonthDate(currentYear, selectedMonthIndex, 1, minMonthKey, maxMonthKey);
+  const canGoPrevYear = toMonthKey(prevYearTarget) !== selectedMonthKey;
+  const canGoNextYear = toMonthKey(nextYearTarget) !== selectedMonthKey;
 
   return (
     <div
@@ -57,7 +88,7 @@ const WorkoutProgressMonthPicker = ({
       <div className="mb-3 flex items-center justify-between">
         <button
           type="button"
-          onClick={() => canGoPrevYear && onMonthSelect(buildMonthDate(currentYear - 1, selectedMonthIndex - 1))}
+          onClick={() => canGoPrevYear && onMonthSelect(prevYearTarget)}
           disabled={!canGoPrevYear}
           className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Предыдущий год"
@@ -67,7 +98,7 @@ const WorkoutProgressMonthPicker = ({
         <div className="text-sm font-semibold text-gray-900">{currentYear}</div>
         <button
           type="button"
-          onClick={() => canGoNextYear && onMonthSelect(buildMonthDate(currentYear + 1, selectedMonthIndex - 1))}
+          onClick={() => canGoNextYear && onMonthSelect(nextYearTarget)}
           disabled={!canGoNextYear}
           className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Следующий год"
