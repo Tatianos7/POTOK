@@ -40,6 +40,14 @@ function takeObservationsUntil(
   return observations.filter((observation) => compareObservations(observation, targetObservation) <= 0);
 }
 
+export function filterWorkoutProgressObservationsByRange(
+  observations: WorkoutProgressObservation[],
+  fromDate: string,
+  toDate: string,
+): WorkoutProgressObservation[] {
+  return observations.filter((observation) => observation.date >= fromDate && observation.date <= toDate);
+}
+
 export function groupWorkoutProgressRows(observations: WorkoutProgressObservation[]): WorkoutProgressGroup[] {
   const groups = new Map<string, WorkoutProgressGroup>();
 
