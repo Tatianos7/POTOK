@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { Exercise, SelectedExercise, WorkoutMetricType, WorkoutMetricUnit } from '../types/workout';
 import {
