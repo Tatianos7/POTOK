@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - feature/workout-diary
   workflow_dispatch:
 
 permissions:
