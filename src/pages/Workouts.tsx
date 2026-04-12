@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Calendar, Edit, Trash2, Clock, Plus, StickyNote } from 'lucide-react';
+import { X, Calendar, Trash2, Clock, Plus, StickyNote } from 'lucide-react';
 import InlineCalendar from '../components/InlineCalendar';
 import ExerciseCategorySheet from '../components/ExerciseCategorySheet';
 import ExerciseListSheet from '../components/ExerciseListSheet';
@@ -52,6 +52,15 @@ import {
   toggleWorkoutEntryNoteExpanded,
 } from '../utils/workoutEntryNotesUi';
 import { submitModalAction } from '../utils/asyncModalSubmit';
+import {
+  formatWorkoutMetricValue,
+  getWorkoutMetricUnit,
+  normalizeWorkoutMetricType,
+} from '../utils/workoutEntryMetric';
+
+export function getWorkoutHeaderActionIds(): Array<'history' | 'note' | 'delete'> {
+  return ['history', 'note', 'delete'];
+}
 
 const CUSTOM_EXERCISES_CATEGORY: ExerciseCategory = {
   id: 'custom-exercises',
@@ -404,23 +413,7 @@ const Workouts = () => {
     setIsSelectedExercisesEditorOpen(next.isSelectedExercisesEditorOpen);
   };
 
-  const handleEditWorkout = () => {
-    if (workoutEntries.length === 0) return;
 
-    const initialExercises = workoutEntries
-      .filter((entry) => entry.exercise)
-      .map((entry) => ({
-        exercise: entry.exercise as Exercise,
-        sets: entry.sets,
-        reps: entry.reps,
-        weight: entry.weight,
-      }));
-
-    setEditorMode('editWorkout');
-    setEditorInitialExercises(initialExercises);
-    setSelectedExercises(initialExercises.map((item) => item.exercise));
-    applyFlowLayer('editor');
-  };
 
   const handleEditEntry = (entryId: string) => {
     if (isUpdatingEntry || deletingEntryId || isDeletingWorkout) return;
@@ -432,7 +425,7 @@ const Workouts = () => {
     setEditingEntry(entry);
   };
 
-  const handleSaveEditedEntry = async (updates: { sets: number; reps: number; weight: number }) => {
+  const handleSaveEditedEntry = async (updates: { sets: number; reps: number; weight: number; metricType: WorkoutEntry['metricType']; metricUnit?: WorkoutEntry['metricUnit'] }) => {
     if (!editingEntry || !user?.id || isUpdatingEntry) return;
 
     setIsUpdatingEntry(true);
@@ -815,7 +808,13 @@ const Workouts = () => {
           exercises.map((exercise, index) =>
             workoutService.updateWorkoutEntry(
               editableEntries[index].id,
-              { sets: exercise.sets, reps: exercise.reps, weight: exercise.weight },
+              {
+                sets: exercise.sets,
+                reps: exercise.reps,
+                weight: exercise.weight,
+                metricType: normalizeWorkoutMetricType(exercise.metricType),
+                metricUnit: exercise.metricUnit,
+              },
               editableEntries[index].updated_at,
               { userId: user.id, date: selectedDate },
             ),
@@ -1037,13 +1036,6 @@ const Workouts = () => {
                   <StickyNote className="w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 text-gray-700 dark:text-gray-300" />
                 </button>
                 <button
-                  onClick={handleEditWorkout}
-                  className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  aria-label="Редактировать"
-                >
-                  <Edit className="w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 text-gray-700 dark:text-gray-300" />
-                </button>
-                <button
                   onClick={handleDeleteWorkout}
                   disabled={isDeletingWorkout || isSaving || isLoading || workoutEntries.length === 0}
                   className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
@@ -1097,7 +1089,9 @@ const Workouts = () => {
                           sets={entry.sets}
                           reps={entry.reps}
                           weight={entry.displayAmount ?? entry.weight}
-                          unit={entry.displayUnit ?? 'кг'}
+                          unit={getWorkoutMetricUnit(normalizeWorkoutMetricType(entry.metricType), entry.metricUnit ?? entry.displayUnit)}
+                          valueText={formatWorkoutMetricValue(entry.displayAmount ?? entry.weight, normalizeWorkoutMetricType(entry.metricType), entry.metricUnit ?? entry.displayUnit)}
+                          metricType={normalizeWorkoutMetricType(entry.metricType)}
                           onEdit={() => handleEditEntry(entry.id)}
                           onDelete={() => void handleDeleteEntry(entry.id)}
                           onNote={() => void handleOpenEntryNote(entry.id)}

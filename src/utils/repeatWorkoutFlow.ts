@@ -1,4 +1,5 @@
 import type { WorkoutEntry } from '../types/workout';
+import { formatWorkoutMetricValue, normalizeWorkoutMetricType } from './workoutEntryMetric';
 
 export interface RepeatWorkoutOption {
   exerciseId: string;
@@ -6,6 +7,8 @@ export interface RepeatWorkoutOption {
   sets: number;
   reps: number;
   weight: number;
+  metricType: WorkoutEntry['metricType'];
+  metricValueLabel: string;
 }
 
 export function buildRepeatWorkoutOptions(entries: WorkoutEntry[]): RepeatWorkoutOption[] {
@@ -24,6 +27,12 @@ export function buildRepeatWorkoutOptions(entries: WorkoutEntry[]): RepeatWorkou
       sets: entry.sets,
       reps: entry.reps,
       weight: entry.displayAmount ?? entry.weight,
+      metricType: normalizeWorkoutMetricType(entry.metricType),
+      metricValueLabel: formatWorkoutMetricValue(
+        entry.displayAmount ?? entry.weight,
+        normalizeWorkoutMetricType(entry.metricType),
+        entry.metricUnit ?? entry.displayUnit,
+      ),
     }));
 }
 

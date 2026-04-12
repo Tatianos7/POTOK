@@ -2,6 +2,17 @@ import { supabase } from '../lib/supabaseClient';
 import { Exercise, ExerciseCategory, Muscle, CreateExerciseData } from '../types/workout';
 import { normalizeMuscleNames } from '../utils/muscleNormalizer';
 
+export function isExerciseDefinitionSchemaGapError(error: { message?: string | null; details?: string | null; code?: string | null } | null | undefined): boolean {
+  const message = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
+  return (
+    message.includes('exercise_definition_cards') ||
+    message.includes('exercise_muscles.role') ||
+    message.includes("column 'role'") ||
+    message.includes('does not exist') ||
+    error?.code === 'PGRST205'
+  );
+}
+
 export function canEditCustomExercise(exercise: Pick<Exercise, 'is_custom' | 'created_by_user_id'>, sessionUserId: string): boolean {
   return exercise.is_custom === true && exercise.created_by_user_id === sessionUserId;
 }
@@ -172,6 +183,46 @@ class ExerciseService {
       metabolic_equivalent: ex.metabolic_equivalent ?? null,
       category: ex.category,
       muscles: this.normalizeMuscles(muscles),
+    };
+  }
+
+  private mapExerciseDefinitionCardRow(ex: any): Exercise | null {
+    const exerciseName = (ex?.name || '').trim();
+    if (!exerciseName) return null;
+
+    const media = Array.isArray(ex.media)
+      ? ex.media
+          .map((item: any) => ({
+            type: item?.type === 'video' ? 'video' : 'image',
+            url: typeof item?.url === 'string' ? item.url : '',
+            order: Number.isFinite(item?.order) ? item.order : 0,
+          }))
+          .filter((item: { url: string }) => item.url !== '')
+      : [];
+
+    return {
+      id: ex.id,
+      name: exerciseName,
+      category_id: ex.category_id || '',
+      description: ex.description ?? null,
+      mistakes: ex.mistakes ?? null,
+      primary_muscles: Array.isArray(ex.primary_muscles) ? ex.primary_muscles : [],
+      secondary_muscles: Array.isArray(ex.secondary_muscles) ? ex.secondary_muscles : [],
+      muscle_map_image_url: ex.muscle_map_image_url ?? null,
+      media,
+      is_custom: ex.is_custom ?? false,
+      created_by_user_id: ex.created_by_user_id ?? null,
+      canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
+      normalized_name: ex.normalized_name ?? null,
+      movement_pattern: ex.movement_pattern ?? null,
+      equipment_type: ex.equipment_type ?? null,
+      difficulty_level: ex.difficulty_level ?? null,
+      is_compound: ex.is_compound ?? false,
+      energy_system: ex.energy_system ?? null,
+      metabolic_equivalent: ex.metabolic_equivalent ?? null,
+      aliases: Array.isArray(ex.aliases) ? ex.aliases : null,
+      safety_flags: ex.safety_flags ?? null,
+      muscles: this.extractNormalizedMusclesFromViewRow(ex.primary_muscles),
     };
   }
 
@@ -432,6 +483,53 @@ class ExerciseService {
     } catch (error) {
       console.error('[exerciseService] Error:', error);
       return this.getCustomExercisesFromLocalStorage(userId, categoryId);
+    }
+  }
+
+  async getExerciseDefinitionCard(exerciseId: string): Promise<Exercise | null> {
+    if (!supabase) {
+      return this.findExerciseInLocalStorage(exerciseId);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('exercise_definition_cards')
+        .select('*')
+        .eq('id', exerciseId)
+        .maybeSingle();
+
+      if (!error && data) {
+        return this.mapExerciseDefinitionCardRow(data);
+      }
+
+      if (error && !isExerciseDefinitionSchemaGapError(error)) {
+        console.warn('[exerciseService] Error fetching exercise definition card:', error);
+      }
+
+      const { data: fallback, error: fallbackError } = await supabase
+        .from('exercises')
+        .select(`
+          *,
+          exercise_muscles(
+            muscle:muscles(*)
+          )
+        `)
+        .eq('id', exerciseId)
+        .maybeSingle();
+
+      if (fallbackError) {
+        if (!isExerciseDefinitionSchemaGapError(fallbackError)) {
+          console.error('[exerciseService] Error fetching fallback exercise definition:', fallbackError);
+        }
+        return this.findExerciseInLocalStorage(exerciseId);
+      }
+
+      return fallback ? this.mapExerciseFromDirectRow(fallback) : this.findExerciseInLocalStorage(exerciseId);
+    } catch (error) {
+      if (!isExerciseDefinitionSchemaGapError(error as { message?: string | null; details?: string | null; code?: string | null })) {
+        console.error('[exerciseService] Error loading exercise definition card:', error);
+      }
+      return this.findExerciseInLocalStorage(exerciseId);
     }
   }
 
@@ -715,6 +813,26 @@ class ExerciseService {
     } catch {
       return [];
     }
+  }
+
+  private findExerciseInLocalStorage(exerciseId: string): Exercise | null {
+    try {
+      const keys = Object.keys(localStorage).filter((key) => key.startsWith('exercises_') || key.startsWith('custom_exercises_'));
+      for (const key of keys) {
+        const rawValue = localStorage.getItem(key);
+        if (!rawValue) continue;
+        const parsed = JSON.parse(rawValue);
+        if (!Array.isArray(parsed)) continue;
+        const found = parsed.find((item: any) => item?.id === exerciseId);
+        if (found) {
+          return found as Exercise;
+        }
+      }
+    } catch (error) {
+      console.error('[exerciseService] Error reading exercise from localStorage:', error);
+    }
+
+    return null;
   }
 
   private searchExercisesFromLocalStorage(searchTerm: string, categoryId?: string): Exercise[] {
