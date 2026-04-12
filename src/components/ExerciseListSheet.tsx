@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo, type KeyboardEvent, type MouseEvent } from 'react';
+import { useState, useEffect, useMemo, type MouseEvent } from 'react';
 import { X, Search, Check, Filter, Edit } from 'lucide-react';
 import { Exercise, ExerciseCategory } from '../types/workout';
 import { deriveAvailableMuscles, filterExercisesForList } from '../utils/exerciseListFilters';
+import ExerciseDefinitionSheet from './ExerciseDefinitionSheet';
+import { exerciseService } from '../services/exerciseService';
 
 interface ExerciseListSheetProps {
   isOpen: boolean;
@@ -14,7 +16,25 @@ interface ExerciseListSheetProps {
   onSearchChange?: (term: string) => void;
 }
 
-export const isExerciseRowActivationKey = (key: string) => key === 'Enter' || key === ' ';
+export const toggleExerciseSelection = (selected: Set<string>, exerciseId: string) => {
+  const next = new Set(selected);
+  if (next.has(exerciseId)) {
+    next.delete(exerciseId);
+  } else {
+    next.add(exerciseId);
+  }
+  return next;
+};
+
+export const addExerciseSelectionFromCard = (selected: Set<string>, exerciseId: string) => {
+  if (selected.has(exerciseId)) {
+    return new Set(selected);
+  }
+
+  const next = new Set(selected);
+  next.add(exerciseId);
+  return next;
+};
 
 const ExerciseListSheet = ({
   isOpen,
@@ -31,6 +51,10 @@ const ExerciseListSheet = ({
   const [selectedMuscles, setSelectedMuscles] = useState<Set<string>>(new Set());
   const [tempSelectedMuscles, setTempSelectedMuscles] = useState<Set<string>>(new Set());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [activeExercise, setActiveExercise] = useState<Exercise | null>(null);
+  const [activeExerciseDefinition, setActiveExerciseDefinition] = useState<Exercise | null>(null);
+  const [isDefinitionLoading, setIsDefinitionLoading] = useState(false);
+  const [definitionError, setDefinitionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -39,6 +63,10 @@ const ExerciseListSheet = ({
       document.body.style.overflow = '';
       setIsFilterOpen(false);
       setTempSelectedMuscles(new Set(selectedMuscles));
+      setActiveExercise(null);
+      setActiveExerciseDefinition(null);
+      setDefinitionError(null);
+      setIsDefinitionLoading(false);
     }
     return () => {
       document.body.style.overflow = '';
@@ -65,13 +93,7 @@ const ExerciseListSheet = ({
   );
 
   const handleToggleExercise = (exerciseId: string) => {
-    const newSelected = new Set(selectedExercises);
-    if (newSelected.has(exerciseId)) {
-      newSelected.delete(exerciseId);
-    } else {
-      newSelected.add(exerciseId);
-    }
-    setSelectedExercises(newSelected);
+    setSelectedExercises((current) => toggleExerciseSelection(current, exerciseId));
   };
 
   const handleEditExercise = (event: MouseEvent, exercise: Exercise) => {
@@ -79,10 +101,22 @@ const ExerciseListSheet = ({
     onEditExercise?.(exercise);
   };
 
-  const handleExerciseRowKeyDown = (event: KeyboardEvent<HTMLDivElement>, exerciseId: string) => {
-    if (!isExerciseRowActivationKey(event.key)) return;
-    event.preventDefault();
-    handleToggleExercise(exerciseId);
+  const handleOpenExerciseCard = async (exercise: Exercise) => {
+    setActiveExercise(exercise);
+    setActiveExerciseDefinition(exercise);
+    setDefinitionError(null);
+    setIsDefinitionLoading(true);
+
+    try {
+      const definition = await exerciseService.getExerciseDefinitionCard(exercise.id);
+      setActiveExerciseDefinition(definition ?? exercise);
+    } catch (error: any) {
+      console.error('Ошибка загрузки карточки упражнения:', error);
+      setDefinitionError(error?.message || 'Не удалось загрузить карточку упражнения');
+      setActiveExerciseDefinition(exercise);
+    } finally {
+      setIsDefinitionLoading(false);
+    }
   };
 
   const handleSelect = () => {
@@ -121,6 +155,21 @@ const ExerciseListSheet = ({
 
   const handleClearFilters = () => {
     setTempSelectedMuscles(new Set());
+  };
+
+  const handleCloseExerciseCard = () => {
+    setActiveExercise(null);
+    setActiveExerciseDefinition(null);
+    setDefinitionError(null);
+    setIsDefinitionLoading(false);
+  };
+
+  const handleAddToWorkoutFromCard = () => {
+    if (!activeExercise) return;
+    if (!selectedExercises.has(activeExercise.id)) {
+      setSelectedExercises((current) => addExerciseSelectionFromCard(current, activeExercise.id));
+    }
+    handleCloseExerciseCard();
   };
 
   if (!isOpen) return null;
@@ -328,34 +377,38 @@ const ExerciseListSheet = ({
                 return (
                   <div
                     key={uniqueKey}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => handleToggleExercise(exercise.id)}
-                    onKeyDown={(event) => handleExerciseRowKeyDown(event, exercise.id)}
-                    className={`w-full px-3 min-[376px]:px-4 py-2.5 min-[376px]:py-3 text-left rounded-xl transition-colors flex items-start gap-2 min-[376px]:gap-3 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500 ${
+                    className={`w-full px-3 min-[376px]:px-4 py-2.5 min-[376px]:py-3 text-left rounded-xl transition-colors flex items-start gap-2 min-[376px]:gap-3 ${
                       isSelected
                         ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500'
                         : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-2 border-transparent'
                     }`}
-                    aria-pressed={isSelected}
                   >
-                    <div
-                      className={`flex-shrink-0 w-5 h-5 min-[376px]:w-6 min-[376px]:h-6 rounded border-2 flex items-center justify-center ${
+                    <button
+                      type="button"
+                      onClick={() => handleToggleExercise(exercise.id)}
+                      className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 min-[376px]:h-6 min-[376px]:w-6 ${
                         isSelected
                           ? 'bg-green-500 border-green-500'
                           : 'border-gray-300 dark:border-gray-600'
                       }`}
+                      aria-label={`${isSelected ? 'Убрать' : 'Выбрать'} ${exercise.name}`}
+                      aria-pressed={isSelected}
                     >
                       {isSelected && <Check className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4 text-white" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleOpenExerciseCard(exercise)}
+                      className="flex-1 min-w-0 text-left"
+                      aria-label={`Открыть карточку упражнения ${exercise.name}`}
+                    >
                       <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere">
                         {exercise.name}
                         {primaryMuscle && (
                           <span className="text-gray-500 dark:text-gray-400"> — {primaryMuscle}</span>
                         )}
                       </p>
-                    </div>
+                    </button>
                     {onEditExercise && exercise.is_custom && (
                       <button
                         type="button"
@@ -391,6 +444,16 @@ const ExerciseListSheet = ({
           </div>
         </div>
       </div>
+
+      <ExerciseDefinitionSheet
+        isOpen={activeExercise !== null}
+        exercise={activeExerciseDefinition}
+        isLoading={isDefinitionLoading}
+        error={definitionError}
+        isSelected={activeExercise ? selectedExercises.has(activeExercise.id) : false}
+        onClose={handleCloseExerciseCard}
+        onAddToWorkout={handleAddToWorkoutFromCard}
+      />
     </>
   );
 };

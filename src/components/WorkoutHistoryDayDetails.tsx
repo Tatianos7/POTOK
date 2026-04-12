@@ -1,4 +1,5 @@
 import type { WorkoutEntry } from '../types/workout';
+import { formatWorkoutMetricValue, normalizeWorkoutMetricType } from '../utils/workoutEntryMetric';
 
 interface WorkoutHistoryDayDetailsProps {
   date: string | null;
@@ -36,7 +37,7 @@ const WorkoutHistoryDayDetails = ({ date, entries, isLoading = false }: WorkoutH
       <div className="border-b border-gray-200 px-4 py-3 text-sm font-semibold uppercase text-gray-900 dark:border-gray-700 dark:text-white">
         Тренировка за {date}
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_48px_48px_48px] gap-0 border-b border-gray-100 px-4 py-3 text-[11px] font-medium italic text-gray-600 dark:border-gray-800 dark:text-gray-300">
+      <div className="grid grid-cols-[minmax(0,1fr)_48px_48px_64px] gap-0 border-b border-gray-100 px-4 py-3 text-[11px] font-medium italic text-gray-600 dark:border-gray-800 dark:text-gray-300">
         <div className="min-w-0 pr-2">Упражнение</div>
         <div className="flex items-center justify-center text-center">Подх</div>
         <div className="flex items-center justify-center text-center">Пов</div>
@@ -46,7 +47,7 @@ const WorkoutHistoryDayDetails = ({ date, entries, isLoading = false }: WorkoutH
         {entries.map((entry) => (
           <div
             key={entry.id}
-            className="grid grid-cols-[minmax(0,1fr)_48px_48px_48px] gap-0 px-4 py-3 text-sm text-gray-900 dark:text-white"
+            className="grid grid-cols-[minmax(0,1fr)_48px_48px_64px] gap-0 px-4 py-3 text-sm text-gray-900 dark:text-white"
           >
             <div className="min-w-0 pr-2 text-[13px] leading-5 break-words overflow-hidden">
               {entry.exercise?.name || 'Неизвестное упражнение'}
@@ -54,7 +55,7 @@ const WorkoutHistoryDayDetails = ({ date, entries, isLoading = false }: WorkoutH
             <div className="flex items-center justify-center border-l border-gray-200 px-1 text-center dark:border-gray-700">{entry.sets}</div>
             <div className="flex items-center justify-center border-l border-gray-200 px-1 text-center dark:border-gray-700">{entry.reps}</div>
             <div className="flex items-center justify-center border-l border-gray-200 px-1 text-center dark:border-gray-700">
-              {entry.displayAmount ?? entry.weight}
+              {formatWorkoutMetricValue(entry.displayAmount ?? entry.weight, normalizeWorkoutMetricType(entry.metricType), entry.metricUnit ?? entry.displayUnit)}
             </div>
           </div>
         ))}

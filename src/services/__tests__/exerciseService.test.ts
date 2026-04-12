@@ -1,7 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildExerciseMuscleLinkRows, canDeleteCustomExercise, canEditCustomExercise, exerciseService } from '../exerciseService';
+import {
+  buildExerciseMuscleLinkRows,
+  canDeleteCustomExercise,
+  canEditCustomExercise,
+  exerciseService,
+  isExerciseDefinitionSchemaGapError,
+} from '../exerciseService';
 import type { Exercise, Muscle } from '../../types/workout';
 
 function installLocalStorageMock() {
@@ -220,4 +226,54 @@ test('direct-row muscle mapping preserves muscle ids for custom exercise editing
 
   assert.equal(mapped.muscles?.[0]?.id, 'm-rear-delt');
   assert.ok(mapped.muscles?.[0]?.name);
+});
+
+test('exercise definition card read path treats missing definition schema as non-fatal', () => {
+  assert.equal(
+    isExerciseDefinitionSchemaGapError({
+      message: 'relation "public.exercise_definition_cards" does not exist',
+    }),
+    true,
+  );
+  assert.equal(
+    isExerciseDefinitionSchemaGapError({
+      message: 'column exercise_muscles.role does not exist',
+    }),
+    true,
+  );
+});
+
+test('custom exercise fallback does not require exercise_muscles.role contract', () => {
+  const service = exerciseService as any;
+
+  const mapped = service.mapExerciseFromDirectRow({
+    id: 'custom-4',
+    name: 'Мой супермен',
+    category_id: 'category-4',
+    is_custom: true,
+    created_by_user_id: 'user-1',
+    exercise_muscles: [{ muscle: { id: 'm-core', name: 'Прямая мышца живота' } }],
+  }) as Exercise;
+
+  assert.equal(mapped.name, 'Мой супермен');
+  assert.equal(mapped.is_custom, true);
+  assert.deepEqual(mapped.muscles?.map((muscle) => muscle.name), ['Прямая — верх']);
+});
+
+test('opening exercise definition card can safely render missing content placeholders', () => {
+  const service = exerciseService as any;
+
+  const mapped = service.mapExerciseDefinitionCardRow({
+    id: 'exercise-10',
+    name: 'Жим гантелей сидя',
+    primary_muscles: [],
+    secondary_muscles: [],
+    media: [],
+  }) as Exercise;
+
+  assert.equal(mapped.name, 'Жим гантелей сидя');
+  assert.equal(mapped.description, null);
+  assert.equal(mapped.mistakes, null);
+  assert.deepEqual(mapped.primary_muscles, []);
+  assert.deepEqual(mapped.secondary_muscles, []);
 });

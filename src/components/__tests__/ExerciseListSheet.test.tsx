@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import ExerciseListSheet, { isExerciseRowActivationKey } from '../ExerciseListSheet';
+import ExerciseListSheet, { addExerciseSelectionFromCard, toggleExerciseSelection } from '../ExerciseListSheet';
 import type { Exercise, ExerciseCategory } from '../../types/workout';
 
 const category: ExerciseCategory = {
@@ -40,7 +40,8 @@ test('custom exercise list no longer renders nested button structure', () => {
     />,
   );
 
-  assert.match(html, /role="button"/);
+  assert.match(html, /Открыть карточку упражнения Мой жим/);
+  assert.match(html, /Выбрать Мой жим/);
   assert.match(html, /Редактировать Мой жим/);
   assert.doesNotMatch(html, /<button[^>]*>\s*<button/i);
 });
@@ -92,8 +93,20 @@ test('system exercise list behavior does not expose custom edit entry point', ()
   assert.doesNotMatch(html, /Удалить Жим лёжа/);
 });
 
-test('exercise row activation keys remain keyboard-accessible', () => {
-  assert.equal(isExerciseRowActivationKey('Enter'), true);
-  assert.equal(isExerciseRowActivationKey(' '), true);
-  assert.equal(isExerciseRowActivationKey('Escape'), false);
+test('checkbox selection contract does not auto-open exercise card', () => {
+  const next = toggleExerciseSelection(new Set<string>(), customExercise.id);
+  assert.equal(next.has(customExercise.id), true);
+  assert.equal(next.size, 1);
+});
+
+test('add to workout from exercise card keeps multi-select contract', () => {
+  const initial = new Set<string>(['system-1']);
+  const next = addExerciseSelectionFromCard(initial, customExercise.id);
+  assert.deepEqual(Array.from(next).sort(), ['custom-1', 'system-1']);
+});
+
+test('add to workout from exercise card does not duplicate existing selection', () => {
+  const initial = new Set<string>([customExercise.id]);
+  const next = addExerciseSelectionFromCard(initial, customExercise.id);
+  assert.deepEqual(Array.from(next), [customExercise.id]);
 });

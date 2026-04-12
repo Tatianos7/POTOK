@@ -1,5 +1,6 @@
 import { Edit, Trash2 } from 'lucide-react';
 import { WorkoutEntry } from '../types/workout';
+import { formatWorkoutMetricValue, normalizeWorkoutMetricType } from '../utils/workoutEntryMetric';
 
 interface WorkoutEntryCardProps {
   entry: WorkoutEntry;
@@ -21,7 +22,7 @@ const WorkoutEntryCard = ({ entry, onEdit, onDelete }: WorkoutEntryCardProps) =>
             )}
           </h3>
           <p className="text-sm min-[376px]:text-base font-medium text-gray-700 dark:text-gray-300">
-            {entry.sets} × {entry.reps} × {entry.weight} кг
+            {entry.sets} × {entry.reps} × {formatWorkoutMetricValue(entry.displayAmount ?? entry.weight, normalizeWorkoutMetricType(entry.metricType), entry.metricUnit ?? entry.displayUnit)}
           </p>
         </div>
         {(onEdit || onDelete) && (
@@ -52,4 +53,3 @@ const WorkoutEntryCard = ({ entry, onEdit, onDelete }: WorkoutEntryCardProps) =>
 };
 
 export default WorkoutEntryCard;
-

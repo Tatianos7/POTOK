@@ -25,12 +25,14 @@ const entries: WorkoutEntry[] = [
     id: 'entry-2',
     workout_day_id: 'day-1',
     exercise_id: 'exercise-2',
+    metricType: 'time',
+    metricUnit: 'мин',
     sets: 3,
     reps: 12,
     weight: 30,
     displayAmount: 30,
-    displayUnit: 'кг',
-    baseUnit: 'кг',
+    displayUnit: 'мин',
+    baseUnit: 'мин',
     exercise: { id: 'exercise-2', name: 'Армейский жим', category_id: 'shoulders', is_custom: false },
   },
 ];
@@ -43,6 +45,27 @@ test('repeat modal allows selecting subset of exercises through repeat options l
     options.map((item) => item.exerciseId),
     ['exercise-1', 'exercise-2'],
   );
+  assert.equal(options[1].metricValueLabel, '30 мин');
+});
+
+test('repeat flow preserves per-row metric_type and metric_unit labels', () => {
+  const options = buildRepeatWorkoutOptions([
+    {
+      ...entries[0],
+      metricType: 'distance',
+      metricUnit: 'км',
+      weight: 5,
+      displayAmount: 5,
+      displayUnit: 'км',
+      baseUnit: 'км',
+    },
+    entries[1],
+  ]);
+
+  assert.equal(options[0].metricType, 'distance');
+  assert.equal(options[0].metricValueLabel, '5 км');
+  assert.equal(options[1].metricType, 'time');
+  assert.equal(options[1].metricValueLabel, '30 мин');
 });
 
 test('repeat modal allows selecting target date via default date contract', () => {

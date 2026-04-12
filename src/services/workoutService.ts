@@ -5,6 +5,8 @@ import {
   SelectedExercise,
   WorkoutHistoryDaySummary,
   WorkoutProgressObservation,
+  WorkoutMetricType,
+  WorkoutMetricUnit,
 } from '../types/workout';
 import { aiTrainingPlansService, TrainingDayContext } from './aiTrainingPlansService';
 import { goalService } from './goalService';
@@ -13,6 +15,12 @@ import { convertWeightToKg } from '../utils/workoutUnits';
 import { aggregateWorkoutEntries, calculateVolume } from '../utils/workoutMetrics';
 import { coachRuntime } from './coachRuntime';
 import { clearWorkoutEntriesForDay, removeWorkoutEntryFromList, updateWorkoutEntryInList } from '../utils/workoutDiaryMutations';
+import {
+  getWorkoutMetricUnit,
+  normalizeWorkoutMetricType,
+  normalizeWorkoutMetricUnit,
+  normalizeWorkoutMetricValue,
+} from '../utils/workoutEntryMetric';
 
 type WorkoutHistoryAggregateRow = {
   workout_day_id: string;
@@ -27,7 +35,10 @@ type WorkoutEntryUpdatePatch = {
   sets?: number;
   reps?: number;
   weight?: number;
+  base_unit?: string | null;
   display_amount?: number;
+  display_unit?: string | null;
+  metric_type?: WorkoutMetricType;
 };
 
 type WorkoutProgressObservationRow = {
@@ -44,6 +55,96 @@ type WorkoutProgressObservationRow = {
     canonical_exercise_id?: string | null;
   } | null;
 };
+
+type WorkoutEntryWriteRow = {
+  workout_day_id: string;
+  exercise_id: string;
+  metric_type?: WorkoutMetricType;
+  sets: number;
+  reps: number;
+  weight: number;
+  base_unit: string | null;
+  display_unit: string | null;
+  display_amount: number;
+  idempotency_key: string;
+};
+
+type PersistedWorkoutEntryResult = {
+  data: any[] | null;
+  error: { code?: string | null; message?: string | null; details?: string | null } | null;
+};
+
+type WorkoutMetricTypeSchemaCapabilityCache = {
+  available: boolean;
+  checkedAt: number;
+};
+
+const WORKOUT_METRIC_TYPE_SCHEMA_CACHE_KEY = 'potok_workout_metric_type_schema_capability';
+const WORKOUT_METRIC_TYPE_SCHEMA_CACHE_TTL_MS = 10 * 60 * 1000;
+
+export function isMetricTypeSchemaCacheError(error: { message?: string | null; details?: string | null } | null | undefined): boolean {
+  const message = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
+  return message.includes('metric_type') && (
+    message.includes('schema cache') ||
+    message.includes('could not find') ||
+    message.includes('column')
+  );
+}
+
+export function stripMetricTypeFromLegacyWorkoutWriteRows(rows: WorkoutEntryWriteRow[]): Array<Omit<WorkoutEntryWriteRow, 'metric_type'>> {
+  return rows.map(({ metric_type: _metricType, ...row }) => {
+    const fallbackValue = Number(row.display_amount ?? row.weight ?? 0) || 0;
+
+    return {
+      ...row,
+      weight: fallbackValue,
+      base_unit: 'кг',
+      display_unit: 'кг',
+      display_amount: fallbackValue,
+    };
+  });
+}
+
+export function stripMetricTypeFromLegacyWorkoutUpdatePatch(patch: WorkoutEntryUpdatePatch): WorkoutEntryUpdatePatch {
+  const { metric_type: _metricType, ...rest } = patch;
+  const fallbackValue = Number(rest.display_amount ?? rest.weight ?? 0) || 0;
+
+  return {
+    ...rest,
+    weight: fallbackValue,
+    display_amount: fallbackValue,
+    display_unit: 'кг',
+  };
+}
+
+export function readCachedMetricTypeSchemaCapability(
+  rawValue: string | null,
+  now = Date.now(),
+  ttlMs = WORKOUT_METRIC_TYPE_SCHEMA_CACHE_TTL_MS,
+): boolean | null {
+  if (!rawValue) return null;
+
+  try {
+    const parsed = JSON.parse(rawValue) as WorkoutMetricTypeSchemaCapabilityCache;
+    if (
+      typeof parsed.available !== 'boolean' ||
+      typeof parsed.checkedAt !== 'number' ||
+      now - parsed.checkedAt > ttlMs
+    ) {
+      return null;
+    }
+    return parsed.available;
+  } catch {
+    return null;
+  }
+}
+
+export function serializeMetricTypeSchemaCapability(
+  available: boolean,
+  checkedAt = Date.now(),
+): string {
+  return JSON.stringify({ available, checkedAt });
+}
 
 export function buildWorkoutHistoryDaySummaries(rows: WorkoutHistoryAggregateRow[]): WorkoutHistoryDaySummary[] {
   const dayMap = new Map<string, WorkoutHistoryDaySummary & { exerciseIds: Set<string> }>();
@@ -81,8 +182,11 @@ export function buildWorkoutHistoryDaySummaries(rows: WorkoutHistoryAggregateRow
     .sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export function buildWorkoutEntryUpdatePatch(updates: { sets?: number; reps?: number; weight?: number }): WorkoutEntryUpdatePatch {
+export function buildWorkoutEntryUpdatePatch(
+  updates: { sets?: number; reps?: number; weight?: number; metricType?: WorkoutMetricType; metricUnit?: WorkoutMetricUnit },
+): WorkoutEntryUpdatePatch {
   const patch: WorkoutEntryUpdatePatch = {};
+  const metricType = normalizeWorkoutMetricType(updates.metricType);
   if (updates.sets !== undefined) {
     patch.sets = updates.sets;
   }
@@ -90,8 +194,21 @@ export function buildWorkoutEntryUpdatePatch(updates: { sets?: number; reps?: nu
     patch.reps = updates.reps;
   }
   if (updates.weight !== undefined) {
-    patch.weight = updates.weight;
-    patch.display_amount = updates.weight;
+    const value = normalizeWorkoutMetricValue(metricType, updates.weight);
+    patch.weight = value;
+    patch.display_amount = value;
+  }
+  if (updates.metricType !== undefined) {
+    patch.metric_type = metricType;
+    patch.base_unit = getWorkoutMetricUnit(metricType, updates.metricUnit) || null;
+    patch.display_unit = getWorkoutMetricUnit(metricType, updates.metricUnit) || null;
+    if (metricType === 'none') {
+      patch.weight = 0;
+      patch.display_amount = 0;
+    }
+  } else if (updates.metricUnit !== undefined) {
+    patch.base_unit = getWorkoutMetricUnit(metricType, updates.metricUnit) || null;
+    patch.display_unit = getWorkoutMetricUnit(metricType, updates.metricUnit) || null;
   }
   return patch;
 }
@@ -142,6 +259,155 @@ class WorkoutService {
   private readonly MAX_SETS = 50;
   private readonly MAX_VOLUME = 1000000;
   private schemaWarned = false;
+  private metricTypeSchemaAvailable: boolean | null = null;
+  private metricTypeFallbackWarned = false;
+
+  private warnMetricTypeSchemaFallback() {
+    if (this.metricTypeFallbackWarned) return;
+    console.warn('[workoutService] metric_type column is not available yet; falling back to legacy weight save contract');
+    this.metricTypeFallbackWarned = true;
+  }
+
+  private getCachedMetricTypeSchemaCapability(): boolean | null {
+    if (this.metricTypeSchemaAvailable !== null) {
+      return this.metricTypeSchemaAvailable;
+    }
+
+    try {
+      const cached = readCachedMetricTypeSchemaCapability(
+        localStorage.getItem(WORKOUT_METRIC_TYPE_SCHEMA_CACHE_KEY),
+      );
+      this.metricTypeSchemaAvailable = cached;
+      return cached;
+    } catch {
+      return this.metricTypeSchemaAvailable;
+    }
+  }
+
+  private persistMetricTypeSchemaCapability(available: boolean) {
+    this.metricTypeSchemaAvailable = available;
+
+    try {
+      localStorage.setItem(
+        WORKOUT_METRIC_TYPE_SCHEMA_CACHE_KEY,
+        serializeMetricTypeSchemaCapability(available),
+      );
+    } catch {
+      // ignore cache persistence failures
+    }
+  }
+
+  private async upsertWorkoutEntriesWithMetricFallback(
+    rows: WorkoutEntryWriteRow[],
+    selectClause: string,
+  ): Promise<PersistedWorkoutEntryResult> {
+    if (!supabase) {
+      return { data: null, error: { message: 'Supabase не инициализирован' } };
+    }
+    const supabaseClient = supabase;
+
+    const usesLegacyWrite = this.getCachedMetricTypeSchemaCapability() === false;
+    const writeRows = usesLegacyWrite ? stripMetricTypeFromLegacyWorkoutWriteRows(rows) : rows;
+
+    const attempt = async (payload: typeof writeRows) =>
+      await this.withRetry(async () =>
+        await supabaseClient
+          .from('workout_entries')
+          .upsert(payload, { onConflict: 'workout_day_id,idempotency_key' })
+          .select(selectClause),
+      );
+
+    let result = await attempt(writeRows);
+    if (!result.error) {
+      if (!usesLegacyWrite) {
+        this.persistMetricTypeSchemaCapability(true);
+      }
+      return result;
+    }
+
+    if (isMetricTypeSchemaCacheError(result.error) && this.getCachedMetricTypeSchemaCapability() !== false) {
+      this.persistMetricTypeSchemaCapability(false);
+      this.warnMetricTypeSchemaFallback();
+      result = await attempt(stripMetricTypeFromLegacyWorkoutWriteRows(rows));
+    }
+
+    return result;
+  }
+
+  private async insertWorkoutEntriesWithMetricFallback(
+    rows: WorkoutEntryWriteRow[],
+    selectClause: string,
+  ): Promise<PersistedWorkoutEntryResult> {
+    if (!supabase) {
+      return { data: null, error: { message: 'Supabase не инициализирован' } };
+    }
+    const supabaseClient = supabase;
+
+    const usesLegacyWrite = this.getCachedMetricTypeSchemaCapability() === false;
+    const writeRows = usesLegacyWrite ? stripMetricTypeFromLegacyWorkoutWriteRows(rows) : rows;
+
+    const attempt = async (payload: typeof writeRows) =>
+      await this.withRetry(async () =>
+        await supabaseClient
+          .from('workout_entries')
+          .insert(payload)
+          .select(selectClause),
+      );
+
+    let result = await attempt(writeRows);
+    if (!result.error) {
+      if (!usesLegacyWrite) {
+        this.persistMetricTypeSchemaCapability(true);
+      }
+      return result;
+    }
+
+    if (isMetricTypeSchemaCacheError(result.error) && this.getCachedMetricTypeSchemaCapability() !== false) {
+      this.persistMetricTypeSchemaCapability(false);
+      this.warnMetricTypeSchemaFallback();
+      result = await attempt(stripMetricTypeFromLegacyWorkoutWriteRows(rows));
+    }
+
+    return result;
+  }
+
+  private async updateWorkoutEntryWithMetricFallback(
+    entryId: string,
+    patch: WorkoutEntryUpdatePatch,
+    selectClause: string,
+  ): Promise<{ data: any | null; error: { code?: string | null; message?: string | null; details?: string | null } | null }> {
+    if (!supabase) {
+      return { data: null, error: { message: 'Supabase не инициализирован' } };
+    }
+    const supabaseClient = supabase;
+
+    const usesLegacyWrite = this.getCachedMetricTypeSchemaCapability() === false;
+    const writePatch = usesLegacyWrite ? stripMetricTypeFromLegacyWorkoutUpdatePatch(patch) : patch;
+
+    const attempt = async (payload: WorkoutEntryUpdatePatch) =>
+      await supabaseClient
+        .from('workout_entries')
+        .update(payload)
+        .eq('id', entryId)
+        .select(selectClause)
+        .single();
+
+    let result = await attempt(writePatch);
+    if (!result.error) {
+      if (!usesLegacyWrite) {
+        this.persistMetricTypeSchemaCapability(true);
+      }
+      return result;
+    }
+
+    if (isMetricTypeSchemaCacheError(result.error) && this.getCachedMetricTypeSchemaCapability() !== false) {
+      this.persistMetricTypeSchemaCapability(false);
+      this.warnMetricTypeSchemaFallback();
+      result = await attempt(stripMetricTypeFromLegacyWorkoutUpdatePatch(patch));
+    }
+
+    return result;
+  }
 
   private async withRetry<T>(fn: () => Promise<T>, attempts = 2, delayMs = 200): Promise<T> {
     let lastError: any;
@@ -238,17 +504,22 @@ class WorkoutService {
   }
 
   private mapWorkoutEntryRow(entry: any): WorkoutEntry {
+    const metricType = normalizeWorkoutMetricType(entry.metric_type);
+    const metricValue = normalizeWorkoutMetricValue(metricType, Number(entry.weight) || 0);
+    const metricUnit = normalizeWorkoutMetricUnit(metricType, entry.display_unit ?? entry.base_unit ?? null) ?? undefined;
     return {
       id: entry.id,
       workout_day_id: entry.workout_day_id,
       exercise_id: entry.exercise_id,
       canonical_exercise_id: entry.exercise?.canonical_exercise_id ?? entry.exercise_id ?? null,
+      metricType,
+      metricUnit,
       sets: Number(entry.sets) || 0,
       reps: Number(entry.reps) || 0,
-      weight: Number(entry.weight) || 0,
-      baseUnit: entry.base_unit ?? 'кг',
-      displayUnit: entry.display_unit ?? 'кг',
-      displayAmount: Number(entry.display_amount ?? entry.weight ?? 0),
+      weight: metricValue,
+      baseUnit: entry.base_unit ?? getWorkoutMetricUnit(metricType, metricUnit) ?? 'кг',
+      displayUnit: metricUnit,
+      displayAmount: normalizeWorkoutMetricValue(metricType, Number(entry.display_amount ?? entry.weight ?? 0)),
       idempotencyKey: entry.idempotency_key ?? undefined,
       created_at: entry.created_at,
       updated_at: entry.updated_at,
@@ -664,22 +935,27 @@ class WorkoutService {
     // Оптимистично обновляем localStorage (manual mode)
     const localExisting = this.getWorkoutsFromLocalStorage(userId, date) || [];
     const withKeys = exercises.map((ex) => {
-      this.assertEntryNumbers({ sets: ex.sets, reps: ex.reps, weight: ex.weight });
+      const metricType = normalizeWorkoutMetricType(ex.metricType);
+      const metricValue = normalizeWorkoutMetricValue(metricType, ex.weight);
+      this.assertEntryNumbers({ sets: ex.sets, reps: ex.reps, weight: metricValue });
       const key = this.buildIdempotencyKey(date, ex.exercise.id);
-      const baseUnit = 'кг';
-      const displayUnit = 'кг';
-      const displayAmount = ex.weight;
-      const baseWeight = convertWeightToKg(displayAmount, displayUnit);
+      const displayUnit = normalizeWorkoutMetricUnit(metricType, ex.metricUnit) ?? undefined;
+      const displayAmount = metricValue;
+      const baseWeight = metricType === 'weight'
+        ? convertWeightToKg(displayAmount, 'кг')
+        : metricValue;
       const existing = localExisting.find((entry) => entry.idempotencyKey === key);
       return {
         id: existing?.id || `local-${key}`,
         workout_day_id: existing?.workout_day_id || `local-${date}`,
         exercise_id: ex.exercise.id,
         canonical_exercise_id: ex.exercise.canonical_exercise_id ?? ex.exercise.id,
+        metricType,
+        metricUnit: displayUnit,
         sets: ex.sets,
         reps: ex.reps,
         weight: baseWeight,
-        baseUnit,
+        baseUnit: displayUnit,
         displayUnit,
         displayAmount,
         idempotencyKey: key,
@@ -701,8 +977,6 @@ class WorkoutService {
     if (!supabase) {
       return merged;
     }
-    const supabaseClient = supabase;
-
     // Получаем или создаем день тренировки (UUID сгенерируется в БД)
     let workoutDay: WorkoutDay;
     try {
@@ -714,39 +988,44 @@ class WorkoutService {
 
     // Создаем записи (UUID для каждой записи сгенерируется в БД через DEFAULT gen_random_uuid())
     exercises.forEach((ex) => {
-      this.assertEntryNumbers({ sets: ex.sets, reps: ex.reps, weight: ex.weight });
+      const metricType = normalizeWorkoutMetricType(ex.metricType);
+      this.assertEntryNumbers({ sets: ex.sets, reps: ex.reps, weight: normalizeWorkoutMetricValue(metricType, ex.weight) });
     });
 
-    const entries = exercises.map(ex => ({
-      workout_day_id: workoutDay.id,
-      exercise_id: ex.exercise.id,
-      sets: ex.sets,
-      reps: ex.reps,
-      weight: convertWeightToKg(ex.weight, 'кг'),
-      base_unit: 'кг',
-      display_unit: 'кг',
-      display_amount: ex.weight,
-      idempotency_key: this.buildIdempotencyKey(date, ex.exercise.id),
-    }));
+    const entries = exercises.map((ex) => {
+      const metricType = normalizeWorkoutMetricType(ex.metricType);
+      const metricValue = normalizeWorkoutMetricValue(metricType, ex.weight);
+      const metricUnit = normalizeWorkoutMetricUnit(metricType, ex.metricUnit) ?? null;
+      return {
+        workout_day_id: workoutDay.id,
+        exercise_id: ex.exercise.id,
+        metric_type: metricType,
+        sets: ex.sets,
+        reps: ex.reps,
+        weight: metricType === 'weight' ? convertWeightToKg(metricValue, 'кг') : metricValue,
+        base_unit: metricUnit,
+        display_unit: metricUnit,
+        display_amount: metricValue,
+        idempotency_key: this.buildIdempotencyKey(date, ex.exercise.id),
+      };
+    });
     const totalVolume = entries.reduce((sum, entry) => sum + calculateVolume(entry.sets, entry.reps, entry.weight), 0);
     if (totalVolume > this.MAX_VOLUME) {
       throw new Error('[workoutService] Suspicious volume spike');
     }
 
-    const { data, error } = await this.withRetry(async () =>
-      await supabaseClient
-        .from('workout_entries')
-        .upsert(entries, { onConflict: 'workout_day_id,idempotency_key' })
-        .select(`
+    const { data, error } = await this.upsertWorkoutEntriesWithMetricFallback(
+      entries,
+      `
+        *,
+        exercise:exercises(
           *,
-          exercise:exercises(
-            *,
-            category:exercise_categories(*),
-            exercise_muscles(
-              muscle:muscles(*)
-            )
+          category:exercise_categories(*),
+          exercise_muscles(
+            muscle:muscles(*)
           )
-        `)
+        )
+      `,
     );
 
     if (error) {
@@ -823,7 +1102,6 @@ class WorkoutService {
       return nextEntries;
     }
 
-    const supabaseClient = supabase;
     let workoutDay: WorkoutDay;
     try {
       workoutDay = await this.getOrCreateWorkoutDay(userId, targetDate);
@@ -841,15 +1119,17 @@ class WorkoutService {
       return nextEntries;
     }
     const rows = entriesToCopy.map((entry) => {
-      const displayUnit = entry.displayUnit === 'lb' ? 'lb' : 'кг';
-      const displayAmount = entry.displayAmount ?? entry.weight;
+      const metricType = normalizeWorkoutMetricType(entry.metricType);
+      const displayAmount = normalizeWorkoutMetricValue(metricType, entry.displayAmount ?? entry.weight);
+      const displayUnit = normalizeWorkoutMetricUnit(metricType, entry.metricUnit ?? entry.displayUnit ?? null) ?? null;
       return {
         workout_day_id: workoutDay.id,
         exercise_id: entry.exercise_id,
+        metric_type: metricType,
         sets: entry.sets,
         reps: entry.reps,
-        weight: convertWeightToKg(displayAmount, displayUnit),
-        base_unit: entry.baseUnit === 'lb' ? 'lb' : 'кг',
+        weight: metricType === 'weight' ? convertWeightToKg(displayAmount, 'кг') : displayAmount,
+        base_unit: displayUnit,
         display_unit: displayUnit,
         display_amount: displayAmount,
         idempotency_key: this.buildRepeatIdempotencyKey(targetDate, entry.id, entry.exercise_id, operationId),
@@ -861,21 +1141,19 @@ class WorkoutService {
       throw new Error('[workoutService] Suspicious volume spike');
     }
 
-    const { error } = await this.withRetry(async () =>
-      await supabaseClient
-        .from('workout_entries')
-        .insert(rows)
-        .select(`
+    const { error } = await this.insertWorkoutEntriesWithMetricFallback(
+      rows,
+      `
+        *,
+        exercise:exercises(
           *,
-          exercise:exercises(
-            *,
-            category:exercise_categories(*),
-            exercise_muscles(
-              muscle:muscles(*)
-            )
-          ),
-          workout_day:workout_days(*)
-        `),
+          category:exercise_categories(*),
+          exercise_muscles(
+            muscle:muscles(*)
+          )
+        ),
+        workout_day:workout_days(*)
+      `,
     );
 
     if (error) {
@@ -899,7 +1177,7 @@ class WorkoutService {
    */
   async updateWorkoutEntry(
     entryId: string,
-    updates: { sets?: number; reps?: number; weight?: number },
+    updates: { sets?: number; reps?: number; weight?: number; metricType?: WorkoutMetricType; metricUnit?: WorkoutMetricUnit },
     expectedUpdatedAt?: string,
     context?: { userId?: string; date?: string }
   ): Promise<WorkoutEntry> {
@@ -912,10 +1190,29 @@ class WorkoutService {
         }
         const mergedEntry: WorkoutEntry = {
           ...currentEntry,
+          metricType: normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+          metricUnit: normalizeWorkoutMetricUnit(
+            normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+            updates.metricUnit ?? currentEntry.metricUnit ?? currentEntry.displayUnit ?? null,
+          ) || undefined,
           sets: updates.sets ?? currentEntry.sets,
           reps: updates.reps ?? currentEntry.reps,
-          weight: updates.weight ?? currentEntry.weight,
-          displayAmount: updates.weight ?? currentEntry.displayAmount ?? currentEntry.weight,
+          weight: normalizeWorkoutMetricValue(
+            normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+            updates.weight ?? currentEntry.weight,
+          ),
+          displayAmount: normalizeWorkoutMetricValue(
+            normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+            updates.weight ?? currentEntry.displayAmount ?? currentEntry.weight,
+          ),
+          baseUnit: getWorkoutMetricUnit(
+            normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+            updates.metricUnit ?? currentEntry.metricUnit ?? currentEntry.displayUnit ?? null,
+          ) || undefined,
+          displayUnit: getWorkoutMetricUnit(
+            normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+            updates.metricUnit ?? currentEntry.metricUnit ?? currentEntry.displayUnit ?? null,
+          ) || undefined,
         };
         this.updateLocalWorkoutEntries(context.userId, context.date, (entries) =>
           updateWorkoutEntryInList(entries, entryId, {
@@ -923,6 +1220,9 @@ class WorkoutService {
             reps: mergedEntry.reps,
             weight: mergedEntry.weight,
             displayAmount: mergedEntry.displayAmount ?? mergedEntry.weight,
+            displayUnit: mergedEntry.displayUnit,
+            metricType: mergedEntry.metricType,
+            metricUnit: mergedEntry.metricUnit,
           }),
         );
         return mergedEntry;
@@ -943,10 +1243,29 @@ class WorkoutService {
           }
           const mergedEntry: WorkoutEntry = {
             ...currentEntry,
+            metricType: normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+            metricUnit: normalizeWorkoutMetricUnit(
+              normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+              updates.metricUnit ?? currentEntry.metricUnit ?? currentEntry.displayUnit ?? null,
+            ) || undefined,
             sets: updates.sets ?? currentEntry.sets,
             reps: updates.reps ?? currentEntry.reps,
-            weight: updates.weight ?? currentEntry.weight,
-            displayAmount: updates.weight ?? currentEntry.displayAmount ?? currentEntry.weight,
+            weight: normalizeWorkoutMetricValue(
+              normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+              updates.weight ?? currentEntry.weight,
+            ),
+            displayAmount: normalizeWorkoutMetricValue(
+              normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+              updates.weight ?? currentEntry.displayAmount ?? currentEntry.weight,
+            ),
+            baseUnit: getWorkoutMetricUnit(
+              normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+              updates.metricUnit ?? currentEntry.metricUnit ?? currentEntry.displayUnit ?? null,
+            ) || undefined,
+            displayUnit: getWorkoutMetricUnit(
+              normalizeWorkoutMetricType(updates.metricType ?? currentEntry.metricType),
+              updates.metricUnit ?? currentEntry.metricUnit ?? currentEntry.displayUnit ?? null,
+            ) || undefined,
           };
           this.updateLocalWorkoutEntries(context.userId, context.date, (entries) =>
             updateWorkoutEntryInList(entries, entryId, {
@@ -954,6 +1273,9 @@ class WorkoutService {
               reps: mergedEntry.reps,
               weight: mergedEntry.weight,
               displayAmount: mergedEntry.displayAmount ?? mergedEntry.weight,
+              displayUnit: mergedEntry.displayUnit,
+              metricType: mergedEntry.metricType,
+              metricUnit: mergedEntry.metricUnit,
             }),
           );
           return mergedEntry;
@@ -975,11 +1297,10 @@ class WorkoutService {
         }
       }
       const patch = buildWorkoutEntryUpdatePatch(updates);
-      const { data, error } = await supabase
-        .from('workout_entries')
-        .update(patch)
-        .eq('id', entryId)
-        .select(`
+      const { data, error } = await this.updateWorkoutEntryWithMetricFallback(
+        entryId,
+        patch,
+        `
           *,
           workout_day:workout_days(date),
           exercise:exercises(
@@ -989,8 +1310,8 @@ class WorkoutService {
               muscle:muscles(*)
             )
           )
-        `)
-        .single();
+        `,
+      );
 
       if (error || !data) {
         throw new Error(error?.message || 'Ошибка обновления записи');
@@ -1014,6 +1335,9 @@ class WorkoutService {
             reps: mapped.reps,
             weight: mapped.weight,
             displayAmount: mapped.displayAmount ?? mapped.weight,
+            displayUnit: mapped.displayUnit,
+            metricType: mapped.metricType,
+            metricUnit: mapped.metricUnit,
           }),
         );
       }

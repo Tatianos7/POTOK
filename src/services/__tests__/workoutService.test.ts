@@ -5,6 +5,11 @@ import {
   buildWorkoutEntryUpdatePatch,
   buildWorkoutHistoryDaySummaries,
   buildWorkoutProgressObservations,
+  isMetricTypeSchemaCacheError,
+  readCachedMetricTypeSchemaCapability,
+  serializeMetricTypeSchemaCapability,
+  stripMetricTypeFromLegacyWorkoutUpdatePatch,
+  stripMetricTypeFromLegacyWorkoutWriteRows,
   workoutService,
 } from '../workoutService';
 import { supabase } from '../../lib/supabaseClient';
@@ -24,6 +29,7 @@ function createEntry(
     workout_day_id: overrides.workout_day_id ?? `day-${DATE}`,
     exercise_id: overrides.exercise_id ?? `exercise-${id}`,
     canonical_exercise_id: overrides.canonical_exercise_id ?? overrides.exercise_id ?? `exercise-${id}`,
+    metricType: overrides.metricType ?? 'weight',
     sets: overrides.sets ?? 3,
     reps: overrides.reps ?? 10,
     weight: overrides.weight ?? 50,
@@ -176,6 +182,7 @@ test('edit updates only workout entry and preserves exercise definition in local
   assert.equal(updated.reps, 8);
   assert.equal(updated.weight, 72.5);
   assert.equal(updated.displayAmount, 72.5);
+  assert.equal(updated.metricType, 'weight');
   assert.equal(updated.exercise?.name, 'Присед');
 
   const stored = readWorkoutStorage();
@@ -184,6 +191,28 @@ test('edit updates only workout entry and preserves exercise definition in local
   assert.equal(stored[DATE][0].reps, 8);
   assert.equal(stored[DATE][0].weight, 72.5);
   assert.equal(stored[DATE][0].exercise?.name, 'Присед');
+});
+
+test('metric_type is saved correctly in local-only workout entry edit flow', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  seedWorkoutStorage({ [DATE]: [createEntry('entry-1', 'Планка', { metricType: 'weight', weight: 20 })] });
+
+  const updated = await workoutService.updateWorkoutEntry(
+    'entry-1',
+    { metricType: 'time', metricUnit: 'мин', weight: 30 },
+    undefined,
+    { userId: USER_ID, date: DATE },
+  );
+
+  assert.equal(updated.metricType, 'time');
+  assert.equal(updated.weight, 30);
+  assert.equal(updated.displayAmount, 30);
+  assert.equal(updated.displayUnit, 'мин');
+  assert.equal(updated.metricUnit, 'мин');
 });
 
 test('failed single delete without persistence context does not mutate local state', async (t) => {
@@ -225,6 +254,80 @@ test('workout entry edit updates weight patch correctly for persisted read-side'
 
   assert.equal(patch.weight, 72.5);
   assert.equal(patch.display_amount, 72.5);
+});
+
+test('workout entry edit patch resets none metric value to zero', () => {
+  const patch = buildWorkoutEntryUpdatePatch({ metricType: 'none', weight: 25 });
+
+  assert.equal(patch.metric_type, 'none');
+  assert.equal(patch.weight, 0);
+  assert.equal(patch.display_amount, 0);
+});
+
+test('workout entry edit patch stores selected distance unit without conversion', () => {
+  const patch = buildWorkoutEntryUpdatePatch({ metricType: 'distance', metricUnit: 'м', weight: 400 });
+
+  assert.equal(patch.metric_type, 'distance');
+  assert.equal(patch.weight, 400);
+  assert.equal(patch.display_amount, 400);
+  assert.equal(patch.display_unit, 'м');
+  assert.equal(patch.base_unit, 'м');
+});
+
+test('metric_type schema cache error is detected correctly', () => {
+  assert.equal(
+    isMetricTypeSchemaCacheError({
+      message: "Could not find the 'metric_type' column of 'workout_entries' in the schema cache",
+    }),
+    true,
+  );
+  assert.equal(isMetricTypeSchemaCacheError({ message: 'row level security violation' }), false);
+});
+
+test('metric_type schema capability cache roundtrip is read correctly', () => {
+  const raw = serializeMetricTypeSchemaCapability(false, 1_000);
+  assert.equal(readCachedMetricTypeSchemaCapability(raw, 1_500, 10_000), false);
+});
+
+test('expired metric_type schema capability cache is ignored', () => {
+  const raw = serializeMetricTypeSchemaCapability(false, 1_000);
+  assert.equal(readCachedMetricTypeSchemaCapability(raw, 20_000, 5_000), null);
+});
+
+test('legacy metric fallback strips metric_type from write rows without breaking add flow payload', () => {
+  const rows = stripMetricTypeFromLegacyWorkoutWriteRows([
+    {
+      workout_day_id: 'day-1',
+      exercise_id: 'exercise-1',
+      metric_type: 'time',
+      sets: 3,
+      reps: 12,
+      weight: 30,
+      base_unit: 'сек',
+      display_unit: 'сек',
+      display_amount: 30,
+      idempotency_key: 'key-1',
+    },
+  ]);
+
+  assert.equal('metric_type' in rows[0], false);
+  assert.equal(rows[0].weight, 30);
+  assert.equal(rows[0].display_amount, 30);
+  assert.equal(rows[0].display_unit, 'кг');
+});
+
+test('legacy metric fallback strips metric_type from update patch safely', () => {
+  const patch = stripMetricTypeFromLegacyWorkoutUpdatePatch({
+    metric_type: 'distance',
+    weight: 2,
+    display_amount: 2,
+    display_unit: 'км',
+  });
+
+  assert.equal('metric_type' in patch, false);
+  assert.equal(patch.weight, 2);
+  assert.equal(patch.display_amount, 2);
+  assert.equal(patch.display_unit, 'кг');
 });
 
 test('getWorkoutProgressObservations returns persisted observation rows for period mapping', () => {
