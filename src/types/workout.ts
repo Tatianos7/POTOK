@@ -15,11 +15,25 @@ export interface Muscle {
   region?: 'upper' | 'lower' | 'core' | string;
 }
 
+export interface ExerciseMediaItem {
+  type: 'image' | 'video';
+  url: string;
+  order: number;
+}
+
+export type WorkoutMetricType = 'weight' | 'bodyweight' | 'time' | 'distance' | 'none';
+export type WorkoutMetricUnit = 'кг' | 'св. вес' | 'сек' | 'мин' | 'м' | 'км' | null;
+
 export interface Exercise {
   id: string;
   name: string;
   category_id: string;
   description?: string | null;
+  mistakes?: string | null;
+  primary_muscles?: string[] | null;
+  secondary_muscles?: string[] | null;
+  muscle_map_image_url?: string | null;
+  media?: ExerciseMediaItem[] | null;
   is_custom: boolean;
   created_by_user_id?: string | null;
   canonical_exercise_id?: string | null;
@@ -86,11 +100,24 @@ export interface WorkoutProgressRow {
   lastDate: string;
 }
 
+export interface UserExerciseMedia {
+  id: string;
+  user_id: string;
+  exercise_id: string;
+  workout_entry_id?: string | null;
+  workout_date?: string | null;
+  file_path: string;
+  file_type: 'image' | 'video';
+  created_at: string;
+}
+
 export interface WorkoutEntry {
   id: string;
   workout_day_id: string;
   exercise_id: string;
   canonical_exercise_id?: string | null;
+  metricType?: WorkoutMetricType;
+  metricUnit?: WorkoutMetricUnit;
   sets: number;
   reps: number;
   weight: number;
@@ -106,6 +133,8 @@ export interface WorkoutEntry {
 
 export interface SelectedExercise {
   exercise: Exercise;
+  metricType?: WorkoutMetricType;
+  metricUnit?: WorkoutMetricUnit;
   sets: number;
   reps: number;
   weight: number;

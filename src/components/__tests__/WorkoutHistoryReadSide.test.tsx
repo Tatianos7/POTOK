@@ -111,7 +111,7 @@ test('selecting history item can open correct day details read model', () => {
   assert.match(html, /Жим лёжа/);
   assert.match(html, />4</);
   assert.match(html, />10</);
-  assert.match(html, />60</);
+  assert.match(html, /60 кг/);
 });
 
 test('exercise name column remains constrained within table layout', () => {
@@ -123,7 +123,7 @@ test('exercise name column remains constrained within table layout', () => {
     />,
   );
 
-  assert.match(html, /grid-cols-\[minmax\(0,1fr\)_48px_48px_48px\]/);
+  assert.match(html, /grid-cols-\[minmax\(0,1fr\)_48px_48px_64px\]/);
   assert.match(html, /break-words overflow-hidden/);
   assert.match(html, /Подъёмы на грудь \(Push Press\)/);
 });
@@ -197,4 +197,60 @@ test('history screen remains read-only in day details', () => {
   assert.doesNotMatch(html, /Редактировать/);
   assert.doesNotMatch(html, /Удалить/);
   assert.doesNotMatch(html, /ДОБАВИТЬ/);
+});
+
+test('history read-side keeps per-entry metric labels for mixed workouts', () => {
+  const html = renderToStaticMarkup(
+    <WorkoutHistoryDayDetails
+      date="2026-03-29"
+      entries={[
+        ...historyEntries,
+        {
+          id: 'entry-3',
+          workout_day_id: 'day-1',
+          exercise_id: 'exercise-3',
+          metricType: 'time',
+          metricUnit: 'мин',
+          sets: 2,
+          reps: 1,
+          weight: 15,
+          displayAmount: 15,
+          displayUnit: 'мин',
+          baseUnit: 'мин',
+          exercise: {
+            id: 'exercise-3',
+            name: 'Планка',
+            category_id: 'core',
+            is_custom: false,
+            muscles: [],
+          },
+        },
+        {
+          id: 'entry-4',
+          workout_day_id: 'day-1',
+          exercise_id: 'exercise-4',
+          metricType: 'distance',
+          metricUnit: 'км',
+          sets: 1,
+          reps: 1,
+          weight: 5,
+          displayAmount: 5,
+          displayUnit: 'км',
+          baseUnit: 'км',
+          exercise: {
+            id: 'exercise-4',
+            name: 'Бег',
+            category_id: 'cardio',
+            is_custom: false,
+            muscles: [],
+          },
+        },
+      ]}
+      isLoading={false}
+    />,
+  );
+
+  assert.match(html, /15 мин/);
+  assert.match(html, /5 км/);
+  assert.doesNotMatch(html, /▼/);
 });

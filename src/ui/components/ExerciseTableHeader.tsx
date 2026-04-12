@@ -5,7 +5,7 @@ const ExerciseTableHeader = () => {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '24px minmax(0, 1fr) 48px 48px 56px',
+        gridTemplateColumns: '24px minmax(0, 1fr) 48px 48px 72px',
         alignItems: 'center',
         columnGap: spacing.sm,
         padding: `${spacing.sm}px 0`,

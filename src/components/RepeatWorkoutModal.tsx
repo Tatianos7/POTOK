@@ -124,7 +124,7 @@ const RepeatWorkoutModal = ({
                         {item.exerciseName}
                       </div>
                       <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        {item.sets} x {item.reps} x {item.weight} кг
+                        {item.sets} x {item.reps} x {item.metricValueLabel}
                       </div>
                     </div>
                   </label>
