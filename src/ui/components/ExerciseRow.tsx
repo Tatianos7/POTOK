@@ -64,6 +64,7 @@ interface ExerciseRowProps {
   onDelete?: () => void;
   onNote?: () => void;
   onMedia?: () => void;
+  onOpen?: () => void;
 }
 
 const ExerciseRow = ({
@@ -79,6 +80,7 @@ const ExerciseRow = ({
   onDelete,
   onNote,
   onMedia,
+  onOpen,
 }: ExerciseRowProps) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [metricPopupOpen, setMetricPopupOpen] = useState(false);
@@ -96,6 +98,8 @@ const ExerciseRow = ({
   const handleMedia = onMedia ?? (() => console.log('media', name));
   const safeMetricType = normalizeWorkoutMetricType(metricType);
   const hasMetricSelector = typeof onMetricTypeChange === 'function';
+  const isOpenable = typeof onOpen === 'function';
+  const handleOpen = () => onOpen?.();
 
   useEffect(() => {
     setMetricDraft(safeMetricType);
@@ -160,7 +164,10 @@ const ExerciseRow = ({
   }, [metricPopupOpen]);
 
   return (
-    <div ref={rowRef} style={{ position: 'relative' }}>
+    <div
+      ref={rowRef}
+      style={{ position: 'relative' }}
+    >
       {menuOpen && (
         <ExerciseActionMenu
           open={menuOpen}
@@ -262,9 +269,7 @@ const ExerciseRow = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: hasMetricSelector
-            ? '24px minmax(0, 1fr) 1px 48px 1px 48px 1px 92px'
-            : '24px minmax(0, 1fr) 1px 48px 1px 48px 1px 72px',
+          gridTemplateColumns: '24px minmax(0, 1fr)',
           alignItems: 'center',
           columnGap: 0,
           padding: `${spacing.sm}px 0`,
@@ -274,56 +279,86 @@ const ExerciseRow = ({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => setMenuOpen((open) => !open)}
+          onClick={(event) => {
+            event.stopPropagation();
+            setMenuOpen((open) => !open);
+          }}
           ref={triggerRef}
           style={{ width: 24, height: 24, paddingLeft: 0, paddingRight: 0 }}
         >
           ⋮
         </Button>
         <div
+          onClick={isOpenable ? handleOpen : undefined}
+          onKeyDown={(event) => {
+            if (!isOpenable) return;
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              handleOpen();
+            }
+          }}
+          role={isOpenable ? 'button' : undefined}
+          tabIndex={isOpenable ? 0 : undefined}
+          aria-label={isOpenable ? `Открыть карточку тренировки для ${name}` : undefined}
+          data-workout-row-content={isOpenable ? 'true' : undefined}
           style={{
-            ...typography.body,
-            fontSize: 'clamp(11px, 3.2vw, 14px)',
-            lineHeight: '18px',
-            wordBreak: 'break-word',
-            overflowWrap: 'anywhere',
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
+            display: 'grid',
+            gridTemplateColumns: hasMetricSelector
+              ? 'minmax(0, 1fr) 1px 48px 1px 48px 1px 92px'
+              : 'minmax(0, 1fr) 1px 48px 1px 48px 1px 72px',
+            alignItems: 'center',
+            minWidth: 0,
+            cursor: isOpenable ? 'pointer' : 'default',
           }}
         >
-          {name}
-        </div>
-        <div style={{ width: 1, height: '100%', backgroundColor: colors.border }} />
-        <div style={{ ...typography.body, fontSize: 'clamp(11px, 3vw, 14px)', textAlign: 'center' }}>{sets}</div>
-        <div style={{ width: 1, height: '100%', backgroundColor: colors.border }} />
-        <div style={{ ...typography.body, fontSize: 'clamp(11px, 3vw, 14px)', textAlign: 'center' }}>{reps}</div>
-        <div style={{ width: 1, height: '100%', backgroundColor: colors.border }} />
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: hasMetricSelector ? 4 : 0 }}>
-          {hasMetricSelector ? (
-            <button
-              ref={metricButtonRef}
-              type="button"
-              onClick={() => setMetricPopupOpen((open) => !open)}
-              style={{
-                border: '1px solid rgba(34,197,94,0.25)',
-                background: 'rgba(220,252,231,0.75)',
-                borderRadius: 8,
-                padding: '3px 6px',
-                fontSize: 'clamp(9px, 2.7vw, 10px)',
-                lineHeight: 1.1,
-                fontWeight: 600,
-                color: '#166534',
-                whiteSpace: 'nowrap',
-                cursor: 'pointer',
-              }}
-            >
-              {getCompactMetricLabel(safeMetricType)} ▼
-            </button>
-          ) : null}
-          <div style={{ ...typography.body, fontSize: 'clamp(11px, 3vw, 14px)', textAlign: 'center', lineHeight: '16px' }}>
-            {valueText ?? `${weight} ${unit}`.trim()}
+          <div
+            style={{
+              ...typography.body,
+              fontSize: 'clamp(11px, 3.2vw, 14px)',
+              lineHeight: '18px',
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {name}
+          </div>
+          <div style={{ width: 1, height: '100%', backgroundColor: colors.border }} />
+          <div style={{ ...typography.body, fontSize: 'clamp(11px, 3vw, 14px)', textAlign: 'center' }}>{sets}</div>
+          <div style={{ width: 1, height: '100%', backgroundColor: colors.border }} />
+          <div style={{ ...typography.body, fontSize: 'clamp(11px, 3vw, 14px)', textAlign: 'center' }}>{reps}</div>
+          <div style={{ width: 1, height: '100%', backgroundColor: colors.border }} />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: hasMetricSelector ? 4 : 0 }}>
+            {hasMetricSelector ? (
+              <button
+                ref={metricButtonRef}
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setMetricPopupOpen((open) => !open);
+                }}
+                style={{
+                  border: '1px solid rgba(34,197,94,0.25)',
+                  background: 'rgba(220,252,231,0.75)',
+                  borderRadius: 8,
+                  padding: '3px 6px',
+                  fontSize: 'clamp(9px, 2.7vw, 10px)',
+                  lineHeight: 1.1,
+                  fontWeight: 600,
+                  color: '#166534',
+                  whiteSpace: 'nowrap',
+                  cursor: 'pointer',
+                }}
+              >
+                {getCompactMetricLabel(safeMetricType)} ▼
+              </button>
+            ) : null}
+            <div style={{ ...typography.body, fontSize: 'clamp(11px, 3vw, 14px)', textAlign: 'center', lineHeight: '16px' }}>
+              {valueText ?? `${weight} ${unit}`.trim()}
+            </div>
           </div>
         </div>
       </div>
