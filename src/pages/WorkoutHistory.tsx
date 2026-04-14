@@ -19,6 +19,13 @@ import { runRepeatWorkoutCopy } from '../utils/repeatWorkoutFlow';
 import { spacing, typography, colors } from '../ui/theme/tokens';
 import { WORKOUT_SCREEN_BACKGROUND } from '../utils/workoutLayout';
 
+export function createWorkoutHistoryRepeatSnapshot(selectedDate: string, entries: WorkoutEntry[]) {
+  return {
+    sourceDate: selectedDate,
+    entries: [...entries],
+  };
+}
+
 const WorkoutHistory = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -28,6 +35,8 @@ const WorkoutHistory = () => {
   const [isRepeatModalOpen, setIsRepeatModalOpen] = useState(false);
   const [isRepeating, setIsRepeating] = useState(false);
   const [entries, setEntries] = useState<WorkoutEntry[]>([]);
+  const [repeatSourceDate, setRepeatSourceDate] = useState<string | null>(null);
+  const [repeatSourceEntries, setRepeatSourceEntries] = useState<WorkoutEntry[]>([]);
   const [isLoadingDay, setIsLoadingDay] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -58,6 +67,13 @@ const WorkoutHistory = () => {
       })
       .finally(() => setIsLoadingDay(false));
   }, [user?.id, selectedDate]);
+
+  const closeRepeatModal = () => {
+    if (isRepeating) return;
+    setIsRepeatModalOpen(false);
+    setRepeatSourceDate(null);
+    setRepeatSourceEntries([]);
+  };
 
   return (
     <ScreenContainer backgroundColor={WORKOUT_SCREEN_BACKGROUND}>
@@ -134,7 +150,12 @@ const WorkoutHistory = () => {
               type="button"
               className="text-base font-semibold uppercase text-green-600 transition-colors hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
               aria-label="Повторить тренировку"
-              onClick={() => setIsRepeatModalOpen(true)}
+              onClick={() => {
+                const snapshot = createWorkoutHistoryRepeatSnapshot(selectedDate, entries);
+                setRepeatSourceDate(snapshot.sourceDate);
+                setRepeatSourceEntries(snapshot.entries);
+                setIsRepeatModalOpen(true);
+              }}
             >
               Повторить
             </button>
@@ -144,16 +165,17 @@ const WorkoutHistory = () => {
 
       <RepeatWorkoutModal
         isOpen={isRepeatModalOpen}
-        sourceDate={selectedDate}
-        entries={entries}
+        sourceDate={repeatSourceDate ?? selectedDate}
+        entries={repeatSourceEntries}
         isSubmitting={isRepeating}
-        onClose={() => {
-          if (isRepeating) return;
-          setIsRepeatModalOpen(false);
-        }}
+        onClose={closeRepeatModal}
         onConfirm={async (targetDate, exerciseIds) => {
           if (!user?.id) {
             throw new Error('Пользователь не авторизован');
+          }
+
+          if (!repeatSourceDate) {
+            throw new Error('Не удалось определить исходную дату тренировки');
           }
 
           setIsRepeating(true);
@@ -161,7 +183,7 @@ const WorkoutHistory = () => {
             const result = await runRepeatWorkoutCopy({
               copyWorkoutEntriesToDate: workoutService.copyWorkoutEntriesToDate.bind(workoutService),
               userId: user.id,
-              sourceDate: selectedDate,
+              sourceDate: repeatSourceDate,
               targetDate,
               exerciseIds,
             });
