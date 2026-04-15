@@ -79,6 +79,11 @@ const ProgressWorkoutExercise: FC = () => {
 
         const matchingEntries = entries.filter((entry) => getWorkoutExerciseProgressGroupKey(entry) === exerciseGroupKey);
         const nextMetricRows = buildWorkoutExerciseProgressMetricRows(matchingEntries, exerciseGroupKey);
+        const fallbackDatesByWorkoutEntryId = new Map(
+          matchingEntries
+            .filter((entry): entry is typeof entry & { workout_day: { date: string } } => Boolean(entry.workout_day?.date))
+            .map((entry) => [entry.id, entry.workout_day.date]),
+        );
 
         setMetricRows(nextMetricRows);
         if (nextMetricRows[0]?.exerciseName) {
@@ -96,7 +101,7 @@ const ProgressWorkoutExercise: FC = () => {
           );
           if (cancelled) return;
 
-          setMediaGroups(groupWorkoutExerciseProgressMediaByDate(items));
+          setMediaGroups(groupWorkoutExerciseProgressMediaByDate(items, fallbackDatesByWorkoutEntryId));
         } catch {
           if (!cancelled) {
             setMediaGroups([]);

@@ -91,6 +91,48 @@ export function isMetricTypeSchemaCacheError(error: { message?: string | null; d
   );
 }
 
+export function isWorkoutMetricReadSchemaError(error: { message?: string | null; details?: string | null } | null | undefined): boolean {
+  const message = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
+  const referencesMetricColumns = (
+    message.includes('metric_type') ||
+    message.includes('display_unit') ||
+    message.includes('display_amount') ||
+    message.includes('base_unit')
+  );
+
+  return referencesMetricColumns && (
+    message.includes('schema cache') ||
+    message.includes('could not find') ||
+    message.includes('column')
+  );
+}
+
+export function getWorkoutProgressEntryDetailsSelectClause(metricSchemaAvailable: boolean): string {
+  const metricColumns = metricSchemaAvailable
+    ? `
+        metric_type,
+        base_unit,
+        display_unit,
+        display_amount,
+      `
+    : '';
+
+  return `
+        id,
+        workout_day_id,
+        exercise_id,
+        ${metricColumns}
+        sets,
+        reps,
+        weight,
+        idempotency_key,
+        created_at,
+        updated_at,
+        exercise:exercises(id,name),
+        workout_day:workout_days(id,date)
+      `;
+}
+
 export function stripMetricTypeFromLegacyWorkoutWriteRows(rows: WorkoutEntryWriteRow[]): Array<Omit<WorkoutEntryWriteRow, 'metric_type'>> {
   return rows.map(({ metric_type: _metricType, ...row }) => {
     const fallbackValue = Number(row.display_amount ?? row.weight ?? 0) || 0;
@@ -869,6 +911,7 @@ class WorkoutService {
       console.warn('[workoutService] Supabase not available, workout progress entry details require persisted source');
       return [];
     }
+    const supabaseClient = supabase;
 
     let sessionUserId: string;
     try {
@@ -897,36 +940,32 @@ class WorkoutService {
       return [];
     }
 
-    const { data, error } = await supabase
-      .from('workout_entries')
-      .select(`
-        id,
-        workout_day_id,
-        exercise_id,
-        metric_type,
-        sets,
-        reps,
-        weight,
-        base_unit,
-        display_unit,
-        display_amount,
-        idempotency_key,
-        created_at,
-        updated_at,
-        exercise:exercises(id,name),
-        workout_day:workout_days(id,date)
-      `)
-      .in('workout_day_id', dayIds)
-      .order('created_at', { ascending: true });
+    const attempt = async (metricSchemaAvailable: boolean) =>
+      await supabaseClient
+        .from('workout_entries')
+        .select(getWorkoutProgressEntryDetailsSelectClause(metricSchemaAvailable))
+        .in('workout_day_id', dayIds)
+        .order('created_at', { ascending: true });
 
-    if (error) {
-      if (error.code !== 'PGRST205') {
-        console.error('[workoutService] Error fetching workout progress entry details:', error);
+    const usesLegacyRead = this.getCachedMetricTypeSchemaCapability() === false;
+    let result = await attempt(!usesLegacyRead);
+
+    if (result.error && isWorkoutMetricReadSchemaError(result.error) && this.getCachedMetricTypeSchemaCapability() !== false) {
+      this.persistMetricTypeSchemaCapability(false);
+      this.warnMetricTypeSchemaFallback();
+      result = await attempt(false);
+    } else if (!result.error && !usesLegacyRead) {
+      this.persistMetricTypeSchemaCapability(true);
+    }
+
+    if (result.error) {
+      if (result.error.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout progress entry details:', result.error);
       }
       return [];
     }
 
-    return (data ?? []).map((entry: any) => this.mapWorkoutEntryRow(entry));
+    return (result.data ?? []).map((entry: any) => this.mapWorkoutEntryRow(entry));
   }
 
   private async getWorkoutEntriesFromSupabase(userId: string, date: string): Promise<WorkoutEntry[]> {

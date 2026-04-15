@@ -63,11 +63,12 @@ export function buildWorkoutExerciseProgressMetricRows(
 
 export function groupWorkoutExerciseProgressMediaByDate(
   items: PersistedWorkoutExerciseMediaItem[],
+  fallbackDatesByWorkoutEntryId: Map<string, string> = new Map(),
 ): WorkoutExerciseProgressMediaGroup[] {
   const groups = new Map<string, PersistedWorkoutExerciseMediaItem[]>();
 
   items.forEach((item) => {
-    const date = item.workout_date;
+    const date = item.workout_date ?? (item.workout_entry_id ? fallbackDatesByWorkoutEntryId.get(item.workout_entry_id) : null);
     if (!date) return;
 
     const current = groups.get(date) ?? [];

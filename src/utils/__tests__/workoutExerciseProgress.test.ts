@@ -64,6 +64,25 @@ test('metrics dates remain visible even when media is absent', () => {
   assert.equal(rows[0].metricValueLabel, '90 сек');
 });
 
+test('progress exercise screen rows still build in legacy metric schema mode', () => {
+  const rows = buildWorkoutExerciseProgressMetricRows(
+    [
+      createEntry('entry-1', '2026-04-05', {
+        metricType: undefined,
+        metricUnit: undefined,
+        displayAmount: undefined,
+        displayUnit: undefined,
+        baseUnit: undefined,
+        weight: 70,
+      }),
+    ],
+    'canonical-1',
+  );
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].metricValueLabel, '70 кг');
+});
+
 test('media block groups media by date and omits dates without media', () => {
   const groups = groupWorkoutExerciseProgressMediaByDate([
     {
@@ -108,6 +127,64 @@ test('media block groups media by date and omits dates without media', () => {
   assert.equal(groups[0].date, '2026-04-12');
   assert.equal(groups[0].items.length, 2);
   assert.equal(groups[0].items[0].id, 'media-2');
+});
+
+test('media rows without workout_date are grouped using fallback workout entry date', () => {
+  const groups = groupWorkoutExerciseProgressMediaByDate(
+    [
+      {
+        id: 'media-1',
+        user_id: 'user-1',
+        exercise_id: 'exercise-1',
+        workout_entry_id: 'entry-1',
+        workout_date: null,
+        file_path: 'user-1/exercise-1/file-1.jpg',
+        file_type: 'image',
+        created_at: '2026-04-12T10:00:00.000Z',
+        kind: 'image',
+        previewUrl: 'https://signed.example/file-1.jpg',
+      },
+    ] satisfies PersistedWorkoutExerciseMediaItem[],
+    new Map([['entry-1', '2026-04-12']]),
+  );
+
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].date, '2026-04-12');
+  assert.equal(groups[0].items[0].id, 'media-1');
+});
+
+test('valid historical media is not silently dropped when workout_date is absent', () => {
+  const groups = groupWorkoutExerciseProgressMediaByDate(
+    [
+      {
+        id: 'media-1',
+        user_id: 'user-1',
+        exercise_id: 'exercise-1',
+        workout_entry_id: 'entry-1',
+        workout_date: null,
+        file_path: 'user-1/exercise-1/file-1.jpg',
+        file_type: 'video',
+        created_at: '2026-04-11T10:00:00.000Z',
+        kind: 'video',
+        previewUrl: 'https://signed.example/file-1.mp4',
+      },
+      {
+        id: 'media-2',
+        user_id: 'user-1',
+        exercise_id: 'exercise-1',
+        workout_entry_id: 'entry-2',
+        workout_date: '2026-04-10',
+        file_path: 'user-1/exercise-1/file-2.jpg',
+        file_type: 'image',
+        created_at: '2026-04-10T10:00:00.000Z',
+        kind: 'image',
+        previewUrl: 'https://signed.example/file-2.jpg',
+      },
+    ] satisfies PersistedWorkoutExerciseMediaItem[],
+    new Map([['entry-1', '2026-04-11']]),
+  );
+
+  assert.deepEqual(groups.map((group) => group.date), ['2026-04-11', '2026-04-10']);
 });
 
 test('exercise progress grouping keeps canonical key fallback stable', () => {
