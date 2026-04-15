@@ -46,6 +46,13 @@ class FakeUserExerciseMediaGateway implements UserExerciseMediaGateway {
     return this.rows.filter((row) => row.user_id === userId && row.workout_entry_id === workoutEntryId);
   }
 
+  async listMediaRowsForWorkoutEntries(userId: string, workoutEntryIds: string[]): Promise<UserExerciseMedia[]> {
+    if (this.listShouldFail) {
+      throw new Error('raw list error');
+    }
+    return this.rows.filter((row) => row.user_id === userId && Boolean(row.workout_entry_id) && workoutEntryIds.includes(row.workout_entry_id!));
+  }
+
   async uploadFile(path: string): Promise<void> {
     if (this.uploadShouldHang) {
       return new Promise(() => undefined);
@@ -449,4 +456,46 @@ test('old legacy media without workout_entry_id is ignored by the new read path'
   const items = await service.listWorkoutExerciseMedia('entry-new');
 
   assert.equal(items.length, 0);
+});
+
+test('media read path for progress respects workout_entry binding and does not mix entries', async () => {
+  const gateway = new FakeUserExerciseMediaGateway();
+  gateway.rows = [
+    {
+      id: 'media-1',
+      user_id: 'user-1',
+      exercise_id: 'exercise-1',
+      workout_entry_id: 'entry-1',
+      workout_date: '2026-04-13',
+      file_path: 'user-1/exercise-1/file-1.jpg',
+      file_type: 'image',
+      created_at: '2026-04-13T10:00:00.000Z',
+    },
+    {
+      id: 'media-2',
+      user_id: 'user-1',
+      exercise_id: 'exercise-1',
+      workout_entry_id: 'entry-2',
+      workout_date: '2026-04-12',
+      file_path: 'user-1/exercise-1/file-2.jpg',
+      file_type: 'image',
+      created_at: '2026-04-12T10:00:00.000Z',
+    },
+    {
+      id: 'media-3',
+      user_id: 'user-1',
+      exercise_id: 'exercise-1',
+      workout_entry_id: 'entry-foreign',
+      workout_date: '2026-04-11',
+      file_path: 'user-1/exercise-1/file-3.jpg',
+      file_type: 'image',
+      created_at: '2026-04-11T10:00:00.000Z',
+    },
+  ];
+  const service = new UserExerciseMediaService(gateway);
+
+  const items = await service.listWorkoutExerciseMediaForEntries(['entry-1', 'entry-2']);
+
+  assert.equal(items.length, 2);
+  assert.deepEqual(items.map((item) => item.workout_entry_id), ['entry-1', 'entry-2']);
 });

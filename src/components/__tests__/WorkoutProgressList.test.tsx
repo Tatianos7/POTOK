@@ -127,3 +127,10 @@ test('empty state renders when month has no data', () => {
 
   assert.match(html, /За выбранный месяц нет тренировочных данных/);
 });
+
+test('existing progress training screen can expose row action without breaking compact layout', () => {
+  const html = renderToStaticMarkup(<WorkoutProgressList rows={rows} onRowSelect={() => {}} />);
+
+  assert.match(html, /aria-label="Открыть прогресс упражнения Жим лежа"/);
+  assert.match(html, /grid-cols-\[minmax\(0,1fr\)_56px_56px_56px\]/);
+});

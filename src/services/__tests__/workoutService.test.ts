@@ -5,7 +5,9 @@ import {
   buildWorkoutEntryUpdatePatch,
   buildWorkoutHistoryDaySummaries,
   buildWorkoutProgressObservations,
+  getWorkoutProgressEntryDetailsSelectClause,
   isMetricTypeSchemaCacheError,
+  isWorkoutMetricReadSchemaError,
   readCachedMetricTypeSchemaCapability,
   serializeMetricTypeSchemaCapability,
   stripMetricTypeFromLegacyWorkoutUpdatePatch,
@@ -282,6 +284,37 @@ test('metric_type schema cache error is detected correctly', () => {
     true,
   );
   assert.equal(isMetricTypeSchemaCacheError({ message: 'row level security violation' }), false);
+});
+
+test('progress entry reads still work with legacy-safe select when metric columns are unavailable', () => {
+  const clause = getWorkoutProgressEntryDetailsSelectClause(false);
+
+  assert.doesNotMatch(clause, /metric_type/);
+  assert.doesNotMatch(clause, /display_unit/);
+  assert.doesNotMatch(clause, /display_amount/);
+  assert.doesNotMatch(clause, /base_unit/);
+  assert.match(clause, /exercise:exercises\(id,name\)/);
+});
+
+test('progress entry read schema errors are detected for metric and display columns', () => {
+  assert.equal(
+    isWorkoutMetricReadSchemaError({
+      message: "Could not find the 'metric_type' column of 'workout_entries' in the schema cache",
+    }),
+    true,
+  );
+  assert.equal(
+    isWorkoutMetricReadSchemaError({
+      message: "Could not find the 'display_unit' column of 'workout_entries' in the schema cache",
+    }),
+    true,
+  );
+  assert.equal(
+    isWorkoutMetricReadSchemaError({
+      message: "Could not find the 'base_unit' column of 'workout_entries' in the schema cache",
+    }),
+    true,
+  );
 });
 
 test('metric_type schema capability cache roundtrip is read correctly', () => {

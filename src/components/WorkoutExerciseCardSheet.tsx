@@ -3,6 +3,7 @@ import { Trash2, X } from 'lucide-react';
 import type { Exercise, WorkoutEntry } from '../types/workout';
 import { userExerciseMediaService, type PersistedWorkoutExerciseMediaItem, toUserExerciseMediaErrorMessage } from '../services/userExerciseMediaService';
 import { formatWorkoutMetricValue, normalizeWorkoutMetricType } from '../utils/workoutEntryMetric';
+import ExerciseMediaViewerOverlay, { type ExerciseMediaViewerItem } from './ExerciseMediaViewerOverlay';
 
 export const WORKOUT_EXERCISE_CARD_SUCCESS_MESSAGE = 'Сохранено';
 
@@ -17,12 +18,6 @@ export interface WorkoutExerciseCardDraftMediaItem {
   file: File;
   kind: 'image' | 'video';
   label: string;
-  previewUrl: string;
-}
-
-interface WorkoutExerciseCardViewerItem {
-  id: string;
-  kind: 'image' | 'video';
   previewUrl: string;
 }
 
@@ -63,7 +58,7 @@ function renderTechniqueMediaItem(exerciseName: string, mediaItem: NonNullable<E
   );
 }
 
-function renderMediaTile(item: WorkoutExerciseCardViewerItem, onOpen?: () => void, onRemove?: () => void) {
+function renderMediaTile(item: ExerciseMediaViewerItem, onOpen?: () => void, onRemove?: () => void) {
   return (
     <div key={item.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
       <div className="relative">
@@ -157,7 +152,7 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
   const [deletingPersistedMediaId, setDeletingPersistedMediaId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [viewerItem, setViewerItem] = useState<WorkoutExerciseCardViewerItem | null>(null);
+  const [viewerItem, setViewerItem] = useState<ExerciseMediaViewerItem | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -432,40 +427,7 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
           </div>
         </div>
       </div>
-      {viewerItem ? (
-        <div
-          className="fixed inset-0 z-[110] flex items-center justify-center bg-black/85 p-3 min-[376px]:p-4"
-          onClick={() => setViewerItem(null)}
-        >
-          <div
-            className="relative flex max-h-[92vh] w-full max-w-5xl items-center justify-center"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setViewerItem(null)}
-              aria-label="Закрыть просмотр медиа"
-              className="absolute right-0 top-0 z-10 rounded-full bg-black/60 p-2 text-white transition-colors hover:bg-black/80"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            {viewerItem.kind === 'video' ? (
-              <video
-                src={viewerItem.previewUrl}
-                controls
-                playsInline
-                className="max-h-[88vh] w-full rounded-2xl bg-black object-contain"
-              />
-            ) : (
-              <img
-                src={viewerItem.previewUrl}
-                alt="Полноэкранный просмотр медиа упражнения"
-                className="max-h-[88vh] w-full rounded-2xl object-contain"
-              />
-            )}
-          </div>
-        </div>
-      ) : null}
+      <ExerciseMediaViewerOverlay item={viewerItem} onClose={() => setViewerItem(null)} />
     </>
   );
 };
