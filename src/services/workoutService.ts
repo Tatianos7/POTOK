@@ -860,6 +860,75 @@ class WorkoutService {
     return buildWorkoutProgressObservations(rows, dayDateMap);
   }
 
+  async getWorkoutProgressEntryDetails(
+    userId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<WorkoutEntry[]> {
+    if (!supabase) {
+      console.warn('[workoutService] Supabase not available, workout progress entry details require persisted source');
+      return [];
+    }
+
+    let sessionUserId: string;
+    try {
+      sessionUserId = await this.getSessionUserId(userId);
+    } catch {
+      return [];
+    }
+
+    const { data: workoutDays, error: workoutDaysError } = await supabase
+      .from('workout_days')
+      .select('id, date')
+      .eq('user_id', sessionUserId)
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: true });
+
+    if (workoutDaysError) {
+      if (workoutDaysError.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout progress entry detail days:', workoutDaysError);
+      }
+      return [];
+    }
+
+    const dayIds = (workoutDays || []).map((day) => day.id).filter(Boolean);
+    if (dayIds.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('workout_entries')
+      .select(`
+        id,
+        workout_day_id,
+        exercise_id,
+        metric_type,
+        sets,
+        reps,
+        weight,
+        base_unit,
+        display_unit,
+        display_amount,
+        idempotency_key,
+        created_at,
+        updated_at,
+        exercise:exercises(id,name),
+        workout_day:workout_days(id,date)
+      `)
+      .in('workout_day_id', dayIds)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      if (error.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout progress entry details:', error);
+      }
+      return [];
+    }
+
+    return (data ?? []).map((entry: any) => this.mapWorkoutEntryRow(entry));
+  }
+
   private async getWorkoutEntriesFromSupabase(userId: string, date: string): Promise<WorkoutEntry[]> {
     if (!supabase) {
       console.warn('[workoutService] Supabase not available, returning empty workouts');

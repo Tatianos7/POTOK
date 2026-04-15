@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FC } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Calendar, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import WorkoutProgressMonthPicker from '../components/WorkoutProgressMonthPicker';
@@ -29,11 +29,13 @@ let progressObservationsCache: WorkoutProgressObservationCache | null = null;
 
 const ProgressWorkouts: FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const defaultDate = getLocalDayKey();
+  const locationSelectedMonthDate = (location.state as { selectedMonthDate?: string } | null)?.selectedMonthDate;
   const range = useMemo(() => getDefaultWorkoutHistoryRange(), []);
   const pickerRef = useRef<HTMLDivElement>(null);
-  const [selectedMonthDate, setSelectedMonthDate] = useState(defaultDate);
+  const [selectedMonthDate, setSelectedMonthDate] = useState(locationSelectedMonthDate ?? defaultDate);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [observations, setObservations] = useState<WorkoutProgressObservation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -176,7 +178,18 @@ const ProgressWorkouts: FC = () => {
           </div>
         ) : null}
 
-        <WorkoutProgressList rows={rows} isLoading={isLoading} />
+        <WorkoutProgressList
+          rows={rows}
+          isLoading={isLoading}
+          onRowSelect={(row) => {
+            navigate(`/progress/workouts/${encodeURIComponent(row.exerciseGroupKey)}`, {
+              state: {
+                exerciseName: row.exerciseName,
+                selectedMonthDate,
+              },
+            });
+          }}
+        />
       </main>
     </ScreenContainer>
   );
