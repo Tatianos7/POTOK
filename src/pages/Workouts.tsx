@@ -12,6 +12,7 @@ import MealNoteModal from '../components/MealNoteModal';
 import WorkoutDayNoteBlock from '../components/WorkoutDayNoteBlock';
 import WorkoutEntryNoteComposer from '../components/WorkoutEntryNoteComposer';
 import WorkoutEntryInlineNote from '../components/WorkoutEntryInlineNote';
+import WorkoutExerciseCardSheet from '../components/WorkoutExerciseCardSheet';
 import { exerciseService } from '../services/exerciseService';
 import { workoutService } from '../services/workoutService';
 import { workoutEntryNotesService } from '../services/workoutEntryNotesService';
@@ -62,6 +63,10 @@ export function getWorkoutHeaderActionIds(): Array<'history' | 'note' | 'delete'
   return ['history', 'note', 'delete'];
 }
 
+export function getWorkoutEntryNoteComposerPlacement(): 'overlay' {
+  return 'overlay';
+}
+
 const CUSTOM_EXERCISES_CATEGORY: ExerciseCategory = {
   id: 'custom-exercises',
   name: 'Мои упражнения',
@@ -104,6 +109,7 @@ const Workouts = () => {
   const [deletingEntryId, setDeletingEntryId] = useState<string | null>(null);
   const [isDeletingWorkout, setIsDeletingWorkout] = useState(false);
   const [editingEntry, setEditingEntry] = useState<WorkoutEntry | null>(null);
+  const [openedWorkoutExerciseCardEntry, setOpenedWorkoutExerciseCardEntry] = useState<WorkoutEntry | null>(null);
   const [entryNoteDraft, setEntryNoteDraft] = useState('');
   const [isLoadingEntryNote, setIsLoadingEntryNote] = useState(false);
   const [isSavingEntryNote, setIsSavingEntryNote] = useState(false);
@@ -423,6 +429,16 @@ const Workouts = () => {
       return;
     }
     setEditingEntry(entry);
+  };
+
+  const handleOpenWorkoutExerciseCard = (entryId: string) => {
+    if (isUpdatingEntry || deletingEntryId || isDeletingWorkout || isLoadingEntryNote || isSavingEntryNote || isDeletingEntryNote) return;
+    const entry = workoutEntries.find((item) => item.id === entryId);
+    if (!entry) {
+      setErrorMessage('Не удалось найти запись упражнения для карточки тренировки');
+      return;
+    }
+    setOpenedWorkoutExerciseCardEntry(entry);
   };
 
   const handleSaveEditedEntry = async (updates: { sets: number; reps: number; weight: number; metricType: WorkoutEntry['metricType']; metricUnit?: WorkoutEntry['metricUnit'] }) => {
@@ -1014,7 +1030,7 @@ const Workouts = () => {
           </div>
 
           {/* Workout Section */}
-          <div className="mb-4 min-[376px]:mb-6 w-full max-w-full overflow-hidden">
+          <div className="mb-4 min-[376px]:mb-6 w-full max-w-full overflow-x-hidden overflow-y-visible">
             <div className="flex items-center justify-between mb-3 min-[376px]:mb-4 w-full max-w-full">
               <h2 className="text-sm min-[376px]:text-base font-semibold text-gray-900 dark:text-white">
                 Моя тренировка
@@ -1046,22 +1062,18 @@ const Workouts = () => {
               </div>
             </div>
 
-            <div className="relative">
+            <div className="relative overflow-visible">
               <ExerciseTableHeader />
 
               {activeWorkoutEntryForNote ? (
-                <div className="pointer-events-none absolute left-0 right-0 top-0 z-20 px-2">
-                  <div className="pointer-events-auto mx-auto w-full max-w-[372px]">
-                    <WorkoutEntryNoteComposer
-                      isOpen={activeWorkoutEntryForNote !== null}
-                      value={entryNoteDraft}
-                      isSaving={isSavingEntryNote}
-                      onChange={setEntryNoteDraft}
-                      onCancel={handleCancelEntryNoteComposer}
-                      onSave={handleSaveEntryNote}
-                    />
-                  </div>
-                </div>
+                <WorkoutEntryNoteComposer
+                  isOpen={activeWorkoutEntryForNote !== null}
+                  value={entryNoteDraft}
+                  isSaving={isSavingEntryNote}
+                  onChange={setEntryNoteDraft}
+                  onCancel={handleCancelEntryNoteComposer}
+                  onSave={handleSaveEntryNote}
+                />
               ) : null}
 
               {/* Workout Entries */}
@@ -1092,10 +1104,11 @@ const Workouts = () => {
                           unit={getWorkoutMetricUnit(normalizeWorkoutMetricType(entry.metricType), entry.metricUnit ?? entry.displayUnit)}
                           valueText={formatWorkoutMetricValue(entry.displayAmount ?? entry.weight, normalizeWorkoutMetricType(entry.metricType), entry.metricUnit ?? entry.displayUnit)}
                           metricType={normalizeWorkoutMetricType(entry.metricType)}
+                          onOpen={() => handleOpenWorkoutExerciseCard(entry.id)}
                           onEdit={() => handleEditEntry(entry.id)}
                           onDelete={() => void handleDeleteEntry(entry.id)}
                           onNote={() => void handleOpenEntryNote(entry.id)}
-                          onMedia={() => console.log('media', entry.id)}
+                          onMedia={() => handleOpenWorkoutExerciseCard(entry.id)}
                         />
                         {note ? (
                           <WorkoutEntryInlineNote
@@ -1239,6 +1252,12 @@ const Workouts = () => {
         onSave={handleSaveWorkoutDayNote}
         onDelete={workoutDayNoteDayId && workoutDayNote ? handleDeleteWorkoutDayNote : undefined}
         textareaVariant="paleGreen"
+      />
+
+      <WorkoutExerciseCardSheet
+        isOpen={openedWorkoutExerciseCardEntry !== null}
+        entry={openedWorkoutExerciseCardEntry}
+        onClose={() => setOpenedWorkoutExerciseCardEntry(null)}
       />
     </ScreenContainer>
   );

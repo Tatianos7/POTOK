@@ -27,6 +27,7 @@ import Progress from './pages/Progress';
 import ProgressMeasurements from './pages/ProgressMeasurements';
 import ProgressNutrition from './pages/ProgressNutrition';
 import ProgressWorkouts from './pages/ProgressWorkouts';
+import ProgressWorkoutExercise from './pages/ProgressWorkoutExercise';
 import ProgressHabits from './pages/ProgressHabits';
 import ImportExercises from './pages/ImportExercises';
 import PoseCoach from './pages/PoseCoach';
@@ -306,6 +307,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ProgressWorkouts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress/workouts/:exerciseGroupKey"
+        element={
+          <ProtectedRoute>
+            <ProgressWorkoutExercise />
           </ProtectedRoute>
         }
       />

@@ -91,6 +91,48 @@ export function isMetricTypeSchemaCacheError(error: { message?: string | null; d
   );
 }
 
+export function isWorkoutMetricReadSchemaError(error: { message?: string | null; details?: string | null } | null | undefined): boolean {
+  const message = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
+  const referencesMetricColumns = (
+    message.includes('metric_type') ||
+    message.includes('display_unit') ||
+    message.includes('display_amount') ||
+    message.includes('base_unit')
+  );
+
+  return referencesMetricColumns && (
+    message.includes('schema cache') ||
+    message.includes('could not find') ||
+    message.includes('column')
+  );
+}
+
+export function getWorkoutProgressEntryDetailsSelectClause(metricSchemaAvailable: boolean): string {
+  const metricColumns = metricSchemaAvailable
+    ? `
+        metric_type,
+        base_unit,
+        display_unit,
+        display_amount,
+      `
+    : '';
+
+  return `
+        id,
+        workout_day_id,
+        exercise_id,
+        ${metricColumns}
+        sets,
+        reps,
+        weight,
+        idempotency_key,
+        created_at,
+        updated_at,
+        exercise:exercises(id,name),
+        workout_day:workout_days(id,date)
+      `;
+}
+
 export function stripMetricTypeFromLegacyWorkoutWriteRows(rows: WorkoutEntryWriteRow[]): Array<Omit<WorkoutEntryWriteRow, 'metric_type'>> {
   return rows.map(({ metric_type: _metricType, ...row }) => {
     const fallbackValue = Number(row.display_amount ?? row.weight ?? 0) || 0;
@@ -858,6 +900,72 @@ class WorkoutService {
 
     const rows = Array.isArray(data) ? (data as WorkoutProgressObservationRow[]) : [];
     return buildWorkoutProgressObservations(rows, dayDateMap);
+  }
+
+  async getWorkoutProgressEntryDetails(
+    userId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<WorkoutEntry[]> {
+    if (!supabase) {
+      console.warn('[workoutService] Supabase not available, workout progress entry details require persisted source');
+      return [];
+    }
+    const supabaseClient = supabase;
+
+    let sessionUserId: string;
+    try {
+      sessionUserId = await this.getSessionUserId(userId);
+    } catch {
+      return [];
+    }
+
+    const { data: workoutDays, error: workoutDaysError } = await supabase
+      .from('workout_days')
+      .select('id, date')
+      .eq('user_id', sessionUserId)
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: true });
+
+    if (workoutDaysError) {
+      if (workoutDaysError.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout progress entry detail days:', workoutDaysError);
+      }
+      return [];
+    }
+
+    const dayIds = (workoutDays || []).map((day) => day.id).filter(Boolean);
+    if (dayIds.length === 0) {
+      return [];
+    }
+
+    const attempt = async (metricSchemaAvailable: boolean) =>
+      await supabaseClient
+        .from('workout_entries')
+        .select(getWorkoutProgressEntryDetailsSelectClause(metricSchemaAvailable))
+        .in('workout_day_id', dayIds)
+        .order('created_at', { ascending: true });
+
+    const usesLegacyRead = this.getCachedMetricTypeSchemaCapability() === false;
+    let result = await attempt(!usesLegacyRead);
+
+    if (result.error && isWorkoutMetricReadSchemaError(result.error) && this.getCachedMetricTypeSchemaCapability() !== false) {
+      this.persistMetricTypeSchemaCapability(false);
+      this.warnMetricTypeSchemaFallback();
+      result = await attempt(false);
+    } else if (!result.error && !usesLegacyRead) {
+      this.persistMetricTypeSchemaCapability(true);
+    }
+
+    if (result.error) {
+      if (result.error.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout progress entry details:', result.error);
+      }
+      return [];
+    }
+
+    return (result.data ?? []).map((entry: any) => this.mapWorkoutEntryRow(entry));
   }
 
   private async getWorkoutEntriesFromSupabase(userId: string, date: string): Promise<WorkoutEntry[]> {
