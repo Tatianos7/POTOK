@@ -4,6 +4,7 @@ import type { WorkoutProgressMetricTrend, WorkoutProgressRow } from '../types/wo
 interface WorkoutProgressListProps {
   rows: WorkoutProgressRow[];
   isLoading?: boolean;
+  onRowSelect?: (row: WorkoutProgressRow) => void;
 }
 
 function TrendIndicator({ trend }: { trend: WorkoutProgressMetricTrend }) {
@@ -37,7 +38,7 @@ function MetricCell({ value, trend }: { value: number; trend: WorkoutProgressMet
   );
 }
 
-const WorkoutProgressList = ({ rows, isLoading = false }: WorkoutProgressListProps) => {
+const WorkoutProgressList = ({ rows, isLoading = false, onRowSelect }: WorkoutProgressListProps) => {
   if (isLoading) {
     return (
       <div className="bg-white px-1 py-6 text-sm text-gray-500">
@@ -65,17 +66,34 @@ const WorkoutProgressList = ({ rows, isLoading = false }: WorkoutProgressListPro
 
       <div className="divide-y divide-gray-200">
         {rows.map((row) => (
-          <div
-            key={row.exerciseGroupKey}
-            className="grid grid-cols-[minmax(0,1fr)_56px_56px_56px] gap-0"
-          >
-            <div className="min-w-0 py-4 pr-2 text-[15px] leading-5 text-gray-700 [word-break:normal] [overflow-wrap:anywhere]">
-              {row.exerciseName}
+          onRowSelect ? (
+            <button
+              key={row.exerciseGroupKey}
+              type="button"
+              onClick={() => onRowSelect(row)}
+              className="grid w-full grid-cols-[minmax(0,1fr)_56px_56px_56px] gap-0 text-left transition-colors hover:bg-gray-50"
+              aria-label={`Открыть прогресс упражнения ${row.exerciseName}`}
+            >
+              <div className="min-w-0 py-4 pr-2 text-[15px] leading-5 text-gray-700 [word-break:normal] [overflow-wrap:anywhere]">
+                {row.exerciseName}
+              </div>
+              <MetricCell value={row.latestSets} trend={row.setsTrend} />
+              <MetricCell value={row.latestReps} trend={row.repsTrend} />
+              <MetricCell value={row.latestWeight} trend={row.weightTrend} />
+            </button>
+          ) : (
+            <div
+              key={row.exerciseGroupKey}
+              className="grid grid-cols-[minmax(0,1fr)_56px_56px_56px] gap-0"
+            >
+              <div className="min-w-0 py-4 pr-2 text-[15px] leading-5 text-gray-700 [word-break:normal] [overflow-wrap:anywhere]">
+                {row.exerciseName}
+              </div>
+              <MetricCell value={row.latestSets} trend={row.setsTrend} />
+              <MetricCell value={row.latestReps} trend={row.repsTrend} />
+              <MetricCell value={row.latestWeight} trend={row.weightTrend} />
             </div>
-            <MetricCell value={row.latestSets} trend={row.setsTrend} />
-            <MetricCell value={row.latestReps} trend={row.repsTrend} />
-            <MetricCell value={row.latestWeight} trend={row.weightTrend} />
-          </div>
+          )
         ))}
       </div>
     </div>

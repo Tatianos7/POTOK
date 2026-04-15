@@ -26,6 +26,7 @@ export interface SaveWorkoutExerciseMediaDraftsInput {
 export interface UserExerciseMediaGateway {
   getSessionUserId(): Promise<string>;
   listMediaRows(userId: string, workoutEntryId: string): Promise<UserExerciseMedia[]>;
+  listMediaRowsForWorkoutEntries(userId: string, workoutEntryIds: string[]): Promise<UserExerciseMedia[]>;
   uploadFile(path: string, file: File): Promise<void>;
   insertMediaRows(rows: Array<{
     user_id: string;
@@ -184,6 +185,29 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
     return (data ?? []) as UserExerciseMedia[];
   }
 
+  async listMediaRowsForWorkoutEntries(_userId: string, workoutEntryIds: string[]): Promise<UserExerciseMedia[]> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+
+    if (workoutEntryIds.length === 0) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('user_exercise_media')
+      .select('id, user_id, exercise_id, workout_entry_id, workout_date, file_path, file_type, created_at')
+      .in('workout_entry_id', workoutEntryIds)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false });
+
+    if (error) {
+      throw new Error(error.message || 'Не удалось загрузить медиа упражнения');
+    }
+
+    return (data ?? []) as UserExerciseMedia[];
+  }
+
   async uploadFile(path: string, file: File): Promise<void> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
@@ -323,6 +347,47 @@ export class UserExerciseMediaService {
       const cached = this.getCachedItems(workoutEntryId);
       if (cached.length > 0) {
         return cached;
+      }
+      throw new Error(toUserExerciseMediaErrorMessage('load'));
+    }
+  }
+
+  async listWorkoutExerciseMediaForEntries(workoutEntryIds: string[]): Promise<PersistedWorkoutExerciseMediaItem[]> {
+    if (workoutEntryIds.length === 0) {
+      return [];
+    }
+
+    try {
+      const userId = await withTimeout(
+        this.gateway.getSessionUserId(),
+        USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS,
+        'user media session timeout',
+      );
+      const rows = await withTimeout(
+        this.gateway.listMediaRowsForWorkoutEntries(userId, workoutEntryIds),
+        USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS,
+        'user media multi list timeout',
+      );
+      const mapped = await withTimeout(
+        mapPersistedWorkoutExerciseMediaItems(
+          rows,
+          (path) => this.gateway.createSignedUrl(path, USER_EXERCISE_MEDIA_SIGNED_URL_TTL_SECONDS),
+        ),
+        USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS,
+        'user media signed urls timeout',
+      );
+
+      const sorted = sortPersistedItems(mapped);
+      sorted.forEach((item) => {
+        const cacheKey = item.workout_entry_id;
+        if (!cacheKey) return;
+        this.setCachedItems(cacheKey, [item]);
+      });
+      return sorted;
+    } catch {
+      const cached = workoutEntryIds.flatMap((entryId) => this.getCachedItems(entryId));
+      if (cached.length > 0) {
+        return sortPersistedItems(cached);
       }
       throw new Error(toUserExerciseMediaErrorMessage('load'));
     }
