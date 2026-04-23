@@ -40,6 +40,7 @@ import AuthCallback from './pages/AuthCallback';
 import PinSetup from './pages/PinSetup';
 import PinUnlock from './pages/PinUnlock';
 import PinOffer from './pages/PinOffer';
+import MuscleMapDemo from './pages/MuscleMapDemo';
 import { getPostLoginRoute, isPinLockEnabled, isPinOfferSkipped, isPinSessionUnlocked } from './services/pinLockService';
 
 function AppRoutes() {
@@ -363,6 +364,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ImportExercises />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dev/muscle-map"
+        element={
+          <ProtectedRoute>
+            <MuscleMapDemo />
           </ProtectedRoute>
         }
       />
