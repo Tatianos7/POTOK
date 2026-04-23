@@ -83,7 +83,7 @@ const ExerciseDefinitionSheet = ({
 
   useEffect(() => {
     let openFrame = 0;
-    let closeTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let closeTimer: number | null = null;
 
     if (isOpen && exercise) {
       setRenderExercise(exercise);
