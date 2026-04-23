@@ -32,7 +32,9 @@ const ProgressWorkouts: FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const defaultDate = getLocalDayKey();
-  const locationSelectedMonthDate = (location.state as { selectedMonthDate?: string } | null)?.selectedMonthDate;
+  const locationState = location.state as { selectedMonthDate?: string; returnTo?: string } | null;
+  const locationSelectedMonthDate = locationState?.selectedMonthDate;
+  const closeRoute = locationState?.returnTo === 'workouts' ? '/workouts' : '/progress';
   const range = useMemo(() => getDefaultWorkoutHistoryRange(), []);
   const pickerRef = useRef<HTMLDivElement>(null);
   const [selectedMonthDate, setSelectedMonthDate] = useState(locationSelectedMonthDate ?? defaultDate);
@@ -130,7 +132,7 @@ const ProgressWorkouts: FC = () => {
         <h1 style={{ ...typography.title, textTransform: 'uppercase', textAlign: 'center' }}>
           Прогресс тренировок
         </h1>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/progress')} aria-label="Закрыть">
+        <Button variant="ghost" size="sm" onClick={() => navigate(closeRoute)} aria-label="Закрыть">
           <X className="h-5 w-5" style={{ color: colors.text.secondary }} />
         </Button>
       </header>

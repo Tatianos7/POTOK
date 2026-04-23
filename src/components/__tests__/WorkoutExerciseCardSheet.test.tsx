@@ -67,9 +67,12 @@ test('workout exercise card renders read-only technique and muscle content', () 
   assert.match(html, /Техника/);
   assert.match(html, /Техника видео Планка/);
   assert.match(html, /Основные работающие мышцы/);
-  assert.match(html, /Прямая мышца живота/);
-  assert.match(html, /Держите корпус ровно/);
-  assert.match(html, /Не прогибайте поясницу/);
+  assert.match(html, /abs/);
+  assert.match(html, /Второстепенные мышцы/);
+  assert.match(html, /Ягодичные, Передние дельты/);
+  assert.match(html, /Исходное положение/);
+  assert.match(html, /Упритесь на предплечья и носки/);
+  assert.match(html, /Ошибки/);
 });
 
 test('save button is disabled when no draft media is selected', () => {
@@ -165,4 +168,40 @@ test('viewer labels support both image and video media', () => {
 
 test('successful save keeps success feedback without auto-close contract', () => {
   assert.equal(WORKOUT_EXERCISE_CARD_SUCCESS_MESSAGE, 'Сохранено');
+});
+
+test('custom workout exercise card skips empty fallback sections', () => {
+  const html = renderToStaticMarkup(
+    <WorkoutExerciseCardSheet
+      isOpen={true}
+      entry={{
+        ...entry,
+        exercise_id: 'custom-exercise-1',
+        exercise: {
+          id: 'custom-exercise-1',
+          name: 'Моё упражнение',
+          category_id: 'custom',
+          is_custom: true,
+          description: 'Держите корпус ровно.',
+          mistakes: '',
+          muscles: [{ id: 'm-1', name: 'Средние дельты' }],
+        },
+      }}
+      onClose={() => {}}
+    />,
+  );
+
+  assert.match(html, /Моё упражнение/);
+  assert.match(html, /Основные работающие мышцы/);
+  assert.match(html, /Средние дельты/);
+  assert.match(html, /Техника/);
+  assert.match(html, /Описание упражнения/);
+  assert.doesNotMatch(html, /Моя тренировка/);
+  assert.doesNotMatch(html, /Загрузить фото\/видео/);
+  assert.doesNotMatch(html, /Фото и видео для этого упражнения ещё не добавлены/);
+  assert.doesNotMatch(html, /Второстепенные мышцы/);
+  assert.doesNotMatch(html, /Не указаны/);
+  assert.doesNotMatch(html, /Описание техники пока не заполнено/);
+  assert.doesNotMatch(html, /Рекомендации пока не заполнены/);
+  assert.doesNotMatch(html, /Сохранить/);
 });

@@ -1,11 +1,42 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Trash2, X } from 'lucide-react';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpFromLine,
+  ChevronDown,
+  ChevronUp,
+  CircleDot,
+  Play,
+  Shield,
+  Trash2,
+  Wind,
+  X,
+} from 'lucide-react';
 import type { Exercise, WorkoutEntry } from '../types/workout';
 import { userExerciseMediaService, type PersistedWorkoutExerciseMediaItem, toUserExerciseMediaErrorMessage } from '../services/userExerciseMediaService';
 import { formatWorkoutMetricValue, normalizeWorkoutMetricType } from '../utils/workoutEntryMetric';
+import { lookupExerciseContent } from '../utils/exerciseContentLookup';
+import { getMuscleLabel } from '../utils/muscleLabels';
 import ExerciseMediaViewerOverlay, { type ExerciseMediaViewerItem } from './ExerciseMediaViewerOverlay';
 
 export const WORKOUT_EXERCISE_CARD_SUCCESS_MESSAGE = 'Сохранено';
+const WORKOUT_EXERCISE_CARD_ANIMATION_MS = 180;
+const SECTION_ICON_CLASS = 'h-4 w-4';
+const SECTION_HEADING_ROW_CLASS = 'flex items-center gap-2';
+const ICON_COLORS = {
+  technique: 'text-violet-500 dark:text-violet-400',
+  primary: 'text-amber-500 dark:text-amber-400',
+  secondary: 'text-slate-500 dark:text-slate-400',
+  start: 'text-cyan-500 dark:text-cyan-400',
+  execution: 'text-indigo-500 dark:text-indigo-400',
+  top: 'text-emerald-500 dark:text-emerald-400',
+  return: 'text-orange-500 dark:text-orange-400',
+  breathing: 'text-blue-500 dark:text-blue-400',
+  safety: 'text-green-500 dark:text-green-400',
+  mistakes: 'text-red-500 dark:text-red-400',
+} as const;
 
 interface WorkoutExerciseCardSheetProps {
   isOpen: boolean;
@@ -153,6 +184,36 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [viewerItem, setViewerItem] = useState<ExerciseMediaViewerItem | null>(null);
+  const [isTechniqueExpanded, setIsTechniqueExpanded] = useState(false);
+  const [isRendered, setIsRendered] = useState(isOpen);
+  const [isVisible, setIsVisible] = useState(false);
+  const [renderEntry, setRenderEntry] = useState<WorkoutEntry | null>(entry);
+
+  useEffect(() => {
+    let openFrame = 0;
+    let closeTimer: number | null = null;
+
+    if (isOpen && entry) {
+      setRenderEntry(entry);
+      setIsRendered(true);
+      openFrame = window.requestAnimationFrame(() => {
+        setIsVisible(true);
+      });
+    } else {
+      setIsVisible(false);
+      closeTimer = window.setTimeout(() => {
+        setIsRendered(false);
+        setRenderEntry(null);
+      }, WORKOUT_EXERCISE_CARD_ANIMATION_MS);
+    }
+
+    return () => {
+      window.cancelAnimationFrame(openFrame);
+      if (closeTimer) {
+        window.clearTimeout(closeTimer);
+      }
+    };
+  }, [entry, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -165,7 +226,7 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) {
+    if (!isRendered) {
       setDraftItems((current) => {
         current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
         return [];
@@ -177,6 +238,7 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
       setDeletingPersistedMediaId(null);
       setIsLoadingPersisted(false);
       setViewerItem(null);
+      setIsTechniqueExpanded(false);
       return;
     }
 
@@ -208,32 +270,73 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
     return () => {
       cancelled = true;
     };
-  }, [isOpen, entry?.id]);
+  }, [entry?.id, isOpen, isRendered]);
 
   const hasDraftMedia = draftItems.length > 0;
   const mediaSectionOrder = getWorkoutExerciseCardMediaSectionOrder(draftItems.length > 0, persistedItems.length > 0);
 
-  const techniqueMuscles = useMemo(() => buildTechniqueMuscles(entry?.exercise), [entry?.exercise]);
   const techniqueMedia = useMemo(
-    () => entry?.exercise?.media?.slice().sort((left, right) => left.order - right.order) ?? [],
-    [entry?.exercise?.media],
+    () => renderEntry?.exercise?.media?.slice().sort((left, right) => left.order - right.order) ?? [],
+    [renderEntry?.exercise?.media],
   );
+  const isUserCreatedExercise = renderEntry?.exercise?.is_custom === true;
+  const techniqueContent = useMemo(() => {
+    if (isUserCreatedExercise) return undefined;
 
-  if (!isOpen || !entry) return null;
+    return lookupExerciseContent({
+      exerciseId: renderEntry?.exercise_id ?? renderEntry?.exercise?.id,
+      exerciseName: renderEntry?.exercise?.name,
+    });
+  }, [isUserCreatedExercise, renderEntry?.exercise?.id, renderEntry?.exercise?.name, renderEntry?.exercise_id]);
 
-  const exercise = entry.exercise;
+  if (!isRendered || !renderEntry) return null;
+
+  const exercise = renderEntry.exercise;
+  const primaryMuscles = techniqueContent
+    ? techniqueContent.primary_muscles
+    : buildTechniqueMuscles(exercise);
+  const secondaryMuscles = techniqueContent
+    ? techniqueContent.secondary_muscles
+    : (exercise?.secondary_muscles ?? []).filter((value): value is string => Boolean(value?.trim()));
+  const techniqueSections = [
+    { label: 'Исходное положение', value: techniqueContent?.start_position },
+    { label: 'Выполнение', value: techniqueContent?.execution },
+    { label: 'Верхняя точка', value: techniqueContent?.top_position },
+    { label: 'Возврат', value: techniqueContent?.return_phase },
+    { label: 'Дыхание', value: techniqueContent?.breathing },
+    { label: 'Безопасность', value: techniqueContent?.safety },
+  ].filter((section) => Boolean(section.value?.trim()));
+  const techniqueMistakes = techniqueContent?.mistakes?.filter((item) => Boolean(item.trim())) ?? [];
+  const hasStructuredTechniqueText = techniqueSections.length > 0 || techniqueMistakes.length > 0;
+  const exerciseDescription = exercise?.description?.trim() ?? '';
+  const exerciseMistakesText = exercise?.mistakes?.trim() ?? '';
+  const shouldRenderMyWorkoutSection = !isUserCreatedExercise || draftItems.length > 0 || persistedItems.length > 0;
+  const shouldRenderPrimaryMuscles = !isUserCreatedExercise || primaryMuscles.length > 0;
+  const shouldRenderSecondaryMuscles = !isUserCreatedExercise || secondaryMuscles.length > 0;
+  const shouldRenderFallbackTechniqueText = !isUserCreatedExercise || Boolean(exerciseDescription || exerciseMistakesText);
+  const shouldRenderTechniqueBlock = hasStructuredTechniqueText || techniqueMedia.length > 0 || Boolean(exercise?.muscle_map_image_url) || shouldRenderFallbackTechniqueText;
+  const shouldRenderExerciseDetailsSection = !isUserCreatedExercise
+    || Boolean(techniqueContent?.technique_image_url)
+    || shouldRenderPrimaryMuscles
+    || shouldRenderSecondaryMuscles
+    || shouldRenderTechniqueBlock;
 
   return (
     <>
-      <div className="fixed inset-0 z-[90] bg-black/50" onClick={onClose} />
+      <div
+        className={`fixed inset-0 z-[90] bg-black/50 transition-opacity duration-200 ease-out ${isVisible ? 'opacity-100' : 'opacity-0'}`}
+        onClick={onClose}
+      />
       <div className="fixed inset-0 z-[90] flex items-center justify-center p-2 min-[376px]:p-4">
         <div
-          className="flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl dark:bg-gray-900"
+          className={`flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl transition-all duration-200 ease-out dark:bg-gray-900 ${
+            isVisible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-2 scale-[0.985] opacity-0'
+          }`}
           onClick={(event) => event.stopPropagation()}
         >
           <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 dark:border-gray-700">
             <div className="w-10" />
-            <h2 className="text-sm font-semibold uppercase tracking-[0.08em] text-gray-900 dark:text-white">
+            <h2 className="whitespace-nowrap text-[13px] font-semibold uppercase tracking-[0.05em] text-gray-900 dark:text-white">
               Карточка тренировки
             </h2>
             <button
@@ -251,40 +354,43 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                 {exercise?.name || 'Упражнение'}
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {entry.sets} × {entry.reps} × {formatWorkoutMetricValue(entry.displayAmount ?? entry.weight, normalizeWorkoutMetricType(entry.metricType), entry.metricUnit ?? entry.displayUnit)}
+                {renderEntry.sets} × {renderEntry.reps} × {formatWorkoutMetricValue(renderEntry.displayAmount ?? renderEntry.weight, normalizeWorkoutMetricType(renderEntry.metricType), renderEntry.metricUnit ?? renderEntry.displayUnit)}
               </p>
             </section>
 
-            <section className="space-y-3">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full rounded-[18px] border border-green-200 bg-green-50/80 px-4 py-3 text-sm font-semibold uppercase text-green-900 transition-colors hover:bg-green-100 dark:border-green-900/40 dark:bg-green-950/30 dark:text-green-100"
-              >
-                Загрузить фото/видео
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,video/*"
-                multiple
-                className="hidden"
-                onChange={(event) => {
-                  const selected = Array.from(event.target.files ?? []);
-                  if (selected.length === 0) return;
-                  setDraftItems((current) => [
-                    ...current,
-                    ...buildWorkoutExerciseCardDraftMediaItems(selected, (file) => URL.createObjectURL(file)),
-                  ]);
-                  setErrorMessage(null);
-                  setSuccessMessage(null);
-                  event.currentTarget.value = '';
-                }}
-              />
-            </section>
-
-            <section className="space-y-3">
+            {shouldRenderMyWorkoutSection ? (
+            <section className="space-y-3 border-t border-gray-100 pt-5 dark:border-gray-800">
               <div className="text-sm font-semibold uppercase text-gray-900 dark:text-white">Моя тренировка</div>
+              {!isUserCreatedExercise ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full rounded-[18px] border border-green-200 bg-green-50/80 px-4 py-3 text-sm font-semibold uppercase text-green-900 transition-colors hover:bg-green-100 dark:border-green-900/40 dark:bg-green-950/30 dark:text-green-100"
+                  >
+                    Загрузить фото/видео
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      const selected = Array.from(event.target.files ?? []);
+                      if (selected.length === 0) return;
+                      setDraftItems((current) => [
+                        ...current,
+                        ...buildWorkoutExerciseCardDraftMediaItems(selected, (file) => URL.createObjectURL(file)),
+                      ]);
+                      setErrorMessage(null);
+                      setSuccessMessage(null);
+                      event.currentTarget.value = '';
+                    }}
+                  />
+                </>
+              ) : null}
+
               {isLoadingPersisted ? (
                 <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
                   Загрузка медиа...
@@ -347,47 +453,153 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                 <p className="text-xs text-green-600 dark:text-green-400">{successMessage}</p>
               ) : null}
             </section>
+            ) : null}
 
-            <section className="space-y-4">
-              <div className="text-sm font-semibold uppercase text-gray-900 dark:text-white">Техника</div>
-
-              {techniqueMedia.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3">
-                  {techniqueMedia.map((mediaItem, index) => renderTechniqueMediaItem(exercise?.name || 'Упражнение', mediaItem, index))}
-                </div>
-              ) : null}
-
-              {exercise?.muscle_map_image_url ? (
+            {shouldRenderExerciseDetailsSection ? (
+            <section className="space-y-5 border-t border-gray-100 pt-5 dark:border-gray-800">
+              {techniqueContent?.technique_image_url ? (
                 <img
-                  src={exercise.muscle_map_image_url}
-                  alt={`Карта мышц: ${exercise?.name || 'Упражнение'}`}
-                  className="mx-auto max-h-52 rounded-2xl bg-gray-50 object-contain dark:bg-gray-800"
+                  src={techniqueContent.technique_image_url}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                  alt={exercise?.name || techniqueContent.exercise_name}
+                  className="w-full rounded-[12px] object-contain"
                 />
               ) : null}
 
-              <div className="space-y-1">
-                <div className="text-xs font-semibold uppercase text-gray-700 dark:text-gray-300">Основные работающие мышцы</div>
+              {shouldRenderPrimaryMuscles ? (
+              <div className="space-y-2 rounded-2xl bg-gray-50/70 px-4 py-3 dark:bg-gray-800/40">
+                <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+                  <Activity className={`${SECTION_ICON_CLASS} ${ICON_COLORS.primary}`} />
+                  <span>Основные работающие мышцы</span>
+                </div>
                 <p className="text-sm leading-6 text-gray-700 dark:text-gray-200">
-                  {techniqueMuscles.length > 0 ? techniqueMuscles.join(', ') : 'Не указаны'}
+                  {primaryMuscles.length > 0 ? primaryMuscles.map(getMuscleLabel).join(', ') : 'Не указаны'}
                 </p>
               </div>
+              ) : null}
 
-              <div className="space-y-1">
-                <div className="text-xs font-semibold uppercase text-gray-700 dark:text-gray-300">Описание техники</div>
-                <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700 dark:text-gray-200">
-                  {exercise?.description?.trim() || 'Описание техники пока не заполнено.'}
+              {shouldRenderSecondaryMuscles ? (
+              <div className="space-y-2 rounded-2xl bg-gray-50/70 px-4 py-3 dark:bg-gray-800/40">
+                <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+                  <CircleDot className={`${SECTION_ICON_CLASS} ${ICON_COLORS.secondary}`} />
+                  <span>Второстепенные мышцы</span>
+                </div>
+                <p className="text-sm leading-6 text-gray-700 dark:text-gray-200">
+                  {secondaryMuscles.length > 0 ? secondaryMuscles.map(getMuscleLabel).join(', ') : 'Не указаны'}
                 </p>
               </div>
+              ) : null}
 
-              <div className="space-y-1">
-                <div className="text-xs font-semibold uppercase text-gray-700 dark:text-gray-300">Рекомендации и ошибки</div>
-                <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700 dark:text-gray-200">
-                  {exercise?.mistakes?.trim() || 'Рекомендации пока не заполнены.'}
-                </p>
+              {shouldRenderTechniqueBlock ? (
+              <>
+              <button
+                type="button"
+                onClick={() => setIsTechniqueExpanded((current) => !current)}
+                className="flex w-full items-center justify-between text-left"
+                aria-expanded={isTechniqueExpanded}
+              >
+                <div className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-gray-900 dark:text-white`}>
+                  <Activity className={`${SECTION_ICON_CLASS} ${ICON_COLORS.technique}`} />
+                  <span>Техника</span>
+                </div>
+                {isTechniqueExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                )}
+              </button>
+
+              <div
+                className={`grid transition-all duration-200 ease-out ${isTechniqueExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+              >
+                <div className="overflow-hidden">
+                  <div className="space-y-5 pt-1">
+                    {techniqueMedia.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        {techniqueMedia.map((mediaItem, index) => renderTechniqueMediaItem(exercise?.name || 'Упражнение', mediaItem, index))}
+                      </div>
+                    ) : null}
+
+                    {exercise?.muscle_map_image_url ? (
+                      <img
+                        src={exercise.muscle_map_image_url}
+                        alt={`Карта мышц: ${exercise?.name || 'Упражнение'}`}
+                        className="mx-auto max-h-52 rounded-2xl bg-gray-50 object-contain dark:bg-gray-800"
+                      />
+                    ) : null}
+
+                    {hasStructuredTechniqueText ? (
+                      <>
+                        {techniqueSections.map((section) => (
+                          <div key={section.label} className="space-y-2 border-t border-gray-100 pt-4 first:border-t-0 first:pt-0 dark:border-gray-800">
+                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+                              {section.label === 'Исходное положение' ? <ArrowUpFromLine className={`${SECTION_ICON_CLASS} ${ICON_COLORS.start}`} /> : null}
+                              {section.label === 'Выполнение' ? <Play className={`${SECTION_ICON_CLASS} ${ICON_COLORS.execution}`} /> : null}
+                              {section.label === 'Верхняя точка' ? <ArrowUp className={`${SECTION_ICON_CLASS} ${ICON_COLORS.top}`} /> : null}
+                              {section.label === 'Возврат' ? <ArrowDown className={`${SECTION_ICON_CLASS} ${ICON_COLORS.return}`} /> : null}
+                              {section.label === 'Дыхание' ? <Wind className={`${SECTION_ICON_CLASS} ${ICON_COLORS.breathing}`} /> : null}
+                              {section.label === 'Безопасность' ? <Shield className={`${SECTION_ICON_CLASS} ${ICON_COLORS.safety}`} /> : null}
+                              <span>{section.label}</span>
+                            </div>
+                            <p className="max-w-[68ch] whitespace-pre-wrap text-[15px] leading-7 text-gray-700 dark:text-gray-200">
+                              {section.value}
+                            </p>
+                          </div>
+                        ))}
+
+                        {techniqueMistakes.length > 0 ? (
+                          <div className="space-y-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+                              <AlertTriangle className={`${SECTION_ICON_CLASS} ${ICON_COLORS.mistakes}`} />
+                              <span>Ошибки</span>
+                            </div>
+                            <ul className="max-w-[68ch] list-disc space-y-2 pl-5 text-[15px] leading-7 text-gray-700 marker:text-gray-400 dark:text-gray-200 dark:marker:text-gray-500">
+                              {techniqueMistakes.map((item) => (
+                                <li key={item} className="whitespace-pre-wrap">{item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <>
+                        {exerciseDescription || !isUserCreatedExercise ? (
+                          <div className="space-y-2">
+                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+                              <Activity className={`${SECTION_ICON_CLASS} ${ICON_COLORS.technique}`} />
+                              <span>{isUserCreatedExercise ? 'Описание упражнения' : 'Описание техники'}</span>
+                            </div>
+                            <p className="max-w-[68ch] whitespace-pre-wrap text-[15px] leading-7 text-gray-700 dark:text-gray-200">
+                              {exerciseDescription || 'Описание техники пока не заполнено.'}
+                            </p>
+                          </div>
+                        ) : null}
+
+                        {exerciseMistakesText || !isUserCreatedExercise ? (
+                          <div className="space-y-2 border-t border-gray-100 pt-4 dark:border-gray-800">
+                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+                              <AlertTriangle className={`${SECTION_ICON_CLASS} ${ICON_COLORS.mistakes}`} />
+                              <span>Рекомендации и ошибки</span>
+                            </div>
+                            <p className="max-w-[68ch] whitespace-pre-wrap text-[15px] leading-7 text-gray-700 dark:text-gray-200">
+                              {exerciseMistakesText || 'Рекомендации пока не заполнены.'}
+                            </p>
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
+              </>
+              ) : null}
             </section>
+            ) : null}
           </div>
 
+          {!isUserCreatedExercise || hasDraftMedia ? (
           <div className="border-t border-gray-200 px-5 py-4 dark:border-gray-700">
             <button
               type="button"
@@ -399,9 +611,9 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                 setSuccessMessage(null);
                 void userExerciseMediaService
                   .saveWorkoutExerciseMediaDrafts({
-                    exerciseId: entry.exercise_id,
-                    workoutEntryId: entry.id,
-                    workoutDate: entry.workout_day?.date ?? null,
+                    exerciseId: renderEntry.exercise_id,
+                    workoutEntryId: renderEntry.id,
+                    workoutDate: renderEntry.workout_day?.date ?? null,
                     files: draftItems.map((item) => item.file),
                   })
                   .then((items) => {
@@ -425,6 +637,7 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
               {isSavingPersisted ? 'Сохранение...' : 'Сохранить'}
             </button>
           </div>
+          ) : null}
         </div>
       </div>
       <ExerciseMediaViewerOverlay item={viewerItem} onClose={() => setViewerItem(null)} />

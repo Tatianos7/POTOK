@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "generate:exercises": "ts-node scripts/generateExerciseContent.ts",
     "test:diary": "tsx --test src/services/__tests__/diaryCreateService.test.ts src/services/__tests__/mealService.diary-enforcement.test.ts",
     "test:diary:bugfix": "tsx --test src/services/__tests__/foodService.search-mapping.test.ts src/services/__tests__/diaryCreateService.test.ts src/services/__tests__/mealService.diary-enforcement.test.ts",
     "test:diary:integration": "tsx --test src/services/__tests__/diaryCreateService.integration.test.ts",
@@ -48,9 +49,13 @@
     "playwright": "^1.40.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6",
+    "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "typescript": "^5.2.2",
     "vite": "^5.0.8",
     "xlsx": "^0.18.5"
+  },
+  "ts-node": {
+    "esm": true
   }
 }
