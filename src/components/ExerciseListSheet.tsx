@@ -366,10 +366,10 @@ const ExerciseListSheet = ({
             <div className="px-4 py-2 space-y-2">
               {filteredExercises.map((exercise, index) => {
                 const isSelected = selectedExercises.has(exercise.id);
-                // Используем первую мышцу для отображения (должна быть, так как мы фильтруем)
-                const primaryMuscle = exercise.muscles && exercise.muscles.length > 0 
-                  ? exercise.muscles[0].name || ''
-                  : '';
+                const exerciseMuscles = (exercise.muscles ?? [])
+                  .map((muscle) => muscle.name)
+                  .filter((name): name is string => Boolean(name?.trim()))
+                  .join(', ');
                 
                 // Используем уникальный key: название + id + индекс для избежания конфликтов
                 const uniqueKey = `${exercise.name}-${exercise.id}-${index}`;
@@ -404,8 +404,8 @@ const ExerciseListSheet = ({
                     >
                       <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere">
                         {exercise.name}
-                        {primaryMuscle && (
-                          <span className="text-gray-500 dark:text-gray-400"> — {primaryMuscle}</span>
+                        {exerciseMuscles && (
+                          <span className="text-gray-500 dark:text-gray-400"> — {exerciseMuscles}</span>
                         )}
                       </p>
                     </button>

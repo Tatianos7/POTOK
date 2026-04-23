@@ -52,3 +52,51 @@ test('exercise definition sheet keeps add button honest when exercise already se
   assert.match(html, /Уже добавлено/);
   assert.match(html, /disabled=""/);
 });
+
+test('custom exercise definition sheet skips empty fallback sections', () => {
+  const html = renderToStaticMarkup(
+    <ExerciseDefinitionSheet
+      isOpen={true}
+      exercise={{
+        id: 'custom-1',
+        name: 'Моё упражнение',
+        category_id: 'custom',
+        is_custom: true,
+        description: '',
+        mistakes: '',
+        muscles: [{ id: 'm-1', name: 'Средние дельты' }],
+      }}
+      onClose={() => {}}
+      onAddToWorkout={() => {}}
+    />,
+  );
+
+  assert.match(html, /Основные мышцы/);
+  assert.match(html, /Средние дельты/);
+  assert.doesNotMatch(html, /Второстепенные мышцы/);
+  assert.doesNotMatch(html, /Не указаны/);
+  assert.doesNotMatch(html, /Описание техники пока не заполнено/);
+  assert.doesNotMatch(html, /Рекомендации пока не заполнены/);
+});
+
+test('custom exercise definition sheet labels description without duplicated technique heading', () => {
+  const html = renderToStaticMarkup(
+    <ExerciseDefinitionSheet
+      isOpen={true}
+      exercise={{
+        id: 'custom-2',
+        name: 'Моё упражнение с описанием',
+        category_id: 'custom',
+        is_custom: true,
+        description: 'Держите корпус ровно.',
+        mistakes: '',
+        muscles: [{ id: 'm-1', name: 'Средние дельты' }],
+      }}
+      onClose={() => {}}
+      onAddToWorkout={() => {}}
+    />,
+  );
+
+  assert.match(html, /Описание упражнения/);
+  assert.equal((html.match(/Техника/g) ?? []).length, 1);
+});

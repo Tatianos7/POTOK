@@ -1137,6 +1137,16 @@ const Workouts = () => {
                 onDelete={() => void handleDeleteWorkoutDayNoteFromBlock()}
               />
             ) : null}
+
+            <div className="mt-4 flex justify-end pr-4">
+              <button
+                type="button"
+                onClick={() => navigate('/progress/workouts', { state: { returnTo: 'workouts' } })}
+                className="rounded-full border border-green-200 bg-green-100/45 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-green-800 transition-colors hover:bg-green-100/70 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-200 dark:hover:bg-green-900/30"
+              >
+                Прогресс
+              </button>
+            </div>
           </div>
         </main>
 

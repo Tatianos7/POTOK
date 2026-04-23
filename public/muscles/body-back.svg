@@ -1,0 +1,26 @@
+<svg width="240" height="520" viewBox="0 0 240 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="92" y="16" width="56" height="56" rx="28" fill="#F3F4F6" stroke="#D1D5DB"/>
+  <rect x="100" y="70" width="40" height="30" rx="12" fill="#F3F4F6" stroke="#D1D5DB"/>
+
+  <rect id="traps_upper" x="92" y="86" width="56" height="28" rx="10" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="traps_middle" x="96" y="114" width="48" height="26" rx="10" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="rear_delts" x="68" y="98" width="34" height="32" rx="14" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect x="138" y="98" width="34" height="32" rx="14" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="lats" x="78" y="138" width="30" height="96" rx="12" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect x="132" y="138" width="30" height="96" rx="12" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="teres_major" x="106" y="144" width="28" height="32" rx="10" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="triceps" x="52" y="132" width="26" height="82" rx="12" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect x="162" y="132" width="26" height="82" rx="12" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="forearms_back" x="40" y="214" width="22" height="82" rx="10" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect x="178" y="214" width="22" height="82" rx="10" fill="#E5E7EB" stroke="#CBD5E1"/>
+
+  <rect id="erectors" x="106" y="176" width="28" height="96" rx="12" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="lower_back" x="94" y="248" width="52" height="30" rx="10" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="glutes" x="88" y="278" width="64" height="48" rx="16" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="abductors" x="68" y="286" width="22" height="56" rx="10" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect x="150" y="286" width="22" height="56" rx="10" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="hamstrings" x="84" y="330" width="24" height="112" rx="12" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect x="132" y="330" width="24" height="112" rx="12" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect id="calves" x="80" y="442" width="28" height="58" rx="12" fill="#E5E7EB" stroke="#CBD5E1"/>
+  <rect x="132" y="442" width="28" height="58" rx="12" fill="#E5E7EB" stroke="#CBD5E1"/>
+</svg>
