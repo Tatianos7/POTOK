@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Calendar, Trash2, Clock, Plus, StickyNote } from 'lucide-react';
+import { X, Calendar, Trash2, Clock, Plus, StickyNote, TrendingUp } from 'lucide-react';
 import InlineCalendar from '../components/InlineCalendar';
 import ExerciseCategorySheet from '../components/ExerciseCategorySheet';
 import ExerciseListSheet from '../components/ExerciseListSheet';
@@ -1037,13 +1037,6 @@ const Workouts = () => {
               </h2>
               <div className="flex items-center gap-2 min-[376px]:gap-3">
                 <button
-                  onClick={handleHistory}
-                  className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                  aria-label="История тренировок"
-                >
-                  <Clock className="w-4 h-4 min-[376px]:w-5 min-[376px]:h-5 text-gray-700 dark:text-gray-300" />
-                </button>
-                <button
                   onClick={() => void handleOpenWorkoutDayNote()}
                   disabled={isLoadingWorkoutDayNote || isDeletingWorkout || isSaving || isLoading}
                   className="p-1.5 min-[376px]:p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1137,33 +1130,55 @@ const Workouts = () => {
                 onDelete={() => void handleDeleteWorkoutDayNoteFromBlock()}
               />
             ) : null}
-
-            <div className="mt-4 flex justify-end pr-4">
-              <button
-                type="button"
-                onClick={() => navigate('/progress/workouts', { state: { returnTo: 'workouts' } })}
-                className="rounded-full border border-green-200 bg-green-100/45 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-green-800 transition-colors hover:bg-green-100/70 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-200 dark:hover:bg-green-900/30"
-              >
-                Прогресс
-              </button>
-            </div>
           </div>
         </main>
 
         {/* Bottom Navigation */}
         <div className={WORKOUT_BOTTOM_BAR_CLASS}>
-          <div className="flex items-center justify-center px-2 min-[376px]:px-4 py-3 min-[376px]:py-4 w-full max-w-full">
-            <button
-              onClick={handleAdd}
-              className="flex flex-col items-center justify-center gap-1 min-[376px]:gap-1.5 text-gray-900 dark:text-white hover:text-gray-700 dark:hover:text-gray-300 transition-colors min-w-0"
-            >
-              <div className="w-10 h-10 min-[376px]:w-12 min-[376px]:h-12 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 flex items-center justify-center">
-                <Plus className="w-5 h-5 min-[376px]:w-6 min-[376px]:h-6" />
-              </div>
-              <span className="text-[10px] min-[376px]:text-xs font-medium uppercase break-words overflow-wrap-anywhere">
-                ДОБАВИТЬ
-              </span>
-            </button>
+          <div className="flex w-full items-center justify-between px-4 min-[376px]:px-4 py-3 min-[376px]:py-4">
+            <div className="flex flex-1 justify-start">
+              <button
+                onClick={handleHistory}
+                className="flex min-w-[72px] flex-col items-center justify-center gap-1 min-[376px]:gap-1.5 text-green-800 dark:text-green-200 hover:text-green-900 dark:hover:text-green-100 transition-colors"
+                aria-label="История тренировок"
+              >
+                <div className="flex h-10 w-10 min-[376px]:h-11 min-[376px]:w-11 items-center justify-center rounded-full border border-green-200 bg-green-100/45 dark:border-green-900/50 dark:bg-green-900/20">
+                  <Clock className="w-4 h-4 min-[376px]:w-5 min-[376px]:h-5" />
+                </div>
+                <span className="text-[10px] min-[376px]:text-xs font-medium uppercase break-words overflow-wrap-anywhere">
+                  ИСТОРИЯ
+                </span>
+              </button>
+            </div>
+
+            <div className="flex flex-1 justify-center">
+              <button
+                onClick={handleAdd}
+                className="flex min-w-[72px] flex-col items-center justify-center gap-1 min-[376px]:gap-1.5 text-green-800 dark:text-green-100 hover:text-green-900 dark:hover:text-white transition-colors"
+              >
+                <div className="flex h-10 w-10 min-[376px]:h-11 min-[376px]:w-11 items-center justify-center rounded-full border border-green-400/60 bg-green-500 text-white shadow-[0_6px_18px_rgba(34,197,94,0.22)] dark:border-green-400/40 dark:bg-green-500">
+                  <Plus className="w-5 h-5 min-[376px]:w-6 min-[376px]:h-6" />
+                </div>
+                <span className="text-[10px] min-[376px]:text-xs font-medium uppercase break-words overflow-wrap-anywhere">
+                  ДОБАВИТЬ
+                </span>
+              </button>
+            </div>
+
+            <div className="flex flex-1 justify-end">
+              <button
+                type="button"
+                onClick={() => navigate('/progress/workouts', { state: { returnTo: 'workouts' } })}
+                className="flex min-w-[72px] flex-col items-center justify-center gap-1 min-[376px]:gap-1.5 text-green-800 dark:text-green-200 hover:text-green-900 dark:hover:text-green-100 transition-colors"
+              >
+                <div className="flex h-10 w-10 min-[376px]:h-11 min-[376px]:w-11 items-center justify-center rounded-full border border-green-200 bg-green-100/45 dark:border-green-900/50 dark:bg-green-900/20">
+                  <TrendingUp className="w-4 h-4 min-[376px]:w-5 min-[376px]:h-5" />
+                </div>
+                <span className="text-[10px] min-[376px]:text-xs font-medium uppercase break-words overflow-wrap-anywhere">
+                  ПРОГРЕСС
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       {/* Exercise Category Sheet */}
