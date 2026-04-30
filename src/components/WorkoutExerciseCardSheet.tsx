@@ -17,7 +17,7 @@ import {
 import type { Exercise, WorkoutEntry } from '../types/workout';
 import { userExerciseMediaService, type PersistedWorkoutExerciseMediaItem, toUserExerciseMediaErrorMessage } from '../services/userExerciseMediaService';
 import { formatWorkoutMetricValue, normalizeWorkoutMetricType } from '../utils/workoutEntryMetric';
-import { lookupExerciseContent } from '../utils/exerciseContentLookup';
+import { getExerciseContentForExercise } from '../utils/exerciseContentLookup';
 import { getMuscleLabel } from '../utils/muscleLabels';
 import ExerciseMediaViewerOverlay, { type ExerciseMediaViewerItem } from './ExerciseMediaViewerOverlay';
 
@@ -282,12 +282,27 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
   const isUserCreatedExercise = renderEntry?.exercise?.is_custom === true;
   const techniqueContent = useMemo(() => {
     if (isUserCreatedExercise) return undefined;
+    if (!renderEntry?.exercise_id && !renderEntry?.exercise?.name?.trim()) return undefined;
 
-    return lookupExerciseContent({
-      exerciseId: renderEntry?.exercise_id ?? renderEntry?.exercise?.id,
-      exerciseName: renderEntry?.exercise?.name,
+    return getExerciseContentForExercise({
+      exercise_id: renderEntry?.exercise_id,
+      canonical_exercise_id: renderEntry?.canonical_exercise_id,
+      exercise: renderEntry?.exercise
+        ? {
+            exercise_id: renderEntry.exercise_id,
+            id: renderEntry.exercise.id,
+            canonical_exercise_id: renderEntry.exercise.canonical_exercise_id,
+            normalized_name: renderEntry.exercise.normalized_name,
+            name: renderEntry.exercise.name,
+          }
+        : null,
     });
-  }, [isUserCreatedExercise, renderEntry?.exercise?.id, renderEntry?.exercise?.name, renderEntry?.exercise_id]);
+  }, [
+    isUserCreatedExercise,
+    renderEntry?.canonical_exercise_id,
+    renderEntry?.exercise,
+    renderEntry?.exercise_id,
+  ]);
 
   if (!isRendered || !renderEntry) return null;
 
@@ -461,6 +476,9 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                 <img
                   src={techniqueContent.technique_image_url}
                   onError={(e) => {
+                    if (import.meta.env.DEV) {
+                      console.warn('image failed', techniqueContent.technique_image_url);
+                    }
                     e.currentTarget.style.display = 'none';
                   }}
                   alt={exercise?.name || techniqueContent.exercise_name}
