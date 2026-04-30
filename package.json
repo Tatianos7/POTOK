@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "generate:exercises": "ts-node scripts/generateExerciseContent.ts",
+    "validate:exercise-media": "tsx scripts/validateExerciseMedia.ts",
     "test:diary": "tsx --test src/services/__tests__/diaryCreateService.test.ts src/services/__tests__/mealService.diary-enforcement.test.ts",
     "test:diary:bugfix": "tsx --test src/services/__tests__/foodService.search-mapping.test.ts src/services/__tests__/diaryCreateService.test.ts src/services/__tests__/mealService.diary-enforcement.test.ts",
     "test:diary:integration": "tsx --test src/services/__tests__/diaryCreateService.integration.test.ts",

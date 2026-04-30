@@ -14,7 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import type { Exercise } from '../types/workout';
-import { lookupExerciseContent } from '../utils/exerciseContentLookup';
+import { getExerciseContentForExercise } from '../utils/exerciseContentLookup';
 import { getMuscleLabel } from '../utils/muscleLabels';
 
 const EXERCISE_DEFINITION_SHEET_ANIMATION_MS = 180;
@@ -123,10 +123,7 @@ const ExerciseDefinitionSheet = ({
   const isUserCreatedExercise = renderExercise?.is_custom === true;
   const techniqueContent = isUserCreatedExercise
     ? undefined
-    : lookupExerciseContent({
-        exerciseId: renderExercise?.id,
-        exerciseName: renderExercise?.name,
-      });
+    : getExerciseContentForExercise(renderExercise);
   const techniqueSections = [
     { label: 'Исходное положение', value: techniqueContent?.start_position },
     { label: 'Выполнение', value: techniqueContent?.execution },
@@ -208,6 +205,9 @@ const ExerciseDefinitionSheet = ({
                       src={techniqueContent.technique_image_url}
                       alt={renderExercise.name}
                       onError={(event) => {
+                        if (import.meta.env.DEV) {
+                          console.warn('image failed', techniqueContent.technique_image_url);
+                        }
                         event.currentTarget.style.display = 'none';
                       }}
                       className="w-full rounded-[12px] object-contain"

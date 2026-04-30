@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { Exercise, ExerciseCategory, Muscle, CreateExerciseData } from '../types/workout';
 import { normalizeMuscleNames } from '../utils/muscleNormalizer';
+import { normalizeName } from '../utils/exerciseContentLookup';
 
 export function isExerciseDefinitionSchemaGapError(error: { message?: string | null; details?: string | null; code?: string | null } | null | undefined): boolean {
   const message = `${error?.message ?? ''} ${error?.details ?? ''}`.toLowerCase();
@@ -28,7 +29,34 @@ export function buildExerciseMuscleLinkRows(exerciseId: string, muscleIds: strin
   }));
 }
 
+const LEGACY_CANONICAL_NAME_MAP: Record<string, string> = {
+  отжимания_на_кольцах: 'ring_pushups',
+};
+
 class ExerciseService {
+  private resolveLegacyCanonicalExerciseId(exerciseName: string, currentCanonicalExerciseId?: string | null, fallbackId?: string | null) {
+    const explicitCanonicalId = String(currentCanonicalExerciseId ?? '').trim();
+    if (explicitCanonicalId) {
+      return explicitCanonicalId;
+    }
+
+    const rawExerciseName = exerciseName.toLowerCase();
+    const normalizedExerciseName = normalizeName(exerciseName);
+    const mappedCanonicalId = LEGACY_CANONICAL_NAME_MAP[normalizedExerciseName];
+    if (mappedCanonicalId) {
+      return mappedCanonicalId;
+    }
+
+    if (
+      normalizedExerciseName === 'подтягивания_обратным_хватом'
+      && rawExerciseName.includes('chin-ups')
+    ) {
+      return 'chin_ups_underhand_back';
+    }
+
+    return String(fallbackId ?? '').trim() || null;
+  }
+
   private getCategoryExercisesStorageKey(categoryId: string): string {
     return `exercises_${categoryId}`;
   }
@@ -152,7 +180,7 @@ class ExerciseService {
       description: undefined,
       is_custom: false,
       created_by_user_id: undefined,
-      canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
+      canonical_exercise_id: this.resolveLegacyCanonicalExerciseId(exerciseName, ex.canonical_exercise_id, ex.id),
       normalized_name: ex.normalized_name ?? null,
       movement_pattern: ex.movement_pattern ?? null,
       equipment_type: ex.equipment_type ?? null,
@@ -166,14 +194,16 @@ class ExerciseService {
 
   private mapExerciseFromDirectRow(ex: any): Exercise {
     const muscles = ex.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [];
+    const exerciseName = String(ex.name ?? '').trim();
+
     return {
       id: ex.id,
-      name: ex.name,
+      name: exerciseName,
       category_id: ex.category_id,
       description: ex.description,
       is_custom: ex.is_custom,
       created_by_user_id: ex.created_by_user_id,
-      canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
+      canonical_exercise_id: this.resolveLegacyCanonicalExerciseId(exerciseName, ex.canonical_exercise_id, ex.id),
       normalized_name: ex.normalized_name ?? null,
       movement_pattern: ex.movement_pattern ?? null,
       equipment_type: ex.equipment_type ?? null,
@@ -212,7 +242,7 @@ class ExerciseService {
       media,
       is_custom: ex.is_custom ?? false,
       created_by_user_id: ex.created_by_user_id ?? null,
-      canonical_exercise_id: ex.canonical_exercise_id ?? ex.id,
+      canonical_exercise_id: this.resolveLegacyCanonicalExerciseId(exerciseName, ex.canonical_exercise_id, ex.id),
       normalized_name: ex.normalized_name ?? null,
       movement_pattern: ex.movement_pattern ?? null,
       equipment_type: ex.equipment_type ?? null,

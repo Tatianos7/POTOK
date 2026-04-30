@@ -2,6 +2,9 @@ import { useState, useEffect, useMemo, type MouseEvent } from 'react';
 import { X, Search, Check, Filter, Edit } from 'lucide-react';
 import { Exercise, ExerciseCategory } from '../types/workout';
 import { deriveAvailableMuscles, filterExercisesForList } from '../utils/exerciseListFilters';
+import { dedupeExercisesForUi } from '../utils/exerciseDedup';
+import { getExerciseContentForExercise } from '../utils/exerciseContentLookup';
+import { getMuscleLabel } from '../utils/muscleLabels';
 import ExerciseDefinitionSheet from './ExerciseDefinitionSheet';
 import { exerciseService } from '../services/exerciseService';
 
@@ -35,6 +38,33 @@ export const addExerciseSelectionFromCard = (selected: Set<string>, exerciseId: 
   next.add(exerciseId);
   return next;
 };
+
+export function dedupeExercisesForList(exercises: Exercise[]) {
+  return dedupeExercisesForUi(exercises);
+}
+
+export function getExerciseMusclesForList(exercise: Exercise) {
+  const content = getExerciseContentForExercise({
+    id: exercise.id,
+    exercise_id: exercise.canonical_exercise_id ?? null,
+    canonical_exercise_id: exercise.canonical_exercise_id ?? null,
+    name: exercise.name,
+    normalized_name: exercise.normalized_name ?? null,
+  });
+
+  const primaryMuscles = content?.primary_muscles
+    ?.map((muscleKey) => getMuscleLabel(muscleKey))
+    .filter((label): label is string => Boolean(label?.trim()));
+
+  if (primaryMuscles?.length) {
+    return primaryMuscles.join(', ');
+  }
+
+  return (exercise.muscles ?? [])
+    .map((muscle) => muscle.name)
+    .filter((name): name is string => Boolean(name?.trim()))
+    .join(', ');
+}
 
 const ExerciseListSheet = ({
   isOpen,
@@ -88,7 +118,7 @@ const ExerciseListSheet = ({
 
   // Фильтруем и дедуплицируем упражнения по поисковому запросу и выбранным мышцам
   const filteredExercises = useMemo(
-    () => filterExercisesForList(exercises, localSearchTerm, selectedMuscles),
+    () => dedupeExercisesForList(filterExercisesForList(exercises, localSearchTerm, selectedMuscles)),
     [exercises, localSearchTerm, selectedMuscles],
   );
 
@@ -366,10 +396,7 @@ const ExerciseListSheet = ({
             <div className="px-4 py-2 space-y-2">
               {filteredExercises.map((exercise, index) => {
                 const isSelected = selectedExercises.has(exercise.id);
-                const exerciseMuscles = (exercise.muscles ?? [])
-                  .map((muscle) => muscle.name)
-                  .filter((name): name is string => Boolean(name?.trim()))
-                  .join(', ');
+                const exerciseMuscles = getExerciseMusclesForList(exercise);
                 
                 // Используем уникальный key: название + id + индекс для избежания конфликтов
                 const uniqueKey = `${exercise.name}-${exercise.id}-${index}`;
@@ -404,10 +431,12 @@ const ExerciseListSheet = ({
                     >
                       <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white break-words overflow-wrap-anywhere">
                         {exercise.name}
-                        {exerciseMuscles && (
-                          <span className="text-gray-500 dark:text-gray-400"> — {exerciseMuscles}</span>
-                        )}
                       </p>
+                      {exerciseMuscles && (
+                        <p className="mt-1 text-xs min-[376px]:text-sm leading-5 text-gray-500 dark:text-gray-400 break-words overflow-wrap-anywhere">
+                          {exerciseMuscles}
+                        </p>
+                      )}
                     </button>
                     {onEditExercise && exercise.is_custom && (
                       <button
