@@ -375,11 +375,11 @@ export const exerciseContentMap: Record<string, ExerciseContent> = {
     "breathing": "Выдох при тяге вверх, вдох при возврате.",
     "safety": "Работайте в комфортной амплитуде и не поднимайте плечи к ушам. При дискомфорте в плечах сократите диапазон движения."
   },
-  "Isolated_arm_raises_on_a_machine": {
-    "exercise_id": "Isolated_arm_raises_on_a_machine",
+  "isolated_arm_raises_on_a_machine": {
+    "exercise_id": "isolated_arm_raises_on_a_machine",
     "exercise_name": "Изолированный подъём рук в тренажёре (махи в стороны)",
     "category": "shoulders",
-    "technique_image_url": "/exercises/shoulders/Isolated_arm_raises_on_a_machine.png",
+    "technique_image_url": "/exercises/shoulders/isolated_arm_raises_on_a_machine.png",
     "primary_muscles": [
       "side_delts"
     ],
@@ -747,8 +747,8 @@ export const exerciseContentMap: Record<string, ExerciseContent> = {
   "close_grip_bench_press": {
     "exercise_id": "close_grip_bench_press",
     "exercise_name": "Жим штанги лёжа узким хватом",
-    "category": "chest",
-    "technique_image_url": "/exercises/chest/close_grip_bench_press.png",
+    "category": "arms",
+    "technique_image_url": "/exercises/arms/close_grip_bench_press.png",
     "primary_muscles": [
       "triceps"
     ],

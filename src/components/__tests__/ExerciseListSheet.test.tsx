@@ -2,7 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import ExerciseListSheet, { addExerciseSelectionFromCard, toggleExerciseSelection } from '../ExerciseListSheet';
+import ExerciseListSheet, {
+  addExerciseSelectionFromCard,
+  dedupeExercisesForList,
+  getExerciseMusclesForList,
+  toggleExerciseSelection,
+} from '../ExerciseListSheet';
 import type { Exercise, ExerciseCategory } from '../../types/workout';
 
 const category: ExerciseCategory = {
@@ -109,4 +114,88 @@ test('add to workout from exercise card does not duplicate existing selection', 
   const initial = new Set<string>([customExercise.id]);
   const next = addExerciseSelectionFromCard(initial, customExercise.id);
   assert.deepEqual(Array.from(next), [customExercise.id]);
+});
+
+test('dedupeExercisesForList keeps one canonical chest exercise when duplicates share canonical key', () => {
+  const canonicalExercise: Exercise = {
+    id: 'uuid-1',
+    name: 'Бабочка (машина для сведения рук — Pec Deck)',
+    category_id: 'chest',
+    is_custom: false,
+    canonical_exercise_id: 'pec_deck_fly',
+    muscles: [{ id: 'm-1', name: 'Средний пучок' }],
+  };
+
+  const duplicateExercise: Exercise = {
+    id: 'uuid-2',
+    name: 'Бабочка (Pec Deck)',
+    category_id: 'chest',
+    is_custom: false,
+    canonical_exercise_id: 'pec_deck_fly',
+    muscles: [{ id: 'm-1', name: 'Средний пучок' }],
+  };
+
+  const result = dedupeExercisesForList([canonicalExercise, duplicateExercise]);
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0].canonical_exercise_id, 'pec_deck_fly');
+});
+
+test('dedupeExercisesForList falls back to normalized name when stable ids are absent', () => {
+  const first: Exercise = {
+    id: 'custom-2',
+    name: 'Жим в тренажёре лёжа',
+    category_id: 'chest',
+    is_custom: false,
+    muscles: [{ id: 'm-1', name: 'Средний пучок' }],
+  };
+
+  const second: Exercise = {
+    id: 'custom-3',
+    name: 'Жим в тренажёре лёжа!!!',
+    category_id: 'chest',
+    is_custom: false,
+    muscles: [{ id: 'm-1', name: 'Средний пучок' }],
+  };
+
+  const result = dedupeExercisesForList([first, second]);
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0].name, 'Жим в тренажёре лёжа');
+});
+
+test('back exercise list resolves primary muscles from exercise content lookup when runtime muscles are absent', () => {
+  const exercise: Exercise = {
+    id: 'uuid-back-1',
+    name: 'Тяга в тренажёре Горка / Inverted Row Machine',
+    category_id: 'back',
+    is_custom: false,
+    canonical_exercise_id: 'inverted_row_machine',
+    muscles: [],
+  };
+
+  assert.equal(getExerciseMusclesForList(exercise), 'Широчайшие');
+});
+
+test('exercise list renders muscle labels from content data for back exercises', () => {
+  const backExercise: Exercise = {
+    id: 'uuid-back-2',
+    name: 'Тяга в тренажёре Горка / Inverted Row Machine',
+    category_id: 'back',
+    is_custom: false,
+    canonical_exercise_id: 'inverted_row_machine',
+    muscles: [],
+  };
+
+  const html = renderToStaticMarkup(
+    <ExerciseListSheet
+      isOpen={true}
+      onClose={() => {}}
+      category={{ id: 'back', name: 'Спина', order: 1 }}
+      exercises={[backExercise]}
+      onExercisesSelect={() => {}}
+    />,
+  );
+
+  assert.match(html, /Широчайшие/);
 });

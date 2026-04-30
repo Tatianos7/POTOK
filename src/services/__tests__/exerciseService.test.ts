@@ -62,6 +62,19 @@ test('muscles survive category fetch mapping from view rows', () => {
   );
 });
 
+test('legacy ring pushups row gets canonical_exercise_id mapped to ring_pushups', () => {
+  const service = exerciseService as any;
+
+  const mapped = service.mapExerciseFromViewRow('category-chest', {
+    id: '2b7b2cf2-3344-4f6f-9f2c-111111111111',
+    exercise_name: 'Отжимания на кольцах',
+    canonical_exercise_id: null,
+    muscles: ['Средний пучок'],
+  }) as Exercise;
+
+  assert.equal(mapped.canonical_exercise_id, 'ring_pushups');
+});
+
 test('direct fallback path preserves muscles', () => {
   const service = exerciseService as any;
 
