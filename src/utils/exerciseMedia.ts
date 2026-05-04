@@ -43,7 +43,10 @@ export function buildExerciseImageUrl(exerciseId?: string | null, category?: str
     return null;
   }
 
-  return `/exercises/${normalizedCategory}/${normalizedExerciseId}.png`;
+  const baseUrl = (import.meta as ImportMeta & { env?: { BASE_URL?: string } }).env?.BASE_URL || '/';
+  const normalizedBaseUrl = baseUrl === '/' ? '' : baseUrl.replace(/\/$/, '');
+
+  return `${normalizedBaseUrl}/exercises/${normalizedCategory}/${normalizedExerciseId}.png`;
 }
 
 export function getExerciseStableContentId(exercise: ExerciseLike) {
