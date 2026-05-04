@@ -182,6 +182,17 @@ function uniqueValues(values: Array<string | null | undefined>) {
 }
 
 function sanitizeTechniqueImageUrl(url: string) {
+  if (!url) {
+    return url;
+  }
+
+  const baseUrl = (import.meta as ImportMeta & { env?: { BASE_URL?: string } }).env?.BASE_URL || '/';
+  const normalizedBaseUrl = baseUrl === '/' ? '' : baseUrl.replace(/\/$/, '');
+
+  if (/^https?:\/\//i.test(url)) {
+    return url;
+  }
+
   const segments = url.split('/');
   const fileName = segments.pop();
 
@@ -190,7 +201,17 @@ function sanitizeTechniqueImageUrl(url: string) {
   }
 
   const normalizedFileName = fileName.toLowerCase().replace(/-/g, '_');
-  return [...segments, normalizedFileName].join('/');
+  const normalizedPath = [...segments, normalizedFileName].join('/').replace(/\/{2,}/g, '/');
+
+  if (normalizedPath.startsWith('/exercises/')) {
+    return `${normalizedBaseUrl}${normalizedPath}`;
+  }
+
+  if (normalizedPath.startsWith('exercises/')) {
+    return `${normalizedBaseUrl}/${normalizedPath}`;
+  }
+
+  return normalizedPath;
 }
 
 function prepareExerciseContent(item: ExerciseContent): ExerciseContent {
