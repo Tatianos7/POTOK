@@ -4,7 +4,7 @@ import process from 'node:process';
 
 import { exerciseContentMap } from '../src/data/exerciseContent';
 
-type ValidationStatus = 'OK' | 'Missing' | 'Path mismatch' | 'Bad filename';
+type ValidationStatus = 'OK' | 'Missing' | 'Path mismatch' | 'Bad filename' | 'Duplicate exercise_id' | 'Category mismatch';
 
 function buildExpectedPublicPath(category: string, exerciseId: string) {
   return path.resolve(process.cwd(), 'public', 'exercises', category, `${exerciseId}.png`);
@@ -12,6 +12,11 @@ function buildExpectedPublicPath(category: string, exerciseId: string) {
 
 function buildExpectedTechniqueImageUrl(category: string, exerciseId: string) {
   return `/exercises/${category}/${exerciseId}.png`;
+}
+
+function getCategoryFromTechniqueImageUrl(techniqueImageUrl: string) {
+  const match = techniqueImageUrl.match(/^\/exercises\/([^/]+)\/[^/]+\.png$/);
+  return match?.[1] ?? null;
 }
 
 function hasBadFilename(filePath: string) {
@@ -35,6 +40,14 @@ function getStatusMessages(category: string, exerciseId: string, techniqueImageU
     messages.push({
       status: 'Path mismatch',
       details: `${techniqueImageUrl} -> expected ${expectedTechniqueImageUrl}`,
+    });
+  }
+
+  const techniqueImageCategory = getCategoryFromTechniqueImageUrl(techniqueImageUrl);
+  if (techniqueImageCategory && techniqueImageCategory !== category) {
+    messages.push({
+      status: 'Category mismatch',
+      details: `${techniqueImageCategory} -> expected ${category}`,
     });
   }
 
@@ -62,8 +75,22 @@ function getStatusMessages(category: string, exerciseId: string, techniqueImageU
 
 function main() {
   const entries = Object.values(exerciseContentMap).sort((a, b) => a.exercise_id.localeCompare(b.exercise_id));
+  const exerciseIdCounts = new Map<string, number>();
+  let hasError = false;
 
   for (const exercise of entries) {
+    exerciseIdCounts.set(exercise.exercise_id, (exerciseIdCounts.get(exercise.exercise_id) ?? 0) + 1);
+  }
+
+  for (const exercise of entries) {
+    const duplicateCount = exerciseIdCounts.get(exercise.exercise_id) ?? 0;
+    if (duplicateCount > 1) {
+      hasError = true;
+      console.log(
+        `⚠️ Duplicate exercise_id: ${exercise.exercise_id} (${exercise.category}) — found ${duplicateCount} entries`,
+      );
+    }
+
     const results = getStatusMessages(
       exercise.category,
       exercise.exercise_id,
@@ -72,10 +99,17 @@ function main() {
 
     for (const result of results) {
       const icon = result.status === 'OK' ? '✅' : '⚠️';
+      if (result.status !== 'OK') {
+        hasError = true;
+      }
       console.log(
         `${icon} ${result.status}: ${exercise.exercise_id} (${exercise.category}) — ${result.details}`,
       );
     }
+  }
+
+  if (hasError) {
+    process.exitCode = 1;
   }
 }
 
