@@ -16,4 +16,5 @@ test('getMuscleLabel keeps common back muscle keys translated', () => {
   assert.equal(getMuscleLabel('rhomboids'), 'Ромбовидные мышцы');
   assert.equal(getMuscleLabel('lower_back'), 'Поясница');
   assert.equal(getMuscleLabel('rear_delts'), 'Задние дельты');
+  assert.equal(getMuscleLabel('cardio'), 'Кардио');
 });

@@ -37,6 +37,7 @@ export const muscleMapRegions: Record<MuscleKey, MuscleMapRegionMap> = {
   serratus: { front: ['serratus'] },
   supraspinatus: { back: ['supraspinatus'] },
   rhomboids: { back: ['rhomboids'] },
+  cardio: {},
 };
 
 export const FRONT_MUSCLE_KEYS = Object.keys(muscleMapRegions).filter((key) => {

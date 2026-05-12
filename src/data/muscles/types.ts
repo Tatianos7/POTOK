@@ -35,6 +35,7 @@ export const MUSCLE_KEYS = [
   'serratus',
   'supraspinatus',
   'rhomboids',
+  'cardio',
 ] as const;
 
 export type MuscleKey = (typeof MUSCLE_KEYS)[number];

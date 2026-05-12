@@ -36,6 +36,7 @@ const ICON_COLORS = {
   breathing: 'text-blue-500 dark:text-blue-400',
   safety: 'text-green-500 dark:text-green-400',
   mistakes: 'text-red-500 dark:text-red-400',
+  notes: 'text-slate-500 dark:text-slate-400',
 } as const;
 
 interface WorkoutExerciseCardSheetProps {
@@ -320,9 +321,11 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
     { label: 'Возврат', value: techniqueContent?.return_phase },
     { label: 'Дыхание', value: techniqueContent?.breathing },
     { label: 'Безопасность', value: techniqueContent?.safety },
+    { label: 'Примечания', value: techniqueContent?.notes },
   ].filter((section) => Boolean(section.value?.trim()));
   const techniqueMistakes = techniqueContent?.mistakes?.filter((item) => Boolean(item.trim())) ?? [];
   const hasStructuredTechniqueText = techniqueSections.length > 0 || techniqueMistakes.length > 0;
+  const techniqueImageUrl = techniqueContent?.technique_image_url?.trim() ?? '';
   const exerciseDescription = exercise?.description?.trim() ?? '';
   const exerciseMistakesText = exercise?.mistakes?.trim() ?? '';
   const shouldRenderMyWorkoutSection = !isUserCreatedExercise || draftItems.length > 0 || persistedItems.length > 0;
@@ -331,7 +334,7 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
   const shouldRenderFallbackTechniqueText = !isUserCreatedExercise || Boolean(exerciseDescription || exerciseMistakesText);
   const shouldRenderTechniqueBlock = hasStructuredTechniqueText || techniqueMedia.length > 0 || Boolean(exercise?.muscle_map_image_url) || shouldRenderFallbackTechniqueText;
   const shouldRenderExerciseDetailsSection = !isUserCreatedExercise
-    || Boolean(techniqueContent?.technique_image_url)
+    || Boolean(techniqueImageUrl)
     || shouldRenderPrimaryMuscles
     || shouldRenderSecondaryMuscles
     || shouldRenderTechniqueBlock;
@@ -472,16 +475,16 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
 
             {shouldRenderExerciseDetailsSection ? (
             <section className="space-y-5 border-t border-gray-100 pt-5 dark:border-gray-800">
-              {techniqueContent?.technique_image_url ? (
+              {techniqueImageUrl ? (
                 <img
-                  src={techniqueContent.technique_image_url}
+                  src={techniqueImageUrl}
                   onError={(e) => {
                     if (import.meta.env.DEV) {
-                      console.warn('image failed', techniqueContent.technique_image_url);
+                      console.warn('image failed', techniqueImageUrl);
                     }
                     e.currentTarget.style.display = 'none';
                   }}
-                  alt={exercise?.name || techniqueContent.exercise_name}
+                  alt={exercise?.name || techniqueContent?.exercise_name || 'Изображение упражнения'}
                   className="w-full rounded-[12px] object-contain"
                 />
               ) : null}
@@ -559,6 +562,7 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                               {section.label === 'Возврат' ? <ArrowDown className={`${SECTION_ICON_CLASS} ${ICON_COLORS.return}`} /> : null}
                               {section.label === 'Дыхание' ? <Wind className={`${SECTION_ICON_CLASS} ${ICON_COLORS.breathing}`} /> : null}
                               {section.label === 'Безопасность' ? <Shield className={`${SECTION_ICON_CLASS} ${ICON_COLORS.safety}`} /> : null}
+                              {section.label === 'Примечания' ? <CircleDot className={`${SECTION_ICON_CLASS} ${ICON_COLORS.notes}`} /> : null}
                               <span>{section.label}</span>
                             </div>
                             <p className="max-w-[68ch] whitespace-pre-wrap text-[15px] leading-7 text-gray-700 dark:text-gray-200">

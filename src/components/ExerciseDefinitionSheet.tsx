@@ -31,6 +31,7 @@ const ICON_COLORS = {
   breathing: 'text-blue-500',
   safety: 'text-green-500',
   mistakes: 'text-red-500',
+  notes: 'text-slate-500',
 } as const;
 
 interface ExerciseDefinitionSheetProps {
@@ -131,9 +132,11 @@ const ExerciseDefinitionSheet = ({
     { label: 'Возврат', value: techniqueContent?.return_phase },
     { label: 'Дыхание', value: techniqueContent?.breathing },
     { label: 'Безопасность', value: techniqueContent?.safety },
+    { label: 'Примечания', value: techniqueContent?.notes },
   ].filter((section) => Boolean(section.value?.trim()));
   const techniqueMistakes = techniqueContent?.mistakes?.filter((item) => Boolean(item.trim())) ?? [];
   const hasStructuredTechniqueText = techniqueSections.length > 0 || techniqueMistakes.length > 0;
+  const techniqueImageUrl = techniqueContent?.technique_image_url?.trim() ?? '';
   const exercisePrimaryMuscles = (renderExercise?.primary_muscles ?? []).filter((value): value is string => Boolean(value?.trim()));
   const exerciseSecondaryMuscles = (renderExercise?.secondary_muscles ?? []).filter((value): value is string => Boolean(value?.trim()));
   const exerciseLinkedMuscles = (renderExercise?.muscles ?? [])
@@ -200,13 +203,13 @@ const ExerciseDefinitionSheet = ({
                     </div>
                   ) : null}
 
-                  {techniqueContent?.technique_image_url ? (
+                  {techniqueImageUrl ? (
                     <img
-                      src={techniqueContent.technique_image_url}
+                      src={techniqueImageUrl}
                       alt={renderExercise.name}
                       onError={(event) => {
                         if (import.meta.env.DEV) {
-                          console.warn('image failed', techniqueContent.technique_image_url);
+                          console.warn('image failed', techniqueImageUrl);
                         }
                         event.currentTarget.style.display = 'none';
                       }}
@@ -286,6 +289,7 @@ const ExerciseDefinitionSheet = ({
                                   {section.label === 'Возврат' ? <ArrowDown className={`${SECTION_ICON_CLASS} ${ICON_COLORS.return}`} /> : null}
                                   {section.label === 'Дыхание' ? <Wind className={`${SECTION_ICON_CLASS} ${ICON_COLORS.breathing}`} /> : null}
                                   {section.label === 'Безопасность' ? <Shield className={`${SECTION_ICON_CLASS} ${ICON_COLORS.safety}`} /> : null}
+                                  {section.label === 'Примечания' ? <CircleDot className={`${SECTION_ICON_CLASS} ${ICON_COLORS.notes}`} /> : null}
                                   <span>{section.label}</span>
                                 </div>
                                 <p className="max-w-[68ch] whitespace-pre-wrap text-[15px] leading-7 text-gray-700">
