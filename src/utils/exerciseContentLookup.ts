@@ -297,6 +297,8 @@ function uniqueValues(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.map((value) => String(value ?? '').trim()).filter(Boolean)));
 }
 
+const isDev = Boolean((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV);
+
 function sanitizeTechniqueImageUrl(url: string) {
   if (!url) {
     return url;
@@ -610,7 +612,7 @@ export function getExerciseContentForExercise(source: ExerciseContentLookupSourc
   const debugId = getDebugExerciseId(source);
   const debugName = getDebugExerciseName(source);
 
-  if (debugId || debugName) {
+  if (isDev && (debugId || debugName)) {
     console.warn('[exerciseContent] NOT FOUND', {
       id: debugId,
       name: debugName,
