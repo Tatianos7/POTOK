@@ -219,6 +219,46 @@ test('getExerciseContentForExercise resolves plain superman to abs version only 
   assert.equal(result?.exercise_id, 'superman_dynamic');
 });
 
+test('getExerciseContentForExercise resolves cardio content by runtime names and aliases', () => {
+  const cases = [
+    ['Бег на беговой дорожке', 'treadmill_running'],
+    ['Бег на дорожке', 'treadmill_running'],
+    ['Беговая дорожка', 'treadmill_running'],
+    ['Бег', 'outdoor_running'],
+    ['Велосипед', 'stationary_bike'],
+    ['Велотренажёр', 'stationary_bike'],
+    ['Велотренажер', 'stationary_bike'],
+    ['Эллиптический тренажёр', 'elliptical_trainer'],
+    ['Эллиптический тренажер', 'elliptical_trainer'],
+    ['Эллипсоид', 'elliptical_trainer'],
+    ['Эллипс', 'elliptical_trainer'],
+    ['Гребной тренажёр', 'rowing_machine'],
+    ['Скакалка', 'jump_rope'],
+    ['Прыжки на скакалке', 'jump_rope'],
+    ['Бёрпи', 'burpee'],
+    ['Берпи', 'burpee'],
+    ['Бурпи', 'burpee'],
+    ['Прыжки на месте', 'jumping_jacks'],
+    ['Jumping Jacks', 'jumping_jacks'],
+    ['Джампинг джек', 'jumping_jacks'],
+    ['Прыжки звезда', 'jumping_jacks'],
+    ['Ходьба', 'walking'],
+    ['Лестница', 'stepper'],
+    ['Ходьба по лестнице', 'stepper'],
+  ] as const;
+
+  for (const [name, expectedId] of cases) {
+    const result = getExerciseContentForExercise({
+      id: '44444444-5555-4666-8777-888888888888',
+      name,
+      category: 'cardio',
+    });
+
+    assert.equal(result?.exercise_id, expectedId, `Expected ${expectedId} for "${name}"`);
+    assert.equal(result?.category, 'cardio');
+  }
+});
+
 test('all chest exercise images exist and match canonical public path', () => {
   const chestExercises = Object.values(exerciseContentMap).filter((exercise) => exercise.category === 'chest');
 
@@ -292,4 +332,13 @@ test('all abs exercise images exist and match canonical public path', () => {
       `Missing abs image file for ${exercise.exercise_id}: ${absoluteImagePath}`,
     );
   }
+});
+
+test('cardio content is imported with structured description fields', () => {
+  const cardioExercises = Object.values(exerciseContentMap).filter((exercise) => exercise.category === 'cardio');
+
+  assert.ok(cardioExercises.length >= 10);
+  assert.equal(exerciseContentMap.treadmill_running?.notes, 'Подходит для кардио-тренировок с контролем скорости и наклона.');
+  assert.equal(exerciseContentMap.stationary_bike?.exercise_name, 'Велотренажёр');
+  assert.ok(Boolean(exerciseContentMap.rowing_machine?.execution));
 });

@@ -18,6 +18,8 @@ type ExcelExerciseRow = {
   mistakes?: string;
   breathing?: string;
   safety?: string;
+  notes?: string;
+  image_1?: string;
 };
 
 type ExerciseContent = {
@@ -35,6 +37,7 @@ type ExerciseContent = {
   mistakes?: string[];
   breathing?: string;
   safety?: string;
+  notes?: string;
 };
 
 const DEFAULT_WORKBOOK_PATH = '/Users/urijurij/Desktop/Контент база упражнений.xlsx';
@@ -79,6 +82,30 @@ function splitList(value: unknown, separator: string | RegExp): string[] {
     .filter(Boolean);
 }
 
+const OPTIONAL_IMAGE_CATEGORIES = new Set(['cardio']);
+
+function normalizeTechniqueImageUrl(rawImagePath: unknown, category: string, exerciseId: string) {
+  const normalized = normalizeInlineText(rawImagePath);
+  const expectedPublicPath = path.resolve(process.cwd(), 'public', 'exercises', category, `${exerciseId}.png`);
+
+  if (!normalized) {
+    return OPTIONAL_IMAGE_CATEGORIES.has(category) && !fs.existsSync(expectedPublicPath)
+      ? ''
+      : `/exercises/${category}/${exerciseId}.png`;
+  }
+
+  const normalizedPath = normalized
+    .replace(/^\/?public\//, '/')
+    .replace(/\/{2,}/g, '/')
+    .replace(/\.PNG$/i, '.png');
+
+  if (OPTIONAL_IMAGE_CATEGORIES.has(category) && !fs.existsSync(expectedPublicPath)) {
+    return '';
+  }
+
+  return normalizedPath;
+}
+
 function normalizeCategory(category: string): string {
   const normalized = normalizeInlineText(category).toLowerCase();
   return CATEGORY_SLUG_MAP[normalized] ?? normalized.replace(/\s+/g, '_');
@@ -100,12 +127,13 @@ function mapRowToExerciseContent(row: ExcelExerciseRow): ExerciseContent | null 
   const returnPhase = normalizeMultilineText(row.return_phase);
   const breathing = normalizeMultilineText(row.breathing);
   const safety = normalizeMultilineText(row.safety);
+  const notes = normalizeMultilineText(row.notes);
 
   const content: ExerciseContent = {
     exercise_id: exerciseId,
     exercise_name: exerciseName,
     category,
-    technique_image_url: `/exercises/${category}/${exerciseId}.png`,
+    technique_image_url: normalizeTechniqueImageUrl(row.image_1, category, exerciseId),
     primary_muscles: splitList(row.primary_muscles, ','),
     secondary_muscles: splitList(row.secondary_muscles, ','),
   };
@@ -143,6 +171,10 @@ function mapRowToExerciseContent(row: ExcelExerciseRow): ExerciseContent | null 
     content.safety = safety;
   }
 
+  if (notes) {
+    content.notes = notes;
+  }
+
   return content;
 }
 
@@ -165,6 +197,7 @@ function buildFileContent(items: ExerciseContent[]): string {
   mistakes?: string[];
   breathing?: string;
   safety?: string;
+  notes?: string;
 };
 
 export const exerciseContentMap: Record<string, ExerciseContent> = ${serializedMap};

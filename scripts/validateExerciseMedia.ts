@@ -5,6 +5,7 @@ import process from 'node:process';
 import { exerciseContentMap } from '../src/data/exerciseContent';
 
 type ValidationStatus = 'OK' | 'Missing' | 'Path mismatch' | 'Bad filename' | 'Duplicate exercise_id' | 'Category mismatch';
+const OPTIONAL_IMAGE_CATEGORIES = new Set(['cardio']);
 
 function buildExpectedPublicPath(category: string, exerciseId: string) {
   return path.resolve(process.cwd(), 'public', 'exercises', category, `${exerciseId}.png`);
@@ -33,17 +34,20 @@ function hasBadFilename(filePath: string) {
 function getStatusMessages(category: string, exerciseId: string, techniqueImageUrl: string) {
   const expectedTechniqueImageUrl = buildExpectedTechniqueImageUrl(category, exerciseId);
   const expectedPublicPath = buildExpectedPublicPath(category, exerciseId);
+  const normalizedTechniqueImageUrl = String(techniqueImageUrl ?? '').trim();
+  const isOptionalCategory = OPTIONAL_IMAGE_CATEGORIES.has(category);
+  const optionalCategoryWithoutImage = isOptionalCategory && !normalizedTechniqueImageUrl;
 
   const messages: Array<{ status: ValidationStatus; details: string }> = [];
 
-  if (techniqueImageUrl !== expectedTechniqueImageUrl) {
+  if (!optionalCategoryWithoutImage && normalizedTechniqueImageUrl !== expectedTechniqueImageUrl) {
     messages.push({
       status: 'Path mismatch',
-      details: `${techniqueImageUrl} -> expected ${expectedTechniqueImageUrl}`,
+      details: `${normalizedTechniqueImageUrl} -> expected ${expectedTechniqueImageUrl}`,
     });
   }
 
-  const techniqueImageCategory = getCategoryFromTechniqueImageUrl(techniqueImageUrl);
+  const techniqueImageCategory = getCategoryFromTechniqueImageUrl(normalizedTechniqueImageUrl);
   if (techniqueImageCategory && techniqueImageCategory !== category) {
     messages.push({
       status: 'Category mismatch',
@@ -51,12 +55,12 @@ function getStatusMessages(category: string, exerciseId: string, techniqueImageU
     });
   }
 
-  if (!fs.existsSync(expectedPublicPath)) {
+  if (!fs.existsSync(expectedPublicPath) && !optionalCategoryWithoutImage) {
     messages.push({
       status: 'Missing',
       details: expectedPublicPath,
     });
-  } else if (hasBadFilename(expectedPublicPath)) {
+  } else if (fs.existsSync(expectedPublicPath) && hasBadFilename(expectedPublicPath)) {
     messages.push({
       status: 'Bad filename',
       details: path.basename(expectedPublicPath),
