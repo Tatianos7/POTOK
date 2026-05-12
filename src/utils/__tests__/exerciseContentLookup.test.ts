@@ -185,6 +185,40 @@ test('getExerciseContentForExercise resolves legs content by uuid plus runtime n
   }
 });
 
+test('getExerciseContentForExercise resolves abs content by uuid plus runtime names', () => {
+  const cases = [
+    ['Русские скручивания с весом', 'weighted_russian_twist'],
+    ['Скручивания в тренажёре', 'machine_crunch'],
+    ['Мертвец и ангел', 'dead_bug'],
+    ['Подъём ног лёжа', 'lying_leg_raise'],
+    ['Боковая планка', 'side_plank'],
+    ['Альпинист', 'mountain_climber'],
+    ['Птица-собака', 'bird_dog'],
+    ['Русские скручивания', 'russian_twist_bodyweight'],
+  ] as const;
+
+  for (const [name, expectedId] of cases) {
+    const result = getExerciseContentForExercise({
+      id: '22222222-3333-4444-8555-666666666666',
+      name,
+      category: 'abs',
+    });
+
+    assert.equal(result?.exercise_id, expectedId, `Expected ${expectedId} for "${name}"`);
+    assert.equal(result?.technique_image_url, `/exercises/abs/${expectedId}.png`);
+  }
+});
+
+test('getExerciseContentForExercise resolves plain superman to abs version only with abs category context', () => {
+  const result = getExerciseContentForExercise({
+    id: '33333333-4444-4555-8666-777777777777',
+    name: 'Супермен',
+    category: 'abs',
+  });
+
+  assert.equal(result?.exercise_id, 'superman_dynamic');
+});
+
 test('all chest exercise images exist and match canonical public path', () => {
   const chestExercises = Object.values(exerciseContentMap).filter((exercise) => exercise.category === 'chest');
 
@@ -231,6 +265,31 @@ test('all back exercise images exist and match canonical public path', () => {
     assert.ok(
       fs.existsSync(absoluteImagePath),
       `Missing back image file for ${exercise.exercise_id}: ${absoluteImagePath}`,
+    );
+  }
+});
+
+test('all abs exercise images exist and match canonical public path', () => {
+  const absExercises = Object.values(exerciseContentMap).filter((exercise) => exercise.category === 'abs');
+
+  assert.ok(absExercises.length > 0);
+
+  for (const exercise of absExercises) {
+    assert.equal(
+      exercise.technique_image_url,
+      `/exercises/abs/${exercise.exercise_id}.png`,
+      `Unexpected technique_image_url for ${exercise.exercise_id}`,
+    );
+
+    const absoluteImagePath = path.resolve(
+      process.cwd(),
+      'public',
+      exercise.technique_image_url.replace(/^\//, ''),
+    );
+
+    assert.ok(
+      fs.existsSync(absoluteImagePath),
+      `Missing abs image file for ${exercise.exercise_id}: ${absoluteImagePath}`,
     );
   }
 });
