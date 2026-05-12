@@ -174,7 +174,7 @@ test('back exercise list resolves primary muscles from exercise content lookup w
     muscles: [],
   };
 
-  assert.equal(getExerciseMusclesForList(exercise), 'Широчайшие');
+  assert.equal(getExerciseMusclesForList(exercise), 'Широчайшие мышцы спины');
 });
 
 test('exercise list renders muscle labels from content data for back exercises', () => {
