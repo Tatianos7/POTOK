@@ -94,6 +94,7 @@ const RUNTIME_ALIASES: Record<string, string[]> = {
     'степ-апы',
     'ходьба по лестнице',
     'степ ап',
+    'лестница',
   ],
   glute_bridge: [
     'ягодичный мост',
@@ -291,6 +292,42 @@ const RUNTIME_ALIASES: Record<string, string[]> = {
   boat_pose_hold: [
     'лодочка',
   ],
+  treadmill_running: [
+    'бег на беговой дорожке',
+    'бег на дорожке',
+    'беговая дорожка',
+  ],
+  outdoor_running: [
+    'бег',
+  ],
+  stationary_bike: [
+    'велосипед',
+    'велотренажер',
+    'велотренажёр',
+  ],
+  burpee: [
+    'бёрпи',
+    'берпи',
+    'бурпи',
+  ],
+  elliptical_trainer: [
+    'эллипсоид',
+    'эллиптический тренажер',
+    'эллиптический тренажёр',
+    'эллипс',
+  ],
+  jumping_jacks: [
+    'jumping jacks',
+    'джампинг джек',
+    'прыжки звезда',
+  ],
+  jump_rope: [
+    'скакалка',
+    'прыжки на скакалке',
+  ],
+  walking: [
+    'ходьба',
+  ],
 };
 
 function uniqueValues(values: Array<string | null | undefined>) {
@@ -333,7 +370,9 @@ function sanitizeTechniqueImageUrl(url: string) {
 }
 
 function prepareExerciseContent(item: ExerciseContent): ExerciseContent {
-  const builtTechniqueImageUrl = item.technique_image_url || buildExerciseImageUrl(item.exercise_id, item.category);
+  const builtTechniqueImageUrl = item.category === 'cardio'
+    ? ''
+    : item.technique_image_url || buildExerciseImageUrl(item.exercise_id, item.category);
 
   return {
     ...item,
@@ -479,6 +518,13 @@ function resolveByNormalizedAndRawNames(
     return findById('superman_dynamic');
   }
 
+  if (
+    categoryContext === 'cardio'
+    && normalizedNameCandidates.some((value) => value === 'лестница' || value === 'ходьба_по_лестнице')
+  ) {
+    return findById('stepper');
+  }
+
   return undefined;
 }
 
@@ -593,10 +639,12 @@ export function getExerciseContentForExercise(source: ExerciseContentLookupSourc
     ?? findAliasMatch(source?.exercise?.normalized_name);
 
   if (aliasMatch?.content) {
-    console.info('[exerciseContent] matched via alias', {
-      name: getDebugExerciseName(source),
-      matchedId: aliasMatch.matchedId,
-    });
+    if (isDev) {
+      console.info('[exerciseContent] matched via alias', {
+        name: getDebugExerciseName(source),
+        matchedId: aliasMatch.matchedId,
+      });
+    }
     return aliasMatch.content;
   }
 

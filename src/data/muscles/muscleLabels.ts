@@ -37,6 +37,7 @@ export const muscleLabels: Record<MuscleKey, string> = {
   serratus: 'Передняя зубчатая мышца',
   supraspinatus: 'Надостная мышца',
   rhomboids: 'Ромбовидные мышцы',
+  cardio: 'Кардио',
 };
 
 export function getMuscleLabel(key: string): string {
