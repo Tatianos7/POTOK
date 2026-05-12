@@ -1,5 +1,5 @@
 import { exerciseContentMap, type ExerciseContent } from '../data/exerciseContent';
-import { buildExerciseImageUrl, getExerciseStableContentId } from './exerciseMedia';
+import { buildExerciseImageUrl, getExerciseStableContentId, normalizeExerciseCategory } from './exerciseMedia';
 
 type LookupInput = {
   exerciseId?: string | null;
@@ -13,6 +13,8 @@ type ExerciseContentLookupSource = {
   canonical_exercise_id?: string | null;
   normalized_name?: string | null;
   name?: string | null;
+  category?: string | null | { id?: string | null; name?: string | null };
+  category_id?: string | null;
   exercise?: {
     exercise_id?: string | null;
     id?: string | null;
@@ -20,6 +22,8 @@ type ExerciseContentLookupSource = {
     canonical_exercise_id?: string | null;
     normalized_name?: string | null;
     name?: string | null;
+    category?: string | null | { id?: string | null; name?: string | null };
+    category_id?: string | null;
   } | null;
 } | null | undefined;
 
@@ -175,6 +179,118 @@ const RUNTIME_ALIASES: Record<string, string[]> = {
     'тяга на одной ноге',
     'single leg rdl',
   ],
+  weighted_russian_twist: [
+    'русские скручивания с весом',
+    'русские скручивания с гантелью',
+    'русские скручивания с медболом',
+    'русские скручивания с утяжелением',
+  ],
+  machine_crunch: [
+    'скручивания в тренажере',
+    'скручивания в тренажёре',
+    'скручивания в тренажере на пресс',
+    'скручивания в тренажёре на пресс',
+  ],
+  dead_bug: [
+    'мертвец и ангел',
+    'мертвый жук',
+    'мёртвый жук',
+    'dead bug',
+  ],
+  crunch: [
+    'скручивания',
+    'скручивание',
+  ],
+  reverse_crunch: [
+    'обратные скручивания',
+    'подъем таза лежа',
+    'подъём таза лёжа',
+  ],
+  lying_leg_raise: [
+    'подъем ног лежа',
+    'подъём ног лёжа',
+    'подъем ног на полу',
+    'подъём ног на полу',
+  ],
+  bicycle_crunch: [
+    'велосипед',
+    'скручивания велосипед',
+  ],
+  plank: [
+    'планка',
+  ],
+  side_plank: [
+    'боковая планка',
+  ],
+  russian_twist_bodyweight: [
+    'русские скручивания без веса',
+    'русские скручивания',
+  ],
+  flutter_kicks: [
+    'ножницы',
+    'ножницы ногами',
+    'ножницы ногами лежа',
+  ],
+  plank_knee_tuck: [
+    'планка с подтягиванием колен',
+    'подтягивание колен в планке',
+  ],
+  bridge_for_core_stability: [
+    'мостик для пресса',
+    'мостик для стабилизации корпуса',
+  ],
+  weighted_leg_raise: [
+    'подъем ног с утяжелителем',
+    'подъём ног с утяжелителем',
+    'подъем ног с весом',
+    'подъём ног с весом',
+  ],
+  weighted_crunch_behind_head: [
+    'скручивания с гантелью за головой',
+    'скручивания с весом за головой',
+  ],
+  dumbbell_side_bend: [
+    'боковые наклоны с гантелью',
+    'наклоны с гантелью в сторону',
+  ],
+  hanging_leg_raise: [
+    'подъем ног в висе',
+    'подъём ног в висе',
+    'подъем ног в висе на турнике',
+    'подъём ног в висе на турнике',
+  ],
+  rope_to_knee_rotation: [
+    'тяга каната к колену',
+    'тяга каната к колену в кроссовере',
+    'тяга каната к колену с поворотом',
+  ],
+  standing_cable_crunch: [
+    'кабельные скручивания',
+    'кабельные скручивания стоя',
+    'скручивания на блоке стоя',
+  ],
+  ab_wheel_rollout: [
+    'ролик для пресса',
+    'планка на ролике',
+    'выкаты на ролике',
+  ],
+  plank_with_board: [
+    'планка с доской',
+  ],
+  mountain_climber: [
+    'альпинист',
+    'mountain climber',
+  ],
+  superman_dynamic: [
+    'супермен динамический',
+  ],
+  bird_dog: [
+    'птица-собака',
+    'птица собака',
+  ],
+  boat_pose_hold: [
+    'лодочка',
+  ],
 };
 
 function uniqueValues(values: Array<string | null | undefined>) {
@@ -294,6 +410,32 @@ function findByName(candidate?: string | null) {
   return contentByNormalizedName.get(normalizeName(candidate));
 }
 
+function getCategoryContext(source: ExerciseContentLookupSource) {
+  const rawCategory = source?.category
+    ?? source?.exercise?.category
+    ?? source?.category_id
+    ?? source?.exercise?.category_id
+    ?? null;
+
+  if (typeof rawCategory === 'string') {
+    return normalizeExerciseCategory(rawCategory) ?? rawCategory.trim().toLowerCase();
+  }
+
+  if (rawCategory && typeof rawCategory === 'object') {
+    const byName = normalizeExerciseCategory(rawCategory.name);
+    if (byName) {
+      return byName;
+    }
+
+    const byId = normalizeExerciseCategory(rawCategory.id);
+    if (byId) {
+      return byId;
+    }
+  }
+
+  return null;
+}
+
 function findAliasMatch(candidate?: string | null) {
   if (!candidate) {
     return undefined;
@@ -315,6 +457,7 @@ function findAliasMatch(candidate?: string | null) {
 function resolveByNormalizedAndRawNames(
   normalizedNameCandidates: string[],
   rawNameCandidates: string[],
+  categoryContext?: string | null,
 ) {
   if (normalizedNameCandidates.some((value) => value.includes('отжимания_на_кольцах'))) {
     return findById('ring_pushups');
@@ -325,6 +468,13 @@ function resolveByNormalizedAndRawNames(
     && rawNameCandidates.some((value) => value.includes('chin-ups'))
   ) {
     return findById('chin_ups_underhand_back');
+  }
+
+  if (
+    categoryContext === 'abs'
+    && normalizedNameCandidates.some((value) => value === 'супермен')
+  ) {
+    return findById('superman_dynamic');
   }
 
   return undefined;
@@ -369,7 +519,7 @@ export function resolveCanonicalExerciseContentIdByName(name?: string | null): s
     .map((value) => String(value ?? '').toLowerCase())
     .filter(Boolean);
 
-  const matchedContent = resolveByNormalizedAndRawNames(normalizedNameCandidates, rawNameCandidates)
+  const matchedContent = resolveByNormalizedAndRawNames(normalizedNameCandidates, rawNameCandidates, null)
     ?? findAliasMatch(name)?.content
     ?? findByName(name);
 
@@ -424,7 +574,12 @@ export function getExerciseContentForExercise(source: ExerciseContentLookupSourc
     .map((value) => String(value ?? '').toLowerCase())
     .filter(Boolean);
 
-  const specialRuntimeMatch = resolveByNormalizedAndRawNames(normalizedNameCandidates, rawNameCandidates);
+  const categoryContext = getCategoryContext(source);
+  const specialRuntimeMatch = resolveByNormalizedAndRawNames(
+    normalizedNameCandidates,
+    rawNameCandidates,
+    categoryContext,
+  );
 
   if (specialRuntimeMatch) {
     return specialRuntimeMatch;
