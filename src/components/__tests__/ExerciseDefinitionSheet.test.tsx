@@ -36,6 +36,8 @@ test('exercise definition sheet renders read-only card content', () => {
   assert.match(html, /Добавить в тренировку/);
   assert.match(html, /Видео упражнения Жим штанги стоя/);
   assert.match(html, /Основные мышцы/);
+  assert.match(html, /Карта мышц/);
+  assert.match(html, /data-muscle-map=/);
 });
 
 test('exercise definition sheet keeps add button honest when exercise already selected', () => {
