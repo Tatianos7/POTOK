@@ -16,6 +16,9 @@ import {
 import type { Exercise } from '../types/workout';
 import { getExerciseContentForExercise } from '../utils/exerciseContentLookup';
 import { getMuscleLabel } from '../utils/muscleLabels';
+import MuscleMap from './muscle-map/MuscleMap';
+import { normalizeMuscleKeys } from '../data/muscles/types';
+import { muscleMapRegions } from '../data/muscles/muscleMapRegions';
 
 const EXERCISE_DEFINITION_SHEET_ANIMATION_MS = 180;
 const SECTION_ICON_CLASS = 'h-4 w-4';
@@ -150,6 +153,12 @@ const ExerciseDefinitionSheet = ({
   const secondaryMuscles = techniqueContent
     ? techniqueContent.secondary_muscles
     : exerciseSecondaryMuscles;
+  const primaryMuscleKeys = normalizeMuscleKeys(primaryMuscles);
+  const secondaryMuscleKeys = normalizeMuscleKeys(secondaryMuscles);
+  const shouldRenderMuscleMap = [...primaryMuscleKeys, ...secondaryMuscleKeys].some((muscleKey) => {
+    const regions = muscleMapRegions[muscleKey];
+    return Boolean(regions.front?.length || regions.back?.length);
+  });
   const exerciseDescription = renderExercise?.description?.trim() ?? '';
   const exerciseMistakesText = renderExercise?.mistakes?.trim() ?? '';
   const shouldRenderPrimaryMuscles = !isUserCreatedExercise || primaryMuscles.length > 0;
@@ -217,13 +226,6 @@ const ExerciseDefinitionSheet = ({
                     />
                   ) : null}
 
-                  {renderExercise.muscle_map_image_url ? (
-                    <img
-                      src={renderExercise.muscle_map_image_url}
-                      alt={`Карта мышц: ${renderExercise.name}`}
-                      className="mx-auto h-44 rounded-xl bg-gray-50 object-contain"
-                    />
-                  ) : null}
                 </div>
 
                 {shouldRenderPrimaryMuscles ? (
@@ -251,6 +253,17 @@ const ExerciseDefinitionSheet = ({
                         ? secondaryMuscles.map(getMuscleLabel).join(', ')
                         : 'Не указаны'}
                     </p>
+                  </section>
+                ) : null}
+
+                {shouldRenderMuscleMap ? (
+                  <section className="space-y-3 rounded-2xl bg-gray-50/70 px-4 py-4">
+                    <h4 className="text-sm font-bold uppercase text-gray-900">Карта мышц</h4>
+                    <MuscleMap
+                      primaryMuscles={primaryMuscleKeys}
+                      secondaryMuscles={secondaryMuscleKeys}
+                      size="compact"
+                    />
                   </section>
                 ) : null}
 
