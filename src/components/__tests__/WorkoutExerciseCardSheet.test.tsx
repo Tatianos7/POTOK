@@ -69,7 +69,9 @@ test('workout exercise card renders read-only technique and muscle content', () 
   assert.match(html, /Основные работающие мышцы/);
   assert.match(html, /abs/);
   assert.match(html, /Второстепенные мышцы/);
-  assert.match(html, /Ягодичные, Передние дельты/);
+  assert.match(html, /Ягодичные мышцы, Передние дельты/);
+  assert.match(html, /Карта мышц/);
+  assert.match(html, /data-muscle-map=/);
   assert.match(html, /Исходное положение/);
   assert.match(html, /Упритесь на предплечья и носки/);
   assert.match(html, /Ошибки/);

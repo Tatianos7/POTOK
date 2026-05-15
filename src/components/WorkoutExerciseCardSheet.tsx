@@ -20,6 +20,9 @@ import { formatWorkoutMetricValue, normalizeWorkoutMetricType } from '../utils/w
 import { getExerciseContentForExercise } from '../utils/exerciseContentLookup';
 import { getMuscleLabel } from '../utils/muscleLabels';
 import ExerciseMediaViewerOverlay, { type ExerciseMediaViewerItem } from './ExerciseMediaViewerOverlay';
+import MuscleMap from './muscle-map/MuscleMap';
+import { normalizeMuscleKeys } from '../data/muscles/types';
+import { muscleMapRegions } from '../data/muscles/muscleMapRegions';
 
 export const WORKOUT_EXERCISE_CARD_SUCCESS_MESSAGE = 'Сохранено';
 const WORKOUT_EXERCISE_CARD_ANIMATION_MS = 180;
@@ -314,6 +317,12 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
   const secondaryMuscles = techniqueContent
     ? techniqueContent.secondary_muscles
     : (exercise?.secondary_muscles ?? []).filter((value): value is string => Boolean(value?.trim()));
+  const primaryMuscleKeys = normalizeMuscleKeys(primaryMuscles);
+  const secondaryMuscleKeys = normalizeMuscleKeys(secondaryMuscles);
+  const shouldRenderMuscleMap = [...primaryMuscleKeys, ...secondaryMuscleKeys].some((muscleKey) => {
+    const regions = muscleMapRegions[muscleKey];
+    return Boolean(regions.front?.length || regions.back?.length);
+  });
   const techniqueSections = [
     { label: 'Исходное положение', value: techniqueContent?.start_position },
     { label: 'Выполнение', value: techniqueContent?.execution },
@@ -508,8 +517,21 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                   <span>Второстепенные мышцы</span>
                 </div>
                 <p className="text-sm leading-6 text-gray-700 dark:text-gray-200">
-                  {secondaryMuscles.length > 0 ? secondaryMuscles.map(getMuscleLabel).join(', ') : 'Не указаны'}
+                    {secondaryMuscles.length > 0 ? secondaryMuscles.map(getMuscleLabel).join(', ') : 'Не указаны'}
                 </p>
+              </div>
+              ) : null}
+
+              {shouldRenderMuscleMap ? (
+              <div className="space-y-3 rounded-2xl bg-gray-50/70 px-4 py-4 dark:bg-gray-800/40">
+                <div className="text-xs font-bold uppercase text-gray-700 dark:text-gray-300">
+                  Карта мышц
+                </div>
+                <MuscleMap
+                  primaryMuscles={primaryMuscleKeys}
+                  secondaryMuscles={secondaryMuscleKeys}
+                  size="compact"
+                />
               </div>
               ) : null}
 
@@ -541,14 +563,6 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                       <div className="grid grid-cols-2 gap-3">
                         {techniqueMedia.map((mediaItem, index) => renderTechniqueMediaItem(exercise?.name || 'Упражнение', mediaItem, index))}
                       </div>
-                    ) : null}
-
-                    {exercise?.muscle_map_image_url ? (
-                      <img
-                        src={exercise.muscle_map_image_url}
-                        alt={`Карта мышц: ${exercise?.name || 'Упражнение'}`}
-                        className="mx-auto max-h-52 rounded-2xl bg-gray-50 object-contain dark:bg-gray-800"
-                      />
                     ) : null}
 
                     {hasStructuredTechniqueText ? (
