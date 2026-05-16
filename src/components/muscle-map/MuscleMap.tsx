@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
 import { muscleMapRegions } from '../../data/muscles/muscleMapRegions';
 import {
@@ -110,16 +110,26 @@ export function MuscleMap({
 
   const isCompact = size === 'compact';
   const wrapperClassName = isCompact ? 'mx-auto max-w-[320px]' : '';
-  const splitGridClassName = isCompact ? 'grid gap-3 grid-cols-2' : 'grid gap-4 sm:grid-cols-2';
+  const splitGridClassName = isCompact ? 'grid grid-cols-2 gap-3' : 'grid gap-4 sm:grid-cols-2';
+  const splitItemClassName = isCompact
+    ? 'flex min-w-0 flex-col items-center gap-1.5'
+    : 'flex min-w-0 flex-col items-center gap-2';
   const panelClassName = isCompact
-    ? 'flex min-w-0 flex-1 flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white/80 p-2.5 shadow-sm'
-    : 'flex min-w-0 flex-1 flex-col items-center gap-3 rounded-3xl border border-slate-200 bg-white/80 p-4 shadow-sm';
+    ? 'flex min-h-[252px] w-full min-w-0 flex-1 items-center justify-center rounded-2xl border border-slate-200 bg-white/80 p-1 shadow-sm'
+    : 'flex min-h-[312px] min-w-0 flex-1 items-center justify-center rounded-3xl border border-slate-200 bg-white/80 p-2.5 shadow-sm';
   const labelClassName = isCompact
-    ? 'text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500'
-    : 'text-xs font-medium uppercase tracking-[0.16em] text-slate-500';
+    ? 'text-center text-[10px] font-medium uppercase tracking-[0.12em] whitespace-nowrap text-slate-500'
+    : 'text-center text-xs font-medium uppercase tracking-[0.14em] whitespace-nowrap text-slate-500';
   const svgClassName = isCompact
-    ? 'h-auto max-h-[220px] w-full'
-    : 'h-auto w-full';
+    ? 'block h-[238px] w-full max-w-full'
+    : 'block h-[292px] w-full max-w-full';
+
+  const renderPanel = (label: string, content: ReactNode) => (
+    <div className={splitItemClassName}>
+      <span className={labelClassName}>{label}</span>
+      <div className={panelClassName}>{content}</div>
+    </div>
+  );
 
   return (
     <div
@@ -130,28 +140,22 @@ export function MuscleMap({
     >
       {resolvedView === 'split' ? (
         <div className={splitGridClassName}>
-          <div className={panelClassName}>
-            <span className={labelClassName}>
-              Вид спереди
-            </span>
-            <FrontMuscleSvg regionTones={frontRegionTones} className={svgClassName} />
-          </div>
-          <div className={panelClassName}>
-            <span className={labelClassName}>
-              Вид сзади
-            </span>
-            <BackMuscleSvg regionTones={backRegionTones} className={svgClassName} />
-          </div>
+          {renderPanel(
+            'Вид спереди',
+            <FrontMuscleSvg regionTones={frontRegionTones} className={svgClassName} />,
+          )}
+          {renderPanel(
+            'Вид сзади',
+            <BackMuscleSvg regionTones={backRegionTones} className={svgClassName} />,
+          )}
         </div>
       ) : (
-        <div className={panelClassName}>
-          <span className={labelClassName}>
-            {resolvedView === 'back' ? 'Вид сзади' : 'Вид спереди'}
-          </span>
-          {resolvedView === 'back'
+        renderPanel(
+          resolvedView === 'back' ? 'Вид сзади' : 'Вид спереди',
+          resolvedView === 'back'
             ? <BackMuscleSvg regionTones={backRegionTones} className={svgClassName} />
-            : <FrontMuscleSvg regionTones={frontRegionTones} className={svgClassName} />}
-        </div>
+            : <FrontMuscleSvg regionTones={frontRegionTones} className={svgClassName} />,
+        )
       )}
     </div>
   );
