@@ -16,8 +16,13 @@ export const FRONT_MUSCLE_KEYS = [
 ] as const;
 
 export const BACK_MUSCLE_KEYS = [
+  'traps',
+  'trapezius',
   'traps_upper',
+  'upper_traps',
   'traps_middle',
+  'middle_traps',
+  'lower_traps',
   'rear_delts',
   'lats',
   'teres_major',

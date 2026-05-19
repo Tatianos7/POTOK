@@ -78,6 +78,37 @@ test('splitMusclesByView returns empty buckets for empty inputs', () => {
   });
 });
 
+test('normalizeMuscleKeys keeps general and specific trapezius keys valid', () => {
+  const result = normalizeMuscleKeys([
+    'traps',
+    'trapezius',
+    'upper_traps',
+    'middle_traps',
+    'lower_traps',
+    'invalid',
+  ]);
+
+  assert.deepEqual(result, ['traps', 'trapezius', 'upper_traps', 'middle_traps', 'lower_traps']);
+});
+
+test('splitMusclesByView keeps general and specific trapezius keys on the back view', () => {
+  const result = splitMusclesByView({
+    primary: ['traps', 'upper_traps'],
+    secondary: ['middle_traps', 'lower_traps', 'chest'],
+  });
+
+  assert.deepEqual(result, {
+    front: {
+      primary: [],
+      secondary: ['chest'],
+    },
+    back: {
+      primary: ['traps', 'upper_traps'],
+      secondary: ['middle_traps', 'lower_traps'],
+    },
+  });
+});
+
 test('user-like input remains valid and safe after normalization and config build', () => {
   const result = buildExerciseMuscleConfig({
     primary: ['chest', 'CHEST', 'front_delts', '', '123', 'biceps'],
