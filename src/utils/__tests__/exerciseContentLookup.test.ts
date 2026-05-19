@@ -60,6 +60,46 @@ test('getExerciseContentForExercise resolves chest content by uuid plus runtime 
   assert.equal(result?.technique_image_url, '/exercises/chest/pushups_classic.png');
 });
 
+test('getExerciseContentForExercise resolves shoulder machine upright row variants to the canonical id and image', () => {
+  const cases = [
+    'Тяга к подбородку в тренажере',
+    'Тяга к подбородку в тренажёре',
+    'Тяга в тренажере к подбородку',
+    'Тяга в тренажёре к подбородку',
+  ] as const;
+
+  for (const name of cases) {
+    const result = getExerciseContentForExercise({
+      id: '0f0f0f0f-1111-4222-8333-444444444444',
+      name,
+      category: 'shoulders',
+    });
+
+    assert.equal(result?.exercise_id, 'machine_chin-ups', `Expected machine_chin-ups for "${name}"`);
+    assert.equal(result?.technique_image_url, '/exercises/shoulders/machine_chin-ups.png');
+  }
+});
+
+test('getExerciseContentForExercise resolves shoulder bent-over rear delt fly variants to the canonical id and image', () => {
+  const cases = [
+    'Разведение гантелей в наклоне',
+    'Разведения гантелей в наклоне',
+    'Обратные махи',
+    'Махи гантелями в наклоне',
+  ] as const;
+
+  for (const name of cases) {
+    const result = getExerciseContentForExercise({
+      id: '1f1f1f1f-1111-4222-8333-555555555555',
+      name,
+      category: 'shoulders',
+    });
+
+    assert.equal(result?.exercise_id, 'bent-over_dumbbell_flyes', `Expected bent-over_dumbbell_flyes for "${name}"`);
+    assert.equal(result?.technique_image_url, '/exercises/shoulders/bent-over_dumbbell_flyes.png');
+  }
+});
+
 test('getExerciseContentForExercise resolves legacy ring pushups by uuid plus short runtime name', () => {
   const result = getExerciseContentForExercise({
     id: '7f2f1f9b-2c33-4dc4-8a72-222222222222',
