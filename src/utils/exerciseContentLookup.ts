@@ -36,7 +36,12 @@ const RUNTIME_ALIASES: Record<string, string[]> = {
     'армейский жим с гантелью одной рукой',
   ],
   'barbell_chin-ups': ['тяга штанги к подбородку'],
-  'machine_chin-ups': ['тяга к подбородку в тренажере', 'тяга к подбородку в тренажёре'],
+  'machine_chin-ups': [
+    'тяга к подбородку в тренажере',
+    'тяга к подбородку в тренажёре',
+    'тяга в тренажере к подбородку',
+    'тяга в тренажёре к подбородку',
+  ],
   dumbbell_lateral_raises: [
     'разведение гантелей в стороны',
     'разведения гантелей в стороны',
@@ -46,6 +51,7 @@ const RUNTIME_ALIASES: Record<string, string[]> = {
     'разведение гантелей в наклоне',
     'разведения гантелей в наклоне',
     'обратные махи',
+    'махи гантелями в наклоне',
   ],
   push_press_with_a_barbell: [
     'подъемы на грудь push press со штангой',
@@ -355,7 +361,7 @@ function sanitizeTechniqueImageUrl(url: string) {
     return url;
   }
 
-  const normalizedFileName = fileName.toLowerCase().replace(/-/g, '_');
+  const normalizedFileName = fileName.toLowerCase();
   const normalizedPath = [...segments, normalizedFileName].join('/').replace(/\/{2,}/g, '/');
 
   if (normalizedPath.startsWith('/exercises/')) {

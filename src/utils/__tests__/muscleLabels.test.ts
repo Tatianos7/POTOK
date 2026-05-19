@@ -18,3 +18,12 @@ test('getMuscleLabel keeps common back muscle keys translated', () => {
   assert.equal(getMuscleLabel('rear_delts'), 'Задние дельты');
   assert.equal(getMuscleLabel('cardio'), 'Кардио');
 });
+
+test('getMuscleLabel keeps general and specific trapezius labels readable', () => {
+  assert.equal(getMuscleLabel('trapezoid'), 'Трапециевидная мышца');
+  assert.equal(getMuscleLabel('traps'), 'Трапециевидная мышца');
+  assert.equal(getMuscleLabel('trapezius'), 'Трапециевидная мышца');
+  assert.equal(getMuscleLabel('upper_traps'), 'Верх трапеций');
+  assert.equal(getMuscleLabel('middle_traps'), 'Средняя часть трапеций');
+  assert.equal(getMuscleLabel('lower_traps'), 'Нижняя часть трапеций');
+});
