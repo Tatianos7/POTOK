@@ -93,10 +93,18 @@ function canonicalizeCoverageMuscleKey(key: string): MuscleKey | null {
   return canonical;
 }
 
+function isCardioExerciseContent(content: { category?: string | null }): boolean {
+  return content.category === 'cardio';
+}
+
 function buildCoverageMuscleKeys(): MuscleKey[] {
   const keys = new Set<MuscleKey>();
 
   Object.values(exerciseContentMap).forEach((item) => {
+    if (isCardioExerciseContent(item)) {
+      return;
+    }
+
     [...item.primary_muscles, ...item.secondary_muscles].forEach((rawKey) => {
       const canonical = canonicalizeCoverageMuscleKey(rawKey);
       if (canonical) {
@@ -204,6 +212,10 @@ export function buildWorkoutProgressSummaryFromEntries(
     });
 
     if (!content) {
+      return;
+    }
+
+    if (isCardioExerciseContent(content)) {
       return;
     }
 

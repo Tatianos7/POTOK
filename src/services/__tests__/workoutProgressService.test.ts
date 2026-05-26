@@ -137,3 +137,25 @@ test('unknown exercise does not break summary builder', () => {
   assert.equal(summary.topMuscles.length, 0);
   assert.equal(summary.muscleCoverage.length, DEFAULT_WORKOUT_COVERAGE_KEYS.length);
 });
+
+test('cardio-only workout counts workouts without contributing to muscle coverage', () => {
+  const summary = buildWorkoutProgressSummaryFromEntries([
+    createWorkoutEntry('entry-1', {
+      exercise_id: 'treadmill_running',
+      canonical_exercise_id: 'treadmill_running',
+      exercise: { id: 'treadmill_running', name: 'Беговая дорожка', category_id: 'cardio', is_custom: false },
+      sets: 20,
+    }),
+  ], 'month');
+
+  const trainedMuscles = summary.muscleCoverage.filter((item) => item.status === 'trained');
+  const scoredMuscles = summary.muscleCoverage.filter((item) => item.score > 0);
+
+  assert.equal(summary.totalWorkouts, 1);
+  assert.equal(summary.totalExercises, 1);
+  assert.equal(trainedMuscles.length, 0);
+  assert.equal(scoredMuscles.length, 0);
+  assert.equal(summary.topMuscles.length, 0);
+  assert.equal(summary.muscleCoverage.length, DEFAULT_WORKOUT_COVERAGE_KEYS.length);
+  assert.ok(summary.undertrainedMuscles.length > 0);
+});
