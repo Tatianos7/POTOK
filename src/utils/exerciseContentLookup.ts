@@ -340,7 +340,15 @@ function uniqueValues(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.map((value) => String(value ?? '').trim()).filter(Boolean)));
 }
 
-const isDev = Boolean((import.meta as ImportMeta & { env?: { DEV?: boolean } }).env?.DEV);
+const importMetaEnv = (import.meta as ImportMeta & {
+  env?: {
+    DEV?: boolean;
+    VITE_EXERCISE_CONTENT_DEBUG?: string;
+  };
+}).env;
+const isExerciseContentDebugEnabled = Boolean(
+  importMetaEnv?.DEV && importMetaEnv.VITE_EXERCISE_CONTENT_DEBUG === 'true',
+);
 
 function sanitizeTechniqueImageUrl(url: string) {
   if (!url) {
@@ -645,7 +653,7 @@ export function getExerciseContentForExercise(source: ExerciseContentLookupSourc
     ?? findAliasMatch(source?.exercise?.normalized_name);
 
   if (aliasMatch?.content) {
-    if (isDev) {
+    if (isExerciseContentDebugEnabled) {
       console.info('[exerciseContent] matched via alias', {
         name: getDebugExerciseName(source),
         matchedId: aliasMatch.matchedId,
@@ -666,7 +674,7 @@ export function getExerciseContentForExercise(source: ExerciseContentLookupSourc
   const debugId = getDebugExerciseId(source);
   const debugName = getDebugExerciseName(source);
 
-  if (isDev && (debugId || debugName)) {
+  if (isExerciseContentDebugEnabled && (debugId || debugName)) {
     console.warn('[exerciseContent] NOT FOUND', {
       id: debugId,
       name: debugName,

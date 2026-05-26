@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type FC } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Calendar, ChevronDown, ChevronUp, X } from 'lucide-react';
+import MuscleMap from '../components/muscle-map/MuscleMap';
 import { useAuth } from '../context/AuthContext';
 import WorkoutProgressMonthPicker from '../components/WorkoutProgressMonthPicker';
 import WorkoutProgressList from '../components/WorkoutProgressList';
+import type { WorkoutProgressSummary } from '../services/workoutProgressService';
+import { workoutProgressService } from '../services/workoutProgressService';
 import { workoutService } from '../services/workoutService';
 import type { WorkoutProgressObservation, WorkoutProgressRow } from '../types/workout';
 import { buildWorkoutProgressList, filterWorkoutProgressObservationsByRange } from '../utils/workoutProgress';
@@ -42,6 +45,8 @@ const ProgressWorkouts: FC = () => {
   const [observations, setObservations] = useState<WorkoutProgressObservation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [summary, setSummary] = useState<WorkoutProgressSummary | null>(null);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
 
   const period = useMemo(() => getWorkoutProgressMonthPeriod(selectedMonthDate), [selectedMonthDate]);
   const periodLabel = useMemo(() => formatWorkoutProgressMonthLabel(selectedMonthDate), [selectedMonthDate]);
@@ -50,6 +55,15 @@ const ProgressWorkouts: FC = () => {
     const displayObservations = filterWorkoutProgressObservationsByRange(observations, period.from, period.to);
     return buildWorkoutProgressList(displayObservations, observations);
   }, [observations, period.from, period.to]);
+  const trainedMuscles = useMemo(() => {
+    if (!summary) {
+      return [];
+    }
+
+    return summary.muscleCoverage
+      .filter((item) => item.status === 'trained')
+      .map((item) => item.muscleKey);
+  }, [summary]);
 
   useEffect(() => {
     if (!isCalendarOpen) return;
@@ -125,6 +139,39 @@ const ProgressWorkouts: FC = () => {
     };
   }, [period.from, period.to, user?.id]);
 
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let isMounted = true;
+    setIsSummaryLoading(true);
+
+    workoutProgressService
+      .getWorkoutProgressSummary({
+        userId: user.id,
+        dateFrom: period.from,
+        dateTo: period.to,
+        period: 'month',
+      })
+      .then((nextSummary) => {
+        if (!isMounted) return;
+        setSummary(nextSummary);
+      })
+      .catch((error: any) => {
+        if (!isMounted) return;
+        console.error('[ProgressWorkouts] summary failed', error);
+        setSummary(null);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsSummaryLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [period.from, period.to, user?.id]);
+
   return (
     <ScreenContainer backgroundColor={WORKOUT_SCREEN_BACKGROUND}>
       <header className="flex items-center justify-between" style={{ marginBottom: spacing.lg }}>
@@ -179,6 +226,37 @@ const ProgressWorkouts: FC = () => {
             {errorMessage}
           </div>
         ) : null}
+
+        <section className="space-y-3">
+          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5">
+            <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-[15px] leading-snug text-gray-700">
+              <span>Количество тренировок за период:</span>
+              <span className="shrink-0 whitespace-nowrap font-extrabold text-gray-950">
+                {isSummaryLoading ? '...' : (summary?.totalWorkouts ?? 0)}
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+              Тренируемые мышцы
+            </div>
+            {isSummaryLoading ? (
+              <div className="mt-3 text-sm text-gray-500">Обновляем мышечную карту...</div>
+            ) : (summary?.totalWorkouts ?? 0) > 0 && trainedMuscles.length > 0 ? (
+              <div className="mt-3 space-y-3">
+                <MuscleMap primaryMuscles={trainedMuscles} size="compact" />
+                <div className="text-xs text-gray-500">
+                  Мышцы которые получили нагрузку за период.
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3 text-sm text-gray-500">
+                За выбранный период пока нет данных, чтобы показать тренируемые мышечные группы.
+              </div>
+            )}
+          </div>
+        </section>
 
         <WorkoutProgressList
           rows={rows}
