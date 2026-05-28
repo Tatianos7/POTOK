@@ -13,6 +13,7 @@ import WorkoutDayNoteBlock from '../components/WorkoutDayNoteBlock';
 import WorkoutEntryNoteComposer from '../components/WorkoutEntryNoteComposer';
 import WorkoutEntryInlineNote from '../components/WorkoutEntryInlineNote';
 import WorkoutExerciseCardSheet from '../components/WorkoutExerciseCardSheet';
+import MuscleMap from '../components/muscle-map/MuscleMap';
 import { exerciseService } from '../services/exerciseService';
 import { workoutService } from '../services/workoutService';
 import { workoutEntryNotesService } from '../services/workoutEntryNotesService';
@@ -58,6 +59,8 @@ import {
   getWorkoutMetricUnit,
   normalizeWorkoutMetricType,
 } from '../utils/workoutEntryMetric';
+import { getExerciseContentForExercise } from '../utils/exerciseContentLookup';
+import { normalizeMuscleKeys, type MuscleKey } from '../data/muscles/types';
 
 export function getWorkoutHeaderActionIds(): Array<'history' | 'note' | 'delete'> {
   return ['history', 'note', 'delete'];
@@ -65,6 +68,31 @@ export function getWorkoutHeaderActionIds(): Array<'history' | 'note' | 'delete'
 
 export function getWorkoutEntryNoteComposerPlacement(): 'overlay' {
   return 'overlay';
+}
+
+export function buildCurrentWorkoutMuscleMapMuscles(
+  entries: WorkoutEntry[],
+): { primaryMuscles: MuscleKey[]; secondaryMuscles: MuscleKey[] } {
+  const primaryCandidates: string[] = [];
+  const secondaryCandidates: string[] = [];
+
+  entries.forEach((entry) => {
+    const content = getExerciseContentForExercise(entry);
+
+    if (!content) {
+      return;
+    }
+
+    primaryCandidates.push(...content.primary_muscles);
+    secondaryCandidates.push(...content.secondary_muscles);
+  });
+
+  const primaryMuscles = normalizeMuscleKeys(primaryCandidates).filter((key) => key !== 'cardio');
+  const primarySet = new Set(primaryMuscles);
+  const secondaryMuscles = normalizeMuscleKeys(secondaryCandidates)
+    .filter((key) => key !== 'cardio' && !primarySet.has(key));
+
+  return { primaryMuscles, secondaryMuscles };
 }
 
 const CUSTOM_EXERCISES_CATEGORY: ExerciseCategory = {
@@ -129,6 +157,12 @@ const Workouts = () => {
   const calendarRef = useRef<HTMLDivElement>(null);
   const entryNoteSaveLock = useRef({ current: false });
   const entryNoteDeleteLock = useRef({ current: false });
+  const currentWorkoutMuscles = useMemo(
+    () => buildCurrentWorkoutMuscleMapMuscles(workoutEntries),
+    [workoutEntries],
+  );
+  const shouldShowCurrentWorkoutMuscleMap =
+    currentWorkoutMuscles.primaryMuscles.length > 0 || currentWorkoutMuscles.secondaryMuscles.length > 0;
   const buildCoachContext = (): CoachScreenContext => ({
     screen: 'Today',
     userMode: 'Manual',
@@ -1121,6 +1155,22 @@ const Workouts = () => {
                 </div>
               )}
             </div>
+
+            {shouldShowCurrentWorkoutMuscleMap ? (
+              <div className="mt-4 rounded-xl border border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500 dark:text-gray-400">
+                  Тренируемые мышцы
+                </div>
+                <div className="mt-3">
+                  <MuscleMap
+                    primaryMuscles={currentWorkoutMuscles.primaryMuscles}
+                    secondaryMuscles={currentWorkoutMuscles.secondaryMuscles}
+                    view="auto"
+                    size="compact"
+                  />
+                </div>
+              </div>
+            ) : null}
 
             {workoutDayNote?.trim() ? (
               <WorkoutDayNoteBlock
