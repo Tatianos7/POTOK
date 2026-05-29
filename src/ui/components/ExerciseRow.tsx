@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import Button from './Button';
 import ExerciseActionMenu from './ExerciseActionMenu';
+import {
+  EXERCISE_TABLE_CONTENT_GRID_COLUMNS,
+  EXERCISE_TABLE_EDITABLE_CONTENT_GRID_COLUMNS,
+  EXERCISE_TABLE_SHELL_GRID_COLUMNS,
+} from './exerciseTableLayout';
 import { colors, spacing, typography } from '../theme/tokens';
 import {
   WORKOUT_METRIC_OPTIONS,
@@ -269,7 +274,7 @@ const ExerciseRow = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '24px minmax(0, 1fr)',
+          gridTemplateColumns: EXERCISE_TABLE_SHELL_GRID_COLUMNS,
           alignItems: 'center',
           columnGap: 0,
           padding: `${spacing.sm}px 0`,
@@ -304,8 +309,8 @@ const ExerciseRow = ({
           style={{
             display: 'grid',
             gridTemplateColumns: hasMetricSelector
-              ? 'minmax(0, 1fr) 1px 48px 1px 48px 1px 92px'
-              : 'minmax(0, 1fr) 1px 48px 1px 48px 1px 72px',
+              ? EXERCISE_TABLE_EDITABLE_CONTENT_GRID_COLUMNS
+              : EXERCISE_TABLE_CONTENT_GRID_COLUMNS,
             alignItems: 'center',
             minWidth: 0,
             cursor: isOpenable ? 'pointer' : 'default',

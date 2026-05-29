@@ -1,3 +1,7 @@
+import {
+  EXERCISE_TABLE_CONTENT_GRID_COLUMNS,
+  EXERCISE_TABLE_SHELL_GRID_COLUMNS,
+} from './exerciseTableLayout';
 import { colors, spacing, typography } from '../theme/tokens';
 
 const ExerciseTableHeader = () => {
@@ -5,18 +9,30 @@ const ExerciseTableHeader = () => {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '24px minmax(0, 1fr) 48px 48px 72px',
+        gridTemplateColumns: EXERCISE_TABLE_SHELL_GRID_COLUMNS,
         alignItems: 'center',
-        columnGap: spacing.sm,
+        columnGap: 0,
         padding: `${spacing.sm}px 0`,
         borderBottom: `1px solid ${colors.border}`,
       }}
     >
       <div />
-      <div style={{ ...typography.micro, color: colors.text.secondary }}>Название упражнения</div>
-      <div style={{ ...typography.micro, textAlign: 'center', color: colors.text.secondary }}>Подходы</div>
-      <div style={{ ...typography.micro, textAlign: 'center', color: colors.text.secondary }}>Повторы</div>
-      <div style={{ ...typography.micro, textAlign: 'center', color: colors.text.secondary }}>Вес</div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: EXERCISE_TABLE_CONTENT_GRID_COLUMNS,
+          alignItems: 'center',
+          minWidth: 0,
+        }}
+      >
+        <div style={{ ...typography.micro, textAlign: 'center', color: colors.text.secondary }}>Упражнение</div>
+        <div style={{ width: 1, height: '100%', backgroundColor: colors.border }} />
+        <div style={{ ...typography.micro, textAlign: 'center', color: colors.text.secondary }}>Подход</div>
+        <div style={{ width: 1, height: '100%', backgroundColor: colors.border }} />
+        <div style={{ ...typography.micro, textAlign: 'center', color: colors.text.secondary }}>Повтор</div>
+        <div style={{ width: 1, height: '100%', backgroundColor: colors.border }} />
+        <div style={{ ...typography.micro, textAlign: 'center', color: colors.text.secondary }}>Вес</div>
+      </div>
     </div>
   );
 };

@@ -4,13 +4,25 @@ import assert from 'node:assert/strict';
 import type { Exercise } from '../../types/workout';
 import { deriveAvailableMuscles, filterExercisesForList } from '../exerciseListFilters';
 
-function createExercise(id: string, name: string, muscles: string[]): Exercise {
+function createExercise(id: string, name: string, muscles: string[], categoryId = 'category-1'): Exercise {
   return {
     id,
     name,
-    category_id: 'category-1',
+    category_id: categoryId,
     is_custom: false,
     muscles: muscles.map((muscle) => ({ id: muscle, name: muscle })),
+  };
+}
+
+function createContentExercise(
+  canonicalId: string,
+  name: string,
+  categoryId: 'arms' | 'back' | 'abs',
+  runtimeMuscles: string[] = [],
+): Exercise {
+  return {
+    ...createExercise(`runtime-${canonicalId}`, name, runtimeMuscles, categoryId),
+    canonical_exercise_id: canonicalId,
   };
 }
 
@@ -154,4 +166,85 @@ test('edited custom exercise stays discoverable by updated name in browse search
 
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].name, 'Тяга в наклоне узким хватом');
+});
+
+test('arms category exposes only biceps and triceps muscle filters', () => {
+  const exercises = [
+    createContentExercise('standing_barbell_biceps_curl', 'Подъём штанги на бицепс', 'arms'),
+    createContentExercise('close_grip_bench_press', 'Жим узким хватом', 'arms'),
+  ];
+
+  const muscles = deriveAvailableMuscles(exercises, { id: 'arms', name: 'Руки', order: 1 });
+
+  assert.deepEqual(muscles.map((muscle) => muscle.name), ['Бицепс', 'Трицепс']);
+  assert.equal(muscles.some((muscle) => muscle.name === 'Широчайшие'), false);
+  assert.equal(muscles.some((muscle) => muscle.name === 'Средний пучок'), false);
+});
+
+test('back category exposes curated primary back filters without biceps or glutes', () => {
+  const exercises = [
+    createContentExercise('barbell_row', 'Тяга штанги в наклоне', 'back'),
+    createContentExercise('barbell_shrug', 'Шраги со штангой', 'back'),
+    createContentExercise('deadlift_classic', 'Становая тяга', 'back'),
+  ];
+
+  const muscles = deriveAvailableMuscles(exercises, { id: 'back', name: 'Спина', order: 2 });
+
+  assert.deepEqual(muscles.map((muscle) => muscle.name), ['Широчайшие', 'Трапециевидные', 'Поясница']);
+  assert.equal(muscles.some((muscle) => muscle.name === 'Бицепс'), false);
+  assert.equal(muscles.some((muscle) => muscle.name === 'Ягодицы'), false);
+});
+
+test('abs category exposes user-facing abs filters without core technical labels', () => {
+  const exercises = [
+    createContentExercise('crunch', 'Скручивания', 'abs'),
+    createContentExercise('side_plank', 'Боковая планка', 'abs'),
+  ];
+
+  const muscles = deriveAvailableMuscles(exercises, { id: 'abs', name: 'Пресс', order: 3 });
+
+  assert.deepEqual(muscles.map((muscle) => muscle.name), ['Пресс', 'Косые мышцы живота']);
+  assert.equal(muscles.some((muscle) => muscle.name === 'Кор'), false);
+  assert.equal(muscles.some((muscle) => muscle.name === 'Нижний кор'), false);
+});
+
+test('curated category filters use primary muscles and do not expose secondary muscles automatically', () => {
+  const exercises = [
+    createContentExercise('barbell_row', 'Тяга штанги в наклоне', 'back'),
+  ];
+
+  const muscles = deriveAvailableMuscles(exercises, { id: 'back', name: 'Спина', order: 2 });
+  const filteredByLats = filterExercisesForList(
+    exercises,
+    '',
+    new Set(['Широчайшие']),
+    { id: 'back', name: 'Спина', order: 2 },
+  );
+  const filteredByBiceps = filterExercisesForList(
+    exercises,
+    '',
+    new Set(['Бицепс']),
+    { id: 'back', name: 'Спина', order: 2 },
+  );
+
+  assert.deepEqual(muscles.map((muscle) => muscle.name), ['Широчайшие']);
+  assert.equal(filteredByLats.length, 1);
+  assert.equal(filteredByBiceps.length, 0);
+});
+
+test('trapezius curated filter matches trapezius primary aliases', () => {
+  const exercises = [
+    createContentExercise('barbell_shrug', 'Шраги со штангой', 'back'),
+    createContentExercise('barbell_row', 'Тяга штанги в наклоне', 'back'),
+  ];
+
+  const filtered = filterExercisesForList(
+    exercises,
+    '',
+    new Set(['Трапециевидные']),
+    { id: 'back', name: 'Спина', order: 2 },
+  );
+
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].name, 'Шраги со штангой');
 });
