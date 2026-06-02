@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - feature/initial-setup
       - feature/workout-diary
   workflow_dispatch:
 
