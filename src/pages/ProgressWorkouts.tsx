@@ -30,6 +30,16 @@ import { getDefaultWorkoutHistoryRange } from '../utils/workoutHistoryRange';
 
 let progressObservationsCache: WorkoutProgressObservationCache | null = null;
 
+export function getProgressMuscleMapMuscles(summary: WorkoutProgressSummary | null): string[] {
+  if (!summary) {
+    return [];
+  }
+
+  return summary.muscleCoverage
+    .filter((item) => item.status === 'trained' || item.status === 'undertrained')
+    .map((item) => item.muscleKey);
+}
+
 const ProgressWorkouts: FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -55,15 +65,7 @@ const ProgressWorkouts: FC = () => {
     const displayObservations = filterWorkoutProgressObservationsByRange(observations, period.from, period.to);
     return buildWorkoutProgressList(displayObservations, observations);
   }, [observations, period.from, period.to]);
-  const trainedMuscles = useMemo(() => {
-    if (!summary) {
-      return [];
-    }
-
-    return summary.muscleCoverage
-      .filter((item) => item.status === 'trained')
-      .map((item) => item.muscleKey);
-  }, [summary]);
+  const loadedMuscles = useMemo(() => getProgressMuscleMapMuscles(summary), [summary]);
 
   useEffect(() => {
     if (!isCalendarOpen) return;
@@ -243,9 +245,9 @@ const ProgressWorkouts: FC = () => {
             </div>
             {isSummaryLoading ? (
               <div className="mt-3 text-sm text-gray-500">Обновляем мышечную карту...</div>
-            ) : (summary?.totalWorkouts ?? 0) > 0 && trainedMuscles.length > 0 ? (
+            ) : (summary?.totalWorkouts ?? 0) > 0 && loadedMuscles.length > 0 ? (
               <div className="mt-3 space-y-3">
-                <MuscleMap primaryMuscles={trainedMuscles} size="compact" />
+                <MuscleMap primaryMuscles={loadedMuscles} size="compact" />
                 <div className="text-xs text-gray-500">
                   Мышцы которые получили нагрузку за период.
                 </div>

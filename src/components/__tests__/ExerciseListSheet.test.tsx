@@ -6,6 +6,7 @@ import ExerciseListSheet, {
   addExerciseSelectionFromCard,
   dedupeExercisesForList,
   getExerciseMusclesForList,
+  removeExerciseSelection,
   toggleExerciseSelection,
 } from '../ExerciseListSheet';
 import type { Exercise, ExerciseCategory } from '../../types/workout';
@@ -67,7 +68,24 @@ test('edit entry point remains renderable for custom exercise', () => {
   assert.match(html, /aria-label="Редактировать Мой жим"/);
 });
 
-test('custom exercise list no longer exposes delete entry point', () => {
+test('delete entry point remains renderable for custom exercise', () => {
+  const html = renderToStaticMarkup(
+    <ExerciseListSheet
+      isOpen={true}
+      onClose={() => {}}
+      category={category}
+      exercises={[customExercise]}
+      onExercisesSelect={() => {}}
+      onEditExercise={() => {}}
+      onDeleteExercise={() => {}}
+    />,
+  );
+
+  assert.match(html, /title="Удалить упражнение"/);
+  assert.match(html, /aria-label="Удалить Мой жим"/);
+});
+
+test('custom exercise delete action is hidden until delete handler is provided', () => {
   const html = renderToStaticMarkup(
     <ExerciseListSheet
       isOpen={true}
@@ -80,10 +98,9 @@ test('custom exercise list no longer exposes delete entry point', () => {
   );
 
   assert.doesNotMatch(html, /Удалить Мой жим/);
-  assert.doesNotMatch(html, /Удалить упражнение/);
 });
 
-test('system exercise list behavior does not expose custom edit entry point', () => {
+test('system exercise list behavior does not expose custom edit or delete entry points', () => {
   const html = renderToStaticMarkup(
     <ExerciseListSheet
       isOpen={true}
@@ -91,6 +108,7 @@ test('system exercise list behavior does not expose custom edit entry point', ()
       category={category}
       exercises={[systemExercise]}
       onExercisesSelect={() => {}}
+      onDeleteExercise={() => {}}
     />,
   );
 
@@ -114,6 +132,13 @@ test('add to workout from exercise card does not duplicate existing selection', 
   const initial = new Set<string>([customExercise.id]);
   const next = addExerciseSelectionFromCard(initial, customExercise.id);
   assert.deepEqual(Array.from(next), [customExercise.id]);
+});
+
+test('deleted exercise is removed from current selection state', () => {
+  const initial = new Set<string>([customExercise.id, systemExercise.id]);
+  const next = removeExerciseSelection(initial, customExercise.id);
+
+  assert.deepEqual(Array.from(next), [systemExercise.id]);
 });
 
 test('dedupeExercisesForList keeps one canonical chest exercise when duplicates share canonical key', () => {

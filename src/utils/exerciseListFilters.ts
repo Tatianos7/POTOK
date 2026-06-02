@@ -15,6 +15,20 @@ const CATEGORY_MUSCLE_FILTERS: Record<string, readonly CategoryMuscleFilter[]> =
     { id: 'arms-biceps', name: 'Бицепс', muscleKeys: ['biceps'], muscleNames: ['Бицепс', 'Бицепсы'] },
     { id: 'arms-triceps', name: 'Трицепс', muscleKeys: ['triceps'], muscleNames: ['Трицепс', 'Трицепсы'] },
   ],
+  chest: [
+    {
+      id: 'chest-main',
+      name: 'Грудные мышцы',
+      muscleKeys: ['chest'],
+      muscleNames: ['Грудные мышцы', 'Грудь', 'Грудь — середина', 'Грудь (середина)', 'Средний пучок'],
+    },
+    {
+      id: 'chest-upper',
+      name: 'Верх грудных мышц',
+      muscleKeys: ['upper_chest'],
+      muscleNames: ['Верх грудных мышц', 'Грудь — верх', 'Грудь (верх)', 'Верхний пучок'],
+    },
+  ],
   back: [
     {
       id: 'back-lats',
@@ -49,8 +63,52 @@ const CATEGORY_MUSCLE_FILTERS: Record<string, readonly CategoryMuscleFilter[]> =
     {
       id: 'back-lower-back',
       name: 'Поясница',
-      muscleKeys: ['lower_back', 'erectors'],
-      muscleNames: ['Поясница', 'Разгибатели спины'],
+      muscleKeys: ['lower_back'],
+      muscleNames: ['Поясница'],
+    },
+    {
+      id: 'back-erectors',
+      name: 'Разгибатели спины',
+      muscleKeys: ['erectors'],
+      muscleNames: ['Разгибатели спины'],
+    },
+  ],
+  legs: [
+    {
+      id: 'legs-quads',
+      name: 'Квадрицепс',
+      muscleKeys: ['quads'],
+      muscleNames: ['Квадрицепс', 'Квадрицепсы'],
+    },
+    {
+      id: 'legs-hamstrings',
+      name: 'Бицепс бедра',
+      muscleKeys: ['hamstrings'],
+      muscleNames: ['Бицепс бедра', 'Задняя поверхность бедра'],
+    },
+    {
+      id: 'legs-glutes',
+      name: 'Ягодичные мышцы',
+      muscleKeys: ['glutes'],
+      muscleNames: ['Ягодичные мышцы', 'Ягодицы', 'Ягодичная'],
+    },
+    {
+      id: 'legs-adductors',
+      name: 'Приводящие мышцы',
+      muscleKeys: ['adductors'],
+      muscleNames: ['Приводящие мышцы', 'Приводящие'],
+    },
+    {
+      id: 'legs-abductors',
+      name: 'Отводящие мышцы бедра',
+      muscleKeys: ['abductors'],
+      muscleNames: ['Отводящие мышцы бедра', 'Отводящие мышцы'],
+    },
+    {
+      id: 'legs-calves',
+      name: 'Икроножные мышцы',
+      muscleKeys: ['calves'],
+      muscleNames: ['Икроножные мышцы', 'Икроножные'],
     },
   ],
   abs: [
@@ -80,7 +138,9 @@ function getCategoryFilterKey(category?: ExerciseCategory | null): string | null
   ];
 
   if (candidates.some((value) => value === 'arms' || value === 'руки')) return 'arms';
+  if (candidates.some((value) => value === 'chest' || value === 'грудь')) return 'chest';
   if (candidates.some((value) => value === 'back' || value === 'спина')) return 'back';
+  if (candidates.some((value) => value === 'legs' || value === 'ноги')) return 'legs';
   if (candidates.some((value) => value === 'abs' || value === 'core' || value === 'пресс')) return 'abs';
 
   return null;
