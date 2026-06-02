@@ -21,6 +21,9 @@ function createWorkoutEntry(
     sets: overrides.sets ?? 3,
     reps: overrides.reps ?? 12,
     weight: overrides.weight ?? 20,
+    primary_muscles_snapshot: overrides.primary_muscles_snapshot,
+    secondary_muscles_snapshot: overrides.secondary_muscles_snapshot,
+    muscles_snapshot: overrides.muscles_snapshot,
     exercise: {
       id: overrides.exercise?.id ?? overrides.exercise_id ?? 'exercise-1',
       name: overrides.exercise?.name ?? 'Жим лёжа',
@@ -136,6 +139,96 @@ test('unknown exercise does not break summary builder', () => {
   assert.equal(summary.totalSets, 5);
   assert.equal(summary.topMuscles.length, 0);
   assert.equal(summary.muscleCoverage.length, DEFAULT_WORKOUT_COVERAGE_KEYS.length);
+});
+
+test('custom exercise linked muscles contribute to muscle coverage fallback', () => {
+  const customEntry = createWorkoutEntry('entry-custom', {
+    exercise_id: 'custom-exercise-1',
+    canonical_exercise_id: null,
+    exercise: {
+      id: 'custom-exercise-1',
+      name: 'Свое упражнение',
+      category_id: 'custom',
+      is_custom: true,
+      canonical_exercise_id: null,
+    },
+    sets: 3,
+  });
+  customEntry.exercise!.muscles = [
+    { id: 'm-glutes', name: 'Ягодичные мышцы' },
+    { id: 'm-abductors', name: 'Отводящие мышцы бедра' },
+    { id: 'm-adductors', name: 'Приводящие' },
+    { id: 'm-rhomboids', name: 'Ромбовидные' },
+    { id: 'm-calves', name: 'Икроножные мышцы' },
+    { id: 'm-traps-middle', name: 'Трапеция — средняя' },
+    { id: 'm-unknown', name: 'Неизвестная мышца' },
+  ];
+
+  const summary = buildWorkoutProgressSummaryFromEntries([customEntry], 'week');
+  const scoredKeys = summary.muscleCoverage
+    .filter((item) => item.score > 0)
+    .map((item) => item.muscleKey);
+
+  assert.ok(scoredKeys.includes('glutes'));
+  assert.ok(scoredKeys.includes('abductors'));
+  assert.ok(scoredKeys.includes('adductors'));
+  assert.ok(scoredKeys.includes('rhomboids'));
+  assert.ok(scoredKeys.includes('calves'));
+  assert.ok(scoredKeys.includes('trapezoid'));
+  assert.equal(scoredKeys.includes('cardio'), false);
+  assert.equal(summary.topMuscles.length > 0, true);
+});
+
+test('snapshot muscles contribute to muscle coverage before live fallback', () => {
+  const summary = buildWorkoutProgressSummaryFromEntries([
+    createWorkoutEntry('entry-snapshot', {
+      exercise_id: 'custom-deleted',
+      canonical_exercise_id: null,
+      primary_muscles_snapshot: ['glutes', 'abductors'],
+      secondary_muscles_snapshot: ['calves', 'unknown-muscle'],
+      muscles_snapshot: [
+        { key: 'glutes', label: 'Ягодичные мышцы', source: 'primary' },
+        { key: 'abductors', label: 'Отводящие мышцы бедра', source: 'custom' },
+        { key: 'calves', label: 'Икры', source: 'secondary' },
+      ],
+      exercise: undefined,
+      sets: 2,
+    }),
+  ], 'week');
+
+  const scoredKeys = summary.muscleCoverage
+    .filter((item) => item.score > 0)
+    .map((item) => item.muscleKey);
+
+  assert.ok(scoredKeys.includes('glutes'));
+  assert.ok(scoredKeys.includes('abductors'));
+  assert.ok(scoredKeys.includes('calves'));
+  assert.equal(scoredKeys.includes('unknown-muscle'), false);
+});
+
+test('old entries without snapshot continue to use linked muscle fallback', () => {
+  const customEntry = createWorkoutEntry('entry-custom-old', {
+    exercise_id: 'custom-exercise-old',
+    canonical_exercise_id: null,
+    exercise: {
+      id: 'custom-exercise-old',
+      name: 'Старое свое упражнение',
+      category_id: 'custom',
+      is_custom: true,
+      canonical_exercise_id: null,
+    },
+    sets: 3,
+  });
+  customEntry.exercise!.muscles = [
+    { id: 'm-rhomboids', name: 'Ромбовидные' },
+  ];
+
+  const summary = buildWorkoutProgressSummaryFromEntries([customEntry], 'week');
+  const scoredKeys = summary.muscleCoverage
+    .filter((item) => item.score > 0)
+    .map((item) => item.muscleKey);
+
+  assert.ok(scoredKeys.includes('rhomboids'));
 });
 
 test('cardio-only workout counts workouts without contributing to muscle coverage', () => {

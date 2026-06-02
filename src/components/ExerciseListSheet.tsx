@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, type MouseEvent } from 'react';
-import { X, Search, Check, Filter, Edit } from 'lucide-react';
+import { X, Search, Check, Filter, Edit, Trash2 } from 'lucide-react';
 import { Exercise, ExerciseCategory } from '../types/workout';
 import { deriveAvailableMuscles, filterExercisesForList } from '../utils/exerciseListFilters';
 import { dedupeExercisesForUi } from '../utils/exerciseDedup';
@@ -15,6 +15,7 @@ interface ExerciseListSheetProps {
   exercises: Exercise[];
   onExercisesSelect: (exercises: Exercise[]) => void;
   onEditExercise?: (exercise: Exercise) => void;
+  onDeleteExercise?: (exercise: Exercise) => Promise<void> | void;
   searchTerm?: string;
   onSearchChange?: (term: string) => void;
 }
@@ -36,6 +37,12 @@ export const addExerciseSelectionFromCard = (selected: Set<string>, exerciseId: 
 
   const next = new Set(selected);
   next.add(exerciseId);
+  return next;
+};
+
+export const removeExerciseSelection = (selected: Set<string>, exerciseId: string) => {
+  const next = new Set(selected);
+  next.delete(exerciseId);
   return next;
 };
 
@@ -73,6 +80,7 @@ const ExerciseListSheet = ({
   exercises,
   onExercisesSelect,
   onEditExercise,
+  onDeleteExercise,
   searchTerm = '',
   onSearchChange,
 }: ExerciseListSheetProps) => {
@@ -85,6 +93,9 @@ const ExerciseListSheet = ({
   const [activeExerciseDefinition, setActiveExerciseDefinition] = useState<Exercise | null>(null);
   const [isDefinitionLoading, setIsDefinitionLoading] = useState(false);
   const [definitionError, setDefinitionError] = useState<string | null>(null);
+  const [exercisePendingDelete, setExercisePendingDelete] = useState<Exercise | null>(null);
+  const [isDeletingExercise, setIsDeletingExercise] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -97,6 +108,9 @@ const ExerciseListSheet = ({
       setActiveExerciseDefinition(null);
       setDefinitionError(null);
       setIsDefinitionLoading(false);
+      setExercisePendingDelete(null);
+      setIsDeletingExercise(false);
+      setDeleteError(null);
     }
     return () => {
       document.body.style.overflow = '';
@@ -129,6 +143,38 @@ const ExerciseListSheet = ({
   const handleEditExercise = (event: MouseEvent, exercise: Exercise) => {
     event.stopPropagation();
     onEditExercise?.(exercise);
+  };
+
+  const handleRequestDeleteExercise = (event: MouseEvent, exercise: Exercise) => {
+    event.stopPropagation();
+    setDeleteError(null);
+    setExercisePendingDelete(exercise);
+  };
+
+  const handleCancelDeleteExercise = () => {
+    if (isDeletingExercise) return;
+    setExercisePendingDelete(null);
+    setDeleteError(null);
+  };
+
+  const handleConfirmDeleteExercise = async () => {
+    if (!exercisePendingDelete || !onDeleteExercise || isDeletingExercise) return;
+
+    setIsDeletingExercise(true);
+    setDeleteError(null);
+
+    try {
+      await onDeleteExercise(exercisePendingDelete);
+      setSelectedExercises((current) => removeExerciseSelection(current, exercisePendingDelete.id));
+      if (activeExercise?.id === exercisePendingDelete.id) {
+        handleCloseExerciseCard();
+      }
+      setExercisePendingDelete(null);
+    } catch (error: any) {
+      setDeleteError(error?.message || 'Не удалось удалить упражнение');
+    } finally {
+      setIsDeletingExercise(false);
+    }
   };
 
   const handleOpenExerciseCard = async (exercise: Exercise) => {
@@ -438,16 +484,31 @@ const ExerciseListSheet = ({
                         </p>
                       )}
                     </button>
-                    {onEditExercise && exercise.is_custom && (
-                      <button
-                        type="button"
-                        onClick={(event) => handleEditExercise(event, exercise)}
-                        className="flex-shrink-0 p-1.5 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-white/80 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-900/60 transition-colors"
-                        aria-label={`Редактировать ${exercise.name}`}
-                        title="Редактировать упражнение"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
+                    {exercise.is_custom && (onEditExercise || onDeleteExercise) && (
+                      <div className="flex flex-shrink-0 flex-col items-center gap-1">
+                        {onEditExercise && (
+                          <button
+                            type="button"
+                            onClick={(event) => handleEditExercise(event, exercise)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-white/80 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-900/60 dark:hover:text-white"
+                            aria-label={`Редактировать ${exercise.name}`}
+                            title="Редактировать упражнение"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                        )}
+                        {onDeleteExercise && (
+                          <button
+                            type="button"
+                            onClick={(event) => handleRequestDeleteExercise(event, exercise)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-950/30 dark:hover:text-red-300"
+                            aria-label={`Удалить ${exercise.name}`}
+                            title="Удалить упражнение"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     )}
                   </div>
                 );
@@ -483,6 +544,45 @@ const ExerciseListSheet = ({
         onClose={handleCloseExerciseCard}
         onAddToWorkout={handleAddToWorkoutFromCard}
       />
+
+      {exercisePendingDelete && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4">
+          <div
+            className="w-full max-w-sm rounded-xl bg-white p-4 shadow-2xl dark:bg-gray-900"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+              Удалить упражнение?
+            </h3>
+            <p className="mt-2 text-sm leading-5 text-gray-600 dark:text-gray-300">
+              Это упражнение будет удалено из списка "Мои упражнения". Это действие нельзя отменить.
+            </p>
+            {deleteError && (
+              <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                {deleteError}
+              </p>
+            )}
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={handleCancelDeleteExercise}
+                disabled={isDeletingExercise}
+                className="flex-1 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-semibold uppercase text-gray-900 transition-colors hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteExercise}
+                disabled={isDeletingExercise}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+              >
+                {isDeletingExercise ? 'Удаление...' : 'Удалить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
