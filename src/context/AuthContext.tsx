@@ -10,6 +10,7 @@ import {
 import { getSessionCached, supabase } from '../lib/supabaseClient';
 import { activityService } from '../services/activityService';
 import { profileService, type UserProfile } from '../services/profileService';
+import { clearPinSessionUnlocked } from '../services/pinLockService';
 import { useTheme } from './ThemeContext';
 
 type AuthStatus = 'booting' | 'authenticated' | 'unauthenticated';
@@ -133,6 +134,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const clearSessionState = () => {
     resetMealSyncState();
+    clearPinSessionUnlocked();
     setUser(null);
     setProfile(null);
     setEntitlements(null);

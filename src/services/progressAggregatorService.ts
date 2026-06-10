@@ -14,7 +14,6 @@ export interface ProgressSnapshot {
   carbs?: number | null;
   volume?: number | null;
   photos?: number | null;
-  habitsAdherence?: number | null;
   programAdherence?: number | null;
   targets?: {
     calories?: number | null;
@@ -109,22 +108,6 @@ class ProgressAggregatorService {
     }
   }
 
-  private async getHabitAdherence(userId: string, fromDate: string, toDate: string): Promise<number | null> {
-    if (!supabase) return null;
-    const sessionUserId = await this.getSessionUserId(userId);
-    const { data, error } = await supabase
-      .from('habit_logs')
-      .select('completed')
-      .eq('user_id', sessionUserId)
-      .gte('date', fromDate)
-      .lte('date', toDate);
-    if (error) return null;
-    const logs = data || [];
-    if (logs.length === 0) return null;
-    const completed = logs.filter((l: any) => l.completed).length;
-    return completed / logs.length;
-  }
-
   private async getProgramAdherence(userId: string, fromDate: string, toDate: string): Promise<number | null> {
     if (!supabase) return null;
     const sessionUserId = await this.getSessionUserId(userId);
@@ -187,7 +170,6 @@ class ProgressAggregatorService {
       snapshot.photos = totalPhotos;
     }
 
-    snapshot.habitsAdherence = await this.getHabitAdherence(userId, periodStart, date);
     snapshot.programAdherence = await this.getProgramAdherence(userId, periodStart, date);
 
     this.saveSnapshotToLocal(userId, snapshot);
@@ -250,7 +232,6 @@ class ProgressAggregatorService {
         'food_diary_entries',
         'workout_entries',
         'user_goals',
-        'habit_logs',
         'program_sessions',
       ],
       confidence,

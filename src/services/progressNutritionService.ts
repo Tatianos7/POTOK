@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabaseClient';
 import { goalService } from './goalService';
 import type { NutritionStats } from '../types/progressDashboard';
 
-export type NutritionProgressPeriod = 'day' | 'week' | 'month';
+export type NutritionProgressPeriod = 'day' | 'week' | 'month' | 'year';
 interface NutritionAggregationContext {
   anchorDate: string;
   periodKind: NutritionProgressPeriod;
@@ -39,7 +39,12 @@ interface NutritionFoodsRepository {
 }
 
 interface NutritionGoalRepository {
-  getUserGoal(userId: string): Promise<{ calories: number } | null>;
+  getUserGoal(userId: string): Promise<{
+    calories: number;
+    protein?: number | null;
+    fat?: number | null;
+    carbs?: number | null;
+  } | null>;
 }
 
 interface ProgressNutritionDeps {
@@ -68,6 +73,13 @@ const isRecipeOriginRow = (row: DiaryNutritionRow): boolean =>
 const isCanonicalRow = (row: DiaryNutritionRow): boolean => typeof row.canonical_food_id === 'string' && row.canonical_food_id.length > 0;
 const MULTI_DAY_DEFICIT_COVERAGE_THRESHOLD = 0.8;
 
+interface NutritionGoalTargets {
+  calories: number | null;
+  protein?: number | null;
+  fat?: number | null;
+  carbs?: number | null;
+}
+
 function shiftDate(anchorDate: string, deltaDays: number): string {
   const [year, month, day] = anchorDate.split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
@@ -89,6 +101,9 @@ export function getNutritionPeriodRange(anchorDate: string, period: NutritionPro
   if (period === 'week') {
     return { start: shiftDate(anchorDate, -6), end: anchorDate };
   }
+  if (period === 'year') {
+    return { start: shiftDate(anchorDate, -364), end: anchorDate };
+  }
   return { start: shiftDate(anchorDate, -29), end: anchorDate };
 }
 
@@ -108,21 +123,62 @@ export function aggregateNutritionProgress(
   foodNamesById: Map<string, string>,
   anchorDate: string,
   period: NutritionProgressPeriod,
-  calorieTarget: number | null
+  goalTargets: NutritionGoalTargets | number | null
 ): NutritionStats {
   return aggregateNutritionProgressForContext(
     rows,
     foodNamesById,
     getAggregationContext(anchorDate, period),
-    calorieTarget
+    normalizeGoalTargets(goalTargets)
   );
 }
+
+const toPositiveTarget = (value: unknown): number | null => {
+  const num = Number(value);
+  return Number.isFinite(num) && num > 0 ? num : null;
+};
+
+function normalizeGoalTargets(goalTargets: NutritionGoalTargets | number | null): NutritionGoalTargets {
+  if (typeof goalTargets === 'number') {
+    return {
+      calories: toPositiveTarget(goalTargets),
+    };
+  }
+
+  return {
+    calories: toPositiveTarget(goalTargets?.calories),
+    protein: toPositiveTarget(goalTargets?.protein),
+    fat: toPositiveTarget(goalTargets?.fat),
+    carbs: toPositiveTarget(goalTargets?.carbs),
+  };
+}
+
+const buildMacroTargetStats = (total: number, dailyTarget: number | null, dayCount: number) => {
+  const roundedTotal = Math.round(total);
+  const averagePerDay = Math.round(total / dayCount);
+  const targetForPeriod = dailyTarget !== null ? Math.round(dailyTarget * dayCount) : null;
+  const completionPercent =
+    targetForPeriod !== null && targetForPeriod > 0
+      ? Math.round((total / targetForPeriod) * 100)
+      : null;
+  const deltaPerDay =
+    dailyTarget !== null ? Math.round((total / dayCount - dailyTarget) * 10) / 10 : null;
+
+  return {
+    total: roundedTotal,
+    averagePerDay,
+    targetPerDay: dailyTarget,
+    targetForPeriod,
+    completionPercent,
+    deltaPerDay,
+  };
+};
 
 function aggregateNutritionProgressForContext(
   rows: DiaryNutritionRow[],
   foodNamesById: Map<string, string>,
   context: NutritionAggregationContext,
-  calorieTarget: number | null
+  goalTargets: NutritionGoalTargets
 ): NutritionStats {
   let includedCanonicalCount = 0;
   let includedRecipeSnapshotCount = 0;
@@ -187,7 +243,10 @@ function aggregateNutritionProgressForContext(
   const daysWithData = dailyCaloriesAccumulator.size;
   const coverageRatio = dayCount > 0 ? daysWithData / dayCount : 0;
   const periodTargetCalories =
-    calorieTarget !== null ? Math.round(calorieTarget * dayCount) : null;
+    goalTargets.calories !== null ? Math.round(goalTargets.calories * dayCount) : null;
+  const proteinTargetStats = buildMacroTargetStats(totals.protein, goalTargets.protein ?? null, dayCount);
+  const fatTargetStats = buildMacroTargetStats(totals.fat, goalTargets.fat ?? null, dayCount);
+  const carbsTargetStats = buildMacroTargetStats(totals.carbs, goalTargets.carbs ?? null, dayCount);
 
   const topFoods = [...topFoodsAccumulator.values()]
     .sort((a, b) => {
@@ -242,6 +301,24 @@ function aggregateNutritionProgressForContext(
       fat_g: Math.round(totals.fat),
       carbs_g: Math.round(totals.carbs),
       has_data: hasData,
+      totalProtein: proteinTargetStats.total,
+      averageProteinPerDay: proteinTargetStats.averagePerDay,
+      targetProteinPerDay: proteinTargetStats.targetPerDay,
+      targetProteinForPeriod: proteinTargetStats.targetForPeriod,
+      proteinCompletionPercent: proteinTargetStats.completionPercent,
+      proteinDeltaPerDay: proteinTargetStats.deltaPerDay,
+      totalFat: fatTargetStats.total,
+      averageFatPerDay: fatTargetStats.averagePerDay,
+      targetFatPerDay: fatTargetStats.targetPerDay,
+      targetFatForPeriod: fatTargetStats.targetForPeriod,
+      fatCompletionPercent: fatTargetStats.completionPercent,
+      fatDeltaPerDay: fatTargetStats.deltaPerDay,
+      totalCarbs: carbsTargetStats.total,
+      averageCarbsPerDay: carbsTargetStats.averagePerDay,
+      targetCarbsPerDay: carbsTargetStats.targetPerDay,
+      targetCarbsForPeriod: carbsTargetStats.targetForPeriod,
+      carbsCompletionPercent: carbsTargetStats.completionPercent,
+      carbsDeltaPerDay: carbsTargetStats.deltaPerDay,
     },
     deficit: {
       value: deficitValue !== null ? Math.round(deficitValue) : null,
@@ -277,10 +354,9 @@ class ProgressNutritionService {
     const foodNames = await this.deps.foodsRepo.findNamesByIds(canonicalFoodIds);
     const foodNamesById = new Map(foodNames.map((item) => [item.id, item.name]));
 
-    const calorieTarget =
-      goal && Number.isFinite(goal.calories) && goal.calories > 0 ? goal.calories : null;
+    const goalTargets = normalizeGoalTargets(goal);
 
-    return aggregateNutritionProgressForContext(rows, foodNamesById, context, calorieTarget);
+    return aggregateNutritionProgressForContext(rows, foodNamesById, context, goalTargets);
   }
 
   async getNutritionProgressForRange(userId: string, startDate: string, endDate: string): Promise<NutritionStats> {
@@ -303,10 +379,9 @@ class ProgressNutritionService {
     const foodNames = await this.deps.foodsRepo.findNamesByIds(canonicalFoodIds);
     const foodNamesById = new Map(foodNames.map((item) => [item.id, item.name]));
 
-    const calorieTarget =
-      goal && Number.isFinite(goal.calories) && goal.calories > 0 ? goal.calories : null;
+    const goalTargets = normalizeGoalTargets(goal);
 
-    return aggregateNutritionProgressForContext(rows, foodNamesById, context, calorieTarget);
+    return aggregateNutritionProgressForContext(rows, foodNamesById, context, goalTargets);
   }
 }
 
@@ -346,7 +421,14 @@ const defaultDeps: ProgressNutritionDeps = {
   goalRepo: {
     async getUserGoal(userId: string) {
       const goal = await goalService.getUserGoal(userId);
-      return goal ? { calories: goal.calories } : null;
+      return goal
+        ? {
+            calories: goal.calories,
+            protein: goal.protein,
+            fat: goal.fat,
+            carbs: goal.carbs,
+          }
+        : null;
     },
   },
 };

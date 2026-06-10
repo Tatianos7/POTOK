@@ -4,7 +4,6 @@ import OtpCodeInput from '../components/OtpCodeInput';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import {
-  clearPinLock,
   clearPinSessionUnlocked,
   isPinLockEnabled,
   isPinSessionUnlocked,
@@ -64,11 +63,6 @@ const PinUnlock = () => {
     navigate('/auth', { replace: true });
   };
 
-  const handleResetPin = () => {
-    clearPinLock();
-    navigate('/', { replace: true });
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-white px-4">
       <div className="w-full max-w-md rounded-xl border border-gray-200 p-6 space-y-4">
@@ -115,13 +109,9 @@ const PinUnlock = () => {
           >
             Выйти из аккаунта
           </button>
-          <button
-            type="button"
-            onClick={handleResetPin}
-            className="w-full border border-gray-300 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
-          >
-            Сбросить PIN
-          </button>
+          <p className="text-center text-xs leading-5 text-gray-500">
+            Забыли PIN? Выйдите из аккаунта и войдите снова по email-коду.
+          </p>
         </div>
       </div>
     </div>

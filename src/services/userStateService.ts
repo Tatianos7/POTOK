@@ -45,24 +45,6 @@ class UserStateService {
     return filtered.reduce((sum, v) => sum + v, 0) / filtered.length;
   }
 
-  private async getHabitAdherence(userId: string, period: UserStatePeriod): Promise<number | null> {
-    if (!supabase) return null;
-    const { data, error } = await supabase
-      .from('habit_logs')
-      .select('completed')
-      .eq('user_id', userId)
-      .gte('date', period.fromDate)
-      .lte('date', period.toDate);
-
-    if (error) {
-      return null;
-    }
-    const logs = data || [];
-    if (logs.length === 0) return null;
-    const completed = logs.filter((l: any) => l.completed).length;
-    return completed / logs.length;
-  }
-
   private async getTrainingLoadIndex(userId: string, period: UserStatePeriod): Promise<number | null> {
     if (!supabase) return null;
     const { data, error } = await supabase
@@ -92,11 +74,11 @@ class UserStateService {
     const avgCalories = this.calcAverage(trends.points.map((p) => p.calories));
     const avgProtein = this.calcAverage(trends.points.map((p) => p.protein));
     const loadIndex = await this.getTrainingLoadIndex(sessionUserId, period);
-    const adherence = await this.getHabitAdherence(sessionUserId, period);
+    const adherence = null;
 
     const fatigueIndex = loadIndex !== null ? Math.min(1, loadIndex / 100000) : null;
     const recoveryScore = loadIndex !== null ? Math.max(0, 1 - (loadIndex / 150000)) : null;
-    const consistencyScore = adherence !== null ? adherence : null;
+    const consistencyScore = null;
 
     return {
       user_id: sessionUserId,
