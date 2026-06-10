@@ -1,10 +1,7 @@
-import { X, Circle, Check } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import SupportForm from './SupportForm';
+import { useState } from 'react';
 import SettingsModal from './SettingsModal';
-import { notificationService } from '../services/notificationService';
 
 interface MenuProps {
   isOpen: boolean;
@@ -13,65 +10,13 @@ interface MenuProps {
   userEmail?: string;
 }
 
+const SUPPORT_EMAIL = 'potok_sup@mail.ru';
+const SUPPORT_MAILTO = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('POTOK — обращение в поддержку')}`;
+
 const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
   const navigate = useNavigate();
-  const { user, authStatus } = useAuth();
-  const [isSupportFormOpen, setIsSupportFormOpen] = useState(false);
+  const [isSupportEmailOpen, setIsSupportEmailOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
-
-  const refreshNotificationsIndicator = async () => {
-    if (authStatus !== 'authenticated' || !user?.id) {
-      setHasUnreadNotifications(false);
-      return;
-    }
-    
-    // Дополнительная проверка userId
-    if (user.id === 'undefined' || user.id === 'null' || user.id.trim() === '') {
-      setHasUnreadNotifications(false);
-      return;
-    }
-    
-    try {
-      const notifications = await notificationService.getNotifications(user.id);
-      const list = Array.isArray(notifications) ? notifications : [];
-      setHasUnreadNotifications(
-        list.some((item) => !item.isRead && !item.isDeleted && !item.isArchived)
-      );
-    } catch (error) {
-      console.warn('[Menu] Failed to load notifications:', error);
-      setHasUnreadNotifications(false);
-    }
-  };
-
-  useEffect(() => {
-    if (authStatus !== 'authenticated' || !user?.id) {
-      setHasUnreadNotifications(false);
-      return;
-    }
-    void refreshNotificationsIndicator();
-  }, [authStatus, user?.id]);
-
-  // Обновляем индикатор при открытии меню
-  useEffect(() => {
-    if (isOpen && authStatus === 'authenticated' && user?.id) {
-      void refreshNotificationsIndicator();
-    }
-  }, [isOpen, authStatus, user?.id]);
-
-  useEffect(() => {
-    if (authStatus !== 'authenticated' || !user?.id) return;
-    
-    const handler = (event: Event) => {
-      const customEvent = event as CustomEvent<{ userId?: string }>;
-      // Обновляем индикатор если событие для текущего пользователя или userId не указан (глобальное обновление)
-      if (!customEvent.detail?.userId || customEvent.detail.userId === user.id) {
-        void refreshNotificationsIndicator();
-      }
-    };
-    window.addEventListener('notifications-updated', handler as EventListener);
-    return () => window.removeEventListener('notifications-updated', handler as EventListener);
-  }, [authStatus, user?.id]);
 
 
   const handleMenuItemClick = (itemId: string) => {
@@ -80,10 +25,7 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
       navigate('/profile');
     } else if (itemId === 'support') {
       onClose();
-      setIsSupportFormOpen(true);
-    } else if (itemId === 'notifications') {
-      onClose();
-      navigate('/notifications');
+      setIsSupportEmailOpen(true);
     } else if (itemId === 'settings') {
       onClose();
       setIsSettingsOpen(true);
@@ -92,19 +34,49 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
 
   const menuItems = [
     { id: 'profile', label: 'ПРОФИЛЬ', isActive: true },
-    {
-      id: 'notifications',
-      label: 'УВЕДОМЛЕНИЯ',
-      indicator: hasUnreadNotifications ? 'unread' : 'read',
-    },
     { id: 'settings', label: 'ОБЩИЕ НАСТРОЙКИ' },
     { id: 'support', label: 'ПОДДЕРЖКА' },
   ];
 
   return (
     <>
-      <SupportForm isOpen={isSupportFormOpen} onClose={() => setIsSupportFormOpen(false)} />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      {isSupportEmailOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-50 p-4"
+          onClick={() => setIsSupportEmailOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-gray-900">
+                Поддержка
+              </h2>
+              <button
+                onClick={() => setIsSupportEmailOpen(false)}
+                className="rounded-lg p-2 transition-colors hover:bg-gray-100"
+                aria-label="Закрыть"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-gray-600">
+              Если у вас возник вопрос, ошибка или предложение по улучшению POTOK, напишите нам на:
+            </p>
+            <p className="mt-3 text-sm font-semibold text-gray-900">
+              {SUPPORT_EMAIL}
+            </p>
+            <a
+              href={SUPPORT_MAILTO}
+              className="mt-5 block w-full rounded-xl bg-gray-900 px-4 py-3 text-center text-sm font-semibold uppercase text-white transition-colors hover:bg-gray-800"
+            >
+              Написать письмо
+            </a>
+          </div>
+        </div>
+      )}
       
       {/* Backdrop */}
       {isOpen && (
@@ -150,13 +122,6 @@ const Menu: React.FC<MenuProps> = ({ isOpen, onClose, onLogout }) => {
             >
               <div className="flex items-center justify-center gap-2">
                 <span>{item.label}</span>
-                {item.indicator && (
-                  item.indicator === 'unread' ? (
-                    <Circle className="w-3 h-3 fill-red-500 text-red-500" />
-                  ) : (
-                    <Check className="w-3 h-3 text-green-500" />
-                  )
-                )}
               </div>
             </button>
           ))}

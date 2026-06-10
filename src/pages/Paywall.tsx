@@ -188,7 +188,6 @@ const Paywall = () => {
                 <div className="grid grid-cols-1" style={{ gap: spacing.xs }}>
                   <div>Manual Mode: питание, тренировки, замеры</div>
                   <div>Прогресс: базовые тренды и записи</div>
-                  <div>Привычки: старт ритма и самоконтроль</div>
                 </div>
               </Card>
 
