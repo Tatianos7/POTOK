@@ -79,19 +79,52 @@ const MacroSummaryRow: FC<{
   averagePerDay: number;
   targetPerDay: number | null | undefined;
   completionPercent: number | null | undefined;
-}> = ({ label, averagePerDay, targetPerDay, completionPercent }) => {
+  accentClass: string;
+}> = ({ label, averagePerDay, targetPerDay, completionPercent, accentClass }) => {
   const hasTarget = targetPerDay != null && targetPerDay > 0;
-  const factTargetLabel = hasTarget
-    ? `${formatNumber(averagePerDay)} / ${formatNumber(targetPerDay)} г`
-    : `${formatNumber(averagePerDay)} г`;
-  const completionLabel = hasTarget ? `${formatNumber(completionPercent)}%` : 'цель не задана';
+  const completionLabel =
+    hasTarget && completionPercent != null && Number.isFinite(completionPercent)
+      ? `${formatNumber(completionPercent)}%`
+      : 'нет данных';
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 py-3">
-      <div className="min-w-0 text-sm font-medium text-stone-800">{label}</div>
-      <div className="text-right">
-        <div className="text-sm font-semibold text-stone-900">{factTargetLabel}</div>
-        <div className="mt-0.5 text-xs font-medium text-stone-500">{completionLabel}</div>
+    <div className="py-3">
+      <div className="mb-2 flex min-w-0 items-center gap-2">
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${accentClass}`} aria-hidden="true" />
+        <div className="min-w-0 text-sm font-medium text-stone-800">{label}</div>
+      </div>
+      <div className="space-y-1.5 pl-3.5">
+        {hasTarget ? (
+          <>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-xs text-stone-400">факт / цель</div>
+              <div className="max-w-[64%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
+                {formatNumber(averagePerDay)} г из {formatNumber(targetPerDay)} г
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-xs text-stone-400">выполнение</div>
+              <div className="max-w-[64%] break-words text-right text-sm font-medium leading-5 text-stone-600">
+                {completionLabel}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-xs text-stone-400">факт</div>
+              <div className="max-w-[64%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
+                {formatNumber(averagePerDay)} г
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-xs text-stone-400">цель</div>
+              <div className="max-w-[64%] break-words text-right text-sm font-medium leading-5 text-stone-500">
+                не задана
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -380,17 +413,17 @@ const ProgressNutrition: FC = () => {
   return (
     <div className="mx-auto max-w-5xl p-4 md:p-6">
       <div className="mb-4">
-        <div className="mb-3 flex justify-end">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="min-w-0 text-2xl font-semibold tracking-tight text-stone-950">Питание</h1>
           <button
             type="button"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-stone-100 text-stone-600 transition hover:bg-stone-200 hover:text-stone-900"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-600 transition hover:bg-stone-200 hover:text-stone-900"
             onClick={() => navigate('/progress')}
             aria-label="Закрыть"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight text-stone-950">Питание</h1>
         <p className="mt-1 text-sm leading-6 text-stone-600">{periodMeta.dateRangeLabel}</p>
       </div>
 
@@ -422,27 +455,39 @@ const ProgressNutrition: FC = () => {
         <div className={`${cardClass} mb-4 p-6`}>
           <div className="mb-4 text-sm font-medium text-stone-900">Результат за период</div>
           <div className="divide-y divide-stone-100 border-y border-stone-100">
-            <div className="flex items-baseline justify-between gap-4 py-3">
-              <div className="text-sm text-stone-500">Среднее</div>
-              <div className="text-right text-sm font-semibold text-stone-900">
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Среднее</div>
+                <div className="mt-0.5 text-xs text-stone-400">за выбранный период</div>
+              </div>
+              <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
                 {formatNumber(data.average.calories)} ккал/день
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-4 py-3">
-              <div className="text-sm text-stone-500">Цель</div>
-              <div className="text-right text-sm font-semibold text-stone-900">
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Цель</div>
+                <div className="mt-0.5 text-xs text-stone-400">дневная цель</div>
+              </div>
+              <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
                 {dailyTargetCalories != null ? `${formatNumber(dailyTargetCalories)} ккал/день` : 'Не задана'}
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-4 py-3">
-              <div className="text-sm text-stone-500">Дефицит / профицит</div>
-              <div className={`text-right text-sm font-semibold ${deficitState.valueClass}`}>
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Дефицит / профицит</div>
+                <div className="mt-0.5 text-xs text-stone-400">по калориям</div>
+              </div>
+              <div className={`max-w-[58%] break-words text-right text-sm font-semibold leading-5 ${deficitState.valueClass}`}>
                 {deficitState.valueLabel}
               </div>
             </div>
-            <div className="flex items-baseline justify-between gap-4 py-3">
-              <div className="text-sm text-stone-500">Записи</div>
-              <div className="text-right text-sm font-semibold text-stone-900">
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Записи</div>
+                <div className="mt-0.5 text-xs text-stone-400">заполненность</div>
+              </div>
+              <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
                 {daysWithData} из {periodDays} дней
               </div>
             </div>
@@ -588,24 +633,28 @@ const ProgressNutrition: FC = () => {
                     averagePerDay={data.macros?.averageProteinPerDay ?? 0}
                     targetPerDay={data.macros?.targetProteinPerDay}
                     completionPercent={data.macros?.proteinCompletionPercent}
+                    accentClass="bg-rose-400"
                   />
                   <MacroSummaryRow
                     label="Жиры"
                     averagePerDay={data.macros?.averageFatPerDay ?? 0}
                     targetPerDay={data.macros?.targetFatPerDay}
                     completionPercent={data.macros?.fatCompletionPercent}
+                    accentClass="bg-amber-400"
                   />
                   <MacroSummaryRow
                     label="Углеводы"
                     averagePerDay={data.macros?.averageCarbsPerDay ?? 0}
                     targetPerDay={data.macros?.targetCarbsPerDay}
                     completionPercent={data.macros?.carbsCompletionPercent}
+                    accentClass="bg-emerald-500"
                   />
                 </div>
 
                 <div className="mt-4 border-t border-stone-100 pt-4">
                   <div className="text-sm font-medium text-stone-900">Что стоит поправить</div>
-                  <div className="mt-1 text-sm leading-6 text-stone-600">{macroInsight.title}</div>
+                  <div className="mt-1 text-sm font-medium leading-6 text-stone-800">{macroInsight.title}</div>
+                  <div className="mt-1 text-sm leading-6 text-stone-600">{macroInsight.body}</div>
                 </div>
               </div>
 
