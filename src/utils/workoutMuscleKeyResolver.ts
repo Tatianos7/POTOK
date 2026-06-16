@@ -34,8 +34,30 @@ const workoutMuscleNameAliases: Record<string, MuscleKey | MuscleKey[]> = {
   Предплечья: 'forearms',
   'Передняя дельта': 'front_delts',
   'Передние дельты': 'front_delts',
-  'Средняя дельта': 'middle_delts',
-  'Средние дельты': 'middle_delts',
+  'Средняя дельта': 'side_delts',
+  'Средние дельты': 'side_delts',
+  'Средний пучок дельт': 'side_delts',
+  'Средний пучок дельтовидных': 'side_delts',
+  'Средняя дельтовидная': 'side_delts',
+  'Средние дельтовидные': 'side_delts',
+  'middle_delts': 'side_delts',
+  'middle delts': 'side_delts',
+  'middle_delt': 'side_delts',
+  'middle delt': 'side_delts',
+  'middle_deltoid': 'side_delts',
+  'middle deltoid': 'side_delts',
+  'middle_deltoids': 'side_delts',
+  'middle deltoids': 'side_delts',
+  'lateral_delts': 'side_delts',
+  'lateral delts': 'side_delts',
+  'lateral_delt': 'side_delts',
+  'lateral delt': 'side_delts',
+  'lateral_deltoid': 'side_delts',
+  'lateral deltoid': 'side_delts',
+  'lateral_deltoids': 'side_delts',
+  'lateral deltoids': 'side_delts',
+  'deltoids middle': 'side_delts',
+  'shoulders lateral': 'side_delts',
   'Задняя дельта': 'rear_delts',
   'Задние дельты': 'rear_delts',
   'Верхний пучок': 'upper_chest',
@@ -118,9 +140,8 @@ export function resolveWorkoutMuscleKeys(values: readonly unknown[]): MuscleKey[
     const trimmedValue = value.trim();
     if (!trimmedValue) return;
 
-    const keys = isMuscleKey(trimmedValue)
-      ? [trimmedValue]
-      : normalizedWorkoutMuscleNameToKey.get(normalizeMuscleName(trimmedValue));
+    const keys = normalizedWorkoutMuscleNameToKey.get(normalizeMuscleName(trimmedValue)) ??
+      (isMuscleKey(trimmedValue) ? [trimmedValue] : undefined);
 
     if (!keys) return;
 

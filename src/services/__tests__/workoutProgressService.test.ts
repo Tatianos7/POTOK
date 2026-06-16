@@ -179,6 +179,58 @@ test('custom exercise linked muscles contribute to muscle coverage fallback', ()
   assert.equal(summary.topMuscles.length > 0, true);
 });
 
+test('custom exercise middle delt aliases contribute to side delt coverage', () => {
+  const customEntry = createWorkoutEntry('entry-custom-middle-delts', {
+    exercise_id: 'custom-exercise-middle-delts',
+    canonical_exercise_id: null,
+    exercise: {
+      id: 'custom-exercise-middle-delts',
+      name: 'Свое упражнение на средние дельты',
+      category_id: 'custom',
+      is_custom: true,
+      canonical_exercise_id: null,
+    },
+    sets: 3,
+  });
+  customEntry.exercise!.muscles = [
+    { id: 'middle_deltoid', name: 'Средние дельты', canonical_muscle_id: 'lateral_deltoid' },
+  ];
+
+  const summary = buildWorkoutProgressSummaryFromEntries([customEntry], 'week');
+  const sideDeltsCoverage = summary.muscleCoverage.find((item) => item.muscleKey === 'side_delts');
+
+  assert.ok(sideDeltsCoverage);
+  assert.equal(sideDeltsCoverage.primaryCount, 3);
+  assert.equal(sideDeltsCoverage.score, 6);
+  assert.ok(summary.topMuscles.some((item) => item.muscleKey === 'side_delts'));
+});
+
+test('isolated lateral raise keeps middle trapezius secondary coverage specific', () => {
+  const summary = buildWorkoutProgressSummaryFromEntries([
+    createWorkoutEntry('entry-lateral-raise', {
+      exercise_id: 'isolated_arm_raises_on_a_machine',
+      canonical_exercise_id: 'isolated_arm_raises_on_a_machine',
+      exercise: {
+        id: 'isolated_arm_raises_on_a_machine',
+        name: 'Изолированный подъём рук в тренажёре (махи в стороны)',
+        category_id: 'shoulders',
+        is_custom: false,
+      },
+      sets: 3,
+    }),
+  ], 'custom');
+
+  const sideDeltsCoverage = summary.muscleCoverage.find((item) => item.muscleKey === 'side_delts');
+  const middleTrapsCoverage = summary.muscleCoverage.find((item) => item.muscleKey === 'traps_middle');
+  const trapezoidCoverage = summary.muscleCoverage.find((item) => item.muscleKey === 'trapezoid');
+
+  assert.ok(sideDeltsCoverage);
+  assert.equal(sideDeltsCoverage.primaryCount, 3);
+  assert.ok(middleTrapsCoverage);
+  assert.equal(middleTrapsCoverage.secondaryCount, 3);
+  assert.equal(trapezoidCoverage?.score ?? 0, 0);
+});
+
 test('snapshot muscles contribute to muscle coverage before live fallback', () => {
   const summary = buildWorkoutProgressSummaryFromEntries([
     createWorkoutEntry('entry-snapshot', {
