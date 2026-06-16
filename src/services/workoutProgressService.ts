@@ -75,10 +75,6 @@ const COVERAGE_KEY_ALIASES: Partial<Record<MuscleKey, MuscleKey>> = {
   core_muscles: 'abs',
   traps: 'trapezoid',
   trapezius: 'trapezoid',
-  traps_upper: 'trapezoid',
-  upper_traps: 'trapezoid',
-  traps_middle: 'trapezoid',
-  middle_traps: 'trapezoid',
   lower_traps: 'trapezoid',
 };
 

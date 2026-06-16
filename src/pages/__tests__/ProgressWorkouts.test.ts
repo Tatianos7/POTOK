@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { getProgressMuscleMapMuscles } from '../ProgressWorkouts';
 import type { WorkoutProgressSummary } from '../../services/workoutProgressService';
 
-test('progress muscle map includes trained and undertrained muscles only', () => {
+test('progress muscle map preserves primary and secondary muscle roles', () => {
   const summary: WorkoutProgressSummary = {
     totalWorkouts: 1,
     totalExercises: 3,
@@ -29,6 +29,14 @@ test('progress muscle map includes trained and undertrained muscles only', () =>
         status: 'undertrained',
       },
       {
+        muscleKey: 'traps_middle',
+        label: 'Средняя часть трапеций',
+        primaryCount: 0,
+        secondaryCount: 3,
+        score: 3,
+        status: 'trained',
+      },
+      {
         muscleKey: 'calves',
         label: 'Икры',
         primaryCount: 0,
@@ -40,5 +48,8 @@ test('progress muscle map includes trained and undertrained muscles only', () =>
     undertrainedMuscles: [],
   };
 
-  assert.deepEqual(getProgressMuscleMapMuscles(summary), ['chest', 'biceps']);
+  assert.deepEqual(getProgressMuscleMapMuscles(summary), {
+    primaryMuscles: ['chest'],
+    secondaryMuscles: ['biceps', 'traps_middle'],
+  });
 });
