@@ -9,11 +9,26 @@ import AiAdviceBlock from '../components/AiAdviceBlock';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import { calculateGoalTimeline, type GoalMode } from '../utils/goalProjection';
 
+const SHOW_GOAL_PDF_RECOMMENDATIONS = false;
+
 const normalizeGoalMode = (goalType?: string): GoalMode => {
   const value = (goalType || '').toLowerCase();
   if (value.includes('похуд') || value === 'weight-loss') return 'weight-loss';
   if (value.includes('набор') || value === 'gain') return 'gain';
   return 'maintain';
+};
+
+const getGoalSaveNotice = (status: 'success_remote' | 'success_local_only' | 'failed') => {
+  if (status === 'success_remote') {
+    return { type: 'success' as const, text: 'Цель сохранена.' };
+  }
+  if (status === 'success_local_only') {
+    return {
+      type: 'warning' as const,
+      text: 'Цель сохранена только на этом устройстве. Подключитесь к интернету и попробуйте сохранить снова.',
+    };
+  }
+  return { type: 'error' as const, text: 'Не удалось сохранить цель.' };
 };
 
 const computeDerivedGoal = (goal: GoalData) => {
@@ -79,7 +94,7 @@ const Goal = () => {
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const [isWhyOpen, setIsWhyOpen] = useState(false);
   const [isSaveSubmitting, setIsSaveSubmitting] = useState(false);
-  const [saveNotice, setSaveNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [saveNotice, setSaveNotice] = useState<{ type: 'success' | 'warning' | 'error'; text: string } | null>(null);
 
   const loadGoalState = useCallback(async () => {
     if (!user?.id) return;
@@ -200,7 +215,7 @@ const Goal = () => {
     if (!user?.id) return;
     setSaveNotice(null);
     try {
-      await goalService.saveUserGoal(user.id, {
+      const saveResult = await goalService.saveUserGoal(user.id, {
         calories: Number(data.calories),
         protein: Number(data.proteins),
         fat: Number(data.fats),
@@ -215,6 +230,10 @@ const Goal = () => {
         tdee: goalData.tdee,
         training_place: goalData.trainingPlace ?? 'home',
       });
+      if (saveResult.status === 'failed') {
+        setSaveNotice(getGoalSaveNotice(saveResult.status));
+        return;
+      }
 
       const updatedGoalData: GoalData = {
         ...goalData,
@@ -244,7 +263,7 @@ const Goal = () => {
         });
       }
       setGoalData(updatedGoalData);
-      setSaveNotice({ type: 'success', text: 'Цель сохранена' });
+      setSaveNotice(getGoalSaveNotice(saveResult.status));
       setIsEditGoalModalOpen(false);
     } catch (error) {
       setSaveNotice({ type: 'error', text: 'Не удалось сохранить цель. Повторите попытку.' });
@@ -261,7 +280,7 @@ const Goal = () => {
     setIsSaveSubmitting(true);
     setSaveNotice(null);
     try {
-      await goalService.saveUserGoal(user.id, {
+      const saveResult = await goalService.saveUserGoal(user.id, {
         calories: Number(goalData.calories || 0),
         protein: Number(goalData.proteins || 0),
         fat: Number(goalData.fats || 0),
@@ -276,7 +295,7 @@ const Goal = () => {
         tdee: goalData.tdee,
         training_place: goalData.trainingPlace ?? 'home',
       });
-      setSaveNotice({ type: 'success', text: 'Цель сохранена' });
+      setSaveNotice(getGoalSaveNotice(saveResult.status));
     } catch (error) {
       setSaveNotice({ type: 'error', text: 'Не удалось сохранить цель. Повторите попытку.' });
     } finally {
@@ -593,7 +612,7 @@ const Goal = () => {
           )}
 
           {/* AI Advice Block */}
-          <AiAdviceBlock />
+          {SHOW_GOAL_PDF_RECOMMENDATIONS && <AiAdviceBlock />}
 
           {/* Action Buttons */}
           <div className="pt-4 min-[376px]:pt-6 pb-4 min-[376px]:pb-6 w-full max-w-full overflow-hidden">
@@ -602,7 +621,9 @@ const Goal = () => {
                 className={`mb-3 rounded-lg px-3 py-2 text-xs ${
                   saveNotice.type === 'success'
                     ? 'border border-green-200 bg-green-50 text-green-700'
-                    : 'border border-red-200 bg-red-50 text-red-700'
+                    : saveNotice.type === 'warning'
+                      ? 'border border-amber-200 bg-amber-50 text-amber-800'
+                      : 'border border-red-200 bg-red-50 text-red-700'
                 }`}
               >
                 {saveNotice.text}

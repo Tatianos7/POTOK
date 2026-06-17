@@ -39,7 +39,7 @@ export interface NutritionStats {
   recommendations?: string[];
   dailyCalories?: Array<{ date: string; calories: number }>;
   anchorDate?: string;
-  periodKind?: 'day' | 'week' | 'month';
+  periodKind?: 'day' | 'week' | 'month' | 'year';
   periodStart?: string;
   periodEnd?: string;
   periodDays?: number;
@@ -52,6 +52,24 @@ export interface NutritionStats {
     fat_g: number;
     carbs_g: number;
     has_data: boolean;
+    totalProtein: number;
+    averageProteinPerDay: number;
+    targetProteinPerDay: number | null;
+    targetProteinForPeriod: number | null;
+    proteinCompletionPercent: number | null;
+    proteinDeltaPerDay: number | null;
+    totalFat: number;
+    averageFatPerDay: number;
+    targetFatPerDay: number | null;
+    targetFatForPeriod: number | null;
+    fatCompletionPercent: number | null;
+    fatDeltaPerDay: number | null;
+    totalCarbs: number;
+    averageCarbsPerDay: number;
+    targetCarbsPerDay: number | null;
+    targetCarbsForPeriod: number | null;
+    carbsCompletionPercent: number | null;
+    carbsDeltaPerDay: number | null;
   };
   deficit?: {
     value: number | null;

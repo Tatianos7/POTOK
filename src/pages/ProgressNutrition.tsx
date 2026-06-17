@@ -1,18 +1,11 @@
-import { type FC, type ReactNode, useEffect, useMemo, useState } from 'react';
+import { type FC, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
-  CalendarRange,
   ChevronRight,
-  Drumstick,
-  Droplets,
   Flame,
-  Sparkles,
   Target,
-  TrendingDown,
-  TrendingUp,
   UtensilsCrossed,
-  Wheat,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { progressNutritionService, type NutritionProgressPeriod } from '../services/progressNutritionService';
@@ -23,9 +16,13 @@ const PERIOD_OPTIONS: Array<{ key: NutritionProgressPeriod; label: string }> = [
   { key: 'day', label: 'День' },
   { key: 'week', label: '7 дней' },
   { key: 'month', label: '30 дней' },
+  { key: 'year', label: 'Год' },
 ];
 
 const cardClass = 'rounded-[28px] border border-stone-200 bg-white shadow-[0_18px_50px_rgba(20,20,20,0.08)]';
+const SHOW_LEGACY_NUTRITION_RESULT_CARDS = false;
+const SHOW_TOP_FOODS_BLOCK = false;
+const SHOW_NUTRITION_INSIGHTS_BLOCK = true;
 
 const formatNumber = (value: number | null | undefined) => {
   if (value == null || !Number.isFinite(value)) return '—';
@@ -38,10 +35,11 @@ const formatDateLabel = (value: string) =>
     month: 'long',
   }).format(new Date(`${value}T00:00:00`));
 
-const formatShortDateLabel = (value: string) =>
+const formatFullDateLabel = (value: string) =>
   new Intl.DateTimeFormat('ru-RU', {
     day: 'numeric',
-    month: 'short',
+    month: 'long',
+    year: 'numeric',
   }).format(new Date(`${value}T00:00:00`));
 
 const getPeriodMeta = (anchorDate: string, period: NutritionProgressPeriod) => {
@@ -52,54 +50,85 @@ const getPeriodMeta = (anchorDate: string, period: NutritionProgressPeriod) => {
     start.setDate(anchor.getDate() - 6);
   } else if (period === 'month') {
     start.setDate(anchor.getDate() - 29);
+  } else if (period === 'year') {
+    start.setDate(anchor.getDate() - 364);
   }
+
+  const startDate = start.toISOString().slice(0, 10);
 
   return {
     dateRangeLabel:
       period === 'day'
         ? formatDateLabel(anchorDate)
-        : `${formatDateLabel(start.toISOString().slice(0, 10))} - ${formatDateLabel(anchorDate)}`,
+        : period === 'year'
+          ? `${formatFullDateLabel(startDate)} - ${formatFullDateLabel(anchorDate)}`
+          : `${formatDateLabel(startDate)} - ${formatDateLabel(anchorDate)}`,
     subtitle:
       period === 'day'
         ? 'За выбранный день'
         : period === 'week'
           ? 'Последние 7 дней, включая выбранную дату'
-          : 'Последние 30 дней, включая выбранную дату',
+          : period === 'year'
+            ? 'Последние 365 дней, включая выбранную дату'
+            : 'Последние 30 дней, включая выбранную дату',
   };
 };
 
-const MacroBar: FC<{
+const MacroSummaryRow: FC<{
   label: string;
-  value: number;
-  share: number;
-  icon: ReactNode;
-  fillClass: string;
-  iconClass: string;
-}> = ({ label, value, share, icon, fillClass, iconClass }) => (
-  <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-    <div className="mb-3 flex items-center justify-between">
-      <div className="flex items-center gap-2 text-sm font-medium text-stone-700">
-        <span className={`flex h-8 w-8 items-center justify-center rounded-full ${iconClass}`}>{icon}</span>
-        {label}
-      </div>
-      <span className="text-sm text-stone-500">{Math.round(share)}%</span>
-    </div>
-    <div className="mb-2 text-2xl font-semibold text-stone-950">{formatNumber(value)} г</div>
-    <div className="h-2 overflow-hidden rounded-full bg-stone-200">
-      <div
-        className={`h-full rounded-full ${fillClass}`}
-        style={{ width: `${Math.max(share, value > 0 ? 8 : 0)}%` }}
-      />
-    </div>
-  </div>
-);
+  averagePerDay: number;
+  targetPerDay: number | null | undefined;
+  completionPercent: number | null | undefined;
+  accentClass: string;
+}> = ({ label, averagePerDay, targetPerDay, completionPercent, accentClass }) => {
+  const hasTarget = targetPerDay != null && targetPerDay > 0;
+  const completionLabel =
+    hasTarget && completionPercent != null && Number.isFinite(completionPercent)
+      ? `${formatNumber(completionPercent)}%`
+      : 'нет данных';
 
-const InsightPill: FC<{ title: string; body: string }> = ({ title, body }) => (
-  <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-4">
-    <div className="mb-1 text-sm font-medium text-stone-900">{title}</div>
-    <div className="text-sm leading-6 text-stone-600">{body}</div>
-  </div>
-);
+  return (
+    <div className="py-3">
+      <div className="mb-2 flex min-w-0 items-center gap-2">
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${accentClass}`} aria-hidden="true" />
+        <div className="min-w-0 text-sm font-medium text-stone-800">{label}</div>
+      </div>
+      <div className="space-y-1.5 pl-3.5">
+        {hasTarget ? (
+          <>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-xs text-stone-400">факт / цель</div>
+              <div className="max-w-[64%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
+                {formatNumber(averagePerDay)} г из {formatNumber(targetPerDay)} г
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-xs text-stone-400">выполнение</div>
+              <div className="max-w-[64%] break-words text-right text-sm font-medium leading-5 text-stone-600">
+                {completionLabel}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-xs text-stone-400">факт</div>
+              <div className="max-w-[64%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
+                {formatNumber(averagePerDay)} г
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-xs text-stone-400">цель</div>
+              <div className="max-w-[64%] break-words text-right text-sm font-medium leading-5 text-stone-500">
+                не задана
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const ProgressNutrition: FC = () => {
   const navigate = useNavigate();
@@ -136,21 +165,31 @@ const ProgressNutrition: FC = () => {
     };
   }, [user?.id, anchorDate, period]);
 
-  const title = useMemo(() => PERIOD_OPTIONS.find((option) => option.key === period)?.label ?? 'Период', [period]);
   const periodMeta = useMemo(() => getPeriodMeta(anchorDate, period), [anchorDate, period]);
   const hasNutritionData = Boolean(data?.calories?.has_data);
-  const macroTotal = (data?.macros?.protein_g ?? 0) + (data?.macros?.fat_g ?? 0) + (data?.macros?.carbs_g ?? 0);
+  const periodDays = data?.periodDays ?? 1;
+  const daysWithData = data?.periodCoverage?.days_with_data ?? 0;
+  const missingDays = Math.max(periodDays - daysWithData, 0);
+  const coverageRatio = data?.periodCoverage?.coverage_ratio ?? 0;
+  const hasCalorieTarget = data?.deficit?.target_calories != null;
+  const dailyTargetCalories =
+    hasCalorieTarget && data?.deficit?.target_calories != null
+      ? Math.round(data.deficit.target_calories / periodDays)
+      : null;
+  const isLowCoverage = periodDays > 1 && coverageRatio < 0.8;
+  const recordsWarning =
+    periodDays > 1 && isLowCoverage
+      ? 'Выводы могут быть неточными, потому что заполнены не все дни.'
+      : null;
 
   const deficitState = useMemo(() => {
     if (!data?.deficit?.is_visible) {
-      const hasTarget = data?.deficit?.target_calories != null;
-      const isLowCoverage = hasTarget && (data?.periodDays ?? 1) > 1 && (data?.periodCoverage?.coverage_ratio ?? 0) < 0.8;
       return {
-        valueLabel: isLowCoverage ? 'Недостаточно данных' : 'Цель не задана',
+        valueLabel: hasCalorieTarget && isLowCoverage ? 'Недостаточно записей' : 'Цель не задана',
         badgeClass: 'bg-stone-100 text-stone-600',
         valueClass: 'text-stone-600',
-        helper: isLowCoverage
-          ? 'Недостаточно данных за период для корректного расчёта.'
+        helper: hasCalorieTarget && isLowCoverage
+          ? 'Недостаточно записей для точного расчёта дефицита.'
           : 'Чтобы увидеть дефицит или профицит, добавьте цель по калориям.',
       };
     }
@@ -178,162 +217,223 @@ const ProgressNutrition: FC = () => {
       valueClass: 'text-sky-700',
       helper: `Факт совпал с целью ${formatNumber(data.deficit.target_calories)} ккал.`,
     };
-  }, [data?.deficit]);
+  }, [data?.deficit, hasCalorieTarget, isLowCoverage]);
 
   const calorieAverageLabel = useMemo(() => {
     if (!data?.calories?.has_data) return null;
     if (period === 'day') return null;
-    return `В среднем ${formatNumber(data?.average?.calories)} ккал в день`;
+    return `Среднее за весь период: ${formatNumber(data?.average?.calories)} ккал в день`;
   }, [data?.average?.calories, data?.calories?.has_data, period]);
 
   const trendData = useMemo(() => {
     const series = (data?.dailyCalories ?? []).slice(-7);
-    const max = Math.max(...series.map((item) => item.calories), 0);
     const first = series[0]?.calories ?? 0;
     const last = series[series.length - 1]?.calories ?? 0;
     const delta = last - first;
 
     let label = 'Недостаточно данных';
     let helper = 'Добавьте больше записей, чтобы увидеть направление.';
-    let tone = 'text-stone-600';
-    let icon: ReactNode = <Target className="h-4 w-4" />;
 
     if (series.length >= 3) {
       if (Math.abs(delta) <= 120) {
         label = 'Рацион стабилен';
         helper = 'Существенного сдвига по калориям за последние дни не видно.';
-        tone = 'text-sky-700';
-        icon = <Target className="h-4 w-4" />;
       } else if (delta > 120) {
         label = 'Калорийность растёт';
         helper = 'Последние дни идут с повышением общей калорийности.';
-        tone = 'text-amber-700';
-        icon = <TrendingUp className="h-4 w-4" />;
       } else {
         label = 'Калорийность снижается';
         helper = 'Последние дни идут с уменьшением общей калорийности.';
-        tone = 'text-emerald-700';
-        icon = <TrendingDown className="h-4 w-4" />;
       }
     }
 
-    return { series, max, label, helper, tone, icon };
+    return { series, label, helper };
   }, [data?.dailyCalories]);
 
   const macroInsight = useMemo(() => {
-    if (!hasNutritionData || macroTotal <= 0) {
+    const macros = data?.macros;
+    if (!hasNutritionData || !macros) {
       return {
-        title: 'Баланс макросов недоступен',
+        title: 'БЖУ недоступно',
         body: 'Недостаточно данных, чтобы оценить распределение белков, жиров и углеводов.',
       };
     }
 
-    const proteinShare = ((data?.macros?.protein_g ?? 0) / macroTotal) * 100;
-    const fatShare = ((data?.macros?.fat_g ?? 0) / macroTotal) * 100;
-    const carbShare = ((data?.macros?.carbs_g ?? 0) / macroTotal) * 100;
+    const completions = [
+      macros.proteinCompletionPercent,
+      macros.fatCompletionPercent,
+      macros.carbsCompletionPercent,
+    ].filter((value): value is number => value != null && Number.isFinite(value));
 
-    if (fatShare >= proteinShare + 10 && fatShare >= carbShare + 10) {
+    if (completions.length === 0) {
       return {
-        title: 'Смещение в сторону жиров',
-        body: 'Жиры дают заметно большую долю макросов, чем белки и углеводы.',
+        title: 'Цели по БЖУ пока не заданы',
+        body: 'Факт по белкам, жирам и углеводам виден, но сравнить его с планом пока нельзя.',
       };
     }
 
-    if (proteinShare < 22) {
+    if (macros.proteinCompletionPercent != null && macros.proteinCompletionPercent < 90) {
       return {
-        title: 'Белка относительно мало',
-        body: 'Доля белка ниже остальных макросов. Стоит проверить основные источники белка в рационе.',
+        title: 'Основной недобор — белок',
+        body: 'Среднее количество белка за период ниже цели. Это стоит проверить первым.',
       };
     }
 
-    if (Math.max(proteinShare, fatShare, carbShare) - Math.min(proteinShare, fatShare, carbShare) <= 12) {
+    if (macros.fatCompletionPercent != null && macros.fatCompletionPercent > 110) {
       return {
-        title: 'Баланс близок к ровному',
-        body: 'Распределение белков, жиров и углеводов выглядит достаточно равномерным.',
+        title: 'Жиры выше цели',
+        body: 'Среднее количество жиров за период заметно выше заданной цели.',
       };
     }
 
-    if (carbShare >= proteinShare + 10 && carbShare >= fatShare + 10) {
+    const allInRange = completions.every((value) => value >= 90 && value <= 110);
+    if (allInRange) {
       return {
-        title: 'Смещение в сторону углеводов',
-        body: 'Углеводы дают наибольшую долю суммарных макросов за этот период.',
+        title: 'БЖУ в хорошем диапазоне',
+        body: 'Белки, жиры и углеводы держатся близко к заданным целям.',
       };
     }
 
     return {
-      title: 'Баланс макросов смещён',
-      body: 'Один из макросов доминирует. Проверьте состав основных продуктов в рационе.',
+      title: 'БЖУ требует внимания',
+      body: 'Один или несколько макросов заметно отличаются от цели за выбранный период.',
     };
-  }, [data?.macros, hasNutritionData, macroTotal]);
+  }, [data?.macros, hasNutritionData]);
 
-  const contextualInsights = useMemo(() => {
-    const insights: Array<{ title: string; body: string }> = [];
+  const practicalInsights = useMemo(() => {
+    const helps: Array<{ title: string; body: string }> = [];
+    const fixes: Array<{ title: string; body: string }> = [];
 
-    if (!hasNutritionData) return insights;
+    if (!hasNutritionData) return { helps, fixes };
 
-    insights.push(macroInsight);
+    if (isLowCoverage) {
+      fixes.push({
+        title: 'Заполнено не всё',
+        body: `Есть записи за ${daysWithData} из ${periodDays} дней. Чем полнее дневник, тем точнее выводы.`,
+      });
+    } else if (periodDays > 1 && daysWithData === periodDays) {
+      helps.push({
+        title: 'Дневник заполнен полностью',
+        body: `Есть записи за все ${periodDays} дней выбранного периода.`,
+      });
+    } else if (coverageRatio >= 0.8) {
+      helps.push({
+        title: 'Есть достаточно записей',
+        body: `Заполнено ${daysWithData} из ${periodDays} дней — этого достаточно для базовой оценки.`,
+      });
+    }
+
+    if (data?.deficit?.is_visible && (data.deficit.value ?? 0) > 0) {
+      helps.push({
+        title: 'Вы держите дефицит',
+        body: 'Калории за выбранный период ниже цели.',
+      });
+    } else if (data?.deficit?.is_visible && (data.deficit.value ?? 0) < 0) {
+      fixes.push({
+        title: 'Калории выше цели',
+        body: 'За выбранный период факт по калориям выше плана.',
+      });
+    } else if (data?.deficit?.is_visible) {
+      helps.push({
+        title: 'Калории близко к цели',
+        body: 'Факт за выбранный период совпадает с планом.',
+      });
+    }
 
     if ((data?.topFoods?.length ?? 0) > 0 && (data?.calories?.total ?? 0) > 0) {
       const leader = data?.topFoods?.[0];
       const share = leader ? Math.round((leader.total_calories / Math.max(data.calories?.total ?? 1, 1)) * 100) : 0;
       if (leader && share >= 25) {
-        insights.push({
+        fixes.push({
           title: 'Один продукт сильно влияет на рацион',
           body: `${leader.product_name} даёт около ${share}% всех калорий за период.`,
         });
       }
     }
 
-    if (insights.length < 2) {
-      insights.push({
-        title: trendData.label,
-        body: trendData.helper,
-      });
+    if (trendData.series.length >= 3) {
+      if (trendData.label === 'Рацион стабилен' || trendData.label === 'Калорийность снижается') {
+        helps.push({
+          title: trendData.label,
+          body: trendData.helper,
+        });
+      } else {
+        fixes.push({
+          title: trendData.label,
+          body: trendData.helper,
+        });
+      }
     }
 
-    return insights.slice(0, 2);
-  }, [data?.calories?.total, data?.topFoods, hasNutritionData, macroInsight, trendData.helper, trendData.label]);
+    return {
+      helps: helps.slice(0, 3),
+      fixes: fixes.slice(0, 3),
+    };
+  }, [
+    coverageRatio,
+    data?.calories?.total,
+    data?.deficit?.is_visible,
+    data?.deficit?.value,
+    data?.topFoods,
+    daysWithData,
+    hasNutritionData,
+    isLowCoverage,
+    periodDays,
+    trendData.helper,
+    trendData.label,
+    trendData.series.length,
+  ]);
+
+  const mainInsightText = useMemo(() => {
+    if (!data) return null;
+
+    if (!hasNutritionData) {
+      return 'За выбранный период пока нет записей питания.';
+    }
+
+    if (isLowCoverage) {
+      return `Недостаточно данных для точной оценки. Заполнено ${daysWithData} из ${periodDays} дней.`;
+    }
+
+    if (data.deficit?.is_visible && (data.deficit.value ?? 0) > 0) {
+      return 'Вы держите дефицит за выбранный период.';
+    }
+
+    if (data.deficit?.is_visible && (data.deficit.value ?? 0) < 0) {
+      return 'За период есть профицит. Калории выше цели.';
+    }
+
+    if (!hasCalorieTarget) {
+      return 'Цель по калориям пока не задана.';
+    }
+
+    return 'Калории совпадают с целью за выбранный период.';
+  }, [data, daysWithData, hasCalorieTarget, hasNutritionData, isLowCoverage, periodDays]);
 
   return (
     <div className="mx-auto max-w-5xl p-4 md:p-6">
-      <button
-        type="button"
-        className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-stone-600 transition hover:text-stone-900"
-        onClick={() => navigate('/progress')}
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Назад
-      </button>
-
-      <div className="mb-6 overflow-hidden rounded-[32px] border border-stone-200 bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_45%,#f5f5f4_100%)] p-6 shadow-[0_24px_70px_rgba(0,0,0,0.08)]">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">
-              <Sparkles className="h-3.5 w-3.5" />
-              Progress · Питание
-            </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-stone-950">Питание</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">{periodMeta.subtitle}</p>
-          </div>
-
-          <div className="rounded-2xl border border-stone-200 bg-white/90 px-4 py-3 text-right shadow-sm">
-            <div className="mb-1 flex items-center justify-end gap-2 text-xs font-medium uppercase tracking-[0.16em] text-stone-500">
-              <CalendarRange className="h-4 w-4" />
-              Период
-            </div>
-            <div className="text-sm font-semibold text-stone-900">{title}</div>
-            <div className="mt-1 text-sm text-stone-600">{periodMeta.dateRangeLabel}</div>
-          </div>
+      <div className="mb-4">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="min-w-0 text-2xl font-semibold tracking-tight text-stone-950">Питание</h1>
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-600 transition hover:bg-stone-200 hover:text-stone-900"
+            onClick={() => navigate('/progress')}
+            aria-label="Закрыть"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
+        <p className="mt-1 text-sm leading-6 text-stone-600">{periodMeta.dateRangeLabel}</p>
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="mb-4 grid grid-cols-4 gap-1.5">
         {PERIOD_OPTIONS.map((option) => (
           <button
             key={option.key}
             type="button"
             onClick={() => setPeriod(option.key)}
-            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+            className={`min-w-0 rounded-full px-2 py-2 text-xs font-medium transition sm:text-sm ${
               period === option.key
                 ? 'bg-stone-950 text-white shadow-lg shadow-stone-950/15'
                 : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
@@ -343,6 +443,57 @@ const ProgressNutrition: FC = () => {
           </button>
         ))}
       </div>
+
+      {!loading && !error && mainInsightText && (
+        <div className={`${cardClass} mb-4 p-6`}>
+          <div className="mb-2 text-sm font-medium text-stone-900">Главный вывод</div>
+          <p className="text-sm font-medium leading-6 text-stone-800">{mainInsightText}</p>
+        </div>
+      )}
+
+      {!loading && !error && data && (
+        <div className={`${cardClass} mb-4 p-6`}>
+          <div className="mb-4 text-sm font-medium text-stone-900">Результат за период</div>
+          <div className="divide-y divide-stone-100 border-y border-stone-100">
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Среднее</div>
+                <div className="mt-0.5 text-xs text-stone-400">за выбранный период</div>
+              </div>
+              <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
+                {formatNumber(data.average.calories)} ккал/день
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Цель</div>
+                <div className="mt-0.5 text-xs text-stone-400">дневная цель</div>
+              </div>
+              <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
+                {dailyTargetCalories != null ? `${formatNumber(dailyTargetCalories)} ккал/день` : 'Не задана'}
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Дефицит / профицит</div>
+                <div className="mt-0.5 text-xs text-stone-400">по калориям</div>
+              </div>
+              <div className={`max-w-[58%] break-words text-right text-sm font-semibold leading-5 ${deficitState.valueClass}`}>
+                {deficitState.valueLabel}
+              </div>
+            </div>
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Записи</div>
+                <div className="mt-0.5 text-xs text-stone-400">заполненность</div>
+              </div>
+              <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
+                {daysWithData} из {periodDays} дней
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading && (
         <div className={`${cardClass} p-6`}>
@@ -359,33 +510,53 @@ const ProgressNutrition: FC = () => {
       {!loading && !error && data && (
         <div className="space-y-4">
           {!hasNutritionData ? (
-            <div className={`${cardClass} overflow-hidden p-0`}>
-              <div className="bg-[radial-gradient(circle_at_top_left,#fef3c7,transparent_35%),linear-gradient(180deg,#fff,#fafaf9)] p-8">
-                <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-900 text-white">
-                  <UtensilsCrossed className="h-7 w-7" />
-                </div>
-                <h2 className="text-2xl font-semibold text-stone-950">За этот период пока нет данных</h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
-                  Записи из дневника питания за выбранный период не найдены. Когда появятся diary entries,
-                  здесь отобразятся калории, макросы, динамика и топ продуктов.
-                </p>
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/nutrition')}
-                    className="inline-flex items-center gap-2 rounded-full bg-stone-950 px-4 py-2 text-sm font-medium text-white"
-                  >
-                    Перейти в дневник
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                  <div className="inline-flex rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700">
-                    Период: {periodMeta.dateRangeLabel.toLowerCase()}
+            <>
+              <div className={`${cardClass} overflow-hidden p-0`}>
+                <div className="bg-[radial-gradient(circle_at_top_left,#fef3c7,transparent_35%),linear-gradient(180deg,#fff,#fafaf9)] p-8">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-900 text-white">
+                    <UtensilsCrossed className="h-7 w-7" />
+                  </div>
+                  <h2 className="text-2xl font-semibold text-stone-950">За этот период пока нет записей питания</h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
+                    {hasCalorieTarget
+                      ? 'Цель по калориям есть, но в выбранном периоде нет записей питания. Добавьте записи, чтобы увидеть калории, макросы и дефицит.'
+                      : 'За выбранный период пока нет записей питания. Цель по калориям тоже не задана, поэтому дефицит или профицит сейчас рассчитать нельзя.'}
+                  </p>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/nutrition')}
+                      className="inline-flex items-center gap-2 rounded-full bg-stone-950 px-4 py-2 text-sm font-medium text-white"
+                    >
+                      Перейти в дневник
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                    <div className="inline-flex rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700">
+                      Период: {periodMeta.dateRangeLabel.toLowerCase()}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+              {SHOW_LEGACY_NUTRITION_RESULT_CARDS && (
+              <div className={`${cardClass} p-6`}>
+                <div className="mb-4 text-sm font-medium text-stone-900">Записи за период</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-stone-50 p-4">
+                    <div className="text-xs uppercase tracking-[0.16em] text-stone-400">Дней с записями</div>
+                    <div className="mt-2 text-lg font-semibold text-stone-900">{daysWithData} из {periodDays}</div>
+                  </div>
+                  <div className="rounded-2xl bg-stone-50 p-4">
+                    <div className="text-xs uppercase tracking-[0.16em] text-stone-400">Дней без записей</div>
+                    <div className="mt-2 text-lg font-semibold text-stone-900">{missingDays}</div>
+                  </div>
+                </div>
+              </div>
+              )}
+            </>
           ) : (
             <>
+              {SHOW_LEGACY_NUTRITION_RESULT_CARDS && (
+              <>
               <div className="grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
                 <div className={`${cardClass} overflow-hidden p-0`}>
                   <div className="bg-[linear-gradient(135deg,#111827_0%,#292524_100%)] p-6 text-white">
@@ -395,31 +566,16 @@ const ProgressNutrition: FC = () => {
                     </div>
                     <div className="text-5xl font-semibold tracking-tight">{formatNumber(data.calories?.total)}</div>
                     <div className="mt-2 text-sm text-white/70">
-                      Сумма по diary snapshot за период {periodMeta.dateRangeLabel}
+                      Сумма записей за период {periodMeta.dateRangeLabel}
                     </div>
                     {calorieAverageLabel ? (
-                      <div className="mt-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm text-white/80">
-                        {calorieAverageLabel}
-                      </div>
+                      <>
+                        <div className="mt-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm text-white/80">
+                          {calorieAverageLabel}
+                        </div>
+                        <p className="mt-2 text-xs text-white/60">Учитывает дни без записей.</p>
+                      </>
                     ) : null}
-                  </div>
-                  <div className="grid gap-4 border-t border-stone-200 bg-white p-6 sm:grid-cols-3">
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.16em] text-stone-400">Статус данных</div>
-                      <div className="mt-2 text-sm font-medium text-stone-900">Записи найдены</div>
-                    </div>
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.16em] text-stone-400">Canonical</div>
-                      <div className="mt-2 text-sm font-medium text-stone-900">
-                        {formatNumber(data.coverage?.included_canonical_count ?? 0)} строк
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.16em] text-stone-400">Recipe snapshot</div>
-                      <div className="mt-2 text-sm font-medium text-stone-900">
-                        {formatNumber(data.coverage?.included_recipe_snapshot_count ?? 0)} строк
-                      </div>
-                    </div>
                   </div>
                 </div>
 
@@ -444,101 +600,105 @@ const ProgressNutrition: FC = () => {
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className={`${cardClass} p-6`}>
-                  <div className="mb-5">
-                    <div className="text-sm font-medium text-stone-900">Макросы</div>
-                    <div className="mt-1 text-sm text-stone-500">
-                      Сумма белков, жиров и углеводов за выбранный период
-                    </div>
+              <div className={`${cardClass} p-6`}>
+                <div className="mb-4 text-sm font-medium text-stone-900">Записи за период</div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl bg-stone-50 p-4">
+                    <div className="text-xs uppercase tracking-[0.16em] text-stone-400">Дней с записями</div>
+                    <div className="mt-2 text-lg font-semibold text-stone-900">{daysWithData} из {periodDays}</div>
                   </div>
-
-                  <div className="grid gap-4">
-                    <MacroBar
-                      label="Белки"
-                      value={data.macros?.protein_g ?? 0}
-                      share={macroTotal > 0 ? ((data.macros?.protein_g ?? 0) / macroTotal) * 100 : 0}
-                      icon={<Drumstick className="h-4 w-4" />}
-                      fillClass="bg-rose-500"
-                      iconClass="bg-rose-500 text-white"
-                    />
-                    <MacroBar
-                      label="Жиры"
-                      value={data.macros?.fat_g ?? 0}
-                      share={macroTotal > 0 ? ((data.macros?.fat_g ?? 0) / macroTotal) * 100 : 0}
-                      icon={<Droplets className="h-4 w-4" />}
-                      fillClass="bg-amber-500"
-                      iconClass="bg-amber-500 text-white"
-                    />
-                    <MacroBar
-                      label="Углеводы"
-                      value={data.macros?.carbs_g ?? 0}
-                      share={macroTotal > 0 ? ((data.macros?.carbs_g ?? 0) / macroTotal) * 100 : 0}
-                      icon={<Wheat className="h-4 w-4" />}
-                      fillClass="bg-emerald-500"
-                      iconClass="bg-emerald-500 text-white"
-                    />
+                  <div className="rounded-2xl bg-stone-50 p-4">
+                    <div className="text-xs uppercase tracking-[0.16em] text-stone-400">Дней без записей</div>
+                    <div className="mt-2 text-lg font-semibold text-stone-900">{missingDays}</div>
                   </div>
+                </div>
+                {recordsWarning ? (
+                  <p className="mt-4 text-sm leading-6 text-amber-700">{recordsWarning}</p>
+                ) : null}
+              </div>
+              </>
+              )}
 
-                  <div className="mt-4">
-                    <InsightPill title={macroInsight.title} body={macroInsight.body} />
+              <div className={`${cardClass} p-6`}>
+                <div className="mb-5">
+                  <div className="text-sm font-medium text-stone-900">БЖУ</div>
+                  <div className="mt-1 text-sm text-stone-500">
+                    Факт в среднем за день и сравнение с целями
                   </div>
                 </div>
 
-                <div className={`${cardClass} p-6`}>
-                  <div className="mb-4 flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-medium text-stone-900">Динамика калорий</div>
-                      <div className="mt-1 text-sm text-stone-500">Последние 7 дней</div>
-                    </div>
-                    <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${trendData.tone} bg-stone-100`}>
-                      {trendData.icon}
-                      {trendData.label}
-                    </div>
-                  </div>
+                <div className="divide-y divide-stone-100 border-y border-stone-100">
+                  <MacroSummaryRow
+                    label="Белок"
+                    averagePerDay={data.macros?.averageProteinPerDay ?? 0}
+                    targetPerDay={data.macros?.targetProteinPerDay}
+                    completionPercent={data.macros?.proteinCompletionPercent}
+                    accentClass="bg-rose-400"
+                  />
+                  <MacroSummaryRow
+                    label="Жиры"
+                    averagePerDay={data.macros?.averageFatPerDay ?? 0}
+                    targetPerDay={data.macros?.targetFatPerDay}
+                    completionPercent={data.macros?.fatCompletionPercent}
+                    accentClass="bg-amber-400"
+                  />
+                  <MacroSummaryRow
+                    label="Углеводы"
+                    averagePerDay={data.macros?.averageCarbsPerDay ?? 0}
+                    targetPerDay={data.macros?.targetCarbsPerDay}
+                    completionPercent={data.macros?.carbsCompletionPercent}
+                    accentClass="bg-emerald-500"
+                  />
+                </div>
 
-                  {trendData.series.length ? (
-                    <>
-                      <div className="flex h-44 items-end gap-2">
-                        {trendData.series.map((item) => {
-                          const height = trendData.max > 0 ? Math.max((item.calories / trendData.max) * 100, 6) : 6;
-                          return (
-                            <div key={item.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                              <div className="text-[11px] font-medium text-stone-500">{formatNumber(item.calories)}</div>
-                              <div className="flex h-28 w-full items-end">
-                                <div
-                                  className="w-full rounded-t-2xl bg-[linear-gradient(180deg,#fb923c_0%,#ea580c_100%)]"
-                                  style={{ height: `${height}%` }}
-                                />
-                              </div>
-                              <div className="text-[11px] text-stone-500">{formatShortDateLabel(item.date)}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <p className="mt-4 text-sm leading-6 text-stone-600">{trendData.helper}</p>
-                    </>
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 p-5 text-sm leading-6 text-stone-500">
-                      Недостаточно дневных записей, чтобы построить динамику.
-                    </div>
-                  )}
+                <div className="mt-4 border-t border-stone-100 pt-4">
+                  <div className="text-sm font-medium text-stone-900">Что стоит поправить</div>
+                  <div className="mt-1 text-sm font-medium leading-6 text-stone-800">{macroInsight.title}</div>
+                  <div className="mt-1 text-sm leading-6 text-stone-600">{macroInsight.body}</div>
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-                <div className={`${cardClass} p-6`}>
-                  <div className="mb-4">
-                    <div className="text-sm font-medium text-stone-900">Короткие выводы</div>
-                    <div className="mt-1 text-sm text-stone-500">Простые rule-based insights по текущему периоду</div>
-                  </div>
-                  <div className="grid gap-3">
-                    {contextualInsights.map((insight) => (
-                      <InsightPill key={insight.title} title={insight.title} body={insight.body} />
-                    ))}
-                  </div>
-                </div>
+              {((SHOW_NUTRITION_INSIGHTS_BLOCK && (practicalInsights.helps.length > 0 || practicalInsights.fixes.length > 0)) || SHOW_TOP_FOODS_BLOCK) && (
+              <div className={`grid gap-4 ${SHOW_TOP_FOODS_BLOCK ? 'lg:grid-cols-[0.95fr_1.05fr]' : ''}`}>
+                {SHOW_NUTRITION_INSIGHTS_BLOCK && (practicalInsights.helps.length > 0 || practicalInsights.fixes.length > 0) && (
+                <div className="grid gap-4">
+                  {practicalInsights.helps.length > 0 && (
+                    <div className={`${cardClass} p-6`}>
+                      <div className="mb-4">
+                        <div className="text-sm font-medium text-stone-900">Что помогает</div>
+                        <div className="mt-1 text-sm text-stone-500">То, что уже поддерживает движение к цели</div>
+                      </div>
+                      <div className="divide-y divide-stone-100 border-y border-stone-100">
+                        {practicalInsights.helps.map((insight) => (
+                          <div key={insight.title} className="py-3">
+                            <div className="text-sm font-medium text-stone-900">{insight.title}</div>
+                            <div className="mt-1 text-sm leading-6 text-stone-600">{insight.body}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
+                  {practicalInsights.fixes.length > 0 && (
+                    <div className={`${cardClass} p-6`}>
+                      <div className="mb-4">
+                        <div className="text-sm font-medium text-stone-900">Что стоит поправить</div>
+                        <div className="mt-1 text-sm text-stone-500">То, что мешает точнее держать план</div>
+                      </div>
+                      <div className="divide-y divide-stone-100 border-y border-stone-100">
+                        {practicalInsights.fixes.map((insight) => (
+                          <div key={insight.title} className="py-3">
+                            <div className="text-sm font-medium text-stone-900">{insight.title}</div>
+                            <div className="mt-1 text-sm leading-6 text-stone-600">{insight.body}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                )}
+
+                {SHOW_TOP_FOODS_BLOCK && (
                 <div className={`${cardClass} p-6`}>
                   <div className="mb-4">
                     <div className="text-sm font-medium text-stone-900">Топ-5 продуктов</div>
@@ -586,18 +746,10 @@ const ProgressNutrition: FC = () => {
                     </div>
                   )}
                 </div>
+                )}
               </div>
+              )}
 
-              <div className={`${cardClass} p-5`}>
-                <div className="flex flex-wrap gap-3 text-sm text-stone-600">
-                  <span className="rounded-full bg-stone-100 px-3 py-1.5">
-                    Excluded fallback: {formatNumber(data.coverage?.excluded_fallback_count ?? 0)}
-                  </span>
-                  <span className="rounded-full bg-stone-100 px-3 py-1.5">
-                    Excluded unresolved: {formatNumber(data.coverage?.excluded_unresolved_count ?? 0)}
-                  </span>
-                </div>
-              </div>
             </>
           )}
         </div>

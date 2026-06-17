@@ -25,6 +25,17 @@ function row(overrides: Partial<DiaryNutritionRow>): DiaryNutritionRow {
   };
 }
 
+const yearRows = Array.from({ length: 365 }, (_, index) =>
+  row({
+    id: `row-${index + 1}`,
+    date: new Date(Date.UTC(2025, 2, 19 + index)).toISOString().slice(0, 10),
+    calories: 2000,
+    protein: 100,
+    fat: 50,
+    carbs: 200,
+  })
+);
+
 test('aggregates use diary snapshot only', () => {
   const result = aggregateNutritionProgress(
     [row({ calories: 250, protein: 20, fat: 9, carbs: 18 })],
@@ -98,6 +109,82 @@ test('deficit hidden without target and computed with target', () => {
   assert.equal(withTarget.deficit?.value, 1200);
 });
 
+test('macro targets scale by period day count', () => {
+  const result = aggregateNutritionProgress(
+    [
+      row({ date: '2026-03-12', protein: 10, fat: 5, carbs: 20 }),
+      row({ id: 'row-2', date: '2026-03-13', protein: 10, fat: 5, carbs: 20 }),
+      row({ id: 'row-3', date: '2026-03-14', protein: 10, fat: 5, carbs: 20 }),
+      row({ id: 'row-4', date: '2026-03-15', protein: 10, fat: 5, carbs: 20 }),
+      row({ id: 'row-5', date: '2026-03-16', protein: 10, fat: 5, carbs: 20 }),
+      row({ id: 'row-6', date: '2026-03-17', protein: 10, fat: 5, carbs: 20 }),
+      row({ id: 'row-7', date: '2026-03-18', protein: 10, fat: 5, carbs: 20 }),
+    ],
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'week',
+    { calories: 2000, protein: 20, fat: 10, carbs: 40 }
+  );
+
+  assert.equal(result.macros?.targetProteinForPeriod, 140);
+  assert.equal(result.macros?.targetFatForPeriod, 70);
+  assert.equal(result.macros?.targetCarbsForPeriod, 280);
+});
+
+test('macro completion and delta calculate from period totals', () => {
+  const result = aggregateNutritionProgress(
+    [
+      row({ date: '2026-03-12', protein: 20, fat: 8, carbs: 35 }),
+      row({ id: 'row-2', date: '2026-03-13', protein: 30, fat: 12, carbs: 45 }),
+    ],
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'week',
+    { calories: 2000, protein: 50, fat: 20, carbs: 80 }
+  );
+
+  assert.equal(result.macros?.totalProtein, 50);
+  assert.equal(result.macros?.averageProteinPerDay, 7);
+  assert.equal(result.macros?.targetProteinForPeriod, 350);
+  assert.equal(result.macros?.proteinCompletionPercent, 14);
+  assert.equal(result.macros?.proteinDeltaPerDay, -42.9);
+});
+
+test('missing macro target returns null completion safely', () => {
+  const result = aggregateNutritionProgress(
+    [row({ protein: 25, fat: 10, carbs: 30 })],
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'day',
+    { calories: 2000, protein: null, fat: 0, carbs: undefined }
+  );
+
+  assert.equal(result.macros?.targetProteinPerDay, null);
+  assert.equal(result.macros?.proteinCompletionPercent, null);
+  assert.equal(result.macros?.targetFatPerDay, null);
+  assert.equal(result.macros?.fatCompletionPercent, null);
+  assert.equal(result.macros?.targetCarbsPerDay, null);
+  assert.equal(result.macros?.carbsDeltaPerDay, null);
+});
+
+test('macro averages use full period day count', () => {
+  const result = aggregateNutritionProgress(
+    [
+      row({ date: '2026-03-17', protein: 70, fat: 35, carbs: 140 }),
+      row({ id: 'row-2', date: '2026-03-18', protein: 70, fat: 35, carbs: 140 }),
+    ],
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'week',
+    { calories: 2000, protein: 70, fat: 35, carbs: 140 }
+  );
+
+  assert.equal(result.periodDays, 7);
+  assert.equal(result.macros?.averageProteinPerDay, 20);
+  assert.equal(result.macros?.averageFatPerDay, 10);
+  assert.equal(result.macros?.averageCarbsPerDay, 40);
+});
+
 test('day still shows deficit with target and data', () => {
   const result = aggregateNutritionProgress(
     [row({ date: '2026-03-18', calories: 1500 })],
@@ -153,6 +240,67 @@ test('30-day period scales target by 30 days', () => {
 
   assert.equal(result.deficit?.target_calories, 60000);
   assert.equal(result.deficit?.value, 0);
+});
+
+test('year period uses 365 days', () => {
+  const result = aggregateNutritionProgress(
+    yearRows,
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'year',
+    { calories: 2000, protein: 100, fat: 50, carbs: 200 }
+  );
+
+  assert.equal(result.periodDays === 30, false);
+  assert.equal(result.periodDays, 365);
+});
+
+test('year period scales calorie target by 365 days', () => {
+  const result = aggregateNutritionProgress(
+    yearRows,
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'year',
+    { calories: 2000, protein: 100, fat: 50, carbs: 200 }
+  );
+
+  assert.equal(result.deficit?.target_calories, 730000);
+});
+
+test('year period scales protein target by 365 days', () => {
+  const result = aggregateNutritionProgress(
+    yearRows,
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'year',
+    { calories: 2000, protein: 100, fat: 50, carbs: 200 }
+  );
+
+  assert.equal(result.macros?.targetProteinForPeriod, 36500);
+});
+
+test('year period scales fat target by 365 days', () => {
+  const result = aggregateNutritionProgress(
+    yearRows,
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'year',
+    { calories: 2000, protein: 100, fat: 50, carbs: 200 }
+  );
+
+  assert.equal(result.macros?.targetFatForPeriod, 18250);
+});
+
+test('year period scales carbs target by 365 days', () => {
+  const result = aggregateNutritionProgress(
+    yearRows,
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'year',
+    { calories: 2000, protein: 100, fat: 50, carbs: 200 }
+  );
+
+  assert.equal(result.macros?.targetCarbsForPeriod, 73000);
 });
 
 test('7-day period hides deficit when coverage is low', () => {
@@ -222,6 +370,10 @@ test('week and month period semantics use trailing windows including anchor date
     start: '2026-02-17',
     end: '2026-03-18',
   });
+  assert.deepEqual(getNutritionPeriodRange('2026-03-18', 'year'), {
+    start: '2025-03-19',
+    end: '2026-03-18',
+  });
 });
 
 test('service returns top foods and coverage from repositories', async () => {
@@ -257,6 +409,32 @@ test('service returns top foods and coverage from repositories', async () => {
   assert.equal(result.coverage?.included_canonical_count, 5);
   assert.equal(result.coverage?.included_recipe_snapshot_count, 1);
   assert.equal(result.deficit?.is_visible, true);
+});
+
+test('service returns macro targets from goal repository', async () => {
+  const service = new ProgressNutritionService({
+    diaryRepo: {
+      async listByUserAndDateRange() {
+        return [row({ protein: 80, fat: 50, carbs: 160 })];
+      },
+    },
+    foodsRepo: {
+      async findNamesByIds(ids: string[]) {
+        return ids.map((id) => ({ id, name: 'Яйцо' }));
+      },
+    },
+    goalRepo: {
+      async getUserGoal() {
+        return { calories: 2000, protein: 100, fat: 70, carbs: 250 };
+      },
+    },
+  });
+
+  const result = await service.getNutritionProgress('user-1', '2026-03-18', 'day');
+
+  assert.equal(result.macros?.targetProteinPerDay, 100);
+  assert.equal(result.macros?.targetFatPerDay, 70);
+  assert.equal(result.macros?.targetCarbsPerDay, 250);
 });
 
 test('custom period scales target by actual day count', async () => {

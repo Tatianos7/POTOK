@@ -36,7 +36,7 @@ const Today = () => {
     setRuntimeStatus('loading');
     setErrorMessage(null);
     uiRuntimeAdapter.startLoadingTimer('Today', {
-      pendingSources: ['program_sessions', 'food_diary_entries', 'workout_entries', 'habit_logs', 'user_goals'],
+      pendingSources: ['program_sessions', 'food_diary_entries', 'workout_entries', 'user_goals'],
       onTimeout: () => {
         setRuntimeStatus('error');
         setErrorMessage('Загрузка дня заняла слишком много времени.');
@@ -94,9 +94,6 @@ const Today = () => {
   const proteinTarget = today?.day?.targets?.protein ?? null;
   const caloriesConsumed = mealTotals?.calories ?? 0;
 
-  const habitsTotal = runtimeContext?.habits?.length ?? 0;
-  const habitsCompleted = runtimeContext?.habits?.filter((habit) => habit.completed).length ?? 0;
-
   const trainingStatus =
     today?.day?.status === 'completed' ? 'выполнена' : today?.day?.status === 'skipped' ? 'пропущена' : 'запланирована';
   const trainingTone = today?.day?.status === 'completed' ? 'success' : today?.day?.status === 'skipped' ? 'warning' : 'default';
@@ -137,10 +134,7 @@ const Today = () => {
           <p>ккал</p>
           <Divider />
           <p>
-            <Chip>Белок {proteinTarget ?? '—'} г</Chip> <Chip>Тренировка: {trainingStatus}</Chip>{' '}
-            <Chip>
-              Привычки {habitsCompleted}/{habitsTotal}
-            </Chip>
+            <Chip>Белок {proteinTarget ?? '—'} г</Chip> <Chip>Тренировка: {trainingStatus}</Chip>
           </p>
           <Button variant="primary" size="lg" onClick={() => navigate('/my-program')}>
             Перейти к плану
@@ -167,17 +161,6 @@ const Today = () => {
           <Button variant="outline" size="sm" onClick={() => navigate('/workouts')}>
             Открыть тренировку
           </Button>
-        </Card>
-
-        <Divider />
-
-        <Card variant="ghost" size="sm" title="Привычки">
-          <p>
-            <Chip tone={habitsTotal > 0 && habitsCompleted === habitsTotal ? 'success' : 'default'}>
-              Отмечено {habitsCompleted}/{habitsTotal}
-            </Chip>{' '}
-            <Chip>Streak —</Chip>
-          </p>
         </Card>
 
         <Divider />

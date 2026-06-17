@@ -26,8 +26,6 @@ const ExerciseActionMenu = ({
   onMedia,
   onClose,
 }: ExerciseActionMenuProps) => {
-  if (!open) return null;
-
   const [position, setPosition] = useState<{ top: number; left: number; width: number }>({
     top: 0,
     left: 0,
@@ -60,6 +58,8 @@ const ExerciseActionMenu = ({
     action();
     onClose();
   };
+
+  if (!open) return null;
 
   const menu = (
     <div

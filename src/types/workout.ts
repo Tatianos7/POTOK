@@ -116,6 +116,13 @@ export interface WorkoutEntry {
   workout_day_id: string;
   exercise_id: string;
   canonical_exercise_id?: string | null;
+  exercise_name_snapshot?: string | null;
+  exercise_category_id_snapshot?: string | null;
+  exercise_category_name_snapshot?: string | null;
+  canonical_exercise_id_snapshot?: string | null;
+  primary_muscles_snapshot?: string[];
+  secondary_muscles_snapshot?: string[];
+  muscles_snapshot?: WorkoutEntryMuscleSnapshot[];
   metricType?: WorkoutMetricType;
   metricUnit?: WorkoutMetricUnit;
   sets: number;
@@ -129,6 +136,12 @@ export interface WorkoutEntry {
   updated_at?: string;
   exercise?: Exercise;
   workout_day?: WorkoutDay;
+}
+
+export interface WorkoutEntryMuscleSnapshot {
+  key: string;
+  label: string;
+  source: 'primary' | 'secondary' | 'custom';
 }
 
 export interface SelectedExercise {

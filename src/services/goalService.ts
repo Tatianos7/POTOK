@@ -22,6 +22,20 @@ export interface UserGoal {
   updated_at?: string;
 }
 
+export type GoalSaveStatus = 'success_remote' | 'success_local_only' | 'failed';
+
+export interface GoalSaveResult {
+  status: GoalSaveStatus;
+  remoteSaved: boolean;
+  localSaved: boolean;
+}
+
+export const getGoalSaveStatus = (remoteSaved: boolean, localSaved: boolean): GoalSaveStatus => {
+  if (remoteSaved) return 'success_remote';
+  if (localSaved) return 'success_local_only';
+  return 'failed';
+};
+
 class GoalService {
   private saveErrorLogged = false;
   private readonly LOGGED_ERROR_KEYS = ['code', 'message', 'details', 'hint', 'status'] as const;
@@ -173,11 +187,24 @@ class GoalService {
   }
 
   // Save user goal to Supabase and localStorage
-  async saveUserGoal(userId: string, goal: UserGoal): Promise<void> {
+  async saveUserGoal(userId: string, goal: UserGoal): Promise<GoalSaveResult> {
+    let remoteSaved = false;
+    let localSaved = false;
+
+    try {
+      this.assertGoalValid(goal);
+    } catch (error) {
+      console.warn('[goalService] Invalid goal values:', error);
+      return {
+        status: 'failed',
+        remoteSaved,
+        localSaved,
+      };
+    }
+
     // Try to save to Supabase
     if (supabase) {
       try {
-        this.assertGoalValid(goal);
         const sessionUserId = await this.getSessionUserId(userId);
         interface UserGoalUpsertPayload {
           user_id: string;
@@ -232,6 +259,8 @@ class GoalService {
 
         if (error) {
           this.logSupabaseErrorOnce('user_goals upsert', error);
+        } else {
+          remoteSaved = true;
         }
 
       } catch (err) {
@@ -265,9 +294,16 @@ class GoalService {
         intensity: goal.intensity ?? parsed.intensity,
       };
       localStorage.setItem(`goal_${userId}`, JSON.stringify(updated));
+      localSaved = true;
     } catch (error) {
       console.warn('[goalService] Failed to persist local goal cache:', error);
     }
+
+    return {
+      status: getGoalSaveStatus(remoteSaved, localSaved),
+      remoteSaved,
+      localSaved,
+    };
   }
 
 }

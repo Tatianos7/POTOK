@@ -20,7 +20,6 @@ import Recipes from './pages/Recipes';
 import RecipeDetails from './pages/RecipeDetails';
 import CreateCustomProductPage from './pages/CreateCustomProductPage';
 import CreateBrandProductPage from './pages/CreateBrandProductPage';
-import Habits from './pages/Habits';
 import Workouts from './pages/Workouts';
 import WorkoutHistory from './pages/WorkoutHistory';
 import Progress from './pages/Progress';
@@ -28,7 +27,6 @@ import ProgressMeasurements from './pages/ProgressMeasurements';
 import ProgressNutrition from './pages/ProgressNutrition';
 import ProgressWorkouts from './pages/ProgressWorkouts';
 import ProgressWorkoutExercise from './pages/ProgressWorkoutExercise';
-import ProgressHabits from './pages/ProgressHabits';
 import ImportExercises from './pages/ImportExercises';
 import PoseCoach from './pages/PoseCoach';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -257,11 +255,7 @@ function AppRoutes() {
       />
       <Route
         path="/habits"
-        element={
-          <ProtectedRoute>
-            <Habits />
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/" replace />}
       />
       <Route
         path="/workouts"
@@ -321,11 +315,7 @@ function AppRoutes() {
       />
       <Route
         path="/progress/habits"
-        element={
-          <ProtectedRoute>
-            <ProgressHabits />
-          </ProtectedRoute>
-        }
+        element={<Navigate to="/progress" replace />}
       />
       <Route
         path="/today"

@@ -50,7 +50,7 @@ test('header is now a passive read label and not the metric selector source of t
     />,
   );
 
-  assert.match(html, />Метрика</);
+  assert.match(html, />Вес</);
   assert.match(html, /<span class="truncate">Вес<\/span>/);
   assert.doesNotMatch(html, />Метрика ▼</);
 });
@@ -98,8 +98,8 @@ test('row metric selector does not push value field into broken layout', () => {
     />,
   );
 
-  assert.match(html, /min-h-\[4\.35rem\]/);
-  assert.match(html, /max-w-\[5\.5rem\]/);
+  assert.match(html, /min-h-\[4rem\]/);
+  assert.match(html, /max-w-\[4\.25rem\]/);
   assert.match(html, /w-\[3\.25rem\]/);
 });
 
@@ -124,7 +124,7 @@ test('last column keeps stable layout for metric selector, unit selector and val
   );
 
   assert.match(html, /max-w-\[5\.5rem\]/);
-  assert.match(html, /min-\[376px\]:max-w-\[6\.25rem\]/);
+  assert.match(html, /min-\[376px\]:sm:max-w-\[6\.25rem\]/);
   assert.match(html, /flex items-center justify-center gap-1/);
 });
 
@@ -170,7 +170,7 @@ test('row metric button remains above value input', () => {
     />,
   );
 
-  assert.match(html, /grid min-h-\[4\.35rem\][\s\S]*?grid-rows-\[auto_1fr_auto\][\s\S]*?max-w-\[5\.5rem\][\s\S]*?Время[\s\S]*?value="45"/);
+  assert.match(html, /grid min-h-\[4rem\][\s\S]*?grid-rows-\[auto_1fr_auto\][\s\S]*?max-w-\[4\.25rem\][\s\S]*?Время[\s\S]*?value="45"/);
 });
 
 test('metric value field aligns horizontally with sets and reps value fields', () => {
@@ -194,9 +194,9 @@ test('metric value field aligns horizontally with sets and reps value fields', (
 
   assert.equal((html.match(/grid-rows-\[1fr_auto\]/g) || []).length, 2);
   assert.equal((html.match(/grid-rows-\[auto_1fr_auto\]/g) || []).length, 1);
-  assert.match(html, /justify-items-end/);
-  assert.match(html, /justify-items-center/);
-  assert.equal((html.match(/self-end w-12 min-\[376px\]:w-14/g) || []).length, 2);
+  assert.doesNotMatch(html, /justify-items-end/);
+  assert.ok((html.match(/justify-items-center/g) || []).length >= 3);
+  assert.equal((html.match(/sm:w-12/g) || []).length, 2);
 });
 
 test('sets and reps inputs keep compact height after row alignment fix', () => {
@@ -218,8 +218,8 @@ test('sets and reps inputs keep compact height after row alignment fix', () => {
     />,
   );
 
-  assert.equal((html.match(/self-end w-12 min-\[376px\]:w-14 px-1\.5 min-\[376px\]:px-2 py-1 min-\[376px\]:py-1\.5/g) || []).length, 2);
-  assert.match(html, /w-\[3\.25rem\] min-\[376px\]:w-14 px-1\.5 min-\[376px\]:px-2 py-1 min-\[376px\]:py-1\.5/);
+  assert.equal((html.match(/self-end h-10 w-full rounded-lg/g) || []).length, 2);
+  assert.match(html, /sm:w-\[3\.25rem\].*min-\[376px\]:sm:w-14/s);
 });
 
 test('last column uses stable two-row geometry without shifting row baseline', () => {
@@ -244,7 +244,7 @@ test('last column uses stable two-row geometry without shifting row baseline', (
   assert.match(html, /grid-rows-\[auto_1fr_auto\]/);
   assert.match(html, /self-start/);
   assert.match(html, /items-end justify-center self-end/);
-  assert.equal((html.match(/self-end w-12 min-\[376px\]:w-14/g) || []).length, 2);
+  assert.equal((html.match(/sm:w-12/g) || []).length, 2);
 });
 
 test('selected exercises editor keeps none metric rows stable', () => {
@@ -553,8 +553,8 @@ test('mixed rows with different metric types remain visually stable', () => {
     />,
   );
 
-  assert.equal((html.match(/max-w-\[5\.5rem\]/g) || []).length, 3);
-  assert.ok((html.match(/min-h-\[4\.35rem\]/g) || []).length >= 3);
+  assert.equal((html.match(/max-w-\[4\.25rem\]/g) || []).length, 3);
+  assert.ok((html.match(/min-h-\[4rem\]/g) || []).length >= 3);
   assert.equal((html.match(/grid-rows-\[auto_1fr_auto\]/g) || []).length, 3);
 });
 
@@ -657,13 +657,15 @@ test('layout stays stable on 320px width and with one exercise', () => {
   assert.match(html, /min-w-\[320px\]/);
   assert.match(html, /min-h-\[26rem\]/);
   assert.match(html, /h-full min-h-\[14rem\]/);
-  assert.match(html, /self-end w-12 min-\[376px\]:w-14/);
-  assert.match(html, /max-w-\[5\.5rem\]/);
-  assert.match(html, /w-\[3\.25rem\]/);
+  assert.match(html, /grid-cols-\[28px_minmax\(0,1fr\)_56px_60px_68px\]/);
+  assert.match(html, /<div aria-hidden="true"><\/div><div class="w-full min-w-0 justify-self-start px-2/);
+  assert.match(html, /text-\[13px\] font-medium leading-tight/);
+  assert.match(html, /max-w-\[4\.25rem\]/);
+  assert.match(html, /sm:w-\[3\.25rem\]/);
   assert.match(html, /grid-rows-\[auto_1fr_auto\]/);
   assert.match(html, /<span class="truncate">Дист<\/span>/);
   assert.match(html, /<span class="truncate">км<\/span>/);
-  assert.match(html, />Метрика</);
+  assert.match(html, />Вес</);
   assert.match(html, /ДОБАВИТЬ УПРАЖНЕНИЕ/);
   assert.match(html, /СОХРАНИТЬ/);
 });

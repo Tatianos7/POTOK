@@ -5,7 +5,6 @@ import {
   Ruler, 
   UtensilsCrossed, 
   Dumbbell, 
-  CheckSquare, 
   BarChart3 
 } from 'lucide-react';
 
@@ -52,15 +51,6 @@ export const FEATURE_CARDS: FeatureCard[] = [
     route: '/workouts',
   },
   {
-    id: '6',
-    icon: 'CheckSquare',
-    title: 'ПРИВЫЧКИ',
-    subtitle: 'Здесь твой трекер-привычек',
-    isPremium: true,
-    premiumColor: 'yellow',
-    route: '/habits',
-  },
-  {
     id: '7',
     icon: 'BarChart3',
     title: 'ПРОГРЕСС',
@@ -77,7 +67,5 @@ export const ICON_MAP: Record<string, React.ComponentType<{ className?: string }
   Ruler,
   UtensilsCrossed,
   Dumbbell,
-  CheckSquare,
   BarChart3,
 };
-

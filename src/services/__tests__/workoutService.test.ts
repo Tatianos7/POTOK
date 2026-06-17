@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildWorkoutEntrySnapshotFields,
   buildWorkoutEntryUpdatePatch,
   buildWorkoutHistoryDaySummaries,
   buildWorkoutProgressObservations,
@@ -293,7 +294,86 @@ test('progress entry reads still work with legacy-safe select when metric column
   assert.doesNotMatch(clause, /display_unit/);
   assert.doesNotMatch(clause, /display_amount/);
   assert.doesNotMatch(clause, /base_unit/);
-  assert.match(clause, /exercise:exercises\(id,name\)/);
+  assert.match(clause, /exercise_name_snapshot/);
+  assert.match(clause, /primary_muscles_snapshot/);
+  assert.match(clause, /exercise:exercises\(id,name,category_id\)/);
+});
+
+test('workout entry snapshot fields capture canonical exercise name and muscles', () => {
+  const categoryId = '11111111-1111-4111-8111-111111111111';
+  const canonicalId = '22222222-2222-4222-8222-222222222222';
+  const snapshot = buildWorkoutEntrySnapshotFields({
+    id: 'barbell_back_squat',
+    name: 'Приседания со штангой',
+    category_id: categoryId,
+    category: { id: categoryId, name: 'Ноги', order: 1 },
+    is_custom: false,
+    canonical_exercise_id: canonicalId,
+    normalized_name: 'barbell_back_squat',
+  });
+
+  assert.equal(snapshot.exercise_name_snapshot, 'Приседания со штангой');
+  assert.equal(snapshot.exercise_category_id_snapshot, categoryId);
+  assert.equal(snapshot.exercise_category_name_snapshot, 'Ноги');
+  assert.equal(snapshot.canonical_exercise_id_snapshot, canonicalId);
+  assert.ok(snapshot.primary_muscles_snapshot?.includes('quads'));
+  assert.ok(snapshot.muscles_snapshot?.some((item) => item.key === 'quads' && item.source === 'primary'));
+});
+
+test('workout entry snapshot fields capture custom exercise linked muscles', () => {
+  const snapshot = buildWorkoutEntrySnapshotFields({
+    id: 'custom-1',
+    name: 'Свое упражнение',
+    category_id: 'custom-category',
+    is_custom: true,
+    canonical_exercise_id: null,
+    muscles: [
+      { id: 'm-glutes', name: 'Ягодичные мышцы' },
+      { id: 'm-abductors', name: 'Отводящие мышцы бедра' },
+      { id: 'm-unknown', name: 'Неизвестная мышца' },
+    ],
+  });
+
+  assert.deepEqual(snapshot.primary_muscles_snapshot, ['glutes', 'abductors']);
+  assert.deepEqual(
+    snapshot.muscles_snapshot?.map((item) => item.key),
+    ['glutes', 'abductors'],
+  );
+});
+
+test('addExercisesToWorkout writes snapshot fields in local workout entry', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  seedWorkoutStorage({ [DATE]: [] });
+
+  const entries = await workoutService.addExercisesToWorkout(USER_ID, DATE, [
+    {
+      exercise: {
+        id: 'custom-1',
+        name: 'Свое упражнение',
+        category_id: 'custom-category',
+        category: { id: 'custom-category', name: 'Мои упражнения', order: 99 },
+        is_custom: true,
+        canonical_exercise_id: null,
+        muscles: [
+          { id: 'm-glutes', name: 'Ягодичные мышцы' },
+        ],
+      },
+      sets: 3,
+      reps: 12,
+      weight: 20,
+    },
+  ]);
+
+  const entry = entries.find((item) => item.exercise_id === 'custom-1');
+
+  assert.equal(entry?.exercise_name_snapshot, 'Свое упражнение');
+  assert.equal(entry?.exercise_category_name_snapshot, 'Мои упражнения');
+  assert.deepEqual(entry?.primary_muscles_snapshot, ['glutes']);
+  assert.equal(entry?.muscles_snapshot?.[0]?.label, 'Ягодичные мышцы');
 });
 
 test('progress entry read schema errors are detected for metric and display columns', () => {
@@ -402,11 +482,36 @@ test('getWorkoutProgressObservations returns persisted observation rows for peri
   );
 
   assert.equal(observations.length, 2);
-  assert.equal(observations[0].exerciseGroupKey, 'canonical-bench');
+  assert.equal(observations[0].exerciseGroupKey, 'exercise-bench');
   assert.equal(observations[0].exerciseId, 'exercise-bench');
   assert.equal(observations[0].exerciseName, 'Жим лежа');
   assert.equal(observations[0].date, '2026-03-20');
   assert.equal(observations[1].date, '2026-03-21');
+});
+
+test('getWorkoutProgressObservations uses snapshot name before live exercise name', () => {
+  const observations = buildWorkoutProgressObservations(
+    [
+      {
+        id: 'entry-1',
+        workout_day_id: 'day-1',
+        created_at: '2026-03-20T08:00:00.000Z',
+        exercise_id: 'exercise-bench',
+        exercise_name_snapshot: 'Старое название жима',
+        sets: 3,
+        reps: 10,
+        weight: 70,
+        exercise: {
+          id: 'exercise-bench',
+          name: 'Новое название жима',
+          canonical_exercise_id: 'canonical-bench',
+        },
+      },
+    ],
+    new Map([['day-1', '2026-03-20']]),
+  );
+
+  assert.equal(observations[0].exerciseName, 'Старое название жима');
 });
 
 test('getWorkoutProgressObservations mapping safely falls back to exercise_id when canonical_exercise_id is absent', () => {

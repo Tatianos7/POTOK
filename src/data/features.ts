@@ -42,14 +42,6 @@ export const features: FeatureCard[] = [
     route: '/workouts',
   },
   {
-    id: 'habits',
-    title: 'ПРИВЫЧКИ',
-    subtitle: 'Здесь твой трекер-привычек',
-    icon: 'clipboard-check',
-    isPremium: true,
-    route: '/habits',
-  },
-  {
     id: 'progress',
     title: 'ПРОГРЕСС',
     subtitle: 'Здесь дневник твоего прогресса',
@@ -58,4 +50,3 @@ export const features: FeatureCard[] = [
     route: '/progress',
   },
 ];
-
