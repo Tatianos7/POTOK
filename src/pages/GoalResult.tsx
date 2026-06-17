@@ -9,6 +9,7 @@ import { uiRuntimeAdapter } from '../services/uiRuntimeAdapter';
 import { computeGoalPlan } from '../utils/goalProjection';
 import { aiRecommendationsService, type DayAnalysisContext } from '../services/aiRecommendationsService';
 import { getLocalDayKey } from '../utils/dayKey';
+import { validateGoalInput } from '../utils/goalValidation';
 
 interface CalculatedResult {
   bmr: number;
@@ -24,13 +25,22 @@ interface CalculatedResult {
   kgPerWeek?: number;
 }
 
+const normalizeGoal = (goal: string) => (goal === 'weight-loss' || goal === 'gain' ? goal : 'maintain');
+
+const getEffectiveTargetWeight = (data: GoalFormData): number => {
+  const weight = Number(data.weight);
+  const targetWeight = Number(data.targetWeight);
+  return normalizeGoal(data.goal) === 'maintain' || !Number.isFinite(targetWeight) ? weight : targetWeight;
+};
+
 const GoalResult = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [formData, setFormData] = useState<GoalFormData | null>(null);
   const [result, setResult] = useState<CalculatedResult | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<{ type: 'warning' | 'error'; text: string } | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const saveInFlightRef = useRef(false);
 
   useEffect(() => {
@@ -42,19 +52,9 @@ const GoalResult = () => {
     // Получаем данные формы из location.state или localStorage
     const data = location.state?.formData || null;
     if (data) {
-      const weight = parseFloat(data.weight) || 70;
-      let targetWeight = parseFloat(data.targetWeight || '');
-
-      if (data.goal === 'gain') {
-        if (!Number.isFinite(targetWeight) || targetWeight <= weight) {
-          targetWeight = Math.min(weight + 5, 150);
-        }
-      }
-
       setFormData({
         ...data,
         trainingPlace: data.trainingPlace ?? 'home',
-        targetWeight: Number.isFinite(targetWeight) ? String(targetWeight) : data.targetWeight,
       });
     } else {
       // Если данных нет, возвращаемся на страницу цели
@@ -65,13 +65,19 @@ const GoalResult = () => {
   useEffect(() => {
     if (!formData) return;
 
-    const age = parseInt(formData.age) || 25;
-    const weight = parseFloat(formData.weight) || 70;
-    const height = parseFloat(formData.height) || 170;
-    const parsedTargetWeight = parseFloat(formData.targetWeight || '');
-    const normalizedGoal = formData.goal === 'weight-loss' || formData.goal === 'gain' || formData.goal === 'maintain'
-      ? formData.goal
-      : 'maintain';
+    const validation = validateGoalInput(formData);
+    if (!validation.isValid) {
+      setResult(null);
+      setValidationError('Проверьте данные цели и попробуйте рассчитать её снова.');
+      return;
+    }
+
+    setValidationError(null);
+    const age = Number(formData.age);
+    const weight = Number(formData.weight);
+    const height = Number(formData.height);
+    const normalizedGoal = normalizeGoal(formData.goal);
+    const effectiveTargetWeight = getEffectiveTargetWeight(formData);
     const computed = computeGoalPlan({
       gender: formData.gender,
       age,
@@ -80,13 +86,13 @@ const GoalResult = () => {
       lifestyle: formData.lifestyle,
       goal: normalizedGoal,
       intensity: formData.intensity,
-      targetWeight: Number.isFinite(parsedTargetWeight) ? parsedTargetWeight : weight,
+      targetWeight: effectiveTargetWeight,
     });
 
     if (import.meta.env.DEV) {
       console.debug('[goal:projection][result]', {
         weight,
-        targetWeight: Number.isFinite(parsedTargetWeight) ? parsedTargetWeight : weight,
+        targetWeight: effectiveTargetWeight,
         tdee: computed.tdee,
         calories: computed.calories,
         deficitPerDay: computed.timeline.deficitPerDay,
@@ -158,8 +164,9 @@ const GoalResult = () => {
     if (!user?.id || !formData || !result) return;
     if (saveInFlightRef.current) return;
     saveInFlightRef.current = true;
-    setSaveError(null);
+    setSaveNotice(null);
     try {
+      const effectiveTargetWeight = getEffectiveTargetWeight(formData);
 
       const goalTypeMap: Record<string, string> = {
         'weight-loss': 'Похудение',
@@ -180,7 +187,7 @@ const GoalResult = () => {
       if (import.meta.env.DEV) {
         console.debug('[goal:projection][save]', {
           weight: Number(formData.weight),
-          targetWeight: Number(formData.targetWeight || formData.weight),
+          targetWeight: effectiveTargetWeight,
           tdee: result.tdee,
           calories: result.calories,
           deficitPerDay: result.deficitPerDay ?? 0,
@@ -191,14 +198,14 @@ const GoalResult = () => {
         });
       }
 
-      await goalService.saveUserGoal(user.id, {
+      const saveResult = await goalService.saveUserGoal(user.id, {
         calories: result.calories,
         protein: result.proteins,
         fat: result.fats,
         carbs: result.carbs,
         goal_type: goalTypeMap[formData.goal] || formData.goal,
         current_weight: Number(formData.weight),
-        target_weight: Number(formData.targetWeight || formData.weight),
+        target_weight: effectiveTargetWeight,
         start_date: startDate,
         end_date: endDate || undefined,
         months_to_goal: result.monthsToGoal,
@@ -211,6 +218,19 @@ const GoalResult = () => {
         lifestyle: formData.lifestyle,
         intensity: formData.intensity,
       });
+
+      if (saveResult.status === 'failed') {
+        setSaveNotice({ type: 'error', text: 'Не удалось сохранить цель.' });
+        return;
+      }
+
+      if (saveResult.status === 'success_local_only') {
+        setSaveNotice({
+          type: 'warning',
+          text: 'Цель сохранена только на этом устройстве. Подключитесь к интернету и попробуйте сохранить снова.',
+        });
+        return;
+      }
 
       navigate('/goal');
 
@@ -236,7 +256,7 @@ const GoalResult = () => {
         goal: goalTypeMap[formData.goal] || formData.goal,
       });
     } catch (error) {
-      setSaveError('Не удалось сохранить цель. Проверьте соединение и повторите попытку.');
+      setSaveNotice({ type: 'error', text: 'Не удалось сохранить цель.' });
     } finally {
       saveInFlightRef.current = false;
     }
@@ -245,6 +265,43 @@ const GoalResult = () => {
   const handleClose = () => {
     navigate('/goal');
   };
+
+  if (validationError) {
+    return (
+      <div
+        className="flex flex-col bg-white dark:bg-gray-900 overflow-hidden"
+        style={{ minWidth: '320px', maxHeight: '90dvh', height: 'auto' }}
+      >
+        <div className="mx-auto w-full flex flex-col" style={{ maxWidth: 480, maxHeight: '90dvh' }}>
+          <header className="px-4 py-3 flex items-center justify-between">
+            <div className="w-6" />
+            <h1 className="text-sm font-semibold text-gray-900 dark:text-white uppercase tracking-wide">
+              ВАШИ РЕЗУЛЬТАТЫ
+            </h1>
+            <button
+              onClick={handleClose}
+              className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              aria-label="Закрыть"
+            >
+              <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+            </button>
+          </header>
+          <main className="px-5 pb-5">
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {validationError}
+            </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="mt-4 w-full rounded-full border border-gray-900 dark:border-gray-300 py-3 text-sm font-semibold uppercase text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              Вернуться к цели
+            </button>
+          </main>
+        </div>
+      </div>
+    );
+  }
 
   if (!formData || !result) {
     return (
@@ -286,7 +343,7 @@ const GoalResult = () => {
             <p>
               Ваш вес: <span className="font-medium">{formData.weight} кг</span>
             </p>
-            {formData.targetWeight && (
+            {normalizeGoal(formData.goal) !== 'maintain' && formData.targetWeight && (
               <p>
                 Ваша цель: <span className="font-medium">{formData.targetWeight} кг</span>
               </p>
@@ -373,9 +430,15 @@ const GoalResult = () => {
           >
             СОХРАНИТЬ
           </button>
-          {saveError && (
-            <p className="mt-2 text-xs text-red-600">
-              {saveError}
+          {saveNotice && (
+            <p
+              className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+                saveNotice.type === 'warning'
+                  ? 'border-amber-200 bg-amber-50 text-amber-800'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              }`}
+            >
+              {saveNotice.text}
             </p>
           )}
         </div>

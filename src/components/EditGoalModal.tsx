@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import BaseInput from './ui/BaseInput';
+import { calculateMacros } from '../utils/goalProjection';
 
 interface EditGoalModalProps {
   isOpen: boolean;
@@ -21,31 +22,7 @@ const recalculateMacros = (weight: number, calories: number) => {
     return null;
   }
 
-  const proteins = Math.round(weight * 2);
-  const fats = Math.round(weight * 0.9);
-  const caloriesProtein = proteins * 4;
-  const caloriesFat = fats * 9;
-  const caloriesForCarbs = calories - caloriesProtein - caloriesFat;
-  if (caloriesForCarbs <= 0) {
-    return {
-      proteins,
-      fats,
-      carbs: 0,
-    };
-  }
-  const carbsExact = caloriesForCarbs / 4;
-  const carbsFloor = Math.floor(carbsExact);
-  const carbsCeil = Math.ceil(carbsExact);
-  const totalWithFloor = caloriesProtein + caloriesFat + carbsFloor * 4;
-  const totalWithCeil = caloriesProtein + caloriesFat + carbsCeil * 4;
-  const diffFloor = Math.abs(totalWithFloor - calories);
-  const diffCeil = Math.abs(totalWithCeil - calories);
-  const carbs = diffFloor <= diffCeil ? carbsFloor : carbsCeil;
-  return {
-    proteins,
-    fats,
-    carbs,
-  };
+  return calculateMacros(weight, calories);
 };
 
 const EditGoalModal = ({ isOpen, onClose, onSave, initialData, bmr, weight }: EditGoalModalProps) => {
