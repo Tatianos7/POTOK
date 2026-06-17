@@ -1,11 +1,9 @@
 import { supabase } from '../lib/supabaseClient';
 import { measurementsService } from './measurementsService';
-import { habitsService } from './habitsService';
 import { progressAggregatorService } from './progressAggregatorService';
 import { progressNutritionService } from './progressNutritionService';
 import {
   CoachRecommendations,
-  HabitsStats,
   MeasurementsTable,
   NutritionStats,
   ProgressPeriod,
@@ -91,7 +89,7 @@ class ProgressDashboardService {
         weightTrend: trends.weightSlope ?? null,
         strengthTrend: trends.volumeSlope ?? null,
         avgCalories: trends.avgCalories ?? null,
-        adherence: snapshot.habitsAdherence ?? snapshot.programAdherence ?? null,
+        adherence: snapshot.programAdherence ?? null,
         coachInsight: null,
       };
       this.saveCache(sessionUserId, period, 'summary', summary);
@@ -259,54 +257,6 @@ class ProgressDashboardService {
         return this.toSectionResult(cached, undefined, true);
       }
       return this.toSectionResult<MeasurementsTable>(null, 'Не удалось загрузить замеры.');
-    }
-  }
-
-  async getHabitsStats(period: ProgressPeriod, userId?: string): Promise<ProgressSectionResult<HabitsStats>> {
-    const sessionUserId = await this.getSessionUserId(userId);
-    try {
-      const habits = await habitsService.getHabitsForDate({ userId: sessionUserId, date: period.end });
-      if (habits.length === 0) {
-        return this.toSectionResult<HabitsStats>(null, undefined);
-      }
-      const stats = await Promise.all(
-        habits.map(async (habit) => {
-          const habitStats = await habitsService.getHabitStats({
-            userId: sessionUserId,
-            habitId: habit.id,
-            fromDate: period.start,
-            toDate: period.end,
-          });
-          const trend: TrendDirection = habitStats.adherence >= 0.7 ? 'up' : 'down';
-          return {
-            id: habit.id,
-            title: habit.title,
-            streak: habitStats.streak,
-            adherence: habitStats.adherence,
-            trend,
-          };
-        })
-      );
-      const totalHabits = habits.length;
-      const completedHabits = habits.filter((h) => h.completed).length;
-      const adherence =
-        totalHabits === 0 ? 0 : Math.round((stats.reduce((sum, item) => sum + item.adherence, 0) / totalHabits) * 100);
-      const streak = Math.max(...stats.map((item) => item.streak), 0);
-      const result: HabitsStats = {
-        totalHabits,
-        completedHabits,
-        adherence,
-        streak,
-        habits: stats,
-      };
-      this.saveCache(sessionUserId, period, 'habits', result);
-      return this.toSectionResult(result);
-    } catch (error) {
-      const cached = this.loadCache<HabitsStats>(sessionUserId, period, 'habits');
-      if (cached) {
-        return this.toSectionResult(cached, undefined, true);
-      }
-      return this.toSectionResult<HabitsStats>(null, 'Не удалось загрузить привычки.');
     }
   }
 

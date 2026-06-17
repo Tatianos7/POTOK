@@ -1,6 +1,6 @@
 import { type FC } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckSquare, Dumbbell, Ruler, UtensilsCrossed, X } from 'lucide-react';
+import { Dumbbell, Ruler, UtensilsCrossed, X } from 'lucide-react';
 import ProgressCard from '../components/ProgressCard';
 import './ProgressHub.css';
 
@@ -42,12 +42,6 @@ const Progress: FC = () => {
         onClick={() => navigate('/progress/workouts')}
       />
 
-      <ProgressCard
-        title="ПРИВЫЧКИ"
-        subtitle="Здесь твой трекер-привычек"
-        icon={CheckSquare}
-        onClick={() => navigate('/progress/habits')}
-      />
     </div>
   );
 };

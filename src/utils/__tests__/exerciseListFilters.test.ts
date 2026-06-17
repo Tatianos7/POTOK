@@ -17,7 +17,7 @@ function createExercise(id: string, name: string, muscles: string[], categoryId 
 function createContentExercise(
   canonicalId: string,
   name: string,
-  categoryId: 'arms' | 'back' | 'abs',
+  categoryId: 'arms' | 'back' | 'abs' | 'chest' | 'legs',
   runtimeMuscles: string[] = [],
 ): Exercise {
   return {
@@ -186,13 +186,50 @@ test('back category exposes curated primary back filters without biceps or glute
     createContentExercise('barbell_row', 'Тяга штанги в наклоне', 'back'),
     createContentExercise('barbell_shrug', 'Шраги со штангой', 'back'),
     createContentExercise('deadlift_classic', 'Становая тяга', 'back'),
+    createContentExercise('machine_hyperextension', 'Гиперэкстензия в тренажёре', 'back'),
+    createExercise('back-lower-back-custom', 'Разгибание корпуса', ['Поясница'], 'back'),
   ];
 
   const muscles = deriveAvailableMuscles(exercises, { id: 'back', name: 'Спина', order: 2 });
 
-  assert.deepEqual(muscles.map((muscle) => muscle.name), ['Широчайшие', 'Трапециевидные', 'Поясница']);
+  assert.deepEqual(muscles.map((muscle) => muscle.name), [
+    'Широчайшие',
+    'Трапециевидные',
+    'Поясница',
+    'Разгибатели спины',
+  ]);
   assert.equal(muscles.some((muscle) => muscle.name === 'Бицепс'), false);
   assert.equal(muscles.some((muscle) => muscle.name === 'Ягодицы'), false);
+});
+
+test('legs category exposes abductors filter', () => {
+  const exercises = [
+    createContentExercise('quadruped_side_leg_raise', 'Отведение ноги в сторону на четвереньках', 'legs'),
+  ];
+
+  const muscles = deriveAvailableMuscles(exercises, { id: 'legs', name: 'Ноги', order: 4 });
+  const filtered = filterExercisesForList(
+    exercises,
+    '',
+    new Set(['Отводящие мышцы бедра']),
+    { id: 'legs', name: 'Ноги', order: 4 },
+  );
+
+  assert.ok(muscles.some((muscle) => muscle.name === 'Отводящие мышцы бедра'));
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].name, 'Отведение ноги в сторону на четвереньках');
+});
+
+test('chest category does not expose lats or triceps as muscle filters', () => {
+  const exercises = [
+    createExercise('chest-custom', 'Жим с вторичными мышцами', ['Грудь', 'Широчайшие', 'Трицепс'], 'chest'),
+  ];
+
+  const muscles = deriveAvailableMuscles(exercises, { id: 'chest', name: 'Грудь', order: 5 });
+
+  assert.deepEqual(muscles.map((muscle) => muscle.name), ['Грудные мышцы']);
+  assert.equal(muscles.some((muscle) => muscle.name === 'Широчайшие'), false);
+  assert.equal(muscles.some((muscle) => muscle.name === 'Трицепс'), false);
 });
 
 test('abs category exposes user-facing abs filters without core technical labels', () => {

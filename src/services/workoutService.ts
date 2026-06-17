@@ -2,11 +2,13 @@ import { supabase } from '../lib/supabaseClient';
 import {
   WorkoutDay,
   WorkoutEntry,
+  WorkoutEntryMuscleSnapshot,
   SelectedExercise,
   WorkoutHistoryDaySummary,
   WorkoutProgressObservation,
   WorkoutMetricType,
   WorkoutMetricUnit,
+  Exercise,
 } from '../types/workout';
 import { aiTrainingPlansService, TrainingDayContext } from './aiTrainingPlansService';
 import { goalService } from './goalService';
@@ -21,6 +23,10 @@ import {
   normalizeWorkoutMetricUnit,
   normalizeWorkoutMetricValue,
 } from '../utils/workoutEntryMetric';
+import { getExerciseContentForExercise } from '../utils/exerciseContentLookup';
+import { getMuscleLabel } from '../data/muscles/muscleLabels';
+import { normalizeMuscleKeys, type MuscleKey } from '../data/muscles/types';
+import { resolveWorkoutMuscleKeys } from '../utils/workoutMuscleKeyResolver';
 
 type WorkoutHistoryAggregateRow = {
   workout_day_id: string;
@@ -46,6 +52,7 @@ type WorkoutProgressObservationRow = {
   workout_day_id?: string | null;
   created_at?: string | null;
   exercise_id?: string | null;
+  exercise_name_snapshot?: string | null;
   sets?: number | string | null;
   reps?: number | string | null;
   weight?: number | string | null;
@@ -67,6 +74,13 @@ type WorkoutEntryWriteRow = {
   display_unit: string | null;
   display_amount: number;
   idempotency_key: string;
+  exercise_name_snapshot?: string | null;
+  exercise_category_id_snapshot?: string | null;
+  exercise_category_name_snapshot?: string | null;
+  canonical_exercise_id_snapshot?: string | null;
+  primary_muscles_snapshot?: string[];
+  secondary_muscles_snapshot?: string[];
+  muscles_snapshot?: WorkoutEntryMuscleSnapshot[];
 };
 
 type PersistedWorkoutEntryResult = {
@@ -121,6 +135,13 @@ export function getWorkoutProgressEntryDetailsSelectClause(metricSchemaAvailable
         id,
         workout_day_id,
         exercise_id,
+        exercise_name_snapshot,
+        exercise_category_id_snapshot,
+        exercise_category_name_snapshot,
+        canonical_exercise_id_snapshot,
+        primary_muscles_snapshot,
+        secondary_muscles_snapshot,
+        muscles_snapshot,
         ${metricColumns}
         sets,
         reps,
@@ -128,7 +149,7 @@ export function getWorkoutProgressEntryDetailsSelectClause(metricSchemaAvailable
         idempotency_key,
         created_at,
         updated_at,
-        exercise:exercises(id,name),
+        exercise:exercises(id,name,category_id),
         workout_day:workout_days(id,date)
       `;
 }
@@ -156,6 +177,94 @@ export function stripMetricTypeFromLegacyWorkoutUpdatePatch(patch: WorkoutEntryU
     weight: fallbackValue,
     display_amount: fallbackValue,
     display_unit: 'кг',
+  };
+}
+
+type WorkoutEntrySnapshotWriteFields = Pick<
+  WorkoutEntryWriteRow,
+  | 'exercise_name_snapshot'
+  | 'exercise_category_id_snapshot'
+  | 'exercise_category_name_snapshot'
+  | 'canonical_exercise_id_snapshot'
+  | 'primary_muscles_snapshot'
+  | 'secondary_muscles_snapshot'
+  | 'muscles_snapshot'
+>;
+
+function buildMuscleSnapshotRows(
+  primaryMuscles: readonly MuscleKey[],
+  secondaryMuscles: readonly MuscleKey[],
+  customSource = false,
+): WorkoutEntryMuscleSnapshot[] {
+  const rows: WorkoutEntryMuscleSnapshot[] = [];
+
+  primaryMuscles.forEach((key) => {
+    rows.push({
+      key,
+      label: getMuscleLabel(key),
+      source: customSource ? 'custom' : 'primary',
+    });
+  });
+
+  secondaryMuscles.forEach((key) => {
+    rows.push({
+      key,
+      label: getMuscleLabel(key),
+      source: 'secondary',
+    });
+  });
+
+  return rows;
+}
+
+function getExerciseLinkedMuscleCandidates(exercise?: Exercise | null): string[] {
+  return (exercise?.muscles ?? []).flatMap((muscle) => [
+    muscle.canonical_muscle_id ?? '',
+    muscle.id ?? '',
+    muscle.name ?? '',
+  ]);
+}
+
+function toUuidSnapshot(value?: string | null): string | null {
+  const trimmed = String(value ?? '').trim();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(trimmed)
+    ? trimmed
+    : null;
+}
+
+export function buildWorkoutEntrySnapshotFields(exercise: Exercise): WorkoutEntrySnapshotWriteFields {
+  const content = getExerciseContentForExercise({
+    id: exercise.id,
+    exercise_id: exercise.canonical_exercise_id ?? null,
+    canonical_exercise_id: exercise.canonical_exercise_id ?? null,
+    normalized_name: exercise.normalized_name ?? null,
+    name: exercise.name,
+    category_id: exercise.category_id,
+    category: exercise.category,
+    exercise,
+  });
+
+  const primaryMuscles = content
+    ? normalizeMuscleKeys(content.primary_muscles)
+    : normalizeMuscleKeys(resolveWorkoutMuscleKeys(
+        exercise.primary_muscles && exercise.primary_muscles.length > 0
+          ? exercise.primary_muscles
+          : getExerciseLinkedMuscleCandidates(exercise),
+      ));
+  const primarySet = new Set(primaryMuscles);
+  const secondaryMuscles = content
+    ? normalizeMuscleKeys(content.secondary_muscles).filter((key) => !primarySet.has(key))
+    : normalizeMuscleKeys(resolveWorkoutMuscleKeys(exercise.secondary_muscles ?? []))
+        .filter((key) => !primarySet.has(key));
+
+  return {
+    exercise_name_snapshot: exercise.name || null,
+    exercise_category_id_snapshot: toUuidSnapshot(exercise.category_id),
+    exercise_category_name_snapshot: exercise.category?.name || null,
+    canonical_exercise_id_snapshot: toUuidSnapshot(exercise.canonical_exercise_id ?? exercise.id),
+    primary_muscles_snapshot: primaryMuscles,
+    secondary_muscles_snapshot: secondaryMuscles,
+    muscles_snapshot: buildMuscleSnapshotRows(primaryMuscles, secondaryMuscles, !content),
   };
 }
 
@@ -263,8 +372,8 @@ export function buildWorkoutProgressObservations(
 
   rows.forEach((row) => {
     const exerciseId = String(row.exercise?.id ?? row.exercise_id ?? '').trim();
-    const exerciseName = String(row.exercise?.name ?? 'Unknown').trim() || 'Unknown';
-    const canonicalExerciseId = String(row.exercise?.canonical_exercise_id ?? '').trim();
+    const exerciseName = String(row.exercise_name_snapshot ?? row.exercise?.name ?? 'Unknown').trim() || 'Unknown';
+    const canonicalExerciseId = '';
     const entryId = String(row.id ?? '').trim();
     const workoutDayId = typeof row.workout_day_id === 'string' ? row.workout_day_id : '';
     const date = dayDateMap.get(workoutDayId) ?? '';
@@ -549,11 +658,49 @@ class WorkoutService {
     const metricType = normalizeWorkoutMetricType(entry.metric_type);
     const metricValue = normalizeWorkoutMetricValue(metricType, Number(entry.weight) || 0);
     const metricUnit = normalizeWorkoutMetricUnit(metricType, entry.display_unit ?? entry.base_unit ?? null) ?? undefined;
+    const exerciseNameSnapshot = typeof entry.exercise_name_snapshot === 'string' && entry.exercise_name_snapshot.trim()
+      ? entry.exercise_name_snapshot.trim()
+      : null;
+    const exerciseCategoryIdSnapshot = typeof entry.exercise_category_id_snapshot === 'string' && entry.exercise_category_id_snapshot.trim()
+      ? entry.exercise_category_id_snapshot.trim()
+      : null;
+    const exerciseCategoryNameSnapshot = typeof entry.exercise_category_name_snapshot === 'string' && entry.exercise_category_name_snapshot.trim()
+      ? entry.exercise_category_name_snapshot.trim()
+      : null;
+    const canonicalExerciseIdSnapshot = typeof entry.canonical_exercise_id_snapshot === 'string' && entry.canonical_exercise_id_snapshot.trim()
+      ? entry.canonical_exercise_id_snapshot.trim()
+      : null;
+    const primaryMusclesSnapshot = Array.isArray(entry.primary_muscles_snapshot)
+      ? entry.primary_muscles_snapshot.filter((value: unknown): value is string => typeof value === 'string' && value.trim() !== '')
+      : [];
+    const secondaryMusclesSnapshot = Array.isArray(entry.secondary_muscles_snapshot)
+      ? entry.secondary_muscles_snapshot.filter((value: unknown): value is string => typeof value === 'string' && value.trim() !== '')
+      : [];
+    const musclesSnapshot = Array.isArray(entry.muscles_snapshot)
+      ? entry.muscles_snapshot
+          .map((item: any) => ({
+            key: typeof item?.key === 'string' ? item.key : '',
+            label: typeof item?.label === 'string' ? item.label : '',
+            source: item?.source === 'secondary' ? 'secondary' : item?.source === 'custom' ? 'custom' : 'primary',
+          }))
+          .filter((item: WorkoutEntryMuscleSnapshot) => item.key !== '')
+      : [];
+    const liveExercise = Array.isArray(entry.exercise) ? entry.exercise[0] : entry.exercise;
+    const exerciseName = exerciseNameSnapshot ?? liveExercise?.name;
+    const exerciseCategoryId = exerciseCategoryIdSnapshot ?? liveExercise?.category_id ?? '';
+    const exerciseCategoryName = exerciseCategoryNameSnapshot ?? liveExercise?.category?.name;
     return {
       id: entry.id,
       workout_day_id: entry.workout_day_id,
       exercise_id: entry.exercise_id,
-      canonical_exercise_id: entry.exercise?.canonical_exercise_id ?? entry.exercise_id ?? null,
+      canonical_exercise_id: canonicalExerciseIdSnapshot ?? liveExercise?.canonical_exercise_id ?? entry.exercise_id ?? null,
+      exercise_name_snapshot: exerciseNameSnapshot,
+      exercise_category_id_snapshot: exerciseCategoryIdSnapshot,
+      exercise_category_name_snapshot: exerciseCategoryNameSnapshot,
+      canonical_exercise_id_snapshot: canonicalExerciseIdSnapshot,
+      primary_muscles_snapshot: primaryMusclesSnapshot,
+      secondary_muscles_snapshot: secondaryMusclesSnapshot,
+      muscles_snapshot: musclesSnapshot,
       metricType,
       metricUnit,
       sets: Number(entry.sets) || 0,
@@ -565,10 +712,20 @@ class WorkoutService {
       idempotencyKey: entry.idempotency_key ?? undefined,
       created_at: entry.created_at,
       updated_at: entry.updated_at,
-      exercise: entry.exercise
+      exercise: liveExercise || exerciseName
         ? {
-            ...entry.exercise,
-            muscles: entry.exercise.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
+            ...(liveExercise ?? {}),
+            id: liveExercise?.id ?? entry.exercise_id,
+            name: exerciseName ?? 'Неизвестное упражнение',
+            category_id: exerciseCategoryId,
+            is_custom: liveExercise?.is_custom ?? false,
+            canonical_exercise_id: canonicalExerciseIdSnapshot ?? liveExercise?.canonical_exercise_id ?? null,
+            primary_muscles: primaryMusclesSnapshot.length > 0 ? primaryMusclesSnapshot : liveExercise?.primary_muscles,
+            secondary_muscles: secondaryMusclesSnapshot.length > 0 ? secondaryMusclesSnapshot : liveExercise?.secondary_muscles,
+            category: liveExercise?.category ?? (exerciseCategoryName
+              ? { id: exerciseCategoryId, name: exerciseCategoryName, order: 0 }
+              : undefined),
+            muscles: liveExercise?.exercise_muscles?.map((em: any) => em.muscle).filter(Boolean) || [],
           }
         : undefined,
       workout_day: entry.workout_day,
@@ -883,6 +1040,7 @@ class WorkoutService {
         workout_day_id,
         created_at,
         exercise_id,
+        exercise_name_snapshot,
         sets,
         reps,
         weight,
@@ -1053,11 +1211,19 @@ class WorkoutService {
         ? convertWeightToKg(displayAmount, 'кг')
         : metricValue;
       const existing = localExisting.find((entry) => entry.idempotencyKey === key);
+      const snapshot = buildWorkoutEntrySnapshotFields(ex.exercise);
       return {
         id: existing?.id || `local-${key}`,
         workout_day_id: existing?.workout_day_id || `local-${date}`,
         exercise_id: ex.exercise.id,
-        canonical_exercise_id: ex.exercise.canonical_exercise_id ?? ex.exercise.id,
+        canonical_exercise_id: snapshot.canonical_exercise_id_snapshot,
+        exercise_name_snapshot: snapshot.exercise_name_snapshot,
+        exercise_category_id_snapshot: snapshot.exercise_category_id_snapshot,
+        exercise_category_name_snapshot: snapshot.exercise_category_name_snapshot,
+        canonical_exercise_id_snapshot: snapshot.canonical_exercise_id_snapshot,
+        primary_muscles_snapshot: snapshot.primary_muscles_snapshot,
+        secondary_muscles_snapshot: snapshot.secondary_muscles_snapshot,
+        muscles_snapshot: snapshot.muscles_snapshot,
         metricType,
         metricUnit: displayUnit,
         sets: ex.sets,
@@ -1104,6 +1270,7 @@ class WorkoutService {
       const metricType = normalizeWorkoutMetricType(ex.metricType);
       const metricValue = normalizeWorkoutMetricValue(metricType, ex.weight);
       const metricUnit = normalizeWorkoutMetricUnit(metricType, ex.metricUnit) ?? null;
+      const snapshot = buildWorkoutEntrySnapshotFields(ex.exercise);
       return {
         workout_day_id: workoutDay.id,
         exercise_id: ex.exercise.id,
@@ -1115,6 +1282,7 @@ class WorkoutService {
         display_unit: metricUnit,
         display_amount: metricValue,
         idempotency_key: this.buildIdempotencyKey(date, ex.exercise.id),
+        ...snapshot,
       };
     });
     const totalVolume = entries.reduce((sum, entry) => sum + calculateVolume(entry.sets, entry.reps, entry.weight), 0);
@@ -1230,6 +1398,14 @@ class WorkoutService {
       const metricType = normalizeWorkoutMetricType(entry.metricType);
       const displayAmount = normalizeWorkoutMetricValue(metricType, entry.displayAmount ?? entry.weight);
       const displayUnit = normalizeWorkoutMetricUnit(metricType, entry.metricUnit ?? entry.displayUnit ?? null) ?? null;
+      const fallbackSnapshot = (
+        (entry.primary_muscles_snapshot?.length ?? 0) > 0 ||
+        (entry.secondary_muscles_snapshot?.length ?? 0) > 0 ||
+        (entry.muscles_snapshot?.length ?? 0) > 0 ||
+        !entry.exercise
+      )
+        ? null
+        : buildWorkoutEntrySnapshotFields(entry.exercise);
       return {
         workout_day_id: workoutDay.id,
         exercise_id: entry.exercise_id,
@@ -1241,6 +1417,13 @@ class WorkoutService {
         display_unit: displayUnit,
         display_amount: displayAmount,
         idempotency_key: this.buildRepeatIdempotencyKey(targetDate, entry.id, entry.exercise_id, operationId),
+        exercise_name_snapshot: entry.exercise_name_snapshot ?? fallbackSnapshot?.exercise_name_snapshot ?? entry.exercise?.name ?? null,
+        exercise_category_id_snapshot: entry.exercise_category_id_snapshot ?? fallbackSnapshot?.exercise_category_id_snapshot ?? toUuidSnapshot(entry.exercise?.category_id),
+        exercise_category_name_snapshot: entry.exercise_category_name_snapshot ?? fallbackSnapshot?.exercise_category_name_snapshot ?? entry.exercise?.category?.name ?? null,
+        canonical_exercise_id_snapshot: entry.canonical_exercise_id_snapshot ?? fallbackSnapshot?.canonical_exercise_id_snapshot ?? toUuidSnapshot(entry.canonical_exercise_id ?? entry.exercise?.canonical_exercise_id),
+        primary_muscles_snapshot: entry.primary_muscles_snapshot ?? fallbackSnapshot?.primary_muscles_snapshot ?? [],
+        secondary_muscles_snapshot: entry.secondary_muscles_snapshot ?? fallbackSnapshot?.secondary_muscles_snapshot ?? [],
+        muscles_snapshot: entry.muscles_snapshot ?? fallbackSnapshot?.muscles_snapshot ?? [],
       };
     });
 
@@ -1504,6 +1687,7 @@ class WorkoutService {
         sets,
         reps,
         weight,
+        exercise_name_snapshot,
         exercise:exercises(id,name),
         workout_day:workout_days(date)
       `)
@@ -1529,7 +1713,7 @@ class WorkoutService {
     >();
 
     (data || []).forEach((row: any) => {
-      const exerciseName = row.exercise?.name || 'Unknown';
+      const exerciseName = row.exercise_name_snapshot || row.exercise?.name || 'Unknown';
       const exerciseId = row.exercise?.id || exerciseName;
       const date = row.workout_day?.date || '';
       const sets = Number(row.sets) || 0;

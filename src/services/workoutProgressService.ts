@@ -1,8 +1,10 @@
 import { exerciseContentMap } from '../data/exerciseContent';
 import { getMuscleLabel } from '../data/muscles/muscleLabels';
+import { muscleMapRegions } from '../data/muscles/muscleMapRegions';
 import { isMuscleKey, type MuscleKey } from '../data/muscles/types';
 import type { WorkoutEntry } from '../types/workout';
 import { getExerciseContentForExercise } from '../utils/exerciseContentLookup';
+import { resolveWorkoutMuscleKeys } from '../utils/workoutMuscleKeyResolver';
 import { calculateVolume } from '../utils/workoutMetrics';
 import { workoutService } from './workoutService';
 
@@ -73,10 +75,6 @@ const COVERAGE_KEY_ALIASES: Partial<Record<MuscleKey, MuscleKey>> = {
   core_muscles: 'abs',
   traps: 'trapezoid',
   trapezius: 'trapezoid',
-  traps_upper: 'trapezoid',
-  upper_traps: 'trapezoid',
-  traps_middle: 'trapezoid',
-  middle_traps: 'trapezoid',
   lower_traps: 'trapezoid',
 };
 
@@ -97,6 +95,71 @@ function isCardioExerciseContent(content: { category?: string | null }): boolean
   return content.category === 'cardio';
 }
 
+function isCardioWorkoutEntry(entry: WorkoutEntry): boolean {
+  return entry.exercise?.category_id === 'cardio';
+}
+
+function getExerciseLinkedMuscleCandidates(exercise: WorkoutEntry['exercise']): string[] {
+  return (exercise?.muscles ?? []).flatMap((muscle) => [
+    muscle.canonical_muscle_id ?? '',
+    muscle.id ?? '',
+    muscle.name ?? '',
+  ]);
+}
+
+function getFallbackWorkoutMuscles(entry: WorkoutEntry): { primaryMuscles: MuscleKey[]; secondaryMuscles: MuscleKey[] } {
+  if (isCardioWorkoutEntry(entry)) {
+    return { primaryMuscles: [], secondaryMuscles: [] };
+  }
+
+  const exercisePrimaryMuscles = entry.exercise?.primary_muscles?.filter((value): value is string => Boolean(value?.trim())) ?? [];
+  const exerciseSecondaryMuscles = entry.exercise?.secondary_muscles?.filter((value): value is string => Boolean(value?.trim())) ?? [];
+  const linkedMuscles = getExerciseLinkedMuscleCandidates(entry.exercise);
+
+  const primaryMuscles = resolveWorkoutMuscleKeys(exercisePrimaryMuscles.length > 0 ? exercisePrimaryMuscles : linkedMuscles)
+    .map(canonicalizeCoverageMuscleKey)
+    .filter((key): key is MuscleKey => Boolean(key));
+  const primarySet = new Set(primaryMuscles);
+  const secondaryMuscles = resolveWorkoutMuscleKeys(exerciseSecondaryMuscles)
+    .map(canonicalizeCoverageMuscleKey)
+    .filter((key): key is MuscleKey => key !== null && !primarySet.has(key));
+
+  return { primaryMuscles, secondaryMuscles };
+}
+
+function getSnapshotWorkoutMuscles(entry: WorkoutEntry): { primaryMuscles: MuscleKey[]; secondaryMuscles: MuscleKey[] } | null {
+  const primaryMuscles = (entry.primary_muscles_snapshot ?? [])
+    .map(canonicalizeCoverageMuscleKey)
+    .filter((key): key is MuscleKey => Boolean(key));
+  const primarySet = new Set(primaryMuscles);
+  const secondaryMuscles = (entry.secondary_muscles_snapshot ?? [])
+    .map(canonicalizeCoverageMuscleKey)
+    .filter((key): key is MuscleKey => key !== null && !primarySet.has(key));
+
+  if (primaryMuscles.length > 0 || secondaryMuscles.length > 0) {
+    return { primaryMuscles, secondaryMuscles };
+  }
+
+  const jsonMuscles = entry.muscles_snapshot ?? [];
+  if (jsonMuscles.length === 0) {
+    return null;
+  }
+
+  const jsonPrimary = jsonMuscles
+    .filter((item) => item.source !== 'secondary')
+    .map((item) => canonicalizeCoverageMuscleKey(item.key))
+    .filter((key): key is MuscleKey => Boolean(key));
+  const jsonPrimarySet = new Set(jsonPrimary);
+  const jsonSecondary = jsonMuscles
+    .filter((item) => item.source === 'secondary')
+    .map((item) => canonicalizeCoverageMuscleKey(item.key))
+    .filter((key): key is MuscleKey => key !== null && !jsonPrimarySet.has(key));
+
+  return jsonPrimary.length > 0 || jsonSecondary.length > 0
+    ? { primaryMuscles: jsonPrimary, secondaryMuscles: jsonSecondary }
+    : null;
+}
+
 function buildCoverageMuscleKeys(): MuscleKey[] {
   const keys = new Set<MuscleKey>();
 
@@ -111,6 +174,17 @@ function buildCoverageMuscleKeys(): MuscleKey[] {
         keys.add(canonical);
       }
     });
+  });
+
+  Object.entries(muscleMapRegions).forEach(([rawKey, regions]) => {
+    if (!regions.front?.length && !regions.back?.length) {
+      return;
+    }
+
+    const canonical = canonicalizeCoverageMuscleKey(rawKey);
+    if (canonical) {
+      keys.add(canonical);
+    }
   });
 
   return Array.from(keys).sort((a, b) => getMuscleLabel(a).localeCompare(getMuscleLabel(b), 'ru'));
@@ -164,6 +238,17 @@ function incrementMuscle(
   accumulator.set(muscleKey, current);
 }
 
+function incrementMuscleKeys(
+  accumulator: Map<MuscleKey, MuscleAccumulator>,
+  muscleKeys: MuscleKey[],
+  role: 'primary' | 'secondary',
+  exposureMultiplier: number,
+) {
+  muscleKeys.forEach((muscleKey) => {
+    incrementMuscle(accumulator, muscleKey, role, exposureMultiplier);
+  });
+}
+
 function buildCoverageStatus(score: number, period: WorkoutProgressPeriod): WorkoutProgressStatus {
   if (score <= 0) {
     return 'missing';
@@ -203,6 +288,14 @@ export function buildWorkoutProgressSummaryFromEntries(
     totalSets += getEntrySetCount(entry);
     totalVolume += getEntryVolume(entry);
 
+    const exposureMultiplier = getEntryExposureMultiplier(entry);
+    const snapshotMuscles = getSnapshotWorkoutMuscles(entry);
+    if (snapshotMuscles) {
+      incrementMuscleKeys(accumulator, snapshotMuscles.primaryMuscles, 'primary', exposureMultiplier);
+      incrementMuscleKeys(accumulator, snapshotMuscles.secondaryMuscles, 'secondary', exposureMultiplier);
+      return;
+    }
+
     const content = getExerciseContentForExercise({
       exercise_id: entry.exercise_id,
       canonical_exercise_id: entry.canonical_exercise_id,
@@ -211,29 +304,27 @@ export function buildWorkoutProgressSummaryFromEntries(
       exercise: entry.exercise,
     });
 
-    if (!content) {
+    if (content) {
+      if (isCardioExerciseContent(content)) {
+        return;
+      }
+
+      const primaryMuscles = content.primary_muscles
+        .map(canonicalizeCoverageMuscleKey)
+        .filter((key): key is MuscleKey => Boolean(key));
+      const primarySet = new Set(primaryMuscles);
+      const secondaryMuscles = content.secondary_muscles
+        .map(canonicalizeCoverageMuscleKey)
+        .filter((key): key is MuscleKey => key !== null && !primarySet.has(key));
+
+      incrementMuscleKeys(accumulator, primaryMuscles, 'primary', exposureMultiplier);
+      incrementMuscleKeys(accumulator, secondaryMuscles, 'secondary', exposureMultiplier);
       return;
     }
 
-    if (isCardioExerciseContent(content)) {
-      return;
-    }
-
-    const exposureMultiplier = getEntryExposureMultiplier(entry);
-
-    content.primary_muscles.forEach((rawKey) => {
-      const muscleKey = canonicalizeCoverageMuscleKey(rawKey);
-      if (muscleKey) {
-        incrementMuscle(accumulator, muscleKey, 'primary', exposureMultiplier);
-      }
-    });
-
-    content.secondary_muscles.forEach((rawKey) => {
-      const muscleKey = canonicalizeCoverageMuscleKey(rawKey);
-      if (muscleKey) {
-        incrementMuscle(accumulator, muscleKey, 'secondary', exposureMultiplier);
-      }
-    });
+    const fallbackMuscles = getFallbackWorkoutMuscles(entry);
+    incrementMuscleKeys(accumulator, fallbackMuscles.primaryMuscles, 'primary', exposureMultiplier);
+    incrementMuscleKeys(accumulator, fallbackMuscles.secondaryMuscles, 'secondary', exposureMultiplier);
   });
 
   const muscleCoverage = DEFAULT_WORKOUT_COVERAGE_KEYS.map((muscleKey) => {

@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { ExerciseCategory, Muscle, CreateExerciseData, Exercise } from '../types/workout';
 import { exerciseService } from '../services/exerciseService';
+import { muscleLabels } from '../data/muscles/muscleLabels';
+import { normalizeMuscleName } from '../utils/muscleNormalizer';
 import type { CreateExerciseModalCloseReason } from '../utils/workoutAddFlowNavigation';
+
+export const FULL_BODY_CATEGORY_NAME = 'Все тело';
 
 interface CreateExerciseModalProps {
   isOpen: boolean;
@@ -11,6 +15,157 @@ interface CreateExerciseModalProps {
   userId: string;
   mode?: 'create' | 'edit';
   initialExercise?: Exercise | null;
+}
+
+function normalizeTargetMuscleOptionLabel(label: string): string {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/[—–−]/g, '-')
+    .replace(/\s*-\s*/g, '-')
+    .replace(/\s+/g, ' ');
+}
+
+const HIDDEN_TARGET_MUSCLE_OPTION_LABELS = [
+  'Брахиалис',
+  'Большая ягодичная',
+  'Грудь',
+  'Грудь- верх',
+  'Грудь- низ',
+  'Грудь- середина',
+  'Грудь — верх',
+  'Грудь — низ',
+  'Грудь — середина',
+  'Грудь (верх)',
+  'Грудь (низ)',
+  'Грудь (середина)',
+  'Верхний пучок',
+  'Средний пучок',
+  'Нижний пучок',
+  'Икроножные',
+  'Кор',
+  'Косая',
+  'Косые',
+  'Косые мышцы',
+  'Малая ягодичная',
+  'Нижний кор',
+  'Поперечная',
+  'Поперечные',
+  'Приводящие мышцы',
+  'Прямая',
+  'Прямая - верх',
+  'Прямая - низ',
+  'Прямая — верх',
+  'Прямая — низ',
+  'Прямая (верхняя часть)',
+  'Прямая (нижняя часть)',
+  'Прямая мышца - верх',
+  'Прямая мышца - низ',
+  'Прямая мышца живота',
+  'Прямая мышца живота - верх',
+  'Прямая мышца живота - низ',
+  'Прямая мышца живота-верх',
+  'Прямая мышца живота-низ',
+  'Средняя ягодичная',
+  'Ягодицы-большая',
+  'Ягодицы-малая',
+  'Ягодицы-средняя',
+  'Ягодичная',
+  'Ягодичная - большая',
+  'Ягодичная - средняя',
+  'Ягодичная - малая',
+];
+
+const TARGET_MUSCLE_OPTION_LABEL_OVERRIDES = [
+  ['Грудь', muscleLabels.chest],
+  ['chest', muscleLabels.chest],
+  [muscleLabels.chest, muscleLabels.chest],
+  ['Косые', muscleLabels.obliques],
+  ['Косая', muscleLabels.obliques],
+  ['Косые мышцы', muscleLabels.obliques],
+  [muscleLabels.obliques, muscleLabels.obliques],
+  ['Отводящие мышцы', muscleLabels.abductors],
+  ['abductors', muscleLabels.abductors],
+  ['hip_abductors', muscleLabels.abductors],
+  [muscleLabels.abductors, muscleLabels.abductors],
+  ['Большая ягодичная', muscleLabels.glutes],
+  ['Малая ягодичная', muscleLabels.glutes],
+  ['Средняя ягодичная', muscleLabels.glutes],
+  ['Ягодицы', muscleLabels.glutes],
+  ['Ягодицы-большая', muscleLabels.glutes],
+  ['Ягодицы-малая', muscleLabels.glutes],
+  ['Ягодицы-средняя', muscleLabels.glutes],
+  ['Ягодицы - большая', muscleLabels.glutes],
+  ['Ягодицы - средняя', muscleLabels.glutes],
+  ['Ягодицы - малая', muscleLabels.glutes],
+  ['Ягодицы — большая', muscleLabels.glutes],
+  ['Ягодицы — средняя', muscleLabels.glutes],
+  ['Ягодицы — малая', muscleLabels.glutes],
+  ['Ягодичная', muscleLabels.glutes],
+  ['Ягодичная - большая', muscleLabels.glutes],
+  ['Ягодичная - средняя', muscleLabels.glutes],
+  ['Ягодичная - малая', muscleLabels.glutes],
+  ['glutes', muscleLabels.glutes],
+] as const;
+
+const hiddenTargetMuscleOptionLabels = new Set(
+  HIDDEN_TARGET_MUSCLE_OPTION_LABELS.map(normalizeTargetMuscleOptionLabel),
+);
+
+const targetMuscleOptionLabelOverrides = new Map(
+  TARGET_MUSCLE_OPTION_LABEL_OVERRIDES.map(([from, to]) => [
+    normalizeTargetMuscleOptionLabel(from),
+    to,
+  ]),
+);
+
+function getTargetMuscleOptionCandidates(muscle: Muscle, rawName: string): string[] {
+  return [
+    rawName,
+    normalizeMuscleName(rawName),
+    muscle.canonical_muscle_id ?? '',
+    muscle.id ?? '',
+  ].filter((value): value is string => Boolean(value.trim()));
+}
+
+function getTargetMuscleOptionDisplayName(muscle: Muscle, rawName: string): string | null {
+  const candidates = getTargetMuscleOptionCandidates(muscle, rawName);
+
+  for (const candidate of candidates) {
+    const override = targetMuscleOptionLabelOverrides.get(normalizeTargetMuscleOptionLabel(candidate));
+    if (override) {
+      return override;
+    }
+  }
+
+  if (candidates.some((candidate) => hiddenTargetMuscleOptionLabels.has(normalizeTargetMuscleOptionLabel(candidate)))) {
+    return null;
+  }
+
+  return rawName;
+}
+
+export function buildTargetMuscleOptions(muscles: Muscle[]): Muscle[] {
+  const optionsByName = new Map<string, Muscle>();
+
+  muscles.forEach((muscle) => {
+    const rawName = muscle.name?.trim();
+    if (!rawName) return;
+
+    const displayName = getTargetMuscleOptionDisplayName(muscle, rawName);
+    if (!displayName) return;
+
+    const existingOption = optionsByName.get(displayName);
+    if (!existingOption || rawName === displayName) {
+      optionsByName.set(displayName, { ...muscle, name: displayName });
+    }
+  });
+
+  return Array.from(optionsByName.values());
+}
+
+export function buildCreateExerciseCategoryOptions(categories: ExerciseCategory[]): ExerciseCategory[] {
+  return categories;
 }
 
 const CreateExerciseModal = ({
@@ -114,6 +269,9 @@ const CreateExerciseModal = ({
 
   if (!isOpen) return null;
 
+  const targetMuscleOptions = buildTargetMuscleOptions(muscles);
+  const categoryOptions = buildCreateExerciseCategoryOptions(categories);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-2 min-[376px]:p-4">
       <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-[calc(100vw-16px)] min-[376px]:max-w-md max-h-[90vh] overflow-y-auto">
@@ -166,7 +324,7 @@ const CreateExerciseModal = ({
               required
             >
               <option value="">Выберите категорию</option>
-              {categories.map(cat => (
+              {categoryOptions.map(cat => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
                 </option>
@@ -194,7 +352,7 @@ const CreateExerciseModal = ({
               Целевые мышцы
             </label>
             <div className="max-h-48 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-xl p-2 space-y-2">
-              {muscles.map(muscle => (
+              {targetMuscleOptions.map(muscle => (
                 <label
                   key={muscle.id}
                   className="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg cursor-pointer"

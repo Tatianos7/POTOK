@@ -13,7 +13,6 @@ import type {
 } from '../types/explainability';
 import type {
   CoachRecommendations,
-  HabitsStats,
   MeasurementsTable,
   NutritionStats,
   ProgressPeriod,
@@ -25,7 +24,6 @@ import { programUxRuntimeService } from './programUxRuntimeService';
 import { programDeliveryService, ProgramType } from './programDeliveryService';
 import { progressAggregatorService, ProgressSnapshot, TrendSummary } from './progressAggregatorService';
 import { progressDashboardService } from './progressDashboardService';
-import { habitsService, HabitWithStatus } from './habitsService';
 import { entitlementService } from './entitlementService';
 import { goalService } from './goalService';
 import { profileService, UserProfile } from './profileService';
@@ -66,7 +64,6 @@ export interface RuntimeContext {
   measurements?: Measurement[];
   meals?: DailyMeals | null;
   workouts?: WorkoutEntry[] | null;
-  habits?: HabitWithStatus[];
 }
 
 export interface TodayState {
@@ -95,7 +92,6 @@ export interface ProgressState {
   nutrition?: ProgressSectionResult<NutritionStats>;
   training?: ProgressSectionResult<TrainingStats>;
   measurements?: ProgressSectionResult<MeasurementsTable>;
-  habits?: ProgressSectionResult<HabitsStats>;
   coach?: ProgressSectionResult<CoachRecommendations>;
   snapshot?: ProgressSnapshot | null;
   trends?: TrendSummary | null;
@@ -107,7 +103,7 @@ export interface ProgressState {
 export interface HabitsState {
   status: RuntimeStatus;
   message?: string;
-  habits?: HabitWithStatus[];
+  habits?: never[];
   habitStats?: Record<string, { streak: number; adherence: number }>;
   context?: RuntimeContext;
   explainability?: HabitsExplainabilityDTO;
@@ -233,15 +229,14 @@ class UiRuntimeAdapter {
     }
   }
   private async buildContext(userId: string, date: string): Promise<RuntimeContext> {
-    const [goal, measurements, meals, workouts, habits] = await Promise.all([
+    const [goal, measurements, meals, workouts] = await Promise.all([
       goalService.getUserGoal(userId).catch(() => null),
       measurementsService.getCurrentMeasurements(userId).catch(() => [] as Measurement[]),
       mealService.getMealsForDate(userId, date).catch(() => null),
       workoutService.getWorkoutEntries(userId, date).catch(() => [] as WorkoutEntry[]),
-      habitsService.getHabitsForDate({ userId, date }).catch(() => [] as HabitWithStatus[]),
     ]);
 
-    return { goal, measurements, meals, workouts, habits };
+    return { goal, measurements, meals, workouts };
   }
 
   private toRuntimeStatus(status?: string): RuntimeStatus {
@@ -521,14 +516,13 @@ class UiRuntimeAdapter {
     try {
       const results = await this.runWithTimeout(
         'Progress',
-        ['measurement_history', 'food_diary_entries', 'workout_entries', 'habit_logs', 'user_goals'],
+        ['measurement_history', 'food_diary_entries', 'workout_entries', 'user_goals'],
         () =>
           Promise.allSettled([
             progressDashboardService.getSummary(period, userId),
             progressDashboardService.getNutritionStats(period, userId),
             progressDashboardService.getTrainingStats(period, userId),
             progressDashboardService.getMeasurementsTable(period, userId),
-            progressDashboardService.getHabitsStats(period, userId),
             progressDashboardService.getCoachRecommendations(period, userId),
             progressAggregatorService.explain(),
           ])
@@ -539,17 +533,15 @@ class UiRuntimeAdapter {
       const training = results[2].status === 'fulfilled' ? results[2].value : toErrorSection<TrainingStats>('Тренировки недоступны.');
       const measurements =
         results[3].status === 'fulfilled' ? results[3].value : toErrorSection<MeasurementsTable>('Замеры недоступны.');
-      const habits = results[4].status === 'fulfilled' ? results[4].value : toErrorSection<HabitsStats>('Привычки недоступны.');
-      const coach = results[5].status === 'fulfilled' ? results[5].value : toErrorSection<CoachRecommendations>('Рекомендации недоступны.');
-      const explainability = results[6].status === 'fulfilled' ? results[6].value : undefined;
+      const coach = results[4].status === 'fulfilled' ? results[4].value : toErrorSection<CoachRecommendations>('Рекомендации недоступны.');
+      const explainability = results[5].status === 'fulfilled' ? results[5].value : undefined;
 
       const hasAny =
         Boolean(summary.data) ||
         Boolean(nutrition.data) ||
         Boolean(training.data) ||
-        Boolean(measurements.data) ||
-        Boolean(habits.data);
-      const hasError = [summary, nutrition, training, measurements, habits].some((section) => section.status === 'error');
+        Boolean(measurements.data);
+      const hasError = [summary, nutrition, training, measurements].some((section) => section.status === 'error');
 
       const trust = classifyTrustDecision(undefined, {
         confidence: explainability?.confidence ?? 0.4,
@@ -563,7 +555,6 @@ class UiRuntimeAdapter {
         nutrition,
         training,
         measurements,
-        habits,
         coach,
         context,
         explainability,
@@ -583,49 +574,13 @@ class UiRuntimeAdapter {
   async getHabitsState(userId: string, date: string): Promise<HabitsState> {
     const context = await this.buildContext(userId, date);
 
-    try {
-      const [habits, explainability] = await this.runWithTimeout(
-        'Habits',
-        ['habits', 'habit_logs'],
-        () =>
-          Promise.all([
-            habitsService.getHabitsForDate({ userId, date }),
-            habitsService.explain(),
-          ])
-      );
-      const fromDate = new Date(new Date(date).getTime() - 6 * 86400000).toISOString().split('T')[0];
-      const statsEntries = await Promise.all(
-        habits.map(async (habit) => ({
-          habitId: habit.id,
-          stats: await habitsService.getHabitStats({ userId, habitId: habit.id, fromDate, toDate: date }),
-        }))
-      );
-      const habitStats = statsEntries.reduce<Record<string, { streak: number; adherence: number }>>((acc, item) => {
-        acc[item.habitId] = item.stats;
-        return acc;
-      }, {});
-
-      const trust = classifyTrustDecision(undefined, {
-        confidence: explainability.confidence,
-        safetyFlags: explainability.safety_flags,
-      });
-
-      return {
-        status: 'active',
-        habits,
-        habitStats,
-        context,
-        explainability,
-        trust,
-      };
-    } catch (error) {
-      return {
-        status: 'error',
-        message: 'Не удалось загрузить привычки.',
-        context,
-        trust: classifyTrustDecision(error),
-      };
-    }
+    return {
+      status: 'empty',
+      habits: [],
+      habitStats: {},
+      context,
+      trust: classifyTrustDecision(undefined, { confidence: 1 }),
+    };
   }
 
   async getPaywallState(feature: 'adaptation' | 'explainability' | 'spatial'): Promise<PaywallState> {
@@ -721,7 +676,6 @@ class UiRuntimeAdapter {
       programUxRuntimeService.offlineSnapshot(),
       programDeliveryService.offlineSnapshot(),
       progressAggregatorService.offlineSnapshot(),
-      habitsService.offlineSnapshot(),
       entitlementService.offlineSnapshot(),
     ]);
   }
@@ -731,7 +685,6 @@ class UiRuntimeAdapter {
       programUxRuntimeService.revalidate(),
       programDeliveryService.revalidate(),
       progressAggregatorService.revalidate(),
-      habitsService.revalidate(),
       entitlementService.revalidate(),
     ]);
   }
@@ -741,7 +694,6 @@ class UiRuntimeAdapter {
       programUxRuntimeService.recover(),
       programDeliveryService.recover(),
       progressAggregatorService.recover(),
-      habitsService.recover(),
       entitlementService.recover(),
     ]);
   }

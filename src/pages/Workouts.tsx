@@ -6,7 +6,7 @@ import InlineCalendar from '../components/InlineCalendar';
 import ExerciseCategorySheet from '../components/ExerciseCategorySheet';
 import ExerciseListSheet from '../components/ExerciseListSheet';
 import SelectedExercisesEditor from '../components/SelectedExercisesEditor';
-import CreateExerciseModal from '../components/CreateExerciseModal';
+import CreateExerciseModal, { FULL_BODY_CATEGORY_NAME } from '../components/CreateExerciseModal';
 import EditWorkoutEntryModal from '../components/EditWorkoutEntryModal';
 import MealNoteModal from '../components/MealNoteModal';
 import WorkoutDayNoteBlock from '../components/WorkoutDayNoteBlock';
@@ -60,36 +60,55 @@ import {
   normalizeWorkoutMetricType,
 } from '../utils/workoutEntryMetric';
 import { getExerciseContentForExercise } from '../utils/exerciseContentLookup';
+import { resolveWorkoutMuscleKeys } from '../utils/workoutMuscleKeyResolver';
 import { normalizeMuscleKeys, type MuscleKey } from '../data/muscles/types';
 
 export function getWorkoutHeaderActionIds(): Array<'history' | 'note' | 'delete'> {
   return ['history', 'note', 'delete'];
 }
 
+export function filterWorkoutCatalogCategories(categories: ExerciseCategory[]): ExerciseCategory[] {
+  return categories.filter((category) => category.name !== FULL_BODY_CATEGORY_NAME);
+}
+
 export function getWorkoutEntryNoteComposerPlacement(): 'overlay' {
   return 'overlay';
+}
+
+function getExerciseLinkedMuscleCandidates(exercise: WorkoutEntry['exercise']): string[] {
+  return (exercise?.muscles ?? []).flatMap((muscle) => [
+    muscle.canonical_muscle_id ?? '',
+    muscle.id ?? '',
+    muscle.name ?? '',
+  ]);
 }
 
 export function buildCurrentWorkoutMuscleMapMuscles(
   entries: WorkoutEntry[],
 ): { primaryMuscles: MuscleKey[]; secondaryMuscles: MuscleKey[] } {
-  const primaryCandidates: string[] = [];
-  const secondaryCandidates: string[] = [];
+  const primaryCandidates: unknown[] = [];
+  const secondaryCandidates: unknown[] = [];
 
   entries.forEach((entry) => {
     const content = getExerciseContentForExercise(entry);
 
-    if (!content) {
+    if (content) {
+      primaryCandidates.push(...content.primary_muscles);
+      secondaryCandidates.push(...content.secondary_muscles);
       return;
     }
 
-    primaryCandidates.push(...content.primary_muscles);
-    secondaryCandidates.push(...content.secondary_muscles);
+    const exercisePrimaryMuscles = entry.exercise?.primary_muscles?.filter((value): value is string => Boolean(value?.trim())) ?? [];
+    const exerciseSecondaryMuscles = entry.exercise?.secondary_muscles?.filter((value): value is string => Boolean(value?.trim())) ?? [];
+    const linkedMuscles = getExerciseLinkedMuscleCandidates(entry.exercise);
+
+    primaryCandidates.push(...(exercisePrimaryMuscles.length > 0 ? exercisePrimaryMuscles : linkedMuscles));
+    secondaryCandidates.push(...exerciseSecondaryMuscles);
   });
 
-  const primaryMuscles = normalizeMuscleKeys(primaryCandidates).filter((key) => key !== 'cardio');
+  const primaryMuscles = normalizeMuscleKeys(resolveWorkoutMuscleKeys(primaryCandidates)).filter((key) => key !== 'cardio');
   const primarySet = new Set(primaryMuscles);
-  const secondaryMuscles = normalizeMuscleKeys(secondaryCandidates)
+  const secondaryMuscles = normalizeMuscleKeys(resolveWorkoutMuscleKeys(secondaryCandidates))
     .filter((key) => key !== 'cardio' && !primarySet.has(key));
 
   return { primaryMuscles, secondaryMuscles };
@@ -298,7 +317,7 @@ const Workouts = () => {
           console.log(`[Workouts] После инициализации найдено ${cats.length} категорий`);
         }
         
-        setCategories(cats);
+        setCategories(filterWorkoutCatalogCategories(cats));
       } catch (error) {
         console.error('[Workouts] Ошибка загрузки категорий:', error);
       }
@@ -812,6 +831,21 @@ const Workouts = () => {
     applyFlowLayer('create');
   };
 
+  const handleDeleteCustomExercise = async (exercise: Exercise) => {
+    if (!user?.id) return;
+    if (!exercise.is_custom || exercise.created_by_user_id !== user.id) {
+      throw new Error('Можно удалять только свои пользовательские упражнения');
+    }
+
+    await exerciseService.deleteCustomExercise(user.id, exercise.id);
+    const customExercises = await exerciseService.getCustomExercises(user.id);
+    setExercises(customExercises);
+    setSelectedExercises((current) => current.filter((selectedExercise) => selectedExercise.id !== exercise.id));
+    setEditorInitialExercises((current) =>
+      current.filter((selectedExercise) => selectedExercise.exercise.id !== exercise.id),
+    );
+  };
+
 
   const handleCategorySelect = async (category: ExerciseCategory) => {
     setSelectedCategory(category);
@@ -1252,7 +1286,7 @@ const Workouts = () => {
           onClose={handleCloseCreateExerciseModal}
           onExerciseSaved={async () => {
             const cats = await exerciseService.getCategories();
-            setCategories(cats);
+            setCategories(filterWorkoutCatalogCategories(cats));
 
             if (editingCustomExercise && selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id && user?.id) {
               const customExercises = await exerciseService.getCustomExercises(user.id);
@@ -1282,6 +1316,7 @@ const Workouts = () => {
         exercises={exercises}
         onExercisesSelect={handleExercisesSelect}
         onEditExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id ? handleEditCustomExercise : undefined}
+        onDeleteExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id ? handleDeleteCustomExercise : undefined}
       />
 
       {/* Selected Exercises Editor */}

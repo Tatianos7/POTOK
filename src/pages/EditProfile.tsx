@@ -5,7 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { X } from 'lucide-react';
 
 const EditProfile = () => {
-  const { user, updateProfile, deleteAccount } = useAuth();
+  const { user, updateProfile } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [form, setForm] = useState({
@@ -21,11 +21,7 @@ const EditProfile = () => {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
-  const [isReasonModalOpen, setIsReasonModalOpen] = useState(false);
-  const [isDeletedModalOpen, setIsDeletedModalOpen] = useState(false);
-  const [reasonError, setReasonError] = useState('');
-  const [selectedReason, setSelectedReason] = useState('');
+  const [deleteRequestNotice, setDeleteRequestNotice] = useState('');
   const birthInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -117,26 +113,13 @@ const EditProfile = () => {
     }
   };
 
-  const reasons = [
-    'Не нуждаюсь больше в приложении',
-    'Не удобное приложение',
-    'Не интересно',
-    'Дорогая подписка',
-  ];
-
-  const handleDeleteProfile = () => {
-    if (!user) return;
-    deleteAccount();
-    setIsDeletedModalOpen(true);
-  };
-
   const handleBack = () => navigate('/profile');
 
   const fieldClasses = 'input-field rounded-[13px] bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400';
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900" style={{ minWidth: '360px' }}>
-      <div className="max-w-[768px] mx-auto">
+    <div className="min-h-screen w-full overflow-x-hidden bg-white dark:bg-gray-900">
+      <div className="mx-auto w-full max-w-[768px]">
         <header className="px-4 py-4 flex items-center justify-between border-b border-gray-200">
           <div className="flex-1"></div>
           <h1 className="text-lg font-semibold text-gray-900 flex-1 text-center uppercase">
@@ -153,7 +136,7 @@ const EditProfile = () => {
           </div>
         </header>
 
-        <main className="px-4 py-6">
+        <main className="px-3 py-5 min-[376px]:px-4 min-[376px]:py-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -166,7 +149,7 @@ const EditProfile = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Имя</label>
                 <input
@@ -198,7 +181,7 @@ const EditProfile = () => {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Дата рождения</label>
                 <div className="relative">
@@ -275,7 +258,7 @@ const EditProfile = () => {
             <div className="pt-4 space-y-3">
               <button
                 type="submit"
-                className={`w-full max-w-full min-[768px]:button-limited px-6 py-3 rounded-[13px] font-semibold transition-colors disabled:opacity-60 ${
+                className={`w-full max-w-full min-[768px]:button-limited px-4 py-3 min-[376px]:px-6 rounded-[13px] font-semibold transition-colors disabled:opacity-60 ${
                   theme === 'dark'
                     ? 'bg-white text-black hover:bg-gray-100'
                     : 'bg-gray-900 text-white hover:bg-gray-800'
@@ -286,149 +269,26 @@ const EditProfile = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setIsDeleteConfirmOpen(true)}
-                className={`w-full max-w-full min-[768px]:button-limited px-6 py-3 rounded-[13px] font-semibold transition-colors ${
+                onClick={() => setDeleteRequestNotice('Удаление аккаунта сейчас выполняется через поддержку. Пожалуйста, напишите нам через раздел «Поддержка» в профиле.')}
+                className={`w-full max-w-full min-[768px]:button-limited px-4 py-3 min-[376px]:px-6 rounded-[13px] font-semibold transition-colors ${
                   theme === 'dark'
                     ? 'bg-transparent text-white border-2 border-gray-300 hover:bg-gray-800'
                     : 'bg-white border-2 border-gray-900 text-gray-900 hover:bg-gray-50'
                 }`}
               >
-                Удалить профиль
+                Запросить удаление аккаунта
               </button>
+              {deleteRequestNotice && (
+                <p className="rounded-xl bg-gray-100 px-4 py-3 text-sm leading-5 text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                  {deleteRequestNotice}
+                </p>
+              )}
             </div>
           </form>
         </main>
       </div>
-
-      {isDeleteConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
-                Удаление профиля
-              </h2>
-              <button
-                onClick={() => setIsDeleteConfirmOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                aria-label="Закрыть"
-              >
-                <X className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-            <div className="px-6 py-6 text-center space-y-6">
-              <p className="text-sm font-semibold text-gray-800">
-                Вы уверены что хотите удалить профиль?
-              </p>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsDeleteConfirmOpen(false)}
-                  className="flex-1 bg-black text-white py-3 rounded-[13px] font-semibold hover:bg-gray-800 transition-colors"
-                >
-                  НЕТ
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsDeleteConfirmOpen(false);
-                    setIsReasonModalOpen(true);
-                  }}
-                  className="flex-1 border border-gray-300 text-gray-900 py-3 rounded-[13px] font-semibold hover:bg-gray-50 transition-colors"
-                >
-                  УДАЛИТЬ
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isReasonModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-900">
-                Почему вы нас хотите покинуть?
-              </h2>
-              <button
-                onClick={() => setIsReasonModalOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                aria-label="Закрыть"
-              >
-                <X className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-            <div className="px-6 py-6 space-y-3">
-              {reasons.map((reason) => (
-                <label key={reason} className="flex items-center gap-3 text-sm text-gray-800">
-                  <input
-                    type="radio"
-                    name="deleteReason"
-                    value={reason}
-                    checked={selectedReason === reason}
-                    onChange={(e) => {
-                      setSelectedReason(e.target.value);
-                      setReasonError('');
-                    }}
-                    className="w-4 h-4"
-                  />
-                  <span>{reason}</span>
-                </label>
-              ))}
-              {reasonError && <p className="text-xs text-red-500">{reasonError}</p>}
-            </div>
-            <div className="px-6 pb-6">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!selectedReason) {
-                    setReasonError('Пожалуйста, выберите причину');
-                    return;
-                  }
-                  setIsReasonModalOpen(false);
-                  handleDeleteProfile();
-                }}
-                className="w-full border border-gray-300 text-gray-900 py-3 rounded-[13px] font-semibold hover:bg-gray-50 transition-colors"
-              >
-                УДАЛИТЬ
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isDeletedModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl text-center space-y-4 px-6 py-6">
-            <div className="flex justify-end">
-              <button
-                onClick={() => {
-                  setIsDeletedModalOpen(false);
-                  navigate('/register');
-                }}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                aria-label="Закрыть"
-              >
-                <X className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-gray-900">Нам очень жаль!</p>
-              <p className="text-sm text-gray-700">Ваш профиль удален</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate('/register')}
-              className="text-green-600 font-semibold text-sm hover:underline"
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
 export default EditProfile;
-
