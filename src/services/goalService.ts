@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 
+export type GoalTrainingPlace = 'none' | 'home' | 'gym';
+
 export interface UserGoal {
   calories: number;
   protein: number;
@@ -9,11 +11,11 @@ export interface UserGoal {
   current_weight?: number;
   target_weight?: number;
   start_date?: string;
-  end_date?: string;
+  end_date?: string | null;
   months_to_goal?: number;
   bmr?: number;
   tdee?: number;
-  training_place?: 'home' | 'gym';
+  training_place?: GoalTrainingPlace;
   gender?: 'male' | 'female';
   age?: number;
   height?: number;
@@ -21,6 +23,33 @@ export interface UserGoal {
   intensity?: string;
   updated_at?: string;
 }
+
+export type GoalSaveStatus = 'success_remote' | 'success_local_only' | 'failed';
+
+export interface GoalSaveResult {
+  status: GoalSaveStatus;
+  remoteSaved: boolean;
+  localSaved: boolean;
+}
+
+export const getGoalSaveStatus = (remoteSaved: boolean, localSaved: boolean): GoalSaveStatus => {
+  if (remoteSaved) return 'success_remote';
+  if (localSaved) return 'success_local_only';
+  return 'failed';
+};
+
+export const resolveStoredGoalEndDate = (
+  nextEndDate: UserGoal['end_date'],
+  previousEndDate?: string
+): string | undefined => {
+  if (nextEndDate === null) return undefined;
+  return nextEndDate ?? previousEndDate;
+};
+
+export const normalizeGoalTrainingPlace = (value: unknown): GoalTrainingPlace => {
+  if (value === 'none' || value === 'home' || value === 'gym') return value;
+  return 'home';
+};
 
 class GoalService {
   private saveErrorLogged = false;
@@ -109,7 +138,7 @@ class GoalService {
             months_to_goal: data.months_to_goal ? Number(data.months_to_goal) : undefined,
             bmr: data.bmr ? Number(data.bmr) : undefined,
             tdee: data.tdee ? Number(data.tdee) : undefined,
-            training_place: data.training_place === 'gym' ? 'gym' : 'home',
+            training_place: normalizeGoalTrainingPlace(data.training_place),
             gender: data.gender === 'male' ? 'male' : data.gender === 'female' ? 'female' : undefined,
             age: data.age ? Number(data.age) : undefined,
             height: data.height ? Number(data.height) : undefined,
@@ -156,7 +185,7 @@ class GoalService {
             months_to_goal: parsed.monthsToGoal ? Number(parsed.monthsToGoal) : undefined,
             bmr: parsed.bmr ? Number(parsed.bmr) : undefined,
             tdee: parsed.tdee ? Number(parsed.tdee) : undefined,
-            training_place: parsed.trainingPlace === 'gym' ? 'gym' : 'home',
+            training_place: normalizeGoalTrainingPlace(parsed.trainingPlace),
             gender: parsed.gender === 'male' ? 'male' : parsed.gender === 'female' ? 'female' : undefined,
             age: parsed.age ? Number(parsed.age) : undefined,
             height: parsed.height ? Number(parsed.height) : undefined,
@@ -173,11 +202,24 @@ class GoalService {
   }
 
   // Save user goal to Supabase and localStorage
-  async saveUserGoal(userId: string, goal: UserGoal): Promise<void> {
+  async saveUserGoal(userId: string, goal: UserGoal): Promise<GoalSaveResult> {
+    let remoteSaved = false;
+    let localSaved = false;
+
+    try {
+      this.assertGoalValid(goal);
+    } catch (error) {
+      console.warn('[goalService] Invalid goal values:', error);
+      return {
+        status: 'failed',
+        remoteSaved,
+        localSaved,
+      };
+    }
+
     // Try to save to Supabase
     if (supabase) {
       try {
-        this.assertGoalValid(goal);
         const sessionUserId = await this.getSessionUserId(userId);
         interface UserGoalUpsertPayload {
           user_id: string;
@@ -190,11 +232,11 @@ class GoalService {
           current_weight?: number;
           target_weight?: number;
           start_date?: string;
-          end_date?: string;
+          end_date?: string | null;
           months_to_goal?: number;
           bmr?: number;
           tdee?: number;
-          training_place?: 'home' | 'gym';
+          training_place?: GoalTrainingPlace;
           gender?: 'male' | 'female';
           age?: number;
           height?: number;
@@ -232,6 +274,8 @@ class GoalService {
 
         if (error) {
           this.logSupabaseErrorOnce('user_goals upsert', error);
+        } else {
+          remoteSaved = true;
         }
 
       } catch (err) {
@@ -253,7 +297,7 @@ class GoalService {
         currentWeight: goal.current_weight?.toString() ?? parsed.currentWeight,
         targetWeight: goal.target_weight?.toString() ?? parsed.targetWeight,
         startDate: goal.start_date ?? parsed.startDate,
-        endDate: goal.end_date ?? parsed.endDate,
+        endDate: resolveStoredGoalEndDate(goal.end_date, parsed.endDate),
         monthsToGoal: goal.months_to_goal ?? parsed.monthsToGoal,
         bmr: goal.bmr ?? parsed.bmr,
         tdee: goal.tdee ?? parsed.tdee,
@@ -265,9 +309,16 @@ class GoalService {
         intensity: goal.intensity ?? parsed.intensity,
       };
       localStorage.setItem(`goal_${userId}`, JSON.stringify(updated));
+      localSaved = true;
     } catch (error) {
       console.warn('[goalService] Failed to persist local goal cache:', error);
     }
+
+    return {
+      status: getGoalSaveStatus(remoteSaved, localSaved),
+      remoteSaved,
+      localSaved,
+    };
   }
 
 }

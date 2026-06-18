@@ -4,16 +4,37 @@ import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
 import CreateGoalModal, { GoalFormData } from '../components/CreateGoalModal';
 import EditGoalModal from '../components/EditGoalModal';
-import { goalService } from '../services/goalService';
+import { goalService, normalizeGoalTrainingPlace, type GoalTrainingPlace } from '../services/goalService';
 import AiAdviceBlock from '../components/AiAdviceBlock';
 import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
 import { calculateGoalTimeline, type GoalMode } from '../utils/goalProjection';
+
+const SHOW_GOAL_PDF_RECOMMENDATIONS = false;
 
 const normalizeGoalMode = (goalType?: string): GoalMode => {
   const value = (goalType || '').toLowerCase();
   if (value.includes('похуд') || value === 'weight-loss') return 'weight-loss';
   if (value.includes('набор') || value === 'gain') return 'gain';
   return 'maintain';
+};
+
+const getGoalSaveNotice = (status: 'success_remote' | 'success_local_only' | 'failed') => {
+  if (status === 'success_remote') {
+    return { type: 'success' as const, text: 'Цель сохранена.' };
+  }
+  if (status === 'success_local_only') {
+    return {
+      type: 'warning' as const,
+      text: 'Цель сохранена только на этом устройстве. Подключитесь к интернету и попробуйте сохранить снова.',
+    };
+  }
+  return { type: 'error' as const, text: 'Не удалось сохранить цель.' };
+};
+
+const getTrainingPlaceLabel = (trainingPlace?: GoalTrainingPlace): string => {
+  if (trainingPlace === 'none') return 'Без тренировок';
+  if (trainingPlace === 'gym') return 'В зале';
+  return 'Дома / на улице';
 };
 
 const computeDerivedGoal = (goal: GoalData) => {
@@ -47,7 +68,7 @@ interface GoalData {
   targetWeight: string;
   startDate: string;
   endDate?: string;
-  trainingPlace?: 'home' | 'gym';
+  trainingPlace?: GoalTrainingPlace;
   monthsToGoal?: number;
   bmr?: number;
   tdee?: number;
@@ -78,8 +99,7 @@ const Goal = () => {
   const [runtimeMessage, setRuntimeMessage] = useState<string | null>(null);
   const [trustMessage, setTrustMessage] = useState<string | null>(null);
   const [isWhyOpen, setIsWhyOpen] = useState(false);
-  const [isSaveSubmitting, setIsSaveSubmitting] = useState(false);
-  const [saveNotice, setSaveNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [saveNotice, setSaveNotice] = useState<{ type: 'success' | 'warning' | 'error'; text: string } | null>(null);
 
   const loadGoalState = useCallback(async () => {
     if (!user?.id) return;
@@ -105,14 +125,24 @@ const Goal = () => {
           currentWeight: source?.current_weight != null ? String(source.current_weight) : fallback.currentWeight ?? prev.currentWeight ?? '',
           targetWeight: source?.target_weight != null ? String(source.target_weight) : fallback.targetWeight ?? prev.targetWeight ?? '',
           startDate: source?.start_date ?? fallback.startDate ?? prev.startDate ?? '',
-          endDate: source?.end_date ?? fallback.endDate ?? prev.endDate ?? '',
+          endDate: hasRemoteGoal
+            ? source?.end_date ?? ''
+            : allowLocalFallback
+              ? fallback.endDate ?? ''
+              : prev.endDate ?? '',
           trainingPlace:
-            source?.training_place === 'gym'
-              ? 'gym'
-              : (fallback.trainingPlace as 'home' | 'gym' | undefined) ?? prev.trainingPlace ?? 'home',
+            hasRemoteGoal
+              ? normalizeGoalTrainingPlace(source?.training_place)
+              : allowLocalFallback
+                ? normalizeGoalTrainingPlace(fallback.trainingPlace)
+                : prev.trainingPlace ?? 'home',
           bmr: source?.bmr ?? fallback.bmr ?? prev.bmr,
           tdee: source?.tdee ?? fallback.tdee ?? prev.tdee,
-          monthsToGoal: source?.months_to_goal ?? fallback.monthsToGoal ?? prev.monthsToGoal,
+          monthsToGoal: hasRemoteGoal
+            ? source?.months_to_goal ?? 0
+            : allowLocalFallback
+              ? fallback.monthsToGoal ?? 0
+              : prev.monthsToGoal,
           calories: source?.calories?.toString() ?? fallback.calories ?? prev.calories ?? '',
           proteins: source?.protein?.toString() ?? fallback.proteins ?? fallback.protein ?? prev.proteins ?? '',
           fats: source?.fat?.toString() ?? fallback.fats ?? fallback.fat ?? prev.fats ?? '',
@@ -121,6 +151,7 @@ const Goal = () => {
         const nextDerived = computeDerivedGoal(merged);
         const enriched = {
           ...merged,
+          endDate: nextDerived.isLoss || nextDerived.isGain ? merged.endDate : '',
           surplusPerDay: nextDerived.surplusPerDay,
           kgPerWeek: nextDerived.kgPerWeek,
           monthsToGoal: nextDerived.monthsToGoal,
@@ -145,6 +176,7 @@ const Goal = () => {
   const deficitValue = derived.deficitPerDay;
   const kgPerWeekValue = derived.kgPerWeek;
   const isGainGoal = derived.isGain;
+  const isMaintainGoal = normalizeGoalMode(goalData.goalType) === 'maintain';
   const showWhyBlock =
     Number.isFinite(bmrValue) &&
     Number.isFinite(tdeeValue) &&
@@ -198,9 +230,10 @@ const Goal = () => {
 
   const handleSaveEdit = async (data: { calories: string; proteins: string; fats: string; carbs: string }) => {
     if (!user?.id) return;
+    const isMaintainGoal = normalizeGoalMode(goalData.goalType) === 'maintain';
     setSaveNotice(null);
     try {
-      await goalService.saveUserGoal(user.id, {
+      const saveResult = await goalService.saveUserGoal(user.id, {
         calories: Number(data.calories),
         protein: Number(data.proteins),
         fat: Number(data.fats),
@@ -209,12 +242,16 @@ const Goal = () => {
         current_weight: goalData.currentWeight ? Number(goalData.currentWeight) : undefined,
         target_weight: goalData.targetWeight ? Number(goalData.targetWeight) : undefined,
         start_date: goalData.startDate || undefined,
-        end_date: goalData.endDate || undefined,
-        months_to_goal: goalData.monthsToGoal,
+        end_date: isMaintainGoal ? null : goalData.endDate || undefined,
+        months_to_goal: isMaintainGoal ? 0 : goalData.monthsToGoal,
         bmr: goalData.bmr,
         tdee: goalData.tdee,
         training_place: goalData.trainingPlace ?? 'home',
       });
+      if (saveResult.status === 'failed') {
+        setSaveNotice(getGoalSaveNotice(saveResult.status));
+        return;
+      }
 
       const updatedGoalData: GoalData = {
         ...goalData,
@@ -222,6 +259,7 @@ const Goal = () => {
         proteins: data.proteins,
         fats: data.fats,
         carbs: data.carbs,
+        endDate: isMaintainGoal ? '' : goalData.endDate,
       };
 
       const nextDerived = computeDerivedGoal(updatedGoalData);
@@ -244,7 +282,7 @@ const Goal = () => {
         });
       }
       setGoalData(updatedGoalData);
-      setSaveNotice({ type: 'success', text: 'Цель сохранена' });
+      setSaveNotice(getGoalSaveNotice(saveResult.status));
       setIsEditGoalModalOpen(false);
     } catch (error) {
       setSaveNotice({ type: 'error', text: 'Не удалось сохранить цель. Повторите попытку.' });
@@ -254,34 +292,6 @@ const Goal = () => {
 
   const handleClose = () => {
     navigate('/');
-  };
-
-  const handleSaveGoal = async () => {
-    if (!user?.id || isSaveSubmitting) return;
-    setIsSaveSubmitting(true);
-    setSaveNotice(null);
-    try {
-      await goalService.saveUserGoal(user.id, {
-        calories: Number(goalData.calories || 0),
-        protein: Number(goalData.proteins || 0),
-        fat: Number(goalData.fats || 0),
-        carbs: Number(goalData.carbs || 0),
-        goal_type: goalData.goalType || undefined,
-        current_weight: goalData.currentWeight ? Number(goalData.currentWeight) : undefined,
-        target_weight: goalData.targetWeight ? Number(goalData.targetWeight) : undefined,
-        start_date: goalData.startDate || undefined,
-        end_date: goalData.endDate || undefined,
-        months_to_goal: goalData.monthsToGoal,
-        bmr: goalData.bmr,
-        tdee: goalData.tdee,
-        training_place: goalData.trainingPlace ?? 'home',
-      });
-      setSaveNotice({ type: 'success', text: 'Цель сохранена' });
-    } catch (error) {
-      setSaveNotice({ type: 'error', text: 'Не удалось сохранить цель. Повторите попытку.' });
-    } finally {
-      setIsSaveSubmitting(false);
-    }
   };
 
   // Расчет оставшихся дней до цели
@@ -340,7 +350,9 @@ const Goal = () => {
   const hasDaysToGoal = Number.isFinite(daysToGoalValue) && daysToGoalValue > 0;
   const hasMonthsToGoal = Number.isFinite(monthsValue) && monthsValue > 0;
   const remainingLabel =
-    hasDaysToGoal && daysToGoalValue < 31
+    isMaintainGoal
+      ? 'Цель активна'
+      : hasDaysToGoal && daysToGoalValue < 31
       ? formatDays(Math.ceil(daysToGoalValue))
       : hasMonthsToGoal
         ? `~${Math.ceil(monthsValue)} месяцев`
@@ -453,7 +465,7 @@ const Goal = () => {
             <div className="flex items-center justify-between gap-2 w-full max-w-full overflow-hidden">
               <p className="text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 flex-shrink-0">Тренировки:</p>
               <p className="text-sm min-[376px]:text-base font-medium text-gray-900 dark:text-white whitespace-nowrap flex-shrink-0">
-                {goalData.trainingPlace === 'gym' ? 'В зале' : 'Дома / на улице'}
+                {getTrainingPlaceLabel(goalData.trainingPlace)}
               </p>
             </div>
             <div className="grid grid-cols-1 min-[376px]:grid-cols-2 gap-3 min-[376px]:gap-4 w-full max-w-full">
@@ -593,7 +605,7 @@ const Goal = () => {
           )}
 
           {/* AI Advice Block */}
-          <AiAdviceBlock />
+          {SHOW_GOAL_PDF_RECOMMENDATIONS && <AiAdviceBlock />}
 
           {/* Action Buttons */}
           <div className="pt-4 min-[376px]:pt-6 pb-4 min-[376px]:pb-6 w-full max-w-full overflow-hidden">
@@ -602,7 +614,9 @@ const Goal = () => {
                 className={`mb-3 rounded-lg px-3 py-2 text-xs ${
                   saveNotice.type === 'success'
                     ? 'border border-green-200 bg-green-50 text-green-700'
-                    : 'border border-red-200 bg-red-50 text-red-700'
+                    : saveNotice.type === 'warning'
+                      ? 'border border-amber-200 bg-amber-50 text-amber-800'
+                      : 'border border-red-200 bg-red-50 text-red-700'
                 }`}
               >
                 {saveNotice.text}
@@ -613,22 +627,14 @@ const Goal = () => {
               style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
               className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-gray-900 text-white dark:bg-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors mb-2 min-[376px]:mb-3"
             >
-              ЗАДАТЬ ЦЕЛЬ
+              ИЗМЕНИТЬ ЦЕЛЬ
             </button>
             <button
               onClick={handleEditGoal}
               style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
               className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mb-2 min-[376px]:mb-3 break-words overflow-wrap-anywhere"
             >
-              РЕДАКТИРОВАТЬ ЦЕЛЬ
-            </button>
-            <button
-              onClick={handleSaveGoal}
-              disabled={isSaveSubmitting}
-              style={{ height: '40px', minHeight: '40px', maxHeight: '40px', boxSizing: 'border-box' }}
-              className="w-full max-w-full min-[768px]:button-limited px-2 min-[376px]:px-2.5 flex items-center justify-center rounded-xl font-semibold text-xs min-[376px]:text-base uppercase bg-white dark:bg-gray-800 border-2 border-gray-900 dark:border-gray-300 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isSaveSubmitting ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
+              НАСТРОИТЬ КБЖУ
             </button>
           </div>
         </main>

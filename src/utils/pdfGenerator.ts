@@ -80,7 +80,13 @@ const renderPdfFromContainer = async (container: HTMLDivElement, fileName: strin
   pdf.save(fileName);
 };
 
-type TrainingPlace = 'home' | 'gym';
+type TrainingPlace = 'none' | 'home' | 'gym';
+
+const getTrainingPlacePdfLabel = (trainingPlace: TrainingPlace): string => {
+  if (trainingPlace === 'none') return 'БЕЗ ТРЕНИРОВОК';
+  if (trainingPlace === 'gym') return 'В ЗАЛЕ';
+  return 'ДОМА / НА УЛИЦЕ';
+};
 
 export const getCaloriesBucket = (calories: number): number => {
   if (!Number.isFinite(calories)) return 1300;
@@ -121,7 +127,7 @@ export const getWorkoutPdfUrl = (
  * Генерирует PDF с рекомендациями по питанию
  */
 export async function generateNutritionPDF(advice: string, userData: UserGoalData): Promise<void> {
-  const placeLabel = userData.trainingPlace === 'gym' ? 'В ЗАЛЕ' : 'ДОМА / НА УЛИЦЕ';
+  const placeLabel = getTrainingPlacePdfLabel(userData.trainingPlace);
   const container = buildAdviceContainer(
     `ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ ПО ПИТАНИЮ (${placeLabel})`,
     advice,
@@ -136,7 +142,7 @@ export async function generateNutritionPDF(advice: string, userData: UserGoalDat
  * Генерирует PDF с рекомендациями по тренировкам
  */
 export async function generateTrainingPDF(advice: string, userData: UserGoalData): Promise<void> {
-  const placeLabel = userData.trainingPlace === 'gym' ? 'В ЗАЛЕ' : 'ДОМА / НА УЛИЦЕ';
+  const placeLabel = getTrainingPlacePdfLabel(userData.trainingPlace);
   const container = buildAdviceContainer(
     `ПЕРСОНАЛЬНЫЕ РЕКОМЕНДАЦИИ ПО ТРЕНИРОВКАМ (${placeLabel})`,
     advice,

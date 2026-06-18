@@ -91,7 +91,7 @@ export function useAiAdvice(): UseAiAdviceReturn {
         // Формируем UserGoalData
         const userGoalData: UserGoalData = {
           goal,
-          trainingPlace: goalData.trainingPlace === 'gym' ? 'gym' : 'home',
+          trainingPlace: goalData.trainingPlace === 'none' || goalData.trainingPlace === 'gym' ? goalData.trainingPlace : 'home',
           calories: Number(goalData.calories),
           protein: Number(goalData.proteins),
           fat: Number(goalData.fats),

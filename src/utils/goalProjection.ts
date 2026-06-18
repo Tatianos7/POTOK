@@ -86,7 +86,12 @@ export const calculateMacros = (
   const fats = Math.round(weight * 0.9);
   const caloriesProtein = proteins * 4;
   const caloriesFat = fats * 9;
-  const carbsExact = (totalCalories - caloriesProtein - caloriesFat) / 4;
+  const caloriesForCarbs = totalCalories - caloriesProtein - caloriesFat;
+  if (caloriesForCarbs <= 0) {
+    return { proteins, fats, carbs: 0 };
+  }
+
+  const carbsExact = caloriesForCarbs / 4;
 
   const carbsFloor = Math.floor(carbsExact);
   const carbsCeil = Math.ceil(carbsExact);
@@ -180,4 +185,3 @@ export const computeGoalPlan = (input: GoalPlanInput): GoalPlanResult => {
     timeline,
   };
 };
-

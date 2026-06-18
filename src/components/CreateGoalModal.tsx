@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, Check } from 'lucide-react';
 import { ACTIVITY_HINTS } from '../constants/activityHints';
 import BaseInput from './ui/BaseInput';
+import { validateGoalInput, type GoalInputField } from '../utils/goalValidation';
 
 interface CreateGoalModalProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ export interface GoalFormData {
   weight: string;
   height: string;
   lifestyle: string;
-  trainingPlace: 'home' | 'gym';
+  trainingPlace: 'none' | 'home' | 'gym';
   goal: string;
   targetWeight: string;
   intensity: string;
@@ -37,6 +38,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
     targetWeight: '55',
     intensity: '10',
   });
+  const [validationErrors, setValidationErrors] = useState<Partial<Record<GoalInputField, string>>>({});
 
   useEffect(() => {
     const weightValue = Number(formData.weight);
@@ -62,6 +64,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
       document.body.style.overflow = '';
       setOpenLifestyleHint(null);
       setHintPosition(null);
+      setValidationErrors({});
     }
     return () => {
       document.body.style.overflow = '';
@@ -132,6 +135,16 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
   const handleChange = (field: keyof GoalFormData) => (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
+    if (field in validationErrors || ((field === 'weight' || field === 'goal') && validationErrors.targetWeight)) {
+      setValidationErrors((prev) => {
+        const next = { ...prev };
+        delete next[field as GoalInputField];
+        if (field === 'weight' || field === 'goal') {
+          delete next.targetWeight;
+        }
+        return next;
+      });
+    }
     setFormData((prev) => ({
       ...prev,
       [field]: e.target.value,
@@ -139,6 +152,13 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
   };
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (validationErrors.targetWeight) {
+      setValidationErrors((prev) => {
+        const next = { ...prev };
+        delete next.targetWeight;
+        return next;
+      });
+    }
     setFormData((prev) => ({
       ...prev,
       targetWeight: e.target.value,
@@ -148,6 +168,12 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const validation = validateGoalInput(formData);
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
+    setValidationErrors({});
     onCalculate(formData);
   };
 
@@ -249,6 +275,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                 className="w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 text-xs min-[376px]:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 placeholder="0"
               />
+              {validationErrors.age && (
+                <p className="mt-1 text-[10px] min-[376px]:text-xs text-red-600">
+                  {validationErrors.age}
+                </p>
+              )}
             </div>
             <div className="flex-1 min-w-0 w-full max-w-full overflow-hidden">
               <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -261,6 +292,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                 className="w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 text-xs min-[376px]:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 placeholder="0"
               />
+              {validationErrors.weight && (
+                <p className="mt-1 text-[10px] min-[376px]:text-xs text-red-600">
+                  {validationErrors.weight}
+                </p>
+              )}
             </div>
             <div className="flex-1 min-w-0 w-full max-w-full overflow-hidden">
               <label className="block text-[10px] min-[376px]:text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
@@ -273,6 +309,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                 className="w-full max-w-full px-1.5 min-[376px]:px-3 py-1.5 min-[376px]:py-2 text-xs min-[376px]:text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 placeholder="0"
               />
+              {validationErrors.height && (
+                <p className="mt-1 text-[10px] min-[376px]:text-xs text-red-600">
+                  {validationErrors.height}
+                </p>
+              )}
             </div>
           </div>
 
@@ -354,6 +395,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                 );
               })}
             </div>
+            {validationErrors.lifestyle && (
+              <p className="mt-2 text-[11px] min-[376px]:text-xs text-red-600">
+                {validationErrors.lifestyle}
+              </p>
+            )}
           </div>
           {openLifestyleHint && hintPosition && (
             <div
@@ -374,6 +420,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
             </label>
             <div className="flex flex-wrap gap-3 min-[376px]:gap-4">
               {[
+                { value: 'none', label: 'Без тренировок' },
                 { value: 'home', label: 'Дома / на улице' },
                 { value: 'gym', label: 'В зале' },
               ].map((option) => {
@@ -450,6 +497,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                 );
               })}
             </div>
+            {validationErrors.goal && (
+              <p className="mt-2 text-[11px] min-[376px]:text-xs text-red-600">
+                {validationErrors.goal}
+              </p>
+            )}
           </div>
 
           {/* Target Weight Slider (only if weight loss is selected) */}
@@ -524,6 +576,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                   }
                 `}</style>
               </div>
+              {validationErrors.targetWeight && (
+                <p className="mt-2 text-[11px] min-[376px]:text-xs text-red-600">
+                  {validationErrors.targetWeight}
+                </p>
+              )}
             </div>
           )}
           {formData.goal === 'gain' && (
@@ -597,6 +654,11 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
                   }
                 `}</style>
               </div>
+              {validationErrors.targetWeight && (
+                <p className="mt-2 text-[11px] min-[376px]:text-xs text-red-600">
+                  {validationErrors.targetWeight}
+                </p>
+              )}
             </div>
           )}
 
