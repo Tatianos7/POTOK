@@ -16,7 +16,7 @@ export interface GoalFormData {
   weight: string;
   height: string;
   lifestyle: string;
-  trainingPlace: 'home' | 'gym';
+  trainingPlace: 'none' | 'home' | 'gym';
   goal: string;
   targetWeight: string;
   intensity: string;
@@ -420,6 +420,7 @@ const CreateGoalModal = ({ isOpen, onClose, onCalculate }: CreateGoalModalProps)
             </label>
             <div className="flex flex-wrap gap-3 min-[376px]:gap-4">
               {[
+                { value: 'none', label: 'Без тренировок' },
                 { value: 'home', label: 'Дома / на улице' },
                 { value: 'gym', label: 'В зале' },
               ].map((option) => {

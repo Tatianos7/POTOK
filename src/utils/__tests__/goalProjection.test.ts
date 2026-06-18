@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { calculateMacros } from '../goalProjection';
+import { calculateGoalTimeline, calculateMacros } from '../goalProjection';
 
 test('calculateMacros returns positive carbs for normal calories', () => {
   const macros = calculateMacros(70, 2200);
@@ -44,4 +44,19 @@ test('create and edit goal flows can use the same macro helper result', () => {
   const editFlowMacros = calculateMacros(weight, calories);
 
   assert.deepEqual(editFlowMacros, createFlowMacros);
+});
+
+test('maintain goal returns no timeline duration', () => {
+  const timeline = calculateGoalTimeline({
+    goal: 'maintain',
+    currentWeight: 70,
+    targetWeight: 70,
+    tdee: 1972,
+    calories: 1972,
+  });
+
+  assert.equal(timeline.daysToGoal, 0);
+  assert.equal(timeline.monthsToGoal, 0);
+  assert.equal(timeline.deficitPerDay, 0);
+  assert.equal(timeline.surplusPerDay, 0);
 });

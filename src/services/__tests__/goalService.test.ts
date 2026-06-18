@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getGoalSaveStatus } from '../goalService';
+import { getGoalSaveStatus, resolveStoredGoalEndDate } from '../goalService';
 
 test('goal save status returns remote success when Supabase save succeeds', () => {
   assert.equal(getGoalSaveStatus(true, true), 'success_remote');
@@ -13,4 +13,16 @@ test('goal save status returns local-only when Supabase fails and local fallback
 
 test('goal save status returns failed when neither Supabase nor local fallback saves', () => {
   assert.equal(getGoalSaveStatus(false, false), 'failed');
+});
+
+test('goal local fallback clears previous end date when next end date is null', () => {
+  assert.equal(resolveStoredGoalEndDate(null, '2026-12-31'), undefined);
+});
+
+test('goal local fallback preserves previous end date when next end date is undefined', () => {
+  assert.equal(resolveStoredGoalEndDate(undefined, '2026-12-31'), '2026-12-31');
+});
+
+test('goal local fallback stores next end date when provided', () => {
+  assert.equal(resolveStoredGoalEndDate('2027-01-15', '2026-12-31'), '2027-01-15');
 });
