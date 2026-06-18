@@ -1,5 +1,11 @@
 import { UserGoalData } from '../types/aiAdvice';
 
+const getTrainingPlaceText = (trainingPlace: UserGoalData['trainingPlace']): string => {
+  if (trainingPlace === 'none') return 'без тренировок';
+  if (trainingPlace === 'gym') return 'в зале';
+  return 'дома/на улице';
+};
+
 /**
  * Формирует промпт для генерации рекомендаций по питанию
  */
@@ -11,7 +17,7 @@ export function buildNutritionPrompt(data: UserGoalData): string {
   const activityText =
     data.activityLevel === 'low' ? 'низкая активность' :
     data.activityLevel === 'medium' ? 'средняя активность' : 'высокая активность';
-  const trainingPlaceText = data.trainingPlace === 'gym' ? 'в зале' : 'дома/на улице';
+  const trainingPlaceText = getTrainingPlaceText(data.trainingPlace);
 
   return `Создай персональные рекомендации по питанию для ${data.gender === 'male' ? 'мужчины' : 'женщины'} ${data.age} лет.
 
@@ -50,7 +56,7 @@ export function buildTrainingPrompt(data: UserGoalData): string {
   const activityText =
     data.activityLevel === 'low' ? 'низкая активность' :
     data.activityLevel === 'medium' ? 'средняя активность' : 'высокая активность';
-  const trainingPlaceText = data.trainingPlace === 'gym' ? 'в зале' : 'дома/на улице';
+  const trainingPlaceText = getTrainingPlaceText(data.trainingPlace);
 
   return `Создай персональные рекомендации по тренировкам для ${data.gender === 'male' ? 'мужчины' : 'женщины'} ${data.age} лет.
 

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { X } from 'lucide-react';
 import { GoalFormData } from '../components/CreateGoalModal';
-import { goalService } from '../services/goalService';
+import { goalService, type GoalTrainingPlace } from '../services/goalService';
 import { profileService } from '../services/profileService';
 import { uiRuntimeAdapter } from '../services/uiRuntimeAdapter';
 import { computeGoalPlan } from '../utils/goalProjection';
@@ -34,7 +34,7 @@ const getEffectiveTargetWeight = (data: GoalFormData): number => {
 };
 
 const GoalResult = () => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [formData, setFormData] = useState<GoalFormData | null>(null);
@@ -156,8 +156,10 @@ const GoalResult = () => {
     return workouts[lifestyle] || '-';
   };
 
-  const getTrainingPlaceLabel = (trainingPlace: 'home' | 'gym' | string): string => {
-    return trainingPlace === 'gym' ? 'В зале' : 'Дома / на улице';
+  const getTrainingPlaceLabel = (trainingPlace: GoalTrainingPlace | string): string => {
+    if (trainingPlace === 'none') return 'Без тренировок';
+    if (trainingPlace === 'gym') return 'В зале';
+    return 'Дома / на улице';
   };
 
   const handleSave = async () => {
@@ -175,10 +177,11 @@ const GoalResult = () => {
       };
 
       const startDate = getLocalDayKey();
+      const isMaintainGoal = normalizeGoal(formData.goal) === 'maintain';
       
       // Рассчитываем дату окончания на основе месяцев до цели
-      let endDate = '';
-      if (result.monthsToGoal > 0) {
+      let endDate: string | null = null;
+      if (!isMaintainGoal && result.monthsToGoal > 0) {
         const endDateObj = new Date();
         endDateObj.setMonth(endDateObj.getMonth() + result.monthsToGoal);
         endDate = getLocalDayKey(endDateObj);
@@ -207,8 +210,8 @@ const GoalResult = () => {
         current_weight: Number(formData.weight),
         target_weight: effectiveTargetWeight,
         start_date: startDate,
-        end_date: endDate || undefined,
-        months_to_goal: result.monthsToGoal,
+        end_date: isMaintainGoal ? null : endDate || undefined,
+        months_to_goal: isMaintainGoal ? 0 : result.monthsToGoal,
         bmr: Math.round(result.bmr),
         tdee: Math.round(result.tdee),
         training_place: formData.trainingPlace || 'home',
@@ -313,8 +316,6 @@ const GoalResult = () => {
     );
   }
 
-  const isPremium = Boolean(user?.hasPremium ?? profile?.has_premium ?? false);
-
   return (
     <div
       className="flex flex-col bg-white dark:bg-gray-900 overflow-hidden"
@@ -415,15 +416,6 @@ const GoalResult = () => {
           className="px-5 pt-2 pb-4 border-t border-gray-100 dark:border-gray-800"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)' }}
         >
-          {!isPremium && (
-            <button
-              type="button"
-              onClick={() => navigate('/paywall')}
-              className="mb-3 text-sm font-medium text-green-600 dark:text-green-400 break-words text-left cursor-pointer w-full"
-            >
-              при подключении тарифа PREMIUM вы получите план питания и тренировок под вашу цель
-            </button>
-          )}
           <button
             onClick={handleSave}
             className="w-full rounded-full border border-gray-900 dark:border-gray-300 py-3 text-sm font-semibold uppercase text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"

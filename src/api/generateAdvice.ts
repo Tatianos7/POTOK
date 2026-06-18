@@ -130,7 +130,12 @@ function generateNutritionStub(data: UserGoalData, _prompt: string): string {
 function generateTrainingStub(data: UserGoalData, _prompt: string): string {
 
   let advice = `Персональные рекомендации по тренировкам для ${data.gender === 'male' ? 'мужчины' : 'женщины'} ${data.age} лет.\n\n`;
-  const trainingPlaceText = data.trainingPlace === 'gym' ? 'в зале' : 'дома/на улице';
+  const trainingPlaceText =
+    data.trainingPlace === 'none'
+      ? 'без тренировок'
+      : data.trainingPlace === 'gym'
+        ? 'в зале'
+        : 'дома/на улице';
   advice += `Формат тренировок: ${trainingPlaceText}.\n\n`;
 
   const workoutsPerWeek = 

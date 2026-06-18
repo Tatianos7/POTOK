@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 
+export type GoalTrainingPlace = 'none' | 'home' | 'gym';
+
 export interface UserGoal {
   calories: number;
   protein: number;
@@ -9,11 +11,11 @@ export interface UserGoal {
   current_weight?: number;
   target_weight?: number;
   start_date?: string;
-  end_date?: string;
+  end_date?: string | null;
   months_to_goal?: number;
   bmr?: number;
   tdee?: number;
-  training_place?: 'home' | 'gym';
+  training_place?: GoalTrainingPlace;
   gender?: 'male' | 'female';
   age?: number;
   height?: number;
@@ -34,6 +36,19 @@ export const getGoalSaveStatus = (remoteSaved: boolean, localSaved: boolean): Go
   if (remoteSaved) return 'success_remote';
   if (localSaved) return 'success_local_only';
   return 'failed';
+};
+
+export const resolveStoredGoalEndDate = (
+  nextEndDate: UserGoal['end_date'],
+  previousEndDate?: string
+): string | undefined => {
+  if (nextEndDate === null) return undefined;
+  return nextEndDate ?? previousEndDate;
+};
+
+export const normalizeGoalTrainingPlace = (value: unknown): GoalTrainingPlace => {
+  if (value === 'none' || value === 'home' || value === 'gym') return value;
+  return 'home';
 };
 
 class GoalService {
@@ -123,7 +138,7 @@ class GoalService {
             months_to_goal: data.months_to_goal ? Number(data.months_to_goal) : undefined,
             bmr: data.bmr ? Number(data.bmr) : undefined,
             tdee: data.tdee ? Number(data.tdee) : undefined,
-            training_place: data.training_place === 'gym' ? 'gym' : 'home',
+            training_place: normalizeGoalTrainingPlace(data.training_place),
             gender: data.gender === 'male' ? 'male' : data.gender === 'female' ? 'female' : undefined,
             age: data.age ? Number(data.age) : undefined,
             height: data.height ? Number(data.height) : undefined,
@@ -170,7 +185,7 @@ class GoalService {
             months_to_goal: parsed.monthsToGoal ? Number(parsed.monthsToGoal) : undefined,
             bmr: parsed.bmr ? Number(parsed.bmr) : undefined,
             tdee: parsed.tdee ? Number(parsed.tdee) : undefined,
-            training_place: parsed.trainingPlace === 'gym' ? 'gym' : 'home',
+            training_place: normalizeGoalTrainingPlace(parsed.trainingPlace),
             gender: parsed.gender === 'male' ? 'male' : parsed.gender === 'female' ? 'female' : undefined,
             age: parsed.age ? Number(parsed.age) : undefined,
             height: parsed.height ? Number(parsed.height) : undefined,
@@ -217,11 +232,11 @@ class GoalService {
           current_weight?: number;
           target_weight?: number;
           start_date?: string;
-          end_date?: string;
+          end_date?: string | null;
           months_to_goal?: number;
           bmr?: number;
           tdee?: number;
-          training_place?: 'home' | 'gym';
+          training_place?: GoalTrainingPlace;
           gender?: 'male' | 'female';
           age?: number;
           height?: number;
@@ -282,7 +297,7 @@ class GoalService {
         currentWeight: goal.current_weight?.toString() ?? parsed.currentWeight,
         targetWeight: goal.target_weight?.toString() ?? parsed.targetWeight,
         startDate: goal.start_date ?? parsed.startDate,
-        endDate: goal.end_date ?? parsed.endDate,
+        endDate: resolveStoredGoalEndDate(goal.end_date, parsed.endDate),
         monthsToGoal: goal.months_to_goal ?? parsed.monthsToGoal,
         bmr: goal.bmr ?? parsed.bmr,
         tdee: goal.tdee ?? parsed.tdee,
