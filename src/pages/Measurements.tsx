@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Plus, Minus, ArrowRight } from 'lucide-react';
+import { X, Plus, Minus, ArrowRight, TrendingUp } from 'lucide-react';
 import {
   measurementsService,
   type Measurement,
@@ -933,7 +933,15 @@ const Measurements = () => {
         </main>
 
         {/* Save Button */}
-        <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+        <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-3">
+          <button
+            type="button"
+            onClick={() => navigate('/progress/measurements')}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-green-200 bg-green-50/50 px-4 py-3 text-sm font-semibold uppercase text-green-800 transition-colors hover:bg-green-50 dark:border-green-900/50 dark:bg-green-900/20 dark:text-green-200 dark:hover:bg-green-900/30"
+          >
+            <TrendingUp className="h-4 w-4" />
+            Прогресс
+          </button>
           <button
             onClick={handleSave}
             disabled={isSaving || !user?.id}
