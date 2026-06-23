@@ -1,5 +1,9 @@
 import { supabase } from '../lib/supabaseClient';
 import { formatUiDay, parseLegacyDay, toIsoDay } from '../utils/dateKey';
+import {
+  validatePhotoPixelSamples,
+  type PhotoPixelValidationResult,
+} from '../utils/photoImageValidation';
 
 export interface Measurement {
   id: string;
@@ -25,6 +29,7 @@ export interface PhotoHistory {
 }
 
 type PhotoUploadStatus = 'idle' | 'uploading' | 'done' | 'error';
+type PhotoUploadSource = string | Blob;
 
 type PhotoUploadTask = {
   key: string;
@@ -34,6 +39,8 @@ type PhotoUploadTask = {
     id: string;
     photos: string[];
     additionalPhotos: string[];
+    photoUploadSources?: PhotoUploadSource[];
+    additionalPhotoUploadSources?: PhotoUploadSource[];
   };
   status: PhotoUploadStatus;
   promise: Promise<void> | null;
@@ -63,6 +70,20 @@ type LegacyCleanupQueueItem = {
   day: string;
   attempts: number;
   nextTs: number;
+};
+type PhotoUploadAssetsResult = {
+  uploadedSlots: Set<MeasurementPhotoSlot>;
+  failedSlots: MeasurementPhotoSlot[];
+};
+type PhotoCompressionStage = 'main' | 'thumb';
+type PhotoCanvasValidationResult = {
+  canvas: HTMLCanvasElement;
+  validation: PhotoPixelValidationResult;
+  targetWidth: number;
+  targetHeight: number;
+  imageWidth: number;
+  imageHeight: number;
+  strategy: string;
 };
 
 class MeasurementsService {
@@ -494,12 +515,221 @@ class MeasurementsService {
     return order.indexOf(slot);
   }
 
-  private async sourceToBlob(source: string): Promise<Blob> {
+  private filterUploadedPhotoPayload(
+    photos: string[],
+    additionalPhotos: string[],
+    uploadedSlots: Set<MeasurementPhotoSlot>
+  ): { photos: string[]; additionalPhotos: string[] } {
+    return {
+      photos: photos.filter((_, index) => uploadedSlots.has(this.getSlotForIndex('main', index))),
+      additionalPhotos: additionalPhotos.filter((_, index) => uploadedSlots.has(this.getSlotForIndex('extra', index))),
+    };
+  }
+
+  private async sourceToBlob(source: PhotoUploadSource): Promise<Blob> {
+    if (source instanceof Blob) {
+      return source;
+    }
     const response = await fetch(source);
     return response.blob();
   }
 
-  private async compressImageBlob(source: Blob, maxSide: number, quality: number): Promise<Blob> {
+  private validatePhotoBlob(blob: Blob): void {
+    if (!blob || blob.size < 512) {
+      throw new Error('photo_processing_failed');
+    }
+  }
+
+  private getPhotoTargetSize(width: number, height: number, maxSide: number): { targetWidth: number; targetHeight: number } {
+    const longSide = Math.max(width, height) || 1;
+    const scale = Math.min(1, maxSide / longSide);
+    return {
+      targetWidth: Math.max(1, Math.round(width * scale)),
+      targetHeight: Math.max(1, Math.round(height * scale)),
+    };
+  }
+
+  private validateRenderedPhotoCanvas(params: {
+    drawable: CanvasImageSource;
+    imageWidth: number;
+    imageHeight: number;
+    targetWidth: number;
+    targetHeight: number;
+    strategy: string;
+  }): PhotoCanvasValidationResult | null {
+    const canvas = document.createElement('canvas');
+    canvas.width = params.targetWidth;
+    canvas.height = params.targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.drawImage(params.drawable, 0, 0, params.targetWidth, params.targetHeight);
+    const imageData = ctx.getImageData(0, 0, params.targetWidth, params.targetHeight);
+    const validation = validatePhotoPixelSamples(imageData.data, params.targetWidth, params.targetHeight);
+    return {
+      canvas,
+      validation,
+      targetWidth: params.targetWidth,
+      targetHeight: params.targetHeight,
+      imageWidth: params.imageWidth,
+      imageHeight: params.imageHeight,
+      strategy: params.strategy,
+    };
+  }
+
+  private async photoCanvasToBlob(canvas: HTMLCanvasElement, quality: number): Promise<Blob | null> {
+    return new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((result) => resolve(result), 'image/jpeg', quality);
+    });
+  }
+
+  private logInvalidPhotoDiagnostics(params: {
+    source: Blob;
+    context: {
+      slot: MeasurementPhotoSlot;
+      stage: PhotoCompressionStage;
+    };
+    renderResult: PhotoCanvasValidationResult;
+  }): void {
+    if (!import.meta.env.DEV) return;
+    console.warn('[measurementsService] invalid photo slot diagnostics', {
+      slot: params.context.slot,
+      stage: params.context.stage,
+      strategy: params.renderResult.strategy,
+      reason: params.renderResult.validation.reason ?? 'invalid_image',
+      sourceBlobSize: params.source.size,
+      sourceBlobType: params.source.type || 'unknown',
+      imageWidth: params.renderResult.imageWidth,
+      imageHeight: params.renderResult.imageHeight,
+      targetWidth: params.renderResult.targetWidth,
+      targetHeight: params.renderResult.targetHeight,
+      darkRatio: params.renderResult.validation.darkRatio,
+      maxBrightness: params.renderResult.validation.maxBrightness,
+      brightnessVariance: params.renderResult.validation.brightnessVariance,
+      transparentRatio: params.renderResult.validation.transparentRatio,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  private async buildValidatedPhotoBlobFromCanvas(
+    renderResult: PhotoCanvasValidationResult,
+    quality: number
+  ): Promise<Blob | null> {
+    const blob = await this.photoCanvasToBlob(renderResult.canvas, quality);
+    if (blob) this.validatePhotoBlob(blob);
+    return blob;
+  }
+
+  private async tryCreateImageBitmapFallback(params: {
+    source: Blob;
+    maxSide: number;
+    quality: number;
+    context: {
+      slot: MeasurementPhotoSlot;
+      stage: PhotoCompressionStage;
+    };
+  }): Promise<Blob | null> {
+    if (typeof createImageBitmap !== 'function') return null;
+
+    let bitmap: ImageBitmap | null = null;
+    try {
+      bitmap = await createImageBitmap(params.source, {
+        imageOrientation: 'from-image',
+      });
+      const { targetWidth, targetHeight } = this.getPhotoTargetSize(bitmap.width, bitmap.height, params.maxSide);
+      const renderResult = this.validateRenderedPhotoCanvas({
+        drawable: bitmap,
+        imageWidth: bitmap.width,
+        imageHeight: bitmap.height,
+        targetWidth,
+        targetHeight,
+        strategy: 'createImageBitmap',
+      });
+      if (!renderResult) return null;
+
+      if (!renderResult.validation.valid) {
+        this.logInvalidPhotoDiagnostics({
+          source: params.source,
+          context: params.context,
+          renderResult,
+        });
+        return null;
+      }
+
+      if (import.meta.env.DEV) {
+        console.debug('[measurementsService] photo validation fallback recovered slot', {
+          slot: params.context.slot,
+          stage: params.context.stage,
+          strategy: renderResult.strategy,
+          targetWidth: renderResult.targetWidth,
+          targetHeight: renderResult.targetHeight,
+        });
+      }
+      return this.buildValidatedPhotoBlobFromCanvas(renderResult, params.quality);
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        this.logWarn('[measurementsService] createImageBitmap photo fallback failed', error);
+      }
+      return null;
+    } finally {
+      bitmap?.close();
+    }
+  }
+
+  private async tryNaturalSizeFallback(params: {
+    source: Blob;
+    image: HTMLImageElement;
+    quality: number;
+    context: {
+      slot: MeasurementPhotoSlot;
+      stage: PhotoCompressionStage;
+    };
+  }): Promise<Blob | null> {
+    const imageWidth = params.image.naturalWidth || params.image.width;
+    const imageHeight = params.image.naturalHeight || params.image.height;
+    if (imageWidth <= 0 || imageHeight <= 0) return null;
+
+    const renderResult = this.validateRenderedPhotoCanvas({
+      drawable: params.image,
+      imageWidth,
+      imageHeight,
+      targetWidth: imageWidth,
+      targetHeight: imageHeight,
+      strategy: 'natural-size-canvas',
+    });
+    if (!renderResult) return null;
+
+    if (!renderResult.validation.valid) {
+      this.logInvalidPhotoDiagnostics({
+        source: params.source,
+        context: params.context,
+        renderResult,
+      });
+      return null;
+    }
+
+    if (import.meta.env.DEV) {
+      console.debug('[measurementsService] photo validation fallback recovered slot', {
+        slot: params.context.slot,
+        stage: params.context.stage,
+        strategy: renderResult.strategy,
+        targetWidth: renderResult.targetWidth,
+        targetHeight: renderResult.targetHeight,
+      });
+    }
+    return this.buildValidatedPhotoBlobFromCanvas(renderResult, params.quality);
+  }
+
+  private async compressImageBlob(
+    source: Blob,
+    maxSide: number,
+    quality: number,
+    context: {
+      slot: MeasurementPhotoSlot;
+      stage: PhotoCompressionStage;
+    }
+  ): Promise<Blob> {
+    this.validatePhotoBlob(source);
     if (typeof document === 'undefined') return source;
 
     const objectUrl = URL.createObjectURL(source);
@@ -511,22 +741,48 @@ class MeasurementsService {
         img.src = objectUrl;
       });
 
-      const longSide = Math.max(image.width, image.height) || 1;
-      const scale = Math.min(1, maxSide / longSide);
-      const targetWidth = Math.max(1, Math.round(image.width * scale));
-      const targetHeight = Math.max(1, Math.round(image.height * scale));
-
-      const canvas = document.createElement('canvas');
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return source;
-      ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
-
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob((result) => resolve(result), 'image/jpeg', quality);
+      const imageWidth = image.naturalWidth || image.width;
+      const imageHeight = image.naturalHeight || image.height;
+      const { targetWidth, targetHeight } = this.getPhotoTargetSize(imageWidth, imageHeight, maxSide);
+      const primaryRender = this.validateRenderedPhotoCanvas({
+        drawable: image,
+        imageWidth,
+        imageHeight,
+        targetWidth,
+        targetHeight,
+        strategy: 'html-image-resized-canvas',
       });
-      return blob ?? source;
+      if (!primaryRender) return source;
+
+      if (!primaryRender.validation.valid) {
+        this.logInvalidPhotoDiagnostics({
+          source,
+          context,
+          renderResult: primaryRender,
+        });
+
+        if (primaryRender.validation.reason === 'black_placeholder') {
+          const bitmapFallback = await this.tryCreateImageBitmapFallback({
+            source,
+            maxSide,
+            quality,
+            context,
+          });
+          if (bitmapFallback) return bitmapFallback;
+
+          const naturalFallback = await this.tryNaturalSizeFallback({
+            source,
+            image,
+            quality,
+            context,
+          });
+          if (naturalFallback) return naturalFallback;
+        }
+
+        throw new Error(`photo_processing_failed:${primaryRender.validation.reason ?? 'invalid_image'}`);
+      }
+
+      return (await this.buildValidatedPhotoBlobFromCanvas(primaryRender, quality)) ?? source;
     } finally {
       URL.revokeObjectURL(objectUrl);
     }
@@ -536,15 +792,21 @@ class MeasurementsService {
     sessionUserId: string;
     day: string;
     slot: MeasurementPhotoSlot;
-    source: string;
+    source: PhotoUploadSource;
   }): Promise<{ storagePath: string; thumbPath: string }> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
     }
 
     const originalBlob = await this.sourceToBlob(params.source);
-    const mainBlob = await this.compressImageBlob(originalBlob, 1280, 0.8);
-    const thumbBlob = await this.compressImageBlob(originalBlob, 320, 0.7);
+    const mainBlob = await this.compressImageBlob(originalBlob, 1280, 0.8, {
+      slot: params.slot,
+      stage: 'main',
+    });
+    const thumbBlob = await this.compressImageBlob(originalBlob, 320, 0.7, {
+      slot: params.slot,
+      stage: 'thumb',
+    });
     const basePath = `user/${params.sessionUserId}/measurements/${params.day}`;
     const storagePath = `${basePath}/${params.slot}.jpg`;
     const thumbPath = `${basePath}/thumb_${params.slot}.jpg`;
@@ -572,43 +834,63 @@ class MeasurementsService {
     day: string;
     photos: string[];
     additionalPhotos: string[];
-  }): Promise<void> {
-    if (!supabase) return;
+    photoUploadSources?: PhotoUploadSource[];
+    additionalPhotoUploadSources?: PhotoUploadSource[];
+  }): Promise<PhotoUploadAssetsResult> {
+    if (!supabase) return { uploadedSlots: new Set(), failedSlots: [] };
 
-    const mainEntries = params.photos
+    const mainEntries = (params.photoUploadSources ?? params.photos)
       .slice(0, 3)
-      .filter((source) => source !== '')
+      .filter((source) => (typeof source === 'string' ? source !== '' : Boolean(source)))
       .map((source, index) => ({
         slot: this.getSlotForIndex('main', index),
         source,
       }));
-    const extraEntries = params.additionalPhotos
+    const extraEntries = (params.additionalPhotoUploadSources ?? params.additionalPhotos)
       .slice(0, 3)
-      .filter((source) => source !== '')
+      .filter((source) => (typeof source === 'string' ? source !== '' : Boolean(source)))
       .map((source, index) => ({
         slot: this.getSlotForIndex('extra', index),
         source,
       }));
     const entries = [...mainEntries, ...extraEntries];
 
-    const uploaded = await Promise.all(
+    const uploadResults = await Promise.all(
       entries.map(async (entry) => {
-        const { storagePath, thumbPath } = await this.uploadAssetForSlot({
-          sessionUserId: params.sessionUserId,
-          day: params.day,
-          slot: entry.slot,
-          source: entry.source,
-        });
-        return {
-          user_id: params.sessionUserId,
-          day: params.day,
-          slot: entry.slot,
-          storage_path: storagePath,
-          thumb_path: thumbPath,
-          updated_at: new Date().toISOString(),
-        };
+        try {
+          const { storagePath, thumbPath } = await this.uploadAssetForSlot({
+            sessionUserId: params.sessionUserId,
+            day: params.day,
+            slot: entry.slot,
+            source: entry.source,
+          });
+          return {
+            ok: true as const,
+            row: {
+              user_id: params.sessionUserId,
+              day: params.day,
+              slot: entry.slot,
+              storage_path: storagePath,
+              thumb_path: thumbPath,
+              updated_at: new Date().toISOString(),
+            },
+          };
+        } catch (error) {
+          if (!(error instanceof Error) || !error.message.startsWith('photo_processing_failed')) {
+            throw error;
+          }
+          if (import.meta.env.DEV) {
+            this.logWarn('[measurementsService] skipped invalid photo slot', error);
+          }
+          return {
+            ok: false as const,
+            slot: entry.slot,
+          };
+        }
       })
     );
+    const uploaded = uploadResults.filter((result): result is Extract<(typeof uploadResults)[number], { ok: true }> => result.ok).map((result) => result.row);
+    const failedSlots = uploadResults.filter((result): result is Extract<(typeof uploadResults)[number], { ok: false }> => !result.ok).map((result) => result.slot);
 
     if (uploaded.length > 0) {
       const { error: upsertError } = await supabase
@@ -637,6 +919,11 @@ class MeasurementsService {
         .in('id', removeIds);
       if (deleteError) throw deleteError;
     }
+
+    return {
+      uploadedSlots: new Set(uploaded.map((row) => row.slot)),
+      failedSlots,
+    };
   }
 
   replacePhotoHistoryDay(
@@ -1423,6 +1710,8 @@ class MeasurementsService {
     id: string;
     photos: string[];
     additionalPhotos: string[];
+    photoUploadSources?: PhotoUploadSource[];
+    additionalPhotoUploadSources?: PhotoUploadSource[];
   }): Promise<void> {
     const key = this.makePhotoUploadTaskKey(taskPayload.userId, taskPayload.day);
     this.cancelledPhotoUploadKeys.delete(key);
@@ -1472,11 +1761,13 @@ class MeasurementsService {
       );
 
       try {
-        await this.upsertPhotoAssetsForDay({
+        const uploadResult = await this.upsertPhotoAssetsForDay({
           sessionUserId,
           day,
           photos: taskPayload.photos,
           additionalPhotos: taskPayload.additionalPhotos,
+          photoUploadSources: taskPayload.photoUploadSources,
+          additionalPhotoUploadSources: taskPayload.additionalPhotoUploadSources,
         });
         if (this.cancelledPhotoUploadKeys.has(taskKey)) {
           try {
@@ -1496,26 +1787,44 @@ class MeasurementsService {
           task.status = 'done';
           return;
         }
+        const finalizedPayload = this.filterUploadedPhotoPayload(
+          taskPayload.photos,
+          taskPayload.additionalPhotos,
+          uploadResult.uploadedSlots
+        );
         const finalized = this.replacePhotoHistoryDay(
           this.getPhotoHistoryCache(sessionUserId) ?? [],
           day,
           {
           id: taskPayload.id,
           date: day,
-          photos: taskPayload.photos,
-          additionalPhotos: taskPayload.additionalPhotos,
+          photos: finalizedPayload.photos,
+          additionalPhotos: finalizedPayload.additionalPhotos,
           _pending: false,
-          _uploadError: false,
+          _uploadError: uploadResult.failedSlots.length > 0,
           }
         );
         this.setPhotoHistoryCache(sessionUserId, finalized);
-        task.status = 'done';
+        task.status = uploadResult.failedSlots.length > 0 ? 'error' : 'done';
         window.dispatchEvent(
           new CustomEvent('potok:measurements:saved', {
-            detail: { userId: sessionUserId, day, phase: 'photos_finalized', finalized: true },
+            detail: {
+              userId: sessionUserId,
+              day,
+              phase: 'photos_finalized',
+              finalized: uploadResult.failedSlots.length === 0,
+              error: uploadResult.failedSlots.length > 0,
+              failedSlots: uploadResult.failedSlots,
+            },
           })
         );
-      } catch {
+        if (uploadResult.failedSlots.length > 0) {
+          throw new Error(`photo_processing_failed:${uploadResult.failedSlots.join(',')}`);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith('photo_processing_failed:')) {
+          throw error;
+        }
         task.status = 'error';
         const withError = this.replacePhotoHistoryDay(
           this.getPhotoHistoryCache(sessionUserId) ?? [],
