@@ -12,6 +12,7 @@ import { toIsoDay } from '../utils/dateKey';
 type MeasurementsLoadStatus = 'loading' | 'active' | 'error';
 const SAVE_TIMEOUT_MS = 10000;
 const MAX_ADDITIONAL_PHOTOS = 3;
+const MAIN_PHOTO_LABELS = ['спереди', 'с боку', 'сзади'];
 
 const MAX_CUSTOM_MEASUREMENTS = 15;
 const MEASUREMENTS_WHITELIST = [
@@ -103,6 +104,60 @@ function maskUserId(userId: string): string {
   return userId.length <= 6 ? userId : userId.slice(-6);
 }
 
+function getPhotoSlotUserLabel(slot: string): string | null {
+  const mainMatch = /^main_(\d+)$/.exec(slot);
+  if (mainMatch) {
+    const index = Number(mainMatch[1]) - 1;
+    return MAIN_PHOTO_LABELS[index] ?? null;
+  }
+
+  const extraMatch = /^extra_(\d+)$/.exec(slot);
+  if (extraMatch) {
+    return `дополнительное фото ${extraMatch[1]}`;
+  }
+
+  return null;
+}
+
+function formatPhotoProcessingError(error: unknown): string {
+  if (!(error instanceof Error) || !error.message.startsWith('photo_processing_failed:')) {
+    return 'Замеры сохранены, но фото не удалось загрузить. Попробуйте позже.';
+  }
+
+  const failedSlots = error.message
+    .replace('photo_processing_failed:', '')
+    .split(',')
+    .map((slot) => slot.trim())
+    .filter(Boolean);
+  const labels = failedSlots.map(getPhotoSlotUserLabel).filter((label): label is string => Boolean(label));
+
+  if (labels.length === 1) {
+    return `Фото «${labels[0]}» не удалось обработать. Выберите его заново.`;
+  }
+
+  if (labels.length > 1) {
+    return `Некоторые фото не удалось обработать: ${labels.join(', ')}. Выберите их заново.`;
+  }
+
+  return 'Фото не удалось обработать. Выберите его заново.';
+}
+
+function logSelectedPhotoFile(params: {
+  label: string;
+  file: File;
+  selectedSlotIndex: number;
+}): void {
+  if (!import.meta.env.DEV) return;
+  console.debug('[measurements] selected photo file metadata', {
+    slotLabel: params.label,
+    fileName: params.file.name,
+    fileType: params.file.type,
+    fileSize: params.file.size,
+    selectedSlotIndex: params.selectedSlotIndex,
+    timestamp: new Date().toISOString(),
+  });
+}
+
 function devPerfStart(markName: string): void {
   if (!import.meta.env.DEV || typeof performance === 'undefined') return;
   performance.mark(markName);
@@ -153,6 +208,8 @@ const Measurements = () => {
   const navigate = useNavigate();
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const additionalPhotoRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const photoUploadFilesRef = useRef<(File | null)[]>([null, null, null]);
+  const additionalPhotoUploadFilesRef = useRef<(File | null)[]>([]);
   const [draftMeasurements, setDraftMeasurements] = useState<Measurement[]>(EMPTY_MEASUREMENTS);
   const [customData, setCustomData] = useState('');
   const [photos, setPhotos] = useState<string[]>(['', '', '']); // 3 основных фото
@@ -176,7 +233,7 @@ const Measurements = () => {
   const didEditPhotosRef = useRef(false);
   const isAuthReady = authStatus === 'authenticated' && Boolean(user?.id);
 
-  const photoLabels = ['спереди', 'с боку', 'сзади'];
+  const photoLabels = MAIN_PHOTO_LABELS;
   const customMeasurementsCount = draftMeasurements.filter((m) => m.id.startsWith('custom_')).length;
   const isCustomLimitReached = customMeasurementsCount >= MAX_CUSTOM_MEASUREMENTS;
   const isAdditionalPhotosLimitReached = additionalPhotos.length >= MAX_ADDITIONAL_PHOTOS;
@@ -187,6 +244,8 @@ const Measurements = () => {
     setCustomDataError(null);
     setPhotos(['', '', '']);
     setAdditionalPhotos([]);
+    photoUploadFilesRef.current = [null, null, null];
+    additionalPhotoUploadFilesRef.current = [];
     setOpenMenuId(null);
     didEditDraftRef.current = false;
     didEditPhotosRef.current = false;
@@ -378,7 +437,13 @@ const Measurements = () => {
   const handlePhotoChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      logSelectedPhotoFile({
+        label: photoLabels[index] ?? `основное фото ${index + 1}`,
+        file,
+        selectedSlotIndex: index,
+      });
       didEditPhotosRef.current = true;
+      photoUploadFilesRef.current[index] = file;
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
@@ -428,6 +493,7 @@ const Measurements = () => {
   const handleAddAdditionalPhoto = () => {
     if (additionalPhotos.length < MAX_ADDITIONAL_PHOTOS) {
       didEditPhotosRef.current = true;
+      additionalPhotoUploadFilesRef.current = [...additionalPhotoUploadFilesRef.current, null];
       setAdditionalPhotos((prev) => [...prev, '']);
     }
   };
@@ -435,7 +501,13 @@ const Measurements = () => {
   const handleAdditionalPhotoChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      logSelectedPhotoFile({
+        label: `дополнительное фото ${index + 1}`,
+        file,
+        selectedSlotIndex: index,
+      });
       didEditPhotosRef.current = true;
+      additionalPhotoUploadFilesRef.current[index] = file;
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
@@ -451,6 +523,7 @@ const Measurements = () => {
 
   const handleDeleteAdditionalPhoto = (index: number) => {
     didEditPhotosRef.current = true;
+    additionalPhotoUploadFilesRef.current = additionalPhotoUploadFilesRef.current.filter((_, i) => i !== index);
     setAdditionalPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
@@ -498,6 +571,12 @@ const Measurements = () => {
 
       const currentPhotos = photos.filter((photo) => photo !== '');
       const currentAdditionalPhotos = safeAdditionalPhotosDraft.filter((photo) => photo !== '');
+      const currentPhotoUploadSources = photos
+        .map((photo, index) => (photo !== '' ? photoUploadFilesRef.current[index] ?? photo : null))
+        .filter((source): source is File | string => source !== null);
+      const currentAdditionalPhotoUploadSources = safeAdditionalPhotosDraft
+        .map((photo, index) => (photo !== '' ? additionalPhotoUploadFilesRef.current[index] ?? photo : null))
+        .filter((source): source is File | string => source !== null);
       const currentDate = toIsoDay(new Date());
       const cachedHistory = measurementsService.getMeasurementHistoryCache(user.id) ?? [];
       let history = cachedHistory;
@@ -602,10 +681,12 @@ const Measurements = () => {
             id: optimisticPhotoEntryId,
             photos: currentPhotos,
             additionalPhotos: currentAdditionalPhotos,
+            photoUploadSources: currentPhotoUploadSources,
+            additionalPhotoUploadSources: currentAdditionalPhotoUploadSources,
           })
-          .catch(() => {
+          .catch((error) => {
             if (reqId === saveReqIdRef.current) {
-              setSaveError('Замеры сохранены, но фото не удалось загрузить. Попробуйте позже.');
+              setSaveError(formatPhotoProcessingError(error));
             }
           });
       }
@@ -860,6 +941,7 @@ const Measurements = () => {
                         onClick={(e) => {
                           e.stopPropagation();
                           didEditPhotosRef.current = true;
+                          photoUploadFilesRef.current[index] = null;
                           setPhotos((prev) => {
                             const newPhotos = [...prev];
                             newPhotos[index] = '';

@@ -7,7 +7,7 @@ import {
   type MeasurementHistory,
   type PhotoHistory,
 } from '../services/measurementsService';
-import { formatUiDay } from '../utils/dateKey';
+import { formatUiDay, toIsoDay } from '../utils/dateKey';
 import styles from './ProgressMeasurements.module.css';
 
 type LoadStatus = 'idle' | 'loading' | 'success' | 'error';
@@ -16,11 +16,34 @@ type HistoryColumn = {
   id: string;
   name: string;
 };
+type MeasurementsPeriod = 'day' | 'week' | 'month' | 'year';
+type MeasurementMetricKey = 'weight' | 'waist' | 'hips';
+type MeasurementSummaryMetric = {
+  key: MeasurementMetricKey;
+  label: string;
+  unit: string;
+  current: number | null;
+  delta: number | null;
+};
+
 const PHOTO_DAYS_PAGE_SIZE = 10;
 const TABLE_POPOVER_WIDTH = 144;
 const TABLE_POPOVER_OFFSET = 44;
 const CROSS_TAB_CHANNEL = 'potok';
 const CROSS_TAB_EVENT_KEY = 'potok_cross_tab_event';
+
+const MEASUREMENTS_PERIOD_OPTIONS: Array<{ key: MeasurementsPeriod; label: string; days: number }> = [
+  { key: 'day', label: 'День', days: 1 },
+  { key: 'week', label: '7 дней', days: 7 },
+  { key: 'month', label: '30 дней', days: 30 },
+  { key: 'year', label: 'Год', days: 365 },
+];
+
+const SUMMARY_METRICS: Array<{ key: MeasurementMetricKey; label: string; unit: string }> = [
+  { key: 'weight', label: 'Вес', unit: 'кг' },
+  { key: 'waist', label: 'Талия', unit: 'см' },
+  { key: 'hips', label: 'Бедра', unit: 'см' },
+];
 
 function devPerfStart(markName: string): void {
   if (!import.meta.env.DEV || typeof performance === 'undefined') return;
@@ -58,6 +81,81 @@ function sortByDateDesc<T extends { date: string }>(rows: T[]): T[] {
   return [...rows].sort((a, b) => b.date.localeCompare(a.date));
 }
 
+function shiftIsoDay(isoDay: string, deltaDays: number): string {
+  const [year, month, day] = isoDay.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + deltaDays);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function parseMeasurementValue(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string') return null;
+  const parsed = Number(value.replace(',', '.').trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getMeasurementValue(row: MeasurementHistory, metricKey: MeasurementMetricKey): number | null {
+  const item = row.measurements.find((measurement) => measurement.id === metricKey);
+  return parseMeasurementValue(item?.value);
+}
+
+function formatMeasurementNumber(value: number): string {
+  return Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+}
+
+function formatMetricResult(metric: MeasurementSummaryMetric): string {
+  if (metric.current === null) return `${metric.label}: —`;
+  if (metric.delta === null) return `${metric.label}: ${formatMeasurementNumber(metric.current)} ${metric.unit}.`;
+
+  const normalizedDelta = Math.abs(metric.delta) < 0.05 ? 0 : metric.delta;
+  const absDelta = formatMeasurementNumber(Math.abs(normalizedDelta));
+
+  if (normalizedDelta === 0) {
+    if (metric.key === 'weight') return 'Вес не изменился.';
+    if (metric.key === 'waist') return 'Талия не изменилась.';
+    return 'Бедра не изменились.';
+  }
+
+  if (metric.key === 'weight') {
+    return normalizedDelta < 0
+      ? `Вес снизился на ${absDelta} ${metric.unit} за период.`
+      : `Вес увеличился на ${absDelta} ${metric.unit} за период.`;
+  }
+
+  if (metric.key === 'waist') {
+    return normalizedDelta < 0
+      ? `Талия уменьшилась на ${absDelta} ${metric.unit}.`
+      : `Талия увеличилась на ${absDelta} ${metric.unit}.`;
+  }
+
+  return normalizedDelta < 0
+    ? `Бедра уменьшились на ${absDelta} ${metric.unit}.`
+    : `Бедра увеличились на ${absDelta} ${metric.unit}.`;
+}
+
+function buildSummaryMetric(
+  rows: MeasurementHistory[],
+  metric: { key: MeasurementMetricKey; label: string; unit: string }
+): MeasurementSummaryMetric {
+  const points = rows
+    .map((row) => ({ date: row.date, value: getMeasurementValue(row, metric.key) }))
+    .filter((point): point is { date: string; value: number } => point.value !== null)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const first = points[0]?.value ?? null;
+  const last = points[points.length - 1]?.value ?? null;
+  const delta = points.length >= 2 && first !== null && last !== null ? last - first : null;
+
+  return {
+    key: metric.key,
+    label: metric.label,
+    unit: metric.unit,
+    current: last,
+    delta,
+  };
+}
+
 function getHistoryColumns(historyRows: MeasurementHistory[]): HistoryColumn[] {
   const byId = new Map<string, HistoryColumn>();
 
@@ -88,6 +186,7 @@ const ProgressMeasurements: FC = () => {
   const [photoStatus, setPhotoStatus] = useState<LoadStatus>('idle');
   const [historyRows, setHistoryRows] = useState<MeasurementHistory[]>([]);
   const [photoRows, setPhotoRows] = useState<PhotoHistory[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<MeasurementsPeriod>('month');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [historyWarning, setHistoryWarning] = useState<string | null>(null);
   const [photoWarning, setPhotoWarning] = useState<string | null>(null);
@@ -488,6 +587,52 @@ const ProgressMeasurements: FC = () => {
     return normalRowsCount > visiblePhotoDays;
   }, [photoRows, visiblePhotoDays]);
   const hasAnyPhotoRows = photoRows.length > 0;
+  const selectedPeriodOption = MEASUREMENTS_PERIOD_OPTIONS.find((option) => option.key === selectedPeriod) ?? MEASUREMENTS_PERIOD_OPTIONS[2];
+  const periodRange = useMemo(() => {
+    const end = toIsoDay(new Date());
+    return {
+      start: shiftIsoDay(end, -(selectedPeriodOption.days - 1)),
+      end,
+    };
+  }, [selectedPeriodOption.days]);
+  const periodHistoryRows = useMemo(
+    () =>
+      historyRows
+        .filter((row) => row.date >= periodRange.start && row.date <= periodRange.end)
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [historyRows, periodRange.end, periodRange.start]
+  );
+  const summaryMetrics = useMemo(
+    () => SUMMARY_METRICS.map((metric) => buildSummaryMetric(periodHistoryRows, metric)),
+    [periodHistoryRows]
+  );
+  const hasPeriodRows = periodHistoryRows.length > 0;
+  const dataQualityMessages = useMemo(() => {
+    if (!hasPeriodRows) return [];
+
+    const messages: string[] = [];
+    if (periodHistoryRows.length < 2) {
+      messages.push('Недостаточно данных для оценки динамики.');
+      return messages;
+    }
+
+    if (
+      (selectedPeriod === 'month' && periodHistoryRows.length < 4) ||
+      (selectedPeriod === 'year' && periodHistoryRows.length < 6)
+    ) {
+      messages.push('Замеры вносятся редко. Для более точного анализа добавляйте замеры регулярно.');
+    }
+
+    if (selectedPeriod === 'year') {
+      const lastMeasurementDay = periodHistoryRows[periodHistoryRows.length - 1]?.date;
+      const staleThresholdDay = shiftIsoDay(periodRange.end, -30);
+      if (lastMeasurementDay && lastMeasurementDay < staleThresholdDay) {
+        messages.push('Нет новых записей за последние 30 дней.');
+      }
+    }
+
+    return messages;
+  }, [hasPeriodRows, periodHistoryRows, periodRange.end, selectedPeriod]);
   const tableViewRows = useMemo(() => {
     devPerfStart('pm:buildTable:start');
     const rows = historyRows.map((row) => ({
@@ -578,6 +723,60 @@ const ProgressMeasurements: FC = () => {
           <X size={24} />
         </button>
       </div>
+
+      <div className="mb-5 grid grid-cols-4 gap-1 rounded-xl bg-gray-100 p-1">
+        {MEASUREMENTS_PERIOD_OPTIONS.map((option) => (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => setSelectedPeriod(option.key)}
+            className={`rounded-lg px-1.5 py-2 text-xs font-semibold transition-colors ${
+              selectedPeriod === option.key
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      <section className="mb-8 rounded-xl border border-gray-200 bg-white p-4">
+        <div className="mb-3">
+          <h2 className="text-base font-semibold text-gray-900">Результат за период</h2>
+          <p className="mt-1 text-xs text-gray-500">
+            {formatUiDay(periodRange.start)} — {formatUiDay(periodRange.end)}
+          </p>
+        </div>
+
+        {!hasPeriodRows ? (
+          <div className="rounded-lg bg-gray-50 px-3 py-4 text-sm text-gray-500">
+            Нет данных за выбранный период.
+          </div>
+        ) : (
+          <>
+            <div className="divide-y divide-gray-100 border-y border-gray-100">
+              {summaryMetrics.map((metric) => (
+                <p key={metric.label} className="py-3 text-sm leading-relaxed text-gray-900">
+                  {formatMetricResult(metric)}
+                </p>
+              ))}
+              <p className="py-3 text-sm leading-relaxed text-gray-900">
+                Внесено {periodHistoryRows.length} замеров за период.
+              </p>
+            </div>
+            {dataQualityMessages.length > 0 && (
+              <div className="mt-3 space-y-1">
+                {dataQualityMessages.map((message) => (
+                  <p key={message} className="text-sm leading-relaxed text-gray-500">
+                    {message}
+                  </p>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </section>
 
       <section className="mb-8">
         <h2 className="mb-3 text-center text-lg font-semibold text-gray-900">ИСТОРИЯ ЗАМЕРОВ</h2>
