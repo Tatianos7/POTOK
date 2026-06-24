@@ -37,6 +37,7 @@ export interface WorkoutProgressUndertrainedMuscle {
 
 export interface WorkoutProgressSummary {
   totalWorkouts: number;
+  workoutDates: string[];
   totalExercises: number;
   totalSets: number;
   totalVolume: number;
@@ -274,11 +275,12 @@ export function buildWorkoutProgressSummaryFromEntries(
   entries: WorkoutEntry[],
   period: WorkoutProgressPeriod = 'custom',
 ): WorkoutProgressSummary {
-  const totalWorkouts = new Set(
+  const workoutDates = Array.from(new Set(
     entries
       .map((entry) => entry.workout_day?.date || entry.workout_day_id)
       .filter(Boolean),
-  ).size;
+  )).sort();
+  const totalWorkouts = workoutDates.length;
 
   const accumulator = new Map<MuscleKey, MuscleAccumulator>();
   let totalSets = 0;
@@ -367,6 +369,7 @@ export function buildWorkoutProgressSummaryFromEntries(
 
   return {
     totalWorkouts,
+    workoutDates,
     totalExercises: entries.length,
     totalSets,
     totalVolume,

@@ -179,8 +179,9 @@ const ProgressNutrition: FC = () => {
   const isLowCoverage = periodDays > 1 && coverageRatio < 0.8;
   const recordsWarning =
     periodDays > 1 && isLowCoverage
-      ? 'Выводы могут быть неточными, потому что заполнены не все дни.'
+      ? 'Данных пока мало: часть дней в периоде не заполнена.'
       : null;
+  const showAverageExplanation = periodDays > 1;
 
   const deficitState = useMemo(() => {
     if (!data?.deficit?.is_visible) {
@@ -492,6 +493,14 @@ const ProgressNutrition: FC = () => {
               </div>
             </div>
           </div>
+          {showAverageExplanation ? (
+            <p className="mt-4 text-xs leading-5 text-stone-500">
+              Среднее считается за весь выбранный период, включая дни без записей.
+            </p>
+          ) : null}
+          {recordsWarning ? (
+            <p className="mt-2 text-xs leading-5 text-amber-700">{recordsWarning}</p>
+          ) : null}
         </div>
       )}
 
@@ -519,8 +528,8 @@ const ProgressNutrition: FC = () => {
                   <h2 className="text-2xl font-semibold text-stone-950">За этот период пока нет записей питания</h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
                     {hasCalorieTarget
-                      ? 'Цель по калориям есть, но в выбранном периоде нет записей питания. Добавьте записи, чтобы увидеть калории, макросы и дефицит.'
-                      : 'За выбранный период пока нет записей питания. Цель по калориям тоже не задана, поэтому дефицит или профицит сейчас рассчитать нельзя.'}
+                      ? 'Нет данных за выбранный период. Progress учитывает только сохранённые записи дневника питания. Добавьте записи, чтобы увидеть калории, макросы и дефицит.'
+                      : 'Нет данных за выбранный период. Progress учитывает только сохранённые записи дневника питания. Цель по калориям тоже не задана, поэтому дефицит или профицит сейчас рассчитать нельзя.'}
                   </p>
                   <div className="mt-5 flex flex-wrap gap-3">
                     <button

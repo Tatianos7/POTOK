@@ -39,6 +39,13 @@ type WorkoutInsight = {
   description?: string;
 };
 
+type WorkoutPeriodResult = {
+  totalWorkouts: number;
+  averageFrequency: string;
+  lastWorkout: string;
+  longestGapDays: number | null;
+};
+
 function toSummaryPeriod(period: WorkoutProgressQuickPeriod): WorkoutProgressPeriod {
   if (period === 'week') {
     return 'week';
@@ -132,6 +139,24 @@ function getLongestWorkoutGapDays(workoutDates: string[]): number | null {
   return longestGap;
 }
 
+export function getWorkoutPeriodResultFromSummary(
+  summary: WorkoutProgressSummary | null,
+  period: { dayCount: number; to: string },
+): WorkoutPeriodResult {
+  const workoutDates = Array.from(new Set(summary?.workoutDates ?? [])).sort();
+  const lastWorkoutDate = workoutDates[workoutDates.length - 1] ?? null;
+  const totalWorkouts = summary?.totalWorkouts ?? workoutDates.length;
+
+  return {
+    totalWorkouts,
+    averageFrequency: period.dayCount >= 7 && totalWorkouts > 0
+      ? formatTimesPerWeek((totalWorkouts / period.dayCount) * 7)
+      : 'Недостаточно данных',
+    lastWorkout: formatLastWorkoutLabel(lastWorkoutDate, period.to),
+    longestGapDays: getLongestWorkoutGapDays(workoutDates),
+  };
+}
+
 export function getProgressMuscleMapMuscles(
   summary: WorkoutProgressSummary | null,
 ): { primaryMuscles: string[]; secondaryMuscles: string[] } {
@@ -165,8 +190,8 @@ const ProgressWorkouts: FC = () => {
   const [anchorDate] = useState(locationSelectedMonthDate ?? getLocalDayKey());
   const [selectedPeriod, setSelectedPeriod] = useState<WorkoutProgressQuickPeriod>('month');
   const [observations, setObservations] = useState<WorkoutProgressObservation[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isExerciseProgressLoading, setIsExerciseProgressLoading] = useState(false);
+  const [exerciseProgressErrorMessage, setExerciseProgressErrorMessage] = useState<string | null>(null);
   const [summary, setSummary] = useState<WorkoutProgressSummary | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isExerciseListOpen, setIsExerciseListOpen] = useState(false);
@@ -187,24 +212,12 @@ const ProgressWorkouts: FC = () => {
   }, [displayObservations, observations]);
   const loadedMuscles = useMemo(() => getProgressMuscleMapMuscles(summary), [summary]);
   const workoutResult = useMemo(() => {
-    const workoutDates = Array.from(new Set(
-      displayObservations
-        .map((item) => item.date)
-        .filter(Boolean),
-    )).sort();
-    const lastWorkoutDate = workoutDates[workoutDates.length - 1] ?? null;
-    const totalWorkouts = summary?.totalWorkouts ?? workoutDates.length;
-
-    return {
-      totalWorkouts,
-      trainingDays: workoutDates.length,
-      averageFrequency: period.dayCount >= 7 && totalWorkouts > 0
-        ? formatTimesPerWeek((totalWorkouts / period.dayCount) * 7)
-        : 'Недостаточно данных',
-      lastWorkout: formatLastWorkoutLabel(lastWorkoutDate, period.to),
-      longestGapDays: getLongestWorkoutGapDays(workoutDates),
-    };
-  }, [displayObservations, period.dayCount, period.to, summary?.totalWorkouts]);
+    return getWorkoutPeriodResultFromSummary(summary, period);
+  }, [period, summary]);
+  const isExerciseProgressLoadedForPeriod = useMemo(
+    () => cacheCoversWorkoutProgressPeriod(progressObservationsCache, user?.id ?? '', period.to),
+    [period.to, user?.id, observations],
+  );
   const workoutInsights = useMemo(() => {
     const helps: WorkoutInsight[] = [];
     const improvements: WorkoutInsight[] = [];
@@ -245,7 +258,7 @@ const ProgressWorkouts: FC = () => {
       improvements.push({ title: 'Для оценки прогресса нужно больше данных.' });
     }
 
-    if (totalWorkouts > 0 && !hasLoadData) {
+    if (totalWorkouts > 0 && isExerciseProgressLoadedForPeriod && !hasLoadData) {
       improvements.push({ title: 'Мало данных по нагрузке.' });
     }
 
@@ -258,16 +271,20 @@ const ProgressWorkouts: FC = () => {
     }
 
     return { helps, improvements };
-  }, [loadedMuscles, rows, selectedPeriod, workoutResult]);
+  }, [isExerciseProgressLoadedForPeriod, loadedMuscles, rows, selectedPeriod, workoutResult]);
   useEffect(() => {
     if (!user?.id) return;
+    if (!isExerciseListOpen) {
+      setIsExerciseProgressLoading(false);
+      return;
+    }
 
     let isMounted = true;
-    setErrorMessage(null);
+    setExerciseProgressErrorMessage(null);
 
     if (cacheCoversWorkoutProgressPeriod(progressObservationsCache, user.id, period.to)) {
       setObservations(progressObservationsCache!.observations);
-      setIsLoading(false);
+      setIsExerciseProgressLoading(false);
       return () => {
         isMounted = false;
       };
@@ -281,13 +298,13 @@ const ProgressWorkouts: FC = () => {
     );
 
     if (!fetchRange.shouldFetch) {
-      setIsLoading(false);
+      setIsExerciseProgressLoading(false);
       return () => {
         isMounted = false;
       };
     }
 
-    setIsLoading(true);
+    setIsExerciseProgressLoading(true);
 
     workoutService
       .getWorkoutProgressObservations(user.id, fetchRange.from, fetchRange.to)
@@ -307,18 +324,18 @@ const ProgressWorkouts: FC = () => {
         if (!progressObservationsCache || progressObservationsCache.userId !== user.id) {
           setObservations([]);
         }
-        setErrorMessage(error?.message || 'Не удалось загрузить прогресс тренировок');
+        setExerciseProgressErrorMessage('Не удалось загрузить прогресс упражнений.');
       })
       .finally(() => {
         if (isMounted) {
-          setIsLoading(false);
+          setIsExerciseProgressLoading(false);
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, [period.from, period.to, user?.id]);
+  }, [isExerciseListOpen, period.from, period.to, user?.id]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -388,12 +405,6 @@ const ProgressWorkouts: FC = () => {
           ))}
         </div>
 
-        {errorMessage ? (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            {errorMessage}
-          </div>
-        ) : null}
-
         <section className="space-y-3">
           <div className="rounded-xl border border-gray-200 bg-white p-6">
             <div className="mb-4 text-sm font-medium text-stone-900">Результат за период</div>
@@ -413,7 +424,7 @@ const ProgressWorkouts: FC = () => {
                   <div className="mt-0.5 text-xs text-stone-400">в пересчёте на неделю</div>
                 </div>
                 <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
-                  {isLoading || isSummaryLoading ? '...' : workoutResult.averageFrequency}
+                  {isSummaryLoading ? '...' : workoutResult.averageFrequency}
                 </div>
               </div>
               <div className="flex items-start justify-between gap-4 py-3">
@@ -422,7 +433,7 @@ const ProgressWorkouts: FC = () => {
                   <div className="mt-0.5 text-xs text-stone-400">относительно периода</div>
                 </div>
                 <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
-                  {isLoading ? '...' : workoutResult.lastWorkout}
+                  {isSummaryLoading ? '...' : workoutResult.lastWorkout}
                 </div>
               </div>
             </div>
@@ -525,18 +536,27 @@ const ProgressWorkouts: FC = () => {
 
           {isExerciseListOpen ? (
             <div className="border-t border-emerald-100 bg-white px-4 py-4">
-              <WorkoutProgressList
-                rows={rows}
-                isLoading={isLoading}
-                onRowSelect={(row) => {
-                  navigate(`/progress/workouts/${encodeURIComponent(row.exerciseGroupKey)}`, {
-                    state: {
-                      exerciseName: row.exerciseName,
-                      selectedMonthDate: anchorDate,
-                    },
-                  });
-                }}
-              />
+              {exerciseProgressErrorMessage ? (
+                <div className="bg-white px-1 py-6 text-sm text-red-700">
+                  {exerciseProgressErrorMessage}
+                </div>
+              ) : isExerciseProgressLoading ? (
+                <div className="bg-white px-1 py-6 text-sm text-gray-500">
+                  Загружаем прогресс упражнений...
+                </div>
+              ) : (
+                <WorkoutProgressList
+                  rows={rows}
+                  onRowSelect={(row) => {
+                    navigate(`/progress/workouts/${encodeURIComponent(row.exerciseGroupKey)}`, {
+                      state: {
+                        exerciseName: row.exerciseName,
+                        selectedMonthDate: anchorDate,
+                      },
+                    });
+                  }}
+                />
+              )}
             </div>
           ) : null}
         </section>
