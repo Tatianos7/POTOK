@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "postbuild": "node scripts/create-github-pages-fallback.mjs",
     "generate:exercises": "ts-node scripts/generateExerciseContent.ts",
     "validate:exercise-media": "tsx scripts/validateExerciseMedia.ts",
     "validate:food-core": "tsx scripts/validate-food-core.ts",
@@ -15,6 +16,7 @@
     "test:diary": "tsx --test src/services/__tests__/diaryCreateService.test.ts src/services/__tests__/mealService.diary-enforcement.test.ts",
     "test:diary:bugfix": "tsx --test src/services/__tests__/foodService.search-mapping.test.ts src/services/__tests__/diaryCreateService.test.ts src/services/__tests__/mealService.diary-enforcement.test.ts",
     "test:diary:integration": "tsx --test src/services/__tests__/diaryCreateService.integration.test.ts",
+    "test:pages:fallback": "node --test scripts/create-github-pages-fallback.test.mjs",
     "test:progress:nutrition": "tsx --test src/services/__tests__/progressNutritionService.test.ts",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
