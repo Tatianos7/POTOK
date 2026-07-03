@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  calculateDiarySnapshot,
   DiaryCreateService,
   DiaryCreateServiceError,
   type CreateDiaryEntryRequest,
@@ -116,6 +117,31 @@ test('resolved happy path computes snapshot server-side', async () => {
   assert.equal(result.entry.fiber, 0);
   assert.equal(diaryRepo.inserts.length, 1);
   assert.equal(diaryRepo.inserts[0].calories, 232.5);
+});
+
+test('snapshot scaling preserves null fiber and keeps confirmed zero', () => {
+  assert.deepEqual(calculateDiarySnapshot(buildFood({ fiber: null }), 150), {
+    calories: 232.5,
+    protein: 19.5,
+    fat: 16.5,
+    carbs: 1.65,
+    fiber: null,
+  });
+
+  assert.equal(calculateDiarySnapshot(buildFood({ fiber: 0 }), 150).fiber, 0);
+});
+
+test('diary insert payload preserves null fiber in stored snapshot', async () => {
+  const diaryRepo = new InMemoryDiaryRepo();
+  const service = new DiaryCreateService({
+    diaryRepo,
+    foodsRepo: new InMemoryFoodsRepo({ 'food-1': buildFood({ fiber: null }) }),
+  });
+
+  const result = await service.create('user-1', buildRequest({ fiber: 999 }));
+
+  assert.equal(result.entry.fiber, null);
+  assert.equal(diaryRepo.inserts[0].fiber, null);
 });
 
 test('ambiguous resolver is rejected', async () => {
