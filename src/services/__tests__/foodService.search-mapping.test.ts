@@ -42,6 +42,78 @@ function buildFood(overrides: Record<string, unknown> = {}) {
   };
 }
 
+test('nullable number helper preserves null and zero semantics', async () => {
+  const { toNullableFiniteNumber } = await import('../foodService');
+
+  assert.equal(toNullableFiniteNumber(null), null);
+  assert.equal(toNullableFiniteNumber(undefined), null);
+  assert.equal(toNullableFiniteNumber(''), null);
+  assert.equal(toNullableFiniteNumber(0), 0);
+  assert.equal(toNullableFiniteNumber('0'), 0);
+  assert.equal(toNullableFiniteNumber('2.5'), 2.5);
+  assert.equal(toNullableFiniteNumber('not-a-number'), null);
+});
+
+test('Supabase food mapping preserves nullable fiber contract', async () => {
+  const { foodService } = await import('../foodService');
+  const svc = foodService as any;
+  const baseRow = {
+    id: '550e8400-e29b-41d4-a716-446655440000',
+    name: 'Яичница глазунья',
+    calories: '196',
+    protein: '13.6',
+    fat: '14.8',
+    carbs: '0.8',
+    source: 'core',
+    canonical_food_id: '550e8400-e29b-41d4-a716-446655440000',
+    created_at: '2026-07-02T00:00:00.000Z',
+    updated_at: '2026-07-02T00:00:00.000Z',
+  };
+
+  assert.equal(svc.mapSupabaseRowToFood({ ...baseRow, fiber: null }).fiber, null);
+  assert.equal(svc.mapSupabaseRowToFood({ ...baseRow, fiber: 0 }).fiber, 0);
+  assert.equal(svc.mapSupabaseRowToFood({ ...baseRow, fiber: '0' }).fiber, 0);
+  assert.equal(svc.mapSupabaseRowToFood({ ...baseRow, fiber: '3.25' }).fiber, 3.25);
+  assert.equal(svc.mapSupabaseRowToFood({ ...baseRow, fiber: 'bad' }).fiber, null);
+});
+
+test('selected product hydration preserves null fiber and UUID identity', async () => {
+  const { foodService } = await import('../foodService');
+  const svc = foodService as any;
+  const original = svc.getFoodByIdFresh;
+  const canonicalId = '550e8400-e29b-41d4-a716-446655440000';
+
+  svc.getFoodByIdFresh = async (id: string) => {
+    if (id !== canonicalId) return null;
+    return buildFood({
+      id: canonicalId,
+      canonical_food_id: canonicalId,
+      calories: 196,
+      protein: 13.6,
+      fat: 14.8,
+      carbs: 0.8,
+      fiber: null,
+    });
+  };
+
+  try {
+    const hydrated = await foodService.hydrateFoodForDiarySelection(
+      buildFood({
+        id: canonicalId,
+        canonical_food_id: canonicalId,
+        fiber: 0,
+      }) as any,
+      'user-1'
+    );
+
+    assert.equal(hydrated.id, canonicalId);
+    assert.equal(hydrated.canonical_food_id, canonicalId);
+    assert.equal(hydrated.fiber, null);
+  } finally {
+    svc.getFoodByIdFresh = original;
+  }
+});
+
 test('search results keep per-product nutrition values and do not apply category defaults to public foods', async () => {
   const { finalizeFoodSearchResults } = await import('../foodService');
 

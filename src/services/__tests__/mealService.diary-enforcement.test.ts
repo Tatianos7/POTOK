@@ -35,6 +35,7 @@ function createCanonicalEntry(): MealEntry {
       protein: 13,
       fat: 11,
       carbs: 1.1,
+      fiber: null,
       source: 'core',
       canonical_food_id: '11111111-1111-4111-8111-111111111111',
       createdAt: new Date().toISOString(),
@@ -52,6 +53,15 @@ function createCanonicalEntry(): MealEntry {
     canonicalFoodId: '11111111-1111-4111-8111-111111111111',
   };
 }
+
+test('canonical diary request preserves selected food null fiber', () => {
+  const svc = mealService as any;
+  const entry = createCanonicalEntry();
+  const request = svc.toDiaryCreateRequest('user-1', '2026-03-18', 'breakfast', entry);
+
+  assert.equal(request.fiber, null);
+  assert.equal(request.resolver.canonical_food_id, entry.canonicalFoodId);
+});
 
 test('updateMealEntry uses strict canonical update path and bypasses batch save', async () => {
   const svc = mealService as any;

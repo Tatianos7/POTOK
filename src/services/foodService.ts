@@ -38,6 +38,17 @@ const toNumber = (value: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+export const toNullableFiniteNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'string' && value.trim() === '') {
+    return null;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
 const getSourcePriority = (source: Food['source']): number => {
   switch (source) {
     case 'user':
@@ -62,7 +73,7 @@ export const hasUsableFoodNutrition = (
   const protein = toNumber(food.protein);
   const fat = toNumber(food.fat);
   const carbs = toNumber(food.carbs);
-  const fiber = toNumber(food.fiber);
+  const fiber = food.fiber == null ? 0 : toNumber(food.fiber);
 
   if ([calories, protein, fat, carbs, fiber].some((value) => value < 0)) {
     return false;
@@ -166,7 +177,7 @@ export const finalizeFoodSearchResults = (foods: Food[], query: string, limit = 
     shouldApplySearchNutritionFallback(food) ? {
       ...food,
       ...CATEGORY_DEFAULTS[food.category || 'vegetables'] || CATEGORY_DEFAULTS.vegetables,
-      fiber: food.fiber ?? 0,
+      fiber: food.fiber,
       autoFilled: true,
       updatedAt: new Date().toISOString(),
     } : food
@@ -237,13 +248,13 @@ class FoodService {
     const normalizedBrand = buildNormalizedBrand(raw.brand ?? null);
     const nutritionVersion = raw.nutrition_version ?? 1;
     const unit = raw.unit ?? 'g';
-    const fiber = toNumber(raw.fiber);
+    const fiber = toNullableFiniteNumber(raw.fiber);
     const { suspicious } = validateNutrition({
       calories: toNumber(raw.calories),
       protein: toNumber(raw.protein),
       fat: toNumber(raw.fat),
       carbs: toNumber(raw.carbs),
-      fiber,
+      fiber: fiber ?? undefined,
     });
     return {
       id: raw.id ?? `food_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -661,7 +672,7 @@ class FoodService {
       protein: Number(row.protein) || 0,
       fat: Number(row.fat) || 0,
       carbs: Number(row.carbs) || 0,
-      fiber: Number(row.fiber) || 0,
+      fiber: toNullableFiniteNumber(row.fiber),
       unit: row.unit || 'g',
       category: row.category || undefined,
       brand: row.brand || null,
@@ -865,7 +876,7 @@ class FoodService {
       protein: Number(food.protein),
       fat: Number(food.fat),
       carbs: Number(food.carbs),
-      fiber: Number(food.fiber) || 0,
+      fiber: food.fiber == null ? undefined : Number(food.fiber),
     });
     const userFood: UserCustomFood = {
       ...this.normalizeFood(food),
@@ -885,7 +896,7 @@ class FoodService {
         protein: userFood.protein,
         fat: userFood.fat,
         carbs: userFood.carbs,
-        fiber: userFood.fiber ?? 0,
+        fiber: userFood.fiber,
         unit: userFood.unit ?? 'g',
         category: userFood.category || null,
         brand: userFood.brand,
@@ -968,7 +979,7 @@ class FoodService {
         protein: Number(updated.protein),
         fat: Number(updated.fat),
         carbs: Number(updated.carbs),
-        fiber: Number(updated.fiber) || 0,
+        fiber: updated.fiber == null ? undefined : Number(updated.fiber),
       });
 
       try {
@@ -983,7 +994,7 @@ class FoodService {
           protein: Number(updated.protein) || 0,
           fat: Number(updated.fat) || 0,
           carbs: Number(updated.carbs) || 0,
-          fiber: Number(updated.fiber) || 0,
+          fiber: updated.fiber == null ? undefined : Number(updated.fiber),
         });
         
         if (food.name !== undefined) updateData.name = food.name;
