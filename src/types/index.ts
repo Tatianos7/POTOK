@@ -74,6 +74,7 @@ export type FoodSource =
 
 export interface Food {
   id: string;
+  stable_food_id?: string | null;
   name: string; // Русское название (основное отображение)
   name_original?: string; // Оригинальное/английское название
   barcode?: string | null;
