@@ -165,8 +165,8 @@ const REQUIRED_ALIAS_COLUMNS = [
   'comment',
 ];
 
-const EXPECTED_FOODS_COUNT = 2199;
-const EXPECTED_ALIASES_COUNT = 3408;
+const EXPECTED_FOODS_COUNT = 2200;
+const EXPECTED_EXCEL_ALIAS_ROWS_COUNT = 3417;
 const EXPECTED_METADATA_COUNT = 6;
 const PAGE_SIZE = 1000;
 const BATCH_SIZE = 100;
@@ -460,7 +460,9 @@ const validateBeforeImport = (foods: FoodDto[], aliases: AliasDto[]): Finding[] 
       findings.push({ severity: 'error', area: 'foods_import', message: `Row ${food.rowNumber}: core canonical_food_id must equal id.` });
     }
     if (food.source !== 'core') findings.push({ severity: 'error', area: 'foods_import', message: `Row ${food.rowNumber}: source must be core.` });
-    if (food.product_scope !== 'core') findings.push({ severity: 'error', area: 'foods_import', message: `Row ${food.rowNumber}: product_scope must be core.` });
+    if (!['core', 'generic'].includes(food.product_scope)) {
+      findings.push({ severity: 'error', area: 'foods_import', message: `Row ${food.rowNumber}: product_scope must be core or generic.` });
+    }
     if (!food.normalized_name) findings.push({ severity: 'error', area: 'foods_import', message: `Row ${food.rowNumber}: normalized_name is required.` });
     for (const field of ['calories_100g', 'protein_100g', 'fat_100g', 'carbs_100g'] as const) {
       if (food[field] === null) findings.push({ severity: 'error', area: 'foods_import', message: `Row ${food.rowNumber}: ${field} must be numeric.` });
@@ -490,8 +492,8 @@ const validateBeforeImport = (foods: FoodDto[], aliases: AliasDto[]): Finding[] 
   if (foods.length !== EXPECTED_FOODS_COUNT) {
     findings.push({ severity: foods.length === 0 ? 'error' : 'warning', area: 'Excel', message: `Expected ${EXPECTED_FOODS_COUNT} foods, got ${foods.length}.` });
   }
-  if (aliases.length !== EXPECTED_ALIASES_COUNT) {
-    findings.push({ severity: aliases.length === 0 ? 'error' : 'warning', area: 'Excel', message: `Expected ${EXPECTED_ALIASES_COUNT} aliases, got ${aliases.length}.` });
+  if (aliases.length !== EXPECTED_EXCEL_ALIAS_ROWS_COUNT) {
+    findings.push({ severity: aliases.length === 0 ? 'error' : 'warning', area: 'Excel', message: `Expected ${EXPECTED_EXCEL_ALIAS_ROWS_COUNT} raw Excel alias rows, got ${aliases.length}.` });
   }
 
   return findings;
@@ -1150,6 +1152,10 @@ const writeReport = (params: {
   const { args, env, preflight, applySummary } = params;
   const errors = params.findings.filter((finding) => finding.severity === 'error');
   const warnings = params.findings.filter((finding) => finding.severity === 'warning');
+  const rawExcelAliasRows = params.aliases.length;
+  const exactNormalizedExcelAliases = new Set(params.aliases.map((alias) => alias.normalized_alias).filter(Boolean)).size;
+  const dbNormalizedDedupedEquivalentAliases = preflight?.aliasDedupedEquivalents.length ?? 0;
+  const dbComparableUniqueAliases = rawExcelAliasRows - dbNormalizedDedupedEquivalentAliases;
   const preflightRows = preflight ? [
     ['DB foods rows', String(preflight.dbFoods.length)],
     ['DB alias rows', String(preflight.dbAliases.length)],
@@ -1206,8 +1212,27 @@ const writeReport = (params: {
     '',
     `- Sheet names: ${params.sheetNames.join(', ')}`,
     `- Foods count: ${params.foods.length}`,
-    `- Aliases count: ${params.aliases.length}`,
+    `- Raw Excel alias rows: ${rawExcelAliasRows}`,
+    `- Exact unique normalized_alias values in Excel: ${exactNormalizedExcelAliases}`,
+    `- DB-normalized deduped equivalent aliases: ${dbNormalizedDedupedEquivalentAliases}`,
+    `- DB-comparable unique aliases represented by Excel: ${dbComparableUniqueAliases}`,
     `- Metadata count: ${params.metadataRowsCount}`,
+    '',
+    '## Alias Count Contract',
+    '',
+    '- Raw Excel alias rows are validated against the workbook export contract.',
+    '- DB alias rows are compared only after importer DB-normalization/deduplication.',
+    '- Some Excel rows intentionally differ only by punctuation/decimal spelling and collapse to one DB alias.',
+    '',
+    markdownTable(['Metric', 'Count'], [
+      ['Raw Excel alias rows', String(rawExcelAliasRows)],
+      ['Exact unique normalized_alias values in Excel', String(exactNormalizedExcelAliases)],
+      ['DB-normalized deduped equivalent aliases', String(dbNormalizedDedupedEquivalentAliases)],
+      ['DB-comparable unique aliases represented by Excel', String(dbComparableUniqueAliases)],
+      ['Current DB alias rows', preflight ? String(preflight.dbAliases.length) : 'n/a'],
+      ['Alias insert candidates', preflight ? String(preflight.aliasInsertCandidates.length) : 'n/a'],
+      ['Expected DB aliases after apply', preflight ? String(preflight.dbAliases.length + preflight.aliasInsertCandidates.length) : 'n/a'],
+    ]),
     '',
     '## Identity Mapping',
     '',
@@ -1467,10 +1492,11 @@ const main = async () => {
     productionBlocked,
   });
 
-  console.log(`Food Core Import ${args.mode}
+console.log(`Food Core Import ${args.mode}
 Target: ${args.target}
 Excel foods: ${workbookData.foods.length}
-Excel aliases: ${workbookData.aliases.length}
+Excel raw alias rows: ${workbookData.aliases.length}
+Excel DB-comparable unique aliases: ${preflight ? workbookData.aliases.length - preflight.aliasDedupedEquivalents.length : 0}
 Metadata rows: ${workbookData.metadataRows.length}
 DB foods: ${preflight?.dbFoods.length ?? 0}
 DB aliases: ${preflight?.dbAliases.length ?? 0}

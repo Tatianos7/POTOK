@@ -1,82 +1,6 @@
 # Food Core Import Report
 
-## Guarded Staging Alias Continuation Summary
-
-- Timestamp: 2026-07-02T07:55:00Z
-- Final guarded continuation verdict: **STAGING_ALIAS_CONTINUATION_PASS**
-- Target: staging
-- Target project ref: `ozidryfvhkcbtpnulakq`
-- Production/current project ref: `dtsdnhbcwpbfrhcazqkb`
-- Apply attempts: 1 actual importer apply
-- Actual apply command: `TS_NODE_TRANSPILE_ONLY=true node --loader ts-node/esm scripts/import-food-core.ts --file ./data/food-core/Food_Core_v02_with_aliases.xlsx --mode apply --target staging`
-- `npm run import:food-core` was attempted first and failed before importer execution because of the known `tsx/esbuild` mismatch.
-
-Apply result:
-
-| Metric | Count |
-| --- | ---: |
-| Foods inserted | 0 |
-| Foods skipped/exact | 2199 |
-| Foods failed | 0 |
-| Alias phase started | yes |
-| Alias batches attempted/completed | 34 / 34 |
-| Aliases inserted | 3311 |
-| Alias deduped/skipped equivalents | 97 |
-| Aliases failed | 0 |
-
-Post-apply read-only counts:
-
-| Table | Count |
-| --- | ---: |
-| public.foods | 2199 |
-| public.food_aliases | 3311 |
-| public.food_diary_entries | 0 |
-| public.recipes | 0 |
-| public.recipe_ingredients | 0 |
-| public.favorite_products | 0 |
-
-Alias integrity:
-
-| Check | Count |
-| --- | ---: |
-| Orphan aliases | 0 |
-| Duplicate normalized_alias | 0 |
-| Duplicate normalized_alias + canonical_food_id mappings | 0 |
-| Null canonical_food_id | 0 |
-| Empty alias | 0 |
-| Empty normalized_alias | 0 |
-| UUID target coverage | 3311 |
-
-Repeat dry-run/idempotency:
-
-| Metric | Count |
-| --- | ---: |
-| Food insert candidates | 0 |
-| Food skipped/exact | 2199 |
-| Alias insert candidates | 0 |
-| Alias skipped/exact | 3311 |
-| Alias conflicts | 0 |
-| Alias resolution errors | 0 |
-| Verdict | DRY_RUN_PASS |
-
-Tests/build:
-
-- Importer tests: 22 passed, 0 failed.
-- Build: passed with existing Vite/browser-data/chunk-size warnings only.
-
-Safety:
-
-- Production was not used.
-- SQL migrations were not executed.
-- Schema was not changed.
-- Excel was not changed.
-- food_diary_entries, recipes, recipe_ingredients, and favorite_products were not changed.
-- Cleanup/delete/truncate was not performed.
-- Automatic retry was not performed.
-
-Detailed report: `reports/food-core-staging-alias-apply-report.md`.
-
-- Timestamp: 2026-07-02T07:48:43.990Z
+- Timestamp: 2026-07-11T14:58:00.962Z
 - Mode: dry-run
 - Target: staging
 - File: data/food-core/Food_Core_v02_with_aliases.xlsx
@@ -110,9 +34,28 @@ Detailed report: `reports/food-core-staging-alias-apply-report.md`.
 ## Excel Summary
 
 - Sheet names: Обзор экспорта, metadata, foods_import, ALIASES, DATA_DICTIONARY, README, ALIASES_LEGACY, ALIASES_QA
-- Foods count: 2199
-- Aliases count: 3408
+- Foods count: 2200
+- Raw Excel alias rows: 3417
+- Exact unique normalized_alias values in Excel: 3417
+- DB-normalized deduped equivalent aliases: 97
+- DB-comparable unique aliases represented by Excel: 3320
 - Metadata count: 6
+
+## Alias Count Contract
+
+- Raw Excel alias rows are validated against the workbook export contract.
+- DB alias rows are compared only after importer DB-normalization/deduplication.
+- Some Excel rows intentionally differ only by punctuation/decimal spelling and collapse to one DB alias.
+
+| Metric | Count |
+| --- | --- |
+| Raw Excel alias rows | 3417 |
+| Exact unique normalized_alias values in Excel | 3417 |
+| DB-normalized deduped equivalent aliases | 97 |
+| DB-comparable unique aliases represented by Excel | 3320 |
+| Current DB alias rows | 3320 |
+| Alias insert candidates | 0 |
+| Expected DB aliases after apply | 3320 |
 
 ## Identity Mapping
 
@@ -131,15 +74,15 @@ Detailed report: `reports/food-core-staging-alias-apply-report.md`.
 
 | Metric | Count |
 | --- | --- |
-| DB foods rows | 2199 |
-| DB alias rows | 3311 |
+| DB foods rows | 2200 |
+| DB alias rows | 3320 |
 | Stable food id insert candidates | 0 |
-| Food skipped existing | 2199 |
+| Food skipped existing | 2200 |
 | Stable food id conflicts | 0 |
 | Normalized name legacy conflicts | 0 |
 | Normalized name user/brand warnings | 0 |
 | Alias insert candidates | 0 |
-| Alias skipped existing | 3311 |
+| Alias skipped existing | 3320 |
 | Alias deduped/skipped equivalents | 97 |
 | Alias conflicts | 0 |
 | Alias canonical resolution errors | 0 |
