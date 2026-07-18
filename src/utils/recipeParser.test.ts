@@ -77,6 +77,11 @@ const TEST_CASES: TestCase[] = [
     expected: { name: 'говядина', amount: 250, unit: 'g', amountText: '250 г' },
     description: 'Число с дефисом и единицей',
   },
+  {
+    input: '250 грамм чечевицы, вода 500 мл., лук 1 шт., говядина 300 грамм',
+    expected: { name: 'чечевица', amount: 250, unit: 'g', amountText: '250 г' },
+    description: 'Food Core rollout example: inflected lentils',
+  },
 ];
 
 /**
@@ -166,4 +171,3 @@ export function runAllTests(): { passed: number; failed: number; results: Array<
 if (typeof window !== 'undefined') {
   (window as any).runParserTests = runAllTests;
 }
-

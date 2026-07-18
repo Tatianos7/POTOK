@@ -11,6 +11,7 @@ export interface ParsedRecipeIngredient {
   amountGrams: number; // для расчётов (всегда в граммах)
   displayAmount: string | null; // исходное количество для отображения
   displayUnit: string | null; // исходная единица для отображения
+  unitConversionWarning?: string | null;
 }
 
 // ============================================
@@ -274,6 +275,16 @@ function normalizeProductName(name: string): string {
     normalized = normalized.replace(/морковки$/i, 'морковь');
   }
 
+  // "чечевицы" → "чечевица"
+  if (normalized.toLowerCase().endsWith('чечевицы')) {
+    normalized = normalized.replace(/чечевицы$/i, 'чечевица');
+  }
+
+  // "луковица" / "луковицы" → "лук"
+  if (/^луковиц[аы]$/i.test(normalized)) {
+    normalized = 'лук';
+  }
+
   // "масла" → "масло"
   if (normalized.toLowerCase().endsWith('масла')) {
     normalized = normalized.replace(/масла$/i, 'масло');
@@ -295,19 +306,28 @@ function normalizeProductName(name: string): string {
 /**
  * Преобразует amount в граммы для расчётов
  */
-function convertToGrams(amount: number, unit: NormalizedUnit, productName: string): number {
+function convertToGrams(
+  amount: number,
+  unit: NormalizedUnit,
+  productName: string
+): { amountGrams: number; warning: string | null } {
   if (unit === 'g') {
-    return amount;
+    return { amountGrams: amount, warning: null };
   } else if (unit === 'ml') {
-    return amount; // плотность ~1 для воды/жидкостей
+    return { amountGrams: amount, warning: null }; // density 1:1; precise enough for water and most recipe liquids
   } else if (unit === 'pcs') {
     // Ищем средний вес для продукта
     const lowerName = productName.toLowerCase();
     const key = Object.keys(pieceWeights).find((k) => lowerName.includes(k));
-    const pieceWeight = key ? pieceWeights[key] : 50; // по умолчанию 50г
-    return amount * pieceWeight;
+    if (!key) {
+      return {
+        amountGrams: 0,
+        warning: 'Для штучной единицы нет правила перевода в граммы.',
+      };
+    }
+    return { amountGrams: amount * pieceWeights[key], warning: null };
   }
-  return 0;
+  return { amountGrams: 0, warning: null };
 }
 
 // ============================================
@@ -570,8 +590,10 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   }
 
   // ШАГ 8: Конвертируем в граммы для расчётов
-  const amountGrams =
-    finalAmount !== null && finalUnit ? convertToGrams(finalAmount, finalUnit, name) : 0;
+  const conversion =
+    finalAmount !== null && finalUnit
+      ? convertToGrams(finalAmount, finalUnit, name)
+      : { amountGrams: 0, warning: null };
 
   // ФИНАЛЬНАЯ ПРОВЕРКА: убеждаемся, что название не содержит единиц измерения и чисел
   // Если единицы все еще есть, удаляем их еще раз
@@ -648,9 +670,10 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
     amount: finalAmount,
     unit: finalUnit,
     amountText: amountText.trim(),
-    amountGrams: Math.round(amountGrams * 100) / 100,
+    amountGrams: Math.round(conversion.amountGrams * 100) / 100,
     displayAmount,
     displayUnit,
+    unitConversionWarning: conversion.warning,
   };
 }
 

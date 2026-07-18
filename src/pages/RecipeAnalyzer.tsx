@@ -111,6 +111,24 @@ const RecipeAnalyzer = () => {
     setIsSaveRecipeModalOpen(true);
   };
 
+  const handleSaveToMenu = () => {
+    if (!user?.id) {
+      alert('Необходимо войти в систему');
+      return;
+    }
+    if (items.length === 0) {
+      alert('Сначала проанализируйте рецепт');
+      return;
+    }
+    if (unresolvedIngredientNames.length > 0) {
+      alert(
+        `Нельзя сохранить рецепт в меню: не все ингредиенты подтверждены каталогом.\nПроблемные ингредиенты: ${unresolvedIngredientNames.join(', ')}`
+      );
+      return;
+    }
+    setIsSaveOpen(true);
+  };
+
   const handleSaveBoth = () => {
     if (!user?.id) {
       alert('Необходимо войти в систему');
@@ -297,7 +315,7 @@ const RecipeAnalyzer = () => {
         <RecipeAnalyzerResult
           items={items}
           totals={totals}
-          onSaveMenu={() => setIsSaveOpen(true)}
+          onSaveMenu={handleSaveToMenu}
           onSaveRecipes={handleSaveToRecipes}
           onSaveBoth={handleSaveBoth}
           unresolvedIngredientNames={unresolvedIngredientNames}
