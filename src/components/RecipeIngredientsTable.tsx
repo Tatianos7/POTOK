@@ -8,6 +8,21 @@ interface Props {
 const RecipeIngredientsTable: React.FC<Props> = ({ items }) => {
   if (!items.length) return null;
 
+  const formatIngredientQuantity = (item: CalculatedIngredient): string => {
+    const amount = item.originalAmount ?? item.displayAmount;
+    const unit = item.originalUnit ?? item.displayUnit;
+
+    if (amount !== null && amount !== undefined && unit) {
+      return `${amount} ${unit}`;
+    }
+
+    if (item.amountText) {
+      return item.amountText;
+    }
+
+    return `${item.quantity_g ?? item.gramsEquivalent ?? item.amountGrams} г`;
+  };
+
   // Функция для очистки названия продукта от единиц измерения и чисел
   const cleanProductName = (name: string): string => {
     let cleaned = name;
@@ -78,10 +93,14 @@ const RecipeIngredientsTable: React.FC<Props> = ({ items }) => {
                 </div>
               )}
             </div>
-            <div className="text-right text-green-600 text-xs">
-              {i.displayAmount && i.displayUnit
-                ? `${i.displayAmount} ${i.displayUnit}`
-                : i.amountText}
+            <div
+              className="text-right text-green-600 text-xs"
+              data-testid={`recipe-ingredient-quantity-${idx}`}
+              data-original-amount={i.originalAmount ?? i.displayAmount ?? ''}
+              data-original-unit={i.originalUnit ?? i.displayUnit ?? ''}
+              data-grams-equivalent={i.quantity_g ?? i.gramsEquivalent ?? i.amountGrams}
+            >
+              {formatIngredientQuantity(i)}
             </div>
             <div className="text-right text-gray-800 text-xs">
               {i.resolution_status === 'resolved' ? (Math.round(i.proteins * 100) / 100).toFixed(2) : '—'}

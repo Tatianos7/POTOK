@@ -124,7 +124,7 @@ export async function analyzeRecipeTextReal(text: string): Promise<CalculatedIng
   const results: CalculatedIngredient[] = [];
 
   for (const p of parsed) {
-    const gramsEquivalent = p.gramsEquivalent ?? p.amountGrams;
+    const gramsEquivalent = p.quantity_g ?? p.gramsEquivalent ?? p.amountGrams;
 
     if (p.unitConversionWarning || gramsEquivalent <= 0) {
       results.push({

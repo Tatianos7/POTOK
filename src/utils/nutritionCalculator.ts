@@ -28,7 +28,7 @@ export function calcTotals(items: CalculatedIngredient[]): NutritionTotals {
       acc.fats += i.fats;
       acc.carbs += i.carbs;
       acc.calories += i.calories;
-      acc.weight += i.gramsEquivalent ?? i.amountGrams;
+      acc.weight += i.quantity_g ?? i.gramsEquivalent ?? i.amountGrams;
       return acc;
     },
     { proteins: 0, fats: 0, carbs: 0, calories: 0, weight: 0 }

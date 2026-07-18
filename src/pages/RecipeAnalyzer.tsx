@@ -15,6 +15,23 @@ import { runCombinedRecipeSave } from '../utils/recipeCombinedSave';
 const placeholderIngredients =
   'Пример: 250 г говядина постная, 1–2 морковки, 1 луковица, 2 дольки чеснока, полтора литра молока, 400 г картофеля';
 
+const buildRecipeAnalyzerTraceRows = (items: CalculatedIngredient[]) =>
+  items.map((item) => ({
+    name: item.name,
+    originalAmount: item.originalAmount,
+    originalUnit: item.originalUnit,
+    displayAmount: item.displayAmount,
+    displayUnit: item.displayUnit,
+    gramsEquivalent: item.gramsEquivalent,
+    quantity: item.quantity,
+    quantity_g: item.quantity_g,
+    amount: item.amount,
+    amountGrams: item.amountGrams,
+    amountText: item.amountText,
+    resolved_food_name: item.resolved_food_name,
+    resolution_status: item.resolution_status,
+  }));
+
 const RecipeAnalyzer = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,6 +77,7 @@ const RecipeAnalyzer = () => {
   const handleAnalyze = async () => {
     if (!ingredientsText.trim()) return;
     const result = await recipeAnalyzerService.analyze(ingredientsText);
+    console.debug('[RecipeAnalyzer] runtime ingredient field trace', buildRecipeAnalyzerTraceRows(result));
     setItems(result);
   };
 
@@ -81,15 +99,18 @@ const RecipeAnalyzer = () => {
   const buildAnalyzerIngredients = () =>
     items.map((item) => ({
       name: item.name,
-      quantity: item.amount || 0,
+      quantity: item.originalAmount ?? item.quantity ?? item.amount ?? 0,
       unit: item.unit || 'g',
-      grams: item.gramsEquivalent ?? item.amountGrams,
+      grams: item.quantity_g ?? item.gramsEquivalent ?? item.amountGrams,
       calories: item.calories,
       proteins: item.proteins,
       fats: item.fats,
       carbs: item.carbs,
-      display_amount: item.displayAmount ?? item.amountText ?? null,
-      display_unit: item.displayUnit ?? null,
+      display_amount:
+        item.originalAmount !== null && item.originalAmount !== undefined
+          ? String(item.originalAmount)
+          : item.displayAmount ?? item.amountText ?? null,
+      display_unit: item.originalUnit ?? item.displayUnit ?? null,
     }));
 
   const handleSaveToRecipes = () => {

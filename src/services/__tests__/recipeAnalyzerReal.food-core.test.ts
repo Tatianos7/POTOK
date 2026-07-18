@@ -98,13 +98,57 @@ test('recipe analyzer resolves Food Core rollout soup example and preserves disp
         amountText: item.amountText,
         amountGrams: item.amountGrams,
         gramsEquivalent: item.gramsEquivalent,
+        originalAmount: item.originalAmount,
+        originalUnit: item.originalUnit,
+        quantity: item.quantity,
+        quantity_g: item.quantity_g,
         display: `${item.displayAmount} ${item.displayUnit}`,
       })),
       [
-        { name: 'чечевица', amountText: '250 г', amountGrams: 250, gramsEquivalent: 250, display: '250 г' },
-        { name: 'вода', amountText: '500 мл', amountGrams: 500, gramsEquivalent: 500, display: '500 мл' },
-        { name: 'лук репчатый', amountText: '1 шт', amountGrams: 110, gramsEquivalent: 110, display: '1 шт' },
-        { name: 'говядина', amountText: '300 г', amountGrams: 300, gramsEquivalent: 300, display: '300 г' },
+        {
+          name: 'чечевица',
+          amountText: '250 г',
+          amountGrams: 250,
+          gramsEquivalent: 250,
+          originalAmount: 250,
+          originalUnit: 'г',
+          quantity: 250,
+          quantity_g: 250,
+          display: '250 г',
+        },
+        {
+          name: 'вода',
+          amountText: '500 мл',
+          amountGrams: 500,
+          gramsEquivalent: 500,
+          originalAmount: 500,
+          originalUnit: 'мл',
+          quantity: 500,
+          quantity_g: 500,
+          display: '500 мл',
+        },
+        {
+          name: 'лук репчатый',
+          amountText: '1 шт',
+          amountGrams: 110,
+          gramsEquivalent: 110,
+          originalAmount: 1,
+          originalUnit: 'шт',
+          quantity: 1,
+          quantity_g: 110,
+          display: '1 шт',
+        },
+        {
+          name: 'говядина',
+          amountText: '300 г',
+          amountGrams: 300,
+          gramsEquivalent: 300,
+          originalAmount: 300,
+          originalUnit: 'г',
+          quantity: 300,
+          quantity_g: 300,
+          display: '300 г',
+        },
       ]
     );
 
@@ -123,10 +167,17 @@ test('recipe analyzer resolves Food Core rollout soup example and preserves disp
     const water = analyzed.find((item) => item.name === 'вода');
     assert.equal(water?.amountText, '500 мл');
     assert.equal(water?.gramsEquivalent, 500);
+    assert.equal(water?.originalAmount, 500);
+    assert.equal(water?.originalUnit, 'мл');
+    assert.equal(water?.quantity_g, 500);
 
     const onion = analyzed.find((item) => item.name === 'лук репчатый');
     assert.equal(onion?.amountText, '1 шт');
     assert.equal(onion?.gramsEquivalent, 110);
+    assert.equal(onion?.originalAmount, 1);
+    assert.equal(onion?.originalUnit, 'шт');
+    assert.equal(onion?.quantity, 1);
+    assert.equal(onion?.quantity_g, 110);
 
     const totals = calcTotals(analyzed);
     assert.equal(totals.total.calories > 0, true);

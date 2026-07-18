@@ -10,6 +10,10 @@ export interface ParsedRecipeIngredient {
   amountText: string; // для отображения (с исходной единицей)
   amountGrams: number; // для расчётов (всегда в граммах)
   gramsEquivalent: number; // явный расчетный вес, UI не должен использовать его для отображения
+  originalAmount: number | null; // исходное число из текста
+  originalUnit: string | null; // исходная нормализованная единица для UI
+  quantity: number | null; // alias для исходного количества, совместимость с UI/debug
+  quantity_g: number; // alias для расчетного веса в граммах
   displayAmount: string | null; // исходное количество для отображения
   displayUnit: string | null; // исходная единица для отображения
   unitConversionWarning?: string | null;
@@ -388,6 +392,10 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
       amountText: cleanedName || original,
       amountGrams: 0,
       gramsEquivalent: 0,
+      originalAmount: null,
+      originalUnit: null,
+      quantity: null,
+      quantity_g: 0,
       displayAmount: null,
       displayUnit: null,
     };
@@ -676,6 +684,10 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
     amountText: amountText.trim(),
     amountGrams: gramsEquivalent,
     gramsEquivalent,
+    originalAmount: amountValue,
+    originalUnit: displayUnit,
+    quantity: amountValue,
+    quantity_g: gramsEquivalent,
     displayAmount,
     displayUnit,
     unitConversionWarning: conversion.warning,
