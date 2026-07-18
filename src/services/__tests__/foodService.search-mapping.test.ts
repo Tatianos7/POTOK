@@ -359,6 +359,60 @@ test('ranking v1 keeps exact salt alias above garlic salt prefix despite zero ma
   assert.deepEqual(results.map((food) => food.id), ['salt', 'garlic-salt']);
 });
 
+test('UI search path keeps production salt row visible when Supabase row has no aliases', async () => {
+  const { finalizeFoodSearchResults, isSuspiciousAllZeroCatalogFood } = await import('../foodService.ts');
+
+  const salt = buildFood({
+    id: '097b178d-bbed-48a2-ba91-d3fe4171fd52',
+    stable_food_id: 'salt',
+    name: 'Соль поваренная',
+    normalized_name: 'соль поваренная',
+    aliases: [],
+    source: 'core',
+    category: 'seasonings',
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
+    canonical_food_id: '097b178d-bbed-48a2-ba91-d3fe4171fd52',
+  });
+  const garlicSalt = buildFood({
+    id: 'garlic-salt',
+    stable_food_id: 'garlic_salt',
+    name: 'Соль чесночная',
+    normalized_name: 'соль чесночная',
+    source: 'core',
+    category: 'seasonings',
+    calories: 27,
+    protein: 4.3,
+    fat: 0.2,
+    carbs: 1.9,
+    canonical_food_id: 'garlic-salt',
+  });
+  const pinkSalt = buildFood({
+    id: 'pink-salt',
+    stable_food_id: 'pink_himalayan_salt',
+    name: 'Соль гималайская розовая',
+    normalized_name: 'соль гималайская розовая',
+    source: 'core',
+    category: 'seasonings',
+    calories: 1,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
+    canonical_food_id: 'pink-salt',
+  });
+
+  assert.equal(isSuspiciousAllZeroCatalogFood(salt as any), false);
+
+  const renderedSearchResults = finalizeFoodSearchResults([garlicSalt as any, pinkSalt as any, salt as any], 'соль', 30);
+
+  assert.deepEqual(
+    renderedSearchResults.map((food) => food.stable_food_id),
+    ['salt', 'garlic_salt', 'pink_himalayan_salt']
+  );
+});
+
 test('ranking v1 puts exact canonical before prefix and contains matches', async () => {
   const { finalizeFoodSearchResults } = await import('../foodService.ts');
 

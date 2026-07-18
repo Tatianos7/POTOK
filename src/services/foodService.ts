@@ -242,6 +242,7 @@ const preferSearchRankCandidate = (
 
 const VALID_ZERO_MACRO_FOOD_NAMES = new Set([
   'соль',
+  'соль поваренная',
   'salt',
   'вода',
   'water',
