@@ -9,6 +9,7 @@ export interface ParsedRecipeIngredient {
   unit: NormalizedUnit;
   amountText: string; // для отображения (с исходной единицей)
   amountGrams: number; // для расчётов (всегда в граммах)
+  gramsEquivalent: number; // явный расчетный вес, UI не должен использовать его для отображения
   displayAmount: string | null; // исходное количество для отображения
   displayUnit: string | null; // исходная единица для отображения
   unitConversionWarning?: string | null;
@@ -386,6 +387,7 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
       unit: null,
       amountText: cleanedName || original,
       amountGrams: 0,
+      gramsEquivalent: 0,
       displayAmount: null,
       displayUnit: null,
     };
@@ -664,13 +666,16 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
   const displayAmount = amountValue !== null ? amountDisplay : null;
   const displayUnit = finalDisplay || null;
 
+  const gramsEquivalent = Math.round(conversion.amountGrams * 100) / 100;
+
   return {
     original,
     name: cleanedName || original,
     amount: finalAmount,
     unit: finalUnit,
     amountText: amountText.trim(),
-    amountGrams: Math.round(conversion.amountGrams * 100) / 100,
+    amountGrams: gramsEquivalent,
+    gramsEquivalent,
     displayAmount,
     displayUnit,
     unitConversionWarning: conversion.warning,

@@ -83,7 +83,7 @@ const RecipeAnalyzer = () => {
       name: item.name,
       quantity: item.amount || 0,
       unit: item.unit || 'g',
-      grams: item.amountGrams,
+      grams: item.gramsEquivalent ?? item.amountGrams,
       calories: item.calories,
       proteins: item.proteins,
       fats: item.fats,

@@ -20,6 +20,15 @@ const unique = (values: string[]): string[] => {
     });
 };
 
+const VARIANT_WORDS = ['ростки', 'проростки', 'пророщенная', 'пророщенный', 'пророщенные'];
+
+const getFoodNameKeys = (food: any): string[] => unique([
+  food.name,
+  food.name_original,
+  food.normalized_name,
+  ...(food.aliases ?? []),
+].filter(Boolean).map((value) => normalizeFoodText(String(value))));
+
 const getIngredientSearchQueries = (name: string): string[] => {
   const normalized = name.trim().toLowerCase();
   const variants = [normalized];
@@ -40,6 +49,60 @@ const getIngredientSearchQueries = (name: string): string[] => {
   return unique(variants);
 };
 
+const hasVariantMismatch = (queryKey: string, food: any): boolean => {
+  const queryHasVariant = VARIANT_WORDS.some((word) => queryKey.includes(word));
+  if (queryHasVariant) {
+    return false;
+  }
+
+  return getFoodNameKeys(food).some((key) => VARIANT_WORDS.some((word) => key.includes(word)));
+};
+
+const scoreCandidate = (food: any, queryKey: string): number => {
+  const names = getFoodNameKeys(food);
+  const canonicalNames = unique([
+    food.name,
+    food.name_original,
+    food.normalized_name,
+  ].filter(Boolean).map((value) => normalizeFoodText(String(value))));
+  const aliases = unique(
+    (food.aliases ?? []).filter(Boolean).map((value: unknown) => normalizeFoodText(String(value)))
+  );
+
+  if (hasVariantMismatch(queryKey, food)) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  if (canonicalNames.includes(queryKey)) return 0;
+  if (aliases.includes(queryKey)) return 1;
+  if (canonicalNames.some((name) => name.startsWith(`${queryKey} `))) return 3;
+  if (aliases.some((alias) => alias.startsWith(`${queryKey} `))) return 4;
+  if (names.some((name) => name.includes(queryKey))) return 8;
+
+  return 20;
+};
+
+const pickBestCandidate = (foods: any[], query: string): any | null => {
+  const queryKey = normalizeFoodText(query);
+  const ranked = foods
+    .map((food) => ({ food, score: scoreCandidate(food, queryKey) }))
+    .filter((item) => Number.isFinite(item.score))
+    .sort((a, b) => {
+      if (a.score !== b.score) return a.score - b.score;
+
+      const aNameLength = normalizeFoodText(a.food.name ?? '').length;
+      const bNameLength = normalizeFoodText(b.food.name ?? '').length;
+      if (aNameLength !== bNameLength) return aNameLength - bNameLength;
+
+      return String(a.food.stable_food_id ?? a.food.id ?? a.food.name).localeCompare(
+        String(b.food.stable_food_id ?? b.food.id ?? b.food.name),
+        'en'
+      );
+    });
+
+  return ranked[0]?.food ?? null;
+};
+
 const resolveIngredientFood = async (name: string) => {
   const candidates: any[] = [];
 
@@ -47,26 +110,13 @@ const resolveIngredientFood = async (name: string) => {
     const found = await foodService.search(query, { limit: 5 });
     candidates.push(...found);
 
-    const exact = found.find((food) => {
-      const queryKey = normalizeFoodText(query);
-      const names = [
-        food.name,
-        food.name_original,
-        food.normalized_name,
-        ...(food.aliases ?? []),
-      ]
-        .filter(Boolean)
-        .map((value) => normalizeFoodText(String(value)));
-
-      return names.includes(queryKey);
-    });
-
-    if (exact) {
-      return { product: exact, candidates };
+    const best = pickBestCandidate(found, query);
+    if (best) {
+      return { product: best, candidates };
     }
   }
 
-  return { product: candidates[0] ?? null, candidates };
+  return { product: null, candidates };
 };
 
 export async function analyzeRecipeTextReal(text: string): Promise<CalculatedIngredient[]> {
@@ -74,7 +124,9 @@ export async function analyzeRecipeTextReal(text: string): Promise<CalculatedIng
   const results: CalculatedIngredient[] = [];
 
   for (const p of parsed) {
-    if (p.unitConversionWarning || p.amountGrams <= 0) {
+    const gramsEquivalent = p.gramsEquivalent ?? p.amountGrams;
+
+    if (p.unitConversionWarning || gramsEquivalent <= 0) {
       results.push({
         ...p,
         proteins: 0,
@@ -128,7 +180,7 @@ export async function analyzeRecipeTextReal(text: string): Promise<CalculatedIng
       continue;
     }
 
-    const k = p.amountGrams / 100;
+    const k = gramsEquivalent / 100;
     results.push({
       ...p,
       proteins: prod.protein * k,
