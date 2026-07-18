@@ -325,6 +325,40 @@ test('valid zero-macro whitelist item stays visible in search results', async ()
   assert.equal(results[0].id, 'food-water');
 });
 
+test('ranking v1 keeps exact salt alias above garlic salt prefix despite zero macros', async () => {
+  const { finalizeFoodSearchResults } = await import('../foodService.ts');
+
+  const salt = buildFood({
+    id: 'salt',
+    stable_food_id: 'salt',
+    name: 'Соль поваренная',
+    aliases: ['соль'],
+    source: 'core',
+    category: 'seasonings',
+    calories: 0,
+    protein: 0,
+    fat: 0,
+    carbs: 0,
+    canonical_food_id: 'salt',
+  });
+  const garlicSalt = buildFood({
+    id: 'garlic-salt',
+    stable_food_id: 'garlic_salt',
+    name: 'Соль чесночная',
+    source: 'core',
+    category: 'seasonings',
+    calories: 27,
+    protein: 4.3,
+    fat: 0.2,
+    carbs: 1.9,
+    canonical_food_id: 'garlic-salt',
+  });
+
+  const results = finalizeFoodSearchResults([garlicSalt as any, salt as any], 'соль', 10);
+
+  assert.deepEqual(results.map((food) => food.id), ['salt', 'garlic-salt']);
+});
+
 test('ranking v1 puts exact canonical before prefix and contains matches', async () => {
   const { finalizeFoodSearchResults } = await import('../foodService.ts');
 
