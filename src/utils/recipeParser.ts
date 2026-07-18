@@ -114,6 +114,69 @@ const UNIT_DEFINITIONS: UnitDefinition[] = [
   },
 ];
 
+const UNIT_TOKEN_BOUNDARY = String.raw`(?![\p{L}\p{N}_])`;
+const UNIT_TEXT_AFTER_DEFINITIONS: Array<{ pattern: RegExp; display: string }> = [
+  { pattern: new RegExp(String.raw`^\s*(ч\.?\s*л\.?|ч\s*л|чайная\s+ложка|чайные\s+ложки|чайн\.?\s*ложка)${UNIT_TOKEN_BOUNDARY}`, 'iu'), display: 'ч.л.' },
+  { pattern: new RegExp(String.raw`^\s*(ст\.?\s*л\.?|ст\s*л|столовая\s+ложка|столовые\s+ложки|ст\.?\s*ложка)${UNIT_TOKEN_BOUNDARY}`, 'iu'), display: 'ст.л.' },
+  { pattern: new RegExp(String.raw`^\s*(килограммов|килограмм|кг)${UNIT_TOKEN_BOUNDARY}`, 'iu'), display: 'кг' },
+  { pattern: new RegExp(String.raw`^\s*(граммов|грамма|грамм|гр?\.?)${UNIT_TOKEN_BOUNDARY}`, 'iu'), display: 'г' },
+  { pattern: new RegExp(String.raw`^\s*(миллилитров|миллилитр|мл\.?)${UNIT_TOKEN_BOUNDARY}`, 'iu'), display: 'мл' },
+  { pattern: new RegExp(String.raw`^\s*(литров|литра|литр|л\.?)${UNIT_TOKEN_BOUNDARY}`, 'iu'), display: 'л' },
+  { pattern: new RegExp(String.raw`^\s*(штука|штуки|штук|шт\.?|кусочка|кусок|куск)${UNIT_TOKEN_BOUNDARY}`, 'iu'), display: 'шт' },
+  { pattern: new RegExp(String.raw`^\s*(дольк\p{L}*|долей)${UNIT_TOKEN_BOUNDARY}`, 'iu'), display: 'шт' },
+  { pattern: new RegExp(String.raw`^\s*(зубчик\p{L}*)${UNIT_TOKEN_BOUNDARY}`, 'iu'), display: 'шт' },
+];
+
+const UNIT_TEXT_BEFORE_DEFINITIONS: Array<{ pattern: RegExp; display: string }> =
+  UNIT_TEXT_AFTER_DEFINITIONS.map(({ pattern: _pattern, display }) => {
+    const source = _pattern.source
+      .replace(/^\^\\s\*/, '')
+      .replace(/\(\?!\[\\p\{L\}\\p\{N\}_\]\)$/, '');
+    return {
+      pattern: new RegExp(String.raw`(?:^|[^\p{L}\p{N}_])${source}\s*$`, 'iu'),
+      display,
+    };
+  });
+
+function unitDefinitionByDisplay(display: string): UnitDefinition {
+  return UNIT_DEFINITIONS.find((unit) => unit.display === display) ?? UNIT_DEFINITIONS[3];
+}
+
+function findUnicodeSafeUnitAfter(textAfter: string): { unit: UnitDefinition; match: string; offset: number } | null {
+  for (const unitDef of UNIT_TEXT_AFTER_DEFINITIONS) {
+    const match = textAfter.match(unitDef.pattern);
+    if (match) {
+      const rawMatch = match[0];
+      return {
+        unit: unitDefinitionByDisplay(unitDef.display),
+        match: rawMatch.trim().replace(/[.,]+$/g, ''),
+        offset: textAfter.indexOf(rawMatch),
+      };
+    }
+  }
+  return null;
+}
+
+function findUnicodeSafeUnitBefore(textBefore: string): { unit: UnitDefinition; match: string; offset: number } | null {
+  for (const unitDef of UNIT_TEXT_BEFORE_DEFINITIONS) {
+    const match = textBefore.match(unitDef.pattern);
+    if (match) {
+      const rawMatch = match[0];
+      const token = rawMatch.trim().replace(/[.,]+$/g, '');
+      return {
+        unit: unitDefinitionByDisplay(unitDef.display),
+        match: token,
+        offset: textBefore.lastIndexOf(token),
+      };
+    }
+  }
+  return null;
+}
+
+function unitDefinitionMatchesText(unitDef: UnitDefinition, text: string): boolean {
+  return unitDef.display === findUnicodeSafeUnitAfter(text)?.unit.display;
+}
+
 // ============================================
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 // ============================================
@@ -161,6 +224,16 @@ function findUnitNearNumber(
 ): { unit: UnitDefinition; match: string; matchStart: number; matchEnd: number } | null {
   // Ищем единицу после числа (в пределах 10 символов)
   const textAfter = text.substring(numberEnd, Math.min(text.length, numberEnd + 10));
+  const unicodeAfter = findUnicodeSafeUnitAfter(textAfter);
+  if (unicodeAfter) {
+    return {
+      unit: unicodeAfter.unit,
+      match: unicodeAfter.match,
+      matchStart: numberEnd + unicodeAfter.offset,
+      matchEnd: numberEnd + unicodeAfter.offset + unicodeAfter.match.length,
+    };
+  }
+
   for (const unitDef of UNIT_DEFINITIONS) {
     for (const pattern of unitDef.patterns) {
       const match = textAfter.match(new RegExp(`^\\s*${pattern.source}`, 'i'));
@@ -177,6 +250,17 @@ function findUnitNearNumber(
 
   // Ищем единицу перед числом (в пределах 10 символов)
   const textBefore = text.substring(Math.max(0, numberStart - 10), numberStart);
+  const unicodeBefore = findUnicodeSafeUnitBefore(textBefore);
+  if (unicodeBefore) {
+    const matchStart = Math.max(0, numberStart - 10) + unicodeBefore.offset;
+    return {
+      unit: unicodeBefore.unit,
+      match: unicodeBefore.match,
+      matchStart,
+      matchEnd: matchStart + unicodeBefore.match.length,
+    };
+  }
+
   for (const unitDef of UNIT_DEFINITIONS) {
     for (const pattern of unitDef.patterns) {
       const match = textBefore.match(new RegExp(`${pattern.source}\\s*$`, 'i'));
@@ -366,7 +450,7 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
       const unitText = hyphenUnitMatch[2].toLowerCase();
       for (const unitDef of UNIT_DEFINITIONS) {
         for (const pattern of unitDef.patterns) {
-          if (pattern.test(unitText)) {
+          if (pattern.test(unitText) || unitDefinitionMatchesText(unitDef, unitText)) {
             unitFromHyphen = unitDef;
             break;
           }

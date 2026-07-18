@@ -45,6 +45,7 @@ const RecipeAnalyzer = () => {
   const [recipeImage, setRecipeImage] = useState<string | null>(null);
   const [saveMode, setSaveMode] = useState<'recipe' | 'combined' | null>(null);
   const [pendingCombinedRecipeName, setPendingCombinedRecipeName] = useState<string | null>(null);
+  const [debugTraceRows, setDebugTraceRows] = useState<ReturnType<typeof buildRecipeAnalyzerTraceRows>>([]);
 
   const totals = calcTotals(items);
   const per100 = useMemo(
@@ -77,7 +78,9 @@ const RecipeAnalyzer = () => {
   const handleAnalyze = async () => {
     if (!ingredientsText.trim()) return;
     const result = await recipeAnalyzerService.analyze(ingredientsText);
-    console.debug('[RecipeAnalyzer] runtime ingredient field trace', buildRecipeAnalyzerTraceRows(result));
+    const traceRows = buildRecipeAnalyzerTraceRows(result);
+    console.warn('[RecipeAnalyzer] runtime ingredient field trace', traceRows);
+    setDebugTraceRows(traceRows);
     setItems(result);
   };
 
@@ -341,6 +344,21 @@ const RecipeAnalyzer = () => {
           onSaveBoth={handleSaveBoth}
           unresolvedIngredientNames={unresolvedIngredientNames}
         />
+
+        {debugTraceRows.length > 0 && (
+          <div className="rounded-[8px] border border-amber-300 bg-amber-50 px-2 py-2 text-[10px] leading-snug text-amber-900">
+            <div className="font-semibold">Recipe Analyzer runtime trace</div>
+            {debugTraceRows.map((row) => (
+              <div key={`${row.name}-${row.originalAmount}-${row.originalUnit}`}>
+                {row.name}: original={row.originalAmount ?? '—'} {row.originalUnit ?? '—'},
+                display={row.displayAmount ?? '—'} {row.displayUnit ?? '—'},
+                gramsEquivalent={row.gramsEquivalent ?? '—'},
+                quantity={row.quantity ?? '—'},
+                quantity_g={row.quantity_g ?? '—'}
+              </div>
+            ))}
+          </div>
+        )}
       </main>
 
       <SaveRecipeToDiarySheet

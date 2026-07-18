@@ -19,6 +19,19 @@ Observed source path:
 
 No separate service worker or PWA runtime cache path was found in the repo.
 
+After `main-Dp0d-EJ1.js` was manually confirmed in production, the remaining mismatch pointed away from cache/deploy and back to parser unit detection.
+
+## Root Cause
+
+The parser used JavaScript `\b` word boundaries around Cyrillic unit tokens such as `мл`, `шт`, and `грамм`.
+
+JavaScript `\b` is based on ASCII-style `\w` behavior, so Cyrillic tokens followed by punctuation, for example `мл.` and `шт.`, were not reliably detected as units.
+
+When unit detection failed:
+
+- `вода 500 мл.` fell back to default grams and rendered/calculated as `500 г`;
+- `лук репчатый 1 шт.` fell back to default grams and rendered/calculated as `1 г`.
+
 ## Field Contract
 
 For UI rendering:
@@ -50,6 +63,8 @@ The UI must not render `gramsEquivalent` / `quantity_g` as the entered quantity.
 - `calcTotals` and analyzer macro calculation use `quantity_g` / `gramsEquivalent`.
 - `RecipeAnalyzer.handleAnalyze` logs `[RecipeAnalyzer] runtime ingredient field trace` with the exact fields above for manual smoke debugging.
 - Regression coverage added for parser/analyzer fields and rendered result markup.
+- Added Unicode-safe unit token detection before the legacy `\b` regex path.
+- `RecipeAnalyzer.handleAnalyze` now uses `console.warn` and renders a temporary visible runtime trace block so manual smoke can confirm the actual handler and props path.
 
 ## Expected Manual Smoke
 
