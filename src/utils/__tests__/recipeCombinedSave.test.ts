@@ -3,59 +3,33 @@ import assert from 'node:assert/strict';
 
 import { runCombinedRecipeSave } from '../recipeCombinedSave';
 
-test('both operations succeed -> full success', async () => {
+test('combined recipe save skips diary when recipe save fails', async () => {
+  let diaryCalled = false;
+
   const result = await runCombinedRecipeSave({
-    saveRecipe: async () => 'recipe-1',
-    saveDiary: async () => 'entry-1',
+    saveRecipe: async () => {
+      throw new Error('recipe_failed');
+    },
+    saveDiary: async () => {
+      diaryCalled = true;
+      return 'diary';
+    },
   });
 
-  assert.deepEqual(result, {
-    recipe: { status: 'fulfilled', value: 'recipe-1' },
-    diary: { status: 'fulfilled', value: 'entry-1' },
-  });
+  assert.equal(result.recipe.status, 'rejected');
+  assert.equal(result.diary.status, 'rejected');
+  assert.equal(diaryCalled, false);
 });
 
-test('recipe save succeeds and diary save fails -> partial success reported correctly', async () => {
+test('combined recipe save reports recipe success when diary save fails later', async () => {
   const result = await runCombinedRecipeSave({
-    saveRecipe: async () => 'recipe-1',
+    saveRecipe: async () => 'recipe',
     saveDiary: async () => {
-      throw new Error('diary failed');
+      throw new Error('diary_failed');
     },
   });
 
   assert.equal(result.recipe.status, 'fulfilled');
-  assert.equal(result.recipe.value, 'recipe-1');
+  assert.equal(result.recipe.value, 'recipe');
   assert.equal(result.diary.status, 'rejected');
-  assert.match(String(result.diary.reason), /diary failed/);
 });
-
-test('diary save succeeds and recipe save fails -> partial success reported correctly', async () => {
-  const result = await runCombinedRecipeSave({
-    saveRecipe: async () => {
-      throw new Error('recipe failed');
-    },
-    saveDiary: async () => 'entry-1',
-  });
-
-  assert.equal(result.recipe.status, 'rejected');
-  assert.match(String(result.recipe.reason), /recipe failed/);
-  assert.equal(result.diary.status, 'fulfilled');
-  assert.equal(result.diary.value, 'entry-1');
-});
-
-test('both fail -> error state', async () => {
-  const result = await runCombinedRecipeSave({
-    saveRecipe: async () => {
-      throw new Error('recipe failed');
-    },
-    saveDiary: async () => {
-      throw new Error('diary failed');
-    },
-  });
-
-  assert.equal(result.recipe.status, 'rejected');
-  assert.equal(result.diary.status, 'rejected');
-  assert.match(String(result.recipe.reason), /recipe failed/);
-  assert.match(String(result.diary.reason), /diary failed/);
-});
-

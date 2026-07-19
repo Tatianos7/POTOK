@@ -81,6 +81,7 @@ const RecipeAnalyzer = () => {
   const buildAnalyzerIngredients = () =>
     items.map((item) => ({
       name: item.name,
+      canonical_food_id: item.canonical_food_id ?? null,
       quantity: item.originalAmount ?? item.quantity ?? item.amount ?? 0,
       unit: item.unit || 'g',
       grams: item.quantity_g ?? item.gramsEquivalent ?? item.amountGrams,
@@ -240,7 +241,7 @@ const RecipeAnalyzer = () => {
 
     if (result.recipe.status === 'rejected' && result.diary.status === 'fulfilled') {
       console.error('[RecipeAnalyzer] Combined save partial success: recipe failed', result.recipe.reason);
-      alert('Рецепт добавлен в меню, но не удалось сохранить его в "Мои рецепты"');
+      alert('Не удалось сохранить рецепт в "Мои рецепты", поэтому добавление в меню не выполнялось');
       return { closeSheet: true, triggerOnSaved: true };
     }
 

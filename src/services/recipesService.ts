@@ -289,6 +289,22 @@ class RecipesService {
     return totals ?? { calories: 0, proteins: 0, fats: 0, carbs: 0 };
   }
 
+  private async cleanupCreatedRecipe(recipeId: string, userId: string): Promise<void> {
+    if (!supabase || !this.isValidUUID(recipeId)) {
+      return;
+    }
+
+    const { error } = await supabase
+      .from('recipes')
+      .delete()
+      .eq('id', recipeId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('[recipesService] Failed to clean up recipe after save failure:', error);
+    }
+  }
+
   async getAllRecipes(userId: string): Promise<Recipe[]> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
@@ -466,6 +482,7 @@ class RecipesService {
     };
 
     let saved: Recipe;
+    let createdNewRecipe = false;
 
     if (recipe.id && this.isValidUUID(recipe.id)) {
       await this.assertNoRecipeConflict(recipe.id, recipe.updatedAt);
@@ -490,6 +507,7 @@ class RecipesService {
         throw error;
       }
       saved = this.mapRowToRecipe(data);
+      createdNewRecipe = true;
     }
 
     const ingredientRows = enrichedIngredients.map((ingredient) => ({
@@ -498,28 +516,35 @@ class RecipesService {
       amount_g: Number(ingredient.grams) || 0,
     }));
 
-    const { error: deleteIngredientsError } = await supabase
-      .from('recipe_ingredients')
-      .delete()
-      .eq('recipe_id', saved.id);
-    if (deleteIngredientsError) {
-      throw deleteIngredientsError;
-    }
-
-    if (ingredientRows.length > 0) {
-      const { error: insertIngredientsError } = await supabase
+    try {
+      const { error: deleteIngredientsError } = await supabase
         .from('recipe_ingredients')
-        .insert(ingredientRows);
-      if (insertIngredientsError) {
-        throw insertIngredientsError;
+        .delete()
+        .eq('recipe_id', saved.id);
+      if (deleteIngredientsError) {
+        throw deleteIngredientsError;
       }
-    }
 
-    const { error: recomputeError } = await supabase.rpc('recompute_recipe_totals', {
-      recipe_id: saved.id,
-    });
-    if (recomputeError) {
-      throw recomputeError;
+      if (ingredientRows.length > 0) {
+        const { error: insertIngredientsError } = await supabase
+          .from('recipe_ingredients')
+          .insert(ingredientRows);
+        if (insertIngredientsError) {
+          throw insertIngredientsError;
+        }
+      }
+
+      const { error: recomputeError } = await supabase.rpc('recompute_recipe_totals', {
+        recipe_id: saved.id,
+      });
+      if (recomputeError) {
+        throw recomputeError;
+      }
+    } catch (error) {
+      if (createdNewRecipe) {
+        await this.cleanupCreatedRecipe(saved.id, sessionUserId);
+      }
+      throw error;
     }
 
     const { data: refreshedRecipe, error: refreshError } = await supabase
@@ -614,6 +639,7 @@ class RecipesService {
     totalCarbs: number;
     ingredients: Array<{
       name: string;
+      canonical_food_id?: string | null;
       quantity: number;
       unit: string;
       grams: number;
