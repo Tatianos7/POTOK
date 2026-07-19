@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
 import { analyzeRecipeTextDemo } from '../recipeAnalyzerDemo';
 import { RecipeSaveValidationError, ensureRecipeIngredientsResolved } from '../recipesService';
@@ -39,3 +42,10 @@ test('fully resolved ingredients pass saveRecipe validation', () => {
   );
 });
 
+test('recipe analyzer save path does not depend on recompute_recipe_totals RPC', () => {
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  const serviceSource = readFileSync(resolve(currentDir, '../recipesService.ts'), 'utf8');
+
+  assert.equal(serviceSource.includes(".rpc('recompute_recipe_totals'"), false);
+  assert.equal(serviceSource.includes('.rpc("recompute_recipe_totals"'), false);
+});

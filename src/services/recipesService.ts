@@ -534,12 +534,6 @@ class RecipesService {
         }
       }
 
-      const { error: recomputeError } = await supabase.rpc('recompute_recipe_totals', {
-        recipe_id: saved.id,
-      });
-      if (recomputeError) {
-        throw recomputeError;
-      }
     } catch (error) {
       if (createdNewRecipe) {
         await this.cleanupCreatedRecipe(saved.id, sessionUserId);
