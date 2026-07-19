@@ -72,6 +72,19 @@ const FOOD_CORE = [
     fat: 12.4,
     carbs: 0,
   },
+  {
+    id: '66666666-6666-4666-8666-666666666666',
+    canonical_food_id: '66666666-6666-4666-8666-666666666666',
+    stable_food_id: 'olive_oil',
+    name: 'Масло оливковое',
+    normalized_name: 'масло оливковое',
+    aliases: ['масло оливковое', 'оливковое масло'],
+    source: 'core',
+    calories: 884,
+    protein: 0,
+    fat: 100,
+    carbs: 0,
+  },
 ];
 
 test('recipe analyzer resolves Food Core rollout soup example and preserves display units', async () => {
@@ -223,6 +236,85 @@ test('recipe analyzer flags unresolved pieces instead of silently using one gram
     assert.equal(analyzed[0].amountText, '1 шт');
     assert.equal(analyzed[0].amountGrams, 0);
     assert.match(analyzed[0].warning ?? '', /нет правила/i);
+  } finally {
+    (foodService as any).search = originalSearch;
+  }
+});
+
+test('recipe analyzer uses centralized RU unit normalization for production units', async () => {
+  const originalSearch = foodService.search;
+
+  (foodService as any).search = async (query: string) => {
+    const q = query.toLowerCase().trim();
+    return FOOD_CORE.filter((food) => (
+      food.name.toLowerCase() === q ||
+      food.normalized_name === q ||
+      food.aliases.some((alias) => alias === q)
+    ));
+  };
+
+  try {
+    const parsed = parseRecipeText(
+      'вода 500 мл, лук репчатый 1 шт, масло оливковое 1 столовая ложка, мука 1 мерка'
+    );
+
+    assert.deepEqual(
+      parsed.map((item) => ({
+        name: item.name,
+        amountText: item.amountText,
+        gramsEquivalent: item.gramsEquivalent,
+        originalAmount: item.originalAmount,
+        originalUnit: item.originalUnit,
+        quantity_g: item.quantity_g,
+        warning: item.unitConversionWarning ?? null,
+      })),
+      [
+        {
+          name: 'вода',
+          amountText: '500 мл',
+          gramsEquivalent: 500,
+          originalAmount: 500,
+          originalUnit: 'мл',
+          quantity_g: 500,
+          warning: null,
+        },
+        {
+          name: 'лук репчатый',
+          amountText: '1 шт',
+          gramsEquivalent: 110,
+          originalAmount: 1,
+          originalUnit: 'шт',
+          quantity_g: 110,
+          warning: null,
+        },
+        {
+          name: 'масло оливковое',
+          amountText: '1 столовая ложка',
+          gramsEquivalent: 13.5,
+          originalAmount: 1,
+          originalUnit: 'столовая ложка',
+          quantity_g: 13.5,
+          warning: null,
+        },
+        {
+          name: 'мука',
+          amountText: '1 мерка',
+          gramsEquivalent: 0,
+          originalAmount: 1,
+          originalUnit: 'мерка',
+          quantity_g: 0,
+          warning: 'Не распознана единица измерения. Укажите г, мл, шт или известную меру.',
+        },
+      ]
+    );
+
+    const analyzed = await analyzeRecipeTextReal('масло оливковое 1 столовая ложка');
+    assert.equal(analyzed.length, 1);
+    assert.equal(analyzed[0].resolution_status, 'resolved');
+    assert.equal(analyzed[0].amountText, '1 столовая ложка');
+    assert.equal(analyzed[0].gramsEquivalent, 13.5);
+    assert.equal(analyzed[0].quantity_g, 13.5);
+    assert.equal(Math.round(analyzed[0].calories * 10) / 10, 119.3);
   } finally {
     (foodService as any).search = originalSearch;
   }
