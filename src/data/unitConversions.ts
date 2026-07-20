@@ -37,3 +37,24 @@ export const pieceWeights: Record<string, number> = {
   огурец: 130,
 };
 
+export const productSpecificUnitConversions: Array<{
+  unit: string;
+  productKeys: string[];
+  grams: number;
+}> = [
+  {
+    unit: 'pcs',
+    productKeys: ['лук', 'лук репчатый'],
+    grams: 110,
+  },
+  {
+    unit: 'tbsp',
+    productKeys: ['масло оливковое', 'оливковое масло'],
+    grams: 13.5,
+  },
+  {
+    unit: 'tbsp',
+    productKeys: ['масло растительное', 'растительное масло'],
+    grams: 13.5,
+  },
+];

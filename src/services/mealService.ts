@@ -21,6 +21,12 @@ import {
 
 export type MealSyncStatus = 'synced' | 'local_only' | 'failed';
 
+const nullableNumber = (value: number | undefined | null): number | null => {
+  if (value === null || value === undefined) return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
 class MealService {
   private readonly MEALS_STORAGE_KEY = 'potok_daily_meals';
   private readonly FOOD_DIARY_SYNC_CHANNEL = 'potok';
@@ -250,7 +256,7 @@ class MealService {
       protein: entry.protein,
       fat: entry.fat,
       carbs: entry.carbs,
-      fiber: Number(entry.food?.fiber ?? 0),
+      fiber: nullableNumber(entry.food?.fiber),
     };
   }
 
@@ -992,7 +998,10 @@ class MealService {
 
             if (missingDisplayFields) {
               const stripped = validEntries.map((entry) => {
-                const { base_unit, display_unit, display_amount, ...rest } = entry as Record<string, unknown>;
+                const rest = { ...(entry as Record<string, unknown>) };
+                delete rest.base_unit;
+                delete rest.display_unit;
+                delete rest.display_amount;
                 return rest;
               });
               const { error: retryError } = await upsert(stripped);

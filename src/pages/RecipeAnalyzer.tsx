@@ -81,15 +81,19 @@ const RecipeAnalyzer = () => {
   const buildAnalyzerIngredients = () =>
     items.map((item) => ({
       name: item.name,
-      quantity: item.amount || 0,
+      canonical_food_id: item.canonical_food_id ?? null,
+      quantity: item.originalAmount ?? item.quantity ?? item.amount ?? 0,
       unit: item.unit || 'g',
-      grams: item.amountGrams,
+      grams: item.quantity_g ?? item.gramsEquivalent ?? item.amountGrams,
       calories: item.calories,
       proteins: item.proteins,
       fats: item.fats,
       carbs: item.carbs,
-      display_amount: item.displayAmount ?? item.amountText ?? null,
-      display_unit: item.displayUnit ?? null,
+      display_amount:
+        item.originalAmount !== null && item.originalAmount !== undefined
+          ? String(item.originalAmount)
+          : item.displayAmount ?? item.amountText ?? null,
+      display_unit: item.originalUnit ?? item.displayUnit ?? null,
     }));
 
   const handleSaveToRecipes = () => {
@@ -109,6 +113,24 @@ const RecipeAnalyzer = () => {
     }
     setSaveMode('recipe');
     setIsSaveRecipeModalOpen(true);
+  };
+
+  const handleSaveToMenu = () => {
+    if (!user?.id) {
+      alert('Необходимо войти в систему');
+      return;
+    }
+    if (items.length === 0) {
+      alert('Сначала проанализируйте рецепт');
+      return;
+    }
+    if (unresolvedIngredientNames.length > 0) {
+      alert(
+        `Нельзя сохранить рецепт в меню: не все ингредиенты подтверждены каталогом.\nПроблемные ингредиенты: ${unresolvedIngredientNames.join(', ')}`
+      );
+      return;
+    }
+    setIsSaveOpen(true);
   };
 
   const handleSaveBoth = () => {
@@ -219,7 +241,7 @@ const RecipeAnalyzer = () => {
 
     if (result.recipe.status === 'rejected' && result.diary.status === 'fulfilled') {
       console.error('[RecipeAnalyzer] Combined save partial success: recipe failed', result.recipe.reason);
-      alert('Рецепт добавлен в меню, но не удалось сохранить его в "Мои рецепты"');
+      alert('Не удалось сохранить рецепт в "Мои рецепты", поэтому добавление в меню не выполнялось');
       return { closeSheet: true, triggerOnSaved: true };
     }
 
@@ -297,11 +319,12 @@ const RecipeAnalyzer = () => {
         <RecipeAnalyzerResult
           items={items}
           totals={totals}
-          onSaveMenu={() => setIsSaveOpen(true)}
+          onSaveMenu={handleSaveToMenu}
           onSaveRecipes={handleSaveToRecipes}
           onSaveBoth={handleSaveBoth}
           unresolvedIngredientNames={unresolvedIngredientNames}
         />
+
       </main>
 
       <SaveRecipeToDiarySheet

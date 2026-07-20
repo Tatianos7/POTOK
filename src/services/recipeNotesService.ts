@@ -89,6 +89,9 @@ class RecipeNotesService {
    * Получить заметку для рецепта
    */
   async getNoteByRecipeId(userId: string, recipeId: string): Promise<string | null> {
+    const localNotes = this.getLocalStorageNotes(userId);
+    const localNote = localNotes[recipeId] || null;
+
     // Проверяем, существует ли таблица в Supabase
     const tableExists = await this.checkTableExists();
 
@@ -107,24 +110,24 @@ class RecipeNotesService {
         if (error) {
           // Если записи нет, это нормально (not found)
           if (error.code === 'PGRST116') {
-            return null;
+            return localNote;
           }
           // Если таблица не найдена, сбрасываем кэш
           if (isOptionalSupabaseResourceMissingError(error)) {
             tableExistsCache = false;
             setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
           }
-          return null;
+          return localNote;
         }
 
         const note = data?.text || null;
-        return note;
+        return note ?? localNote;
       } catch (error) {
-        return null;
+        return localNote;
       }
     }
 
-    return null;
+    return localNote;
   }
 
   /**
@@ -133,6 +136,13 @@ class RecipeNotesService {
   async getNotesByRecipeIds(userId: string, recipeIds: string[]): Promise<Record<string, string>> {
     if (recipeIds.length === 0) {
       return {};
+    }
+    const localNotes = this.getLocalStorageNotes(userId);
+    const localNotesMap: Record<string, string> = {};
+    for (const recipeId of recipeIds) {
+      if (localNotes[recipeId]) {
+        localNotesMap[recipeId] = localNotes[recipeId];
+      }
     }
 
     // Проверяем, существует ли таблица в Supabase
@@ -154,11 +164,11 @@ class RecipeNotesService {
             tableExistsCache = false;
             setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
           }
-          return {};
+          return localNotesMap;
         }
 
         // Преобразуем массив в объект { recipe_id: text }
-        const notesMap: Record<string, string> = {};
+        const notesMap: Record<string, string> = { ...localNotesMap };
         if (data) {
           data.forEach((note) => {
             notesMap[note.recipe_id] = note.text;
@@ -167,11 +177,11 @@ class RecipeNotesService {
 
         return notesMap;
       } catch (error) {
-        return {};
+        return localNotesMap;
       }
     }
 
-    return {};
+    return localNotesMap;
   }
 
   /**
@@ -195,6 +205,10 @@ class RecipeNotesService {
       await this.deleteNote(userId, recipeId);
       return;
     }
+
+    const localNotes = this.getLocalStorageNotes(userId);
+    localNotes[recipeId] = trimmedText;
+    this.saveLocalStorageNotes(userId, localNotes);
 
     // Проверяем, существует ли таблица в Supabase
     const tableExists = await this.checkTableExists();
@@ -228,9 +242,6 @@ class RecipeNotesService {
             // Не бросаем ошибку, так как уже сохранено в localStorage
             return;
           }
-          const localNotes = this.getLocalStorageNotes(activeUserId);
-          localNotes[recipeId] = trimmedText;
-          this.saveLocalStorageNotes(activeUserId, localNotes);
         } else {
           // Создаём новую заметку
           const { error } = await supabase
@@ -251,9 +262,6 @@ class RecipeNotesService {
             // Не бросаем ошибку, так как уже сохранено в localStorage
             return;
           }
-          const localNotes = this.getLocalStorageNotes(activeUserId);
-          localNotes[recipeId] = trimmedText;
-          this.saveLocalStorageNotes(activeUserId, localNotes);
         }
       } catch (error) {
         // Не бросаем ошибку, так как уже сохранено в localStorage
@@ -267,6 +275,10 @@ class RecipeNotesService {
    * Удалить заметку для рецепта
    */
   async deleteNote(userId: string, recipeId: string): Promise<void> {
+    const localNotes = this.getLocalStorageNotes(userId);
+    delete localNotes[recipeId];
+    this.saveLocalStorageNotes(userId, localNotes);
+
     // Проверяем, существует ли таблица в Supabase
     const tableExists = await this.checkTableExists();
 
@@ -291,9 +303,6 @@ class RecipeNotesService {
           // Не бросаем ошибку, так как уже удалено из localStorage
           return;
         }
-        const localNotes = this.getLocalStorageNotes(activeUserId);
-        delete localNotes[recipeId];
-        this.saveLocalStorageNotes(activeUserId, localNotes);
       } catch (error) {
         // Не бросаем ошибку, так как уже удалено из localStorage
         return;

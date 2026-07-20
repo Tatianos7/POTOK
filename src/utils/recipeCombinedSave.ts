@@ -15,17 +15,24 @@ export async function runCombinedRecipeSave<TRecipe, TDiary>(params: {
   saveRecipe: () => Promise<TRecipe>;
   saveDiary: () => Promise<TDiary>;
 }): Promise<CombinedRecipeSaveResult<TRecipe, TDiary>> {
-  const [recipe, diary] = await Promise.allSettled([params.saveRecipe(), params.saveDiary()]);
-
-  return {
-    recipe:
-      recipe.status === 'fulfilled'
-        ? { status: 'fulfilled', value: recipe.value }
-        : { status: 'rejected', reason: recipe.reason },
-    diary:
-      diary.status === 'fulfilled'
-        ? { status: 'fulfilled', value: diary.value }
-        : { status: 'rejected', reason: diary.reason },
-  };
+  try {
+    const recipe = await params.saveRecipe();
+    try {
+      const diary = await params.saveDiary();
+      return {
+        recipe: { status: 'fulfilled', value: recipe },
+        diary: { status: 'fulfilled', value: diary },
+      };
+    } catch (error) {
+      return {
+        recipe: { status: 'fulfilled', value: recipe },
+        diary: { status: 'rejected', reason: error },
+      };
+    }
+  } catch (error) {
+    return {
+      recipe: { status: 'rejected', reason: error },
+      diary: { status: 'rejected', reason: new Error('diary_save_skipped_because_recipe_save_failed') },
+    };
+  }
 }
-

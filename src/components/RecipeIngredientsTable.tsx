@@ -8,6 +8,21 @@ interface Props {
 const RecipeIngredientsTable: React.FC<Props> = ({ items }) => {
   if (!items.length) return null;
 
+  const formatIngredientQuantity = (item: CalculatedIngredient): string => {
+    const amount = item.originalAmount ?? item.displayAmount;
+    const unit = item.originalUnit ?? item.displayUnit;
+
+    if (amount !== null && amount !== undefined && unit) {
+      return `${amount} ${unit}`;
+    }
+
+    if (item.amountText) {
+      return item.amountText;
+    }
+
+    return `${item.quantity_g ?? item.gramsEquivalent ?? item.amountGrams} г`;
+  };
+
   // Функция для очистки названия продукта от единиц измерения и чисел
   const cleanProductName = (name: string): string => {
     let cleaned = name;
@@ -62,15 +77,40 @@ const RecipeIngredientsTable: React.FC<Props> = ({ items }) => {
       <div className="divide-y divide-gray-200">
         {items.map((i, idx) => (
           <div key={idx} className="grid grid-cols-6 px-2 py-2 text-sm">
-            <div className="col-span-2 text-gray-900">{cleanProductName(i.name)}</div>
-            <div className="text-right text-green-600 text-xs">
-              {i.displayAmount && i.displayUnit
-                ? `${i.displayAmount} ${i.displayUnit}`
-                : i.amountText}
+            <div className="col-span-2 text-gray-900">
+              <div>{cleanProductName(i.name)}</div>
+              {i.resolution_status !== 'resolved' && (
+                <div className="mt-0.5 text-[10px] leading-snug text-amber-700">
+                  {i.warning || 'Не найдено точное совпадение в каталоге.'}
+                  {i.candidate_food_names && i.candidate_food_names.length > 0
+                    ? ` Возможные варианты: ${i.candidate_food_names.join(', ')}.`
+                    : ''}
+                </div>
+              )}
+              {i.resolution_status === 'resolved' && i.resolved_food_name && i.resolved_food_name !== i.name && (
+                <div className="mt-0.5 text-[10px] leading-snug text-gray-500">
+                  {i.resolved_food_name}
+                </div>
+              )}
             </div>
-            <div className="text-right text-gray-800 text-xs">{(Math.round(i.proteins * 100) / 100).toFixed(2)}</div>
-            <div className="text-right text-gray-800 text-xs">{(Math.round(i.fats * 100) / 100).toFixed(2)}</div>
-            <div className="text-right text-gray-800 text-xs">{(Math.round(i.carbs * 100) / 100).toFixed(2)}</div>
+            <div
+              className="text-right text-green-600 text-xs"
+              data-testid={`recipe-ingredient-quantity-${idx}`}
+              data-original-amount={i.originalAmount ?? i.displayAmount ?? ''}
+              data-original-unit={i.originalUnit ?? i.displayUnit ?? ''}
+              data-grams-equivalent={i.quantity_g ?? i.gramsEquivalent ?? i.amountGrams}
+            >
+              {formatIngredientQuantity(i)}
+            </div>
+            <div className="text-right text-gray-800 text-xs">
+              {i.resolution_status === 'resolved' ? (Math.round(i.proteins * 100) / 100).toFixed(2) : '—'}
+            </div>
+            <div className="text-right text-gray-800 text-xs">
+              {i.resolution_status === 'resolved' ? (Math.round(i.fats * 100) / 100).toFixed(2) : '—'}
+            </div>
+            <div className="text-right text-gray-800 text-xs">
+              {i.resolution_status === 'resolved' ? (Math.round(i.carbs * 100) / 100).toFixed(2) : '—'}
+            </div>
           </div>
         ))}
       </div>
@@ -79,4 +119,3 @@ const RecipeIngredientsTable: React.FC<Props> = ({ items }) => {
 };
 
 export default RecipeIngredientsTable;
-

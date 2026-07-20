@@ -7,7 +7,10 @@ export interface CalculatedIngredient extends ParsedRecipeIngredient {
   calories: number;
   canonical_food_id?: string | null;
   resolution_status?: 'resolved' | 'unresolved';
-  resolution_reason?: 'catalog_match' | 'catalog_unmatched' | 'demo_match_only';
+  resolution_reason?: 'catalog_match' | 'catalog_unmatched' | 'demo_match_only' | 'unit_conversion_missing';
+  resolved_food_name?: string | null;
+  candidate_food_names?: string[];
+  warning?: string | null;
 }
 
 export interface NutritionTotals {
@@ -18,11 +21,14 @@ export interface NutritionTotals {
 export function calcTotals(items: CalculatedIngredient[]): NutritionTotals {
   const total = items.reduce(
     (acc, i) => {
+      if (i.resolution_status !== 'resolved' || !i.canonical_food_id) {
+        return acc;
+      }
       acc.proteins += i.proteins;
       acc.fats += i.fats;
       acc.carbs += i.carbs;
       acc.calories += i.calories;
-      acc.weight += i.amountGrams;
+      acc.weight += i.quantity_g ?? i.gramsEquivalent ?? i.amountGrams;
       return acc;
     },
     { proteins: 0, fats: 0, carbs: 0, calories: 0, weight: 0 }

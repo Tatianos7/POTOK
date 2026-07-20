@@ -38,6 +38,17 @@ const toNumber = (value: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+export const toNullableFiniteNumber = (value: unknown): number | null => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === 'string' && value.trim() === '') {
+    return null;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
 const getSourcePriority = (source: Food['source']): number => {
   switch (source) {
     case 'user':
@@ -50,7 +61,189 @@ const getSourcePriority = (source: Food['source']): number => {
   }
 };
 
+type SearchMatchSource =
+  | 'canonical_exact'
+  | 'alias_exact'
+  | 'canonical_prefix'
+  | 'alias_prefix'
+  | 'canonical_contains'
+  | 'alias_contains'
+  | 'fallback';
+
+type SearchMatchMetadata = {
+  source: SearchMatchSource;
+  normalizedQuery: string;
+};
+
+type SearchRankedFood = Food & {
+  __searchMatch?: SearchMatchMetadata;
+};
+
+export const FOOD_SEARCH_MANUAL_DISAMBIGUATION_POLICY: Record<string, string[]> = {
+  овсянка: [
+    'овсяные хлопья',
+    'овсяная крупа',
+    'каша овсяная',
+    'овсяная каша',
+  ],
+  чай: [
+    'чай черный',
+    'чай чёрный',
+    'чай зеленый',
+    'чай зелёный',
+    'чай без сахара',
+    'чай сухой',
+    'чай с сахаром',
+  ],
+};
+
+const SEARCH_MATCH_LEVEL: Record<SearchMatchSource, number> = {
+  canonical_exact: 1,
+  alias_exact: 2,
+  canonical_prefix: 3,
+  alias_prefix: 4,
+  canonical_contains: 5,
+  alias_contains: 6,
+  fallback: 7,
+};
+
+const normalizeSearchQuery = (value: string): string => normalizeFoodText(value);
+
+export const getFoodSearchDisambiguationPhrases = (query: string): string[] => {
+  return FOOD_SEARCH_MANUAL_DISAMBIGUATION_POLICY[normalizeSearchQuery(query)] ?? [];
+};
+
+const startsWithSearchTerm = (value: string, query: string): boolean => {
+  return value === query || value.startsWith(`${query} `);
+};
+
+const containsSearchTerm = (value: string, query: string): boolean => {
+  return value === query || value.includes(` ${query} `) || value.startsWith(`${query} `) || value.endsWith(` ${query}`);
+};
+
+const inferFoodSearchMatch = (food: Food, normalizedQuery: string): SearchMatchMetadata => {
+  const canonicalNames = [
+    buildNormalizedName(food.name),
+    food.name_original ? buildNormalizedName(food.name_original) : '',
+    food.normalized_name ?? '',
+  ].filter(Boolean);
+  const aliases = (food.aliases ?? []).map((alias) => normalizeFoodText(alias)).filter(Boolean);
+
+  if (canonicalNames.some((name) => name === normalizedQuery)) {
+    return { source: 'canonical_exact', normalizedQuery };
+  }
+  if (aliases.some((alias) => alias === normalizedQuery)) {
+    return { source: 'alias_exact', normalizedQuery };
+  }
+  if (canonicalNames.some((name) => startsWithSearchTerm(name, normalizedQuery))) {
+    return { source: 'canonical_prefix', normalizedQuery };
+  }
+  if (aliases.some((alias) => startsWithSearchTerm(alias, normalizedQuery))) {
+    return { source: 'alias_prefix', normalizedQuery };
+  }
+  if (canonicalNames.some((name) => containsSearchTerm(name, normalizedQuery) || name.includes(normalizedQuery))) {
+    return { source: 'canonical_contains', normalizedQuery };
+  }
+  if (aliases.some((alias) => containsSearchTerm(alias, normalizedQuery) || alias.includes(normalizedQuery))) {
+    return { source: 'alias_contains', normalizedQuery };
+  }
+
+  return { source: 'fallback', normalizedQuery };
+};
+
+const getSearchMatch = (food: SearchRankedFood, normalizedQuery: string): SearchMatchMetadata => {
+  if (food.__searchMatch?.normalizedQuery === normalizedQuery) {
+    return food.__searchMatch;
+  }
+  return inferFoodSearchMatch(food, normalizedQuery);
+};
+
+const withSearchMatch = (food: Food, source: SearchMatchSource, normalizedQuery: string): SearchRankedFood => ({
+  ...food,
+  __searchMatch: { source, normalizedQuery },
+});
+
+const isDisambiguationCandidate = (food: Food, phrase: string): boolean => {
+  const normalizedPhrase = normalizeSearchQuery(phrase);
+  const names = [
+    buildNormalizedName(food.name),
+    food.name_original ? buildNormalizedName(food.name_original) : '',
+    food.normalized_name ?? '',
+    ...(food.aliases ?? []).map((alias) => normalizeFoodText(alias)),
+  ].filter(Boolean);
+
+  return names.some((name) => (
+    name === normalizedPhrase ||
+    startsWithSearchTerm(name, normalizedPhrase) ||
+    containsSearchTerm(name, normalizedPhrase) ||
+    name.includes(normalizedPhrase)
+  ));
+};
+
+const stripSearchMatch = (food: SearchRankedFood): Food => {
+  const { __searchMatch: _searchMatch, ...cleanFood } = food;
+  return cleanFood;
+};
+
+const canonicalSearchKey = (food: Food): string => {
+  return food.canonical_food_id || food.id || `${buildNormalizedName(food.name)}_${buildNormalizedBrand(food.brand ?? null)}`;
+};
+
+const getSpecificityScore = (food: Food, normalizedQuery: string): number => {
+  const normalizedName = buildNormalizedName(food.name);
+  const extraLength = Math.max(0, normalizedName.length - normalizedQuery.length);
+  const tokenCount = normalizedName ? normalizedName.split(' ').length : 99;
+  return extraLength + tokenCount * 2;
+};
+
+const getStableTieBreaker = (food: Food): string => {
+  return (food.stable_food_id ?? food.canonical_food_id ?? food.id ?? food.name).toString();
+};
+
+const compareSearchFoods = (a: SearchRankedFood, b: SearchRankedFood, normalizedQuery: string): number => {
+  const aMatch = getSearchMatch(a, normalizedQuery);
+  const bMatch = getSearchMatch(b, normalizedQuery);
+  const matchDelta = SEARCH_MATCH_LEVEL[aMatch.source] - SEARCH_MATCH_LEVEL[bMatch.source];
+  if (matchDelta !== 0) return matchDelta;
+
+  const aSource = getSourcePriority(a.source);
+  const bSource = getSourcePriority(b.source);
+  if (aSource !== bSource) return bSource - aSource;
+
+  if ((a.verified ?? false) !== (b.verified ?? false)) {
+    return (b.verified ? 1 : 0) - (a.verified ? 1 : 0);
+  }
+
+  const specificityDelta = getSpecificityScore(a, normalizedQuery) - getSpecificityScore(b, normalizedQuery);
+  if (specificityDelta !== 0) return specificityDelta;
+
+  const popularityDelta = (b.popularity ?? 0) - (a.popularity ?? 0);
+  if (popularityDelta !== 0) return popularityDelta;
+
+  return getStableTieBreaker(a).localeCompare(getStableTieBreaker(b), 'en');
+};
+
+const preferSearchRankCandidate = (
+  existing: SearchRankedFood,
+  candidate: SearchRankedFood,
+  normalizedQuery: string
+): SearchRankedFood => {
+  const preferredFood = preferSearchFoodCandidate(existing, candidate);
+  if (preferredFood.id === candidate.id) return candidate;
+  if (preferredFood.id === existing.id) {
+    const matchDelta = compareSearchFoods(candidate, existing, normalizedQuery);
+    if (matchDelta < 0 && hasUsableFoodNutrition(candidate) === hasUsableFoodNutrition(existing)) {
+      return candidate;
+    }
+    return existing;
+  }
+  return existing;
+};
+
 const VALID_ZERO_MACRO_FOOD_NAMES = new Set([
+  'соль',
+  'соль поваренная',
+  'salt',
   'вода',
   'water',
 ]);
@@ -62,7 +255,7 @@ export const hasUsableFoodNutrition = (
   const protein = toNumber(food.protein);
   const fat = toNumber(food.fat);
   const carbs = toNumber(food.carbs);
-  const fiber = toNumber(food.fiber);
+  const fiber = food.fiber == null ? 0 : toNumber(food.fiber);
 
   if ([calories, protein, fat, carbs, fiber].some((value) => value < 0)) {
     return false;
@@ -149,49 +342,35 @@ export const preferSearchFoodCandidate = (existing: Food, candidate: Food): Food
 };
 
 export const finalizeFoodSearchResults = (foods: Food[], query: string, limit = 30): Food[] => {
-  const byKey = new Map<string, Food>();
-  const normalizedQuery = query.toLowerCase().trim();
+  const byKey = new Map<string, SearchRankedFood>();
+  const normalizedQuery = normalizeSearchQuery(query);
 
-  for (const food of foods) {
+  for (const rawFood of foods) {
+    const food = rawFood as SearchRankedFood;
     if (isSuspiciousAllZeroCatalogFood(food)) {
       continue;
     }
 
-    const key = `${buildNormalizedName(food.name)}_${buildNormalizedBrand(food.brand ?? null)}`;
+    const key = canonicalSearchKey(food);
     const existing = byKey.get(key);
-    byKey.set(key, existing ? preferSearchFoodCandidate(existing, food) : food);
+    byKey.set(key, existing ? preferSearchRankCandidate(existing, food, normalizedQuery) : food);
   }
 
   const results = Array.from(byKey.values()).map((food) => (
     shouldApplySearchNutritionFallback(food) ? {
       ...food,
       ...CATEGORY_DEFAULTS[food.category || 'vegetables'] || CATEGORY_DEFAULTS.vegetables,
-      fiber: food.fiber ?? 0,
+      fiber: food.fiber,
       autoFilled: true,
       updatedAt: new Date().toISOString(),
     } : food
   ));
 
   results.sort((a, b) => {
-    const aIsUser = a.source === 'user';
-    const bIsUser = b.source === 'user';
-    if (aIsUser && !bIsUser) return -1;
-    if (!aIsUser && bIsUser) return 1;
-
-    if (!aIsUser && !bIsUser) {
-      if (a.source === 'core' && b.source === 'brand') return -1;
-      if (a.source === 'brand' && b.source === 'core') return 1;
-    }
-
-    const aExact = a.name.toLowerCase() === normalizedQuery || a.name_original?.toLowerCase() === normalizedQuery;
-    const bExact = b.name.toLowerCase() === normalizedQuery || b.name_original?.toLowerCase() === normalizedQuery;
-    if (aExact && !bExact) return -1;
-    if (!aExact && bExact) return 1;
-
-    return (b.popularity ?? 0) - (a.popularity ?? 0);
+    return compareSearchFoods(a, b, normalizedQuery);
   });
 
-  return results.slice(0, limit);
+  return results.slice(0, limit).map(stripSearchMatch);
 };
 
 class FoodService {
@@ -237,16 +416,17 @@ class FoodService {
     const normalizedBrand = buildNormalizedBrand(raw.brand ?? null);
     const nutritionVersion = raw.nutrition_version ?? 1;
     const unit = raw.unit ?? 'g';
-    const fiber = toNumber(raw.fiber);
+    const fiber = toNullableFiniteNumber(raw.fiber);
     const { suspicious } = validateNutrition({
       calories: toNumber(raw.calories),
       protein: toNumber(raw.protein),
       fat: toNumber(raw.fat),
       carbs: toNumber(raw.carbs),
-      fiber,
+      fiber: fiber ?? undefined,
     });
     return {
       id: raw.id ?? `food_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+      stable_food_id: raw.stable_food_id ?? null,
       name: raw.name ?? raw.name_original ?? 'Без названия',
       name_original: raw.name_original,
       barcode: raw.barcode ?? null,
@@ -517,9 +697,21 @@ class FoodService {
               .limit(50);
             (aliasFoods || []).forEach((row: any) => {
               const food = this.mapSupabaseRowToFood(row);
-              if (!allResults.find((f) => this.isDuplicate(f, food))) {
-                allResults.push(food);
-              }
+              allResults.push(withSearchMatch(food, 'alias_exact', normalizedQuery));
+            });
+          }
+
+          const disambiguationPhrases = getFoodSearchDisambiguationPhrases(normalizedQuery);
+          for (const phrase of disambiguationPhrases) {
+            const phraseFoods = await this.loadPublicFoodsFromSupabase(phrase);
+            const disambiguationCandidates = phraseFoods
+              .filter((food) => !category || food.category === category)
+              .filter((food) => isDisambiguationCandidate(food, phrase));
+            if (disambiguationCandidates.length > 0) {
+              hasPublicSupabaseResults = true;
+            }
+            disambiguationCandidates.forEach((food) => {
+              allResults.push(withSearchMatch(food, 'alias_prefix', normalizedQuery));
             });
           }
         }
@@ -654,6 +846,7 @@ class FoodService {
   private mapSupabaseRowToFood(row: any): Food {
     return {
       id: row.id,
+      stable_food_id: row.stable_food_id ?? null,
       name: row.name,
       name_original: row.name_original || undefined,
       barcode: row.barcode || null,
@@ -661,7 +854,7 @@ class FoodService {
       protein: Number(row.protein) || 0,
       fat: Number(row.fat) || 0,
       carbs: Number(row.carbs) || 0,
-      fiber: Number(row.fiber) || 0,
+      fiber: toNullableFiniteNumber(row.fiber),
       unit: row.unit || 'g',
       category: row.category || undefined,
       brand: row.brand || null,
@@ -865,7 +1058,7 @@ class FoodService {
       protein: Number(food.protein),
       fat: Number(food.fat),
       carbs: Number(food.carbs),
-      fiber: Number(food.fiber) || 0,
+      fiber: food.fiber == null ? undefined : Number(food.fiber),
     });
     const userFood: UserCustomFood = {
       ...this.normalizeFood(food),
@@ -885,7 +1078,7 @@ class FoodService {
         protein: userFood.protein,
         fat: userFood.fat,
         carbs: userFood.carbs,
-        fiber: userFood.fiber ?? 0,
+        fiber: userFood.fiber,
         unit: userFood.unit ?? 'g',
         category: userFood.category || null,
         brand: userFood.brand,
@@ -968,7 +1161,7 @@ class FoodService {
         protein: Number(updated.protein),
         fat: Number(updated.fat),
         carbs: Number(updated.carbs),
-        fiber: Number(updated.fiber) || 0,
+        fiber: updated.fiber == null ? undefined : Number(updated.fiber),
       });
 
       try {
@@ -983,7 +1176,7 @@ class FoodService {
           protein: Number(updated.protein) || 0,
           fat: Number(updated.fat) || 0,
           carbs: Number(updated.carbs) || 0,
-          fiber: Number(updated.fiber) || 0,
+          fiber: updated.fiber == null ? undefined : Number(updated.fiber),
         });
         
         if (food.name !== undefined) updateData.name = food.name;

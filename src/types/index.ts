@@ -74,6 +74,7 @@ export type FoodSource =
 
 export interface Food {
   id: string;
+  stable_food_id?: string | null;
   name: string; // Русское название (основное отображение)
   name_original?: string; // Оригинальное/английское название
   barcode?: string | null;
@@ -81,7 +82,7 @@ export interface Food {
   protein: number;  // на 100 г
   fat: number;      // на 100 г
   carbs: number;    // на 100 г
-  fiber?: number;   // на 100 г
+  fiber?: number | null;   // на 100 г; null means source did not provide reliable value
   unit?: string;    // единица измерения (по умолчанию g)
   category?: string;
   brand?: string | null;
