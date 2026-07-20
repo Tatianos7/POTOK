@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check, Heart, Copy, Trash2, StickyNote } from 'lucide-react';
+import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check, Heart, Copy, Trash2, StickyNote, TrendingUp } from 'lucide-react';
 import { DailyMeals, MealEntry, Food, UserCustomFood } from '../types';
 import { mealService, type MealSyncStatus } from '../services/mealService';
 import { foodService, isSuspiciousAllZeroCatalogFood } from '../services/foodService';
@@ -1267,8 +1267,8 @@ const FoodDiary = () => {
           </div>
           
           {/* Month */}
-          <div className="flex items-center justify-between">
-            <div className="relative flex flex-col" style={{ gap: spacing.xs, width: '100%' }}>
+          <div className="flex items-start justify-between gap-2">
+            <div className="relative flex min-w-0 flex-1 flex-col" style={{ gap: spacing.xs }}>
               <Button
                 variant="ghost"
                 size="sm"
@@ -1300,6 +1300,22 @@ const FoodDiary = () => {
                 )}
               </div>
             </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate('/progress/nutrition')}
+              aria-label="Открыть прогресс питания"
+              className="flex-shrink-0 gap-1.5"
+              style={{
+                borderColor: '#BBF7D0',
+                backgroundColor: 'rgba(240, 253, 244, 0.65)',
+                color: '#166534',
+                textTransform: 'uppercase',
+              }}
+            >
+              <TrendingUp className="h-4 w-4" />
+              Прогресс
+            </Button>
           </div>
         </header>
 
