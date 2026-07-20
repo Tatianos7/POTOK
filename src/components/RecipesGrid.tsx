@@ -3,6 +3,7 @@ import { Recipe } from '../types/recipe';
 import { getRecipeBadges } from '../utils/recipeBadges';
 import RecipeBadge from './RecipeBadge';
 import { recipeNotesService } from '../services/recipeNotesService';
+import { recipeImagesService } from '../services/recipeImagesService';
 
 interface RecipesGridProps {
   recipes: Recipe[];
@@ -12,16 +13,27 @@ interface RecipesGridProps {
 
 const RecipesGrid = ({ recipes, onRecipeClick, userId }: RecipesGridProps) => {
   const [recipeNotes, setRecipeNotes] = useState<Record<string, string>>({});
+  const [recipeImages, setRecipeImages] = useState<Record<string, string>>({});
 
   // Загружаем заметки для всех рецептов
   useEffect(() => {
-    if (!userId || recipes.length === 0) return;
+    if (!userId || recipes.length === 0) {
+      setRecipeNotes({});
+      setRecipeImages({});
+      return;
+    }
 
     const recipeIds = recipes.map((r) => r.id);
     recipeNotesService.getNotesByRecipeIds(userId, recipeIds).then((notes) => {
       setRecipeNotes(notes);
     }).catch((error) => {
       console.error('[RecipesGrid] Error loading notes:', error);
+    });
+
+    recipeImagesService.getImagesByRecipeIds(userId, recipeIds).then((images) => {
+      setRecipeImages(images);
+    }).catch((error) => {
+      console.error('[RecipesGrid] Error loading images:', error);
     });
   }, [recipes, userId]);
 
@@ -30,6 +42,7 @@ const RecipesGrid = ({ recipes, onRecipeClick, userId }: RecipesGridProps) => {
       {recipes.map((recipe) => {
         const badges = getRecipeBadges(recipe, userId);
         const note = recipeNotes[recipe.id];
+        const image = recipeImages[recipe.id] ?? recipe.image;
         
         return (
           <button
@@ -40,9 +53,9 @@ const RecipesGrid = ({ recipes, onRecipeClick, userId }: RecipesGridProps) => {
           >
             {/* Recipe Image */}
             <div className="w-full aspect-square rounded-t-xl overflow-hidden bg-gray-200 dark:bg-gray-700 relative">
-              {recipe.image ? (
+              {image ? (
                 <img
-                  src={recipe.image}
+                  src={image}
                   alt={recipe.name}
                   className="w-full h-full max-w-full max-h-full object-cover"
                   style={{ maxWidth: '100%', height: 'auto' }}
@@ -142,4 +155,3 @@ const RecipesGrid = ({ recipes, onRecipeClick, userId }: RecipesGridProps) => {
 };
 
 export default RecipesGrid;
-

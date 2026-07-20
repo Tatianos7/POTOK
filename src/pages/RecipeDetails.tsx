@@ -9,6 +9,7 @@ import { recipeDiaryService } from '../services/recipeDiaryService';
 import { recipeNotesService } from '../services/recipeNotesService';
 import RecipeNoteModal from '../components/RecipeNoteModal';
 import { getLocalDayKey } from '../utils/dayKey';
+import { RecipeImageError, recipeImagesService } from '../services/recipeImagesService';
 
 const RecipeDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,7 +29,8 @@ const RecipeDetails = () => {
     const loadRecipe = async () => {
       const loadedRecipe = await recipesService.getRecipeById(id, user.id);
       if (loadedRecipe) {
-        setRecipe(loadedRecipe);
+        const localImage = await recipeImagesService.getImageByRecipeId(user.id, id);
+        setRecipe({ ...loadedRecipe, image: localImage ?? loadedRecipe.image ?? null });
         // Загружаем заметку для рецепта
         recipeNotesService.getNoteByRecipeId(user.id, id).then((note) => {
           setRecipeNote(note);
@@ -101,45 +103,18 @@ const RecipeDetails = () => {
     const file = e.target.files?.[0];
     if (!file || !recipe || !user?.id) return;
 
-    // Проверяем тип файла
-    if (!file.type.startsWith('image/')) {
-      alert('Пожалуйста, выберите изображение');
-      return;
-    }
-
-    // Проверяем размер файла (максимум 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Размер файла не должен превышать 5MB');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = async () => {
-      const imageDataUrl = reader.result as string;
-      
-      // Обновляем рецепт с новым изображением
-      const updatedRecipe: Recipe = {
-        ...recipe,
-        image: imageDataUrl,
-        updatedAt: new Date().toISOString(),
-      };
-
-      // Сохраняем рецепт
-      const saved = await recipesService.saveRecipe(updatedRecipe);
-      
-      // Обновляем состояние
-      setRecipe(saved);
-    };
-
-    reader.onerror = () => {
-      alert('Ошибка при загрузке изображения');
-    };
-
-    reader.readAsDataURL(file);
-    
-    // Сбрасываем input для возможности повторной загрузки того же файла
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    try {
+      const imageDataUrl = await recipeImagesService.readFileAsDataUrl(file);
+      await recipeImagesService.saveImage(user.id, recipe.id, imageDataUrl);
+      setRecipe({ ...recipe, image: imageDataUrl });
+    } catch (error) {
+      console.error('[RecipeDetails] Error saving recipe image:', error);
+      alert(error instanceof RecipeImageError ? error.userMessage : 'Не удалось сохранить фото рецепта');
+    } finally {
+      // Сбрасываем input для возможности повторной загрузки того же файла
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -347,26 +322,21 @@ const RecipeDetails = () => {
               <span className="whitespace-nowrap">ДОБАВИТЬ ЗАМЕТКУ</span>
             </button>
           )}
-          {/* Кнопка "Добавить фото" показывается только если фото нет */}
-          {!recipe.image && (
-            <>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-                aria-label="Загрузить фото рецепта"
-              />
-              <button 
-                onClick={handleAddPhotoClick}
-                className="flex items-center gap-1.5 min-[376px]:gap-2 text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors flex-shrink-0"
-              >
-                <Camera className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4" />
-                <span className="whitespace-nowrap">ДОБАВИТЬ ФОТО</span>
-              </button>
-            </>
-          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+            aria-label="Загрузить фото рецепта"
+          />
+          <button
+            onClick={handleAddPhotoClick}
+            className="flex items-center gap-1.5 min-[376px]:gap-2 text-xs min-[376px]:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors flex-shrink-0"
+          >
+            <Camera className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4" />
+            <span className="whitespace-nowrap">{recipe.image ? 'ЗАМЕНИТЬ ФОТО' : 'ДОБАВИТЬ ФОТО'}</span>
+          </button>
         </div>
 
         {/* Bottom Action Buttons */}

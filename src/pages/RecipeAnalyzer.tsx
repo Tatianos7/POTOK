@@ -11,6 +11,7 @@ import { RecipeSaveValidationError, recipesService } from '../services/recipesSe
 import { recipeDiaryService } from '../services/recipeDiaryService';
 import { getLocalDayKey } from '../utils/dayKey';
 import { runCombinedRecipeSave } from '../utils/recipeCombinedSave';
+import { RecipeImageError, recipeImagesService } from '../services/recipeImagesService';
 
 const placeholderIngredients =
   'Пример: 250 г говядина постная, 1–2 морковки, 1 луковица, 2 дольки чеснока, полтора литра молока, 400 г картофеля';
@@ -67,14 +68,20 @@ const RecipeAnalyzer = () => {
     fileInputRef.current?.click();
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setRecipeImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const imageDataUrl = await recipeImagesService.readFileAsDataUrl(file);
+        setRecipeImage(imageDataUrl);
+      } catch (error) {
+        console.error('[RecipeAnalyzer] Error reading recipe image:', error);
+        alert(error instanceof RecipeImageError ? error.userMessage : 'Ошибка при загрузке изображения');
+      } finally {
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
     }
   };
 
@@ -163,7 +170,7 @@ const RecipeAnalyzer = () => {
     }
 
     try {
-      await recipesService.createRecipeFromAnalyzer({
+      const savedRecipe = await recipesService.createRecipeFromAnalyzer({
         name: recipeName,
         image: recipeImage,
         totalCalories: totals.total.calories,
@@ -174,9 +181,22 @@ const RecipeAnalyzer = () => {
         userId: user.id,
       });
 
+      let photoWarning: string | null = null;
+      if (recipeImage) {
+        try {
+          await recipeImagesService.saveImage(user.id, savedRecipe.id, recipeImage);
+        } catch (error) {
+          console.error('[RecipeAnalyzer] Error saving recipe image:', error);
+          photoWarning =
+            error instanceof RecipeImageError
+              ? error.userMessage
+              : 'Рецепт сохранён, но фото не удалось сохранить';
+        }
+      }
+
       setIsSaveRecipeModalOpen(false);
       setSaveMode(null);
-      alert('Рецепт сохранен в "Мои рецепты"');
+      alert(photoWarning || 'Рецепт сохранен в "Мои рецепты"');
     } catch (error) {
       console.error('[RecipeAnalyzer] Error saving recipe:', error);
       if (error instanceof RecipeSaveValidationError && error.unresolvedIngredients.length > 0) {
@@ -201,9 +221,10 @@ const RecipeAnalyzer = () => {
     }
 
     const recipeName = pendingCombinedRecipeName?.trim() || name.trim() || 'Рецепт';
+    let photoWarning: string | null = null;
     const result = await runCombinedRecipeSave({
-      saveRecipe: () =>
-        recipesService.createRecipeFromAnalyzer({
+      saveRecipe: async () => {
+        const savedRecipe = await recipesService.createRecipeFromAnalyzer({
           name: recipeName,
           image: recipeImage,
           totalCalories: totals.total.calories,
@@ -212,7 +233,22 @@ const RecipeAnalyzer = () => {
           totalCarbs: totals.total.carbs,
           ingredients: buildAnalyzerIngredients(),
           userId: user.id,
-        }),
+        });
+
+        if (recipeImage) {
+          try {
+            await recipeImagesService.saveImage(user.id, savedRecipe.id, recipeImage);
+          } catch (error) {
+            console.error('[RecipeAnalyzer] Error saving recipe image:', error);
+            photoWarning =
+              error instanceof RecipeImageError
+                ? error.userMessage
+                : 'Рецепт сохранён, но фото не удалось сохранить';
+          }
+        }
+
+        return savedRecipe;
+      },
       saveDiary: () =>
         recipeDiaryService.saveRecipeEntry({
           userId: user.id,
@@ -229,7 +265,7 @@ const RecipeAnalyzer = () => {
     setSaveMode(null);
 
     if (result.recipe.status === 'fulfilled' && result.diary.status === 'fulfilled') {
-      alert('Рецепт сохранён в "Мои рецепты" и добавлен в меню');
+      alert(photoWarning || 'Рецепт сохранён в "Мои рецепты" и добавлен в меню');
       return;
     }
 
