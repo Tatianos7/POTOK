@@ -8,6 +8,7 @@ import {
   isOptionalSupabaseResourceMissingError,
   setOptionalSupabaseResourceState,
 } from '../utils/optionalSupabaseResource';
+import { recipeNotesService } from './recipeNotesService';
 
 export class RecipeSaveValidationError extends Error {
   code: 'unresolved_ingredients';
@@ -621,7 +622,12 @@ class RecipesService {
       updatedAt: new Date().toISOString(),
     };
 
-    return this.saveRecipe(recipe);
+    const savedRecipe = await this.saveRecipe(recipe);
+    if (data.note?.trim()) {
+      await recipeNotesService.saveNote(data.userId, savedRecipe.id, data.note);
+    }
+
+    return savedRecipe;
   }
 
   async createRecipeFromAnalyzer(data: {
