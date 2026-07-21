@@ -39,6 +39,17 @@ test('recipeNotesService uses Supabase upsert as production write path', () => {
   assert.equal(tableCheckIndex < upsertIndex, true);
 });
 
+test('recipeNotesService reads optional note with maybeSingle to avoid 406 on missing row', () => {
+  const source = readFileSync(resolve(currentDir, '../recipeNotesService.ts'), 'utf8');
+  const getNoteStart = source.indexOf('async getNoteByRecipeId');
+  const getNotesStart = source.indexOf('async getNotesByRecipeIds', getNoteStart);
+  const getNoteSource = source.slice(getNoteStart, getNotesStart);
+
+  assert.notEqual(getNoteStart, -1);
+  assert.match(getNoteSource, /\.maybeSingle\(\)/);
+  assert.equal(getNoteSource.includes('.single()'), false);
+});
+
 test('recipeNotesService does not decide insert/update from local fallback state', () => {
   const source = readFileSync(resolve(currentDir, '../recipeNotesService.ts'), 'utf8');
   const saveNoteStart = source.indexOf('async saveNote');

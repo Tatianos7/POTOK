@@ -370,10 +370,10 @@ const RecipeDetails = () => {
                 // Сохраняем текущее состояние рецепта со всеми изменениями
                 const updatedRecipe: Recipe = {
                   ...recipe,
-                  updatedAt: new Date().toISOString(),
                 };
 
-                await recipesService.saveRecipe(updatedRecipe);
+                const savedRecipe = await recipesService.saveRecipe(updatedRecipe);
+                setRecipe({ ...savedRecipe, image: recipe.image ?? savedRecipe.image ?? null });
                 
                 // Закрываем карточку и возвращаемся назад
                 navigate(-1);

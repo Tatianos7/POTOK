@@ -101,13 +101,9 @@ class RecipeNotesService {
           .select('text')
           .eq('user_id', sessionUserId)
           .eq('recipe_id', recipeId)
-          .single();
+          .maybeSingle();
 
         if (error) {
-          // Если записи нет, это нормально (not found)
-          if (error.code === 'PGRST116') {
-            return localNote;
-          }
           // Если таблица не найдена, сбрасываем кэш
           if (isOptionalSupabaseResourceMissingError(error)) {
             tableExistsCache = false;
