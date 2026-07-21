@@ -12,14 +12,27 @@ test('createRecipeFromMeal persists modal note through recipeNotesService', () =
   assert.match(source, /recipeNotesService\.saveNote\(data\.userId,\s*savedRecipe\.id,\s*data\.note\)/);
 });
 
-test('recipeNotesService writes local fallback before Supabase table check', () => {
+test('recipeNotesService uses Supabase upsert as production write path', () => {
   const source = readFileSync(resolve(currentDir, '../recipeNotesService.ts'), 'utf8');
   const saveNoteStart = source.indexOf('async saveNote');
-  const saveLocalIndex = source.indexOf('this.saveLocalStorageNotes(userId, localNotes);', saveNoteStart);
+  const upsertIndex = source.indexOf('.upsert(', saveNoteStart);
+  const conflictIndex = source.indexOf("onConflict: 'user_id,recipe_id'", saveNoteStart);
   const tableCheckIndex = source.indexOf('const tableExists = await this.checkTableExists();', saveNoteStart);
 
   assert.notEqual(saveNoteStart, -1);
-  assert.notEqual(saveLocalIndex, -1);
+  assert.notEqual(upsertIndex, -1);
+  assert.notEqual(conflictIndex, -1);
   assert.notEqual(tableCheckIndex, -1);
-  assert.equal(saveLocalIndex < tableCheckIndex, true);
+  assert.equal(tableCheckIndex < upsertIndex, true);
+});
+
+test('recipeNotesService does not decide insert/update from local fallback state', () => {
+  const source = readFileSync(resolve(currentDir, '../recipeNotesService.ts'), 'utf8');
+  const saveNoteStart = source.indexOf('async saveNote');
+  const deleteNoteStart = source.indexOf('async deleteNote', saveNoteStart);
+  const saveNoteSource = source.slice(saveNoteStart, deleteNoteStart);
+
+  assert.equal(saveNoteSource.includes('const existingNote = await this.getNoteByRecipeId'), false);
+  assert.equal(saveNoteSource.includes('.update({'), false);
+  assert.equal(saveNoteSource.includes('.insert({'), false);
 });

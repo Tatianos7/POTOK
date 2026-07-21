@@ -42,10 +42,6 @@ class RecipeNotesService {
     }
 
     const cachedState = getOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE);
-    if (cachedState === 'missing') {
-      tableExistsCache = false;
-      return false;
-    }
     if (cachedState === 'present') {
       tableExistsCache = true;
       return true;
@@ -120,8 +116,7 @@ class RecipeNotesService {
           return localNote;
         }
 
-        const note = data?.text || null;
-        return note ?? localNote;
+        return data?.text || localNote;
       } catch (error) {
         return localNote;
       }
@@ -167,12 +162,17 @@ class RecipeNotesService {
           return localNotesMap;
         }
 
-        // Преобразуем массив в объект { recipe_id: text }
-        const notesMap: Record<string, string> = { ...localNotesMap };
+        // Supabase is the source of truth when the table exists; localStorage only fills temporary gaps.
+        const notesMap: Record<string, string> = {};
         if (data) {
           data.forEach((note) => {
             notesMap[note.recipe_id] = note.text;
           });
+        }
+        for (const recipeId of recipeIds) {
+          if (!notesMap[recipeId] && localNotesMap[recipeId]) {
+            notesMap[recipeId] = localNotesMap[recipeId];
+          }
         }
 
         return notesMap;
@@ -206,79 +206,54 @@ class RecipeNotesService {
       return;
     }
 
-    const localNotes = this.getLocalStorageNotes(userId);
-    localNotes[recipeId] = trimmedText;
-    this.saveLocalStorageNotes(userId, localNotes);
-
     // Проверяем, существует ли таблица в Supabase
     const tableExists = await this.checkTableExists();
 
-    // Пробуем сохранить в Supabase только если таблица существует
+    // Supabase is the production source of truth. localStorage is only a temporary fallback.
     if (supabase && tableExists) {
       try {
         const activeUserId = await this.getSessionUserId(userId);
 
-        // Проверяем, существует ли заметка
-        const existingNote = await this.getNoteByRecipeId(userId, recipeId);
-
-        if (existingNote !== null) {
-          // Обновляем существующую заметку
-          const { error } = await supabase
-            .from('recipe_notes')
-            .update({
-              text: trimmedText,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('user_id', activeUserId)
-            .eq('recipe_id', recipeId);
-
-          if (error) {
-            // Если таблица не найдена, сбрасываем кэш и используем только localStorage
-            if (isOptionalSupabaseResourceMissingError(error)) {
-              tableExistsCache = false;
-              setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
-              return; // Уже сохранено в localStorage
-            }
-            // Не бросаем ошибку, так как уже сохранено в localStorage
-            return;
-          }
-        } else {
-          // Создаём новую заметку
-          const { error } = await supabase
-            .from('recipe_notes')
-            .insert({
+        const { error } = await supabase
+          .from('recipe_notes')
+          .upsert(
+            {
               user_id: activeUserId,
               recipe_id: recipeId,
               text: trimmedText,
-            });
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: 'user_id,recipe_id' }
+          );
 
-          if (error) {
-            // Если таблица не найдена, сбрасываем кэш и используем только localStorage
-            if (isOptionalSupabaseResourceMissingError(error)) {
-              tableExistsCache = false;
-              setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
-              return; // Уже сохранено в localStorage
-            }
-            // Не бросаем ошибку, так как уже сохранено в localStorage
-            return;
+        if (error) {
+          if (isOptionalSupabaseResourceMissingError(error)) {
+            tableExistsCache = false;
+            setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
+          } else {
+            throw error;
           }
+        } else {
+          setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'present');
+          const localNotes = this.getLocalStorageNotes(userId);
+          localNotes[recipeId] = trimmedText;
+          this.saveLocalStorageNotes(userId, localNotes);
+          return;
         }
       } catch (error) {
-        // Не бросаем ошибку, так как уже сохранено в localStorage
-        return;
+        throw error;
       }
     }
-    // Если Supabase недоступен, заметка уже сохранена в localStorage
+
+    const localNotes = this.getLocalStorageNotes(userId);
+    localNotes[recipeId] = trimmedText;
+    this.saveLocalStorageNotes(userId, localNotes);
   }
 
   /**
    * Удалить заметку для рецепта
    */
   async deleteNote(userId: string, recipeId: string): Promise<void> {
-    const localNotes = this.getLocalStorageNotes(userId);
-    delete localNotes[recipeId];
-    this.saveLocalStorageNotes(userId, localNotes);
-
     // Проверяем, существует ли таблица в Supabase
     const tableExists = await this.checkTableExists();
 
@@ -298,17 +273,20 @@ class RecipeNotesService {
           if (isOptionalSupabaseResourceMissingError(error)) {
             tableExistsCache = false;
             setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'missing');
-            return; // Уже удалено из localStorage
+          } else {
+            throw error;
           }
-          // Не бросаем ошибку, так как уже удалено из localStorage
-          return;
+        } else {
+          setOptionalSupabaseResourceState(RECIPE_NOTES_RESOURCE, 'present');
         }
       } catch (error) {
-        // Не бросаем ошибку, так как уже удалено из localStorage
-        return;
+        throw error;
       }
     }
-    // Если Supabase недоступен, заметка уже удалена из localStorage
+
+    const localNotes = this.getLocalStorageNotes(userId);
+    delete localNotes[recipeId];
+    this.saveLocalStorageNotes(userId, localNotes);
   }
 
   private notesKey(userId: string): string {
