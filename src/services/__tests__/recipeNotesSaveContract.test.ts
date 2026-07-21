@@ -12,6 +12,19 @@ test('createRecipeFromMeal persists modal note through recipeNotesService', () =
   assert.match(source, /recipeNotesService\.saveNote\(data\.userId,\s*savedRecipe\.id,\s*data\.note\)/);
 });
 
+test('createRecipeFromMeal does not fail already-created recipe when optional note save fails', () => {
+  const source = readFileSync(resolve(currentDir, '../recipesService.ts'), 'utf8');
+  const createFromMealStart = source.indexOf('async createRecipeFromMeal');
+  const createFromAnalyzerStart = source.indexOf('async createRecipeFromAnalyzer', createFromMealStart);
+  const createFromMealSource = source.slice(createFromMealStart, createFromAnalyzerStart);
+
+  assert.notEqual(createFromMealStart, -1);
+  assert.match(createFromMealSource, /const savedRecipe = await this\.saveRecipe\(recipe\)/);
+  assert.match(createFromMealSource, /try\s*{\s*await recipeNotesService\.saveNote\(data\.userId,\s*savedRecipe\.id,\s*data\.note\)/s);
+  assert.match(createFromMealSource, /console\.warn\('\[recipesService\] Recipe saved, but note persistence failed:'/);
+  assert.match(createFromMealSource, /return savedRecipe/);
+});
+
 test('recipeNotesService uses Supabase upsert as production write path', () => {
   const source = readFileSync(resolve(currentDir, '../recipeNotesService.ts'), 'utf8');
   const saveNoteStart = source.indexOf('async saveNote');

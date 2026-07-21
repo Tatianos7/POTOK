@@ -1,10 +1,33 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { foodService } from '../foodService';
-import { analyzeRecipeTextReal } from '../recipeAnalyzerReal';
-import { calcTotals } from '../../utils/nutritionCalculator';
-import { parseRecipeText } from '../../utils/recipeParser';
+function installLocalStorageMock() {
+  const storage = new Map<string, string>();
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        storage.set(key, value);
+      },
+      removeItem: (key: string) => {
+        storage.delete(key);
+      },
+      clear: () => {
+        storage.clear();
+      },
+    },
+    configurable: true,
+  });
+}
+
+installLocalStorageMock();
+
+const [{ foodService }, { analyzeRecipeTextReal }, { calcTotals }, { parseRecipeText }] = await Promise.all([
+  import('../foodService'),
+  import('../recipeAnalyzerReal'),
+  import('../../utils/nutritionCalculator'),
+  import('../../utils/recipeParser'),
+]);
 
 const FOOD_CORE = [
   {
@@ -84,6 +107,19 @@ const FOOD_CORE = [
     protein: 0,
     fat: 100,
     carbs: 0,
+  },
+  {
+    id: '77777777-7777-4777-8777-777777777777',
+    canonical_food_id: '77777777-7777-4777-8777-777777777777',
+    stable_food_id: 'carrot',
+    name: 'Морковь',
+    normalized_name: 'морковь',
+    aliases: ['морковь', 'морковка'],
+    source: 'core',
+    calories: 35,
+    protein: 1,
+    fat: 0.1,
+    carbs: 8,
   },
 ];
 
@@ -315,6 +351,63 @@ test('recipe analyzer uses centralized RU unit normalization for production unit
     assert.equal(analyzed[0].gramsEquivalent, 13.5);
     assert.equal(analyzed[0].quantity_g, 13.5);
     assert.equal(Math.round(analyzed[0].calories * 10) / 10, 119.3);
+  } finally {
+    (foodService as any).search = originalSearch;
+  }
+});
+
+test('recipe parser keeps example piece-style ingredients analyzable', async () => {
+  const originalSearch = foodService.search;
+
+  (foodService as any).search = async (query: string) => {
+    const q = query.toLowerCase().trim();
+    return FOOD_CORE.filter((food) => (
+      food.name.toLowerCase() === q ||
+      food.normalized_name === q ||
+      food.aliases.some((alias) => alias === q)
+    ));
+  };
+
+  try {
+    const parsed = parseRecipeText('1–2 морковки, 1 луковица');
+
+    assert.deepEqual(
+      parsed.map((item) => ({
+        name: item.name,
+        amountText: item.amountText,
+        gramsEquivalent: item.gramsEquivalent,
+        originalAmount: item.originalAmount,
+        originalUnit: item.originalUnit,
+        quantity_g: item.quantity_g,
+        warning: item.unitConversionWarning ?? null,
+      })),
+      [
+        {
+          name: 'морковь',
+          amountText: '1–2 шт',
+          gramsEquivalent: 90,
+          originalAmount: 1.5,
+          originalUnit: 'шт',
+          quantity_g: 90,
+          warning: null,
+        },
+        {
+          name: 'лук',
+          amountText: '1 шт',
+          gramsEquivalent: 110,
+          originalAmount: 1,
+          originalUnit: 'шт',
+          quantity_g: 110,
+          warning: null,
+        },
+      ]
+    );
+
+    const analyzed = await analyzeRecipeTextReal('1–2 морковки, 1 луковица');
+    assert.equal(analyzed.length, 2);
+    assert.equal(analyzed.every((item) => item.resolution_status === 'resolved'), true);
+    assert.equal(analyzed.every((item) => item.resolution_reason === 'catalog_match'), true);
+    assert.equal(calcTotals(analyzed).total.calories > 0, true);
   } finally {
     (foodService as any).search = originalSearch;
   }

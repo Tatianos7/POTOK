@@ -624,7 +624,11 @@ class RecipesService {
 
     const savedRecipe = await this.saveRecipe(recipe);
     if (data.note?.trim()) {
-      await recipeNotesService.saveNote(data.userId, savedRecipe.id, data.note);
+      try {
+        await recipeNotesService.saveNote(data.userId, savedRecipe.id, data.note);
+      } catch (error) {
+        console.warn('[recipesService] Recipe saved, but note persistence failed:', error);
+      }
     }
 
     return savedRecipe;

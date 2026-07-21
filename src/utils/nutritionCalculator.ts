@@ -21,7 +21,11 @@ export interface NutritionTotals {
 export function calcTotals(items: CalculatedIngredient[]): NutritionTotals {
   const total = items.reduce(
     (acc, i) => {
-      if (i.resolution_status !== 'resolved' || !i.canonical_food_id) {
+      const canContributeToTotals =
+        (i.resolution_status === 'resolved' && Boolean(i.canonical_food_id)) ||
+        i.resolution_reason === 'demo_match_only';
+
+      if (!canContributeToTotals) {
         return acc;
       }
       acc.proteins += i.proteins;

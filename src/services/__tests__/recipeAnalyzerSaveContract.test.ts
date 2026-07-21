@@ -6,14 +6,25 @@ import { dirname, resolve } from 'node:path';
 
 import { analyzeRecipeTextDemo } from '../recipeAnalyzerDemo';
 import { RecipeSaveValidationError, ensureRecipeIngredientsResolved } from '../recipesService';
+import { calcTotals } from '../../utils/nutritionCalculator';
 
 test('analyzer can display nutrition while ingredient is still unresolved', () => {
-  const items = analyzeRecipeTextDemo('яйцо куриное 150 г, молоко 100 мл, сливки 30 мл');
+  const items = analyzeRecipeTextDemo('яйцо куриное 150 г, молоко 100 г, сливки 30 г');
 
   assert.equal(items.length, 3);
   assert.equal(items.every((item) => item.calories > 0), true);
   assert.equal(items.some((item) => item.resolution_status === 'unresolved'), true);
   assert.equal(items.every((item) => item.canonical_food_id == null), true);
+});
+
+test('demo analyzer matches still contribute to displayed totals', () => {
+  const items = analyzeRecipeTextDemo('яйцо куриное 150 г, молоко 100 мл');
+  const totals = calcTotals(items);
+
+  assert.equal(items.every((item) => item.resolution_reason === 'demo_match_only'), true);
+  assert.equal(items.every((item) => item.canonical_food_id == null), true);
+  assert.equal(totals.total.calories > 0, true);
+  assert.equal(totals.total.proteins > 0, true);
 });
 
 test('saveRecipe validation rejects unresolved ingredients with structured error', () => {

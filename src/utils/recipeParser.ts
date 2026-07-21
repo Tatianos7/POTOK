@@ -50,6 +50,7 @@ interface UnitMatch {
   raw: string;
   start: number;
   end: number;
+  preserveInName?: boolean;
 }
 
 interface UnknownUnitMatch {
@@ -224,7 +225,7 @@ function normalizeProductName(name: string): string {
     [/чеснока$/iu, 'чеснок'],
     [/морковки$/iu, 'морковь'],
     [/чечевицы$/iu, 'чечевица'],
-    [/^луковиц[аы]$/iu, 'лук'],
+    [/^луковиц[аыу]$/iu, 'лук'],
     [/масла\s+оливкового/giu, 'масло оливковое'],
     [/масла\s+растительного/giu, 'масло растительное'],
     [/масла$/iu, 'масло'],
@@ -235,6 +236,31 @@ function normalizeProductName(name: string): string {
   }
 
   return compact(normalized);
+}
+
+function findImplicitPieceAfterNumber(text: string, numberEnd: number): UnitMatch | null {
+  const after = text.slice(numberEnd);
+  const match = after.match(/^\s*([\p{L}]+(?:\s+[\p{L}]+)?)/u);
+  if (!match || match.index === undefined) return null;
+
+  const raw = compact(match[1]);
+  const normalized = normalizeProductName(raw);
+  if (!normalized) return null;
+
+  const hasPieceRule = Object.keys(pieceWeights).some((candidate) => normalized.includes(candidate));
+  if (!hasPieceRule) return null;
+
+  const unit = UNIT_DEFINITIONS.find((definition) => definition.norm === 'pcs');
+  if (!unit) return null;
+
+  const start = numberEnd + match[0].indexOf(match[1]);
+  return {
+    unit,
+    raw: unit.display,
+    start,
+    end: start + match[1].length,
+    preserveInName: true,
+  };
 }
 
 function stripKnownUnits(text: string): string {
@@ -326,7 +352,9 @@ function buildName(
 
   clearSpan(numberInfo.index, numberInfo.index + numberInfo.originalText.length);
   if (unitInfo) {
-    clearSpan(unitInfo.start, unitInfo.end);
+    if (!unitInfo.preserveInName) {
+      clearSpan(unitInfo.start, unitInfo.end);
+    }
   } else if (unknownUnitInfo) {
     clearSpan(unknownUnitInfo.start, unknownUnitInfo.end);
   }
@@ -365,7 +393,7 @@ function parseLine(rawLine: string): ParsedRecipeIngredient | null {
 
   const numberStart = numberInfo.index;
   const numberEnd = numberStart + numberInfo.originalText.length;
-  const unitInfo = findUnitNearNumber(original, numberStart, numberEnd);
+  const unitInfo = findUnitNearNumber(original, numberStart, numberEnd) ?? findImplicitPieceAfterNumber(original, numberEnd);
   const unknownUnitInfo = unitInfo ? null : findUnknownUnitAfterNumber(original, numberEnd);
   const name = buildName(original, numberInfo, unitInfo, unknownUnitInfo);
   const productName = name || normalizeProductName(original.replace(NUMBER_REGEX, ' ')) || original;
