@@ -30,7 +30,11 @@ function installLocalStorageMock() {
 test('recipe image service saves and reads recipe image fallback by recipe id', async () => {
   installLocalStorageMock();
 
-  await recipeImagesService.saveImage('user-1', 'recipe-1', 'data:image/jpeg;base64,abc');
+  const result = await recipeImagesService.saveImage('user-1', 'recipe-1', 'data:image/jpeg;base64,abc');
+
+  assert.equal(result.persistence, 'local');
+  assert.equal(result.storagePath, null);
+  assert.equal(result.displayUrl, 'data:image/jpeg;base64,abc');
 
   assert.equal(
     await recipeImagesService.getImageByRecipeId('user-1', 'recipe-1'),
@@ -41,6 +45,17 @@ test('recipe image service saves and reads recipe image fallback by recipe id', 
   });
 });
 
+test('recipe image service keeps production storage contract stable', () => {
+  const source = readFileSync(resolve(currentDir, '../recipeImagesService.ts'), 'utf8');
+
+  assert.match(source, /const RECIPE_PHOTOS_BUCKET = 'recipe-photos'/);
+  assert.match(source, /return `user\/\$\{userId\}\/recipes\/\$\{recipeId\}\/cover\.jpg`/);
+  assert.match(source, /\.from\(RECIPE_PHOTOS_BUCKET\)[\s\S]*\.upload\(storagePath,\s*blob,\s*{[\s\S]*upsert: true/);
+  assert.match(source, /\.from\(RECIPE_PHOTOS_BUCKET\)[\s\S]*\.createSignedUrl\(storagePath,\s*SIGNED_URL_TTL_SECONDS\)/);
+  assert.match(source, /\.from\('recipes'\)[\s\S]*\.update\({ image: storagePath }\)/);
+  assert.equal(source.includes('update({ image: storagePath, updated_at'), false);
+});
+
 test('RecipeDetails photo replacement uses image service, not recipe save/update path', () => {
   const source = readFileSync(resolve(currentDir, '../../pages/RecipeDetails.tsx'), 'utf8');
   const handleFileChangeStart = source.indexOf('const handleFileChange');
@@ -49,7 +64,8 @@ test('RecipeDetails photo replacement uses image service, not recipe save/update
 
   assert.notEqual(handleFileChangeStart, -1);
   assert.match(handleFileChangeSource, /recipeImagesService\.readFileAsDataUrl\(file\)/);
-  assert.match(handleFileChangeSource, /recipeImagesService\.saveImage\(user\.id,\s*recipe\.id,\s*imageDataUrl\)/);
+  assert.match(handleFileChangeSource, /const result = await recipeImagesService\.saveImage\(user\.id,\s*recipe\.id,\s*imageDataUrl\)/);
+  assert.match(handleFileChangeSource, /setRecipe\({ \.\.\.recipe,\s*image: result\.displayUrl }\)/);
   assert.equal(handleFileChangeSource.includes('recipesService.saveRecipe'), false);
 });
 
@@ -65,7 +81,9 @@ test('recipe cards use image fallback service for rendered thumbnails', () => {
   const listSource = readFileSync(resolve(currentDir, '../../components/RecipesList.tsx'), 'utf8');
 
   assert.match(gridSource, /recipeImagesService\.getImagesByRecipeIds/);
+  assert.match(gridSource, /paths\[recipe\.id\] = recipe\.image/);
   assert.match(gridSource, /const image = recipeImages\[recipe\.id\] \?\? recipe\.image/);
   assert.match(listSource, /recipeImagesService\.getImagesByRecipeIds/);
+  assert.match(listSource, /paths\[recipe\.id\] = recipe\.image/);
   assert.match(listSource, /const image = recipeImages\[recipe\.id\] \?\? recipe\.image/);
 });

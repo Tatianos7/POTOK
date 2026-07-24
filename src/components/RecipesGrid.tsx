@@ -30,7 +30,12 @@ const RecipesGrid = ({ recipes, onRecipeClick, userId }: RecipesGridProps) => {
       console.error('[RecipesGrid] Error loading notes:', error);
     });
 
-    recipeImagesService.getImagesByRecipeIds(userId, recipeIds).then((images) => {
+    const storagePaths = recipes.reduce<Record<string, string | null | undefined>>((paths, recipe) => {
+      paths[recipe.id] = recipe.image;
+      return paths;
+    }, {});
+
+    recipeImagesService.getImagesByRecipeIds(userId, recipeIds, storagePaths).then((images) => {
       setRecipeImages(images);
     }).catch((error) => {
       console.error('[RecipesGrid] Error loading images:', error);

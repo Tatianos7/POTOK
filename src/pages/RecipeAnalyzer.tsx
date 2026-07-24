@@ -184,7 +184,8 @@ const RecipeAnalyzer = () => {
       let photoWarning: string | null = null;
       if (recipeImage) {
         try {
-          await recipeImagesService.saveImage(user.id, savedRecipe.id, recipeImage);
+          const result = await recipeImagesService.saveImage(user.id, savedRecipe.id, recipeImage);
+          photoWarning = result.warning ?? null;
         } catch (error) {
           console.error('[RecipeAnalyzer] Error saving recipe image:', error);
           photoWarning =
@@ -237,7 +238,8 @@ const RecipeAnalyzer = () => {
 
         if (recipeImage) {
           try {
-            await recipeImagesService.saveImage(user.id, savedRecipe.id, recipeImage);
+            const result = await recipeImagesService.saveImage(user.id, savedRecipe.id, recipeImage);
+            photoWarning = result.warning ?? null;
           } catch (error) {
             console.error('[RecipeAnalyzer] Error saving recipe image:', error);
             photoWarning =

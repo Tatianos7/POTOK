@@ -1,5 +1,9 @@
--- Draft only. Do not run without explicit owner approval.
--- Purpose: persistent recipe image support.
+-- PRODUCTION DRAFT: add persistent recipe image storage
+-- TARGET PRODUCTION PROJECT REF: dtsdnhbcwpbfrhcazqkb
+--
+-- Status: DRAFT ONLY. Do not run without explicit owner approval.
+-- Scope: additive schema/storage only; no historical recipe/diary/favorite mutations.
+-- Storage path contract: recipe-photos/user/{user_id}/recipes/{recipe_id}/cover.jpg
 
 begin;
 
@@ -7,13 +11,13 @@ alter table public.recipes
   add column if not exists image text;
 
 comment on column public.recipes.image is
-  'Optional recipe image URL or data URL. Intended production path is storage URL from recipe-photos bucket.';
+  'Optional recipe image storage path. Production path contract: recipe-photos/user/{user_id}/recipes/{recipe_id}/cover.jpg.';
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
   'recipe-photos',
   'recipe-photos',
-  true,
+  false,
   5242880,
   array['image/jpeg', 'image/png', 'image/webp']
 )
@@ -38,7 +42,8 @@ begin
       to authenticated
       using (
         bucket_id = 'recipe-photos'
-        and (storage.foldername(name))[1] = auth.uid()::text
+        and split_part(name, '/', 1) = 'user'
+        and split_part(name, '/', 2) = auth.uid()::text
       );
   end if;
 
@@ -55,7 +60,8 @@ begin
       to authenticated
       with check (
         bucket_id = 'recipe-photos'
-        and (storage.foldername(name))[1] = auth.uid()::text
+        and split_part(name, '/', 1) = 'user'
+        and split_part(name, '/', 2) = auth.uid()::text
       );
   end if;
 
@@ -72,11 +78,13 @@ begin
       to authenticated
       using (
         bucket_id = 'recipe-photos'
-        and (storage.foldername(name))[1] = auth.uid()::text
+        and split_part(name, '/', 1) = 'user'
+        and split_part(name, '/', 2) = auth.uid()::text
       )
       with check (
         bucket_id = 'recipe-photos'
-        and (storage.foldername(name))[1] = auth.uid()::text
+        and split_part(name, '/', 1) = 'user'
+        and split_part(name, '/', 2) = auth.uid()::text
       );
   end if;
 
@@ -93,7 +101,8 @@ begin
       to authenticated
       using (
         bucket_id = 'recipe-photos'
-        and (storage.foldername(name))[1] = auth.uid()::text
+        and split_part(name, '/', 1) = 'user'
+        and split_part(name, '/', 2) = auth.uid()::text
       );
   end if;
 end $$;

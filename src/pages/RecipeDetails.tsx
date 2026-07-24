@@ -29,8 +29,8 @@ const RecipeDetails = () => {
     const loadRecipe = async () => {
       const loadedRecipe = await recipesService.getRecipeById(id, user.id);
       if (loadedRecipe) {
-        const localImage = await recipeImagesService.getImageByRecipeId(user.id, id);
-        setRecipe({ ...loadedRecipe, image: localImage ?? loadedRecipe.image ?? null });
+        const displayImage = await recipeImagesService.getImageByRecipeId(user.id, id, loadedRecipe.image);
+        setRecipe({ ...loadedRecipe, image: displayImage ?? loadedRecipe.image ?? null });
         // Загружаем заметку для рецепта
         recipeNotesService.getNoteByRecipeId(user.id, id).then((note) => {
           setRecipeNote(note);
@@ -105,8 +105,11 @@ const RecipeDetails = () => {
 
     try {
       const imageDataUrl = await recipeImagesService.readFileAsDataUrl(file);
-      await recipeImagesService.saveImage(user.id, recipe.id, imageDataUrl);
-      setRecipe({ ...recipe, image: imageDataUrl });
+      const result = await recipeImagesService.saveImage(user.id, recipe.id, imageDataUrl);
+      setRecipe({ ...recipe, image: result.displayUrl });
+      if (result.warning) {
+        alert(result.warning);
+      }
     } catch (error) {
       console.error('[RecipeDetails] Error saving recipe image:', error);
       alert(error instanceof RecipeImageError ? error.userMessage : 'Не удалось сохранить фото рецепта');
