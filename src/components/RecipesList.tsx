@@ -47,7 +47,7 @@ const RecipesList = ({ recipes, onRecipeClick, userId }: RecipesListProps) => {
       {recipes.map((recipe) => {
         const badges = getRecipeBadges(recipe, userId);
         const note = recipeNotes[recipe.id];
-        const image = recipeImages[recipe.id] ?? recipe.image;
+        const image = recipeImages[recipe.id] ?? null;
         
         return (
           <button

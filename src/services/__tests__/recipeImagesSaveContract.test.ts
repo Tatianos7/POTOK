@@ -76,14 +76,28 @@ test('RecipeAnalyzer saves selected photo after recipe creation succeeds', () =>
   assert.match(source, /recipeImagesService\.saveImage\(user\.id,\s*savedRecipe\.id,\s*recipeImage\)/);
 });
 
-test('recipe cards use image fallback service for rendered thumbnails', () => {
+test('recipe cards render only resolved image URLs, never raw storage paths', () => {
   const gridSource = readFileSync(resolve(currentDir, '../../components/RecipesGrid.tsx'), 'utf8');
   const listSource = readFileSync(resolve(currentDir, '../../components/RecipesList.tsx'), 'utf8');
 
   assert.match(gridSource, /recipeImagesService\.getImagesByRecipeIds/);
   assert.match(gridSource, /paths\[recipe\.id\] = recipe\.image/);
-  assert.match(gridSource, /const image = recipeImages\[recipe\.id\] \?\? recipe\.image/);
+  assert.match(gridSource, /const image = recipeImages\[recipe\.id\] \?\? null/);
+  assert.equal(gridSource.includes('?? recipe.image'), false);
   assert.match(listSource, /recipeImagesService\.getImagesByRecipeIds/);
   assert.match(listSource, /paths\[recipe\.id\] = recipe\.image/);
-  assert.match(listSource, /const image = recipeImages\[recipe\.id\] \?\? recipe\.image/);
+  assert.match(listSource, /const image = recipeImages\[recipe\.id\] \?\? null/);
+  assert.equal(listSource.includes('?? recipe.image'), false);
+});
+
+test('RecipeDetails does not render raw recipe image storage path if signing fails', () => {
+  const source = readFileSync(resolve(currentDir, '../../pages/RecipeDetails.tsx'), 'utf8');
+  const loadRecipeStart = source.indexOf('const loadRecipe = async () =>');
+  const macrosStart = source.indexOf('// Вычисляем КБЖУ', loadRecipeStart);
+  const loadRecipeSource = source.slice(loadRecipeStart, macrosStart);
+
+  assert.notEqual(loadRecipeStart, -1);
+  assert.match(loadRecipeSource, /recipeImagesService\.getImageByRecipeId\(user\.id,\s*id,\s*loadedRecipe\.image\)/);
+  assert.match(loadRecipeSource, /setRecipe\({ \.\.\.loadedRecipe,\s*image: displayImage \?\? null }\)/);
+  assert.equal(loadRecipeSource.includes('displayImage ?? loadedRecipe.image'), false);
 });

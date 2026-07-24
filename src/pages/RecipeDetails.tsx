@@ -30,7 +30,7 @@ const RecipeDetails = () => {
       const loadedRecipe = await recipesService.getRecipeById(id, user.id);
       if (loadedRecipe) {
         const displayImage = await recipeImagesService.getImageByRecipeId(user.id, id, loadedRecipe.image);
-        setRecipe({ ...loadedRecipe, image: displayImage ?? loadedRecipe.image ?? null });
+        setRecipe({ ...loadedRecipe, image: displayImage ?? null });
         // Загружаем заметку для рецепта
         recipeNotesService.getNoteByRecipeId(user.id, id).then((note) => {
           setRecipeNote(note);
