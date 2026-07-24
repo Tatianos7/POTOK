@@ -419,7 +419,7 @@ const ProgressNutrition: FC = () => {
           <button
             type="button"
             className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-stone-100 text-stone-600 transition hover:bg-stone-200 hover:text-stone-900"
-            onClick={() => navigate('/progress')}
+            onClick={() => navigate('/nutrition')}
             aria-label="Закрыть"
           >
             <X className="h-5 w-5" />

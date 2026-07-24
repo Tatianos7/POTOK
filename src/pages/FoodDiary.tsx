@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Calendar, Plus, ScanLine, Camera, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check, Heart, Copy, Trash2, StickyNote, TrendingUp } from 'lucide-react';
+import { X, Calendar, Plus, ScanLine, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check, Heart, Copy, Trash2, StickyNote, TrendingUp } from 'lucide-react';
 import { DailyMeals, MealEntry, Food, UserCustomFood } from '../types';
 import { mealService, type MealSyncStatus } from '../services/mealService';
 import { foodService, isSuspiciousAllZeroCatalogFood } from '../services/foodService';
@@ -15,7 +15,6 @@ import ScanConfirmBottomSheet from '../components/ScanConfirmBottomSheet';
 import AddProductModal from '../components/AddProductModal';
 import RecipeAnalyzePicker from '../components/RecipeAnalyzePicker';
 import RecipeAnalyzeResultSheet from '../components/RecipeAnalyzeResultSheet';
-import PhotoFoodAnalyzerModal from '../components/PhotoFoodAnalyzerModal';
 import EditMealEntryModal from '../components/EditMealEntryModal';
 import FoodSourceBadge from '../components/FoodSourceBadge';
 import InlineCalendar from '../components/InlineCalendar';
@@ -67,7 +66,6 @@ const FoodDiary = () => {
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [analyzedIngredients, setAnalyzedIngredients] = useState<LocalIngredient[]>([]);
   const [isRecipeResultOpen, setIsRecipeResultOpen] = useState(false);
-  const [isPhotoFoodAnalyzerOpen, setIsPhotoFoodAnalyzerOpen] = useState(false);
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [scannedFood, setScannedFood] = useState<Food | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
@@ -1300,22 +1298,6 @@ const FoodDiary = () => {
                 )}
               </div>
             </div>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => navigate('/progress/nutrition')}
-              aria-label="Открыть прогресс питания"
-              className="flex-shrink-0 gap-1.5"
-              style={{
-                borderColor: '#BBF7D0',
-                backgroundColor: 'rgba(240, 253, 244, 0.65)',
-                color: '#166534',
-                textTransform: 'uppercase',
-              }}
-            >
-              <TrendingUp className="h-4 w-4" />
-              Прогресс
-            </Button>
           </div>
         </header>
 
@@ -1579,8 +1561,14 @@ const FoodDiary = () => {
             <Button variant="primary" size="lg" onClick={() => setShowAddProductModal(true)} style={{ flex: 1 }}>
               ДОБАВИТЬ ПРОДУКТ
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setIsPhotoFoodAnalyzerOpen(true)} title="Анализ продукта по фото">
-              <Camera className="w-6 h-6" style={{ color: colors.text.secondary }} />
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/progress/nutrition')}
+              title="Прогресс питания"
+              aria-label="Открыть прогресс питания"
+            >
+              <TrendingUp className="w-6 h-6" style={{ color: colors.text.secondary }} />
             </Button>
           </div>
         </div>
@@ -1883,72 +1871,6 @@ const FoodDiary = () => {
         />
       )}
 
-      {/* Photo Food Analyzer Modal */}
-      {isPhotoFoodAnalyzerOpen && (
-        <PhotoFoodAnalyzerModal
-          isOpen={isPhotoFoodAnalyzerOpen}
-          onClose={() => setIsPhotoFoodAnalyzerOpen(false)}
-          onSave={(food, weight, mealType = 'lunch') => {
-            if (!user?.id || !dailyMeals) return;
-
-            const multiplier = weight / 100;
-            const entry: MealEntry = {
-              id: `entry_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-              foodId: food.id,
-              food,
-              weight,
-              calories: food.calories * multiplier,
-              protein: food.protein * multiplier,
-              fat: food.fat * multiplier,
-              carbs: food.carbs * multiplier,
-              baseUnit: 'г',
-              displayUnit: 'г',
-              displayAmount: weight,
-              idempotencyKey: buildIdempotencyKey(mealType, food.id),
-            };
-
-            // Оптимистичное обновление
-            setDailyMeals((prev) => {
-              if (!prev) return prev;
-              const updated = { ...prev };
-              const list = [...updated[mealType]];
-              const existingIndex = list.findIndex(
-                (item) => item.idempotencyKey && item.idempotencyKey === entry.idempotencyKey
-              );
-              if (existingIndex >= 0) {
-                list[existingIndex] = entry;
-              } else {
-                list.push(entry);
-              }
-              updated[mealType] = list;
-              return updated;
-            });
-
-            setExpandedMeals((prev) => ({
-              ...prev,
-              [mealType]: true,
-            }));
-
-            emitMealLogged({
-              date: selectedDate,
-              meal_type: mealType,
-              calories: entry.calories,
-              protein: entry.protein,
-              food_id: entry.foodId,
-            });
-
-            // Сохраняем в фоне
-            mealService.addMealEntry(user.id, selectedDate, mealType, entry).catch((error) => {
-              reportError('Не удалось сохранить продукт с фото. Проверьте соединение и попробуйте снова.', error);
-              mealService.getFoodDiaryByDate(user.id, selectedDate).then((meals) => {
-                setDailyMeals(meals);
-              });
-            });
-          }}
-          defaultMealType={selectedMealType || 'lunch'}
-          userId={user?.id}
-        />
-      )}
     </>
   );
 };
