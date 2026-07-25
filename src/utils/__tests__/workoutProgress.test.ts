@@ -60,9 +60,28 @@ test('progress grouping safely falls back to exercise_id', () => {
   assert.equal(rows[0].exerciseName, 'Бабочка');
 });
 
-test('multiple observations of same exercise within one day collapse to last day observation', () => {
+test('multiple observations of same exercise within one day collapse to best weight observation', () => {
   const rows = buildWorkoutProgressList([
     createObservation('bench', '2026-03-20', { sets: 3, reps: 10, weight: 70 }, {
+      entryId: 'entry-1',
+      createdAt: '2026-03-20T09:00:00.000Z',
+    }),
+    createObservation('bench', '2026-03-20', { sets: 4, reps: 8, weight: 80 }, {
+      entryId: 'entry-2',
+      createdAt: '2026-03-20T08:00:00.000Z',
+    }),
+  ]);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].latestSets, 4);
+  assert.equal(rows[0].latestReps, 8);
+  assert.equal(rows[0].latestWeight, 80);
+  assert.equal(rows[0].latestMetricLabel, '80 кг');
+});
+
+test('equal best value chooses latest same-day observation', () => {
+  const rows = buildWorkoutProgressList([
+    createObservation('bench', '2026-03-20', { sets: 3, reps: 10, weight: 80 }, {
       entryId: 'entry-1',
       createdAt: '2026-03-20T08:00:00.000Z',
     }),
@@ -76,7 +95,6 @@ test('multiple observations of same exercise within one day collapse to last day
   assert.equal(rows[0].latestSets, 4);
   assert.equal(rows[0].latestReps, 8);
   assert.equal(rows[0].latestWeight, 80);
-  assert.equal(rows[0].latestMetricLabel, '80 кг');
 });
 
 test('progress list formats latest metric label for time and distance observations', () => {
@@ -98,6 +116,38 @@ test('progress list formats latest metric label for time and distance observatio
   assert.equal(rows.length, 2);
   assert.equal(rows.find((row) => row.exerciseGroupKey === 'run')?.latestMetricLabel, '20 мин');
   assert.equal(rows.find((row) => row.exerciseGroupKey === 'walk')?.latestMetricLabel, '2 км');
+});
+
+test('time and distance same-day progress rows choose max metric value', () => {
+  const rows = buildWorkoutProgressList([
+    createObservation('run', '2026-03-20', { sets: 1, reps: 1, weight: 20 }, {
+      metricType: 'time',
+      metricUnit: 'мин',
+      displayAmount: 20,
+      createdAt: '2026-03-20T09:00:00.000Z',
+    }),
+    createObservation('run', '2026-03-20', { sets: 1, reps: 1, weight: 35 }, {
+      metricType: 'time',
+      metricUnit: 'мин',
+      displayAmount: 35,
+      createdAt: '2026-03-20T08:00:00.000Z',
+    }),
+    createObservation('walk', '2026-03-20', { sets: 1, reps: 1, weight: 2 }, {
+      metricType: 'distance',
+      metricUnit: 'км',
+      displayAmount: 2,
+      createdAt: '2026-03-20T09:00:00.000Z',
+    }),
+    createObservation('walk', '2026-03-20', { sets: 1, reps: 1, weight: 3 }, {
+      metricType: 'distance',
+      metricUnit: 'км',
+      displayAmount: 3,
+      createdAt: '2026-03-20T08:00:00.000Z',
+    }),
+  ]);
+
+  assert.equal(rows.find((row) => row.exerciseGroupKey === 'run')?.latestMetricLabel, '35 мин');
+  assert.equal(rows.find((row) => row.exerciseGroupKey === 'walk')?.latestMetricLabel, '3 км');
 });
 
 test('latest sets reps and weight are chosen correctly', () => {

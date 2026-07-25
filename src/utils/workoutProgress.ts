@@ -1,4 +1,5 @@
 import type {
+  WorkoutMetricType,
   WorkoutProgressMetricTrend,
   WorkoutProgressObservation,
   WorkoutProgressRow,
@@ -16,19 +17,74 @@ const STABILIZATION_TAIL_LENGTH = 3;
 function compareObservations(a: WorkoutProgressObservation, b: WorkoutProgressObservation): number {
   return (
     a.date.localeCompare(b.date) ||
+    (a.updatedAt ?? '').localeCompare(b.updatedAt ?? '') ||
     (a.createdAt ?? '').localeCompare(b.createdAt ?? '') ||
     a.entryId.localeCompare(b.entryId)
   );
 }
 
-function collapseObservationsByDay(observations: WorkoutProgressObservation[]): WorkoutProgressObservation[] {
+function getBestComparableValue(
+  item: Pick<WorkoutProgressObservation, 'displayAmount' | 'weight' | 'metricType'>,
+): number {
+  const metricType = normalizeWorkoutMetricType(item.metricType);
+  const value = Number(item.displayAmount ?? item.weight) || 0;
+
+  if (metricType === 'none') {
+    return 0;
+  }
+
+  return value;
+}
+
+function isSameMetricFamily(left: WorkoutMetricType, right: WorkoutMetricType): boolean {
+  const normalizedLeft = normalizeWorkoutMetricType(left);
+  const normalizedRight = normalizeWorkoutMetricType(right);
+
+  if ((normalizedLeft === 'weight' || normalizedLeft === 'bodyweight') && (normalizedRight === 'weight' || normalizedRight === 'bodyweight')) {
+    return true;
+  }
+
+  return normalizedLeft === normalizedRight;
+}
+
+function compareBestWorkoutProgressRows(
+  current: WorkoutProgressObservation,
+  candidate: WorkoutProgressObservation,
+): number {
+  const currentMetricType = normalizeWorkoutMetricType(current.metricType);
+  const candidateMetricType = normalizeWorkoutMetricType(candidate.metricType);
+  const currentValue = getBestComparableValue(current);
+  const candidateValue = getBestComparableValue(candidate);
+
+  if (isSameMetricFamily(currentMetricType, candidateMetricType) && candidateValue !== currentValue) {
+    return candidateValue - currentValue;
+  }
+
+  return compareObservations(candidate, current);
+}
+
+export function getBestWorkoutProgressObservationForDay(
+  observations: WorkoutProgressObservation[],
+): WorkoutProgressObservation | null {
+  return observations.reduce<WorkoutProgressObservation | null>((best, observation) => {
+    if (!best) return observation;
+    return compareBestWorkoutProgressRows(best, observation) > 0 ? observation : best;
+  }, null);
+}
+
+export function collapseWorkoutProgressObservationsByBestDay(
+  observations: WorkoutProgressObservation[],
+): WorkoutProgressObservation[] {
   const byDate = new Map<string, WorkoutProgressObservation>();
 
   observations
     .slice()
     .sort(compareObservations)
     .forEach((observation) => {
-      byDate.set(observation.date, observation);
+      const current = byDate.get(observation.date);
+      if (!current || compareBestWorkoutProgressRows(current, observation) > 0) {
+        byDate.set(observation.date, observation);
+      }
     });
 
   return Array.from(byDate.values()).sort(compareObservations);
@@ -165,7 +221,7 @@ export function buildWorkoutProgressList(
 
   return groupWorkoutProgressRows(displayObservations)
     .map((group) => {
-      const collapsedDisplayObservations = collapseObservationsByDay(group.observations);
+      const collapsedDisplayObservations = collapseWorkoutProgressObservationsByBestDay(group.observations);
       const latestObservation = collapsedDisplayObservations[collapsedDisplayObservations.length - 1];
 
       if (!latestObservation) {
@@ -173,7 +229,7 @@ export function buildWorkoutProgressList(
       }
 
       const historyGroup = historyByGroup.get(group.exerciseGroupKey);
-      const collapsedHistoryObservations = collapseObservationsByDay(historyGroup?.observations ?? group.observations);
+      const collapsedHistoryObservations = collapseWorkoutProgressObservationsByBestDay(historyGroup?.observations ?? group.observations);
       const trendObservations = takeObservationsUntil(collapsedHistoryObservations, latestObservation);
 
       return {

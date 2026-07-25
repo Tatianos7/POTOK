@@ -51,6 +51,7 @@ type WorkoutProgressObservationRow = {
   id?: string | null;
   workout_day_id?: string | null;
   created_at?: string | null;
+  updated_at?: string | null;
   exercise_id?: string | null;
   exercise_name_snapshot?: string | null;
   metric_type?: WorkoutMetricType | null;
@@ -174,6 +175,7 @@ function getWorkoutProgressObservationsSelectClause(metricSchemaAvailable: boole
         id,
         workout_day_id,
         created_at,
+        updated_at,
         exercise_id,
         exercise_name_snapshot,
         ${metricColumns}
@@ -423,6 +425,7 @@ export function buildWorkoutProgressObservations(
       date,
       entryId,
       createdAt: typeof row.created_at === 'string' ? row.created_at : undefined,
+      updatedAt: typeof row.updated_at === 'string' ? row.updated_at : undefined,
       metricType,
       metricUnit,
       displayAmount: normalizeWorkoutMetricValue(metricType, Number(row.display_amount ?? weight)),

@@ -81,6 +81,7 @@ export interface WorkoutProgressObservation {
   date: string;
   entryId: string;
   createdAt?: string;
+  updatedAt?: string;
   metricType?: WorkoutMetricType;
   metricUnit?: WorkoutMetricUnit;
   displayAmount?: number;

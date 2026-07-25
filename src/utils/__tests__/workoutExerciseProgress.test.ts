@@ -64,18 +64,57 @@ test('metrics dates remain visible even when media is absent', () => {
   assert.equal(rows[0].metricValueLabel, '90 сек');
 });
 
-test('progress exercise screen preserves repeated same-day entries', () => {
+test('progress exercise screen aggregates repeated same-day entries to best row', () => {
   const rows = buildWorkoutExerciseProgressMetricRows(
     [
-      createEntry('entry-1', '2026-04-12', { displayAmount: 80, weight: 80, created_at: '2026-04-12T08:00:00.000Z' }),
-      createEntry('entry-2', '2026-04-12', { displayAmount: 85, weight: 85, created_at: '2026-04-12T09:00:00.000Z' }),
+      createEntry('entry-1', '2026-04-12', { sets: 3, reps: 12, displayAmount: 20, weight: 20, created_at: '2026-04-12T09:00:00.000Z' }),
+      createEntry('entry-2', '2026-04-12', { sets: 3, reps: 12, displayAmount: 27, weight: 27, created_at: '2026-04-12T08:00:00.000Z' }),
     ],
     'canonical-1',
   );
 
-  assert.equal(rows.length, 2);
-  assert.deepEqual(rows.map((row) => row.entryId), ['entry-2', 'entry-1']);
-  assert.deepEqual(rows.map((row) => row.metricValueLabel), ['85 кг', '80 кг']);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].entryId, 'entry-2');
+  assert.equal(rows[0].sets, 3);
+  assert.equal(rows[0].reps, 12);
+  assert.equal(rows[0].metricValueLabel, '27 кг');
+});
+
+test('progress exercise screen chooses latest row when best value is tied', () => {
+  const rows = buildWorkoutExerciseProgressMetricRows(
+    [
+      createEntry('entry-1', '2026-04-12', { sets: 3, reps: 12, displayAmount: 27, weight: 27, created_at: '2026-04-12T08:00:00.000Z' }),
+      createEntry('entry-2', '2026-04-12', { sets: 4, reps: 10, displayAmount: 27, weight: 27, created_at: '2026-04-12T09:00:00.000Z' }),
+    ],
+    'canonical-1',
+  );
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].entryId, 'entry-2');
+  assert.equal(rows[0].sets, 4);
+  assert.equal(rows[0].reps, 10);
+});
+
+test('progress exercise screen aggregates time and distance by max display amount', () => {
+  const timeRows = buildWorkoutExerciseProgressMetricRows(
+    [
+      createEntry('time-1', '2026-04-12', { metricType: 'time', metricUnit: 'мин', displayUnit: 'мин', displayAmount: 20, weight: 20, created_at: '2026-04-12T09:00:00.000Z' }),
+      createEntry('time-2', '2026-04-12', { metricType: 'time', metricUnit: 'мин', displayUnit: 'мин', displayAmount: 35, weight: 35, created_at: '2026-04-12T08:00:00.000Z' }),
+    ],
+    'canonical-1',
+  );
+  const distanceRows = buildWorkoutExerciseProgressMetricRows(
+    [
+      createEntry('distance-1', '2026-04-12', { metricType: 'distance', metricUnit: 'км', displayUnit: 'км', displayAmount: 2, weight: 2, created_at: '2026-04-12T09:00:00.000Z' }),
+      createEntry('distance-2', '2026-04-12', { metricType: 'distance', metricUnit: 'км', displayUnit: 'км', displayAmount: 3, weight: 3, created_at: '2026-04-12T08:00:00.000Z' }),
+    ],
+    'canonical-1',
+  );
+
+  assert.equal(timeRows.length, 1);
+  assert.equal(timeRows[0].metricValueLabel, '35 мин');
+  assert.equal(distanceRows.length, 1);
+  assert.equal(distanceRows[0].metricValueLabel, '3 км');
 });
 
 test('progress exercise screen rows still build in legacy metric schema mode', () => {
