@@ -120,6 +120,9 @@ const CUSTOM_EXERCISES_CATEGORY: ExerciseCategory = {
   order: 999,
 };
 
+const createWorkoutAddOperationId = () =>
+  `ui-add-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
 const Workouts = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -147,8 +150,7 @@ const Workouts = () => {
   const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
-  const [editorInitialExercises, setEditorInitialExercises] = useState<SelectedExercise[]>([]);
-  const [editorMode, setEditorMode] = useState<'add' | 'editWorkout'>('add');
+  const [addOperationId, setAddOperationId] = useState<string | null>(null);
   const [workoutEntries, setWorkoutEntries] = useState<WorkoutEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -769,8 +771,7 @@ const Workouts = () => {
     setSelectedCategory(null);
     setExercises([]);
     setSelectedExercises([]);
-    setEditorInitialExercises([]);
-    setEditorMode('add');
+    setAddOperationId(createWorkoutAddOperationId());
     applyFlowLayer('category');
   };
 
@@ -797,8 +798,6 @@ const Workouts = () => {
   const handleCloseExerciseListSheet = () => {
     setExercises([]);
     setSelectedCategory(null);
-    setEditorMode('add');
-    setEditorInitialExercises([]);
     if (shouldReturnToCategorySheetAfterExerciseListClose()) {
       applyFlowLayer('category');
     }
@@ -841,16 +840,11 @@ const Workouts = () => {
     const customExercises = await exerciseService.getCustomExercises(user.id);
     setExercises(customExercises);
     setSelectedExercises((current) => current.filter((selectedExercise) => selectedExercise.id !== exercise.id));
-    setEditorInitialExercises((current) =>
-      current.filter((selectedExercise) => selectedExercise.exercise.id !== exercise.id),
-    );
   };
 
 
   const handleCategorySelect = async (category: ExerciseCategory) => {
     setSelectedCategory(category);
-    setEditorMode('add');
-    setEditorInitialExercises([]);
     setIsLoading(true);
     
     try {
@@ -866,6 +860,7 @@ const Workouts = () => {
   };
 
   const handleExercisesSelect = (selected: Exercise[]) => {
+    setAddOperationId((current) => current || createWorkoutAddOperationId());
     // Всегда добавляем новые упражнения к существующим, если они есть
     setSelectedExercises(prev => {
       if (prev.length === 0) {
@@ -875,8 +870,6 @@ const Workouts = () => {
       const newExercises = selected.filter(ex => !existingIds.has(ex.id));
       return [...prev, ...newExercises];
     });
-    setEditorMode('add');
-    setEditorInitialExercises([]);
     applyFlowLayer(getFlowLayerAfterExerciseSelection());
   };
 
@@ -886,88 +879,71 @@ const Workouts = () => {
     setIsSaving(true);
     setErrorMessage(null);
     try {
-      if (editorMode === 'editWorkout') {
-        const editableEntries = workoutEntries.filter((entry) => entry.exercise);
-        await Promise.all(
-          exercises.map((exercise, index) =>
-            workoutService.updateWorkoutEntry(
-              editableEntries[index].id,
-              {
-                sets: exercise.sets,
-                reps: exercise.reps,
-                weight: exercise.weight,
-                metricType: normalizeWorkoutMetricType(exercise.metricType),
-                metricUnit: exercise.metricUnit,
-              },
-              editableEntries[index].updated_at,
-              { userId: user.id, date: selectedDate },
-            ),
-          ),
-        );
-      } else {
-        await workoutService.addExercisesToWorkout(user.id, selectedDate, exercises);
+      const currentAddOperationId = addOperationId || createWorkoutAddOperationId();
+      if (!addOperationId) {
+        setAddOperationId(currentAddOperationId);
       }
+      await workoutService.addExercisesToWorkout(user.id, selectedDate, exercises, {
+        operationId: currentAddOperationId,
+      });
       
       // Перезагружаем записи тренировки
       const entries = await workoutService.getWorkoutEntries(user.id, selectedDate);
       setWorkoutEntries(entries);
 
-      if (editorMode === 'add') {
-        const totalSets = exercises.reduce((sum, item) => sum + item.sets, 0);
-        const totalVolume = exercises.reduce((sum, item) => sum + item.sets * item.reps * item.weight, 0);
+      const totalSets = exercises.reduce((sum, item) => sum + item.sets, 0);
+      const totalVolume = exercises.reduce((sum, item) => sum + item.sets * item.reps * item.weight, 0);
+      void coachRuntime.handleUserEvent(
+        {
+          type: 'WorkoutCompleted',
+          timestamp: new Date().toISOString(),
+          payload: {
+            date: selectedDate,
+            exercise_count: exercises.length,
+            total_sets: totalSets,
+            total_volume: totalVolume,
+            source: 'ui',
+          },
+          confidence: 0.6,
+          safetyClass: 'normal',
+          trustImpact: 1,
+        },
+        buildCoachContext()
+      );
+
+      const prMap = readPrMap(user.id);
+      const newPrs = exercises.filter((item) => {
+        const exerciseId = item.exercise.id;
+        const currentMax = prMap[exerciseId] ?? 0;
+        if (item.weight > currentMax) {
+          prMap[exerciseId] = item.weight;
+          return true;
+        }
+        return false;
+      });
+      if (newPrs.length > 0) {
+        writePrMap(user.id, prMap);
         void coachRuntime.handleUserEvent(
           {
-            type: 'WorkoutCompleted',
+            type: 'StrengthPR',
             timestamp: new Date().toISOString(),
             payload: {
               date: selectedDate,
-              exercise_count: exercises.length,
-              total_sets: totalSets,
-              total_volume: totalVolume,
+              exercise_ids: newPrs.map((item) => item.exercise.id),
+              exercise_names: newPrs.map((item) => item.exercise.name),
               source: 'ui',
             },
-            confidence: 0.6,
+            confidence: 0.55,
             safetyClass: 'normal',
             trustImpact: 1,
           },
           buildCoachContext()
         );
-
-        const prMap = readPrMap(user.id);
-        const newPrs = exercises.filter((item) => {
-          const exerciseId = item.exercise.id;
-          const currentMax = prMap[exerciseId] ?? 0;
-          if (item.weight > currentMax) {
-            prMap[exerciseId] = item.weight;
-            return true;
-          }
-          return false;
-        });
-        if (newPrs.length > 0) {
-          writePrMap(user.id, prMap);
-          void coachRuntime.handleUserEvent(
-            {
-              type: 'StrengthPR',
-              timestamp: new Date().toISOString(),
-              payload: {
-                date: selectedDate,
-                exercise_ids: newPrs.map((item) => item.exercise.id),
-                exercise_names: newPrs.map((item) => item.exercise.name),
-                source: 'ui',
-              },
-              confidence: 0.55,
-              safetyClass: 'normal',
-              trustImpact: 1,
-            },
-            buildCoachContext()
-          );
-        }
       }
       
       applyFlowLayer('root');
       setSelectedExercises([]);
-      setEditorInitialExercises([]);
-      setEditorMode('add');
+      setAddOperationId(null);
     } catch (error: any) {
       console.error('Ошибка сохранения упражнений:', error);
       const errorMessage = error?.message || 'Ошибка при сохранении упражнений';
@@ -1273,7 +1249,6 @@ const Workouts = () => {
         onCategorySelect={handleCategorySelect}
         onMyExercisesSelect={handleOpenCustomExercises}
         onCreateExercise={() => {
-          setEditorMode('add');
           setEditingCustomExercise(null);
           applyFlowLayer('create');
         }}
@@ -1298,8 +1273,6 @@ const Workouts = () => {
             setSelectedCategory(null);
             setExercises([]);
             setSelectedExercises([]);
-            setEditorInitialExercises([]);
-            setEditorMode('add');
             applyFlowLayer('category');
           }}
           userId={user.id}
@@ -1325,20 +1298,13 @@ const Workouts = () => {
         onClose={() => {
           applyFlowLayer('root');
           setSelectedExercises([]);
-          setEditorInitialExercises([]);
-          setEditorMode('add');
+          setAddOperationId(null);
         }}
         exercises={selectedExercises}
-        initialSelectedExercises={editorInitialExercises}
         onSave={handleSaveSelectedExercises}
-        onAddExercise={editorMode === 'add'
-          ? () => {
-              setEditorInitialExercises([]);
-              applyFlowLayer('category');
-            }
-          : undefined}
+        onAddExercise={() => applyFlowLayer('category')}
         isSaving={isSaving}
-        title={editorMode === 'editWorkout' ? 'РЕДАКТИРОВАТЬ ТРЕНИРОВКУ' : 'ВЫБРАННЫЕ УПРАЖНЕНИЯ'}
+        title="ВЫБРАННЫЕ УПРАЖНЕНИЯ"
       />
 
       <EditWorkoutEntryModal

@@ -1,5 +1,6 @@
 export function sanitizeWorkoutIntegerInput(value: string): string {
   if (value === '') return '';
+  if (value.includes('-')) return '';
   return value.replace(/[^\d]/g, '').replace(/^0+(?=\d)/, '');
 }
 

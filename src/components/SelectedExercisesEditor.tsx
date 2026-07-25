@@ -25,6 +25,7 @@ import {
   isWorkoutMetricValueEditable,
   supportsWorkoutMetricUnitSelection,
 } from '../utils/workoutEntryMetric';
+import { validateSelectedWorkoutExercisesForSave } from '../utils/workoutInputValidation';
 
 interface SelectedExercisesEditorProps {
   isOpen: boolean;
@@ -712,6 +713,7 @@ const SelectedExercisesEditor = ({
   const [editedExercises, setEditedExercises] = useState<SelectedExercise[]>(() =>
     buildInitialEditedExercises(exercises, initialSelectedExercises),
   );
+  const [validationError, setValidationError] = useState<string | null>(null);
   const previousExercisesRef = useRef<Exercise[]>(
     initialSelectedExercises && initialSelectedExercises.length > 0
       ? initialSelectedExercises.map((item) => item.exercise)
@@ -729,6 +731,7 @@ const SelectedExercisesEditor = ({
       isInitializedRef.current = false;
       previousExercisesRef.current = [];
       setEditedExercises([]);
+      setValidationError(null);
     }
     return () => {
       document.body.style.overflow = '';
@@ -752,6 +755,7 @@ const SelectedExercisesEditor = ({
 
       if (newExercises.length > 0) {
         setEditedExercises((prev) => [...prev, ...newExercises.map(createDefaultSelectedExercise)]);
+        setValidationError(null);
         previousExercisesRef.current = exercises;
       }
     }
@@ -762,12 +766,14 @@ const SelectedExercisesEditor = ({
     field: 'sets' | 'reps',
     rawValue: string,
   ) => {
+    setValidationError(null);
     setEditedExercises((current) =>
       updateSelectedExerciseField(current, index, field, parseWorkoutIntegerInput(rawValue)),
     );
   }, []);
 
   const handleWeightDraftChange = useCallback((index: number, rawValue: string) => {
+    setValidationError(null);
     setEditedExercises((current) => {
       const metricType = normalizeWorkoutMetricType(current[index]?.metricType);
       return updateSelectedExerciseField(current, index, 'weight', normalizeWorkoutMetricValue(metricType, parseWorkoutWeightInput(rawValue)));
@@ -775,6 +781,7 @@ const SelectedExercisesEditor = ({
   }, []);
 
   const handleUnitChange = useCallback((index: number, metricUnit: WorkoutMetricUnit) => {
+    setValidationError(null);
     setEditedExercises((current) => {
       const metricType = normalizeWorkoutMetricType(current[index]?.metricType);
       return updateSelectedExerciseField(
@@ -787,17 +794,25 @@ const SelectedExercisesEditor = ({
   }, []);
 
   const handleMetricTypeChange = useCallback((index: number, metricType: WorkoutMetricType) => {
+    setValidationError(null);
     setEditedExercises((current) => updateSelectedExerciseMetricType(current, index, metricType));
   }, []);
 
   const handleSave = () => {
     if (isSaving) return;
-    onSave(editedExercises.map((item) => ({
+    const normalizedExercises = editedExercises.map((item) => ({
       ...item,
       metricType: normalizeWorkoutMetricType(item.metricType),
       metricUnit: normalizeWorkoutMetricUnit(normalizeWorkoutMetricType(item.metricType), item.metricUnit),
       weight: normalizeWorkoutMetricValue(normalizeWorkoutMetricType(item.metricType), item.weight),
-    })));
+    }));
+    const nextValidationError = validateSelectedWorkoutExercisesForSave(normalizedExercises);
+    if (nextValidationError) {
+      setValidationError(nextValidationError);
+      return;
+    }
+
+    onSave(normalizedExercises);
   };
 
   if (!isOpen) return null;
@@ -871,6 +886,11 @@ const SelectedExercisesEditor = ({
           </div>
 
           <div className="px-2 min-[376px]:px-3 sm:px-4 py-2.5 min-[376px]:py-3 sm:py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex flex-col gap-2 min-[376px]:gap-2.5 sm:gap-3 flex-shrink-0">
+            {validationError ? (
+              <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                {validationError}
+              </p>
+            ) : null}
             {onAddExercise && (
               <button
                 onClick={onAddExercise}

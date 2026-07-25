@@ -53,6 +53,9 @@ type WorkoutProgressObservationRow = {
   created_at?: string | null;
   exercise_id?: string | null;
   exercise_name_snapshot?: string | null;
+  metric_type?: WorkoutMetricType | null;
+  display_unit?: WorkoutMetricUnit | string | null;
+  display_amount?: number | string | null;
   sets?: number | string | null;
   reps?: number | string | null;
   weight?: number | string | null;
@@ -91,6 +94,10 @@ type PersistedWorkoutEntryResult = {
 type WorkoutMetricTypeSchemaCapabilityCache = {
   available: boolean;
   checkedAt: number;
+};
+
+type WorkoutAddOptions = {
+  operationId?: string;
 };
 
 const WORKOUT_METRIC_TYPE_SCHEMA_CACHE_KEY = 'potok_workout_metric_type_schema_capability';
@@ -151,6 +158,29 @@ export function getWorkoutProgressEntryDetailsSelectClause(metricSchemaAvailable
         updated_at,
         exercise:exercises(id,name,category_id),
         workout_day:workout_days(id,date)
+      `;
+}
+
+function getWorkoutProgressObservationsSelectClause(metricSchemaAvailable: boolean): string {
+  const metricColumns = metricSchemaAvailable
+    ? `
+        metric_type,
+        display_unit,
+        display_amount,
+      `
+    : '';
+
+  return `
+        id,
+        workout_day_id,
+        created_at,
+        exercise_id,
+        exercise_name_snapshot,
+        ${metricColumns}
+        sets,
+        reps,
+        weight,
+        exercise:exercises(id,name)
       `;
 }
 
@@ -378,6 +408,9 @@ export function buildWorkoutProgressObservations(
     const workoutDayId = typeof row.workout_day_id === 'string' ? row.workout_day_id : '';
     const date = dayDateMap.get(workoutDayId) ?? '';
     const exerciseGroupKey = canonicalExerciseId || exerciseId || exerciseName;
+    const metricType = normalizeWorkoutMetricType(row.metric_type);
+    const metricUnit = normalizeWorkoutMetricUnit(metricType, row.display_unit ?? null) ?? undefined;
+    const weight = Number(row.weight) || 0;
 
     if (!exerciseGroupKey || !exerciseId || !entryId || !date) {
       return;
@@ -390,9 +423,12 @@ export function buildWorkoutProgressObservations(
       date,
       entryId,
       createdAt: typeof row.created_at === 'string' ? row.created_at : undefined,
+      metricType,
+      metricUnit,
+      displayAmount: normalizeWorkoutMetricValue(metricType, Number(row.display_amount ?? weight)),
       sets: Number(row.sets) || 0,
       reps: Number(row.reps) || 0,
-      weight: Number(row.weight) || 0,
+      weight,
     });
   });
 
@@ -604,9 +640,14 @@ class WorkoutService {
     return data.user.id;
   }
 
-  private buildIdempotencyKey(date: string, exerciseId: string): string {
+  private createWorkoutAddOperationId(): string {
+    return `add-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  private buildIdempotencyKey(date: string, exerciseId: string, operationId: string, rowIndex: number): string {
     const safeExerciseId = exerciseId || 'unknown';
-    return `${date}:${safeExerciseId}`;
+    const safeOperationId = operationId || 'unknown-operation';
+    return `add:${date}:${safeOperationId}:${rowIndex}:${safeExerciseId}`;
   }
 
   private buildRepeatIdempotencyKey(targetDate: string, sourceEntryId: string, exerciseId: string, operationId: string): string {
@@ -999,6 +1040,7 @@ class WorkoutService {
       console.warn('[workoutService] Supabase not available, workout progress observations require persisted source');
       return [];
     }
+    const supabaseClient = supabase;
 
     let sessionUserId: string;
     try {
@@ -1033,30 +1075,32 @@ class WorkoutService {
         .map((day) => [day.id, day.date]),
     );
 
-    const { data, error } = await supabase
-      .from('workout_entries')
-      .select(`
-        id,
-        workout_day_id,
-        created_at,
-        exercise_id,
-        exercise_name_snapshot,
-        sets,
-        reps,
-        weight,
-        exercise:exercises(id,name)
-      `)
-      .in('workout_day_id', dayIds)
-      .order('created_at', { ascending: true });
+    const attempt = async (metricSchemaAvailable: boolean) =>
+      await supabaseClient
+        .from('workout_entries')
+        .select(getWorkoutProgressObservationsSelectClause(metricSchemaAvailable))
+        .in('workout_day_id', dayIds)
+        .order('created_at', { ascending: true });
 
-    if (error) {
-      if (error.code !== 'PGRST205') {
-        console.error('[workoutService] Error fetching workout progress observations:', error);
+    const usesLegacyRead = this.getCachedMetricTypeSchemaCapability() === false;
+    let result = await attempt(!usesLegacyRead);
+
+    if (result.error && isWorkoutMetricReadSchemaError(result.error) && this.getCachedMetricTypeSchemaCapability() !== false) {
+      this.persistMetricTypeSchemaCapability(false);
+      this.warnMetricTypeSchemaFallback();
+      result = await attempt(false);
+    } else if (!result.error && !usesLegacyRead) {
+      this.persistMetricTypeSchemaCapability(true);
+    }
+
+    if (result.error) {
+      if (result.error.code !== 'PGRST205') {
+        console.error('[workoutService] Error fetching workout progress observations:', result.error);
       }
       return [];
     }
 
-    const rows = Array.isArray(data) ? (data as WorkoutProgressObservationRow[]) : [];
+    const rows = Array.isArray(result.data) ? (result.data as WorkoutProgressObservationRow[]) : [];
     return buildWorkoutProgressObservations(rows, dayDateMap);
   }
 
@@ -1196,15 +1240,17 @@ class WorkoutService {
   async addExercisesToWorkout(
     userId: string,
     date: string,
-    exercises: SelectedExercise[]
+    exercises: SelectedExercise[],
+    options: WorkoutAddOptions = {},
   ): Promise<WorkoutEntry[]> {
+    const operationId = options.operationId || this.createWorkoutAddOperationId();
     // Оптимистично обновляем localStorage (manual mode)
     const localExisting = this.getWorkoutsFromLocalStorage(userId, date) || [];
-    const withKeys = exercises.map((ex) => {
+    const withKeys = exercises.map((ex, index) => {
       const metricType = normalizeWorkoutMetricType(ex.metricType);
       const metricValue = normalizeWorkoutMetricValue(metricType, ex.weight);
       this.assertEntryNumbers({ sets: ex.sets, reps: ex.reps, weight: metricValue });
-      const key = this.buildIdempotencyKey(date, ex.exercise.id);
+      const key = this.buildIdempotencyKey(date, ex.exercise.id, operationId, index);
       const displayUnit = normalizeWorkoutMetricUnit(metricType, ex.metricUnit) ?? undefined;
       const displayAmount = metricValue;
       const baseWeight = metricType === 'weight'
@@ -1266,7 +1312,7 @@ class WorkoutService {
       this.assertEntryNumbers({ sets: ex.sets, reps: ex.reps, weight: normalizeWorkoutMetricValue(metricType, ex.weight) });
     });
 
-    const entries = exercises.map((ex) => {
+    const entries = exercises.map((ex, index) => {
       const metricType = normalizeWorkoutMetricType(ex.metricType);
       const metricValue = normalizeWorkoutMetricValue(metricType, ex.weight);
       const metricUnit = normalizeWorkoutMetricUnit(metricType, ex.metricUnit) ?? null;
@@ -1281,7 +1327,7 @@ class WorkoutService {
         base_unit: metricUnit,
         display_unit: metricUnit,
         display_amount: metricValue,
-        idempotency_key: this.buildIdempotencyKey(date, ex.exercise.id),
+        idempotency_key: this.buildIdempotencyKey(date, ex.exercise.id, operationId, index),
         ...snapshot,
       };
     });
@@ -1834,20 +1880,6 @@ class WorkoutService {
     if (!workoutDay?.id) {
       this.updateLocalWorkoutEntries(sessionUserId, date, () => clearWorkoutEntriesForDay());
       return;
-    }
-
-    const { error: entriesError } = await supabase
-      .from('workout_entries')
-      .delete()
-      .eq('workout_day_id', workoutDay.id);
-
-    if (entriesError) {
-      const errorMessage = entriesError.message || 'Ошибка удаления упражнений тренировки';
-      console.error('[workoutService] Error deleting workout day entries:', entriesError);
-      if (entriesError.code === '42501' || errorMessage.includes('row-level security')) {
-        throw new Error('Ошибка доступа: обновите RLS политики в Supabase SQL Editor. Выполните команды из файла supabase/workout_schema.sql (строки 135-145)');
-      }
-      throw new Error(errorMessage);
     }
 
     const { error: workoutDayDeleteError } = await supabase

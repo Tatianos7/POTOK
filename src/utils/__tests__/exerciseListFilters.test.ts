@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import type { Exercise } from '../../types/workout';
+import { exerciseContentMap } from '../../data/exerciseContent';
+import { muscleMapRegions } from '../../data/muscles/muscleMapRegions';
+import { MUSCLE_KEYS } from '../../data/muscles/types';
 import { deriveAvailableMuscles, filterExercisesForList } from '../exerciseListFilters';
 
 function createExercise(id: string, name: string, muscles: string[], categoryId = 'category-1'): Exercise {
@@ -284,4 +287,62 @@ test('trapezius curated filter matches trapezius primary aliases', () => {
 
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].name, 'Шраги со штангой');
+});
+
+test('all shown curated category muscle filters return at least one exercise from content catalog', () => {
+  const categories = [
+    { id: 'arms', name: 'Руки', order: 1 },
+    { id: 'back', name: 'Спина', order: 2 },
+    { id: 'abs', name: 'Пресс', order: 3 },
+    { id: 'chest', name: 'Грудь', order: 4 },
+    { id: 'legs', name: 'Ноги', order: 5 },
+  ];
+  const exercises = Object.entries(exerciseContentMap).map(([canonicalId, content]) => ({
+    id: `runtime-${canonicalId}`,
+    name: content.exercise_name || canonicalId,
+    category_id: content.category,
+    canonical_exercise_id: canonicalId,
+    is_custom: false,
+    muscles: [],
+  }));
+
+  categories.forEach((category) => {
+    const categoryExercises = exercises.filter((exercise) => exercise.category_id === category.id);
+    const filters = deriveAvailableMuscles(categoryExercises, category);
+
+    assert.ok(categoryExercises.length > 0, `${category.id} should have exercises`);
+    assert.ok(filters.length > 0, `${category.id} should expose filters`);
+
+    filters.forEach((filter) => {
+      const filtered = filterExercisesForList(categoryExercises, '', new Set([filter.name]), category);
+      assert.ok(filtered.length > 0, `${category.id}/${filter.name} should return exercises`);
+    });
+  });
+});
+
+test('exercise content muscle mappings use supported MuscleMap keys with regions', () => {
+  const supportedKeys = new Set<string>(MUSCLE_KEYS);
+  const missingKeys: string[] = [];
+  const keysWithoutRegions: string[] = [];
+
+  Object.entries(exerciseContentMap).forEach(([canonicalId, content]) => {
+    [...content.primary_muscles, ...content.secondary_muscles].forEach((muscleKey) => {
+      if (!supportedKeys.has(muscleKey)) {
+        missingKeys.push(`${canonicalId}:${muscleKey}`);
+        return;
+      }
+
+      const regions = muscleMapRegions[muscleKey as keyof typeof muscleMapRegions];
+      if (
+        muscleKey !== 'cardio' &&
+        (regions?.front?.length ?? 0) === 0 &&
+        (regions?.back?.length ?? 0) === 0
+      ) {
+        keysWithoutRegions.push(`${canonicalId}:${muscleKey}`);
+      }
+    });
+  });
+
+  assert.deepEqual(missingKeys, []);
+  assert.deepEqual(keysWithoutRegions, []);
 });

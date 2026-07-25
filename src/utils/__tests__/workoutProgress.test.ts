@@ -25,6 +25,9 @@ function createObservation(
     sets: values.sets,
     reps: values.reps,
     weight: values.weight,
+    metricType: overrides.metricType,
+    metricUnit: overrides.metricUnit,
+    displayAmount: overrides.displayAmount,
   };
 }
 
@@ -73,6 +76,28 @@ test('multiple observations of same exercise within one day collapse to last day
   assert.equal(rows[0].latestSets, 4);
   assert.equal(rows[0].latestReps, 8);
   assert.equal(rows[0].latestWeight, 80);
+  assert.equal(rows[0].latestMetricLabel, '80 кг');
+});
+
+test('progress list formats latest metric label for time and distance observations', () => {
+  const rows = buildWorkoutProgressList([
+    createObservation('run', '2026-03-20', { sets: 1, reps: 1, weight: 20 }, {
+      metricType: 'time',
+      metricUnit: 'мин',
+      displayAmount: 20,
+      exerciseName: 'Беговая дорожка',
+    }),
+    createObservation('walk', '2026-03-20', { sets: 1, reps: 1, weight: 2 }, {
+      metricType: 'distance',
+      metricUnit: 'км',
+      displayAmount: 2,
+      exerciseName: 'Ходьба',
+    }),
+  ]);
+
+  assert.equal(rows.length, 2);
+  assert.equal(rows.find((row) => row.exerciseGroupKey === 'run')?.latestMetricLabel, '20 мин');
+  assert.equal(rows.find((row) => row.exerciseGroupKey === 'walk')?.latestMetricLabel, '2 км');
 });
 
 test('latest sets reps and weight are chosen correctly', () => {

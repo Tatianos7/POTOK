@@ -73,6 +73,15 @@ export function getExerciseMusclesForList(exercise: Exercise) {
     .join(', ');
 }
 
+export function buildClearedExerciseListFilterState() {
+  return {
+    localSearchTerm: '',
+    selectedMuscles: new Set<string>(),
+    tempSelectedMuscles: new Set<string>(),
+    isFilterOpen: false,
+  };
+}
+
 const ExerciseListSheet = ({
   isOpen,
   onClose,
@@ -101,9 +110,12 @@ const ExerciseListSheet = ({
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
+      const clearedFilters = buildClearedExerciseListFilterState();
       document.body.style.overflow = '';
-      setIsFilterOpen(false);
-      setTempSelectedMuscles(new Set(selectedMuscles));
+      setIsFilterOpen(clearedFilters.isFilterOpen);
+      setLocalSearchTerm(clearedFilters.localSearchTerm);
+      setSelectedMuscles(clearedFilters.selectedMuscles);
+      setTempSelectedMuscles(clearedFilters.tempSelectedMuscles);
       setActiveExercise(null);
       setActiveExerciseDefinition(null);
       setDefinitionError(null);
@@ -115,7 +127,7 @@ const ExerciseListSheet = ({
     return () => {
       document.body.style.overflow = '';
     };
-  }, [isOpen, selectedMuscles]);
+  }, [isOpen]);
 
   // Инициализируем временные выбранные мышцы при открытии фильтра
   useEffect(() => {
@@ -229,8 +241,17 @@ const ExerciseListSheet = ({
     setIsFilterOpen(false);
   };
 
-  const handleClearFilters = () => {
+  const handleClearTempMuscleFilters = () => {
     setTempSelectedMuscles(new Set());
+  };
+
+  const handleClearAppliedFilters = () => {
+    const clearedFilters = buildClearedExerciseListFilterState();
+    setLocalSearchTerm(clearedFilters.localSearchTerm);
+    setSelectedMuscles(clearedFilters.selectedMuscles);
+    setTempSelectedMuscles(clearedFilters.tempSelectedMuscles);
+    setIsFilterOpen(clearedFilters.isFilterOpen);
+    onSearchChange?.(clearedFilters.localSearchTerm);
   };
 
   const handleCloseExerciseCard = () => {
@@ -391,7 +412,7 @@ const ExerciseListSheet = ({
                         <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-2">
                           {tempSelectedMuscles.size > 0 && (
                             <button
-                              onClick={handleClearFilters}
+                              onClick={handleClearTempMuscleFilters}
                               className="w-full px-4 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
                             >
                               Сбросить фильтры
@@ -431,7 +452,7 @@ const ExerciseListSheet = ({
               </p>
               {(localSearchTerm || selectedMuscles.size > 0) && (
                 <button
-                  onClick={handleClearFilters}
+                  onClick={handleClearAppliedFilters}
                   className="mt-3 text-sm text-green-600 dark:text-green-400 hover:underline"
                 >
                   Сбросить фильтры

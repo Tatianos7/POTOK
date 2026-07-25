@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import ExerciseListSheet, {
   addExerciseSelectionFromCard,
+  buildClearedExerciseListFilterState,
   dedupeExercisesForList,
   getExerciseMusclesForList,
   removeExerciseSelection,
@@ -223,4 +224,13 @@ test('exercise list renders muscle labels from content data for back exercises',
   );
 
   assert.match(html, /Широчайшие/);
+});
+
+test('clear filter state resets search muscle filters and closes filter popup', () => {
+  const state = buildClearedExerciseListFilterState();
+
+  assert.equal(state.localSearchTerm, '');
+  assert.equal(state.selectedMuscles.size, 0);
+  assert.equal(state.tempSelectedMuscles.size, 0);
+  assert.equal(state.isFilterOpen, false);
 });

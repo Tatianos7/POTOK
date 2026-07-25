@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   buildWorkoutEntrySnapshotFields,
@@ -18,6 +21,7 @@ import {
 import { supabase } from '../../lib/supabaseClient';
 import type { WorkoutEntry } from '../../types/workout';
 
+const currentDir = dirname(fileURLToPath(import.meta.url));
 const USER_ID = 'user-1';
 const DATE = '2026-03-25';
 const STORAGE_KEY = `potok_workout_entries_${USER_ID}`;
@@ -112,6 +116,25 @@ function readWorkoutStorage(): Record<string, WorkoutEntry[]> {
   return raw ? JSON.parse(raw) : {};
 }
 
+function createSelectedExercise(overrides: Partial<WorkoutEntry> = {}) {
+  return {
+    exercise: {
+      id: overrides.exercise_id ?? overrides.exercise?.id ?? 'exercise-repeat',
+      name: overrides.exercise?.name ?? 'Жим лёжа',
+      category_id: overrides.exercise?.category_id ?? 'category-1',
+      is_custom: overrides.exercise?.is_custom ?? false,
+      canonical_exercise_id: overrides.exercise?.canonical_exercise_id ?? null,
+      category: overrides.exercise?.category,
+      muscles: overrides.exercise?.muscles,
+    },
+    sets: overrides.sets ?? 3,
+    reps: overrides.reps ?? 10,
+    weight: overrides.weight ?? 70,
+    metricType: overrides.metricType,
+    metricUnit: overrides.metricUnit,
+  };
+}
+
 test.beforeEach(() => {
   installBrowserStubs();
 });
@@ -163,6 +186,17 @@ test('whole day delete removes entries only for selected day in local-only mode'
   assert.deepEqual(stored[DATE], []);
   assert.equal(stored['2026-03-26'].length, 1);
   assert.equal(stored['2026-03-26'][0].id, 'entry-3');
+});
+
+test('whole day delete uses day-level cascade contract for persisted path', () => {
+  const source = readFileSync(resolve(currentDir, '../workoutService.ts'), 'utf8');
+  const deleteWorkoutDayStart = source.indexOf('async deleteWorkoutDay');
+  const deleteWorkoutDayEnd = source.indexOf('\\n  }\\n\\n}', deleteWorkoutDayStart);
+  const deleteWorkoutDaySource = source.slice(deleteWorkoutDayStart, deleteWorkoutDayEnd);
+
+  assert.notEqual(deleteWorkoutDayStart, -1);
+  assert.match(deleteWorkoutDaySource, /\.from\('workout_days'\)[\s\S]*\.delete\(\)/);
+  assert.doesNotMatch(deleteWorkoutDaySource, /\.from\('workout_entries'\)[\s\S]*\.delete\(\)/);
 });
 
 test('edit updates only workout entry and preserves exercise definition in local-only mode', async (t) => {
@@ -376,6 +410,43 @@ test('addExercisesToWorkout writes snapshot fields in local workout entry', asyn
   assert.equal(entry?.muscles_snapshot?.[0]?.label, 'Ягодичные мышцы');
 });
 
+test('addExercisesToWorkout creates a new entry when same exercise is added again on same day', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  seedWorkoutStorage({ [DATE]: [] });
+  const exercise = createSelectedExercise({ exercise_id: 'exercise-bench' });
+
+  await workoutService.addExercisesToWorkout(USER_ID, DATE, [exercise], { operationId: 'operation-1' });
+  const entries = await workoutService.addExercisesToWorkout(USER_ID, DATE, [exercise], { operationId: 'operation-2' });
+
+  assert.equal(entries.length, 2);
+  assert.deepEqual(entries.map((entry) => entry.exercise_id), ['exercise-bench', 'exercise-bench']);
+  assert.notEqual(entries[0].idempotencyKey, entries[1].idempotencyKey);
+
+  const stored = readWorkoutStorage();
+  assert.equal(stored[DATE].length, 2);
+});
+
+test('addExercisesToWorkout retry of same add operation does not create duplicate entry', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  seedWorkoutStorage({ [DATE]: [] });
+  const exercise = createSelectedExercise({ exercise_id: 'exercise-bench' });
+
+  await workoutService.addExercisesToWorkout(USER_ID, DATE, [exercise], { operationId: 'retryable-operation' });
+  const entries = await workoutService.addExercisesToWorkout(USER_ID, DATE, [exercise], { operationId: 'retryable-operation' });
+
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].exercise_id, 'exercise-bench');
+  assert.equal(entries[0].idempotencyKey, 'add:2026-03-25:retryable-operation:0:exercise-bench');
+});
+
 test('progress entry read schema errors are detected for metric and display columns', () => {
   assert.equal(
     isWorkoutMetricReadSchemaError({
@@ -489,6 +560,52 @@ test('getWorkoutProgressObservations returns persisted observation rows for peri
   assert.equal(observations[1].date, '2026-03-21');
 });
 
+test('getWorkoutProgressObservations preserves repeated entries for same exercise on same day', () => {
+  const observations = buildWorkoutProgressObservations(
+    [
+      {
+        id: 'entry-1',
+        workout_day_id: 'day-1',
+        created_at: '2026-03-20T08:00:00.000Z',
+        exercise_id: 'exercise-bench',
+        sets: 3,
+        reps: 10,
+        weight: 70,
+        exercise: {
+          id: 'exercise-bench',
+          name: 'Жим лежа',
+          canonical_exercise_id: 'canonical-bench',
+        },
+      },
+      {
+        id: 'entry-2',
+        workout_day_id: 'day-1',
+        created_at: '2026-03-20T08:05:00.000Z',
+        exercise_id: 'exercise-bench',
+        sets: 4,
+        reps: 8,
+        weight: 80,
+        exercise: {
+          id: 'exercise-bench',
+          name: 'Жим лежа',
+          canonical_exercise_id: 'canonical-bench',
+        },
+      },
+    ],
+    new Map([['day-1', '2026-03-20']]),
+  );
+
+  assert.equal(observations.length, 2);
+  assert.deepEqual(
+    observations.map((entry) => entry.entryId),
+    ['entry-1', 'entry-2'],
+  );
+  assert.deepEqual(
+    observations.map((entry) => entry.exerciseId),
+    ['exercise-bench', 'exercise-bench'],
+  );
+});
+
 test('getWorkoutProgressObservations uses snapshot name before live exercise name', () => {
   const observations = buildWorkoutProgressObservations(
     [
@@ -498,9 +615,12 @@ test('getWorkoutProgressObservations uses snapshot name before live exercise nam
         created_at: '2026-03-20T08:00:00.000Z',
         exercise_id: 'exercise-bench',
         exercise_name_snapshot: 'Старое название жима',
+        metric_type: 'time',
+        display_unit: 'мин',
+        display_amount: 15,
         sets: 3,
         reps: 10,
-        weight: 70,
+        weight: 15,
         exercise: {
           id: 'exercise-bench',
           name: 'Новое название жима',
@@ -512,6 +632,9 @@ test('getWorkoutProgressObservations uses snapshot name before live exercise nam
   );
 
   assert.equal(observations[0].exerciseName, 'Старое название жима');
+  assert.equal(observations[0].metricType, 'time');
+  assert.equal(observations[0].metricUnit, 'мин');
+  assert.equal(observations[0].displayAmount, 15);
 });
 
 test('getWorkoutProgressObservations mapping safely falls back to exercise_id when canonical_exercise_id is absent', () => {

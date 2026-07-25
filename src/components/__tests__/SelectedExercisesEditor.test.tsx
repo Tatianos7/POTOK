@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import SelectedExercisesEditor, { resolveMetricPickerPlacement } from '../SelectedExercisesEditor';
 import type { Exercise } from '../../types/workout';
 import { updateSelectedExerciseField, updateSelectedExerciseMetricType } from '../../utils/workoutEditorState';
+import { validateSelectedWorkoutExercisesForSave } from '../../utils/workoutInputValidation';
 
 const exercises: Exercise[] = [
   {
@@ -76,6 +77,66 @@ test('metric selector is rendered per row in edit flow', () => {
 
   assert.match(html, /<span class="truncate">Время<\/span>/);
   assert.match(html, /<span class="truncate">сек<\/span>/);
+});
+
+test('selected workout validation blocks empty zero and suspicious numeric values before save', () => {
+  assert.match(
+    validateSelectedWorkoutExercisesForSave([
+      { exercise: exercises[0], metricType: 'weight', sets: 0, reps: 12, weight: 20 },
+    ]) ?? '',
+    /минимум 1 подход/,
+  );
+  assert.match(
+    validateSelectedWorkoutExercisesForSave([
+      { exercise: exercises[0], metricType: 'weight', sets: 3, reps: 0, weight: 20 },
+    ]) ?? '',
+    /минимум 1 повтор/,
+  );
+  assert.match(
+    validateSelectedWorkoutExercisesForSave([
+      { exercise: exercises[0], metricType: 'weight', sets: 3, reps: 12, weight: 0 },
+    ]) ?? '',
+    /значение метрики больше 0/,
+  );
+  assert.match(
+    validateSelectedWorkoutExercisesForSave([
+      { exercise: exercises[0], metricType: 'weight', sets: 51, reps: 12, weight: 20 },
+    ]) ?? '',
+    /слишком много подходов/,
+  );
+  assert.match(
+    validateSelectedWorkoutExercisesForSave([
+      { exercise: exercises[0], metricType: 'weight', sets: 3, reps: 201, weight: 20 },
+    ]) ?? '',
+    /слишком много повторов/,
+  );
+  assert.match(
+    validateSelectedWorkoutExercisesForSave([
+      { exercise: exercises[0], metricType: 'weight', sets: 3, reps: 12, weight: 501 },
+    ]) ?? '',
+    /слишком большое значение метрики/,
+  );
+});
+
+test('selected workout validation allows decimal weight and explicit zero-value metric types', () => {
+  assert.equal(
+    validateSelectedWorkoutExercisesForSave([
+      { exercise: exercises[0], metricType: 'weight', sets: 3, reps: 12, weight: 72.5 },
+    ]),
+    null,
+  );
+  assert.equal(
+    validateSelectedWorkoutExercisesForSave([
+      { exercise: exercises[0], metricType: 'bodyweight', sets: 3, reps: 12, weight: 0 },
+    ]),
+    null,
+  );
+  assert.equal(
+    validateSelectedWorkoutExercisesForSave([
+      { exercise: exercises[0], metricType: 'none', sets: 3, reps: 12, weight: 0 },
+    ]),
+    null,
+  );
 });
 
 test('row metric selector does not push value field into broken layout', () => {

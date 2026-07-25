@@ -174,7 +174,7 @@ test('custom exercise linked muscles contribute to muscle coverage fallback', ()
   assert.ok(scoredKeys.includes('adductors'));
   assert.ok(scoredKeys.includes('rhomboids'));
   assert.ok(scoredKeys.includes('calves'));
-  assert.ok(scoredKeys.includes('trapezoid'));
+  assert.ok(scoredKeys.includes('traps_middle'));
   assert.equal(scoredKeys.includes('cardio'), false);
   assert.equal(summary.topMuscles.length > 0, true);
 });

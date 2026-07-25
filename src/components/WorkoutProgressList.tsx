@@ -29,7 +29,7 @@ function TrendIndicator({ trend }: { trend: WorkoutProgressMetricTrend }) {
   return null;
 }
 
-function MetricCell({ value, trend }: { value: number; trend: WorkoutProgressMetricTrend }) {
+function MetricCell({ value, trend }: { value: number | string; trend: WorkoutProgressMetricTrend }) {
   return (
     <div className="flex min-h-[52px] items-center justify-center gap-1 border-l border-gray-200 px-1 text-center">
       <span className="text-[14px] text-gray-900">{value}</span>
@@ -61,7 +61,7 @@ const WorkoutProgressList = ({ rows, isLoading = false, onRowSelect }: WorkoutPr
         <div className="pr-3 font-medium">Название упражнения</div>
         <div className="flex items-center justify-center text-center font-medium">Подход</div>
         <div className="flex items-center justify-center text-center font-medium">Повтор</div>
-        <div className="flex items-center justify-center text-center font-medium">Вес</div>
+        <div className="flex items-center justify-center text-center font-medium">Метрика</div>
       </div>
 
       <div className="divide-y divide-gray-200">
@@ -79,7 +79,7 @@ const WorkoutProgressList = ({ rows, isLoading = false, onRowSelect }: WorkoutPr
               </div>
               <MetricCell value={row.latestSets} trend={row.setsTrend} />
               <MetricCell value={row.latestReps} trend={row.repsTrend} />
-              <MetricCell value={row.latestWeight} trend={row.weightTrend} />
+              <MetricCell value={row.latestMetricLabel} trend={row.weightTrend} />
             </button>
           ) : (
             <div
@@ -91,7 +91,7 @@ const WorkoutProgressList = ({ rows, isLoading = false, onRowSelect }: WorkoutPr
               </div>
               <MetricCell value={row.latestSets} trend={row.setsTrend} />
               <MetricCell value={row.latestReps} trend={row.repsTrend} />
-              <MetricCell value={row.latestWeight} trend={row.weightTrend} />
+              <MetricCell value={row.latestMetricLabel} trend={row.weightTrend} />
             </div>
           )
         ))}

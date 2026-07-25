@@ -81,6 +81,9 @@ export interface WorkoutProgressObservation {
   date: string;
   entryId: string;
   createdAt?: string;
+  metricType?: WorkoutMetricType;
+  metricUnit?: WorkoutMetricUnit;
+  displayAmount?: number;
   sets: number;
   reps: number;
   weight: number;
@@ -94,6 +97,7 @@ export interface WorkoutProgressRow {
   latestSets: number;
   latestReps: number;
   latestWeight: number;
+  latestMetricLabel: string;
   setsTrend: WorkoutProgressMetricTrend;
   repsTrend: WorkoutProgressMetricTrend;
   weightTrend: WorkoutProgressMetricTrend;

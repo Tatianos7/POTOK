@@ -21,6 +21,11 @@ test('weight input preserves intended numeric value during edit', () => {
   assert.equal(sanitizeWorkoutWeightInput('0.5'), '0.5');
 });
 
+test('weight input does not convert negative values into positives', () => {
+  assert.equal(sanitizeWorkoutWeightInput('-72.5'), '');
+  assert.equal(parseWorkoutWeightInput('-72.5'), 0);
+});
+
 test('whole workout editor weight input does not introduce leading zero when replacing value', () => {
   const nextDraft = sanitizeWorkoutWeightInput('088');
 

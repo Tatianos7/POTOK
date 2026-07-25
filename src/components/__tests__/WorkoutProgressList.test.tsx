@@ -12,6 +12,7 @@ const rows: WorkoutProgressRow[] = [
     latestSets: 4,
     latestReps: 8,
     latestWeight: 80,
+    latestMetricLabel: '80 кг',
     setsTrend: 'up',
     repsTrend: 'down',
     weightTrend: 'return',
@@ -23,6 +24,7 @@ const rows: WorkoutProgressRow[] = [
     latestSets: 3,
     latestReps: 10,
     latestWeight: 0,
+    latestMetricLabel: 'св. вес',
     setsTrend: 'neutral',
     repsTrend: 'neutral',
     weightTrend: 'up',
@@ -42,7 +44,7 @@ test('progress screen shows latest sets reps and weight correctly', () => {
 
   assert.match(html, />4</);
   assert.match(html, />8</);
-  assert.match(html, />80</);
+  assert.match(html, />80 кг</);
 });
 
 test('progress screen keeps compact table-like layout', () => {
@@ -52,7 +54,7 @@ test('progress screen keeps compact table-like layout', () => {
   assert.match(html, /Название упражнения/);
   assert.match(html, />Подход</);
   assert.match(html, />Повтор</);
-  assert.match(html, />Вес</);
+  assert.match(html, />Метрика</);
 });
 
 test('progress screen keeps exercise name column wide enough for mobile wrapping', () => {
@@ -65,6 +67,7 @@ test('progress screen keeps exercise name column wide enough for mobile wrapping
           latestSets: 4,
           latestReps: 15,
           latestWeight: 60,
+          latestMetricLabel: '60 кг',
           setsTrend: 'up',
           repsTrend: 'up',
           weightTrend: 'up',
@@ -108,6 +111,7 @@ test('neutral trend renders no indicator', () => {
           latestSets: 2,
           latestReps: 20,
           latestWeight: 5,
+          latestMetricLabel: '5 кг',
           setsTrend: 'neutral',
           repsTrend: 'neutral',
           weightTrend: 'neutral',
@@ -120,6 +124,31 @@ test('neutral trend renders no indicator', () => {
   assert.doesNotMatch(html, /Рост показателя/);
   assert.doesNotMatch(html, /Снижение показателя/);
   assert.doesNotMatch(html, /data-trend="return"/);
+});
+
+test('progress screen shows metric label instead of treating all metrics as weight', () => {
+  const html = renderToStaticMarkup(
+    <WorkoutProgressList
+      rows={[
+        {
+          exerciseGroupKey: 'run',
+          exerciseName: 'Беговая дорожка',
+          latestSets: 1,
+          latestReps: 1,
+          latestWeight: 20,
+          latestMetricLabel: '20 мин',
+          setsTrend: 'neutral',
+          repsTrend: 'neutral',
+          weightTrend: 'up',
+          lastDate: '2026-04-05',
+        },
+      ]}
+    />,
+  );
+
+  assert.match(html, />Метрика</);
+  assert.match(html, />20 мин</);
+  assert.doesNotMatch(html, />Вес</);
 });
 
 test('empty state renders when month has no data', () => {

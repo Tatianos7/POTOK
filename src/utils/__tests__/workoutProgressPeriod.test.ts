@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   applyWorkoutProgressMonthSelection,
   formatWorkoutProgressMonthLabel,
+  getWorkoutProgressPeriod,
   getWorkoutProgressMonthPeriod,
 } from '../workoutProgressPeriod';
 
@@ -26,4 +27,31 @@ test('month picker changes selected month correctly', () => {
 
 test('month label is formatted correctly', () => {
   assert.equal(formatWorkoutProgressMonthLabel('2026-03-25'), 'март 2026');
+});
+
+test('quick workout progress periods use inclusive trailing ranges', () => {
+  assert.deepEqual(getWorkoutProgressPeriod('2026-04-10', 'day'), {
+    anchorDate: '2026-04-10',
+    from: '2026-04-10',
+    to: '2026-04-10',
+    dayCount: 1,
+  });
+  assert.deepEqual(getWorkoutProgressPeriod('2026-04-10', 'week'), {
+    anchorDate: '2026-04-10',
+    from: '2026-04-04',
+    to: '2026-04-10',
+    dayCount: 7,
+  });
+  assert.deepEqual(getWorkoutProgressPeriod('2026-04-10', 'month'), {
+    anchorDate: '2026-04-10',
+    from: '2026-03-12',
+    to: '2026-04-10',
+    dayCount: 30,
+  });
+  assert.deepEqual(getWorkoutProgressPeriod('2026-04-10', 'year'), {
+    anchorDate: '2026-04-10',
+    from: '2025-04-11',
+    to: '2026-04-10',
+    dayCount: 365,
+  });
 });

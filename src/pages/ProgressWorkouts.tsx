@@ -195,6 +195,7 @@ const ProgressWorkouts: FC = () => {
   const [summary, setSummary] = useState<WorkoutProgressSummary | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const [isExerciseListOpen, setIsExerciseListOpen] = useState(false);
+  const [workoutSyncVersion, setWorkoutSyncVersion] = useState(0);
 
   const period = useMemo(() => getWorkoutProgressPeriod(anchorDate, selectedPeriod), [anchorDate, selectedPeriod]);
   const periodLabel = useMemo(
@@ -272,6 +273,20 @@ const ProgressWorkouts: FC = () => {
 
     return { helps, improvements };
   }, [isExerciseProgressLoadedForPeriod, loadedMuscles, rows, selectedPeriod, workoutResult]);
+
+  useEffect(() => {
+    const handleWorkoutsSynced = () => {
+      progressObservationsCache = null;
+      setObservations([]);
+      setWorkoutSyncVersion((version) => version + 1);
+    };
+
+    window.addEventListener('workouts-synced', handleWorkoutsSynced as EventListener);
+    return () => {
+      window.removeEventListener('workouts-synced', handleWorkoutsSynced as EventListener);
+    };
+  }, []);
+
   useEffect(() => {
     if (!user?.id) return;
     if (!isExerciseListOpen) {
@@ -335,7 +350,7 @@ const ProgressWorkouts: FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [isExerciseListOpen, period.from, period.to, user?.id]);
+  }, [isExerciseListOpen, period.from, period.to, user?.id, workoutSyncVersion]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -368,7 +383,7 @@ const ProgressWorkouts: FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [period.from, period.to, summaryPeriod, user?.id]);
+  }, [period.from, period.to, summaryPeriod, user?.id, workoutSyncVersion]);
 
   return (
     <ScreenContainer backgroundColor={WORKOUT_SCREEN_BACKGROUND}>

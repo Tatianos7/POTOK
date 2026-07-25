@@ -1,5 +1,6 @@
 export function sanitizeWorkoutWeightInput(value: string): string {
   if (value === '') return '';
+  if (value.includes('-')) return '';
 
   const normalized = value.replace(',', '.').replace(/[^\d.]/g, '');
   const parts = normalized.split('.');

@@ -152,7 +152,7 @@ const WorkoutExerciseProgressView = ({
         ) : (
           <div className="divide-y divide-gray-200">
             {metricRows.map((row) => (
-              <div key={row.date} className="grid grid-cols-[84px_56px_56px_minmax(0,1fr)] gap-0">
+              <div key={row.entryId} className="grid grid-cols-[84px_56px_56px_minmax(0,1fr)] gap-0">
                 <div className="py-4 pr-2 text-[14px] text-gray-700">{formatProgressDateLabel(row.date)}</div>
                 <div className="flex min-h-[52px] items-center justify-center border-l border-gray-200 px-1 text-[14px] text-gray-900">
                   {row.sets}

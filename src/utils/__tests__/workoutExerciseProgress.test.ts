@@ -64,6 +64,20 @@ test('metrics dates remain visible even when media is absent', () => {
   assert.equal(rows[0].metricValueLabel, '90 сек');
 });
 
+test('progress exercise screen preserves repeated same-day entries', () => {
+  const rows = buildWorkoutExerciseProgressMetricRows(
+    [
+      createEntry('entry-1', '2026-04-12', { displayAmount: 80, weight: 80, created_at: '2026-04-12T08:00:00.000Z' }),
+      createEntry('entry-2', '2026-04-12', { displayAmount: 85, weight: 85, created_at: '2026-04-12T09:00:00.000Z' }),
+    ],
+    'canonical-1',
+  );
+
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map((row) => row.entryId), ['entry-2', 'entry-1']);
+  assert.deepEqual(rows.map((row) => row.metricValueLabel), ['85 кг', '80 кг']);
+});
+
 test('progress exercise screen rows still build in legacy metric schema mode', () => {
   const rows = buildWorkoutExerciseProgressMetricRows(
     [

@@ -32,33 +32,28 @@ export function buildWorkoutExerciseProgressMetricRows(
   entries: WorkoutEntry[],
   exerciseGroupKey: string,
 ): WorkoutExerciseProgressMetricRow[] {
-  const byDate = new Map<string, WorkoutEntry>();
-
-  entries
+  return entries
     .filter((entry) => getWorkoutExerciseProgressGroupKey(entry) === exerciseGroupKey)
     .slice()
     .sort(compareWorkoutEntries)
-    .forEach((entry) => {
-      const date = entry.workout_day?.date;
-      if (!date) return;
-      byDate.set(date, entry);
-    });
-
-  return Array.from(byDate.values())
-    .sort(compareWorkoutEntries)
     .reverse()
-    .map((entry) => ({
-      date: entry.workout_day?.date ?? '',
-      entryId: entry.id,
-      exerciseName: entry.exercise?.name ?? 'Упражнение',
-      sets: Number(entry.sets) || 0,
-      reps: Number(entry.reps) || 0,
-      metricValueLabel: formatWorkoutMetricValue(
-        entry.displayAmount ?? entry.weight,
-        normalizeWorkoutMetricType(entry.metricType),
-        entry.metricUnit ?? entry.displayUnit,
-      ),
-    }));
+    .flatMap((entry) => {
+      const date = entry.workout_day?.date;
+      if (!date) return [];
+
+      return [{
+        date,
+        entryId: entry.id,
+        exerciseName: entry.exercise?.name ?? 'Упражнение',
+        sets: Number(entry.sets) || 0,
+        reps: Number(entry.reps) || 0,
+        metricValueLabel: formatWorkoutMetricValue(
+          entry.displayAmount ?? entry.weight,
+          normalizeWorkoutMetricType(entry.metricType),
+          entry.metricUnit ?? entry.displayUnit,
+        ),
+      }];
+    });
 }
 
 export function groupWorkoutExerciseProgressMediaByDate(

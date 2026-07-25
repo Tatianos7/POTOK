@@ -3,6 +3,7 @@ import type {
   WorkoutProgressObservation,
   WorkoutProgressRow,
 } from '../types/workout';
+import { formatWorkoutMetricValue, normalizeWorkoutMetricType } from './workoutEntryMetric';
 
 export interface WorkoutProgressGroup {
   exerciseGroupKey: string;
@@ -181,6 +182,11 @@ export function buildWorkoutProgressList(
         latestSets: latestObservation.sets,
         latestReps: latestObservation.reps,
         latestWeight: latestObservation.weight,
+        latestMetricLabel: formatWorkoutMetricValue(
+          latestObservation.displayAmount ?? latestObservation.weight,
+          normalizeWorkoutMetricType(latestObservation.metricType),
+          latestObservation.metricUnit,
+        ),
         setsTrend: getWorkoutMetricTrend(trendObservations.map((item) => item.sets)),
         repsTrend: getWorkoutMetricTrend(trendObservations.map((item) => item.reps)),
         weightTrend: getWorkoutMetricTrend(trendObservations.map((item) => item.weight)),

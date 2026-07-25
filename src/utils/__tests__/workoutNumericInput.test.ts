@@ -14,6 +14,11 @@ test('sets and reps inputs remove leading zero artifacts', () => {
   assert.equal(sanitizeWorkoutIntegerInput('0005'), '5');
 });
 
+test('sets and reps inputs do not convert negative values into positives', () => {
+  assert.equal(sanitizeWorkoutIntegerInput('-5'), '');
+  assert.equal(parseWorkoutIntegerInput('-5'), 0);
+});
+
 test('sets and reps inputs preserve intended numeric value', () => {
   assert.equal(parseWorkoutIntegerInput('12'), 12);
   assert.equal(parseWorkoutIntegerInput('003'), 3);

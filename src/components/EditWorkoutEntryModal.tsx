@@ -25,6 +25,7 @@ import {
   normalizeWorkoutMetricValue,
   supportsWorkoutMetricUnitSelection,
 } from '../utils/workoutEntryMetric';
+import { validateSelectedWorkoutExercisesForSave } from '../utils/workoutInputValidation';
 
 interface EditWorkoutEntryModalProps {
   isOpen: boolean;
@@ -44,6 +45,7 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
   const [isMetricPickerOpen, setIsMetricPickerOpen] = useState(false);
   const [unitDraft, setUnitDraft] = useState<WorkoutMetricUnit>('кг');
   const [isUnitPickerOpen, setIsUnitPickerOpen] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen || !entry) return;
@@ -54,6 +56,7 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
     setMetricType(nextMetricType);
     setMetricUnit(normalizeWorkoutMetricUnit(nextMetricType, entry.metricUnit ?? entry.displayUnit));
     setMetricDraft(nextMetricType);
+    setValidationError(null);
   }, [isOpen, entry]);
 
   useEffect(() => {
@@ -75,13 +78,29 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
     [sets, reps, weight, metricType, metricUnit],
   );
 
-  const canSave = entry && parsed.sets > 0 && parsed.reps >= 0 && parsed.weight >= 0 && !isSaving;
+  const canSave = Boolean(entry) && !isSaving;
 
   const supportsUnitSelector = supportsWorkoutMetricUnitSelection(metricType);
   const unitOptions = metricType === 'time' ? WORKOUT_TIME_UNIT_OPTIONS : WORKOUT_DISTANCE_UNIT_OPTIONS;
 
   const handleSubmit = async () => {
-    if (!canSave) return;
+    if (!canSave || !entry) return;
+    const nextValidationError = validateSelectedWorkoutExercisesForSave([
+      {
+        exercise: entry.exercise ?? {
+          id: entry.exercise_id,
+          name: 'Упражнение',
+          category_id: '',
+          is_custom: false,
+        },
+        ...parsed,
+      },
+    ]);
+    if (nextValidationError) {
+      setValidationError(nextValidationError);
+      return;
+    }
+
     await onSave(parsed);
   };
 
@@ -117,7 +136,10 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
                 {...getWorkoutIntegerInputProps()}
                 value={sets}
                 disabled={isSaving}
-                onChange={(event) => setSets(sanitizeWorkoutIntegerInput(event.target.value))}
+                onChange={(event) => {
+                  setValidationError(null);
+                  setSets(sanitizeWorkoutIntegerInput(event.target.value));
+                }}
                 className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-green-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
               />
             </label>
@@ -128,7 +150,10 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
                 {...getWorkoutIntegerInputProps()}
                 value={reps}
                 disabled={isSaving}
-                onChange={(event) => setReps(sanitizeWorkoutIntegerInput(event.target.value))}
+                onChange={(event) => {
+                  setValidationError(null);
+                  setReps(sanitizeWorkoutIntegerInput(event.target.value));
+                }}
                 className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-green-500 dark:border-gray-700 dark:bg-gray-950 dark:text-white"
               />
             </label>
@@ -167,7 +192,10 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
                 {...getWorkoutWeightInputProps()}
                 value={metricType === 'none' ? '0' : weight}
                 disabled={isSaving || !isWorkoutMetricValueEditable(metricType)}
-                onChange={(event) => setWeight(sanitizeWorkoutWeightInput(event.target.value))}
+                onChange={(event) => {
+                  setValidationError(null);
+                  setWeight(sanitizeWorkoutWeightInput(event.target.value));
+                }}
                 className="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none focus:border-green-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:disabled:bg-gray-800"
               />
               {isMetricPickerOpen ? (
@@ -202,6 +230,7 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
                     <button
                       type="button"
                       onClick={() => {
+                        setValidationError(null);
                         setMetricType(metricDraft);
                         setMetricUnit(normalizeWorkoutMetricUnit(metricDraft, metricUnit));
                         setIsUnitPickerOpen(false);
@@ -249,6 +278,7 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
                     <button
                       type="button"
                       onClick={() => {
+                        setValidationError(null);
                         setMetricUnit(unitDraft);
                         setIsUnitPickerOpen(false);
                       }}
@@ -261,6 +291,12 @@ const EditWorkoutEntryModal = ({ isOpen, entry, isSaving = false, onClose, onSav
               ) : null}
             </div>
           </div>
+
+          {validationError ? (
+            <p className="mx-4 mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+              {validationError}
+            </p>
+          ) : null}
 
           <div className="flex gap-3 border-t border-gray-200 px-4 py-3 dark:border-gray-700">
             <button

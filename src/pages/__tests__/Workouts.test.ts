@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
   buildCurrentWorkoutMuscleMapMuscles,
@@ -8,9 +11,19 @@ import {
 } from '../Workouts';
 import type { WorkoutEntry } from '../../types/workout';
 
+const currentDir = dirname(fileURLToPath(import.meta.url));
+
 test('main workout screen no longer renders whole-workout edit action', () => {
   assert.deepEqual(getWorkoutHeaderActionIds(), ['history', 'note', 'delete']);
   assert.equal(getWorkoutHeaderActionIds().includes('edit' as never), false);
+});
+
+test('main workout screen has no dead whole-workout edit branch', () => {
+  const source = readFileSync(resolve(currentDir, '../Workouts.tsx'), 'utf8');
+
+  assert.doesNotMatch(source, /editWorkout/);
+  assert.doesNotMatch(source, /editorInitialExercises/);
+  assert.doesNotMatch(source, /setEditorMode/);
 });
 
 test('main workout catalog categories hide full body category', () => {
@@ -262,4 +275,35 @@ test('current workout muscle map does not pass cardio pseudo muscle to MuscleMap
 
   assert.equal(result.primaryMuscles.includes('cardio'), false);
   assert.equal(result.secondaryMuscles.includes('cardio'), false);
+});
+
+test('current workout muscle map dedupes repeated exercise entries', () => {
+  const result = buildCurrentWorkoutMuscleMapMuscles([
+    createEntry('standing_barbell_biceps_curl', 'Подъём штанги на бицепс'),
+    {
+      ...createEntry('standing_barbell_biceps_curl', 'Подъём штанги на бицепс'),
+      id: 'entry-standing_barbell_biceps_curl-repeat',
+    },
+  ]);
+
+  assert.deepEqual(result.primaryMuscles.filter((muscle) => muscle === 'biceps'), ['biceps']);
+  assert.equal(result.secondaryMuscles.includes('biceps'), false);
+});
+
+test('current workout muscle map updates after one repeated exercise entry is deleted', () => {
+  const secondBicepsEntry = {
+    ...createEntry('standing_barbell_biceps_curl', 'Подъём штанги на бицепс'),
+    id: 'entry-standing_barbell_biceps_curl-repeat',
+  };
+  const pressEntry = createEntry('standing_barbell_press', 'Жим штанги стоя');
+
+  const afterDeletingOneBicepsEntry = buildCurrentWorkoutMuscleMapMuscles([
+    secondBicepsEntry,
+    pressEntry,
+  ]);
+  const afterDeletingBothBicepsEntries = buildCurrentWorkoutMuscleMapMuscles([pressEntry]);
+
+  assert.ok(afterDeletingOneBicepsEntry.primaryMuscles.includes('biceps'));
+  assert.equal(afterDeletingBothBicepsEntries.primaryMuscles.includes('biceps'), false);
+  assert.ok(afterDeletingBothBicepsEntries.primaryMuscles.includes('front_delts'));
 });
