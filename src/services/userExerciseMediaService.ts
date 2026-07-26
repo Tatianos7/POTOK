@@ -4,8 +4,8 @@ import type { UserExerciseMedia } from '../types/workout';
 export const USER_EXERCISE_MEDIA_BUCKET = 'user-exercise-media';
 const USER_EXERCISE_MEDIA_SIGNED_URL_TTL_SECONDS = 60 * 60;
 export const USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS = 4000;
-export const USER_EXERCISE_MEDIA_IMAGE_UPLOAD_TIMEOUT_MS = 10000;
-export const USER_EXERCISE_MEDIA_VIDEO_UPLOAD_TIMEOUT_MS = 45000;
+export const USER_EXERCISE_MEDIA_IMAGE_UPLOAD_TIMEOUT_MS = 60000;
+export const USER_EXERCISE_MEDIA_VIDEO_UPLOAD_TIMEOUT_MS = 180000;
 export const USER_EXERCISE_MEDIA_MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 export const USER_EXERCISE_MEDIA_MAX_VIDEO_BYTES = 50 * 1024 * 1024;
 export const USER_EXERCISE_MEDIA_ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -42,6 +42,11 @@ export interface UserExerciseMediaGateway {
   removeFiles(paths: string[]): Promise<void>;
 }
 
+export interface UserExerciseMediaServiceOptions {
+  imageUploadTimeoutMs?: number;
+  videoUploadTimeoutMs?: number;
+}
+
 type SupabaseDiagnosticError = {
   code?: unknown;
   message?: unknown;
@@ -50,6 +55,7 @@ type SupabaseDiagnosticError = {
   status?: unknown;
   statusCode?: unknown;
   name?: unknown;
+  cause?: unknown;
 };
 
 export function getUserExerciseMediaErrorDiagnostics(error: unknown): {
@@ -59,6 +65,7 @@ export function getUserExerciseMediaErrorDiagnostics(error: unknown): {
   hint: string | null;
   status: string | number | null;
   name: string | null;
+  cause: string | null;
 } {
   if (!error || typeof error !== 'object') {
     return {
@@ -68,10 +75,17 @@ export function getUserExerciseMediaErrorDiagnostics(error: unknown): {
       hint: null,
       status: null,
       name: null,
+      cause: null,
     };
   }
 
   const record = error as SupabaseDiagnosticError;
+  const cause = record.cause instanceof Error
+    ? record.cause.message
+    : typeof record.cause === 'string'
+      ? record.cause
+      : null;
+
   return {
     code: typeof record.code === 'string' ? record.code : null,
     message: typeof record.message === 'string' ? record.message : null,
@@ -83,6 +97,7 @@ export function getUserExerciseMediaErrorDiagnostics(error: unknown): {
         ? record.statusCode
         : null,
     name: typeof record.name === 'string' ? record.name : null,
+    cause,
   };
 }
 
@@ -151,12 +166,6 @@ export function validateMediaFile(file: Pick<File, 'type' | 'size'>): void {
   throw new Error('Неподдерживаемый формат файла');
 }
 
-function getUploadTimeoutMs(file: Pick<File, 'type'>): number {
-  return file.type.startsWith('video/')
-    ? USER_EXERCISE_MEDIA_VIDEO_UPLOAD_TIMEOUT_MS
-    : USER_EXERCISE_MEDIA_IMAGE_UPLOAD_TIMEOUT_MS;
-}
-
 function isPreservedUserExerciseMediaErrorMessage(message: string): boolean {
   return message === 'Файл слишком большой'
     || message === 'Неподдерживаемый формат файла'
@@ -177,6 +186,21 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
       },
     );
   });
+}
+
+function decodeJwtSub(accessToken?: string | null): string | null {
+  if (!accessToken) return null;
+
+  try {
+    const [, payload] = accessToken.split('.');
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const decoded = JSON.parse(atob(padded)) as { sub?: unknown };
+    return typeof decoded.sub === 'string' ? decoded.sub : null;
+  } catch {
+    return null;
+  }
 }
 
 function sortPersistedItems(items: PersistedWorkoutExerciseMediaItem[]): PersistedWorkoutExerciseMediaItem[] {
@@ -291,21 +315,93 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
       throw new Error('Supabase не инициализирован');
     }
 
+    const pathUserId = path.split('/')[0] ?? null;
+    const sessionResult = await supabase.auth.getSession();
+    const session = sessionResult.data.session;
+    const sessionUserId = session?.user?.id ?? null;
+    const tokenSub = decodeJwtSub(session?.access_token);
+    const uploadOptions = {
+      cacheControl: '3600',
+      contentType: file.type,
+      upsert: false,
+    };
+
+    console.info('[userExerciseMediaService] storage upload start', {
+      bucket: USER_EXERCISE_MEDIA_BUCKET,
+      path,
+      pathUserId,
+      hasSession: Boolean(session),
+      sessionUserId,
+      tokenSub,
+      pathUserMatchesSession: Boolean(pathUserId && sessionUserId && pathUserId === sessionUserId),
+      pathUserMatchesTokenSub: Boolean(pathUserId && tokenSub && pathUserId === tokenSub),
+      fileType: file.type,
+      fileSize: file.size,
+      uploadOptions,
+    });
+
+    if (sessionResult.error || !session?.access_token || !sessionUserId) {
+      console.error('[userExerciseMediaService] storage upload auth missing', {
+        bucket: USER_EXERCISE_MEDIA_BUCKET,
+        path,
+        pathUserId,
+        hasSession: Boolean(session),
+        sessionUserId,
+        tokenSub,
+        error: getUserExerciseMediaErrorDiagnostics(sessionResult.error),
+      });
+      throw new Error('Пользователь не авторизован');
+    }
+
+    if (pathUserId !== sessionUserId || pathUserId !== tokenSub) {
+      console.error('[userExerciseMediaService] storage upload auth/path mismatch', {
+        bucket: USER_EXERCISE_MEDIA_BUCKET,
+        path,
+        pathUserId,
+        sessionUserId,
+        tokenSub,
+      });
+      throw new Error('Пользователь не авторизован');
+    }
+
     const { error } = await supabase.storage
       .from(USER_EXERCISE_MEDIA_BUCKET)
-      .upload(path, file, { upsert: false, contentType: file.type });
+      .upload(path, file, uploadOptions);
 
     if (error) {
+      const diagnostics = getUserExerciseMediaErrorDiagnostics(error);
       console.error('[userExerciseMediaService] storage upload error', {
         bucket: USER_EXERCISE_MEDIA_BUCKET,
         path,
-        pathUserId: path.split('/')[0] ?? null,
+        pathUserId,
+        sessionUserId,
+        tokenSub,
+        pathUserMatchesSession: pathUserId === sessionUserId,
+        pathUserMatchesTokenSub: pathUserId === tokenSub,
         fileType: file.type,
         fileSize: file.size,
-        error: getUserExerciseMediaErrorDiagnostics(error),
+        uploadOptions,
+        code: diagnostics.code,
+        message: diagnostics.message,
+        details: diagnostics.details,
+        hint: diagnostics.hint,
+        status: diagnostics.status,
+        name: diagnostics.name,
+        cause: diagnostics.cause,
+        error: diagnostics,
       });
       throw new Error(error.message || 'Не удалось загрузить файл');
     }
+
+    console.info('[userExerciseMediaService] storage upload success', {
+      bucket: USER_EXERCISE_MEDIA_BUCKET,
+      path,
+      pathUserId,
+      sessionUserId,
+      tokenSub,
+      fileType: file.type,
+      fileSize: file.size,
+    });
   }
 
   async insertMediaRows(rows: Array<{
@@ -424,8 +520,16 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
 
 export class UserExerciseMediaService {
   private readonly persistedCache = new Map<string, PersistedWorkoutExerciseMediaItem[]>();
+  private readonly imageUploadTimeoutMs: number;
+  private readonly videoUploadTimeoutMs: number;
 
-  constructor(private readonly gateway: UserExerciseMediaGateway) {}
+  constructor(
+    private readonly gateway: UserExerciseMediaGateway,
+    options: UserExerciseMediaServiceOptions = {},
+  ) {
+    this.imageUploadTimeoutMs = options.imageUploadTimeoutMs ?? USER_EXERCISE_MEDIA_IMAGE_UPLOAD_TIMEOUT_MS;
+    this.videoUploadTimeoutMs = options.videoUploadTimeoutMs ?? USER_EXERCISE_MEDIA_VIDEO_UPLOAD_TIMEOUT_MS;
+  }
 
   getCachedWorkoutExerciseMedia(workoutEntryId: string): PersistedWorkoutExerciseMediaItem[] {
     return this.getCachedItems(workoutEntryId);
@@ -596,13 +700,17 @@ export class UserExerciseMediaService {
       let insertedRowsForCleanup: UserExerciseMedia[] = [];
       try {
         for (const item of uploadPlan) {
+          const timeoutMs = item.file.type.startsWith('video/')
+            ? this.videoUploadTimeoutMs
+            : this.imageUploadTimeoutMs;
           try {
             await withTimeout(
               this.gateway.uploadFile(item.path, item.file),
-              getUploadTimeoutMs(item.file),
+              timeoutMs,
               'user media upload timeout',
             );
           } catch (error) {
+            const diagnostics = getUserExerciseMediaErrorDiagnostics(error);
             console.error('[userExerciseMediaService] upload failed', {
               bucket: USER_EXERCISE_MEDIA_BUCKET,
               exerciseId: input.exerciseId,
@@ -612,7 +720,15 @@ export class UserExerciseMediaService {
               fileType: item.file.type,
               fileKind: item.file_type,
               fileSize: item.file.size,
-              error: getUserExerciseMediaErrorDiagnostics(error),
+              timeoutMs,
+              code: diagnostics.code,
+              message: diagnostics.message,
+              details: diagnostics.details,
+              hint: diagnostics.hint,
+              status: diagnostics.status,
+              name: diagnostics.name,
+              cause: diagnostics.cause,
+              error: diagnostics,
             });
             throw error;
           }

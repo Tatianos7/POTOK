@@ -175,7 +175,7 @@ test('saved media remains after closing and reopening workout exercise card', as
 test('saving state always resolves no infinite pending', async () => {
   const gateway = new FakeUserExerciseMediaGateway();
   gateway.uploadShouldHang = true;
-  const service = new UserExerciseMediaService(gateway);
+  const service = new UserExerciseMediaService(gateway, { imageUploadTimeoutMs: 25 });
 
   const startedAt = Date.now();
   await assert.rejects(
@@ -187,7 +187,7 @@ test('saving state always resolves no infinite pending', async () => {
     }),
     new Error(toUserExerciseMediaErrorMessage('save')),
   );
-  assert.ok(Date.now() - startedAt < USER_EXERCISE_MEDIA_IMAGE_UPLOAD_TIMEOUT_MS * 2);
+  assert.ok(Date.now() - startedAt < 1000);
 });
 
 test('video upload gets longer timeout and remains reopen-safe after save', async () => {
@@ -207,8 +207,8 @@ test('video upload gets longer timeout and remains reopen-safe after save', asyn
   assert.equal(saved[0].kind, 'video');
   assert.equal(reopened.length, 1);
   assert.equal(reopened[0].kind, 'video');
-  assert.equal(USER_EXERCISE_MEDIA_IMAGE_UPLOAD_TIMEOUT_MS, 10000);
-  assert.equal(USER_EXERCISE_MEDIA_VIDEO_UPLOAD_TIMEOUT_MS, 45000);
+  assert.equal(USER_EXERCISE_MEDIA_IMAGE_UPLOAD_TIMEOUT_MS, 60000);
+  assert.equal(USER_EXERCISE_MEDIA_VIDEO_UPLOAD_TIMEOUT_MS, 180000);
 });
 
 test('failed save does not clear draft contract and returns controlled error instead of raw backend text', async () => {
@@ -339,6 +339,7 @@ test('user exercise media diagnostics expose Supabase storage error fields', () 
     hint: 'check storage.objects policy',
     status: 403,
     name: 'StorageApiError',
+    cause: null,
   });
 });
 
