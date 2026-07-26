@@ -29,8 +29,10 @@ class FakeUserExerciseMediaGateway implements UserExerciseMediaGateway {
   insertShouldFail = false;
   listShouldFail = false;
   failReloadOnly = false;
+  hideRowsAfterInsert = false;
   removeShouldFail = false;
   restoredRows: UserExerciseMedia[] = [];
+  removedPaths: string[] = [];
   listCalls = 0;
 
   async getSessionUserId(): Promise<string> {
@@ -44,6 +46,9 @@ class FakeUserExerciseMediaGateway implements UserExerciseMediaGateway {
     }
     if (this.failReloadOnly && this.listCalls > 1) {
       throw new Error('raw reload error');
+    }
+    if (this.hideRowsAfterInsert && this.listCalls > 1) {
+      return [];
     }
     return this.rows.filter((row) => row.user_id === userId && row.workout_entry_id === workoutEntryId);
   }
@@ -65,15 +70,14 @@ class FakeUserExerciseMediaGateway implements UserExerciseMediaGateway {
     this.uploadedPaths.push(path);
   }
 
-  async insertMediaRows(rows: Array<{ user_id: string; exercise_id: string; workout_entry_id?: string | null; workout_date?: string | null; file_path: string; file_type: 'image' | 'video' }>): Promise<void> {
+  async insertMediaRows(rows: Array<{ user_id: string; exercise_id: string; workout_entry_id?: string | null; workout_date?: string | null; file_path: string; file_type: 'image' | 'video' }>): Promise<UserExerciseMedia[]> {
     if (this.insertShouldFail) {
       throw new Error('raw insert error');
     }
     this.insertedRows.push(...rows);
     const now = '2026-04-13T10:00:00.000Z';
-    this.rows.unshift(
-      ...rows.map((row, index) => ({
-        id: `media-${this.insertedRows.length}-${index}`,
+    const insertedRows = rows.map((row, index) => ({
+      id: `media-${this.insertedRows.length}-${index}`,
         user_id: row.user_id,
         exercise_id: row.exercise_id,
         workout_entry_id: row.workout_entry_id ?? null,
@@ -81,8 +85,9 @@ class FakeUserExerciseMediaGateway implements UserExerciseMediaGateway {
         file_path: row.file_path,
         file_type: row.file_type,
         created_at: now,
-      })),
-    );
+    }));
+    this.rows.unshift(...insertedRows);
+    return insertedRows;
   }
 
   async deleteMediaRow(mediaId: string): Promise<void> {
@@ -98,10 +103,11 @@ class FakeUserExerciseMediaGateway implements UserExerciseMediaGateway {
     return `https://signed.example/${path}`;
   }
 
-  async removeFiles(): Promise<void> {
+  async removeFiles(paths: string[] = []): Promise<void> {
     if (this.removeShouldFail) {
       throw new Error('storage remove failed');
     }
+    this.removedPaths.push(...paths);
   }
 }
 
@@ -253,20 +259,42 @@ test('validateMediaFile enforces supported image and video contracts', () => {
   assert.throws(() => validateMediaFile({ type: 'image/png', size: USER_EXERCISE_MEDIA_MAX_IMAGE_BYTES + 1 }), new Error('Файл слишком большой'));
 });
 
-test('persisted media reload after save returns saved items immediately', async () => {
+test('save fails when remote read-after-write cannot verify inserted media', async () => {
   const gateway = new FakeUserExerciseMediaGateway();
   gateway.failReloadOnly = true;
   const service = new UserExerciseMediaService(gateway);
 
-  const items = await service.saveWorkoutExerciseMediaDrafts({
-    exerciseId: 'exercise-1',
-    workoutEntryId: 'entry-1',
-    workoutDate: '2026-04-13',
-    files: [new File(['img'], 'photo.jpg', { type: 'image/jpeg', lastModified: 1 })],
-  });
+  await assert.rejects(
+    () => service.saveWorkoutExerciseMediaDrafts({
+      exerciseId: 'exercise-1',
+      workoutEntryId: 'entry-1',
+      workoutDate: '2026-04-13',
+      files: [new File(['img'], 'photo.jpg', { type: 'image/jpeg', lastModified: 1 })],
+    }),
+    new Error(toUserExerciseMediaErrorMessage('save')),
+  );
 
-  assert.equal(items.length, 1);
-  assert.match(items[0].previewUrl, /^https:\/\/signed\.example\//);
+  assert.equal(gateway.rows.length, 0);
+  assert.equal(gateway.removedPaths.length, 1);
+});
+
+test('save fails when read-after-write returns no rows for the workout entry', async () => {
+  const gateway = new FakeUserExerciseMediaGateway();
+  gateway.hideRowsAfterInsert = true;
+  const service = new UserExerciseMediaService(gateway);
+
+  await assert.rejects(
+    () => service.saveWorkoutExerciseMediaDrafts({
+      exerciseId: 'exercise-1',
+      workoutEntryId: 'entry-1',
+      workoutDate: '2026-04-13',
+      files: [new File(['img'], 'photo.jpg', { type: 'image/jpeg', lastModified: 1 })],
+    }),
+    new Error(toUserExerciseMediaErrorMessage('save')),
+  );
+
+  assert.equal(gateway.rows.length, 0);
+  assert.equal(gateway.removedPaths.length, 1);
 });
 
 test('user exercise media helpers keep storage and signed mapping contract stable', async () => {

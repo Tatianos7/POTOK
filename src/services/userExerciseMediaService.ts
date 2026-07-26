@@ -35,7 +35,7 @@ export interface UserExerciseMediaGateway {
     workout_date?: string | null;
     file_path: string;
     file_type: 'image' | 'video';
-  }>): Promise<void>;
+  }>): Promise<UserExerciseMedia[]>;
   deleteMediaRow(mediaId: string): Promise<void>;
   restoreMediaRow(row: UserExerciseMedia): Promise<void>;
   createSignedUrl(path: string, expiresIn: number): Promise<string>;
@@ -210,7 +210,7 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
     return data.user.id;
   }
 
-  async listMediaRows(_userId: string, workoutEntryId: string): Promise<UserExerciseMedia[]> {
+  async listMediaRows(userId: string, workoutEntryId: string): Promise<UserExerciseMedia[]> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
     }
@@ -218,18 +218,35 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
     const { data, error } = await supabase
       .from('user_exercise_media')
       .select('id, user_id, exercise_id, workout_entry_id, workout_date, file_path, file_type, created_at')
+      .eq('user_id', userId)
       .eq('workout_entry_id', workoutEntryId)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false });
 
     if (error) {
+      console.error('[userExerciseMediaService] media row list error', {
+        table: 'user_exercise_media',
+        userId,
+        workoutEntryId,
+        error: getUserExerciseMediaErrorDiagnostics(error),
+      });
       throw new Error(error.message || 'Не удалось загрузить медиа упражнения');
     }
 
-    return (data ?? []) as UserExerciseMedia[];
+    const rows = (data ?? []) as UserExerciseMedia[];
+    console.info('[userExerciseMediaService] media row list result', {
+      table: 'user_exercise_media',
+      userId,
+      workoutEntryId,
+      rowCount: rows.length,
+      paths: rows.map((row) => row.file_path),
+      workoutEntryIds: Array.from(new Set(rows.map((row) => row.workout_entry_id ?? null))),
+    });
+
+    return rows;
   }
 
-  async listMediaRowsForWorkoutEntries(_userId: string, workoutEntryIds: string[]): Promise<UserExerciseMedia[]> {
+  async listMediaRowsForWorkoutEntries(userId: string, workoutEntryIds: string[]): Promise<UserExerciseMedia[]> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
     }
@@ -241,15 +258,32 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
     const { data, error } = await supabase
       .from('user_exercise_media')
       .select('id, user_id, exercise_id, workout_entry_id, workout_date, file_path, file_type, created_at')
+      .eq('user_id', userId)
       .in('workout_entry_id', workoutEntryIds)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false });
 
     if (error) {
+      console.error('[userExerciseMediaService] media rows multi-list error', {
+        table: 'user_exercise_media',
+        userId,
+        workoutEntryIds,
+        error: getUserExerciseMediaErrorDiagnostics(error),
+      });
       throw new Error(error.message || 'Не удалось загрузить медиа упражнения');
     }
 
-    return (data ?? []) as UserExerciseMedia[];
+    const rows = (data ?? []) as UserExerciseMedia[];
+    console.info('[userExerciseMediaService] media rows multi-list result', {
+      table: 'user_exercise_media',
+      userId,
+      requestedWorkoutEntryIds: workoutEntryIds,
+      rowCount: rows.length,
+      paths: rows.map((row) => row.file_path),
+      workoutEntryIds: Array.from(new Set(rows.map((row) => row.workout_entry_id ?? null))),
+    });
+
+    return rows;
   }
 
   async uploadFile(path: string, file: File): Promise<void> {
@@ -281,12 +315,15 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
     workout_date?: string | null;
     file_path: string;
     file_type: 'image' | 'video';
-  }>): Promise<void> {
+  }>): Promise<UserExerciseMedia[]> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
     }
 
-    const { error } = await supabase.from('user_exercise_media').insert(rows);
+    const { data, error } = await supabase
+      .from('user_exercise_media')
+      .insert(rows)
+      .select('id, user_id, exercise_id, workout_entry_id, workout_date, file_path, file_type, created_at');
     if (error) {
       console.error('[userExerciseMediaService] media row insert error', {
         table: 'user_exercise_media',
@@ -296,6 +333,18 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
       });
       throw new Error(error.message || 'Не удалось сохранить медиа упражнения');
     }
+
+    const insertedRows = (data ?? []) as UserExerciseMedia[];
+    console.info('[userExerciseMediaService] media row insert result', {
+      table: 'user_exercise_media',
+      requestedRowCount: rows.length,
+      insertedRowCount: insertedRows.length,
+      requestedPaths: rows.map((row) => row.file_path),
+      insertedPaths: insertedRows.map((row) => row.file_path),
+      workoutEntryIds: Array.from(new Set(insertedRows.map((row) => row.workout_entry_id ?? null))),
+    });
+
+    return insertedRows;
   }
 
   async deleteMediaRow(mediaId: string): Promise<void> {
@@ -345,6 +394,11 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
       .createSignedUrl(path, expiresIn);
 
     if (error || !data?.signedUrl) {
+      console.error('[userExerciseMediaService] storage signed url error', {
+        bucket: USER_EXERCISE_MEDIA_BUCKET,
+        path,
+        error: getUserExerciseMediaErrorDiagnostics(error),
+      });
       throw new Error(error?.message || 'Не удалось подписать ссылку на медиа');
     }
 
@@ -539,6 +593,7 @@ export class UserExerciseMediaService {
       uploadPlan.forEach((item) => validateMediaFile(item.file));
 
       const uploadedPaths: string[] = [];
+      let insertedRowsForCleanup: UserExerciseMedia[] = [];
       try {
         for (const item of uploadPlan) {
           try {
@@ -564,7 +619,7 @@ export class UserExerciseMediaService {
           uploadedPaths.push(item.path);
         }
 
-        await withTimeout(
+        const insertedRows = await withTimeout(
           this.gateway.insertMediaRows(
             uploadPlan.map((item) => ({
               user_id: userId,
@@ -578,7 +633,68 @@ export class UserExerciseMediaService {
           USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS,
           'user media insert timeout',
         );
+        insertedRowsForCleanup = insertedRows;
+
+        const insertedPathSet = new Set(insertedRows.map((row) => row.file_path));
+        const missingInsertedPaths = uploadedPaths.filter((path) => !insertedPathSet.has(path));
+        if (missingInsertedPaths.length > 0) {
+          console.error('[userExerciseMediaService] media row insert did not return uploaded paths', {
+            workoutEntryId: input.workoutEntryId,
+            uploadedPaths,
+            insertedPaths: insertedRows.map((row) => row.file_path),
+            missingInsertedPaths,
+          });
+          throw new Error('user media insert verification failed');
+        }
+
+        const remoteRows = await withTimeout(
+          this.gateway.listMediaRows(userId, input.workoutEntryId),
+          USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS,
+          'user media read-after-write timeout',
+        );
+        const remotePathSet = new Set(remoteRows.map((row) => row.file_path));
+        const missingRemotePaths = uploadedPaths.filter((path) => !remotePathSet.has(path));
+        console.info('[userExerciseMediaService] media read-after-write result', {
+          workoutEntryId: input.workoutEntryId,
+          exerciseId: input.exerciseId,
+          uploadedPaths,
+          insertedPaths: insertedRows.map((row) => row.file_path),
+          remoteRowCount: remoteRows.length,
+          remotePaths: remoteRows.map((row) => row.file_path),
+          missingRemotePaths,
+        });
+
+        if (missingRemotePaths.length > 0) {
+          throw new Error('user media read-after-write verification failed');
+        }
+
+        const remoteItems = await withTimeout(
+          mapPersistedWorkoutExerciseMediaItems(
+            remoteRows,
+            (path) => this.gateway.createSignedUrl(path, USER_EXERCISE_MEDIA_SIGNED_URL_TTL_SECONDS),
+          ),
+          USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS,
+          'user media signed urls timeout',
+        );
+
+        return this.setCachedItems(input.workoutEntryId, sortPersistedItems(remoteItems));
       } catch (error) {
+        for (const row of insertedRowsForCleanup) {
+          try {
+            await withTimeout(
+              this.gateway.deleteMediaRow(row.id),
+              USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS,
+              'user media cleanup row timeout',
+            );
+          } catch (cleanupRowError) {
+            console.error('[userExerciseMediaService] media row cleanup failed after save verification error', {
+              mediaId: row.id,
+              filePath: row.file_path,
+              error: getUserExerciseMediaErrorDiagnostics(cleanupRowError),
+            });
+          }
+        }
+
         try {
           await withTimeout(
             this.gateway.removeFiles(uploadedPaths),
@@ -589,49 +705,6 @@ export class UserExerciseMediaService {
           // cleanup best-effort only
         }
         throw error;
-      }
-
-      const insertedRows: UserExerciseMedia[] = uploadPlan.map((item, index) => ({
-        id: `persisted-${index}-${item.path}`,
-        user_id: userId,
-        exercise_id: input.exerciseId,
-        workout_entry_id: input.workoutEntryId ?? null,
-        workout_date: input.workoutDate ?? null,
-        file_path: item.path,
-        file_type: item.file_type,
-        created_at: new Date(Date.now() - index).toISOString(),
-      }));
-
-      const insertedItems = this.setCachedItems(
-        input.workoutEntryId,
-        await withTimeout(
-          mapPersistedWorkoutExerciseMediaItems(
-            insertedRows,
-            (path) => this.gateway.createSignedUrl(path, USER_EXERCISE_MEDIA_SIGNED_URL_TTL_SECONDS),
-          ),
-          USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS,
-          'user media signed urls timeout',
-        ),
-      );
-
-      try {
-        const reloaded = await this.listWorkoutExerciseMedia(input.workoutEntryId);
-        return this.setCachedItems(input.workoutEntryId, sortPersistedItems(reloaded));
-      } catch {
-        return this.setCachedItems(
-          input.workoutEntryId,
-          mergePersistedItems(
-            await withTimeout(
-              mapPersistedWorkoutExerciseMediaItems(
-                existing,
-                (path) => this.gateway.createSignedUrl(path, USER_EXERCISE_MEDIA_SIGNED_URL_TTL_SECONDS),
-              ),
-              USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS,
-              'user media signed urls timeout',
-            ),
-            insertedItems,
-          ),
-        );
       }
     } catch (error) {
       if (error instanceof Error && isPreservedUserExerciseMediaErrorMessage(error.message)) {
