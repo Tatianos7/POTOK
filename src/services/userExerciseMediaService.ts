@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import type { UserExerciseMedia } from '../types/workout';
 
-const USER_EXERCISE_MEDIA_BUCKET = 'user-exercise-media';
+export const USER_EXERCISE_MEDIA_BUCKET = 'user-exercise-media';
 const USER_EXERCISE_MEDIA_SIGNED_URL_TTL_SECONDS = 60 * 60;
 export const USER_EXERCISE_MEDIA_REQUEST_TIMEOUT_MS = 4000;
 export const USER_EXERCISE_MEDIA_IMAGE_UPLOAD_TIMEOUT_MS = 10000;
@@ -40,6 +40,50 @@ export interface UserExerciseMediaGateway {
   restoreMediaRow(row: UserExerciseMedia): Promise<void>;
   createSignedUrl(path: string, expiresIn: number): Promise<string>;
   removeFiles(paths: string[]): Promise<void>;
+}
+
+type SupabaseDiagnosticError = {
+  code?: unknown;
+  message?: unknown;
+  details?: unknown;
+  hint?: unknown;
+  status?: unknown;
+  statusCode?: unknown;
+  name?: unknown;
+};
+
+export function getUserExerciseMediaErrorDiagnostics(error: unknown): {
+  code: string | null;
+  message: string | null;
+  details: string | null;
+  hint: string | null;
+  status: string | number | null;
+  name: string | null;
+} {
+  if (!error || typeof error !== 'object') {
+    return {
+      code: null,
+      message: error instanceof Error ? error.message : String(error ?? ''),
+      details: null,
+      hint: null,
+      status: null,
+      name: null,
+    };
+  }
+
+  const record = error as SupabaseDiagnosticError;
+  return {
+    code: typeof record.code === 'string' ? record.code : null,
+    message: typeof record.message === 'string' ? record.message : null,
+    details: typeof record.details === 'string' ? record.details : null,
+    hint: typeof record.hint === 'string' ? record.hint : null,
+    status: typeof record.status === 'string' || typeof record.status === 'number'
+      ? record.status
+      : typeof record.statusCode === 'string' || typeof record.statusCode === 'number'
+        ? record.statusCode
+        : null,
+    name: typeof record.name === 'string' ? record.name : null,
+  };
 }
 
 export function getUserExerciseMediaFileKind(file: Pick<File, 'type'>): 'image' | 'video' {
@@ -218,6 +262,14 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
       .upload(path, file, { upsert: false, contentType: file.type });
 
     if (error) {
+      console.error('[userExerciseMediaService] storage upload error', {
+        bucket: USER_EXERCISE_MEDIA_BUCKET,
+        path,
+        pathUserId: path.split('/')[0] ?? null,
+        fileType: file.type,
+        fileSize: file.size,
+        error: getUserExerciseMediaErrorDiagnostics(error),
+      });
       throw new Error(error.message || 'Не удалось загрузить файл');
     }
   }
@@ -236,6 +288,12 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
 
     const { error } = await supabase.from('user_exercise_media').insert(rows);
     if (error) {
+      console.error('[userExerciseMediaService] media row insert error', {
+        table: 'user_exercise_media',
+        rowCount: rows.length,
+        paths: rows.map((row) => row.file_path),
+        error: getUserExerciseMediaErrorDiagnostics(error),
+      });
       throw new Error(error.message || 'Не удалось сохранить медиа упражнения');
     }
   }
@@ -247,6 +305,11 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
 
     const { error } = await supabase.from('user_exercise_media').delete().eq('id', mediaId);
     if (error) {
+      console.error('[userExerciseMediaService] media row delete error', {
+        table: 'user_exercise_media',
+        mediaId,
+        error: getUserExerciseMediaErrorDiagnostics(error),
+      });
       throw new Error(error.message || 'Не удалось удалить медиа упражнения');
     }
   }
@@ -295,6 +358,11 @@ class SupabaseUserExerciseMediaGateway implements UserExerciseMediaGateway {
 
     const { error } = await supabase.storage.from(USER_EXERCISE_MEDIA_BUCKET).remove(paths);
     if (error) {
+      console.error('[userExerciseMediaService] storage remove error', {
+        bucket: USER_EXERCISE_MEDIA_BUCKET,
+        paths,
+        error: getUserExerciseMediaErrorDiagnostics(error),
+      });
       throw new Error(error.message || 'Не удалось удалить медиа из storage');
     }
   }
@@ -481,12 +549,15 @@ export class UserExerciseMediaService {
             );
           } catch (error) {
             console.error('[userExerciseMediaService] upload failed', {
+              bucket: USER_EXERCISE_MEDIA_BUCKET,
               exerciseId: input.exerciseId,
+              userId,
+              pathUserId: item.path.split('/')[0] ?? null,
               path: item.path,
               fileType: item.file.type,
               fileKind: item.file_type,
               fileSize: item.file.size,
-              error,
+              error: getUserExerciseMediaErrorDiagnostics(error),
             });
             throw error;
           }

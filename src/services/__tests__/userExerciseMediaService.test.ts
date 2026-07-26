@@ -4,12 +4,14 @@ import assert from 'node:assert/strict';
 import {
   USER_EXERCISE_MEDIA_ALLOWED_IMAGE_TYPES,
   USER_EXERCISE_MEDIA_ALLOWED_VIDEO_TYPES,
+  USER_EXERCISE_MEDIA_BUCKET,
   USER_EXERCISE_MEDIA_IMAGE_UPLOAD_TIMEOUT_MS,
   USER_EXERCISE_MEDIA_MAX_IMAGE_BYTES,
   USER_EXERCISE_MEDIA_MAX_VIDEO_BYTES,
   USER_EXERCISE_MEDIA_VIDEO_UPLOAD_TIMEOUT_MS,
   UserExerciseMediaService,
   buildUserExerciseMediaStoragePath,
+  getUserExerciseMediaErrorDiagnostics,
   getUserExerciseMediaFileKind,
   mapPersistedWorkoutExerciseMediaItems,
   toUserExerciseMediaErrorMessage,
@@ -271,6 +273,7 @@ test('user exercise media helpers keep storage and signed mapping contract stabl
   const file = new File(['img'], 'photo.jpg', { type: 'image/jpeg', lastModified: 1 });
   const path = buildUserExerciseMediaStoragePath('user-1', 'exercise-1', file);
 
+  assert.equal(USER_EXERCISE_MEDIA_BUCKET, 'user-exercise-media');
   assert.match(path, /^user-1\/exercise-1\/.+\.jpg$/);
   assert.equal(getUserExerciseMediaFileKind(file), 'image');
 
@@ -289,6 +292,26 @@ test('user exercise media helpers keep storage and signed mapping contract stabl
   );
 
   assert.equal(mapped[0].previewUrl, 'https://signed.example/file-1.jpg');
+});
+
+test('user exercise media diagnostics expose Supabase storage error fields', () => {
+  const diagnostics = getUserExerciseMediaErrorDiagnostics({
+    code: '42501',
+    message: 'new row violates row-level security policy',
+    details: 'bucket policy rejected insert',
+    hint: 'check storage.objects policy',
+    statusCode: 403,
+    name: 'StorageApiError',
+  });
+
+  assert.deepEqual(diagnostics, {
+    code: '42501',
+    message: 'new row violates row-level security policy',
+    details: 'bucket policy rejected insert',
+    hint: 'check storage.objects policy',
+    status: 403,
+    name: 'StorageApiError',
+  });
 });
 
 test('persisted media is available on first reopen after successful save', async () => {
