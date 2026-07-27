@@ -69,7 +69,7 @@ test('edit entry point remains renderable for custom exercise', () => {
   assert.match(html, /aria-label="Редактировать Мой жим"/);
 });
 
-test('delete entry point remains renderable for custom exercise', () => {
+test('archive entry point remains renderable for custom exercise', () => {
   const html = renderToStaticMarkup(
     <ExerciseListSheet
       isOpen={true}
@@ -78,15 +78,15 @@ test('delete entry point remains renderable for custom exercise', () => {
       exercises={[customExercise]}
       onExercisesSelect={() => {}}
       onEditExercise={() => {}}
-      onDeleteExercise={() => {}}
+      onArchiveExercise={() => {}}
     />,
   );
 
-  assert.match(html, /title="Удалить упражнение"/);
-  assert.match(html, /aria-label="Удалить Мой жим"/);
+  assert.match(html, /title="Архивировать упражнение"/);
+  assert.match(html, /aria-label="Архивировать Мой жим"/);
 });
 
-test('custom exercise delete action is hidden until delete handler is provided', () => {
+test('custom exercise archive action is hidden until archive handler is provided', () => {
   const html = renderToStaticMarkup(
     <ExerciseListSheet
       isOpen={true}
@@ -98,10 +98,10 @@ test('custom exercise delete action is hidden until delete handler is provided',
     />,
   );
 
-  assert.doesNotMatch(html, /Удалить Мой жим/);
+  assert.doesNotMatch(html, /Архивировать Мой жим/);
 });
 
-test('system exercise list behavior does not expose custom edit or delete entry points', () => {
+test('system exercise list behavior does not expose custom edit or archive entry points', () => {
   const html = renderToStaticMarkup(
     <ExerciseListSheet
       isOpen={true}
@@ -109,12 +109,12 @@ test('system exercise list behavior does not expose custom edit or delete entry 
       category={category}
       exercises={[systemExercise]}
       onExercisesSelect={() => {}}
-      onDeleteExercise={() => {}}
+      onArchiveExercise={() => {}}
     />,
   );
 
   assert.doesNotMatch(html, /Редактировать Жим лёжа/);
-  assert.doesNotMatch(html, /Удалить Жим лёжа/);
+  assert.doesNotMatch(html, /Архивировать Жим лёжа/);
 });
 
 test('checkbox selection contract does not auto-open exercise card', () => {

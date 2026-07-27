@@ -101,6 +101,33 @@ type WorkoutAddOptions = {
   operationId?: string;
 };
 
+function isArchivedCustomExercise(exercise?: Pick<Exercise, 'is_custom' | 'archived_at' | 'name'> | null): boolean {
+  return exercise?.is_custom === true && Boolean(exercise.archived_at);
+}
+
+function getArchivedCustomExerciseNames(exercises: Array<Pick<Exercise, 'is_custom' | 'archived_at' | 'name'> | undefined | null>): string[] {
+  return Array.from(new Set(
+    exercises
+      .filter(isArchivedCustomExercise)
+      .map((exercise) => exercise?.name?.trim() || 'Архивное упражнение'),
+  ));
+}
+
+function assertNoArchivedCustomExercises(
+  exercises: Array<Pick<Exercise, 'is_custom' | 'archived_at' | 'name'> | undefined | null>,
+  action: 'add' | 'repeat',
+): void {
+  const names = getArchivedCustomExerciseNames(exercises);
+  if (names.length === 0) return;
+
+  const suffix = names.length === 1 ? `: ${names[0]}` : `: ${names.join(', ')}`;
+  throw new Error(
+    action === 'repeat'
+      ? `Нельзя повторить тренировку с архивным пользовательским упражнением${suffix}. Сначала восстановите упражнение.`
+      : `Нельзя добавить архивное пользовательское упражнение${suffix}. Сначала восстановите упражнение.`,
+  );
+}
+
 const WORKOUT_METRIC_TYPE_SCHEMA_CACHE_KEY = 'potok_workout_metric_type_schema_capability';
 const WORKOUT_METRIC_TYPE_SCHEMA_CACHE_TTL_MS = 10 * 60 * 1000;
 
@@ -1246,6 +1273,8 @@ class WorkoutService {
     exercises: SelectedExercise[],
     options: WorkoutAddOptions = {},
   ): Promise<WorkoutEntry[]> {
+    assertNoArchivedCustomExercises(exercises.map((item) => item.exercise), 'add');
+
     const operationId = options.operationId || this.createWorkoutAddOperationId();
     // Оптимистично обновляем localStorage (manual mode)
     const localExisting = this.getWorkoutsFromLocalStorage(userId, date) || [];
@@ -1410,6 +1439,7 @@ class WorkoutService {
     if (entriesToCopy.length === 0) {
       throw new Error('Не удалось найти выбранные упражнения в исходной тренировке');
     }
+    assertNoArchivedCustomExercises(entriesToCopy.map((entry) => entry.exercise), 'repeat');
 
     const operationId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 

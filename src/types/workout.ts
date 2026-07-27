@@ -36,6 +36,7 @@ export interface Exercise {
   media?: ExerciseMediaItem[] | null;
   is_custom: boolean;
   created_by_user_id?: string | null;
+  archived_at?: string | null;
   canonical_exercise_id?: string | null;
   normalized_name?: string | null;
   movement_pattern?: 'push' | 'pull' | 'hinge' | 'squat' | 'carry' | 'rotation' | string;

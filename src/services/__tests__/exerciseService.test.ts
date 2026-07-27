@@ -3,9 +3,13 @@ import assert from 'node:assert/strict';
 
 import {
   buildExerciseMuscleLinkRows,
+  canArchiveCustomExercise,
   canDeleteCustomExercise,
   canEditCustomExercise,
+  canRestoreCustomExercise,
   exerciseService,
+  isActiveExercise,
+  isArchivedExercise,
   isExerciseDefinitionSchemaGapError,
 } from '../exerciseService';
 import type { Exercise, Muscle } from '../../types/workout';
@@ -139,6 +143,40 @@ test('custom exercises local read path returns only user-owned custom exercises'
   assert.equal(cached[0].created_by_user_id, 'user-1');
 });
 
+test('custom exercises local read path filters archived exercises', () => {
+  const service = exerciseService as any;
+  service.saveCustomExercisesToLocalStorage('user-1', [
+    createExercise('Активное упражнение', ['Средний пучок'], {
+      is_custom: true,
+      created_by_user_id: 'user-1',
+      archived_at: null,
+    }),
+    createExercise('Архивное упражнение', ['Широчайшие'], {
+      is_custom: true,
+      created_by_user_id: 'user-1',
+      archived_at: '2026-07-27T10:00:00Z',
+    }),
+  ]);
+
+  const cached = service.getCustomExercisesFromLocalStorage('user-1') as Exercise[];
+
+  assert.deepEqual(cached.map((exercise) => exercise.name), ['Активное упражнение']);
+});
+
+test('category and search local fallback filter archived exercises', () => {
+  const service = exerciseService as any;
+  service.saveExercisesByCategoryToLocalStorage('category-1', [
+    createExercise('Активный жим', ['Средний пучок'], { archived_at: null }),
+    createExercise('Архивный жим', ['Средний пучок'], { archived_at: '2026-07-27T10:00:00Z' }),
+  ]);
+
+  const categoryCached = service.getExercisesByCategoryFromLocalStorage('category-1') as Exercise[];
+  const searchCached = service.searchExercisesFromLocalStorage('жим', 'category-1') as Exercise[];
+
+  assert.deepEqual(categoryCached.map((exercise) => exercise.name), ['Активный жим']);
+  assert.deepEqual(searchCached.map((exercise) => exercise.name), ['Активный жим']);
+});
+
 test('muscles are preserved for custom exercises in local read path', () => {
   const service = exerciseService as any;
   const customExercises = [
@@ -209,6 +247,32 @@ test('only owner can delete custom exercise', () => {
     canDeleteCustomExercise({ is_custom: true, created_by_user_id: 'user-2' }, 'user-1'),
     false,
   );
+});
+
+test('only owner can archive and restore custom exercise', () => {
+  assert.equal(
+    canArchiveCustomExercise({ is_custom: true, created_by_user_id: 'user-1' }, 'user-1'),
+    true,
+  );
+  assert.equal(
+    canArchiveCustomExercise({ is_custom: true, created_by_user_id: 'user-2' }, 'user-1'),
+    false,
+  );
+  assert.equal(
+    canRestoreCustomExercise({ is_custom: true, created_by_user_id: 'user-1' }, 'user-1'),
+    true,
+  );
+  assert.equal(
+    canRestoreCustomExercise({ is_custom: false, created_by_user_id: 'user-1' }, 'user-1'),
+    false,
+  );
+});
+
+test('archived exercise state is derived from archived_at', () => {
+  assert.equal(isArchivedExercise({ archived_at: '2026-07-27T10:00:00Z' }), true);
+  assert.equal(isActiveExercise({ archived_at: '2026-07-27T10:00:00Z' }), false);
+  assert.equal(isArchivedExercise({ archived_at: null }), false);
+  assert.equal(isActiveExercise({ archived_at: null }), true);
 });
 
 test('system exercise cannot be deleted through custom delete path', () => {

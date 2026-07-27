@@ -22,6 +22,22 @@ export function canDeleteCustomExercise(exercise: Pick<Exercise, 'is_custom' | '
   return canEditCustomExercise(exercise, sessionUserId);
 }
 
+export function canArchiveCustomExercise(exercise: Pick<Exercise, 'is_custom' | 'created_by_user_id'>, sessionUserId: string): boolean {
+  return canEditCustomExercise(exercise, sessionUserId);
+}
+
+export function canRestoreCustomExercise(exercise: Pick<Exercise, 'is_custom' | 'created_by_user_id'>, sessionUserId: string): boolean {
+  return canEditCustomExercise(exercise, sessionUserId);
+}
+
+export function isArchivedExercise(exercise: Pick<Exercise, 'archived_at'>): boolean {
+  return Boolean(exercise.archived_at);
+}
+
+export function isActiveExercise(exercise: Pick<Exercise, 'archived_at'>): boolean {
+  return !isArchivedExercise(exercise);
+}
+
 export function buildExerciseMuscleLinkRows(exerciseId: string, muscleIds: string[]) {
   return muscleIds.map((muscleId) => ({
     exercise_id: exerciseId,
@@ -180,6 +196,7 @@ class ExerciseService {
       description: undefined,
       is_custom: false,
       created_by_user_id: undefined,
+      archived_at: null,
       canonical_exercise_id: this.resolveLegacyCanonicalExerciseId(exerciseName, ex.canonical_exercise_id, ex.id),
       normalized_name: ex.normalized_name ?? null,
       movement_pattern: ex.movement_pattern ?? null,
@@ -203,6 +220,7 @@ class ExerciseService {
       description: ex.description,
       is_custom: ex.is_custom,
       created_by_user_id: ex.created_by_user_id,
+      archived_at: ex.archived_at ?? null,
       canonical_exercise_id: this.resolveLegacyCanonicalExerciseId(exerciseName, ex.canonical_exercise_id, ex.id),
       normalized_name: ex.normalized_name ?? null,
       movement_pattern: ex.movement_pattern ?? null,
@@ -242,6 +260,7 @@ class ExerciseService {
       media,
       is_custom: ex.is_custom ?? false,
       created_by_user_id: ex.created_by_user_id ?? null,
+      archived_at: ex.archived_at ?? null,
       canonical_exercise_id: this.resolveLegacyCanonicalExerciseId(exerciseName, ex.canonical_exercise_id, ex.id),
       normalized_name: ex.normalized_name ?? null,
       movement_pattern: ex.movement_pattern ?? null,
@@ -410,6 +429,7 @@ class ExerciseService {
 
       // Включаем стандартные упражнения и пользовательские упражнения текущего пользователя
       query = query.or(`is_custom.eq.false,created_by_user_id.eq.${sessionUserId}`);
+      query = query.is('archived_at', null);
 
       const { data, error } = await query;
 
@@ -457,6 +477,7 @@ class ExerciseService {
 
       // Включаем стандартные упражнения и пользовательские упражнения текущего пользователя
       query = query.or(`is_custom.eq.false,created_by_user_id.eq.${sessionUserId}`);
+      query = query.is('archived_at', null);
 
       const { data, error } = await query;
 
@@ -491,6 +512,7 @@ class ExerciseService {
         `)
         .eq('is_custom', true)
         .eq('created_by_user_id', sessionUserId)
+        .is('archived_at', null)
         .order('name', { ascending: true })
         .limit(500);
 
@@ -757,6 +779,118 @@ class ExerciseService {
     }
   }
 
+  async archiveCustomExercise(userId: string, exerciseId: string): Promise<void> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+
+    try {
+      const sessionUserId = await this.getSessionUserId(userId);
+
+      const { data: existingExercise, error: existingError } = await supabase
+        .from('exercises')
+        .select('id, is_custom, created_by_user_id, category_id')
+        .eq('id', exerciseId)
+        .single();
+
+      if (existingError || !existingExercise) {
+        throw new Error(existingError?.message || 'Упражнение не найдено');
+      }
+
+      if (!canArchiveCustomExercise(existingExercise, sessionUserId)) {
+        throw new Error('Можно архивировать только свои пользовательские упражнения');
+      }
+
+      const { error: archiveError } = await supabase
+        .from('exercises')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', exerciseId)
+        .eq('created_by_user_id', sessionUserId)
+        .eq('is_custom', true);
+
+      if (archiveError) {
+        throw new Error(archiveError.message || 'Не удалось архивировать упражнение');
+      }
+
+      const cachedCustomExercises = this.getCustomExercisesFromLocalStorage(sessionUserId);
+      const nextCachedCustomExercises = cachedCustomExercises.filter((exercise) => exercise.id !== exerciseId);
+      this.saveCustomExercisesToLocalStorage(sessionUserId, nextCachedCustomExercises);
+      this.saveCustomExercisesToLocalStorage(
+        sessionUserId,
+        nextCachedCustomExercises.filter((exercise) => exercise.category_id === existingExercise.category_id),
+        existingExercise.category_id,
+      );
+    } catch (error) {
+      console.error('[exerciseService] Error archiving custom exercise:', error);
+      throw error;
+    }
+  }
+
+  async restoreCustomExercise(userId: string, exerciseId: string): Promise<Exercise> {
+    if (!supabase) {
+      throw new Error('Supabase не инициализирован');
+    }
+
+    try {
+      const sessionUserId = await this.getSessionUserId(userId);
+
+      const { data: existingExercise, error: existingError } = await supabase
+        .from('exercises')
+        .select('id, is_custom, created_by_user_id')
+        .eq('id', exerciseId)
+        .single();
+
+      if (existingError || !existingExercise) {
+        throw new Error(existingError?.message || 'Упражнение не найдено');
+      }
+
+      if (!canRestoreCustomExercise(existingExercise, sessionUserId)) {
+        throw new Error('Можно восстановить только свои пользовательские упражнения');
+      }
+
+      const { data: restoredExercise, error: restoreError } = await supabase
+        .from('exercises')
+        .update({ archived_at: null })
+        .eq('id', exerciseId)
+        .eq('created_by_user_id', sessionUserId)
+        .eq('is_custom', true)
+        .select(`
+          *,
+          category:exercise_categories(*),
+          exercise_muscles(
+            muscle:muscles(*)
+          )
+        `)
+        .single();
+
+      if (restoreError || !restoredExercise) {
+        throw new Error(restoreError?.message || 'Не удалось восстановить упражнение');
+      }
+
+      const mapped = this.mapExerciseFromDirectRow(restoredExercise);
+      const cachedCustomExercises = this.getCustomExercisesFromLocalStorage(sessionUserId);
+      const nextCachedCustomExercises = cachedCustomExercises.some((exercise) => exercise.id === mapped.id)
+        ? cachedCustomExercises.map((exercise) => (exercise.id === mapped.id ? mapped : exercise))
+        : [...cachedCustomExercises, mapped];
+      this.saveCustomExercisesToLocalStorage(
+        sessionUserId,
+        this.mergeExerciseRecords(nextCachedCustomExercises.filter(isActiveExercise)),
+      );
+      this.saveCustomExercisesToLocalStorage(
+        sessionUserId,
+        this.mergeExerciseRecords(
+          nextCachedCustomExercises.filter((exercise) => exercise.category_id === mapped.category_id && isActiveExercise(exercise)),
+        ),
+        mapped.category_id,
+      );
+
+      return mapped;
+    } catch (error) {
+      console.error('[exerciseService] Error restoring custom exercise:', error);
+      throw error;
+    }
+  }
+
   async deleteCustomExercise(userId: string, exerciseId: string): Promise<void> {
     if (!supabase) {
       throw new Error('Supabase не инициализирован');
@@ -839,7 +973,7 @@ class ExerciseService {
   private getExercisesByCategoryFromLocalStorage(categoryId: string): Exercise[] {
     try {
       const stored = localStorage.getItem(this.getCategoryExercisesStorageKey(categoryId));
-      return stored ? JSON.parse(stored) : [];
+      return stored ? (JSON.parse(stored) as Exercise[]).filter(isActiveExercise) : [];
     } catch {
       return [];
     }
@@ -869,6 +1003,7 @@ class ExerciseService {
     // Простая реализация для offline
     const exercises = this.getExercisesByCategoryFromLocalStorage(categoryId || '');
     return exercises.filter(ex => 
+      isActiveExercise(ex) &&
       ex.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }
@@ -877,7 +1012,7 @@ class ExerciseService {
     try {
       const specific = localStorage.getItem(this.getCustomExercisesStorageKey(userId, categoryId));
       if (specific) {
-        return JSON.parse(specific);
+        return (JSON.parse(specific) as Exercise[]).filter(isActiveExercise);
       }
 
       const allCustom = localStorage.getItem(this.getCustomExercisesStorageKey(userId));
@@ -887,10 +1022,10 @@ class ExerciseService {
 
       const parsed = JSON.parse(allCustom) as Exercise[];
       if (!categoryId) {
-        return parsed;
+        return parsed.filter(isActiveExercise);
       }
 
-      return parsed.filter((exercise) => exercise.category_id === categoryId);
+      return parsed.filter((exercise) => exercise.category_id === categoryId && isActiveExercise(exercise));
     } catch {
       return [];
     }

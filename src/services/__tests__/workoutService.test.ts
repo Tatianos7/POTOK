@@ -49,6 +49,7 @@ function createEntry(
       name: overrides.exercise?.name ?? name,
       category_id: overrides.exercise?.category_id ?? 'category-1',
       is_custom: overrides.exercise?.is_custom ?? false,
+      archived_at: overrides.exercise?.archived_at ?? null,
     },
     created_at: overrides.created_at,
     updated_at: overrides.updated_at,
@@ -123,6 +124,7 @@ function createSelectedExercise(overrides: Partial<WorkoutEntry> = {}) {
       name: overrides.exercise?.name ?? 'Жим лёжа',
       category_id: overrides.exercise?.category_id ?? 'category-1',
       is_custom: overrides.exercise?.is_custom ?? false,
+      archived_at: overrides.exercise?.archived_at ?? null,
       canonical_exercise_id: overrides.exercise?.canonical_exercise_id ?? null,
       category: overrides.exercise?.category,
       muscles: overrides.exercise?.muscles,
@@ -408,6 +410,33 @@ test('addExercisesToWorkout writes snapshot fields in local workout entry', asyn
   assert.equal(entry?.exercise_category_name_snapshot, 'Мои упражнения');
   assert.deepEqual(entry?.primary_muscles_snapshot, ['glutes']);
   assert.equal(entry?.muscles_snapshot?.[0]?.label, 'Ягодичные мышцы');
+});
+
+test('addExercisesToWorkout blocks archived custom exercise before local write', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  seedWorkoutStorage({ [DATE]: [] });
+
+  await assert.rejects(
+    () => workoutService.addExercisesToWorkout(USER_ID, DATE, [
+      createSelectedExercise({
+        exercise_id: 'custom-archived',
+        exercise: {
+          id: 'custom-archived',
+          name: 'Архивный жим',
+          category_id: 'custom-category',
+          is_custom: true,
+          archived_at: '2026-07-27T10:00:00Z',
+        },
+      }),
+    ]),
+    /Нельзя добавить архивное пользовательское упражнение: Архивный жим/,
+  );
+
+  assert.deepEqual(readWorkoutStorage()[DATE], []);
 });
 
 test('addExercisesToWorkout creates a new entry when same exercise is added again on same day', async (t) => {
@@ -697,6 +726,44 @@ test('repeat copy creates new workout entries on target date', async (t) => {
   assert.equal(copied[0].reps, 8);
   assert.equal(copied[0].weight, 70);
   assert.match(copied[0].idempotencyKey ?? '', /^repeat:/);
+});
+
+test('repeat copy hard-blocks archived custom exercise before target write', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  const sourceDate = '2026-03-20';
+  const targetDate = '2026-03-25';
+  seedWorkoutStorage({
+    [sourceDate]: [
+      createEntry('source-archived', 'Архивная тяга', {
+        workout_day_id: `day-${sourceDate}`,
+        exercise_id: 'custom-archived-row',
+        exercise: {
+          id: 'custom-archived-row',
+          name: 'Архивная тяга',
+          category_id: 'custom-category',
+          is_custom: true,
+          archived_at: '2026-07-27T10:00:00Z',
+        },
+      }),
+    ],
+    [targetDate]: [],
+  });
+
+  await assert.rejects(
+    () => workoutService.copyWorkoutEntriesToDate(
+      USER_ID,
+      sourceDate,
+      targetDate,
+      ['custom-archived-row'],
+    ),
+    /Нельзя повторить тренировку с архивным пользовательским упражнением: Архивная тяга/,
+  );
+
+  assert.deepEqual(readWorkoutStorage()[targetDate], []);
 });
 
 test('repeat copy does not mutate source historical day', async (t) => {

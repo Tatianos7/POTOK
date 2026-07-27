@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, type MouseEvent } from 'react';
-import { X, Search, Check, Filter, Edit, Trash2 } from 'lucide-react';
+import { Archive, X, Search, Check, Filter, Edit } from 'lucide-react';
 import { Exercise, ExerciseCategory } from '../types/workout';
 import { deriveAvailableMuscles, filterExercisesForList } from '../utils/exerciseListFilters';
 import { dedupeExercisesForUi } from '../utils/exerciseDedup';
@@ -15,7 +15,7 @@ interface ExerciseListSheetProps {
   exercises: Exercise[];
   onExercisesSelect: (exercises: Exercise[]) => void;
   onEditExercise?: (exercise: Exercise) => void;
-  onDeleteExercise?: (exercise: Exercise) => Promise<void> | void;
+  onArchiveExercise?: (exercise: Exercise) => Promise<void> | void;
   searchTerm?: string;
   onSearchChange?: (term: string) => void;
 }
@@ -89,7 +89,7 @@ const ExerciseListSheet = ({
   exercises,
   onExercisesSelect,
   onEditExercise,
-  onDeleteExercise,
+  onArchiveExercise,
   searchTerm = '',
   onSearchChange,
 }: ExerciseListSheetProps) => {
@@ -102,9 +102,9 @@ const ExerciseListSheet = ({
   const [activeExerciseDefinition, setActiveExerciseDefinition] = useState<Exercise | null>(null);
   const [isDefinitionLoading, setIsDefinitionLoading] = useState(false);
   const [definitionError, setDefinitionError] = useState<string | null>(null);
-  const [exercisePendingDelete, setExercisePendingDelete] = useState<Exercise | null>(null);
-  const [isDeletingExercise, setIsDeletingExercise] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [exercisePendingArchive, setExercisePendingArchive] = useState<Exercise | null>(null);
+  const [isArchivingExercise, setIsArchivingExercise] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -120,9 +120,9 @@ const ExerciseListSheet = ({
       setActiveExerciseDefinition(null);
       setDefinitionError(null);
       setIsDefinitionLoading(false);
-      setExercisePendingDelete(null);
-      setIsDeletingExercise(false);
-      setDeleteError(null);
+      setExercisePendingArchive(null);
+      setIsArchivingExercise(false);
+      setArchiveError(null);
     }
     return () => {
       document.body.style.overflow = '';
@@ -157,35 +157,35 @@ const ExerciseListSheet = ({
     onEditExercise?.(exercise);
   };
 
-  const handleRequestDeleteExercise = (event: MouseEvent, exercise: Exercise) => {
+  const handleRequestArchiveExercise = (event: MouseEvent, exercise: Exercise) => {
     event.stopPropagation();
-    setDeleteError(null);
-    setExercisePendingDelete(exercise);
+    setArchiveError(null);
+    setExercisePendingArchive(exercise);
   };
 
-  const handleCancelDeleteExercise = () => {
-    if (isDeletingExercise) return;
-    setExercisePendingDelete(null);
-    setDeleteError(null);
+  const handleCancelArchiveExercise = () => {
+    if (isArchivingExercise) return;
+    setExercisePendingArchive(null);
+    setArchiveError(null);
   };
 
-  const handleConfirmDeleteExercise = async () => {
-    if (!exercisePendingDelete || !onDeleteExercise || isDeletingExercise) return;
+  const handleConfirmArchiveExercise = async () => {
+    if (!exercisePendingArchive || !onArchiveExercise || isArchivingExercise) return;
 
-    setIsDeletingExercise(true);
-    setDeleteError(null);
+    setIsArchivingExercise(true);
+    setArchiveError(null);
 
     try {
-      await onDeleteExercise(exercisePendingDelete);
-      setSelectedExercises((current) => removeExerciseSelection(current, exercisePendingDelete.id));
-      if (activeExercise?.id === exercisePendingDelete.id) {
+      await onArchiveExercise(exercisePendingArchive);
+      setSelectedExercises((current) => removeExerciseSelection(current, exercisePendingArchive.id));
+      if (activeExercise?.id === exercisePendingArchive.id) {
         handleCloseExerciseCard();
       }
-      setExercisePendingDelete(null);
+      setExercisePendingArchive(null);
     } catch (error: any) {
-      setDeleteError(error?.message || 'Не удалось удалить упражнение');
+      setArchiveError(error?.message || 'Не удалось архивировать упражнение');
     } finally {
-      setIsDeletingExercise(false);
+      setIsArchivingExercise(false);
     }
   };
 
@@ -505,7 +505,7 @@ const ExerciseListSheet = ({
                         </p>
                       )}
                     </button>
-                    {exercise.is_custom && (onEditExercise || onDeleteExercise) && (
+                    {exercise.is_custom && (onEditExercise || onArchiveExercise) && (
                       <div className="flex flex-shrink-0 flex-col items-center gap-1">
                         {onEditExercise && (
                           <button
@@ -518,15 +518,15 @@ const ExerciseListSheet = ({
                             <Edit className="w-4 h-4" />
                           </button>
                         )}
-                        {onDeleteExercise && (
+                        {onArchiveExercise && (
                           <button
                             type="button"
-                            onClick={(event) => handleRequestDeleteExercise(event, exercise)}
+                            onClick={(event) => handleRequestArchiveExercise(event, exercise)}
                             className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-gray-400 dark:hover:bg-red-950/30 dark:hover:text-red-300"
-                            aria-label={`Удалить ${exercise.name}`}
-                            title="Удалить упражнение"
+                            aria-label={`Архивировать ${exercise.name}`}
+                            title="Архивировать упражнение"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Archive className="w-4 h-4" />
                           </button>
                         )}
                       </div>
@@ -566,39 +566,39 @@ const ExerciseListSheet = ({
         onAddToWorkout={handleAddToWorkoutFromCard}
       />
 
-      {exercisePendingDelete && (
+      {exercisePendingArchive && (
         <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/50 p-4">
           <div
             className="w-full max-w-sm rounded-xl bg-white p-4 shadow-2xl dark:bg-gray-900"
             onClick={(event) => event.stopPropagation()}
           >
             <h3 className="text-base font-semibold text-gray-900 dark:text-white">
-              Удалить упражнение?
+              Архивировать упражнение?
             </h3>
             <p className="mt-2 text-sm leading-5 text-gray-600 dark:text-gray-300">
-              Это упражнение будет удалено из списка "Мои упражнения". Это действие нельзя отменить.
+              Упражнение исчезнет из списка "Мои упражнения" и выбора для новых тренировок. История тренировок и медиа останутся доступны.
             </p>
-            {deleteError && (
+            {archiveError && (
               <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
-                {deleteError}
+                {archiveError}
               </p>
             )}
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
-                onClick={handleCancelDeleteExercise}
-                disabled={isDeletingExercise}
+                onClick={handleCancelArchiveExercise}
+                disabled={isArchivingExercise}
                 className="flex-1 rounded-lg bg-gray-100 px-4 py-2.5 text-sm font-semibold uppercase text-gray-900 transition-colors hover:bg-gray-200 disabled:opacity-50 dark:bg-gray-800 dark:text-white dark:hover:bg-gray-700"
               >
                 Отмена
               </button>
               <button
                 type="button"
-                onClick={handleConfirmDeleteExercise}
-                disabled={isDeletingExercise}
+                onClick={handleConfirmArchiveExercise}
+                disabled={isArchivingExercise}
                 className="flex-1 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold uppercase text-white transition-colors hover:bg-red-700 disabled:opacity-50"
               >
-                {isDeletingExercise ? 'Удаление...' : 'Удалить'}
+                {isArchivingExercise ? 'Архивация...' : 'Архивировать'}
               </button>
             </div>
           </div>

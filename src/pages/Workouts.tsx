@@ -830,13 +830,13 @@ const Workouts = () => {
     applyFlowLayer('create');
   };
 
-  const handleDeleteCustomExercise = async (exercise: Exercise) => {
+  const handleArchiveCustomExercise = async (exercise: Exercise) => {
     if (!user?.id) return;
     if (!exercise.is_custom || exercise.created_by_user_id !== user.id) {
-      throw new Error('Можно удалять только свои пользовательские упражнения');
+      throw new Error('Можно архивировать только свои пользовательские упражнения');
     }
 
-    await exerciseService.deleteCustomExercise(user.id, exercise.id);
+    await exerciseService.archiveCustomExercise(user.id, exercise.id);
     const customExercises = await exerciseService.getCustomExercises(user.id);
     setExercises(customExercises);
     setSelectedExercises((current) => current.filter((selectedExercise) => selectedExercise.id !== exercise.id));
@@ -1289,7 +1289,7 @@ const Workouts = () => {
         exercises={exercises}
         onExercisesSelect={handleExercisesSelect}
         onEditExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id ? handleEditCustomExercise : undefined}
-        onDeleteExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id ? handleDeleteCustomExercise : undefined}
+        onArchiveExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id ? handleArchiveCustomExercise : undefined}
       />
 
       {/* Selected Exercises Editor */}
