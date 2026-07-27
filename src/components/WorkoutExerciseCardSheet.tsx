@@ -69,30 +69,6 @@ function buildTechniqueMuscles(exercise: Exercise | undefined): string[] {
   return (exercise.primary_muscles ?? []).filter((value): value is string => Boolean(value?.trim()));
 }
 
-function renderTechniqueMediaItem(exerciseName: string, mediaItem: NonNullable<Exercise['media']>[number], index: number) {
-  if (mediaItem.type === 'video') {
-    return (
-      <video
-        key={`${mediaItem.url}-${index}`}
-        src={mediaItem.url}
-        controls
-        playsInline
-        className="h-28 w-full rounded-2xl bg-black object-cover"
-        aria-label={`Техника видео ${exerciseName}`}
-      />
-    );
-  }
-
-  return (
-    <img
-      key={`${mediaItem.url}-${index}`}
-      src={mediaItem.url}
-      alt={`Техника ${exerciseName}`}
-      className="h-28 w-full rounded-2xl bg-gray-100 object-cover"
-    />
-  );
-}
-
 function renderMediaTile(item: ExerciseMediaViewerItem, onOpen?: () => void, onRemove?: () => void) {
   return (
     <div key={item.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800">
@@ -279,8 +255,13 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
   const hasDraftMedia = draftItems.length > 0;
   const mediaSectionOrder = getWorkoutExerciseCardMediaSectionOrder(draftItems.length > 0, persistedItems.length > 0);
 
-  const techniqueMedia = useMemo(
-    () => renderEntry?.exercise?.media?.slice().sort((left, right) => left.order - right.order) ?? [],
+  const fallbackReferenceImageUrl = useMemo(
+    () => renderEntry?.exercise?.media
+      ?.slice()
+      .sort((left, right) => left.order - right.order)
+      .find((mediaItem) => mediaItem.type === 'image' && mediaItem.url.trim() !== '')
+      ?.url
+      .trim() ?? '',
     [renderEntry?.exercise?.media],
   );
   const isUserCreatedExercise = renderEntry?.exercise?.is_custom === true;
@@ -335,15 +316,16 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
   const techniqueMistakes = techniqueContent?.mistakes?.filter((item) => Boolean(item.trim())) ?? [];
   const hasStructuredTechniqueText = techniqueSections.length > 0 || techniqueMistakes.length > 0;
   const techniqueImageUrl = techniqueContent?.technique_image_url?.trim() ?? '';
+  const referenceImageUrl = techniqueImageUrl || fallbackReferenceImageUrl;
   const exerciseDescription = exercise?.description?.trim() ?? '';
   const exerciseMistakesText = exercise?.mistakes?.trim() ?? '';
   const shouldRenderMyWorkoutSection = !isUserCreatedExercise || draftItems.length > 0 || persistedItems.length > 0;
   const shouldRenderPrimaryMuscles = !isUserCreatedExercise || primaryMuscles.length > 0;
-  const shouldRenderSecondaryMuscles = !isUserCreatedExercise || secondaryMuscles.length > 0;
+  const shouldRenderSecondaryMuscles = secondaryMuscles.length > 0;
   const shouldRenderFallbackTechniqueText = !isUserCreatedExercise || Boolean(exerciseDescription || exerciseMistakesText);
-  const shouldRenderTechniqueBlock = hasStructuredTechniqueText || techniqueMedia.length > 0 || Boolean(exercise?.muscle_map_image_url) || shouldRenderFallbackTechniqueText;
+  const shouldRenderTechniqueBlock = hasStructuredTechniqueText || shouldRenderFallbackTechniqueText;
   const shouldRenderExerciseDetailsSection = !isUserCreatedExercise
-    || Boolean(techniqueImageUrl)
+    || Boolean(referenceImageUrl)
     || shouldRenderPrimaryMuscles
     || shouldRenderSecondaryMuscles
     || shouldRenderTechniqueBlock;
@@ -484,12 +466,12 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
 
             {shouldRenderExerciseDetailsSection ? (
             <section className="space-y-5 border-t border-gray-100 pt-5 dark:border-gray-800">
-              {techniqueImageUrl ? (
+              {referenceImageUrl ? (
                 <img
-                  src={techniqueImageUrl}
+                  src={referenceImageUrl}
                   onError={(e) => {
                     if (import.meta.env.DEV) {
-                      console.warn('image failed', techniqueImageUrl);
+                      console.warn('image failed', referenceImageUrl);
                     }
                     e.currentTarget.style.display = 'none';
                   }}
@@ -559,12 +541,6 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
               >
                 <div className="overflow-hidden">
                   <div className="space-y-5 pt-1">
-                    {techniqueMedia.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-3">
-                        {techniqueMedia.map((mediaItem, index) => renderTechniqueMediaItem(exercise?.name || 'Упражнение', mediaItem, index))}
-                      </div>
-                    ) : null}
-
                     {hasStructuredTechniqueText ? (
                       <>
                         {techniqueSections.map((section) => (
@@ -613,14 +589,14 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                           </div>
                         ) : null}
 
-                        {exerciseMistakesText || !isUserCreatedExercise ? (
+                        {exerciseMistakesText ? (
                           <div className="space-y-2 border-t border-gray-100 pt-4 dark:border-gray-800">
                             <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
                               <AlertTriangle className={`${SECTION_ICON_CLASS} ${ICON_COLORS.mistakes}`} />
                               <span>Рекомендации и ошибки</span>
                             </div>
                             <p className="max-w-[68ch] whitespace-pre-wrap text-[15px] leading-7 text-gray-700 dark:text-gray-200">
-                              {exerciseMistakesText || 'Рекомендации пока не заполнены.'}
+                              {exerciseMistakesText}
                             </p>
                           </div>
                         ) : null}

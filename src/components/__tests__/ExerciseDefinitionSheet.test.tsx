@@ -34,7 +34,9 @@ test('exercise definition sheet renders read-only card content', () => {
   assert.match(html, /Карточка упражнения/);
   assert.match(html, /Жим штанги стоя/);
   assert.match(html, /Добавить в тренировку/);
-  assert.match(html, /Видео упражнения Жим штанги стоя/);
+  assert.match(html, /\/exercises\/shoulders\/standing_barbell_press\.png/);
+  assert.doesNotMatch(html, /Видео упражнения Жим штанги стоя/);
+  assert.doesNotMatch(html, /https:\/\/example\.com\/video\.mp4/);
   assert.match(html, /Основные мышцы/);
   assert.match(html, /Карта мышц/);
   assert.match(html, /data-muscle-map=/);
@@ -101,4 +103,35 @@ test('custom exercise definition sheet labels description without duplicated tec
 
   assert.match(html, /Описание упражнения/);
   assert.equal((html.match(/Техника/g) ?? []).length, 1);
+});
+
+test('exercise definition sheet keeps clean empty states for missing local content', () => {
+  const html = renderToStaticMarkup(
+    <ExerciseDefinitionSheet
+      isOpen={true}
+      exercise={{
+        id: '00000000-0000-4000-8000-000000000001',
+        name: 'Unknown movement',
+        category_id: 'unknown',
+        is_custom: false,
+        description: '',
+        mistakes: '',
+        primary_muscles: ['Unknown muscle'],
+        secondary_muscles: [],
+        media: [
+          { type: 'image', url: 'https://example.com/fallback-image.png', order: 0 },
+          { type: 'video', url: 'https://example.com/fallback-video.mp4', order: 1 },
+        ],
+      }}
+      onClose={() => {}}
+      onAddToWorkout={() => {}}
+    />,
+  );
+
+  assert.match(html, /Unknown movement/);
+  assert.match(html, /https:\/\/example\.com\/fallback-image\.png/);
+  assert.doesNotMatch(html, /fallback-video\.mp4/);
+  assert.match(html, /Описание техники пока не заполнено/);
+  assert.doesNotMatch(html, /Второстепенные мышцы/);
+  assert.doesNotMatch(html, /Карта мышц/);
 });

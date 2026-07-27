@@ -65,7 +65,9 @@ test('workout exercise card renders read-only technique and muscle content', () 
 
   assert.match(html, /Моя тренировка/);
   assert.match(html, /Техника/);
-  assert.match(html, /Техника видео Планка/);
+  assert.match(html, /\/exercises\/abs\/plank\.png/);
+  assert.doesNotMatch(html, /Техника видео Планка/);
+  assert.doesNotMatch(html, /https:\/\/example\.com\/technique-video\.mp4/);
   assert.match(html, /Основные работающие мышцы/);
   assert.match(html, /abs/);
   assert.match(html, /Второстепенные мышцы/);
@@ -206,4 +208,40 @@ test('custom workout exercise card skips empty fallback sections', () => {
   assert.doesNotMatch(html, /Описание техники пока не заполнено/);
   assert.doesNotMatch(html, /Рекомендации пока не заполнены/);
   assert.doesNotMatch(html, /Сохранить/);
+});
+
+test('workout exercise card uses db image fallback without rendering reference video placeholders', () => {
+  const html = renderToStaticMarkup(
+    <WorkoutExerciseCardSheet
+      isOpen={true}
+      entry={{
+        ...entry,
+        exercise_id: '00000000-0000-4000-8000-000000000001',
+        canonical_exercise_id: null,
+        exercise: {
+          id: '00000000-0000-4000-8000-000000000001',
+          name: 'Unknown movement',
+          category_id: 'unknown',
+          is_custom: false,
+          description: '',
+          mistakes: '',
+          primary_muscles: ['Unknown muscle'],
+          secondary_muscles: [],
+          media: [
+            { type: 'image', url: 'https://example.com/fallback-image.png', order: 0 },
+            { type: 'video', url: 'https://example.com/fallback-video.mp4', order: 1 },
+          ],
+          muscles: [],
+        },
+      }}
+      onClose={() => {}}
+    />,
+  );
+
+  assert.match(html, /Unknown movement/);
+  assert.match(html, /https:\/\/example\.com\/fallback-image\.png/);
+  assert.doesNotMatch(html, /fallback-video\.mp4/);
+  assert.match(html, /Описание техники пока не заполнено/);
+  assert.doesNotMatch(html, /Второстепенные мышцы/);
+  assert.doesNotMatch(html, /Карта мышц/);
 });

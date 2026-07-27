@@ -47,30 +47,6 @@ interface ExerciseDefinitionSheetProps {
   onAddToWorkout: () => void;
 }
 
-const renderMediaItem = (exerciseName: string, mediaItem: NonNullable<Exercise['media']>[number], index: number) => {
-  if (mediaItem.type === 'video') {
-    return (
-      <video
-        key={`${mediaItem.url}-${index}`}
-        src={mediaItem.url}
-        controls
-        playsInline
-        className="h-28 w-full rounded-xl bg-black object-cover"
-        aria-label={`Видео упражнения ${exerciseName}`}
-      />
-    );
-  }
-
-  return (
-    <img
-      key={`${mediaItem.url}-${index}`}
-      src={mediaItem.url}
-      alt={exerciseName}
-      className="h-28 w-full rounded-xl bg-gray-100 object-cover"
-    />
-  );
-};
-
 const ExerciseDefinitionSheet = ({
   isOpen,
   exercise,
@@ -140,6 +116,13 @@ const ExerciseDefinitionSheet = ({
   const techniqueMistakes = techniqueContent?.mistakes?.filter((item) => Boolean(item.trim())) ?? [];
   const hasStructuredTechniqueText = techniqueSections.length > 0 || techniqueMistakes.length > 0;
   const techniqueImageUrl = techniqueContent?.technique_image_url?.trim() ?? '';
+  const fallbackReferenceImageUrl = renderExercise?.media
+    ?.slice()
+    .sort((left, right) => left.order - right.order)
+    .find((mediaItem) => mediaItem.type === 'image' && mediaItem.url.trim() !== '')
+    ?.url
+    .trim() ?? '';
+  const referenceImageUrl = techniqueImageUrl || fallbackReferenceImageUrl;
   const exercisePrimaryMuscles = (renderExercise?.primary_muscles ?? []).filter((value): value is string => Boolean(value?.trim()));
   const exerciseSecondaryMuscles = (renderExercise?.secondary_muscles ?? []).filter((value): value is string => Boolean(value?.trim()));
   const exerciseLinkedMuscles = (renderExercise?.muscles ?? [])
@@ -162,7 +145,7 @@ const ExerciseDefinitionSheet = ({
   const exerciseDescription = renderExercise?.description?.trim() ?? '';
   const exerciseMistakesText = renderExercise?.mistakes?.trim() ?? '';
   const shouldRenderPrimaryMuscles = !isUserCreatedExercise || primaryMuscles.length > 0;
-  const shouldRenderSecondaryMuscles = !isUserCreatedExercise || secondaryMuscles.length > 0;
+  const shouldRenderSecondaryMuscles = secondaryMuscles.length > 0;
   const shouldRenderFallbackTechniqueText = !isUserCreatedExercise || Boolean(exerciseDescription || exerciseMistakesText);
   const shouldRenderTechniqueBlock = hasStructuredTechniqueText || shouldRenderFallbackTechniqueText;
 
@@ -203,22 +186,13 @@ const ExerciseDefinitionSheet = ({
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-gray-900">{renderExercise.name}</h3>
 
-                  {renderExercise.media && renderExercise.media.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-2">
-                      {renderExercise.media
-                        .slice()
-                        .sort((left, right) => left.order - right.order)
-                        .map((mediaItem, index) => renderMediaItem(renderExercise.name, mediaItem, index))}
-                    </div>
-                  ) : null}
-
-                  {techniqueImageUrl ? (
+                  {referenceImageUrl ? (
                     <img
-                      src={techniqueImageUrl}
+                      src={referenceImageUrl}
                       alt={renderExercise.name}
                       onError={(event) => {
                         if (import.meta.env.DEV) {
-                          console.warn('image failed', techniqueImageUrl);
+                          console.warn('image failed', referenceImageUrl);
                         }
                         event.currentTarget.style.display = 'none';
                       }}
@@ -339,14 +313,14 @@ const ExerciseDefinitionSheet = ({
                               </section>
                             ) : null}
 
-                            {exerciseMistakesText || !isUserCreatedExercise ? (
+                            {exerciseMistakesText ? (
                               <section className="space-y-2 border-t border-gray-100 pt-4">
                                 <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-gray-900`}>
                                   <AlertTriangle className={`${SECTION_ICON_CLASS} ${ICON_COLORS.mistakes}`} />
                                   <span>Основные рекомендации и ошибки</span>
                                 </h4>
                                 <p className="max-w-[68ch] whitespace-pre-wrap text-[15px] leading-7 text-gray-700">
-                                  {exerciseMistakesText || 'Рекомендации пока не заполнены.'}
+                                  {exerciseMistakesText}
                                 </p>
                               </section>
                             ) : null}
