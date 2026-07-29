@@ -105,8 +105,33 @@ test('deficit hidden without target and computed with target', () => {
 
   assert.equal(noTarget.deficit?.is_visible, false);
   assert.equal(noTarget.deficit?.value, null);
+  assert.equal(noTarget.deficit?.target_calories, null);
   assert.equal(withTarget.deficit?.is_visible, true);
   assert.equal(withTarget.deficit?.value, 1200);
+});
+
+test('deficit value sign is positive for deficit and negative for surplus', () => {
+  const deficit = aggregateNutritionProgress(
+    [row({ calories: 1500 })],
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'day',
+    2000
+  );
+  const surplus = aggregateNutritionProgress(
+    [row({ calories: 2300 })],
+    new Map([['food-1', 'Яйцо']]),
+    '2026-03-18',
+    'day',
+    2000
+  );
+
+  assert.equal(deficit.deficit?.is_visible, true);
+  assert.equal(deficit.deficit?.target_calories, 2000);
+  assert.equal(deficit.deficit?.value, 500);
+  assert.equal(surplus.deficit?.is_visible, true);
+  assert.equal(surplus.deficit?.target_calories, 2000);
+  assert.equal(surplus.deficit?.value, -300);
 });
 
 test('macro targets scale by period day count', () => {
@@ -319,6 +344,7 @@ test('7-day period hides deficit when coverage is low', () => {
   assert.equal(result.periodCoverage?.coverage_ratio, Number((2 / 7).toFixed(4)));
   assert.equal(result.deficit?.is_visible, false);
   assert.equal(result.deficit?.value, null);
+  assert.equal(result.deficit?.target_calories, 14000);
 });
 
 test('7-day period shows deficit when coverage is at least 0.8', () => {

@@ -22,7 +22,29 @@ const PERIOD_OPTIONS: Array<{ key: NutritionProgressPeriod; label: string }> = [
 const cardClass = 'rounded-[28px] border border-stone-200 bg-white shadow-[0_18px_50px_rgba(20,20,20,0.08)]';
 const SHOW_LEGACY_NUTRITION_RESULT_CARDS = false;
 const SHOW_TOP_FOODS_BLOCK = false;
-const SHOW_NUTRITION_INSIGHTS_BLOCK = true;
+const CALORIE_DENSE_FOOD_KEYWORDS = [
+  'колбас',
+  'сосиск',
+  'полуфабрикат',
+  'чипс',
+  'жарен',
+  'фритюр',
+  'бекон',
+  'майонез',
+  'сыр',
+  'масло',
+  'слив',
+  'бургер',
+  'пицц',
+  'картофель фри',
+  'фастфуд',
+  'шоколад',
+  'печень',
+  'торт',
+  'кекс',
+  'булоч',
+  'конфет',
+];
 
 const formatNumber = (value: number | null | undefined) => {
   if (value == null || !Number.isFinite(value)) return '—';
@@ -41,6 +63,21 @@ const formatFullDateLabel = (value: string) =>
     month: 'long',
     year: 'numeric',
   }).format(new Date(`${value}T00:00:00`));
+
+const formatFoodNames = (items: Array<{ product_name: string }>): string | null => {
+  const names = items
+    .map((item) => item.product_name.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+
+  if (names.length === 0) return null;
+  return names.join(', ');
+};
+
+const isCalorieDenseFoodName = (name: string): boolean => {
+  const normalized = name.toLocaleLowerCase('ru-RU');
+  return CALORIE_DENSE_FOOD_KEYWORDS.some((keyword) => normalized.includes(keyword));
+};
 
 const getPeriodMeta = (anchorDate: string, period: NutritionProgressPeriod) => {
   const anchor = new Date(`${anchorDate}T00:00:00`);
@@ -226,164 +263,118 @@ const ProgressNutrition: FC = () => {
     return `Среднее за весь период: ${formatNumber(data?.average?.calories)} ккал в день`;
   }, [data?.average?.calories, data?.calories?.has_data, period]);
 
-  const trendData = useMemo(() => {
-    const series = (data?.dailyCalories ?? []).slice(-7);
-    const first = series[0]?.calories ?? 0;
-    const last = series[series.length - 1]?.calories ?? 0;
-    const delta = last - first;
+  const nutritionRecommendation = useMemo(() => {
+    const topCalorieFoods = [...(data?.topFoods ?? [])]
+      .filter((item) => item.total_calories > 0)
+      .sort((a, b) => b.total_calories - a.total_calories);
+    const calorieDenseFoods = topCalorieFoods.filter((item) => isCalorieDenseFoodName(item.product_name));
+    const focusFoods = formatFoodNames(calorieDenseFoods.length > 0 ? calorieDenseFoods : topCalorieFoods);
+    const leader = topCalorieFoods[0] ?? null;
+    const leaderShare =
+      leader && (data?.calories?.total ?? 0) > 0
+        ? Math.round((leader.total_calories / Math.max(data?.calories?.total ?? 1, 1)) * 100)
+        : 0;
+    const foodHint = focusFoods ? ` Начните с ${focusFoods}: эти продукты сильнее всего влияют на калорийность периода.` : '';
 
-    let label = 'Недостаточно данных';
-    let helper = 'Добавьте больше записей, чтобы увидеть направление.';
-
-    if (series.length >= 3) {
-      if (Math.abs(delta) <= 120) {
-        label = 'Рацион стабилен';
-        helper = 'Существенного сдвига по калориям за последние дни не видно.';
-      } else if (delta > 120) {
-        label = 'Калорийность растёт';
-        helper = 'Последние дни идут с повышением общей калорийности.';
-      } else {
-        label = 'Калорийность снижается';
-        helper = 'Последние дни идут с уменьшением общей калорийности.';
-      }
-    }
-
-    return { series, label, helper };
-  }, [data?.dailyCalories]);
-
-  const macroInsight = useMemo(() => {
-    const macros = data?.macros;
-    if (!hasNutritionData || !macros) {
+    if (!hasNutritionData) {
       return {
-        title: 'БЖУ недоступно',
-        body: 'Недостаточно данных, чтобы оценить распределение белков, жиров и углеводов.',
+        tone: 'neutral',
+        title: 'Что сделать дальше',
+        body: 'Добавьте записи питания за выбранный период, чтобы получить рекомендацию по калориям и БЖУ.',
       };
     }
-
-    const completions = [
-      macros.proteinCompletionPercent,
-      macros.fatCompletionPercent,
-      macros.carbsCompletionPercent,
-    ].filter((value): value is number => value != null && Number.isFinite(value));
-
-    if (completions.length === 0) {
-      return {
-        title: 'Цели по БЖУ пока не заданы',
-        body: 'Факт по белкам, жирам и углеводам виден, но сравнить его с планом пока нельзя.',
-      };
-    }
-
-    if (macros.proteinCompletionPercent != null && macros.proteinCompletionPercent < 90) {
-      return {
-        title: 'Основной недобор — белок',
-        body: 'Среднее количество белка за период ниже цели. Это стоит проверить первым.',
-      };
-    }
-
-    if (macros.fatCompletionPercent != null && macros.fatCompletionPercent > 110) {
-      return {
-        title: 'Жиры выше цели',
-        body: 'Среднее количество жиров за период заметно выше заданной цели.',
-      };
-    }
-
-    const allInRange = completions.every((value) => value >= 90 && value <= 110);
-    if (allInRange) {
-      return {
-        title: 'БЖУ в хорошем диапазоне',
-        body: 'Белки, жиры и углеводы держатся близко к заданным целям.',
-      };
-    }
-
-    return {
-      title: 'БЖУ требует внимания',
-      body: 'Один или несколько макросов заметно отличаются от цели за выбранный период.',
-    };
-  }, [data?.macros, hasNutritionData]);
-
-  const practicalInsights = useMemo(() => {
-    const helps: Array<{ title: string; body: string }> = [];
-    const fixes: Array<{ title: string; body: string }> = [];
-
-    if (!hasNutritionData) return { helps, fixes };
 
     if (isLowCoverage) {
-      fixes.push({
-        title: 'Заполнено не всё',
-        body: `Есть записи за ${daysWithData} из ${periodDays} дней. Чем полнее дневник, тем точнее выводы.`,
-      });
-    } else if (periodDays > 1 && daysWithData === periodDays) {
-      helps.push({
-        title: 'Дневник заполнен полностью',
-        body: `Есть записи за все ${periodDays} дней выбранного периода.`,
-      });
-    } else if (coverageRatio >= 0.8) {
-      helps.push({
-        title: 'Есть достаточно записей',
-        body: `Заполнено ${daysWithData} из ${periodDays} дней — этого достаточно для базовой оценки.`,
-      });
+      return {
+        tone: 'warning',
+        title: 'Что сделать дальше',
+        body: `Заполнено ${daysWithData} из ${periodDays} дней. Ведите дневник регулярнее: так Progress точнее покажет дефицит, профицит и перекосы по БЖУ.`,
+      };
     }
 
-    if (data?.deficit?.is_visible && (data.deficit.value ?? 0) > 0) {
-      helps.push({
-        title: 'Вы держите дефицит',
-        body: 'Калории за выбранный период ниже цели.',
-      });
-    } else if (data?.deficit?.is_visible && (data.deficit.value ?? 0) < 0) {
-      fixes.push({
-        title: 'Калории выше цели',
-        body: 'За выбранный период факт по калориям выше плана.',
-      });
-    } else if (data?.deficit?.is_visible) {
-      helps.push({
-        title: 'Калории близко к цели',
-        body: 'Факт за выбранный период совпадает с планом.',
-      });
+    if (!hasCalorieTarget) {
+      return {
+        tone: 'neutral',
+        title: 'Что сделать дальше',
+        body: 'Задайте цель по калориям, чтобы Progress мог сравнить факт с планом и показать дефицит или профицит.',
+      };
     }
 
-    if ((data?.topFoods?.length ?? 0) > 0 && (data?.calories?.total ?? 0) > 0) {
-      const leader = data?.topFoods?.[0];
-      const share = leader ? Math.round((leader.total_calories / Math.max(data.calories?.total ?? 1, 1)) * 100) : 0;
-      if (leader && share >= 25) {
-        fixes.push({
-          title: 'Один продукт сильно влияет на рацион',
-          body: `${leader.product_name} даёт около ${share}% всех калорий за период.`,
-        });
-      }
+    if (data?.deficit?.is_visible && (data.deficit.value ?? 0) < 0) {
+      const leaderHint =
+        leader && leaderShare >= 20
+          ? ` ${leader.product_name} даёт около ${leaderShare}% калорий периода.`
+          : '';
+
+      return {
+        tone: 'action',
+        title: 'Что сделать дальше',
+        body: `Есть профицит: факт выше цели. Попробуйте сократить порции или самые калорийные продукты.${leaderHint || foodHint}`,
+      };
     }
 
-    if (trendData.series.length >= 3) {
-      if (trendData.label === 'Рацион стабилен' || trendData.label === 'Калорийность снижается') {
-        helps.push({
-          title: trendData.label,
-          body: trendData.helper,
-        });
-      } else {
-        fixes.push({
-          title: trendData.label,
-          body: trendData.helper,
-        });
-      }
+    const macros = data?.macros;
+    if (macros?.proteinCompletionPercent != null && macros.proteinCompletionPercent < 90) {
+      return {
+        tone: 'action',
+        title: 'Что сделать дальше',
+        body: 'Белка ниже цели. Добавьте белковые продукты в один-два приёма пищи: так проще выровнять БЖУ без резкого урезания рациона.',
+      };
+    }
+
+    if (macros?.fatCompletionPercent != null && macros.fatCompletionPercent > 110) {
+      return {
+        tone: 'action',
+        title: 'Что сделать дальше',
+        body: `Жиры выше цели. Попробуйте сократить жирные продукты, жареное или большие порции.${foodHint}`,
+      };
+    }
+
+    if (macros?.carbsCompletionPercent != null && macros.carbsCompletionPercent > 110) {
+      return {
+        tone: 'action',
+        title: 'Что сделать дальше',
+        body: `Углеводы выше цели. Попробуйте уменьшить сладкое, выпечку или самые калорийные углеводные продукты.${foodHint}`,
+      };
     }
 
     return {
-      helps: helps.slice(0, 3),
-      fixes: fixes.slice(0, 3),
+      tone: 'good',
+      title: 'Что сделать дальше',
+      body: 'Вы верно двигаетесь к цели. Продолжайте в том же темпе.',
     };
   }, [
-    coverageRatio,
     data?.calories?.total,
     data?.deficit?.is_visible,
     data?.deficit?.value,
+    data?.macros,
     data?.topFoods,
     daysWithData,
+    hasCalorieTarget,
     hasNutritionData,
     isLowCoverage,
     periodDays,
-    trendData.helper,
-    trendData.label,
-    trendData.series.length,
   ]);
+  const recommendationStyle =
+    nutritionRecommendation.tone === 'good'
+      ? {
+          icon: 'bg-emerald-100 text-emerald-700',
+          panel: 'border-emerald-200 bg-emerald-50/60',
+        }
+      : nutritionRecommendation.tone === 'warning'
+        ? {
+            icon: 'bg-amber-100 text-amber-700',
+            panel: 'border-amber-200 bg-amber-50/60',
+          }
+        : nutritionRecommendation.tone === 'action'
+          ? {
+              icon: 'bg-stone-900 text-white',
+              panel: 'border-stone-200 bg-stone-50/80',
+            }
+          : {
+              icon: 'bg-stone-100 text-stone-700',
+              panel: 'border-stone-200 bg-stone-50/80',
+            };
 
   const mainInsightText = useMemo(() => {
     if (!data) return null;
@@ -660,54 +651,24 @@ const ProgressNutrition: FC = () => {
                   />
                 </div>
 
-                <div className="mt-4 border-t border-stone-100 pt-4">
-                  <div className="text-sm font-medium text-stone-900">Что стоит поправить</div>
-                  <div className="mt-1 text-sm font-medium leading-6 text-stone-800">{macroInsight.title}</div>
-                  <div className="mt-1 text-sm leading-6 text-stone-600">{macroInsight.body}</div>
+              </div>
+
+              <div className={`${cardClass} p-6`}>
+                <div className={`rounded-2xl border p-4 ${recommendationStyle.panel}`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${recommendationStyle.icon}`}>
+                      <Target className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-stone-900">{nutritionRecommendation.title}</div>
+                      <p className="mt-1 text-sm leading-6 text-stone-700">{nutritionRecommendation.body}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {((SHOW_NUTRITION_INSIGHTS_BLOCK && (practicalInsights.helps.length > 0 || practicalInsights.fixes.length > 0)) || SHOW_TOP_FOODS_BLOCK) && (
-              <div className={`grid gap-4 ${SHOW_TOP_FOODS_BLOCK ? 'lg:grid-cols-[0.95fr_1.05fr]' : ''}`}>
-                {SHOW_NUTRITION_INSIGHTS_BLOCK && (practicalInsights.helps.length > 0 || practicalInsights.fixes.length > 0) && (
-                <div className="grid gap-4">
-                  {practicalInsights.helps.length > 0 && (
-                    <div className={`${cardClass} p-6`}>
-                      <div className="mb-4">
-                        <div className="text-sm font-medium text-stone-900">Что помогает</div>
-                        <div className="mt-1 text-sm text-stone-500">То, что уже поддерживает движение к цели</div>
-                      </div>
-                      <div className="divide-y divide-stone-100 border-y border-stone-100">
-                        {practicalInsights.helps.map((insight) => (
-                          <div key={insight.title} className="py-3">
-                            <div className="text-sm font-medium text-stone-900">{insight.title}</div>
-                            <div className="mt-1 text-sm leading-6 text-stone-600">{insight.body}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {practicalInsights.fixes.length > 0 && (
-                    <div className={`${cardClass} p-6`}>
-                      <div className="mb-4">
-                        <div className="text-sm font-medium text-stone-900">Что стоит поправить</div>
-                        <div className="mt-1 text-sm text-stone-500">То, что мешает точнее держать план</div>
-                      </div>
-                      <div className="divide-y divide-stone-100 border-y border-stone-100">
-                        {practicalInsights.fixes.map((insight) => (
-                          <div key={insight.title} className="py-3">
-                            <div className="text-sm font-medium text-stone-900">{insight.title}</div>
-                            <div className="mt-1 text-sm leading-6 text-stone-600">{insight.body}</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                )}
-
-                {SHOW_TOP_FOODS_BLOCK && (
+              {SHOW_TOP_FOODS_BLOCK && (
+              <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
                 <div className={`${cardClass} p-6`}>
                   <div className="mb-4">
                     <div className="text-sm font-medium text-stone-900">Топ-5 продуктов</div>
@@ -755,7 +716,6 @@ const ProgressNutrition: FC = () => {
                     </div>
                   )}
                 </div>
-                )}
               </div>
               )}
 
