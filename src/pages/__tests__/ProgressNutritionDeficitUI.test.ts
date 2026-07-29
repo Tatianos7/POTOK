@@ -26,7 +26,13 @@ test('nutrition progress UI uses one recommendation block instead of split helps
 
 test('nutrition progress recommendation copy covers good, sparse, surplus, and macro states', () => {
   assert.match(source, /Вы верно двигаетесь к цели\. Продолжайте в том же темпе\./);
-  assert.match(source, /Заполнено \$\{daysWithData\} из \$\{periodDays\} дней/);
+  assert.match(source, /Заполнено \$\{daysWithData\} из \$\{periodDays\} дней\. Добавляйте записи чаще/);
   assert.match(source, /Попробуйте сократить порции или самые калорийные продукты/);
   assert.match(source, /Белка ниже цели/);
+});
+
+test('nutrition progress recommendation block is visually lightweight', () => {
+  assert.match(source, /border-l-4 p-4 \$\{recommendationStyle\.accent\}/);
+  assert.match(source, /h-7 w-7/);
+  assert.doesNotMatch(source, /recommendationStyle\.panel/);
 });

@@ -280,7 +280,7 @@ const ProgressNutrition: FC = () => {
       return {
         tone: 'neutral',
         title: 'Что сделать дальше',
-        body: 'Добавьте записи питания за выбранный период, чтобы получить рекомендацию по калориям и БЖУ.',
+        body: 'Добавьте записи питания за выбранный период. После этого Progress покажет калории, БЖУ и рекомендацию.',
       };
     }
 
@@ -288,7 +288,7 @@ const ProgressNutrition: FC = () => {
       return {
         tone: 'warning',
         title: 'Что сделать дальше',
-        body: `Заполнено ${daysWithData} из ${periodDays} дней. Ведите дневник регулярнее: так Progress точнее покажет дефицит, профицит и перекосы по БЖУ.`,
+        body: `Заполнено ${daysWithData} из ${periodDays} дней. Добавляйте записи чаще — так рекомендации станут точнее.`,
       };
     }
 
@@ -296,7 +296,7 @@ const ProgressNutrition: FC = () => {
       return {
         tone: 'neutral',
         title: 'Что сделать дальше',
-        body: 'Задайте цель по калориям, чтобы Progress мог сравнить факт с планом и показать дефицит или профицит.',
+        body: 'Задайте цель по калориям. Тогда Progress сможет показать дефицит или профицит.',
       };
     }
 
@@ -318,7 +318,7 @@ const ProgressNutrition: FC = () => {
       return {
         tone: 'action',
         title: 'Что сделать дальше',
-        body: 'Белка ниже цели. Добавьте белковые продукты в один-два приёма пищи: так проще выровнять БЖУ без резкого урезания рациона.',
+        body: 'Белка ниже цели. Добавьте белковые продукты в один-два приёма пищи.',
       };
     }
 
@@ -358,22 +358,22 @@ const ProgressNutrition: FC = () => {
   const recommendationStyle =
     nutritionRecommendation.tone === 'good'
       ? {
-          icon: 'bg-emerald-100 text-emerald-700',
-          panel: 'border-emerald-200 bg-emerald-50/60',
+          accent: 'border-l-emerald-300',
+          icon: 'bg-emerald-50 text-emerald-700',
         }
       : nutritionRecommendation.tone === 'warning'
         ? {
-            icon: 'bg-amber-100 text-amber-700',
-            panel: 'border-amber-200 bg-amber-50/60',
+            accent: 'border-l-amber-200',
+            icon: 'bg-amber-50 text-amber-700',
           }
         : nutritionRecommendation.tone === 'action'
           ? {
-              icon: 'bg-stone-900 text-white',
-              panel: 'border-stone-200 bg-stone-50/80',
+              accent: 'border-l-stone-300',
+              icon: 'bg-stone-100 text-stone-700',
             }
           : {
-              icon: 'bg-stone-100 text-stone-700',
-              panel: 'border-stone-200 bg-stone-50/80',
+              accent: 'border-l-stone-200',
+              icon: 'bg-stone-100 text-stone-600',
             };
 
   const mainInsightText = useMemo(() => {
@@ -653,16 +653,14 @@ const ProgressNutrition: FC = () => {
 
               </div>
 
-              <div className={`${cardClass} p-6`}>
-                <div className={`rounded-2xl border p-4 ${recommendationStyle.panel}`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${recommendationStyle.icon}`}>
-                      <Target className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-stone-900">{nutritionRecommendation.title}</div>
-                      <p className="mt-1 text-sm leading-6 text-stone-700">{nutritionRecommendation.body}</p>
-                    </div>
+              <div className={`${cardClass} border-l-4 p-4 ${recommendationStyle.accent}`}>
+                <div className="flex items-start gap-2.5">
+                  <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${recommendationStyle.icon}`}>
+                    <Target className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium leading-5 text-stone-900">{nutritionRecommendation.title}</div>
+                    <p className="mt-0.5 text-sm leading-5 text-stone-600">{nutritionRecommendation.body}</p>
                   </div>
                 </div>
               </div>
