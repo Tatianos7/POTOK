@@ -538,6 +538,48 @@ class ExerciseService {
     }
   }
 
+  async getArchivedCustomExercises(userId: string, categoryId?: string): Promise<Exercise[]> {
+    if (!supabase) {
+      return this.getArchivedCustomExercisesFromLocalStorage(userId, categoryId);
+    }
+
+    try {
+      const sessionUserId = await this.getSessionUserId(userId);
+      let query = supabase
+        .from('exercises')
+        .select(`
+          *,
+          category:exercise_categories(*),
+          exercise_muscles(
+            muscle:muscles(*)
+          )
+        `)
+        .eq('is_custom', true)
+        .eq('created_by_user_id', sessionUserId)
+        .not('archived_at', 'is', null)
+        .order('name', { ascending: true })
+        .limit(500);
+
+      if (categoryId) {
+        query = query.eq('category_id', categoryId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('[exerciseService] Error fetching archived custom exercises:', error);
+        return this.getArchivedCustomExercisesFromLocalStorage(sessionUserId, categoryId);
+      }
+
+      return this.mergeExerciseRecords(
+        (data || []).map((ex: any) => this.mapExerciseFromDirectRow(ex)),
+      ).filter(isArchivedExercise);
+    } catch (error) {
+      console.error('[exerciseService] Error:', error);
+      return this.getArchivedCustomExercisesFromLocalStorage(userId, categoryId);
+    }
+  }
+
   async getExerciseDefinitionCard(exerciseId: string): Promise<Exercise | null> {
     if (!supabase) {
       return this.findExerciseInLocalStorage(exerciseId);
@@ -1026,6 +1068,31 @@ class ExerciseService {
       }
 
       return parsed.filter((exercise) => exercise.category_id === categoryId && isActiveExercise(exercise));
+    } catch {
+      return [];
+    }
+  }
+
+  private getArchivedCustomExercisesFromLocalStorage(userId: string, categoryId?: string): Exercise[] {
+    try {
+      const keys = categoryId
+        ? [this.getCustomExercisesStorageKey(userId, categoryId), this.getCustomExercisesStorageKey(userId)]
+        : [this.getCustomExercisesStorageKey(userId)];
+      const exercises: Exercise[] = [];
+
+      keys.forEach((key) => {
+        const rawValue = localStorage.getItem(key);
+        if (!rawValue) return;
+        const parsed = JSON.parse(rawValue);
+        if (!Array.isArray(parsed)) return;
+        exercises.push(...parsed);
+      });
+
+      const scoped = categoryId
+        ? exercises.filter((exercise) => exercise.category_id === categoryId)
+        : exercises;
+
+      return this.mergeExerciseRecords(scoped.filter(isArchivedExercise));
     } catch {
       return [];
     }

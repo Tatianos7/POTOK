@@ -123,6 +123,8 @@ const CUSTOM_EXERCISES_CATEGORY: ExerciseCategory = {
 const createWorkoutAddOperationId = () =>
   `ui-add-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+type CustomExerciseView = 'active' | 'archived';
+
 const Workouts = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -149,6 +151,7 @@ const Workouts = () => {
   const [categories, setCategories] = useState<ExerciseCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ExerciseCategory | null>(null);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [customExerciseView, setCustomExerciseView] = useState<CustomExerciseView>('active');
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [addOperationId, setAddOperationId] = useState<string | null>(null);
   const [workoutEntries, setWorkoutEntries] = useState<WorkoutEntry[]>([]);
@@ -770,15 +773,25 @@ const Workouts = () => {
   const handleAdd = () => {
     setSelectedCategory(null);
     setExercises([]);
+    setCustomExerciseView('active');
     setSelectedExercises([]);
     setAddOperationId(createWorkoutAddOperationId());
     applyFlowLayer('category');
+  };
+
+  const loadCustomExercises = async (view: CustomExerciseView) => {
+    if (!user?.id) return [];
+
+    return view === 'archived'
+      ? exerciseService.getArchivedCustomExercises(user.id)
+      : exerciseService.getCustomExercises(user.id);
   };
 
   const handleOpenCustomExercises = async () => {
     if (!user?.id) return;
 
     setSelectedCategory(CUSTOM_EXERCISES_CATEGORY);
+    setCustomExerciseView('active');
     setIsLoading(true);
     setErrorMessage(null);
 
@@ -798,6 +811,7 @@ const Workouts = () => {
   const handleCloseExerciseListSheet = () => {
     setExercises([]);
     setSelectedCategory(null);
+    setCustomExerciseView('active');
     if (shouldReturnToCategorySheetAfterExerciseListClose()) {
       applyFlowLayer('category');
     }
@@ -837,14 +851,45 @@ const Workouts = () => {
     }
 
     await exerciseService.archiveCustomExercise(user.id, exercise.id);
-    const customExercises = await exerciseService.getCustomExercises(user.id);
+    const customExercises = await loadCustomExercises(customExerciseView);
     setExercises(customExercises);
     setSelectedExercises((current) => current.filter((selectedExercise) => selectedExercise.id !== exercise.id));
+  };
+
+  const handleRestoreCustomExercise = async (exercise: Exercise) => {
+    if (!user?.id) return;
+    if (!exercise.is_custom || exercise.created_by_user_id !== user.id) {
+      throw new Error('Можно восстановить только свои пользовательские упражнения');
+    }
+
+    await exerciseService.restoreCustomExercise(user.id, exercise.id);
+    const customExercises = await loadCustomExercises(customExerciseView);
+    setExercises(customExercises);
+  };
+
+  const handleCustomExerciseViewChange = async (view: CustomExerciseView) => {
+    if (!user?.id) return;
+
+    setCustomExerciseView(view);
+    setSelectedExercises([]);
+    setIsLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const customExercises = await loadCustomExercises(view);
+      setExercises(customExercises);
+    } catch (error: any) {
+      console.error('Ошибка загрузки моих упражнений:', error);
+      setErrorMessage(error?.message || 'Не удалось загрузить мои упражнения');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
 
   const handleCategorySelect = async (category: ExerciseCategory) => {
     setSelectedCategory(category);
+    setCustomExerciseView('active');
     setIsLoading(true);
     
     try {
@@ -1288,8 +1333,11 @@ const Workouts = () => {
         category={selectedCategory}
         exercises={exercises}
         onExercisesSelect={handleExercisesSelect}
-        onEditExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id ? handleEditCustomExercise : undefined}
-        onArchiveExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id ? handleArchiveCustomExercise : undefined}
+        onEditExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id && customExerciseView === 'active' ? handleEditCustomExercise : undefined}
+        onArchiveExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id && customExerciseView === 'active' ? handleArchiveCustomExercise : undefined}
+        onRestoreExercise={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id && customExerciseView === 'archived' ? handleRestoreCustomExercise : undefined}
+        customExerciseView={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id ? customExerciseView : undefined}
+        onCustomExerciseViewChange={selectedCategory?.id === CUSTOM_EXERCISES_CATEGORY.id ? handleCustomExerciseViewChange : undefined}
       />
 
       {/* Selected Exercises Editor */}

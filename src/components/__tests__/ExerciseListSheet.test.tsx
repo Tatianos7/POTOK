@@ -27,6 +27,13 @@ const customExercise: Exercise = {
   muscles: [{ id: 'm-1', name: 'Средний пучок' }],
 };
 
+const archivedCustomExercise: Exercise = {
+  ...customExercise,
+  id: 'custom-archived-1',
+  name: 'Архивный жим',
+  archived_at: '2026-07-27T10:00:00Z',
+};
+
 const systemExercise: Exercise = {
   id: 'system-1',
   name: 'Жим лёжа',
@@ -84,6 +91,60 @@ test('archive entry point remains renderable for custom exercise', () => {
 
   assert.match(html, /title="Архивировать упражнение"/);
   assert.match(html, /aria-label="Архивировать Мой жим"/);
+});
+
+test('custom exercise tabs render active and archived views', () => {
+  const html = renderToStaticMarkup(
+    <ExerciseListSheet
+      isOpen={true}
+      onClose={() => {}}
+      category={category}
+      exercises={[customExercise]}
+      onExercisesSelect={() => {}}
+      customExerciseView="active"
+      onCustomExerciseViewChange={() => {}}
+    />,
+  );
+
+  assert.match(html, /Активные/);
+  assert.match(html, /Архивные/);
+});
+
+test('archived custom exercise view renders restore action without add selection footer', () => {
+  const html = renderToStaticMarkup(
+    <ExerciseListSheet
+      isOpen={true}
+      onClose={() => {}}
+      category={category}
+      exercises={[archivedCustomExercise]}
+      onExercisesSelect={() => {}}
+      onRestoreExercise={() => {}}
+      customExerciseView="archived"
+      onCustomExerciseViewChange={() => {}}
+    />,
+  );
+
+  assert.match(html, /Архивный жим/);
+  assert.match(html, /title="Восстановить упражнение"/);
+  assert.match(html, /aria-label="Восстановить Архивный жим"/);
+  assert.doesNotMatch(html, /Выбрать Архивный жим/);
+  assert.doesNotMatch(html, />Далее</);
+});
+
+test('archived custom exercise empty state is explicit', () => {
+  const html = renderToStaticMarkup(
+    <ExerciseListSheet
+      isOpen={true}
+      onClose={() => {}}
+      category={category}
+      exercises={[]}
+      onExercisesSelect={() => {}}
+      customExerciseView="archived"
+      onCustomExerciseViewChange={() => {}}
+    />,
+  );
+
+  assert.match(html, /Архивных упражнений пока нет/);
 });
 
 test('custom exercise archive action is hidden until archive handler is provided', () => {

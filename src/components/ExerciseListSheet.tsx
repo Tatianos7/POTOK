@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, type MouseEvent } from 'react';
-import { Archive, X, Search, Check, Filter, Edit } from 'lucide-react';
+import { Archive, RotateCcw, X, Search, Check, Filter, Edit } from 'lucide-react';
 import { Exercise, ExerciseCategory } from '../types/workout';
 import { deriveAvailableMuscles, filterExercisesForList } from '../utils/exerciseListFilters';
 import { dedupeExercisesForUi } from '../utils/exerciseDedup';
@@ -16,6 +16,9 @@ interface ExerciseListSheetProps {
   onExercisesSelect: (exercises: Exercise[]) => void;
   onEditExercise?: (exercise: Exercise) => void;
   onArchiveExercise?: (exercise: Exercise) => Promise<void> | void;
+  onRestoreExercise?: (exercise: Exercise) => Promise<void> | void;
+  customExerciseView?: 'active' | 'archived';
+  onCustomExerciseViewChange?: (view: 'active' | 'archived') => void;
   searchTerm?: string;
   onSearchChange?: (term: string) => void;
 }
@@ -90,6 +93,9 @@ const ExerciseListSheet = ({
   onExercisesSelect,
   onEditExercise,
   onArchiveExercise,
+  onRestoreExercise,
+  customExerciseView,
+  onCustomExerciseViewChange,
   searchTerm = '',
   onSearchChange,
 }: ExerciseListSheetProps) => {
@@ -105,6 +111,10 @@ const ExerciseListSheet = ({
   const [exercisePendingArchive, setExercisePendingArchive] = useState<Exercise | null>(null);
   const [isArchivingExercise, setIsArchivingExercise] = useState(false);
   const [archiveError, setArchiveError] = useState<string | null>(null);
+  const [restoringExerciseId, setRestoringExerciseId] = useState<string | null>(null);
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const isArchivedCustomView = customExerciseView === 'archived';
+  const showCustomExerciseTabs = Boolean(customExerciseView && onCustomExerciseViewChange);
 
   useEffect(() => {
     if (isOpen) {
@@ -123,6 +133,8 @@ const ExerciseListSheet = ({
       setExercisePendingArchive(null);
       setIsArchivingExercise(false);
       setArchiveError(null);
+      setRestoringExerciseId(null);
+      setRestoreError(null);
     }
     return () => {
       document.body.style.overflow = '';
@@ -149,6 +161,7 @@ const ExerciseListSheet = ({
   );
 
   const handleToggleExercise = (exerciseId: string) => {
+    if (isArchivedCustomView) return;
     setSelectedExercises((current) => toggleExerciseSelection(current, exerciseId));
   };
 
@@ -161,6 +174,26 @@ const ExerciseListSheet = ({
     event.stopPropagation();
     setArchiveError(null);
     setExercisePendingArchive(exercise);
+  };
+
+  const handleRestoreExercise = async (event: MouseEvent, exercise: Exercise) => {
+    event.stopPropagation();
+    if (!onRestoreExercise || restoringExerciseId) return;
+
+    setRestoreError(null);
+    setRestoringExerciseId(exercise.id);
+
+    try {
+      await onRestoreExercise(exercise);
+      setSelectedExercises((current) => removeExerciseSelection(current, exercise.id));
+      if (activeExercise?.id === exercise.id) {
+        handleCloseExerciseCard();
+      }
+    } catch (error: any) {
+      setRestoreError(error?.message || 'Не удалось восстановить упражнение');
+    } finally {
+      setRestoringExerciseId(null);
+    }
   };
 
   const handleCancelArchiveExercise = () => {
@@ -208,7 +241,7 @@ const ExerciseListSheet = ({
   };
 
   const handleSelect = () => {
-    const selected = exercises.filter(ex => selectedExercises.has(ex.id));
+    const selected = exercises.filter(ex => selectedExercises.has(ex.id) && !ex.archived_at);
     onExercisesSelect(selected);
     setSelectedExercises(new Set());
     setLocalSearchTerm('');
@@ -263,6 +296,10 @@ const ExerciseListSheet = ({
 
   const handleAddToWorkoutFromCard = () => {
     if (!activeExercise) return;
+    if (activeExercise.archived_at) {
+      handleCloseExerciseCard();
+      return;
+    }
     if (!selectedExercises.has(activeExercise.id)) {
       setSelectedExercises((current) => addExerciseSelectionFromCard(current, activeExercise.id));
     }
@@ -306,6 +343,40 @@ const ExerciseListSheet = ({
               <X className="w-5 h-5 text-gray-700 dark:text-gray-300" />
             </button>
           </div>
+
+          {showCustomExerciseTabs && (
+            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+              <div className="grid grid-cols-2 gap-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+                {(['active', 'archived'] as const).map((view) => {
+                  const isActive = customExerciseView === view;
+                  return (
+                    <button
+                      key={view}
+                      type="button"
+                      onClick={() => {
+                        setSelectedExercises(new Set());
+                        setRestoreError(null);
+                        setArchiveError(null);
+                        onCustomExerciseViewChange?.(view);
+                      }}
+                      className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                        isActive
+                          ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-900 dark:text-white'
+                          : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                      }`}
+                    >
+                      {view === 'active' ? 'Активные' : 'Архивные'}
+                    </button>
+                  );
+                })}
+              </div>
+              {restoreError && (
+                <p className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+                  {restoreError}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Search */}
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -448,7 +519,9 @@ const ExerciseListSheet = ({
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {localSearchTerm || selectedMuscles.size > 0
                   ? 'Упражнения не найдены'
-                  : 'Нет упражнений в этой категории'}
+                  : isArchivedCustomView
+                    ? 'Архивных упражнений пока нет'
+                    : 'Нет упражнений в этой категории'}
               </p>
               {(localSearchTerm || selectedMuscles.size > 0) && (
                 <button
@@ -464,6 +537,7 @@ const ExerciseListSheet = ({
               {filteredExercises.map((exercise, index) => {
                 const isSelected = selectedExercises.has(exercise.id);
                 const exerciseMuscles = getExerciseMusclesForList(exercise);
+                const isExerciseArchived = Boolean(exercise.archived_at);
                 
                 // Используем уникальный key: название + id + индекс для избежания конфликтов
                 const uniqueKey = `${exercise.name}-${exercise.id}-${index}`;
@@ -474,22 +548,33 @@ const ExerciseListSheet = ({
                     className={`w-full px-3 min-[376px]:px-4 py-2.5 min-[376px]:py-3 text-left rounded-xl transition-colors flex items-start gap-2 min-[376px]:gap-3 ${
                       isSelected
                         ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500'
-                        : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-2 border-transparent'
+                        : isExerciseArchived
+                          ? 'bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700'
+                          : 'bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border-2 border-transparent'
                     }`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => handleToggleExercise(exercise.id)}
-                      className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 min-[376px]:h-6 min-[376px]:w-6 ${
-                        isSelected
-                          ? 'bg-green-500 border-green-500'
-                          : 'border-gray-300 dark:border-gray-600'
-                      }`}
-                      aria-label={`${isSelected ? 'Убрать' : 'Выбрать'} ${exercise.name}`}
-                      aria-pressed={isSelected}
-                    >
-                      {isSelected && <Check className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4 text-white" />}
-                    </button>
+                    {isExerciseArchived ? (
+                      <div
+                        className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border border-gray-300 text-gray-400 min-[376px]:h-6 min-[376px]:w-6 dark:border-gray-600 dark:text-gray-500"
+                        title="Архивное упражнение нельзя добавить до восстановления"
+                      >
+                        <Archive className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4" />
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleExercise(exercise.id)}
+                        className={`mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 min-[376px]:h-6 min-[376px]:w-6 ${
+                          isSelected
+                            ? 'bg-green-500 border-green-500'
+                            : 'border-gray-300 dark:border-gray-600'
+                        }`}
+                        aria-label={`${isSelected ? 'Убрать' : 'Выбрать'} ${exercise.name}`}
+                        aria-pressed={isSelected}
+                      >
+                        {isSelected && <Check className="w-3 h-3 min-[376px]:w-4 min-[376px]:h-4 text-white" />}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => void handleOpenExerciseCard(exercise)}
@@ -505,9 +590,9 @@ const ExerciseListSheet = ({
                         </p>
                       )}
                     </button>
-                    {exercise.is_custom && (onEditExercise || onArchiveExercise) && (
+                    {exercise.is_custom && (onEditExercise || onArchiveExercise || onRestoreExercise) && (
                       <div className="flex flex-shrink-0 flex-col items-center gap-1">
-                        {onEditExercise && (
+                        {!isExerciseArchived && onEditExercise && (
                           <button
                             type="button"
                             onClick={(event) => handleEditExercise(event, exercise)}
@@ -518,7 +603,7 @@ const ExerciseListSheet = ({
                             <Edit className="w-4 h-4" />
                           </button>
                         )}
-                        {onArchiveExercise && (
+                        {!isExerciseArchived && onArchiveExercise && (
                           <button
                             type="button"
                             onClick={(event) => handleRequestArchiveExercise(event, exercise)}
@@ -527,6 +612,18 @@ const ExerciseListSheet = ({
                             title="Архивировать упражнение"
                           >
                             <Archive className="w-4 h-4" />
+                          </button>
+                        )}
+                        {isExerciseArchived && onRestoreExercise && (
+                          <button
+                            type="button"
+                            onClick={(event) => handleRestoreExercise(event, exercise)}
+                            disabled={restoringExerciseId === exercise.id}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-green-50 hover:text-green-700 disabled:opacity-50 dark:text-gray-400 dark:hover:bg-green-950/30 dark:hover:text-green-300"
+                            aria-label={`Восстановить ${exercise.name}`}
+                            title="Восстановить упражнение"
+                          >
+                            <RotateCcw className="w-4 h-4" />
                           </button>
                         )}
                       </div>
@@ -539,7 +636,8 @@ const ExerciseListSheet = ({
         </div>
 
           {/* Footer with Select Button */}
-          <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
+          {!isArchivedCustomView && (
+            <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex-shrink-0">
             <button
               onClick={handleSelect}
               disabled={selectedExercises.size === 0}
@@ -552,7 +650,8 @@ const ExerciseListSheet = ({
                 </span>
               )}
             </button>
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -562,6 +661,8 @@ const ExerciseListSheet = ({
         isLoading={isDefinitionLoading}
         error={definitionError}
         isSelected={activeExercise ? selectedExercises.has(activeExercise.id) : false}
+        canAddToWorkout={!activeExercise?.archived_at}
+        addToWorkoutDisabledLabel="Сначала восстановите"
         onClose={handleCloseExerciseCard}
         onAddToWorkout={handleAddToWorkoutFromCard}
       />

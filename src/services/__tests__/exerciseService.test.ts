@@ -163,6 +163,48 @@ test('custom exercises local read path filters archived exercises', () => {
   assert.deepEqual(cached.map((exercise) => exercise.name), ['Активное упражнение']);
 });
 
+test('archived custom exercises local read path returns only archived exercises', () => {
+  const service = exerciseService as any;
+  service.saveCustomExercisesToLocalStorage('user-1', [
+    createExercise('Активное упражнение', ['Средний пучок'], {
+      is_custom: true,
+      created_by_user_id: 'user-1',
+      archived_at: null,
+    }),
+    createExercise('Архивное упражнение', ['Широчайшие'], {
+      is_custom: true,
+      created_by_user_id: 'user-1',
+      archived_at: '2026-07-27T10:00:00Z',
+    }),
+  ]);
+
+  const cached = service.getArchivedCustomExercisesFromLocalStorage('user-1') as Exercise[];
+
+  assert.deepEqual(cached.map((exercise) => exercise.name), ['Архивное упражнение']);
+});
+
+test('archived custom exercises local read path can be scoped by category', () => {
+  const service = exerciseService as any;
+  service.saveCustomExercisesToLocalStorage('user-1', [
+    createExercise('Архивная грудь', ['Средний пучок'], {
+      category_id: 'chest',
+      is_custom: true,
+      created_by_user_id: 'user-1',
+      archived_at: '2026-07-27T10:00:00Z',
+    }),
+    createExercise('Архивная спина', ['Широчайшие'], {
+      category_id: 'back',
+      is_custom: true,
+      created_by_user_id: 'user-1',
+      archived_at: '2026-07-27T10:00:00Z',
+    }),
+  ]);
+
+  const cached = service.getArchivedCustomExercisesFromLocalStorage('user-1', 'back') as Exercise[];
+
+  assert.deepEqual(cached.map((exercise) => exercise.name), ['Архивная спина']);
+});
+
 test('category and search local fallback filter archived exercises', () => {
   const service = exerciseService as any;
   service.saveExercisesByCategoryToLocalStorage('category-1', [

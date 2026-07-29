@@ -43,6 +43,8 @@ interface ExerciseDefinitionSheetProps {
   isLoading?: boolean;
   error?: string | null;
   isSelected?: boolean;
+  canAddToWorkout?: boolean;
+  addToWorkoutDisabledLabel?: string;
   onClose: () => void;
   onAddToWorkout: () => void;
 }
@@ -53,6 +55,8 @@ const ExerciseDefinitionSheet = ({
   isLoading = false,
   error = null,
   isSelected = false,
+  canAddToWorkout = true,
+  addToWorkoutDisabledLabel = 'Добавить в тренировку',
   onClose,
   onAddToWorkout,
 }: ExerciseDefinitionSheetProps) => {
@@ -343,10 +347,10 @@ const ExerciseDefinitionSheet = ({
             <button
               type="button"
               onClick={onAddToWorkout}
-              disabled={!renderExercise || isLoading || isSelected}
+              disabled={!renderExercise || isLoading || isSelected || !canAddToWorkout}
               className="w-full rounded-[18px] border-2 border-gray-900 px-4 py-3 text-sm font-semibold uppercase text-gray-900 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400"
             >
-              {isSelected ? 'Уже добавлено' : 'Добавить в тренировку'}
+              {isSelected ? 'Уже добавлено' : canAddToWorkout ? 'Добавить в тренировку' : addToWorkoutDisabledLabel}
             </button>
           </div>
         </div>
