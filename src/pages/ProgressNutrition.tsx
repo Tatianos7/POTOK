@@ -4,7 +4,6 @@ import {
   ChevronRight,
   Flame,
   Target,
-  UtensilsCrossed,
   X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -358,22 +357,22 @@ const ProgressNutrition: FC = () => {
   const recommendationStyle =
     nutritionRecommendation.tone === 'good'
       ? {
-          accent: 'border-l-emerald-300',
-          icon: 'bg-emerald-50 text-emerald-700',
+          accent: 'border-l-emerald-200',
+          icon: 'bg-emerald-500/10 text-emerald-700',
         }
       : nutritionRecommendation.tone === 'warning'
         ? {
             accent: 'border-l-amber-200',
-            icon: 'bg-amber-50 text-amber-700',
+            icon: 'bg-amber-500/10 text-amber-700',
           }
         : nutritionRecommendation.tone === 'action'
           ? {
-              accent: 'border-l-stone-300',
-              icon: 'bg-stone-100 text-stone-700',
+              accent: 'border-l-amber-200',
+              icon: 'bg-amber-500/10 text-amber-700',
             }
           : {
-              accent: 'border-l-stone-200',
-              icon: 'bg-stone-100 text-stone-600',
+              accent: 'border-l-amber-200',
+              icon: 'bg-amber-500/10 text-amber-700',
             };
 
   const mainInsightText = useMemo(() => {
@@ -511,29 +510,29 @@ const ProgressNutrition: FC = () => {
         <div className="space-y-4">
           {!hasNutritionData ? (
             <>
-              <div className={`${cardClass} overflow-hidden p-0`}>
-                <div className="bg-[radial-gradient(circle_at_top_left,#fef3c7,transparent_35%),linear-gradient(180deg,#fff,#fafaf9)] p-8">
-                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-900 text-white">
-                    <UtensilsCrossed className="h-7 w-7" />
+              <div className={`${cardClass} border-l-4 border-l-amber-200 p-4`}>
+                <div className="flex items-start gap-2.5">
+                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-amber-700">
+                    <Target className="h-4 w-4" />
                   </div>
-                  <h2 className="text-2xl font-semibold text-stone-950">За этот период пока нет записей питания</h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
-                    {hasCalorieTarget
-                      ? 'Нет данных за выбранный период. Progress учитывает только сохранённые записи дневника питания. Добавьте записи, чтобы увидеть калории, макросы и дефицит.'
-                      : 'Нет данных за выбранный период. Progress учитывает только сохранённые записи дневника питания. Цель по калориям тоже не задана, поэтому дефицит или профицит сейчас рассчитать нельзя.'}
-                  </p>
-                  <div className="mt-5 flex flex-wrap gap-3">
-                    <button
-                      type="button"
-                      onClick={() => navigate('/nutrition')}
-                      className="inline-flex items-center gap-2 rounded-full bg-stone-950 px-4 py-2 text-sm font-medium text-white"
-                    >
-                      Перейти в дневник
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                    <div className="inline-flex rounded-full bg-stone-100 px-4 py-2 text-sm text-stone-700">
-                      Период: {periodMeta.dateRangeLabel.toLowerCase()}
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-sm font-medium leading-5 text-stone-900">За этот период пока нет записей питания</h2>
+                    <p className="mt-0.5 text-sm leading-5 text-stone-600">
+                      Добавьте записи в дневник, чтобы увидеть калории, БЖУ и рекомендации.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2.5 pl-9">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/nutrition')}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-stone-950 px-3.5 py-2 text-sm font-medium text-white"
+                  >
+                    Перейти в дневник
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <div className="inline-flex rounded-full bg-stone-100 px-3.5 py-2 text-sm text-stone-600">
+                    Период: {periodMeta.dateRangeLabel.toLowerCase()}
                   </div>
                 </div>
               </div>

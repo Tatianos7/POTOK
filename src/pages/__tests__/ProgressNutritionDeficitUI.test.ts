@@ -36,3 +36,20 @@ test('nutrition progress recommendation block is visually lightweight', () => {
   assert.match(source, /h-7 w-7/);
   assert.doesNotMatch(source, /recommendationStyle\.panel/);
 });
+
+test('nutrition progress recommendation colors use green for good and amber for warnings/actions', () => {
+  assert.match(source, /accent: 'border-l-emerald-200'/);
+  assert.match(source, /icon: 'bg-emerald-500\/10 text-emerald-700'/);
+  assert.match(source, /accent: 'border-l-amber-200'/);
+  assert.match(source, /icon: 'bg-amber-500\/10 text-amber-700'/);
+  assert.doesNotMatch(source, /accent: 'border-l-stone-300'/);
+});
+
+test('nutrition progress empty state is compact and shares recommendation styling', () => {
+  assert.match(source, /border-l-4 border-l-amber-200 p-4/);
+  assert.match(source, /Добавьте записи в дневник, чтобы увидеть калории, БЖУ и рекомендации\./);
+  assert.doesNotMatch(source, /UtensilsCrossed/);
+  assert.doesNotMatch(source, /h-14 w-14/);
+  assert.doesNotMatch(source, /bg-stone-900 text-white/);
+  assert.doesNotMatch(source, /radial-gradient/);
+});
