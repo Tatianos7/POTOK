@@ -77,3 +77,32 @@ test('repeat modal renders subset selection controls', () => {
   assert.match(html, /type="checkbox"/);
   assert.match(html, /Что повторить/);
 });
+
+test('repeat modal disables archived custom exercises with restore reason', () => {
+  const html = renderToStaticMarkup(
+    <RepeatWorkoutModal
+      isOpen={true}
+      sourceDate="2026-03-20"
+      entries={[
+        {
+          ...entries[0],
+          exercise_id: 'custom-archived',
+          exercise_name_snapshot: 'Подъем ног тест',
+          exercise: {
+            id: 'custom-archived',
+            name: 'Подъем ног тест',
+            category_id: 'custom-category',
+            is_custom: true,
+            archived_at: '2026-07-29T10:00:00Z',
+          },
+        },
+      ]}
+      onClose={() => {}}
+      onConfirm={async () => {}}
+    />,
+  );
+
+  assert.match(html, /Подъем ног тест/);
+  assert.match(html, /Архивное пользовательское упражнение: Подъем ног тест/);
+  assert.match(html, /disabled=""/);
+});

@@ -25,18 +25,23 @@ const RepeatWorkoutModal = ({
   const options = useMemo(() => buildRepeatWorkoutOptions(entries), [entries]);
   const [targetDate, setTargetDate] = useState(() => getDefaultRepeatTargetDate());
   const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(new Set());
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const submitLockRef = useRef({ current: false });
 
   useEffect(() => {
     if (!isOpen) return;
     setTargetDate(getDefaultRepeatTargetDate());
-    setSelectedExerciseIds(new Set(options.map((item) => item.exerciseId)));
+    setSelectedExerciseIds(new Set(options.filter((item) => !item.disabledReason).map((item) => item.exerciseId)));
+    setSubmitError(null);
   }, [isOpen, options]);
 
   if (!isOpen) return null;
 
   const handleToggleExercise = (exerciseId: string) => {
     if (isSubmitting) return;
+    const option = options.find((item) => item.exerciseId === exerciseId);
+    if (option?.disabledReason) return;
+
     setSelectedExerciseIds((current) => {
       const next = new Set(current);
       if (next.has(exerciseId)) {
@@ -51,13 +56,18 @@ const RepeatWorkoutModal = ({
   const handleConfirm = async () => {
     if (selectedExerciseIds.size === 0) return;
 
-    await submitModalAction(
-      submitLockRef.current,
-      async () => {
-        await onConfirm(targetDate, Array.from(selectedExerciseIds));
-      },
-      onClose,
-    );
+    setSubmitError(null);
+    try {
+      await submitModalAction(
+        submitLockRef.current,
+        async () => {
+          await onConfirm(targetDate, Array.from(selectedExerciseIds));
+        },
+        onClose,
+      );
+    } catch (error: any) {
+      setSubmitError(error?.message || 'Не удалось повторить тренировку');
+    }
   };
 
   return (
@@ -108,14 +118,20 @@ const RepeatWorkoutModal = ({
             <div className="space-y-2">
               {options.map((item) => {
                 const checked = selectedExerciseIds.has(item.exerciseId);
+                const disabled = Boolean(item.disabledReason);
                 return (
                   <label
                     key={item.exerciseId}
-                    className="flex items-start gap-3 rounded-lg border border-gray-200 p-3 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                    className={`flex items-start gap-3 rounded-lg border border-gray-200 p-3 transition-colors dark:border-gray-700 ${
+                      disabled
+                        ? 'opacity-60'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
                   >
                     <input
                       type="checkbox"
                       checked={checked}
+                      disabled={disabled}
                       onChange={() => handleToggleExercise(item.exerciseId)}
                       className="mt-1 h-4 w-4 accent-green-600"
                     />
@@ -126,12 +142,22 @@ const RepeatWorkoutModal = ({
                       <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                         {item.sets} x {item.reps} x {item.metricValueLabel}
                       </div>
+                      {item.disabledReason ? (
+                        <div className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+                          {item.disabledReason}
+                        </div>
+                      ) : null}
                     </div>
                   </label>
                 );
               })}
             </div>
           </div>
+          {submitError ? (
+            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300">
+              {submitError}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex gap-3 border-t border-gray-200 p-4 dark:border-gray-700">

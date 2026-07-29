@@ -68,6 +68,27 @@ test('repeat flow preserves per-row metric_type and metric_unit labels', () => {
   assert.equal(options[1].metricValueLabel, '30 мин');
 });
 
+test('repeat options mark archived custom exercises as disabled', () => {
+  const options = buildRepeatWorkoutOptions([
+    {
+      ...entries[0],
+      exercise_id: 'custom-archived',
+      exercise_name_snapshot: 'Подъем ног тест',
+      exercise: {
+        id: 'custom-archived',
+        name: 'Подъем ног тест',
+        category_id: 'custom-category',
+        is_custom: true,
+        archived_at: '2026-07-29T10:00:00Z',
+      },
+    },
+  ]);
+
+  assert.equal(options.length, 1);
+  assert.equal(options[0].exerciseId, 'custom-archived');
+  assert.match(options[0].disabledReason ?? '', /Архивное пользовательское упражнение: Подъем ног тест/);
+});
+
 test('repeat modal allows selecting target date via default date contract', () => {
   assert.equal(getDefaultRepeatTargetDate(new Date('2026-03-31T12:00:00.000Z')), '2026-03-31');
 });

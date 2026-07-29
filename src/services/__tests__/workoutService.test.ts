@@ -868,6 +868,17 @@ test('repeat copy does not silently replace existing target day entries with sam
   assert.ok(sameExerciseEntries.some((entry) => entry.id !== 'target-1' && entry.sets === 4 && entry.reps === 10 && entry.weight === 60));
 });
 
+test('repeat copy service does not copy user exercise media rows', () => {
+  const source = readFileSync(resolve(currentDir, '../workoutService.ts'), 'utf8');
+  const repeatStart = source.indexOf('async copyWorkoutEntriesToDate');
+  const repeatEnd = source.indexOf('\n  /**', repeatStart);
+  const repeatSource = source.slice(repeatStart, repeatEnd);
+
+  assert.notEqual(repeatStart, -1);
+  assert.doesNotMatch(repeatSource, /user_exercise_media/);
+  assert.doesNotMatch(repeatSource, /userExerciseMediaService/);
+});
+
 test('returns workout history day summaries for date range', () => {
   const summaries = buildWorkoutHistoryDaySummaries([
     {

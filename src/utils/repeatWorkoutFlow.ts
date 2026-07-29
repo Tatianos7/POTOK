@@ -9,21 +9,36 @@ export interface RepeatWorkoutOption {
   weight: number;
   metricType: WorkoutEntry['metricType'];
   metricValueLabel: string;
+  disabledReason?: string;
+}
+
+function getRepeatOptionDisabledReason(entry: WorkoutEntry): string | undefined {
+  if (entry.exercise?.is_custom === true && entry.exercise.archived_at) {
+    const exerciseName = entry.exercise.name?.trim() || entry.exercise_name_snapshot?.trim() || 'Архивное упражнение';
+    return `Архивное пользовательское упражнение: ${exerciseName}. Сначала восстановите упражнение.`;
+  }
+
+  return undefined;
 }
 
 export function buildRepeatWorkoutOptions(entries: WorkoutEntry[]): RepeatWorkoutOption[] {
-  const seen = new Set<string>();
-  return entries
-    .filter((entry) => {
-      if (!entry.exercise_id || seen.has(entry.exercise_id)) {
-        return false;
+  const options = new Map<string, RepeatWorkoutOption>();
+
+  entries.forEach((entry) => {
+    if (!entry.exercise_id) return;
+
+    const disabledReason = getRepeatOptionDisabledReason(entry);
+    const existing = options.get(entry.exercise_id);
+    if (existing) {
+      if (disabledReason && !existing.disabledReason) {
+        options.set(entry.exercise_id, { ...existing, disabledReason });
       }
-      seen.add(entry.exercise_id);
-      return true;
-    })
-    .map((entry) => ({
+      return;
+    }
+
+    options.set(entry.exercise_id, {
       exerciseId: entry.exercise_id,
-      exerciseName: entry.exercise?.name || 'Неизвестное упражнение',
+      exerciseName: entry.exercise?.name || entry.exercise_name_snapshot || 'Неизвестное упражнение',
       sets: entry.sets,
       reps: entry.reps,
       weight: entry.displayAmount ?? entry.weight,
@@ -33,7 +48,11 @@ export function buildRepeatWorkoutOptions(entries: WorkoutEntry[]): RepeatWorkou
         normalizeWorkoutMetricType(entry.metricType),
         entry.metricUnit ?? entry.displayUnit,
       ),
-    }));
+      disabledReason,
+    });
+  });
+
+  return Array.from(options.values());
 }
 
 export function getDefaultRepeatTargetDate(today = new Date()): string {
