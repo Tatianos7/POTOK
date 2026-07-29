@@ -213,10 +213,6 @@ const ProgressNutrition: FC = () => {
       ? Math.round(data.deficit.target_calories / periodDays)
       : null;
   const isLowCoverage = periodDays > 1 && coverageRatio < 0.8;
-  const recordsWarning =
-    periodDays > 1 && isLowCoverage
-      ? 'Данных пока мало: часть дней в периоде не заполнена.'
-      : null;
   const showAverageExplanation = periodDays > 1;
 
   const deficitState = useMemo(() => {
@@ -488,9 +484,6 @@ const ProgressNutrition: FC = () => {
               Среднее считается за весь выбранный период, включая дни без записей.
             </p>
           ) : null}
-          {recordsWarning ? (
-            <p className="mt-2 text-xs leading-5 text-amber-700">{recordsWarning}</p>
-          ) : null}
         </div>
       )}
 
@@ -611,9 +604,6 @@ const ProgressNutrition: FC = () => {
                     <div className="mt-2 text-lg font-semibold text-stone-900">{missingDays}</div>
                   </div>
                 </div>
-                {recordsWarning ? (
-                  <p className="mt-4 text-sm leading-6 text-amber-700">{recordsWarning}</p>
-                ) : null}
               </div>
               </>
               )}

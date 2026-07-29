@@ -53,3 +53,7 @@ test('nutrition progress empty state is compact and shares recommendation stylin
   assert.doesNotMatch(source, /bg-stone-900 text-white/);
   assert.doesNotMatch(source, /radial-gradient/);
 });
+
+test('nutrition progress summary does not duplicate low coverage warning copy', () => {
+  assert.doesNotMatch(source, /Данных пока мало: часть дней в периоде не заполнена/);
+});
