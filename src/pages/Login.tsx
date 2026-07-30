@@ -180,13 +180,13 @@ const Login = () => {
       setEmailCode('');
       return;
     }
-    if (isEmailOtpAwaiting(normalizedEmail)) {
+    if (isEmailOtpAwaiting(normalizedEmail) || emailResendIn > 0) {
       setEmailIsCodeStep(true);
       return;
     }
     setEmailIsCodeStep(false);
     setEmailCode('');
-  }, [normalizedEmail]);
+  }, [normalizedEmail, emailResendIn]);
 
   const handleSendEmailCode = async () => {
     setEmailError('');
@@ -200,11 +200,11 @@ const Login = () => {
       return;
     }
     if (emailResendIn > 0) {
+      setEmailIsCodeStep(true);
       if (emailIsCodeStep || isEmailOtpAwaiting(normalizedEmail)) {
-        setEmailIsCodeStep(true);
-        setEmailStatus(`Код уже отправлен. Повторно запросить код можно через ${formatCooldown(emailResendIn)}.`);
+        setEmailStatus(`Если код уже пришёл, введите его ниже. Повторно запросить код можно через ${formatCooldown(emailResendIn)}.`);
       } else {
-        setEmailStatus(`Повторить через ${formatCooldown(emailResendIn)}`);
+        setEmailStatus('Подождите немного и запросите код повторно.');
       }
       return;
     }
@@ -221,14 +221,11 @@ const Login = () => {
       if (requestId !== emailSendRequestIdRef.current) return;
       if (signError) {
         if (isRateLimitError(signError)) {
-          if (emailIsCodeStep || isEmailOtpAwaiting(normalizedEmail)) {
-            setEmailIsCodeStep(true);
-            setEmailStatus(
-              `Код уже отправлен. Повторно запросить код можно через ${formatCooldown(OTP_RATE_LIMIT_COOLDOWN_SEC)}.`,
-            );
-          } else {
-            setEmailError('Слишком много попыток. Подождите немного.');
-          }
+          setEmailIsCodeStep(true);
+          persistEmailOtpAwaiting(normalizedEmail);
+          setEmailStatus(
+            `Если код уже пришёл, введите его ниже. Повторно запросить код можно через ${formatCooldown(OTP_RATE_LIMIT_COOLDOWN_SEC)}.`,
+          );
           setEmailResendIn(OTP_RATE_LIMIT_COOLDOWN_SEC);
           setPhoneResendIn(OTP_RATE_LIMIT_COOLDOWN_SEC);
           persistCooldownUntil(OTP_RATE_LIMIT_COOLDOWN_SEC);
