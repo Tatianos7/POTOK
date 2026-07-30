@@ -173,7 +173,13 @@ const Register = () => {
             disabled={isLoading}
             className="btn-primary w-full min-[768px]:button-limited"
           >
-            {isLoading ? 'Отправка...' : form.otpCode ? 'Подтвердить' : 'Получить код'}
+            {isLoading
+              ? 'Отправка...'
+              : form.otpCode
+                ? 'Подтвердить'
+                : form.contact.includes('@')
+                  ? 'Получить ссылку'
+                  : 'Получить код'}
           </button>
 
           <div className="text-center text-sm text-gray-600">

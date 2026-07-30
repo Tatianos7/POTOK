@@ -11,6 +11,7 @@ import { getSessionCached, supabase } from '../lib/supabaseClient';
 import { activityService } from '../services/activityService';
 import { profileService, type UserProfile } from '../services/profileService';
 import { clearPinSessionUnlocked } from '../services/pinLockService';
+import { getAuthCallbackRedirectUrl } from '../utils/authRedirect';
 import { useTheme } from './ThemeContext';
 
 type AuthStatus = 'booting' | 'authenticated' | 'unauthenticated';
@@ -385,7 +386,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const { error } = await supabase.auth.signInWithOtp(
       isEmail
-        ? { email: identifier, options: { shouldCreateUser: false } }
+        ? {
+            email: identifier,
+            options: {
+              shouldCreateUser: false,
+              emailRedirectTo: getAuthCallbackRedirectUrl(),
+            },
+          }
         : { phone: identifier, options: { shouldCreateUser: false } }
     );
 
@@ -408,6 +415,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             email: contact,
             options: {
               shouldCreateUser: true,
+              emailRedirectTo: getAuthCallbackRedirectUrl(),
               data: {
                 first_name: credentials.firstName,
                 last_name: credentials.lastName,

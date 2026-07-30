@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
 import OtpCodeInput from '../components/OtpCodeInput';
 import { getPostLoginRoute } from '../services/pinLockService';
+import { getAuthCallbackRedirectUrl } from '../utils/authRedirect';
 
 type AuthTab = 'email' | 'phone';
 const OTP_DEFAULT_COOLDOWN_SEC = 60;
@@ -68,11 +69,9 @@ const Login = () => {
   const [tab, setTab] = useState<AuthTab>('email');
 
   const [email, setEmail] = useState('');
-  const [emailCode, setEmailCode] = useState('');
   const [emailStatus, setEmailStatus] = useState('');
   const [emailError, setEmailError] = useState('');
   const [emailIsSending, setEmailIsSending] = useState(false);
-  const [emailIsVerifying, setEmailIsVerifying] = useState(false);
   const [emailIsCodeStep, setEmailIsCodeStep] = useState(false);
   const [emailResendIn, setEmailResendIn] = useState(0);
 
@@ -87,7 +86,6 @@ const Login = () => {
   const [oauthError, setOauthError] = useState('');
   const [sessionNotice, setSessionNotice] = useState('');
   const emailSendRequestIdRef = useRef(0);
-  const emailVerifyRequestIdRef = useRef(0);
   const phoneSendRequestIdRef = useRef(0);
   const phoneVerifyRequestIdRef = useRef(0);
 
@@ -135,7 +133,6 @@ const Login = () => {
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
   const isEmailValid = normalizedEmail.includes('@');
-  const isEmailCodeValid = emailCode.length >= 1;
 
   const normalizedPhone = useMemo(() => phone.trim().replace(/\s+/g, ''), [phone]);
   const isPhoneValid = /^\+\d+$/.test(normalizedPhone);
@@ -183,7 +180,10 @@ const Login = () => {
     try {
       const { error: signError } = await supabase.auth.signInWithOtp({
         email: normalizedEmail,
-        options: { shouldCreateUser: true },
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: getAuthCallbackRedirectUrl(),
+        },
       });
       if (requestId !== emailSendRequestIdRef.current) return;
       if (signError) {
@@ -198,7 +198,7 @@ const Login = () => {
         return;
       }
       setEmailIsCodeStep(true);
-      setEmailStatus('Код отправлен на email.');
+      setEmailStatus('Ссылка для входа отправлена на email. Откройте письмо и перейдите по ссылке.');
       setEmailResendIn(OTP_DEFAULT_COOLDOWN_SEC);
       setPhoneResendIn(OTP_DEFAULT_COOLDOWN_SEC);
       persistCooldownUntil(OTP_DEFAULT_COOLDOWN_SEC);
@@ -208,62 +208,6 @@ const Login = () => {
     } finally {
       if (requestId === emailSendRequestIdRef.current) {
         setEmailIsSending(false);
-      }
-    }
-  };
-
-  const handleVerifyEmailCode = async () => {
-    if (emailIsVerifying) return;
-    setEmailError('');
-    setEmailStatus('');
-    if (!isEmailValid) {
-      setEmailError('Введите корректный email.');
-      return;
-    }
-    if (!isEmailCodeValid) {
-      setEmailError('Введите код из письма.');
-      return;
-    }
-    if (!supabase) {
-      setEmailError('Сервис авторизации временно недоступен.');
-      return;
-    }
-    const requestId = ++emailVerifyRequestIdRef.current;
-    setEmailIsVerifying(true);
-    try {
-      const { error: verifyError } = await supabase.auth.verifyOtp({
-        email: normalizedEmail,
-        token: emailCode,
-        type: 'email',
-      });
-      if (requestId !== emailVerifyRequestIdRef.current) return;
-      if (verifyError) {
-        if (isSessionExpiredError(verifyError)) {
-          await supabase.auth.signOut();
-          navigate('/auth?reason=session-expired', { replace: true });
-          return;
-        }
-        setEmailError(mapOtpError(verifyError.message || ''));
-        return;
-      }
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      if (requestId !== emailVerifyRequestIdRef.current) return;
-      if (sessionError || !sessionData?.session) {
-        if (isSessionExpiredError(sessionError)) {
-          await supabase.auth.signOut();
-          navigate('/auth?reason=session-expired', { replace: true });
-          return;
-        }
-        setEmailError('Не удалось завершить вход. Повторите попытку.');
-        return;
-      }
-      navigate(getPostLoginRoute(), { replace: true });
-    } catch {
-      if (requestId !== emailVerifyRequestIdRef.current) return;
-      setEmailError('Не удалось выполнить вход. Попробуйте снова.');
-    } finally {
-      if (requestId === emailVerifyRequestIdRef.current) {
-        setEmailIsVerifying(false);
       }
     }
   };
@@ -380,9 +324,7 @@ const Login = () => {
       return;
     }
 
-    const baseUrl = import.meta.env.BASE_URL || '/';
-    const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-    const redirectTo = new URL(`${normalizedBase}auth/callback`, window.location.origin).toString();
+    const redirectTo = getAuthCallbackRedirectUrl();
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -535,19 +477,9 @@ const Login = () => {
                 </div>
 
                 {emailIsCodeStep && (
-                  <OtpCodeInput
-                    id="otpCodeEmail"
-                    value={emailCode}
-                    onChange={(value) => {
-                      setEmailCode(value);
-                      if (emailError) setEmailError('');
-                    }}
-                    disabled={emailIsVerifying}
-                    label="Код из письма"
-                    placeholder="Введите код"
-                    minLength={1}
-                    maxLength={12}
-                  />
+                  <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800">
+                    Проверьте письмо и откройте ссылку для входа. После подтверждения вы вернётесь в ПОТОК автоматически.
+                  </div>
                 )}
 
                 {!emailIsCodeStep ? (
@@ -557,25 +489,17 @@ const Login = () => {
                     disabled={emailIsSending || emailResendIn > 0}
                     className="w-full min-[768px]:button-limited bg-black text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {emailIsSending ? 'Отправка...' : emailResendIn > 0 ? `Повтор через ${formatCooldown(emailResendIn)}` : 'Получить код'}
+                    {emailIsSending ? 'Отправка...' : emailResendIn > 0 ? `Повтор через ${formatCooldown(emailResendIn)}` : 'Получить ссылку'}
                   </button>
                 ) : (
                   <div className="space-y-3">
-                    <button
-                      type="button"
-                      onClick={handleVerifyEmailCode}
-                      disabled={emailIsVerifying || !isEmailCodeValid}
-                      className="w-full min-[768px]:button-limited bg-black text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-800 active:bg-gray-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {emailIsVerifying ? 'Вход...' : 'Войти'}
-                    </button>
                     <button
                       type="button"
                       onClick={handleSendEmailCode}
                       disabled={emailResendIn > 0 || emailIsSending}
                       className="w-full border border-gray-300 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {emailResendIn > 0 ? `Получить код повторно через ${formatCooldown(emailResendIn)}` : 'Получить код повторно'}
+                      {emailResendIn > 0 ? `Отправить ссылку повторно через ${formatCooldown(emailResendIn)}` : 'Отправить ссылку повторно'}
                     </button>
                   </div>
                 )}
