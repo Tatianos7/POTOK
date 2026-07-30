@@ -501,74 +501,35 @@ const ProgressWorkouts: FC = () => {
           ))}
         </div>
 
-        <section className="space-y-3">
-          <div className="rounded-xl border border-gray-200 bg-white p-6">
-            <div className="mb-4 text-sm font-medium text-stone-900">Результат за период</div>
-            <div className="divide-y divide-stone-100 border-y border-stone-100">
-              <div className="flex items-start justify-between gap-4 py-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-stone-700">Тренировок</div>
-                  <div className="mt-0.5 text-xs text-stone-400">за выбранный период</div>
-                </div>
-                <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
-                  {isSummaryLoading ? '...' : workoutResult.totalWorkouts}
-                </div>
+        <section className="rounded-xl border border-gray-200 bg-white p-6">
+          <div className="mb-4 text-sm font-medium text-stone-900">Результат за период</div>
+          <div className="divide-y divide-stone-100 border-y border-stone-100">
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Тренировок</div>
+                <div className="mt-0.5 text-xs text-stone-400">за выбранный период</div>
               </div>
-              <div className="flex items-start justify-between gap-4 py-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-stone-700">Средняя частота</div>
-                  <div className="mt-0.5 text-xs text-stone-400">в пересчёте на неделю</div>
-                </div>
-                <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
-                  {isSummaryLoading ? '...' : workoutResult.averageFrequency}
-                </div>
-              </div>
-              <div className="flex items-start justify-between gap-4 py-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium text-stone-700">Последняя тренировка</div>
-                  <div className="mt-0.5 text-xs text-stone-400">относительно периода</div>
-                </div>
-                <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
-                  {isSummaryLoading ? '...' : workoutResult.lastWorkout}
-                </div>
+              <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
+                {isSummaryLoading ? '...' : workoutResult.totalWorkouts}
               </div>
             </div>
-          </div>
-
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
-              Тренируемые мышцы
-            </div>
-            {isSummaryLoading ? (
-              <div className="mt-3 text-sm text-gray-500">Обновляем мышечную карту...</div>
-            ) : (summary?.totalWorkouts ?? 0) > 0 &&
-              (loadedMuscles.primaryMuscles.length > 0 || loadedMuscles.secondaryMuscles.length > 0) ? (
-              <div className="mt-3 space-y-3">
-                <MuscleMap
-                  primaryMuscles={loadedMuscles.primaryMuscles}
-                  secondaryMuscles={loadedMuscles.secondaryMuscles}
-                  size="compact"
-                />
-                <div className="text-xs text-gray-500">
-                  Мышцы которые получили нагрузку за период.
-                </div>
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Средняя частота</div>
+                <div className="mt-0.5 text-xs text-stone-400">в пересчёте на неделю</div>
               </div>
-            ) : (
-              <div className="mt-3 text-sm text-gray-500">
-                За выбранный период пока нет данных, чтобы показать тренируемые мышечные группы.
+              <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
+                {isSummaryLoading ? '...' : workoutResult.averageFrequency}
               </div>
-            )}
-          </div>
-        </section>
-
-        <section className={`rounded-xl border border-gray-200 border-l-4 bg-white p-4 ${recommendationStyle.accent}`}>
-          <div className="flex items-start gap-2.5">
-            <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${recommendationStyle.icon}`}>
-              <Target className="h-4 w-4" />
             </div>
-            <div className="min-w-0">
-              <div className="text-sm font-medium leading-5 text-stone-900">{workoutRecommendation.title}</div>
-              <p className="mt-0.5 text-sm leading-5 text-stone-600">{workoutRecommendation.body}</p>
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-stone-700">Последняя тренировка</div>
+                <div className="mt-0.5 text-xs text-stone-400">относительно периода</div>
+              </div>
+              <div className="max-w-[58%] break-words text-right text-sm font-semibold leading-5 text-stone-900">
+                {isSummaryLoading ? '...' : workoutResult.lastWorkout}
+              </div>
             </div>
           </div>
         </section>
@@ -619,6 +580,43 @@ const ProgressWorkouts: FC = () => {
               )}
             </div>
           ) : null}
+        </section>
+
+        <section className="rounded-xl border border-gray-200 bg-white px-4 py-4">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+            Тренируемые мышцы
+          </div>
+          {isSummaryLoading ? (
+            <div className="mt-3 text-sm text-gray-500">Обновляем мышечную карту...</div>
+          ) : (summary?.totalWorkouts ?? 0) > 0 &&
+            (loadedMuscles.primaryMuscles.length > 0 || loadedMuscles.secondaryMuscles.length > 0) ? (
+            <div className="mt-3 space-y-3">
+              <MuscleMap
+                primaryMuscles={loadedMuscles.primaryMuscles}
+                secondaryMuscles={loadedMuscles.secondaryMuscles}
+                size="compact"
+              />
+              <div className="text-xs text-gray-500">
+                Мышцы которые получили нагрузку за период.
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 text-sm text-gray-500">
+              За выбранный период пока нет данных, чтобы показать тренируемые мышечные группы.
+            </div>
+          )}
+        </section>
+
+        <section className={`rounded-xl border border-gray-200 border-l-4 bg-white p-4 ${recommendationStyle.accent}`}>
+          <div className="flex items-start gap-2.5">
+            <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${recommendationStyle.icon}`}>
+              <Target className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium leading-5 text-stone-900">{workoutRecommendation.title}</div>
+              <p className="mt-0.5 text-sm leading-5 text-stone-600">{workoutRecommendation.body}</p>
+            </div>
+          </div>
         </section>
       </main>
     </ScreenContainer>

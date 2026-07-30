@@ -100,6 +100,19 @@ test('workout progress UI uses one recommendation block instead of split insight
   assert.doesNotMatch(source, /Что стоит поправить/);
 });
 
+test('workout progress UI keeps exercise progress directly after period result', () => {
+  const mainSource = source.slice(source.indexOf('<main className='));
+  const periodResultIndex = mainSource.indexOf('Результат за период');
+  const exerciseProgressIndex = mainSource.indexOf('Прогресс по упражнениям');
+  const muscleMapIndex = mainSource.indexOf('Тренируемые мышцы');
+  const recommendationIndex = mainSource.indexOf('{workoutRecommendation.title}');
+
+  assert.ok(periodResultIndex >= 0);
+  assert.ok(exerciseProgressIndex > periodResultIndex);
+  assert.ok(muscleMapIndex > exerciseProgressIndex);
+  assert.ok(recommendationIndex > muscleMapIndex);
+});
+
 test('workout progress recommendation colors use green for good and amber for warnings', () => {
   assert.match(source, /accent: 'border-l-emerald-200'/);
   assert.match(source, /icon: 'bg-emerald-500\/10 text-emerald-700'/);
