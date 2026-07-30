@@ -11,6 +11,7 @@ type AuthTab = 'email' | 'phone';
 const OTP_DEFAULT_COOLDOWN_SEC = 60;
 const OTP_RATE_LIMIT_COOLDOWN_SEC = 90;
 const OTP_COOLDOWN_UNTIL_KEY = 'otp_cooldown_until_v1';
+const EMAIL_OTP_AWAITING_KEY = 'email_otp_awaiting_v1';
 
 const formatCooldown = (seconds: number): string => {
   const safe = Math.max(0, seconds);
@@ -41,8 +42,9 @@ const mapOtpError = (message: string): string => {
   ) {
     return 'SMS временно недоступны.';
   }
-  if (value.includes('expired')) return 'Код просрочен. Запросите новый код.';
-  if (value.includes('invalid')) return 'Неверный код. Проверьте и попробуйте снова.';
+  if (value.includes('expired') || value.includes('invalid')) {
+    return 'Код неверный или истёк. Запросите новый код.';
+  }
   if (value.includes('too many') || value.includes('rate limit') || value.includes('over_')) {
     return 'Слишком много попыток. Подождите немного и повторите.';
   }
@@ -95,6 +97,14 @@ const Login = () => {
   const persistCooldownUntil = (seconds: number) => {
     const untilTs = Date.now() + seconds * 1000;
     sessionStorage.setItem(OTP_COOLDOWN_UNTIL_KEY, String(untilTs));
+  };
+
+  const persistEmailOtpAwaiting = (value: string) => {
+    sessionStorage.setItem(EMAIL_OTP_AWAITING_KEY, value);
+  };
+
+  const isEmailOtpAwaiting = (value: string): boolean => {
+    return sessionStorage.getItem(EMAIL_OTP_AWAITING_KEY) === value;
   };
 
   useEffect(() => {
@@ -164,6 +174,20 @@ const Login = () => {
     }
   }, [emailResendIn, phoneResendIn]);
 
+  useEffect(() => {
+    if (!normalizedEmail) {
+      setEmailIsCodeStep(false);
+      setEmailCode('');
+      return;
+    }
+    if (isEmailOtpAwaiting(normalizedEmail)) {
+      setEmailIsCodeStep(true);
+      return;
+    }
+    setEmailIsCodeStep(false);
+    setEmailCode('');
+  }, [normalizedEmail]);
+
   const handleSendEmailCode = async () => {
     setEmailError('');
     setEmailStatus('');
@@ -176,7 +200,12 @@ const Login = () => {
       return;
     }
     if (emailResendIn > 0) {
-      setEmailStatus(`Повторить через ${formatCooldown(emailResendIn)}`);
+      if (emailIsCodeStep || isEmailOtpAwaiting(normalizedEmail)) {
+        setEmailIsCodeStep(true);
+        setEmailStatus(`Код уже отправлен. Повторно запросить код можно через ${formatCooldown(emailResendIn)}.`);
+      } else {
+        setEmailStatus(`Повторить через ${formatCooldown(emailResendIn)}`);
+      }
       return;
     }
     const requestId = ++emailSendRequestIdRef.current;
@@ -192,7 +221,14 @@ const Login = () => {
       if (requestId !== emailSendRequestIdRef.current) return;
       if (signError) {
         if (isRateLimitError(signError)) {
-          setEmailError('Слишком много попыток. Подождите немного.');
+          if (emailIsCodeStep || isEmailOtpAwaiting(normalizedEmail)) {
+            setEmailIsCodeStep(true);
+            setEmailStatus(
+              `Код уже отправлен. Повторно запросить код можно через ${formatCooldown(OTP_RATE_LIMIT_COOLDOWN_SEC)}.`,
+            );
+          } else {
+            setEmailError('Слишком много попыток. Подождите немного.');
+          }
           setEmailResendIn(OTP_RATE_LIMIT_COOLDOWN_SEC);
           setPhoneResendIn(OTP_RATE_LIMIT_COOLDOWN_SEC);
           persistCooldownUntil(OTP_RATE_LIMIT_COOLDOWN_SEC);
@@ -201,6 +237,7 @@ const Login = () => {
         setEmailError(mapOtpError(signError.message || ''));
         return;
       }
+      persistEmailOtpAwaiting(normalizedEmail);
       setEmailIsCodeStep(true);
       setEmailStatus('Мы отправили код на email. Введите код из письма.');
       setEmailResendIn(OTP_DEFAULT_COOLDOWN_SEC);
@@ -261,6 +298,7 @@ const Login = () => {
         setEmailError('Не удалось завершить вход. Повторите попытку.');
         return;
       }
+      sessionStorage.removeItem(EMAIL_OTP_AWAITING_KEY);
       navigate(getPostLoginRoute(), { replace: true });
     } catch {
       if (requestId !== emailVerifyRequestIdRef.current) return;

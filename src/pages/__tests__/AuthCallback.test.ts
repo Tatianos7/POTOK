@@ -88,3 +88,14 @@ test('email auth uses OTP code UI while keeping redirect fallback configured', (
   assert.match(registerSource, /\? 'Код из письма' : 'Код из SMS'/);
   assert.match(registerSource, /Получить код/);
 });
+
+test('email OTP resend rate limit keeps code entry available', () => {
+  assert.match(loginSource, /EMAIL_OTP_AWAITING_KEY/);
+  assert.match(loginSource, /persistEmailOtpAwaiting\(normalizedEmail\);/);
+  assert.match(loginSource, /if \(emailIsCodeStep \|\| isEmailOtpAwaiting\(normalizedEmail\)\) \{/);
+  assert.match(loginSource, /setEmailIsCodeStep\(true\);/);
+  assert.match(loginSource, /Код уже отправлен\. Повторно запросить код можно через/);
+  assert.match(loginSource, /disabled=\{emailIsVerifying \|\| !isEmailCodeValid\}/);
+  assert.match(loginSource, /disabled=\{emailResendIn > 0 \|\| emailIsSending\}/);
+  assert.match(loginSource, /Код неверный или истёк\. Запросите новый код\./);
+});
