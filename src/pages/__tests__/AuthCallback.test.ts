@@ -74,12 +74,17 @@ test('auth callback reports failed code exchange', async () => {
   );
 });
 
-test('email auth uses magic link redirect instead of visible email code flow', () => {
+test('email auth uses OTP code UI while keeping redirect fallback configured', () => {
   assert.match(loginSource, /emailRedirectTo: getAuthCallbackRedirectUrl\(\)/);
   assert.match(authContextSource, /emailRedirectTo: getAuthCallbackRedirectUrl\(\)/);
-  assert.match(loginSource, /Ссылка для входа отправлена на email/);
-  assert.match(loginSource, /Проверьте письмо и откройте ссылку для входа/);
-  assert.match(loginSource, /Получить ссылку/);
-  assert.doesNotMatch(loginSource, /Код из письма/);
-  assert.match(registerSource, /Получить ссылку/);
+  assert.match(loginSource, /Мы отправили код на email\. Введите код из письма\./);
+  assert.match(loginSource, /id="otpCodeEmail"/);
+  assert.match(loginSource, /label="Код из письма"/);
+  assert.match(loginSource, /onClick=\{handleVerifyEmailCode\}/);
+  assert.match(loginSource, /email: normalizedEmail,\s+token: emailCode,\s+type: 'email'/);
+  assert.match(loginSource, /Получить код повторно через/);
+  assert.doesNotMatch(loginSource, /откройте ссылку для входа/);
+  assert.match(registerSource, /Мы отправили код на email\. Введите код из письма\./);
+  assert.match(registerSource, /\? 'Код из письма' : 'Код из SMS'/);
+  assert.match(registerSource, /Получить код/);
 });

@@ -57,7 +57,7 @@ const Register = () => {
           contact: contactValue,
         });
         if (isEmail) {
-          setStatus('Ссылка для подтверждения отправлена на email. Проверьте почту.');
+          setStatus('Мы отправили код на email. Введите код из письма.');
         } else {
           setStatus('Код подтверждения отправлен по SMS.');
         }
@@ -151,10 +151,10 @@ const Register = () => {
             />
           </div>
 
-          {!form.contact.includes('@') && form.contact.trim().length > 0 && (
+          {form.contact.trim().length > 0 && (
             <div>
               <label htmlFor="otpCode" className="block text-sm font-medium text-gray-700 mb-1">
-                Код из SMS
+                {form.contact.includes('@') ? 'Код из письма' : 'Код из SMS'}
               </label>
               <input
                 id="otpCode"
@@ -173,13 +173,7 @@ const Register = () => {
             disabled={isLoading}
             className="btn-primary w-full min-[768px]:button-limited"
           >
-            {isLoading
-              ? 'Отправка...'
-              : form.otpCode
-                ? 'Подтвердить'
-                : form.contact.includes('@')
-                  ? 'Получить ссылку'
-                  : 'Получить код'}
+            {isLoading ? 'Отправка...' : form.otpCode ? 'Подтвердить' : 'Получить код'}
           </button>
 
           <div className="text-center text-sm text-gray-600">
