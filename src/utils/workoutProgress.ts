@@ -4,7 +4,7 @@ import type {
   WorkoutProgressObservation,
   WorkoutProgressRow,
 } from '../types/workout';
-import { formatWorkoutMetricValue, normalizeWorkoutMetricType } from './workoutEntryMetric';
+import { formatWorkoutMetricValue, getWorkoutMetricComparableValue, normalizeWorkoutMetricType } from './workoutEntryMetric';
 
 export interface WorkoutProgressGroup {
   exerciseGroupKey: string;
@@ -24,16 +24,11 @@ function compareObservations(a: WorkoutProgressObservation, b: WorkoutProgressOb
 }
 
 function getBestComparableValue(
-  item: Pick<WorkoutProgressObservation, 'displayAmount' | 'weight' | 'metricType'>,
+  item: Pick<WorkoutProgressObservation, 'displayAmount' | 'weight' | 'metricType' | 'metricUnit'>,
 ): number {
   const metricType = normalizeWorkoutMetricType(item.metricType);
   const value = Number(item.displayAmount ?? item.weight) || 0;
-
-  if (metricType === 'none') {
-    return 0;
-  }
-
-  return value;
+  return getWorkoutMetricComparableValue(metricType, value, item.metricUnit);
 }
 
 function isSameMetricFamily(left: WorkoutMetricType, right: WorkoutMetricType): boolean {

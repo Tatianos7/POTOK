@@ -150,6 +150,94 @@ test('time and distance same-day progress rows choose max metric value', () => {
   assert.equal(rows.find((row) => row.exerciseGroupKey === 'walk')?.latestMetricLabel, '3 км');
 });
 
+test('same-day distance comparison uses base meters instead of raw display amount', () => {
+  const rows = buildWorkoutProgressList([
+    createObservation('walk', '2026-03-20', { sets: 1, reps: 1, weight: 500 }, {
+      metricType: 'distance',
+      metricUnit: 'м',
+      displayAmount: 500,
+      entryId: 'distance-500m',
+      createdAt: '2026-03-20T09:00:00.000Z',
+    }),
+    createObservation('walk', '2026-03-20', { sets: 1, reps: 1, weight: 1 }, {
+      metricType: 'distance',
+      metricUnit: 'км',
+      displayAmount: 1,
+      entryId: 'distance-1km',
+      createdAt: '2026-03-20T08:00:00.000Z',
+    }),
+  ]);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].latestMetricLabel, '1 км');
+});
+
+test('same-day equal distance base values choose latest observation and keep display unit', () => {
+  const rows = buildWorkoutProgressList([
+    createObservation('walk', '2026-03-20', { sets: 1, reps: 1, weight: 1 }, {
+      metricType: 'distance',
+      metricUnit: 'км',
+      displayAmount: 1,
+      entryId: 'distance-1km',
+      createdAt: '2026-03-20T08:00:00.000Z',
+    }),
+    createObservation('walk', '2026-03-20', { sets: 1, reps: 1, weight: 1000 }, {
+      metricType: 'distance',
+      metricUnit: 'м',
+      displayAmount: 1000,
+      entryId: 'distance-1000m',
+      createdAt: '2026-03-20T09:00:00.000Z',
+    }),
+  ]);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].latestMetricLabel, '1000 м');
+});
+
+test('same-day time comparison uses base seconds instead of raw display amount', () => {
+  const rows = buildWorkoutProgressList([
+    createObservation('plank', '2026-03-20', { sets: 1, reps: 1, weight: 90 }, {
+      metricType: 'time',
+      metricUnit: 'сек',
+      displayAmount: 90,
+      entryId: 'time-90s',
+      createdAt: '2026-03-20T09:00:00.000Z',
+    }),
+    createObservation('plank', '2026-03-20', { sets: 1, reps: 1, weight: 2 }, {
+      metricType: 'time',
+      metricUnit: 'мин',
+      displayAmount: 2,
+      entryId: 'time-2m',
+      createdAt: '2026-03-20T08:00:00.000Z',
+    }),
+  ]);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].latestMetricLabel, '2 мин');
+});
+
+test('same-day equal time base values choose latest observation and keep display unit', () => {
+  const rows = buildWorkoutProgressList([
+    createObservation('plank', '2026-03-20', { sets: 1, reps: 1, weight: 2 }, {
+      metricType: 'time',
+      metricUnit: 'мин',
+      displayAmount: 2,
+      entryId: 'time-2m',
+      createdAt: '2026-03-20T08:00:00.000Z',
+    }),
+    createObservation('plank', '2026-03-20', { sets: 1, reps: 1, weight: 120 }, {
+      metricType: 'time',
+      metricUnit: 'сек',
+      displayAmount: 120,
+      entryId: 'time-120s',
+      createdAt: '2026-03-20T09:00:00.000Z',
+    }),
+  ]);
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].latestMetricLabel, '120 сек');
+});
+
 test('latest sets reps and weight are chosen correctly', () => {
   const rows = buildWorkoutProgressList([
     createObservation('bench', '2026-03-20', { sets: 3, reps: 10, weight: 70 }),

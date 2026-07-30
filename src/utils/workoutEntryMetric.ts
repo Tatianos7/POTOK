@@ -77,6 +77,30 @@ export function normalizeWorkoutMetricValue(metricType: WorkoutMetricType, value
   return Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
+export function getWorkoutMetricComparableValue(
+  metricType: WorkoutMetricType,
+  value: number,
+  metricUnit?: unknown,
+): number {
+  const safeMetricType = normalizeWorkoutMetricType(metricType);
+  const safeValue = normalizeWorkoutMetricValue(safeMetricType, Number(value) || 0);
+  const safeUnit = normalizeWorkoutMetricUnit(safeMetricType, metricUnit);
+
+  if (safeMetricType === 'none') {
+    return 0;
+  }
+
+  if (safeMetricType === 'distance') {
+    return safeUnit === 'км' ? safeValue * 1000 : safeValue;
+  }
+
+  if (safeMetricType === 'time') {
+    return safeUnit === 'мин' ? safeValue * 60 : safeValue;
+  }
+
+  return safeValue;
+}
+
 export function formatWorkoutMetricValue(
   value: number,
   metricType: WorkoutMetricType,

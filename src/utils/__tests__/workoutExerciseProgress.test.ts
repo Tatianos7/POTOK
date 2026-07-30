@@ -95,7 +95,7 @@ test('progress exercise screen chooses latest row when best value is tied', () =
   assert.equal(rows[0].reps, 10);
 });
 
-test('progress exercise screen aggregates time and distance by max display amount', () => {
+test('progress exercise screen aggregates time and distance by max comparable value', () => {
   const timeRows = buildWorkoutExerciseProgressMetricRows(
     [
       createEntry('time-1', '2026-04-12', { metricType: 'time', metricUnit: 'мин', displayUnit: 'мин', displayAmount: 20, weight: 20, created_at: '2026-04-12T09:00:00.000Z' }),
@@ -115,6 +115,62 @@ test('progress exercise screen aggregates time and distance by max display amoun
   assert.equal(timeRows[0].metricValueLabel, '35 мин');
   assert.equal(distanceRows.length, 1);
   assert.equal(distanceRows[0].metricValueLabel, '3 км');
+});
+
+test('progress exercise detail compares same-day distance by base meters and keeps chosen display label', () => {
+  const rows = buildWorkoutExerciseProgressMetricRows(
+    [
+      createEntry('distance-500m', '2026-04-12', {
+        metricType: 'distance',
+        metricUnit: 'м',
+        displayUnit: 'м',
+        displayAmount: 500,
+        weight: 500,
+        created_at: '2026-04-12T09:00:00.000Z',
+      }),
+      createEntry('distance-1km', '2026-04-12', {
+        metricType: 'distance',
+        metricUnit: 'км',
+        displayUnit: 'км',
+        displayAmount: 1,
+        weight: 1,
+        created_at: '2026-04-12T08:00:00.000Z',
+      }),
+    ],
+    'canonical-1',
+  );
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].entryId, 'distance-1km');
+  assert.equal(rows[0].metricValueLabel, '1 км');
+});
+
+test('progress exercise detail compares same-day time by base seconds and keeps chosen display label', () => {
+  const rows = buildWorkoutExerciseProgressMetricRows(
+    [
+      createEntry('time-90s', '2026-04-12', {
+        metricType: 'time',
+        metricUnit: 'сек',
+        displayUnit: 'сек',
+        displayAmount: 90,
+        weight: 90,
+        created_at: '2026-04-12T09:00:00.000Z',
+      }),
+      createEntry('time-2m', '2026-04-12', {
+        metricType: 'time',
+        metricUnit: 'мин',
+        displayUnit: 'мин',
+        displayAmount: 2,
+        weight: 2,
+        created_at: '2026-04-12T08:00:00.000Z',
+      }),
+    ],
+    'canonical-1',
+  );
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].entryId, 'time-2m');
+  assert.equal(rows[0].metricValueLabel, '2 мин');
 });
 
 test('progress exercise screen rows still build in legacy metric schema mode', () => {
