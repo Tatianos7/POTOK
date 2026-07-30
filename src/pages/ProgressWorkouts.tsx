@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FC } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, Target, X } from 'lucide-react';
 import MuscleMap from '../components/muscle-map/MuscleMap';
 import { useAuth } from '../context/AuthContext';
 import WorkoutProgressList from '../components/WorkoutProgressList';
@@ -34,9 +34,12 @@ const PERIOD_OPTIONS: Array<{ key: WorkoutProgressQuickPeriod; label: string }> 
   { key: 'year', label: 'Год' },
 ];
 
-type WorkoutInsight = {
+export type WorkoutProgressRecommendationTone = 'good' | 'warning';
+
+export type WorkoutProgressRecommendation = {
+  tone: WorkoutProgressRecommendationTone;
   title: string;
-  description?: string;
+  body: string;
 };
 
 type WorkoutPeriodResult = {
@@ -101,6 +104,23 @@ function formatDaysAgo(days: number): string {
   }
 
   return `${absDays} дней назад`;
+}
+
+function formatMuscleLabels(labels: string[]): string {
+  return labels.slice(0, 2).join(', ');
+}
+
+function getWorkoutRecommendationMinimumWorkouts(period: WorkoutProgressQuickPeriod): number {
+  if (period === 'week') return 3;
+  if (period === 'month') return 8;
+  if (period === 'year') return 48;
+  return 1;
+}
+
+function getWorkoutRecommendationLongGapThreshold(period: WorkoutProgressQuickPeriod): number {
+  if (period === 'week') return 3;
+  if (period === 'year') return 30;
+  return 10;
 }
 
 function formatLastWorkoutLabel(lastDate: string | null, anchorDate: string): string {
@@ -181,6 +201,104 @@ export function getProgressMuscleMapMuscles(
   return { primaryMuscles, secondaryMuscles };
 }
 
+export function buildWorkoutProgressRecommendation({
+  isExerciseProgressLoadedForPeriod,
+  loadedMuscles,
+  period,
+  rows,
+  summary,
+  workoutResult,
+}: {
+  isExerciseProgressLoadedForPeriod: boolean;
+  loadedMuscles: { primaryMuscles: string[]; secondaryMuscles: string[] };
+  period: WorkoutProgressQuickPeriod;
+  rows: WorkoutProgressRow[];
+  summary: WorkoutProgressSummary | null;
+  workoutResult: WorkoutPeriodResult;
+}): WorkoutProgressRecommendation {
+  const totalWorkouts = workoutResult.totalWorkouts;
+  const minimumWorkouts = getWorkoutRecommendationMinimumWorkouts(period);
+  const loadedMuscleCount = new Set([
+    ...loadedMuscles.primaryMuscles,
+    ...loadedMuscles.secondaryMuscles,
+  ]).size;
+  const hasLoadData = rows.some((row) => row.latestSets > 0 || row.latestReps > 0 || row.latestWeight > 0);
+  const hasExerciseProgress = rows.some((row) =>
+    row.setsTrend === 'up' || row.repsTrend === 'up' || row.weightTrend === 'up'
+  );
+  const longGapThreshold = getWorkoutRecommendationLongGapThreshold(period);
+  const hasLongGap = workoutResult.longestGapDays !== null && workoutResult.longestGapDays >= longGapThreshold;
+  const undertrainedLabels = (summary?.undertrainedMuscles ?? [])
+    .filter((muscle) => {
+      const coverage = summary?.muscleCoverage.find((item) => item.muscleKey === muscle.muscleKey);
+      return (coverage?.score ?? 0) > 0;
+    })
+    .map((muscle) => muscle.label)
+    .filter((label): label is string => Boolean(label?.trim()));
+
+  if (totalWorkouts === 0) {
+    return {
+      tone: 'warning',
+      title: 'Что сделать дальше',
+      body: 'За выбранный период пока нет тренировок. Добавьте 1-2 тренировки, чтобы увидеть динамику и нагрузку по мышцам.',
+    };
+  }
+
+  if (period !== 'day' && totalWorkouts < minimumWorkouts) {
+    return {
+      tone: 'warning',
+      title: 'Что сделать дальше',
+      body: 'Тренировок пока мало для точной оценки. Продолжайте вести дневник - после нескольких тренировок Progress станет полезнее.',
+    };
+  }
+
+  if (hasLongGap) {
+    return {
+      tone: 'warning',
+      title: 'Что сделать дальше',
+      body: 'Был длинный перерыв. Начните с короткой тренировки и верните регулярность.',
+    };
+  }
+
+  if (isExerciseProgressLoadedForPeriod && !hasLoadData) {
+    return {
+      tone: 'warning',
+      title: 'Что сделать дальше',
+      body: 'Данных по нагрузке мало. Заполняйте вес, время или дистанцию, чтобы видеть прогресс.',
+    };
+  }
+
+  if (loadedMuscleCount > 0 && loadedMuscleCount < 3) {
+    return {
+      tone: 'warning',
+      title: 'Что сделать дальше',
+      body: 'Нагрузка распределена неравномерно. Добавьте упражнения на группы, которые сейчас отстают.',
+    };
+  }
+
+  if (undertrainedLabels.length > 0) {
+    return {
+      tone: 'warning',
+      title: 'Что сделать дальше',
+      body: `Нагрузка распределена неравномерно. Добавьте нагрузку на ${formatMuscleLabels(undertrainedLabels)}.`,
+    };
+  }
+
+  if (isExerciseProgressLoadedForPeriod && rows.length > 0 && hasLoadData && !hasExerciseProgress) {
+    return {
+      tone: 'warning',
+      title: 'Что сделать дальше',
+      body: 'Пока нет явного роста по упражнениям. Попробуйте постепенно добавить вес, повторы, время или дистанцию.',
+    };
+  }
+
+  return {
+    tone: 'good',
+    title: 'Что сделать дальше',
+    body: 'Вы двигаетесь хорошо: тренировки идут регулярно, а нагрузка покрывает несколько групп мышц. Продолжайте в том же темпе.',
+  };
+}
+
 const ProgressWorkouts: FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -219,60 +337,23 @@ const ProgressWorkouts: FC = () => {
     () => cacheCoversWorkoutProgressPeriod(progressObservationsCache, user?.id ?? '', period.to),
     [period.to, user?.id, observations],
   );
-  const workoutInsights = useMemo(() => {
-    const helps: WorkoutInsight[] = [];
-    const improvements: WorkoutInsight[] = [];
-    const totalWorkouts = workoutResult.totalWorkouts;
-    const loadedMuscleCount = new Set([
-      ...loadedMuscles.primaryMuscles,
-      ...loadedMuscles.secondaryMuscles,
-    ]).size;
-    const hasLoadData = rows.some((row) => row.latestSets > 0 || row.latestReps > 0 || row.latestWeight > 0);
-    const longGapThreshold = selectedPeriod === 'week' ? 3 : 10;
-    const hasLongGap = workoutResult.longestGapDays !== null && workoutResult.longestGapDays >= longGapThreshold;
-
-    if (selectedPeriod === 'week' && totalWorkouts >= 3) {
-      helps.push({ title: 'Вы тренируетесь регулярно.' });
-    }
-
-    if (selectedPeriod === 'month' && totalWorkouts >= 8) {
-      helps.push({ title: 'За период набрана хорошая регулярность.' });
-    }
-
-    if (selectedPeriod === 'year' && totalWorkouts >= 48) {
-      helps.push({ title: 'За год видна стабильная тренировочная привычка.' });
-    }
-
-    if (loadedMuscleCount >= 3) {
-      helps.push({ title: 'Вы задействуете разные группы мышц.' });
-    }
-
-    if (workoutResult.longestGapDays !== null && !hasLongGap) {
-      helps.push({ title: 'Нет длинных пропусков.' });
-    }
-
-    if (totalWorkouts === 0) {
-      improvements.push({ title: 'За выбранный период пока нет тренировок.' });
-    } else if (totalWorkouts < 3 && selectedPeriod !== 'day') {
-      improvements.push({ title: 'Тренировок пока мало для оценки прогресса.' });
-    } else if (totalWorkouts === 1 && selectedPeriod === 'day') {
-      improvements.push({ title: 'Для оценки прогресса нужно больше данных.' });
-    }
-
-    if (totalWorkouts > 0 && isExerciseProgressLoadedForPeriod && !hasLoadData) {
-      improvements.push({ title: 'Мало данных по нагрузке.' });
-    }
-
-    if (hasLongGap && workoutResult.longestGapDays !== null) {
-      improvements.push({ title: `Был перерыв ${formatDaysAgo(workoutResult.longestGapDays).replace(' назад', '')}.` });
-    }
-
-    if (totalWorkouts > 0 && loadedMuscleCount === 0) {
-      improvements.push({ title: 'Нет данных по тренируемым мышцам.' });
-    }
-
-    return { helps, improvements };
-  }, [isExerciseProgressLoadedForPeriod, loadedMuscles, rows, selectedPeriod, workoutResult]);
+  const workoutRecommendation = useMemo(() => buildWorkoutProgressRecommendation({
+    isExerciseProgressLoadedForPeriod,
+    loadedMuscles,
+    period: selectedPeriod,
+    rows,
+    summary,
+    workoutResult,
+  }), [isExerciseProgressLoadedForPeriod, loadedMuscles, rows, selectedPeriod, summary, workoutResult]);
+  const recommendationStyle = workoutRecommendation.tone === 'good'
+    ? {
+        accent: 'border-l-emerald-200',
+        icon: 'bg-emerald-500/10 text-emerald-700',
+      }
+    : {
+        accent: 'border-l-amber-200',
+        icon: 'bg-amber-500/10 text-amber-700',
+      };
 
   useEffect(() => {
     const handleWorkoutsSynced = () => {
@@ -480,53 +561,17 @@ const ProgressWorkouts: FC = () => {
           </div>
         </section>
 
-        {workoutInsights.helps.length > 0 || workoutInsights.improvements.length > 0 ? (
-          <section className="space-y-3">
-            {workoutInsights.helps.length > 0 ? (
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-6">
-                <div className="mb-1 text-sm font-medium text-stone-900">Что помогает</div>
-                <div className="text-sm leading-6 text-stone-500">
-                  Положительные сигналы за выбранный период
-                </div>
-                <div className="mt-4 divide-y divide-emerald-100 border-y border-emerald-100">
-                  {workoutInsights.helps.map((insight) => (
-                    <div key={insight.title} className="flex gap-3 py-3">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" aria-hidden="true" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium leading-5 text-stone-800">{insight.title}</div>
-                        {insight.description ? (
-                          <div className="mt-1 text-sm leading-5 text-stone-500">{insight.description}</div>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {workoutInsights.improvements.length > 0 ? (
-              <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-6">
-                <div className="mb-1 text-sm font-medium text-stone-900">Что стоит поправить</div>
-                <div className="text-sm leading-6 text-stone-500">
-                  Мягкие подсказки по текущему периоду
-                </div>
-                <div className="mt-4 divide-y divide-amber-100 border-y border-amber-100">
-                  {workoutInsights.improvements.map((insight) => (
-                    <div key={insight.title} className="flex gap-3 py-3">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium leading-5 text-stone-800">{insight.title}</div>
-                        {insight.description ? (
-                          <div className="mt-1 text-sm leading-5 text-stone-500">{insight.description}</div>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-          </section>
-        ) : null}
+        <section className={`rounded-xl border border-gray-200 border-l-4 bg-white p-4 ${recommendationStyle.accent}`}>
+          <div className="flex items-start gap-2.5">
+            <div className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${recommendationStyle.icon}`}>
+              <Target className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-sm font-medium leading-5 text-stone-900">{workoutRecommendation.title}</div>
+              <p className="mt-0.5 text-sm leading-5 text-stone-600">{workoutRecommendation.body}</p>
+            </div>
+          </div>
+        </section>
 
         <section className="rounded-xl border border-emerald-100 bg-emerald-50/40">
           <button
