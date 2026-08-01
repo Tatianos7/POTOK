@@ -1,9 +1,11 @@
 # Search Analytics Admin Review Production Smoke
 
 - Timestamp: 2026-08-01T00:00:00Z
-- Basis: `reports/search-analytics-admin-review-mvp-2026-08-01.md`
+- Basis:
+  - `reports/search-analytics-admin-review-mvp-2026-08-01.md`
+  - `reports/search-analytics-runtime-logging-zero-events-investigation-2026-08-01.md`
 - Route: `/admin/search-review`
-- Scope: production smoke for Admin Review Queue MVP with limited queue writes
+- Scope: production smoke for Search Analytics runtime events and Admin Review Queue MVP with limited queue writes
 - Verdict: **SEARCH_ANALYTICS_ADMIN_REVIEW_REQUIRES_FIXES**
 
 ## Safety
@@ -28,7 +30,7 @@ Limited production writes were performed only in:
 
 Smoke rows used explicit test normalized queries:
 
-- `__smoke_admin_review_valid_*`
+- `__smoke_admin_review_repeat_*`
 
 All smoke rows were deleted after the checks.
 
@@ -40,62 +42,105 @@ Pre-smoke production counts:
 | --- | ---: |
 | `foods` | 2265 |
 | `food_aliases` | 2890 |
-| `food_search_events` | 0 |
+| `food_search_events` | 5 |
 | `food_search_review_queue` | 0 |
 
-## Read Smoke
+## Runtime Events Smoke
 
-Read checks:
+`food_search_events` is no longer empty after the deploy fix.
 
-- `foods` is readable: **PASS**.
-- `food_aliases` count is unchanged/readable: **PASS**.
-- `food_search_review_queue` starts empty: **PASS**.
-- `food_search_events` exists but currently has `0` rows: **BLOCKER**.
+Latest event types found:
 
-Impact:
+- `query`: **PASS**
+- `not_found`: **PASS**
+- `selection`: **NOT FOUND**
+- `ambiguous`: not present in current smoke data
 
-- Frequent `not_found` / `ambiguous` queries cannot be displayed in production right now because there are no source analytics events to aggregate.
-- Candidate lookup can read `foods`, but the Admin Review surface has no review items while `food_search_events = 0`.
+Latest sample included:
+
+- `not_found`, query `ывапролдж`, context `diary`, `result_count = 0`
+- `query`, query `ывапролдж`, context `diary`, `result_count = 0`
+- `query`, query `сол`, context `diary`, `result_count = 3`
+- `query`, query `соль`, context `diary`, `result_count = 3`
+- `query`, query `со`, context `diary`, `result_count = 8`
+
+Assessment:
+
+- Runtime logging is deployed and writes `query` / `not_found` events.
+- Production smoke still needs a confirmed `selection` event after selecting a product through the production UI.
+- No manual/fake `selection` row was inserted into `food_search_events`.
+
+## Frequent Items
+
+Frequent source items were available from production `not_found` events:
+
+| Query | Context | Event | Frequency | Last seen |
+| --- | --- | --- | ---: | --- |
+| `ывапролдж` | `diary` | `not_found` | 1 | `2026-08-01T17:53:54.870697+00:00` |
+
+Assessment:
+
+- Frequent `not_found` aggregation has source data: **PASS**.
+- Frequent `ambiguous` aggregation was not smoke-verified because no current `ambiguous` events exist.
+
+## Candidate Smoke
+
+Candidate lookup was readable from production foods data:
+
+- Candidate query used by smoke: `ывапролдж`
+- Candidate count returned by fallback lookup: `5`
+- Candidates visible/readable: **PASS**
+
+Note:
+
+- Candidate lookup does not write to `foods` or `food_aliases`.
+- Not-found queries may naturally have weak/no direct candidates; Admin Review can still create targetless pending rows or let admin choose a reviewed candidate.
 
 ## Queue Write Smoke
 
 Pending row checks:
 
-- Created pending smoke rows in `food_search_review_queue`: **PASS**.
-- Updated a pending smoke row frequency/comment: **PASS**.
+- Inserted pending smoke rows in `food_search_review_queue`: `4`, **PASS**.
+- Updated a pending smoke row frequency/comment: `1`, **PASS**.
 
 Status checks with a valid auth-backed admin reviewer:
 
-- `approved`: **PASS**.
-- `rejected`: **PASS**.
-- `snoozed`: **PASS**.
+- `approved`: `1`, **PASS**.
+- `rejected`: `1`, **PASS**.
+- `snoozed`: `1`, **PASS**.
 - comment update with status action: **PASS**.
+
+Important contract detail:
+
+- `approved` requires `suggested_canonical_food_id`.
+- An attempted approve without `suggested_canonical_food_id` was correctly blocked by `food_search_review_queue_approval_target_check`.
 
 Confirmed behavior:
 
 - status actions write only to `food_search_review_queue`;
 - no writes to `foods`;
-- no writes to `food_aliases`.
+- no writes to `food_aliases`;
+- approval records review intent only and does not insert aliases.
 
 ## Admin Reviewer Finding
 
-Production has multiple `is_admin = true` profile rows.
+The smoke had to use an auth-backed admin reviewer:
 
-Finding:
+- Valid reviewer used: `286bd239...`
+- `user_profiles.is_admin = true` row found for this reviewer: **PASS**.
 
-- Three admin profile `id_user` values returned `404` from Auth Admin API and failed `reviewer_id -> auth.users` FK when used for review status.
-- One admin profile `id_user` exists in `auth.users` and worked for approve/reject/snooze smoke.
+Existing risk remains:
 
-Impact:
+- At least one `is_admin = true` profile row is orphaned from `auth.users`.
+- Using an orphaned `id_user` as `reviewer_id` fails the `food_search_review_queue_reviewer_id_fkey`.
 
-- Queue status actions require a reviewer id that exists in `auth.users`.
-- If an admin session belongs to an orphaned admin profile row, status updates may fail with FK error.
+This is not a Food Core mutation risk, but admin profile cleanup should be handled separately if needed.
 
 ## Cleanup
 
 Smoke cleanup result:
 
-- Deleted smoke rows: `3`.
+- Deleted smoke rows: `4`.
 - `food_search_review_queue` returned to `0`.
 
 Post-smoke production counts:
@@ -104,13 +149,14 @@ Post-smoke production counts:
 | --- | ---: |
 | `foods` | 2265 |
 | `food_aliases` | 2890 |
-| `food_search_events` | 0 |
+| `food_search_events` | 5 |
 | `food_search_review_queue` | 0 |
 
 Unchanged counts:
 
 - `foods = 2265`: **PASS**.
 - `food_aliases = 2890`: **PASS**.
+- `food_search_review_queue = 0` after cleanup: **PASS**.
 
 No alias insert:
 
@@ -120,7 +166,7 @@ No alias insert:
 
 Code path status:
 
-- `/admin/search-review` route exists.
+- `/admin/search-review` route exists in the deployed production bundle.
 - Page redirects authenticated non-admin users via `user.isAdmin` guard.
 - Existing `/admin` entry button links to `/admin/search-review`.
 
@@ -132,27 +178,35 @@ Not fully browser-verified in this smoke:
 Reason:
 
 - This smoke used production REST checks and limited queue writes.
-- No browser login credentials/session were used.
+- No reusable admin/non-admin browser sessions were available in this run.
+
+## Out Of Scope Finding
+
+GitHub Pages direct nested SPA routes can still return 404, for example direct `/POTOK/nutrition` or other nested routes.
+
+This is recorded only as a separate routing finding and was not fixed in this task.
 
 ## Verdict Reason
 
-The queue write/status/cleanup path is production-smoke ready, but the full Admin Review MVP smoke is not green because:
+Admin Review Queue write/status/cleanup behavior is production-smoke ready, and runtime logging now writes production events.
 
-- `food_search_events = 0`, so frequent `not_found` / `ambiguous` items are not visible;
-- admin/non-admin browser access was not verified with real sessions;
-- some `is_admin` profile rows are orphaned from `auth.users`, which can break reviewer FK if used.
+The full smoke remains **REQUIRES_FIXES** because:
 
-## Required Fixes / Next Checks
+- no `selection` event was found in `food_search_events`;
+- no current `ambiguous` event was available to verify ambiguous aggregation;
+- real browser admin/non-admin access was not session-verified.
+
+## Required Next Checks
 
 Before final `SEARCH_ANALYTICS_ADMIN_REVIEW_PRODUCTION_SMOKE_READY`:
 
-- generate fresh production `not_found` and/or `ambiguous` events through the deployed app;
-- confirm `food_search_events` contains those events;
+- select an existing product through production UI and confirm `food_search_events.event_type = 'selection'`;
+- if selection still does not appear, inspect browser console/network for the `food_search_events` insert failure;
+- generate or capture a real `ambiguous` event if ambiguous UI/admin review is required for this smoke;
 - verify `/admin/search-review` in a real admin browser session;
 - verify a non-admin user is blocked/redirected;
-- use an auth-backed admin reviewer for queue actions;
-- optionally audit/clean orphaned admin profile rows in a separate approved step.
+- keep `foods = 2265` and `food_aliases = 2890` unchanged.
 
 ## Final Status
 
-Admin Review Queue write actions work and cleanup was successful, with `foods` and `food_aliases` unchanged. Full production smoke still requires fixes because the review source table currently has no events to display and browser access was not session-verified.
+The deploy fix resolved the zero-events blocker: `food_search_events` now contains production runtime events. Admin Review queue writes, status changes, comments, and cleanup work without mutating Food Core. Full production smoke is not closed yet because `selection` and real browser access still need verification.
