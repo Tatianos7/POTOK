@@ -6,7 +6,7 @@
   - `reports/search-analytics-runtime-logging-zero-events-investigation-2026-08-01.md`
 - Route: `/admin/search-review`
 - Scope: production smoke for Search Analytics runtime events and Admin Review Queue MVP with limited queue writes
-- Verdict: **SEARCH_ANALYTICS_ADMIN_REVIEW_REQUIRES_FIXES**
+- Verdict: **SEARCH_ANALYTICS_SELECTION_LOGGING_FIX_READY**
 
 ## Safety
 
@@ -69,6 +69,37 @@ Assessment:
 - Runtime logging is deployed and writes `query` / `not_found` events.
 - Production smoke still needs a confirmed `selection` event after selecting a product through the production UI.
 - No manual/fake `selection` row was inserted into `food_search_events`.
+
+## Selection Logging Fix
+
+Missing `selection` events were investigated in the runtime path:
+
+- `ProductSearch` calls `searchAnalyticsService.logSelection(...)` when a search result card is selected.
+- `searchAnalyticsService.logSelection(...)` builds a valid `selection` payload:
+  - `event_type = 'selection'`;
+  - `selected_canonical_food_id` is set;
+  - `no_selection = false`;
+  - `not_found = false`;
+  - `ambiguous = false`.
+- Production `query` / `not_found` events prove the deployed Supabase insert path and RLS are working for authenticated food search logging.
+
+Finding:
+
+- `ProductSearch` was starting `logSelection(...)` as fire-and-forget and immediately calling `onSelect(food)`.
+- Some parent flows close a modal or navigate/open the add-food sheet immediately after `onSelect`.
+- That can lose the selection insert before the browser finishes the async request.
+
+Runtime-only fix:
+
+- `ProductSearch.handleSelect` now awaits `searchAnalyticsService.logSelection(...)` before calling `onSelect(food)`.
+- Logging failures remain non-fatal because the service catches insert errors internally.
+- Search results, resolver/ranking, and diary writes were not changed.
+- The search effect dependency list now includes `searchContext`, so context changes cannot reuse a stale logging context.
+
+Targeted test added:
+
+- `src/components/__tests__/ProductSearchAnalytics.test.ts`
+- It verifies that `ProductSearch` waits for selection analytics and passes `searchContext` through search and selection paths.
 
 ## Frequent Items
 
@@ -198,7 +229,7 @@ The full smoke remains **REQUIRES_FIXES** because:
 
 ## Required Next Checks
 
-Before final `SEARCH_ANALYTICS_ADMIN_REVIEW_PRODUCTION_SMOKE_READY`:
+After deploying the selection logging fix, before final `SEARCH_ANALYTICS_ADMIN_REVIEW_PRODUCTION_SMOKE_READY`:
 
 - select an existing product through production UI and confirm `food_search_events.event_type = 'selection'`;
 - if selection still does not appear, inspect browser console/network for the `food_search_events` insert failure;
@@ -207,6 +238,24 @@ Before final `SEARCH_ANALYTICS_ADMIN_REVIEW_PRODUCTION_SMOKE_READY`:
 - verify a non-admin user is blocked/redirected;
 - keep `foods = 2265` and `food_aliases = 2890` unchanged.
 
+## Verification
+
+Targeted tests:
+
+- `npx tsx --test src/services/__tests__/searchAnalyticsService.test.ts src/components/__tests__/ProductSearchAnalytics.test.ts`: **PASS**, `9/9`.
+
+Build:
+
+- `npm run build`: **PASS**.
+
+Build notes:
+
+- Existing browser data warnings were shown.
+- Existing Vite dynamic-import/chunk-size warnings were shown.
+- No build failure.
+
 ## Final Status
 
-The deploy fix resolved the zero-events blocker: `food_search_events` now contains production runtime events. Admin Review queue writes, status changes, comments, and cleanup work without mutating Food Core. Full production smoke is not closed yet because `selection` and real browser access still need verification.
+The deploy fix resolved the zero-events blocker: `food_search_events` now contains production runtime events. Admin Review queue writes, status changes, comments, and cleanup work without mutating Food Core.
+
+The missing selection runtime issue has a targeted fix ready for deployment. Full production smoke should be repeated after deploy by selecting an existing product through the production UI and confirming a new `selection` event appears.

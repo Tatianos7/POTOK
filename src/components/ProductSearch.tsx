@@ -61,7 +61,7 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
       cancelled = true;
       clearTimeout(timeoutId);
     };
-  }, [query, userId, forceTrigger]);
+  }, [query, userId, forceTrigger, searchContext]);
 
   // Если инпут скрыт и запрос пустой - не рендерим ничего
   // (родительский компонент должен управлять показом/скрытием этого компонента)
@@ -69,8 +69,8 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
     return null;
   }
 
-  const handleSelect = (food: Food) => {
-    void searchAnalyticsService.logSelection({
+  const handleSelect = async (food: Food) => {
+    await searchAnalyticsService.logSelection({
       query,
       context: searchContext,
       userId,
