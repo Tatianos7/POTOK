@@ -8,6 +8,7 @@ export function createGithubPagesFallback(options = {}) {
   const projectRoot = resolve(options.projectRoot ?? process.cwd());
   const distDir = resolve(projectRoot, options.distDir ?? 'dist');
   const indexPath = resolve(distDir, 'index.html');
+  const fallbackTemplatePath = resolve(projectRoot, options.fallbackTemplatePath ?? 'public/404.html');
   const fallbackPath = resolve(distDir, '404.html');
 
   if (!existsSync(indexPath)) {
@@ -19,11 +20,21 @@ export function createGithubPagesFallback(options = {}) {
     throw new Error(`GitHub Pages fallback source is not a file: ${indexPath}`);
   }
 
+  if (!existsSync(fallbackTemplatePath)) {
+    throw new Error(`GitHub Pages fallback template missing: ${fallbackTemplatePath}`);
+  }
+
+  const fallbackTemplateStats = statSync(fallbackTemplatePath);
+  if (!fallbackTemplateStats.isFile()) {
+    throw new Error(`GitHub Pages fallback template is not a file: ${fallbackTemplatePath}`);
+  }
+
   mkdirSync(dirname(fallbackPath), { recursive: true });
-  copyFileSync(indexPath, fallbackPath);
+  copyFileSync(fallbackTemplatePath, fallbackPath);
 
   return {
     indexPath,
+    fallbackTemplatePath,
     fallbackPath,
   };
 }
