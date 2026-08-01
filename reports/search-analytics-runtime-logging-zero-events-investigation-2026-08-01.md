@@ -6,7 +6,7 @@
   - `reports/search-analytics-runtime-logging-implementation-2026-08-01.md`
   - `reports/search-analytics-runtime-logging-production-smoke-2026-08-01.md`
   - `reports/search-analytics-admin-review-production-smoke-2026-08-01.md`
-- Verdict: **SEARCH_ANALYTICS_RUNTIME_LOGGING_DEPLOY_FIX_READY**
+- Verdict: **SEARCH_ANALYTICS_RUNTIME_LOGGING_DEPLOYED_READY**
 
 ## Safety
 
@@ -83,12 +83,18 @@ No production authenticated browser insert could be observed because the deploye
 
 ## Fix
 
-Deploy the Search Analytics runtime/Admin Review implementation from `master`:
+The Search Analytics runtime/Admin Review implementation was deployed from `master`:
 
-- commit the Search Analytics runtime/admin review files;
-- push directly to `master`;
-- wait for GitHub Pages deploy PASS;
-- after deploy, repeat production smoke:
+- Commit: `f602c8118b446b8984bcf9ba48d73fdfe0d43780`
+- GitHub Pages run: `30710916655`
+- Deploy status: **PASS**
+- Production bundle after deploy: `assets/main-Vv4wgMNj.js`
+- Production bundle contains:
+  - `food_search_events`;
+  - `food_search_review_queue`;
+  - `/admin/search-review`.
+
+After deploy, repeat production smoke:
   - search existing product;
   - select product;
   - search not-found query;
@@ -102,11 +108,20 @@ Deploy the Search Analytics runtime/Admin Review implementation from `master`:
 Targeted tests:
 
 - `npx tsx --test src/services/__tests__/searchAnalyticsService.test.ts src/services/__tests__/searchAdminReviewService.test.ts`
+- Result: **PASS**, `11/11`.
 
 Build:
 
 - `npm run build`
+- Result: **PASS**.
+
+Deploy:
+
+- GitHub Pages run `30710916655`: **PASS**.
+- Production bundle verification: **PASS**.
 
 ## Final Status
 
-The zero-events issue is explained by missing production deployment, not by the local insert path. Search Analytics runtime logging should start writing events after the current local Search Analytics changes are committed, pushed, and deployed from `master`.
+The zero-events issue was explained by missing production deployment, not by the runtime insert path. Search Analytics runtime logging and Admin Review MVP are now present in the production GitHub Pages bundle.
+
+Next production smoke should create events through the deployed app and confirm `food_search_events` increments while `foods = 2265` and `food_aliases = 2890` remain unchanged.
