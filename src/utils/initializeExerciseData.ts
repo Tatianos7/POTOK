@@ -1,6 +1,9 @@
 /**
- * Автоматическая инициализация данных упражнений при первом запуске
- * Проверяет наличие категорий и мышц, и импортирует их, если их нет
+ * Read-only validation for the shared exercise catalog.
+ *
+ * Exercise categories are global catalog data. Production clients must not try
+ * to create them because RLS intentionally allows authenticated read access
+ * and blocks client writes.
  */
 
 import { supabase } from '../lib/supabaseClient';
@@ -17,82 +20,29 @@ function markAsInitialized(): void {
 }
 
 /**
- * Инициализирует базовые данные упражнений (категории и мышцы)
- * Выполняется автоматически, если категорий нет в базе
+ * Checks that the shared exercise category catalog is readable.
  */
 export async function initializeExerciseData(): Promise<void> {
-  // Если Supabase не настроен, пропускаем инициализацию
   if (!supabase) {
-    console.warn('[initializeExerciseData] Supabase не настроен, пропускаем инициализацию');
+    console.warn('[initializeExerciseData] Supabase не настроен, проверка каталога пропущена');
     return;
   }
 
   try {
-    // Проверяем наличие категорий
     const categories = await exerciseService.getCategories();
     
-    // Если категории уже есть, пропускаем инициализацию
     if (categories.length > 0) {
-      console.log(`[initializeExerciseData] Найдено ${categories.length} категорий, инициализация не требуется`);
+      console.log(`[initializeExerciseData] Найдено ${categories.length} категорий`);
       markAsInitialized();
       return;
     }
 
-    console.log('[initializeExerciseData] Категории не найдены, создаем базовые категории...');
-    
-    const basicCategories = [
-      { name: 'Плечи', order: 1 },
-      { name: 'Руки', order: 2 },
-      { name: 'Грудь', order: 3 },
-      { name: 'Спина', order: 4 },
-      { name: 'Ноги', order: 5 },
-      { name: 'Пресс', order: 6 },
-      { name: 'Кардио', order: 7 },
-    ];
-
-    // Пытаемся создать категории по одной (более надежно)
-    let successCount = 0;
-    for (const category of basicCategories) {
-      const { error } = await supabase
-        .from('exercise_categories')
-        .insert(category)
-        .select();
-      
-      if (error) {
-        // Игнорируем ошибки дубликатов (категория уже существует)
-        if (error.message.includes('duplicate') || 
-            error.message.includes('unique') ||
-            error.code === '23505') {
-          console.log(`[initializeExerciseData] Категория "${category.name}" уже существует`);
-          successCount++;
-        } else {
-          console.error(`[initializeExerciseData] Ошибка создания категории "${category.name}":`, error);
-          // Если это ошибка отсутствия таблицы, выводим понятное сообщение
-          if (error.message.includes('relation') || error.message.includes('does not exist')) {
-            console.error('[initializeExerciseData] ⚠️ Таблица exercise_categories не существует! Выполните SQL скрипт из supabase/workout_schema.sql в Supabase SQL Editor');
-          }
-        }
-      } else {
-        successCount++;
-        console.log(`[initializeExerciseData] ✅ Категория "${category.name}" создана`);
-      }
-    }
-    
-    if (successCount === 0) {
-      console.error('[initializeExerciseData] ❌ Не удалось создать ни одной категории. Проверьте RLS политики и права доступа в Supabase.');
-    } else {
-      console.log(`[initializeExerciseData] ✅ Успешно создано/найдено ${successCount} из ${basicCategories.length} категорий`);
-    }
-
-    console.log('[initializeExerciseData] Базовые категории созданы');
-    
-    // Помечаем как инициализированное только после успешного создания
-    markAsInitialized();
-    console.log('[initializeExerciseData] Инициализация завершена');
-
+    console.warn(
+      '[initializeExerciseData] Категории упражнений недоступны или пусты. ' +
+      'Клиент не создает shared read-only catalog; проверьте catalog seed/RLS, если это повторяется после входа.'
+    );
   } catch (error) {
-    console.error('[initializeExerciseData] Ошибка инициализации:', error);
-    // Не помечаем как инициализированное при ошибке, чтобы попробовать снова
+    console.warn('[initializeExerciseData] Проверка каталога упражнений не выполнена:', error);
   }
 }
 
@@ -103,4 +53,3 @@ export function resetInitialization(): void {
   if (typeof window === 'undefined') return;
   localStorage.removeItem(INITIALIZATION_KEY);
 }
-

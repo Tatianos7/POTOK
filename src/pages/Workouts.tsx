@@ -302,24 +302,15 @@ const Workouts = () => {
     setSelectedDate(resolveDiarySelectedDateFromState(location.state, getTodayDate()));
   }, [location.state]); // синхронизация с навигацией из истории
 
-  // Загружаем категории при монтировании (с автоматической инициализацией)
+  // Загружаем категории при монтировании. Категории являются shared read-only catalog:
+  // клиент не должен создавать их при пустом ответе или RLS ошибке.
   useEffect(() => {
     const loadCategories = async () => {
       try {
-        let cats = await exerciseService.getCategories();
+        const cats = await exerciseService.getCategories();
         
-        // Если категорий нет, пытаемся инициализировать данные
         if (cats.length === 0) {
-          console.log('[Workouts] Категории не найдены, запускаем инициализацию...');
-          const { initializeExerciseData } = await import('../utils/initializeExerciseData');
-          await initializeExerciseData();
-          
-          // Ждем немного, чтобы данные успели сохраниться
-          await new Promise(resolve => setTimeout(resolve, 500));
-          
-          // Повторно загружаем категории после инициализации
-          cats = await exerciseService.getCategories();
-          console.log(`[Workouts] После инициализации найдено ${cats.length} категорий`);
+          console.warn('[Workouts] Категории упражнений недоступны или пусты');
         }
         
         setCategories(filterWorkoutCatalogCategories(cats));
