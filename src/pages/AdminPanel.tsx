@@ -5,7 +5,7 @@ import { supportService } from '../services/supportService';
 import { activityService } from '../services/activityService';
 import { notificationService, type AppNotification } from '../services/notificationService';
 import { SupportMessage, User } from '../types';
-import { X, MessageSquare, Users, UserCheck, UserX, Mail, CheckCircle, Clock, AlertCircle, Shield, ShieldOff, Wifi } from 'lucide-react';
+import { X, MessageSquare, Users, UserCheck, UserX, Mail, CheckCircle, Clock, AlertCircle, Shield, ShieldOff, Wifi, Search } from 'lucide-react';
 import FoodIngestionPanel from '../components/FoodIngestionPanel';
 
 const AdminPanel = () => {
@@ -301,6 +301,14 @@ const AdminPanel = () => {
               title="Обновить данные"
             >
               {isLoading ? '...' : 'Обновить'}
+            </button>
+            <button
+              onClick={() => navigate('/admin/search-review')}
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs bg-gray-700 text-white rounded-lg hover:bg-gray-800 transition-colors"
+              title="Search Review"
+            >
+              <Search className="h-3.5 w-3.5" />
+              Search Review
             </button>
             <button
               onClick={() => {

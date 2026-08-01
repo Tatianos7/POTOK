@@ -9,6 +9,7 @@ import {
   normalizeFoodText,
   validateNutrition,
 } from '../utils/foodNormalizer';
+import { searchAnalyticsService, type FoodSearchAnalyticsContext } from './searchAnalyticsService';
 // TODO: Re-enable Open Food Facts / USDA when stable
 // import { openFoodFactsService } from './openFoodFactsService';
 // import { usdaService } from './usdaService';
@@ -612,6 +613,7 @@ class FoodService {
       category?: string; 
       limit?: number;
       userId?: string; // Для фильтрации пользовательских продуктов
+      searchContext?: FoodSearchAnalyticsContext;
     }
   ): Promise<Food[]> {
     const limit = options?.limit ?? 30;
@@ -740,7 +742,19 @@ class FoodService {
     // 5. Open Food Facts API - ОТКЛЮЧЕНО
     // 6. USDA API - ОТКЛЮЧЕНО
 
-    return finalizeFoodSearchResults(allResults, q, limit);
+    const finalResults = finalizeFoodSearchResults(allResults, q, limit);
+    const normalizedQuery = normalizeFoodText(query);
+    void searchAnalyticsService.logSearchResult({
+      query,
+      context: options?.searchContext ?? 'other',
+      userId,
+      resultCount: finalResults.length,
+      results: finalResults,
+      ambiguous: getFoodSearchDisambiguationPhrases(normalizedQuery).length > 0 && finalResults.length > 1,
+      metadata: { source_surface: options?.searchContext ? `${options.searchContext}_search` : 'food_search' },
+    });
+
+    return finalResults;
   }
 
   /**
@@ -764,7 +778,7 @@ class FoodService {
    */
   async searchGrouped(
     query: string,
-    options?: { category?: string; limit?: number; userId?: string }
+    options?: { category?: string; limit?: number; userId?: string; searchContext?: FoodSearchAnalyticsContext }
   ): Promise<{ userFoods: Food[]; publicFoods: Food[] }> {
     const userId = options?.userId;
     const limit = options?.limit ?? 30;
@@ -772,7 +786,7 @@ class FoodService {
     const q = query.toLowerCase().trim();
 
     // Получаем все результаты через основной метод search
-    const allResults = await this.search(query, { category, limit: limit * 2, userId });
+    const allResults = await this.search(query, { category, limit: limit * 2, userId, searchContext: options?.searchContext });
 
     // Разделяем на пользовательские и базовые/общие
     const userFoods = allResults.filter((f) => f.source === 'user');

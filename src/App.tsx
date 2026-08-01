@@ -8,6 +8,7 @@ import EditProfile from './pages/EditProfile';
 import CoachHistory from './pages/CoachHistory';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminPanel from './pages/AdminPanel';
+import SearchAnalyticsAdminReview from './pages/SearchAnalyticsAdminReview';
 import Notifications from './pages/Notifications';
 import Goal from './pages/Goal';
 import GoalResult from './pages/GoalResult';
@@ -146,6 +147,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <AdminPanel />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/search-review"
+        element={
+          <ProtectedRoute>
+            <SearchAnalyticsAdminReview />
           </ProtectedRoute>
         }
       />

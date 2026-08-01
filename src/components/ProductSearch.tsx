@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Food } from '../types';
 import { foodService } from '../services/foodService';
+import { searchAnalyticsService, type FoodSearchAnalyticsContext } from '../services/searchAnalyticsService';
 import ProductCard from './ProductCard';
 import { Search, Loader2 } from 'lucide-react';
 
@@ -11,9 +12,10 @@ interface ProductSearchProps {
   onChangeQuery?: (q: string) => void;
   hideInput?: boolean; // спрятать инпут, если родитель рисует свой
   forceTrigger?: number; // менять число, чтобы форсировать повторный поиск даже с тем же запросом
+  searchContext?: FoodSearchAnalyticsContext;
 }
 
-const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forceTrigger }: ProductSearchProps) => {
+const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forceTrigger, searchContext = 'diary' }: ProductSearchProps) => {
   const isControlled = typeof value === 'string';
   const [internalQuery, setInternalQuery] = useState('');
   const query = isControlled ? value || '' : internalQuery;
@@ -36,7 +38,7 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
       (async () => {
         try {
           // Используем новый метод поиска с приоритетом пользовательских продуктов
-          const searchResults = await foodService.search(t, { userId });
+          const searchResults = await foodService.search(t, { userId, searchContext });
           if (!cancelled) {
             setResults(searchResults);
           }
@@ -66,6 +68,18 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
   if (hideInput && !query.trim()) {
     return null;
   }
+
+  const handleSelect = (food: Food) => {
+    void searchAnalyticsService.logSelection({
+      query,
+      context: searchContext,
+      userId,
+      food,
+      resultCount: results.length,
+      metadata: { source_surface: `${searchContext}_search` },
+    });
+    onSelect(food);
+  };
 
   return (
     <div className="w-full max-w-full overflow-hidden">
@@ -108,7 +122,7 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
                             <div key={food.id} className="w-full max-w-full overflow-hidden">
                               <ProductCard
                                 food={food}
-                                onClick={() => onSelect(food)}
+                                onClick={() => handleSelect(food)}
                               />
                             </div>
                           ))}
@@ -129,7 +143,7 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
                             <div key={food.id} className="w-full max-w-full overflow-hidden">
                               <ProductCard
                                 food={food}
-                                onClick={() => onSelect(food)}
+                                onClick={() => handleSelect(food)}
                               />
                             </div>
                           ))}
@@ -160,4 +174,3 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
 };
 
 export default ProductSearch;
-
