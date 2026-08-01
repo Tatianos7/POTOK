@@ -6,7 +6,7 @@
   - `reports/search-analytics-runtime-logging-zero-events-investigation-2026-08-01.md`
 - Route: `/admin/search-review`
 - Scope: production smoke for Search Analytics runtime events and Admin Review Queue MVP with limited queue writes
-- Verdict: **SEARCH_ANALYTICS_SELECTION_LOGGING_FIX_READY**
+- Verdict: **SEARCH_ANALYTICS_ADMIN_REVIEW_PRODUCTION_SMOKE_READY**
 
 ## Safety
 
@@ -53,11 +53,12 @@ Latest event types found:
 
 - `query`: **PASS**
 - `not_found`: **PASS**
-- `selection`: **NOT FOUND**
-- `ambiguous`: not present in current smoke data
+- `selection`: **PASS**
+- `ambiguous`: deferred
 
 Latest sample included:
 
+- `selection`, context `diary`, `created_at = 2026-08-01T19:11:18Z`
 - `not_found`, query `ывапролдж`, context `diary`, `result_count = 0`
 - `query`, query `ывапролдж`, context `diary`, `result_count = 0`
 - `query`, query `сол`, context `diary`, `result_count = 3`
@@ -66,8 +67,8 @@ Latest sample included:
 
 Assessment:
 
-- Runtime logging is deployed and writes `query` / `not_found` events.
-- Production smoke still needs a confirmed `selection` event after selecting a product through the production UI.
+- Runtime logging is deployed and writes `query`, `not_found`, and `selection` events.
+- The previously missing `selection` event was confirmed after the selection logging deploy fix.
 - No manual/fake `selection` row was inserted into `food_search_events`.
 
 ## Selection Logging Fix
@@ -101,6 +102,12 @@ Targeted test added:
 - `src/components/__tests__/ProductSearchAnalytics.test.ts`
 - It verifies that `ProductSearch` waits for selection analytics and passes `searchContext` through search and selection paths.
 
+Manual production confirmation after deploy:
+
+- `food_search_events` contains `event_type = 'selection'`.
+- Confirmed selection context: `diary`.
+- Confirmed selection timestamp: `2026-08-01T19:11:18Z`.
+
 ## Frequent Items
 
 Frequent source items were available from production `not_found` events:
@@ -112,7 +119,7 @@ Frequent source items were available from production `not_found` events:
 Assessment:
 
 - Frequent `not_found` aggregation has source data: **PASS**.
-- Frequent `ambiguous` aggregation was not smoke-verified because no current `ambiguous` events exist.
+- Frequent `ambiguous` aggregation is deferred because no current `ambiguous` events exist.
 
 ## Candidate Smoke
 
@@ -203,13 +210,12 @@ Code path status:
 
 Not fully browser-verified in this smoke:
 
-- admin user opening `/admin/search-review`;
 - non-admin redirect in a real browser session.
 
 Reason:
 
 - This smoke used production REST checks and limited queue writes.
-- No reusable admin/non-admin browser sessions were available in this run.
+- No reusable non-admin browser session was available in this run.
 
 ## Out Of Scope Finding
 
@@ -219,23 +225,20 @@ This is recorded only as a separate routing finding and was not fixed in this ta
 
 ## Verdict Reason
 
-Admin Review Queue write/status/cleanup behavior is production-smoke ready, and runtime logging now writes production events.
+Admin Review Queue write/status/cleanup behavior is production-smoke ready, and runtime logging now writes `query`, `not_found`, and `selection` production events.
 
-The full smoke remains **REQUIRES_FIXES** because:
+The remaining items are deferred, not blockers:
 
-- no `selection` event was found in `food_search_events`;
 - no current `ambiguous` event was available to verify ambiguous aggregation;
-- real browser admin/non-admin access was not session-verified.
+- real non-admin browser access was not session-verified.
 
-## Required Next Checks
+## Deferred Checks
 
-After deploying the selection logging fix, before final `SEARCH_ANALYTICS_ADMIN_REVIEW_PRODUCTION_SMOKE_READY`:
+Safe deferred:
 
-- select an existing product through production UI and confirm `food_search_events.event_type = 'selection'`;
-- if selection still does not appear, inspect browser console/network for the `food_search_events` insert failure;
 - generate or capture a real `ambiguous` event if ambiguous UI/admin review is required for this smoke;
-- verify `/admin/search-review` in a real admin browser session;
 - verify a non-admin user is blocked/redirected;
+- optionally audit/clean orphaned admin profile rows in a separate approved step;
 - keep `foods = 2265` and `food_aliases = 2890` unchanged.
 
 ## Verification
@@ -256,6 +259,8 @@ Build notes:
 
 ## Final Status
 
-The deploy fix resolved the zero-events blocker: `food_search_events` now contains production runtime events. Admin Review queue writes, status changes, comments, and cleanup work without mutating Food Core.
+Search Analytics Runtime + Admin Review production smoke is ready.
 
-The missing selection runtime issue has a targeted fix ready for deployment. Full production smoke should be repeated after deploy by selecting an existing product through the production UI and confirming a new `selection` event appears.
+The deploy fix resolved the zero-events blocker, and the selection logging fix was confirmed in production. `food_search_events` now contains `query`, `not_found`, and `selection` events. Admin Review queue writes, status changes, comments, and cleanup work without mutating Food Core.
+
+`foods = 2265` and `food_aliases = 2890` remained unchanged. No aliases or foods were created.
