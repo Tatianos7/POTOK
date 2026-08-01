@@ -3,7 +3,7 @@
 - Timestamp: 2026-08-01T00:00:00Z
 - Scope: audit/fix direct nested route 404 on GitHub Pages
 - Production URL: `https://tatianos7.github.io/POTOK/`
-- Verdict: **GITHUB_PAGES_SPA_FALLBACK_FIX_READY**
+- Verdict: **GITHUB_PAGES_SPA_FALLBACK_PRODUCTION_READY**
 
 ## Safety
 
@@ -85,16 +85,24 @@ Build notes:
 - Existing Vite dynamic-import/chunk-size warnings were shown.
 - No build failure.
 
-## Production Verification Plan
+## Deploy
 
-After deploy, verify direct route responses:
+- Commit: `4542dfb1ea065a87ea1983c8a30d312c63106ea4`
+- GitHub Pages run: `30714970759`
+- Deploy status: **PASS**
 
-- `/POTOK/`
-- `/POTOK/nutrition`
-- `/POTOK/workouts`
-- `/POTOK/progress/nutrition`
-- `/POTOK/profile`
-- `/POTOK/admin/search-review`
+## Production Verification
+
+Direct route responses after deploy:
+
+| Route | HTTP status | Expected body | Result |
+| --- | ---: | --- | --- |
+| `/POTOK/` | 200 | app index with main asset | **PASS** |
+| `/POTOK/nutrition` | 404 | custom `404.html` redirect shim | **PASS** |
+| `/POTOK/workouts` | 404 | custom `404.html` redirect shim | **PASS** |
+| `/POTOK/progress/nutrition` | 404 | custom `404.html` redirect shim | **PASS** |
+| `/POTOK/profile` | 404 | custom `404.html` redirect shim | **PASS** |
+| `/POTOK/admin/search-review` | 404 | custom `404.html` redirect shim | **PASS** |
 
 Expected:
 
@@ -104,4 +112,6 @@ Expected:
 
 ## Final Status
 
-The GitHub Pages SPA nested-route fallback fix is ready for deployment. No data layer, Food Core, aliases, Search Analytics data, or DB/storage behavior was changed.
+The GitHub Pages SPA nested-route fallback fix is production-ready. Direct nested routes now receive the custom redirect fallback instead of a copied app index fallback, so browser direct open/refresh can return to the intended SPA route.
+
+No data layer, Food Core, aliases, Search Analytics data, or DB/storage behavior was changed.
