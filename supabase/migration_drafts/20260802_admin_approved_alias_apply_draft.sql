@@ -36,8 +36,10 @@ create table if not exists public.food_alias_apply_audit (
         'duplicate_alias',
         'existing_alias_conflict',
         'orphan_canonical',
+        'invalid_canonical_source',
         'not_approved',
         'ambiguous_alias',
+        'missing_source_evidence',
         'already_applied',
         'permission_denied',
         'invalid_alias',
@@ -102,8 +104,10 @@ alter table public.food_search_review_queue
         'duplicate_alias',
         'existing_alias_conflict',
         'orphan_canonical',
+        'invalid_canonical_source',
         'not_approved',
         'ambiguous_alias',
+        'missing_source_evidence',
         'already_applied',
         'permission_denied',
         'invalid_alias',
@@ -186,7 +190,7 @@ declare
   v_alias text;
   v_normalized_alias text;
   v_existing_alias public.food_aliases%rowtype;
-  v_canonical_exists boolean := false;
+  v_canonical_source text;
   v_has_ambiguous_event boolean := false;
   v_alias_id uuid;
   v_result text;
@@ -201,6 +205,33 @@ begin
   ) then
     v_result := 'permission_denied';
     v_error := 'Current user is not an admin.';
+
+    if v_admin_id is not null then
+      v_alias := coalesce(nullif(trim(coalesce(p_alias, '')), ''), 'unknown');
+      v_normalized_alias := public.normalize_food_text(v_alias);
+
+      insert into public.food_alias_apply_audit (
+        source_review_id,
+        alias,
+        normalized_alias,
+        applied_by,
+        result,
+        error,
+        validation,
+        comment
+      )
+      values (
+        null,
+        v_alias,
+        v_normalized_alias,
+        v_admin_id,
+        v_result,
+        v_error,
+        jsonb_build_object('review_id', p_review_id),
+        p_comment
+      );
+    end if;
+
     return query select v_result, null::uuid, v_error;
     return;
   end if;
@@ -212,7 +243,7 @@ begin
   for update;
 
   if not found then
-    v_alias := trim(coalesce(p_alias, 'unknown'));
+    v_alias := coalesce(nullif(trim(coalesce(p_alias, '')), ''), 'unknown');
     v_normalized_alias := public.normalize_food_text(v_alias);
     v_result := 'review_not_found';
     v_error := 'Review row was not found.';
@@ -242,7 +273,7 @@ begin
     return;
   end if;
 
-  v_alias := trim(coalesce(nullif(p_alias, ''), v_review.query));
+  v_alias := coalesce(nullif(trim(coalesce(p_alias, '')), ''), trim(v_review.query));
   v_normalized_alias := public.normalize_food_text(v_alias);
 
   v_validation := jsonb_build_object(
@@ -267,16 +298,54 @@ begin
     v_result := 'orphan_canonical';
     v_error := 'Approved review row has no suggested canonical food.';
   else
-    select exists (
-      select 1
-      from public.foods
-      where id = v_review.suggested_canonical_food_id
-    )
-    into v_canonical_exists;
+    select source
+    into v_canonical_source
+    from public.foods
+    where id = v_review.suggested_canonical_food_id;
 
-    if not v_canonical_exists then
+    if not found then
       v_result := 'orphan_canonical';
       v_error := 'Suggested canonical food does not exist.';
+    elsif v_canonical_source not in ('core', 'brand') then
+      v_result := 'invalid_canonical_source';
+      v_error := 'Suggested canonical food is not a shared core/brand food.';
+    end if;
+  end if;
+
+  if v_result = 'already_applied' then
+    insert into public.food_alias_apply_audit (
+      source_review_id,
+      alias_id,
+      alias,
+      normalized_alias,
+      canonical_food_id,
+      applied_by,
+      result,
+      error,
+      validation,
+      comment
+    )
+    values (
+      v_review.id,
+      v_review.applied_alias_id,
+      v_alias,
+      v_normalized_alias,
+      v_review.suggested_canonical_food_id,
+      v_admin_id,
+      v_result,
+      v_error,
+      v_validation,
+      p_comment
+    );
+
+    return query select v_result, v_review.applied_alias_id, v_error;
+    return;
+  end if;
+
+  if v_result is null then
+    if coalesce(array_length(v_review.source_event_ids, 1), 0) = 0 then
+      v_result := 'missing_source_evidence';
+      v_error := 'Review row has no source search events for safe alias apply.';
     end if;
   end if;
 

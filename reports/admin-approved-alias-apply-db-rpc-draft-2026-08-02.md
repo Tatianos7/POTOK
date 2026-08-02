@@ -81,8 +81,10 @@ The RPC validates:
 - review row has not already applied an alias;
 - approved row has `suggested_canonical_food_id`;
 - suggested canonical food exists in `foods.id`;
+- suggested canonical food is shared: `source in ('core', 'brand')`;
 - alias text is non-blank;
 - normalized alias is non-blank via `normalize_food_text`;
+- source review evidence exists through `source_event_ids`;
 - source review events are not `ambiguous`;
 - existing `food_aliases.normalized_alias` duplicate is blocked;
 - existing alias mapped to another canonical food is blocked as conflict.
@@ -93,8 +95,10 @@ The RPC returns:
 - `duplicate_alias`
 - `existing_alias_conflict`
 - `orphan_canonical`
+- `invalid_canonical_source`
 - `not_approved`
 - `ambiguous_alias`
+- `missing_source_evidence`
 - `already_applied`
 - `permission_denied`
 - `invalid_alias`
@@ -117,6 +121,8 @@ Open note before apply:
 
 - `source = 'core'` is conservative for the current schema because existing `food_aliases.source` has no dedicated `admin_review` source contract.
 - If product wants source-level provenance, keep provenance in `food_alias_apply_audit` first or draft a separate source semantics change.
+- Canonical alias targets are restricted to shared foods: `foods.source in ('core', 'brand')`.
+- `source='user'` targets are blocked with `invalid_canonical_source`.
 
 ## Audit Trail
 
@@ -143,6 +149,8 @@ Successful apply rows require:
 - no error.
 
 Review-not-found attempts can still be audited without a valid `source_review_id`.
+
+Authenticated permission-denied attempts are audited with `source_review_id = null`. Unauthenticated calls return `permission_denied` without audit because no stable actor id is available.
 
 ## Review Queue Tracking
 
@@ -185,6 +193,7 @@ Pre-apply must still confirm:
 - `public.normalize_food_text(text)` exists;
 - `public.food_search_review_queue` exists;
 - `public.food_aliases` exists and has `unique (normalized_alias)`.
+- `public.foods.source` exists and contains expected shared values `core` / `brand`.
 
 ## No Auto-Alias Rules
 
@@ -194,6 +203,7 @@ The draft preserves:
 - no automatic food creation;
 - no silent canonical for ambiguous events;
 - no trigger from approved status;
+- no apply without source review evidence;
 - no writes to `foods`;
 - no diary/favorites/recipes remap;
 - no historical snapshot recompute.
@@ -255,7 +265,9 @@ Do not change resolver/ranking/diary writes in the Alias Apply MVP.
 | Duplicate alias race | High | DB unique constraint plus RPC transaction/exception handling |
 | Existing alias points elsewhere | High | Block as `existing_alias_conflict` |
 | Orphan canonical target | High | FK plus explicit `foods.id` validation |
+| User-owned canonical target | High | Block as `invalid_canonical_source` |
 | Ambiguous query silently canonicalized | High | Block source events with `event_type = 'ambiguous'` |
+| Manual queue row lacks source evidence | Medium/High | Block as `missing_source_evidence` |
 | Wrong admin profile column | High | Use and pre-check `user_profiles.id_user` |
 | Provenance lost | Medium | Audit table records source review, admin, result, validation |
 | Source semantics unclear | Medium | Use `source='core'` for current schema; keep review provenance in audit |
