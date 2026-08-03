@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase as defaultSupabase } from '../lib/supabaseClient';
+import type { AliasApplyResult } from './aliasApplyService';
 import type { FoodSearchAnalyticsContext } from './searchAnalyticsService';
 
 export type SearchReviewEventType = 'not_found' | 'ambiguous';
@@ -36,6 +37,11 @@ export type SearchReviewQueueRow = {
   reviewed_at: string | null;
   comment: string | null;
   source_event_ids: string[];
+  applied_alias_id: string | null;
+  alias_applied_by: string | null;
+  alias_applied_at: string | null;
+  alias_apply_result: AliasApplyResult | null;
+  alias_apply_error: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -129,13 +135,13 @@ export class SearchAdminReviewService {
     if (eventsError) throw eventsError;
 
     const items = aggregateSearchReviewEvents((events ?? []) as SearchReviewEventRow[]).slice(0, REVIEW_ITEM_LIMIT);
-    const pendingRows = await this.getPendingRows();
+    const queueRows = await this.getReviewQueueRows();
 
     return Promise.all(
       items.map(async (item) => ({
         ...item,
         candidates: await this.getCandidatesForItem(item),
-        pendingRows: pendingRows.filter(
+        pendingRows: queueRows.filter(
           (row) => row.normalized_query === item.normalizedQuery && (row.context ?? item.context) === item.context
         ),
       }))
@@ -202,12 +208,11 @@ export class SearchAdminReviewService {
     if (error) throw error;
   }
 
-  private async getPendingRows(): Promise<SearchReviewQueueRow[]> {
+  private async getReviewQueueRows(): Promise<SearchReviewQueueRow[]> {
     const client = this.requireClient();
     const { data, error } = await client
       .from('food_search_review_queue')
-      .select('id, query, normalized_query, context, suggested_canonical_food_id, frequency, status, reviewer_id, reviewed_at, comment, source_event_ids, created_at, updated_at')
-      .eq('status', 'pending')
+      .select('id, query, normalized_query, context, suggested_canonical_food_id, frequency, status, reviewer_id, reviewed_at, comment, source_event_ids, applied_alias_id, alias_applied_by, alias_applied_at, alias_apply_result, alias_apply_error, created_at, updated_at')
       .order('updated_at', { ascending: false })
       .limit(200);
 

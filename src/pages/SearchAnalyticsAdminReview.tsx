@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Clock, MessageSquare, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeft, Check, Clock, MessageSquare, Play, RefreshCw, Search, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { aliasApplyService, type AliasApplyResult } from '../services/aliasApplyService';
 import {
   searchAdminReviewService,
   type SearchReviewCandidate,
@@ -20,6 +21,22 @@ const statusLabel: Record<SearchReviewStatus, string> = {
 const eventTypeLabel = {
   not_found: 'Не найдено',
   ambiguous: 'Неоднозначно',
+};
+
+const applyResultLabel: Record<AliasApplyResult, string> = {
+  applied: 'Алиас добавлен',
+  duplicate_alias: 'Алиас уже существует',
+  existing_alias_conflict: 'Алиас занят другим продуктом',
+  orphan_canonical: 'Целевой продукт не найден',
+  invalid_canonical_source: 'Цель не из общей базы',
+  not_approved: 'Сначала одобрите строку',
+  ambiguous_alias: 'Запрос неоднозначный',
+  missing_source_evidence: 'Нет исходных событий',
+  already_applied: 'Уже применено',
+  permission_denied: 'Нет прав',
+  invalid_alias: 'Некорректный алиас',
+  review_not_found: 'Строка review не найдена',
+  insert_failed: 'Не удалось добавить',
 };
 
 const formatDateTime = (value: string) => {
@@ -68,13 +85,45 @@ const QueueRow = ({
   disabled: boolean;
 }) => {
   const [comment, setComment] = useState(row.comment ?? '');
+  const [alias, setAlias] = useState(row.query);
+  const [applyMessage, setApplyMessage] = useState<string | null>(null);
+  const [applyError, setApplyError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const canApply = row.status === 'approved' && !row.applied_alias_id;
+  const isApplied = Boolean(row.applied_alias_id);
+
+  useEffect(() => {
+    setComment(row.comment ?? '');
+    setAlias(row.query);
+    setApplyMessage(null);
+    setApplyError(null);
+  }, [row.id, row.comment, row.query]);
 
   const updateStatus = async (status: Exclude<SearchReviewStatus, 'pending'>) => {
     setIsSubmitting(true);
     try {
       await searchAdminReviewService.updateQueueStatus(row.id, status, reviewerId, comment);
       onUpdate();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const applyAlias = async () => {
+    setIsSubmitting(true);
+    setApplyMessage(null);
+    setApplyError(null);
+    try {
+      const result = await aliasApplyService.applyApprovedAlias(row.id, alias, comment);
+      const label = applyResultLabel[result.result];
+      if (result.result === 'applied' || result.result === 'already_applied') {
+        setApplyMessage(result.aliasId ? `${label}: ${result.aliasId}` : label);
+      } else {
+        setApplyError(result.error ? `${label}: ${result.error}` : label);
+      }
+      onUpdate();
+    } catch (applyError: any) {
+      setApplyError(applyError?.message || 'Не удалось применить алиас');
     } finally {
       setIsSubmitting(false);
     }
@@ -90,6 +139,15 @@ const QueueRow = ({
           <div className="mt-1 text-sm text-gray-900 dark:text-white">
             target: {row.suggested_canonical_food_id ?? 'без кандидата'}
           </div>
+          {row.alias_apply_result && (
+            <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              apply: {applyResultLabel[row.alias_apply_result]} ({row.alias_apply_result})
+              {row.alias_apply_error ? ` · ${row.alias_apply_error}` : ''}
+            </div>
+          )}
+          {isApplied && row.applied_alias_id && (
+            <div className="mt-1 text-xs text-green-700 dark:text-green-300">alias: {row.applied_alias_id}</div>
+          )}
         </div>
         <div className="text-xs text-gray-500 dark:text-gray-400">freq {row.frequency}</div>
       </div>
@@ -100,35 +158,66 @@ const QueueRow = ({
         placeholder="Комментарий"
         className="mt-3 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
       />
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => updateStatus('approved')}
-          disabled={disabled || isSubmitting || !row.suggested_canonical_food_id}
-          className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-        >
-          <Check className="h-3.5 w-3.5" />
-          Одобрить
-        </button>
-        <button
-          type="button"
-          onClick={() => updateStatus('rejected')}
-          disabled={disabled || isSubmitting}
-          className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-        >
-          <X className="h-3.5 w-3.5" />
-          Отклонить
-        </button>
-        <button
-          type="button"
-          onClick={() => updateStatus('snoozed')}
-          disabled={disabled || isSubmitting}
-          className="inline-flex items-center gap-1 rounded-lg bg-gray-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
-        >
-          <Clock className="h-3.5 w-3.5" />
-          Отложить
-        </button>
-      </div>
+      {row.status === 'pending' && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => updateStatus('approved')}
+            disabled={disabled || isSubmitting || !row.suggested_canonical_food_id}
+            className="inline-flex items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          >
+            <Check className="h-3.5 w-3.5" />
+            Одобрить
+          </button>
+          <button
+            type="button"
+            onClick={() => updateStatus('rejected')}
+            disabled={disabled || isSubmitting}
+            className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          >
+            <X className="h-3.5 w-3.5" />
+            Отклонить
+          </button>
+          <button
+            type="button"
+            onClick={() => updateStatus('snoozed')}
+            disabled={disabled || isSubmitting}
+            className="inline-flex items-center gap-1 rounded-lg bg-gray-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          >
+            <Clock className="h-3.5 w-3.5" />
+            Отложить
+          </button>
+        </div>
+      )}
+      {row.status === 'approved' && (
+        <div className="mt-3 rounded-lg border border-green-100 bg-white px-3 py-3 dark:border-green-900 dark:bg-gray-900">
+          <div className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-300">
+            Alias Apply
+          </div>
+          <input
+            value={alias}
+            onChange={(event) => setAlias(event.target.value)}
+            disabled={disabled || isSubmitting || isApplied}
+            placeholder="Алиас"
+            className="mt-2 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-3 py-2 text-sm text-gray-900 dark:text-white disabled:opacity-60"
+          />
+          <button
+            type="button"
+            onClick={() => void applyAlias()}
+            disabled={disabled || isSubmitting || !canApply}
+            className="mt-2 inline-flex items-center gap-1 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          >
+            <Play className="h-3.5 w-3.5" />
+            Apply alias
+          </button>
+          {applyMessage && (
+            <div className="mt-2 text-xs text-green-700 dark:text-green-300">{applyMessage}</div>
+          )}
+          {applyError && (
+            <div className="mt-2 text-xs text-red-700 dark:text-red-300">{applyError}</div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -284,7 +373,7 @@ const SearchAnalyticsAdminReview = () => {
                 <div>
                   <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                     <MessageSquare className="h-4 w-4" />
-                    Pending queue
+                    Review queue
                   </div>
                   <div className="space-y-2">
                     {item.pendingRows.length > 0 ? (
@@ -299,7 +388,7 @@ const SearchAnalyticsAdminReview = () => {
                       ))
                     ) : (
                       <div className="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                        Pending rows ещё нет.
+                        Review rows ещё нет.
                       </div>
                     )}
                   </div>
