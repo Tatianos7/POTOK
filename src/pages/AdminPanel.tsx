@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAdminAccess } from '../hooks/useAdminAccess';
 import { supportService } from '../services/supportService';
 import { activityService } from '../services/activityService';
 import { notificationService, type AppNotification } from '../services/notificationService';
@@ -9,7 +10,8 @@ import { X, MessageSquare, Users, UserCheck, UserX, Mail, CheckCircle, Clock, Al
 import FoodIngestionPanel from '../components/FoodIngestionPanel';
 
 const AdminPanel = () => {
-  const { user, authStatus, logout, getAllUsers, setAdminStatus } = useAuth();
+  const { user, profile, authStatus, logout, getAllUsers, setAdminStatus } = useAuth();
+  const adminAccessStatus = useAdminAccess({ authStatus, user, profile });
   const navigate = useNavigate();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -56,7 +58,7 @@ const AdminPanel = () => {
     : null;
 
   useEffect(() => {
-    if (authStatus !== 'authenticated' || !user?.isAdmin) {
+    if (authStatus !== 'authenticated' || adminAccessStatus !== 'allowed') {
       return;
     }
     loadData();
@@ -92,7 +94,7 @@ const AdminPanel = () => {
       window.removeEventListener('support-message-changed', handleCustomStorageChange);
       window.removeEventListener('user-activity-changed', handleCustomStorageChange);
     };
-  }, [authStatus, user?.isAdmin]);
+  }, [authStatus, adminAccessStatus]);
 
   const loadData = async (options?: { silent?: boolean }): Promise<{ messages: SupportMessage[] } | null> => {
     const silent = options?.silent ?? false;
@@ -275,7 +277,7 @@ const AdminPanel = () => {
     );
   };
 
-  if (authStatus === 'booting') {
+  if (authStatus === 'booting' || adminAccessStatus === 'checking') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">Загрузка...</div>
@@ -283,7 +285,7 @@ const AdminPanel = () => {
     );
   }
 
-  if (authStatus === 'authenticated' && !user?.isAdmin) {
+  if (authStatus === 'authenticated' && adminAccessStatus === 'denied') {
     return <Navigate to="/" replace />;
   }
 

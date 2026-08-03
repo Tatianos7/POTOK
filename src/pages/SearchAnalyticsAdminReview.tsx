@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, Clock, MessageSquare, Play, RefreshCw, Search, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAdminAccess } from '../hooks/useAdminAccess';
 import { aliasApplyService, type AliasApplyResult } from '../services/aliasApplyService';
 import {
   searchAdminReviewService,
@@ -223,7 +224,8 @@ const QueueRow = ({
 };
 
 const SearchAnalyticsAdminReview = () => {
-  const { user, authStatus } = useAuth();
+  const { user, profile, authStatus } = useAuth();
+  const adminAccessStatus = useAdminAccess({ authStatus, user, profile });
   const navigate = useNavigate();
   const [items, setItems] = useState<SearchReviewItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -243,12 +245,12 @@ const SearchAnalyticsAdminReview = () => {
   };
 
   useEffect(() => {
-    if (authStatus === 'authenticated' && user?.isAdmin) {
+    if (authStatus === 'authenticated' && adminAccessStatus === 'allowed') {
       void loadItems();
     }
-  }, [authStatus, user?.isAdmin]);
+  }, [authStatus, adminAccessStatus]);
 
-  if (authStatus === 'booting') {
+  if (authStatus === 'booting' || adminAccessStatus === 'checking') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-gray-500">Загрузка...</div>
@@ -256,7 +258,7 @@ const SearchAnalyticsAdminReview = () => {
     );
   }
 
-  if (authStatus === 'authenticated' && !user?.isAdmin) {
+  if (authStatus === 'authenticated' && adminAccessStatus === 'denied') {
     return <Navigate to="/" replace />;
   }
 
