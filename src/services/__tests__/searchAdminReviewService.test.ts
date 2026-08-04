@@ -47,6 +47,50 @@ test('aggregates review events by context, event type, and normalized query', as
   assert.deepEqual(items[0].sourceEventIds, ['event-1', 'event-2']);
 });
 
+test('classifies review items for alias, missing food, ambiguous, and noise paths', async () => {
+  const { classifySearchReviewItem } = await import('../searchAdminReviewService.ts');
+
+  assert.equal(
+    classifySearchReviewItem({
+      item: { eventType: 'not_found', normalizedQuery: 'творог', candidateIds: [] },
+      existingAliasCount: 0,
+      exactSharedCanonicalCount: 1,
+      containsCandidateCount: 1,
+    }).classification,
+    'alias_candidate'
+  );
+
+  assert.equal(
+    classifySearchReviewItem({
+      item: { eventType: 'not_found', normalizedQuery: 'стейк', candidateIds: [] },
+      existingAliasCount: 0,
+      exactSharedCanonicalCount: 0,
+      containsCandidateCount: 0,
+    }).classification,
+    'missing_canonical_food'
+  );
+
+  assert.equal(
+    classifySearchReviewItem({
+      item: { eventType: 'not_found', normalizedQuery: 'говя', candidateIds: [] },
+      existingAliasCount: 0,
+      exactSharedCanonicalCount: 0,
+      containsCandidateCount: 7,
+    }).classification,
+    'ambiguous_broad_query'
+  );
+
+  assert.equal(
+    classifySearchReviewItem({
+      item: { eventType: 'not_found', normalizedQuery: 'ывапролдж', candidateIds: [] },
+      existingAliasCount: 0,
+      exactSharedCanonicalCount: 0,
+      containsCandidateCount: 0,
+    }).classification,
+    'typo_or_prefix'
+  );
+});
+
 test('createOrUpdatePending inserts only into review queue when no pending row exists', async () => {
   const { SearchAdminReviewService } = await import('../searchAdminReviewService.ts');
   const calls: Array<{ table: string; action: string; payload?: any }> = [];
@@ -92,6 +136,8 @@ test('createOrUpdatePending inserts only into review queue when no pending row e
       candidateIds: [],
       candidates: [],
       pendingRows: [],
+      classification: 'typo_or_prefix',
+      classificationReason: 'Похоже на шум, опечатку или неполный префикс.',
     },
     null
   );
@@ -154,6 +200,8 @@ test('createOrUpdatePending updates existing pending queue row', async () => {
       candidateIds: ['food-1'],
       candidates: [],
       pendingRows: [],
+      classification: 'ambiguous_broad_query',
+      classificationReason: 'Есть несколько возможных canonical targets или запрос слишком широкий.',
     },
     'food-1'
   );

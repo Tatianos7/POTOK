@@ -30,8 +30,8 @@ test('Search Review Alias Apply uses the service instead of direct RPC/table wri
 });
 
 test('Search Review shows Apply alias only for approved queue rows', () => {
-  assert.match(source, /const canApply = row\.status === 'approved' && !row\.applied_alias_id/);
-  assert.match(source, /row\.status === 'approved' && \(/);
+  assert.match(source, /classification === 'alias_candidate' && row\.status === 'approved' && !row\.applied_alias_id/);
+  assert.match(source, /row\.status === 'approved' && classification === 'alias_candidate' && \(/);
   assert.match(source, /disabled=\{disabled \|\| isSubmitting \|\| !canApply\}/);
 });
 
@@ -45,4 +45,11 @@ test('Search Review keeps approve flow separate from alias apply', () => {
   assert.match(source, /row\.status === 'pending' && \(/);
   assert.match(source, /updateStatus\('approved'\)/);
   assert.match(source, /Apply alias/);
+});
+
+test('Search Review displays classification guidance labels', () => {
+  assert.match(source, /alias_candidate: 'Alias candidate'/);
+  assert.match(source, /missing_canonical_food: 'Нужен missing food review'/);
+  assert.match(source, /ambiguous_broad_query: 'Нужна дисамбигуация'/);
+  assert.match(source, /typo_or_prefix: 'Шум\/префикс'/);
 });

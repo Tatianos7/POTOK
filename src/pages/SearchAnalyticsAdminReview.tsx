@@ -6,6 +6,7 @@ import { useAdminAccess } from '../hooks/useAdminAccess';
 import { aliasApplyService, type AliasApplyResult } from '../services/aliasApplyService';
 import {
   searchAdminReviewService,
+  type SearchReviewClassification,
   type SearchReviewCandidate,
   type SearchReviewItem,
   type SearchReviewQueueRow,
@@ -22,6 +23,27 @@ const statusLabel: Record<SearchReviewStatus, string> = {
 const eventTypeLabel = {
   not_found: 'Не найдено',
   ambiguous: 'Неоднозначно',
+};
+
+const classificationLabel: Record<SearchReviewClassification, string> = {
+  alias_candidate: 'Alias candidate',
+  missing_canonical_food: 'Missing food',
+  ambiguous_broad_query: 'Ambiguous',
+  typo_or_prefix: 'Шум/префикс',
+};
+
+const classificationActionLabel: Record<SearchReviewClassification, string> = {
+  alias_candidate: 'Можно рассматривать Alias Apply',
+  missing_canonical_food: 'Нужен missing food review',
+  ambiguous_broad_query: 'Нужна дисамбигуация',
+  typo_or_prefix: 'Шум/префикс',
+};
+
+const classificationClassName: Record<SearchReviewClassification, string> = {
+  alias_candidate: 'bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200',
+  missing_canonical_food: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200',
+  ambiguous_broad_query: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200',
+  typo_or_prefix: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200',
 };
 
 const applyResultLabel: Record<AliasApplyResult, string> = {
@@ -76,11 +98,13 @@ const CandidateButton = ({
 
 const QueueRow = ({
   row,
+  classification,
   reviewerId,
   onUpdate,
   disabled,
 }: {
   row: SearchReviewQueueRow;
+  classification: SearchReviewClassification;
   reviewerId: string;
   onUpdate: () => void;
   disabled: boolean;
@@ -90,7 +114,7 @@ const QueueRow = ({
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
   const [applyError, setApplyError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const canApply = row.status === 'approved' && !row.applied_alias_id;
+  const canApply = classification === 'alias_candidate' && row.status === 'approved' && !row.applied_alias_id;
   const isApplied = Boolean(row.applied_alias_id);
 
   useEffect(() => {
@@ -190,7 +214,7 @@ const QueueRow = ({
           </button>
         </div>
       )}
-      {row.status === 'approved' && (
+      {row.status === 'approved' && classification === 'alias_candidate' && (
         <div className="mt-3 rounded-lg border border-green-100 bg-white px-3 py-3 dark:border-green-900 dark:bg-gray-900">
           <div className="text-xs font-semibold uppercase tracking-wide text-green-700 dark:text-green-300">
             Alias Apply
@@ -217,6 +241,11 @@ const QueueRow = ({
           {applyError && (
             <div className="mt-2 text-xs text-red-700 dark:text-red-300">{applyError}</div>
           )}
+        </div>
+      )}
+      {row.status === 'approved' && classification !== 'alias_candidate' && (
+        <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          {classificationActionLabel[classification]}
         </div>
       )}
     </div>
@@ -330,9 +359,15 @@ const SearchAnalyticsAdminReview = () => {
                     <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-200">
                       {item.context}
                     </span>
+                    <span className={`rounded px-2 py-1 text-xs font-semibold ${classificationClassName[item.classification]}`}>
+                      {classificationLabel[item.classification]}
+                    </span>
                   </div>
                   <h2 className="mt-2 text-lg font-semibold text-gray-900 dark:text-white">{item.query}</h2>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{item.normalizedQuery}</p>
+                  <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                    {classificationActionLabel[item.classification]} · {item.classificationReason}
+                  </p>
                 </div>
                 <div className="text-right text-xs text-gray-500 dark:text-gray-400">
                   <div>frequency: {item.frequency}</div>
@@ -383,6 +418,7 @@ const SearchAnalyticsAdminReview = () => {
                         <QueueRow
                           key={row.id}
                           row={row}
+                          classification={item.classification}
                           reviewerId={user?.id ?? ''}
                           disabled={isMutating || !user?.id}
                           onUpdate={() => void loadItems()}

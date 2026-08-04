@@ -5,6 +5,11 @@ import type { FoodSearchAnalyticsContext } from './searchAnalyticsService';
 
 export type SearchReviewEventType = 'not_found' | 'ambiguous';
 export type SearchReviewStatus = 'pending' | 'approved' | 'rejected' | 'snoozed';
+export type SearchReviewClassification =
+  | 'alias_candidate'
+  | 'missing_canonical_food'
+  | 'ambiguous_broad_query'
+  | 'typo_or_prefix';
 
 export type SearchReviewEventRow = {
   id: string;
@@ -59,10 +64,69 @@ export type SearchReviewItem = {
   candidateIds: string[];
   candidates: SearchReviewCandidate[];
   pendingRows: SearchReviewQueueRow[];
+  classification: SearchReviewClassification;
+  classificationReason: string;
 };
 
 const REVIEW_EVENT_LIMIT = 500;
 const REVIEW_ITEM_LIMIT = 50;
+const MEANINGFUL_MISSING_FOOD_TERMS = new Set(['стейк']);
+const KNOWN_NOISE_PREFIXES = ['ыва'];
+
+const isLikelyNoiseOrPrefix = (query: string): boolean => {
+  const normalized = query.trim().toLowerCase();
+  if (normalized.length <= 4) return true;
+  if (KNOWN_NOISE_PREFIXES.some((prefix) => normalized.startsWith(prefix))) return true;
+  return false;
+};
+
+const buildClassificationReason = (classification: SearchReviewClassification): string => {
+  switch (classification) {
+    case 'alias_candidate':
+      return 'Есть один точный общий canonical target, можно рассматривать Alias Apply.';
+    case 'missing_canonical_food':
+      return 'Похоже на реальный продукт, но точного canonical food нет.';
+    case 'ambiguous_broad_query':
+      return 'Есть несколько возможных canonical targets или запрос слишком широкий.';
+    case 'typo_or_prefix':
+    default:
+      return 'Похоже на шум, опечатку или неполный префикс.';
+  }
+};
+
+export const classifySearchReviewItem = ({
+  item,
+  existingAliasCount,
+  exactSharedCanonicalCount,
+  containsCandidateCount,
+}: {
+  item: Pick<SearchReviewItem, 'eventType' | 'normalizedQuery' | 'candidateIds'>;
+  existingAliasCount: number;
+  exactSharedCanonicalCount: number;
+  containsCandidateCount: number;
+}): { classification: SearchReviewClassification; classificationReason: string } => {
+  let classification: SearchReviewClassification;
+
+  if (item.eventType === 'ambiguous' || item.candidateIds.length > 1 || exactSharedCanonicalCount > 1) {
+    classification = 'ambiguous_broad_query';
+  } else if (existingAliasCount === 1 || exactSharedCanonicalCount === 1 || item.candidateIds.length === 1) {
+    classification = 'alias_candidate';
+  } else if (containsCandidateCount > 1) {
+    classification = 'ambiguous_broad_query';
+  } else if (
+    MEANINGFUL_MISSING_FOOD_TERMS.has(item.normalizedQuery)
+    || (!isLikelyNoiseOrPrefix(item.normalizedQuery) && containsCandidateCount === 0)
+  ) {
+    classification = 'missing_canonical_food';
+  } else {
+    classification = 'typo_or_prefix';
+  }
+
+  return {
+    classification,
+    classificationReason: buildClassificationReason(classification),
+  };
+};
 
 export const aggregateSearchReviewEvents = (events: SearchReviewEventRow[]): SearchReviewItem[] => {
   const grouped = new Map<string, SearchReviewItem>();
@@ -86,6 +150,8 @@ export const aggregateSearchReviewEvents = (events: SearchReviewEventRow[]): Sea
         candidateIds,
         candidates: [],
         pendingRows: [],
+        classification: 'typo_or_prefix',
+        classificationReason: buildClassificationReason('typo_or_prefix'),
       });
       continue;
     }
@@ -138,13 +204,24 @@ export class SearchAdminReviewService {
     const queueRows = await this.getReviewQueueRows();
 
     return Promise.all(
-      items.map(async (item) => ({
-        ...item,
-        candidates: await this.getCandidatesForItem(item),
-        pendingRows: queueRows.filter(
-          (row) => row.normalized_query === item.normalizedQuery && (row.context ?? item.context) === item.context
-        ),
-      }))
+      items.map(async (item) => {
+        const candidateResolution = await this.getCandidatesForItem(item);
+        const classification = classifySearchReviewItem({
+          item,
+          existingAliasCount: candidateResolution.existingAliasCount,
+          exactSharedCanonicalCount: candidateResolution.exactSharedCanonicalCount,
+          containsCandidateCount: candidateResolution.containsCandidateCount,
+        });
+
+        return {
+          ...item,
+          candidates: candidateResolution.candidates,
+          pendingRows: queueRows.filter(
+            (row) => row.normalized_query === item.normalizedQuery && (row.context ?? item.context) === item.context
+          ),
+          ...classification,
+        };
+      })
     );
   }
 
@@ -220,13 +297,18 @@ export class SearchAdminReviewService {
     return (data ?? []) as SearchReviewQueueRow[];
   }
 
-  private async getCandidatesForItem(item: SearchReviewItem): Promise<SearchReviewCandidate[]> {
+  private async getCandidatesForItem(item: SearchReviewItem): Promise<{
+    candidates: SearchReviewCandidate[];
+    existingAliasCount: number;
+    exactSharedCanonicalCount: number;
+    containsCandidateCount: number;
+  }> {
     const client = this.requireClient();
     const ids = [...item.candidateIds];
 
-    const { data: aliasRows } = await client
+    const { data: aliasRows, count: existingAliasCount } = await client
       .from('food_aliases')
-      .select('canonical_food_id')
+      .select('canonical_food_id', { count: 'exact' })
       .eq('normalized_alias', item.normalizedQuery)
       .limit(10);
 
@@ -235,7 +317,19 @@ export class SearchAdminReviewService {
       if (id && !ids.includes(id)) ids.push(id);
     }
 
+    const { data: exactFoods } = await client
+      .from('foods')
+      .select('id, name, brand, source, canonical_food_id')
+      .eq('normalized_name', item.normalizedQuery)
+      .in('source', ['core', 'brand'])
+      .limit(10);
+
     const candidatesById = new Map<string, SearchReviewCandidate>();
+    for (const row of exactFoods ?? []) {
+      const candidate = row as SearchReviewCandidate;
+      candidatesById.set(candidate.id, candidate);
+    }
+
     if (ids.length > 0) {
       const { data: foodsById } = await client
         .from('foods')
@@ -260,7 +354,12 @@ export class SearchAdminReviewService {
       candidatesById.set(candidate.id, candidate);
     }
 
-    return [...candidatesById.values()].slice(0, 8);
+    return {
+      candidates: [...candidatesById.values()].slice(0, 8),
+      existingAliasCount: existingAliasCount ?? 0,
+      exactSharedCanonicalCount: exactFoods?.length ?? 0,
+      containsCandidateCount: foodsByName?.length ?? 0,
+    };
   }
 
   private requireClient(): SupabaseClient {
