@@ -89,6 +89,18 @@ test('classifies review items for alias, missing food, ambiguous, and noise path
     }).classification,
     'typo_or_prefix'
   );
+
+  for (const normalizedQuery of ['сте', 'стей', 'стейц', 'стейцк', 'стейй']) {
+    assert.equal(
+      classifySearchReviewItem({
+        item: { eventType: 'not_found', normalizedQuery, candidateIds: [] },
+        existingAliasCount: 0,
+        exactSharedCanonicalCount: 0,
+        containsCandidateCount: normalizedQuery === 'сте' ? 7 : 0,
+      }).classification,
+      'typo_or_prefix'
+    );
+  }
 });
 
 test('createOrUpdatePending inserts only into review queue when no pending row exists', async () => {

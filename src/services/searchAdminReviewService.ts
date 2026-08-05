@@ -70,11 +70,14 @@ export type SearchReviewItem = {
 
 const REVIEW_EVENT_LIMIT = 500;
 const REVIEW_ITEM_LIMIT = 50;
+const KNOWN_AMBIGUOUS_BROAD_TERMS = new Set(['гов', 'говя', 'говяд']);
 const MEANINGFUL_MISSING_FOOD_TERMS = new Set(['стейк']);
+const KNOWN_TYPO_OR_PREFIX_TERMS = new Set(['сте', 'стей', 'стейц', 'стейцк', 'стейй']);
 const KNOWN_NOISE_PREFIXES = ['ыва'];
 
 const isLikelyNoiseOrPrefix = (query: string): boolean => {
   const normalized = query.trim().toLowerCase();
+  if (KNOWN_TYPO_OR_PREFIX_TERMS.has(normalized)) return true;
   if (normalized.length <= 4) return true;
   if (KNOWN_NOISE_PREFIXES.some((prefix) => normalized.startsWith(prefix))) return true;
   return false;
@@ -111,15 +114,18 @@ export const classifySearchReviewItem = ({
     classification = 'ambiguous_broad_query';
   } else if (existingAliasCount === 1 || exactSharedCanonicalCount === 1 || item.candidateIds.length === 1) {
     classification = 'alias_candidate';
+  } else if (KNOWN_AMBIGUOUS_BROAD_TERMS.has(item.normalizedQuery)) {
+    classification = 'ambiguous_broad_query';
+  } else if (MEANINGFUL_MISSING_FOOD_TERMS.has(item.normalizedQuery)) {
+    classification = 'missing_canonical_food';
+  } else if (isLikelyNoiseOrPrefix(item.normalizedQuery)) {
+    classification = 'typo_or_prefix';
   } else if (containsCandidateCount > 1) {
     classification = 'ambiguous_broad_query';
-  } else if (
-    MEANINGFUL_MISSING_FOOD_TERMS.has(item.normalizedQuery)
-    || (!isLikelyNoiseOrPrefix(item.normalizedQuery) && containsCandidateCount === 0)
-  ) {
+  } else if (containsCandidateCount === 0) {
     classification = 'missing_canonical_food';
   } else {
-    classification = 'typo_or_prefix';
+    classification = 'ambiguous_broad_query';
   }
 
   return {
