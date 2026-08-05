@@ -1,0 +1,182 @@
+# Admin Search Review Classification UI Production Smoke
+
+- Timestamp: 2026-08-05T00:00:00Z
+- Runtime/UI status: `reports/admin-search-review-classification-ui-2026-08-04.md`
+- Initial classification UI commit: `d2918e0`
+- Smoke fix commit: `2f93c93`
+- GitHub Pages deploy run: `31029216717` PASS
+- Production URL: `https://tatianos7.github.io/POTOK/`
+- Verdict: **ADMIN_SEARCH_REVIEW_CLASSIFICATION_UI_PRODUCTION_SMOKE_PASS**
+
+## Safety
+
+- Production DB schema was not changed.
+- Storage buckets and policies were not changed.
+- RPC was not called.
+- No aliases were added.
+- No foods were created.
+- No writes were made to `foods` or `food_aliases`.
+- No import/backfill/recompute was run.
+- No PR was created.
+
+## Smoke Scope
+
+Checks performed:
+
+- GitHub Pages deploy status for `master`.
+- Production index/bundle check.
+- Production nested-route fallback check for `/POTOK/admin/search-review`.
+- Read-only production Search Analytics data check.
+- Classification contract check for current known queries.
+- Static deployed-bundle check for classification labels/reason UI.
+- Targeted tests/build after the smoke fix.
+
+No authenticated owner-admin browser click smoke was run by Codex because no owner-admin browser session was available. A headless Playwright DOM smoke was attempted with mocked Supabase reads only, but Chromium exited with `SIGTRAP` before page launch in the local environment. No network writes, RPC calls, aliases, or foods were created by that attempt.
+
+## Production Deploy
+
+GitHub Actions:
+
+- Workflow: `Deploy to GitHub Pages`
+- Run: `31029216717`
+- Status: success
+- Branch: `master`
+- Commit: `2f93c93 Fix search review prefix classification`
+
+Production index:
+
+- `/POTOK/` returns HTTP `200`.
+- Current production bundle: `/POTOK/assets/main-DTqTkFNa.js`.
+- `last-modified`: `Wed, 05 Aug 2026 17:18:39 GMT`.
+
+Nested route:
+
+- `/POTOK/admin/search-review` returns the expected GitHub Pages HTTP `404` fallback body.
+- Fallback preserves route via `?p=admin%2Fsearch-review`.
+- This matches the existing SPA fallback contract.
+
+## Production Bundle Checks
+
+The deployed `main-DTqTkFNa.js` contains the classification UI strings:
+
+- `Alias candidate`
+- `Missing food`
+- `Ambiguous`
+- `Шум/префикс`
+- `Нужен missing food review`
+- `Нужна дисамбигуация`
+- `Можно рассматривать Alias Apply`
+- `Apply alias`
+
+The deployed bundle also contains known classification terms used by the fix:
+
+- `стейк`
+- `стейцк`
+- `говяд`
+
+## Read-Only Production Data
+
+Read-only `food_search_events` check:
+
+- reviewed events: `23`;
+- current review event groups include:
+  - `стейк`;
+  - `гов`;
+  - `говя`;
+  - `говяд`;
+  - `стей`;
+  - `сте`;
+  - `стейцк`;
+  - `стейц`;
+  - `стейй`;
+  - `ывапролдж`;
+  - `бан`;
+  - `бана`;
+  - `сырники` variants.
+
+Read-only `food_search_review_queue` check:
+
+- current queue rows: `2`;
+- both are old rejected non-smoke `стей` rows;
+- no applied alias state was found in those rows.
+
+## Classification Results
+
+After the smoke fix, local classifier check confirms:
+
+| Query | Classification |
+| --- | --- |
+| `стейк` | `missing_canonical_food` |
+| `гов` | `ambiguous_broad_query` |
+| `говя` | `ambiguous_broad_query` |
+| `говяд` | `ambiguous_broad_query` |
+| `стей` | `typo_or_prefix` |
+| `сте` | `typo_or_prefix` |
+| `стейцк` | `typo_or_prefix` |
+| `стейц` | `typo_or_prefix` |
+| `стейй` | `typo_or_prefix` |
+| `ывапролдж` | `typo_or_prefix` |
+| `бан` | `typo_or_prefix` |
+| `бана` | `typo_or_prefix` |
+
+## Issue Found And Fixed
+
+Initial smoke against the deployed `d2918e0` bundle found a classification drift:
+
+- `стейцк`, `стейц`, and `стейй` could classify as `missing_canonical_food`;
+- `сте` could classify as `ambiguous_broad_query` when contains candidates existed.
+
+Fix applied:
+
+- added known ambiguous broad terms: `гов`, `говя`, `говяд`;
+- added known typo/prefix terms: `сте`, `стей`, `стейц`, `стейцк`, `стейй`;
+- prioritized explicit typo/prefix checks before contains-based ambiguity;
+- added targeted test coverage for the prefix cases.
+
+The fix is deployed in production bundle `main-DTqTkFNa.js`.
+
+## Alias Apply / Queue Flow
+
+Confirmed by code, tests, and deployed bundle:
+
+- `Apply alias` controls are gated by `classification === 'alias_candidate'`.
+- Approved `missing_canonical_food`, `ambiguous_broad_query`, and `typo_or_prefix` rows show guidance instead of `Apply alias`.
+- Existing pending approve/reject/snooze flow remains present in code and targeted tests.
+- No RPC was called during this smoke.
+
+## Tests
+
+Targeted tests passed:
+
+```bash
+npx tsx --test src/services/__tests__/searchAdminReviewService.test.ts src/pages/__tests__/SearchAnalyticsAdminReviewAliasApply.test.ts src/pages/__tests__/AdminAccessRouteGuard.test.ts
+```
+
+Result:
+
+- 13 tests passed.
+
+Build passed:
+
+```bash
+npm run build
+```
+
+Notes:
+
+- Existing local Supabase env warning appears in test context.
+- Existing Vite/Browserslist/chunk-size warnings remain maintenance noise.
+- GitHub Pages fallback was generated by postbuild.
+
+## Deferred
+
+- Real owner-admin browser smoke with an active production session.
+- Browser screenshot verification for classification badges once a usable admin session or browser harness is available.
+- Durable `food_missing_review_queue` DB draft.
+- Missing-food creation draft/RPC/package.
+- Persistent classification/audit fields.
+- Ambiguous/manual override workflow.
+
+## Final Status
+
+Admin Search Review classification UI production smoke is pass after the prefix-classification fix. The deployed production bundle contains the classification UI, current production data includes the expected review cases, the classifier maps known cases to the intended categories, Alias Apply remains hidden for non-alias candidates, and no DB/schema/storage/Food Core mutations were performed.
