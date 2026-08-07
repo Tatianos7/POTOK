@@ -4,7 +4,7 @@ import { ArrowLeft, Check, Clock, MessageSquare, Play, RefreshCw, Search, X } fr
 import { useAuth } from '../context/AuthContext';
 import { useAdminAccess } from '../hooks/useAdminAccess';
 import { aliasApplyService, type AliasApplyResult } from '../services/aliasApplyService';
-import { missingFoodReviewQueueService } from '../services/missingFoodReviewQueueService';
+import { missingFoodReviewQueueService, type MissingFoodReviewQueueRow } from '../services/missingFoodReviewQueueService';
 import {
   searchAdminReviewService,
   type SearchReviewClassification,
@@ -253,11 +253,45 @@ const QueueRow = ({
   );
 };
 
+const MissingQueueRow = ({
+  row,
+  onOpen,
+}: {
+  row: MissingFoodReviewQueueRow;
+  onOpen: () => void;
+}) => (
+  <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-3 dark:border-blue-900 dark:bg-blue-950">
+    <div className="flex flex-wrap items-start justify-between gap-2">
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-200">
+          Missing Food Review
+        </div>
+        <div className="mt-1 text-sm font-medium text-blue-900 dark:text-blue-100">
+          {row.suggested_name || row.query}
+        </div>
+        <div className="mt-1 text-xs text-blue-700 dark:text-blue-200">
+          status: {row.status} · freq {row.frequency}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white"
+      >
+        <MessageSquare className="h-3.5 w-3.5" />
+        Открыть missing queue
+      </button>
+    </div>
+    {row.comment && <div className="mt-2 text-xs text-blue-800 dark:text-blue-100">{row.comment}</div>}
+  </div>
+);
+
 const SearchAnalyticsAdminReview = () => {
   const { user, profile, authStatus } = useAuth();
   const adminAccessStatus = useAdminAccess({ authStatus, user, profile });
   const navigate = useNavigate();
   const [items, setItems] = useState<SearchReviewItem[]>([]);
+  const [missingRows, setMissingRows] = useState<MissingFoodReviewQueueRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
@@ -267,7 +301,12 @@ const SearchAnalyticsAdminReview = () => {
     setIsLoading(true);
     setError(null);
     try {
-      setItems(await searchAdminReviewService.getReviewItems());
+      const [reviewItems, missingQueueRows] = await Promise.all([
+        searchAdminReviewService.getReviewItems(),
+        missingFoodReviewQueueService.getRows(),
+      ]);
+      setItems(reviewItems);
+      setMissingRows(missingQueueRows);
     } catch (loadError: any) {
       setError(loadError?.message || 'Не удалось загрузить очередь');
     } finally {
@@ -317,6 +356,7 @@ const SearchAnalyticsAdminReview = () => {
         comment: item.classificationReason,
       });
       setMissingReviewMessage((current) => ({ ...current, [item.key]: 'Добавлено в Missing Food Review' }));
+      await loadItems();
     } catch (mutationError: any) {
       setError(mutationError?.message || 'Не удалось обновить Missing Food Review');
     } finally {
@@ -368,7 +408,15 @@ const SearchAnalyticsAdminReview = () => {
             </div>
           )}
 
-          {items.map((item) => (
+          {items.map((item) => {
+            const linkedMissingRows = missingRows.filter(
+              (row) =>
+                row.normalized_query === item.normalizedQuery &&
+                (row.context ?? item.context) === item.context &&
+                row.classification === item.classification
+            );
+
+            return (
             <section key={item.key} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -379,7 +427,7 @@ const SearchAnalyticsAdminReview = () => {
                     <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700 dark:bg-gray-700 dark:text-gray-200">
                       {item.context}
                     </span>
-                    <span className={`rounded px-2 py-1 text-xs font-semibold ${classificationClassName[item.classification]}`}>
+                    <span className={`cursor-default select-none rounded px-2 py-1 text-xs font-semibold ${classificationClassName[item.classification]}`}>
                       {classificationLabel[item.classification]}
                     </span>
                   </div>
@@ -438,6 +486,13 @@ const SearchAnalyticsAdminReview = () => {
                             {missingReviewMessage[item.key]}
                           </div>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => navigate('/admin/missing-food-review')}
+                          className="mt-2 inline-flex items-center gap-1 rounded-lg border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 dark:border-blue-800 dark:text-blue-200"
+                        >
+                          Открыть missing queue
+                        </button>
                       </div>
                     )}
                     {(item.classification === 'ambiguous_broad_query' || item.classification === 'typo_or_prefix') && (
@@ -464,6 +519,13 @@ const SearchAnalyticsAdminReview = () => {
                     Review queue
                   </div>
                   <div className="space-y-2">
+                    {linkedMissingRows.map((row) => (
+                      <MissingQueueRow
+                        key={row.id}
+                        row={row}
+                        onOpen={() => navigate('/admin/missing-food-review')}
+                      />
+                    ))}
                     {item.pendingRows.length > 0 ? (
                       item.pendingRows.map((row) => (
                         <QueueRow
@@ -475,16 +537,17 @@ const SearchAnalyticsAdminReview = () => {
                           onUpdate={() => void loadItems()}
                         />
                       ))
-                    ) : (
+                    ) : linkedMissingRows.length === 0 ? (
                       <div className="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
                         Review rows ещё нет.
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
             </section>
-          ))}
+            );
+          })}
         </main>
       </div>
     </div>

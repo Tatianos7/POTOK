@@ -57,9 +57,19 @@ test('Search Review displays classification guidance labels', () => {
 
 test('Search Review exposes Missing Food Review only for missing canonical food items', () => {
   assert.match(source, /missingFoodReviewQueueService\.createOrUpdatePending\(\{/);
+  assert.match(source, /missingFoodReviewQueueService\.getRows\(\)/);
+  assert.match(source, /linkedMissingRows/);
   assert.match(source, /item\.classification === 'missing_canonical_food' && \(/);
   assert.match(source, /В missing review/);
+  assert.match(source, /Открыть missing queue/);
+  assert.match(source, /navigate\('\/admin\/missing-food-review'\)/);
   assert.match(source, /Alias Apply недоступен, пока canonical food не существует/);
   assert.match(source, /Шум\/префикс: используйте reject\/snooze/);
   assert.doesNotMatch(source, /missingFoodReviewQueueService\.createOrUpdatePending\(row/);
+});
+
+test('Search Review treats classification badge as label and hides empty review message when missing row exists', () => {
+  assert.match(source, /cursor-default select-none rounded/);
+  assert.match(source, /linkedMissingRows\.length === 0/);
+  assert.match(source, /<MissingQueueRow/);
 });
