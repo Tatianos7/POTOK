@@ -139,3 +139,99 @@ test('createOrUpdatePending rejects non-missing classifications before DB access
     /missing_canonical_food/
   );
 });
+
+test('getRows applies filters and sort order for missing-food queue', async () => {
+  const { MissingFoodReviewQueueService } = await import('../missingFoodReviewQueueService.ts');
+  const calls: Array<{ action: string; field?: string; value?: string; options?: any }> = [];
+
+  const client = {
+    from(table: string) {
+      assert.equal(table, 'food_missing_review_queue');
+      return {
+        select(columns: string) {
+          calls.push({ action: 'select', value: columns });
+          return this;
+        },
+        eq(field: string, value: string) {
+          calls.push({ action: 'eq', field, value });
+          return this;
+        },
+        order(field: string, options: any) {
+          calls.push({ action: 'order', field, options });
+          return this;
+        },
+        limit(value: number) {
+          calls.push({ action: 'limit', value: String(value) });
+          return Promise.resolve({ data: [{ id: 'missing-1' }], error: null });
+        },
+      };
+    },
+  };
+
+  const service = new MissingFoodReviewQueueService(client as any);
+  const rows = await service.getRows({
+    status: 'pending',
+    classification: 'missing_canonical_food',
+    context: 'diary',
+  });
+
+  assert.deepEqual(rows, [{ id: 'missing-1' }]);
+  assert.deepEqual(
+    calls.filter((call) => call.action === 'eq').map((call) => [call.field, call.value]),
+    [
+      ['status', 'pending'],
+      ['classification', 'missing_canonical_food'],
+      ['context', 'diary'],
+    ]
+  );
+  assert.deepEqual(
+    calls.filter((call) => call.action === 'order').map((call) => [call.field, call.options]),
+    [
+      ['frequency', { ascending: false }],
+      ['created_at', { ascending: false }],
+    ]
+  );
+});
+
+test('updateRow stores edits and reviewer fields only when status changes', async () => {
+  const { MissingFoodReviewQueueService } = await import('../missingFoodReviewQueueService.ts');
+  const updates: any[] = [];
+
+  const client = {
+    from(table: string) {
+      assert.equal(table, 'food_missing_review_queue');
+      return {
+        update(payload: any) {
+          updates.push(payload);
+          return {
+            eq(field: string, value: string) {
+              assert.equal(field, 'id');
+              assert.equal(value, 'missing-1');
+              return Promise.resolve({ error: null });
+            },
+          };
+        },
+      };
+    },
+  };
+
+  const service = new MissingFoodReviewQueueService(client as any);
+  await service.updateRow({
+    rowId: 'missing-1',
+    reviewerId: 'admin-1',
+    status: 'approved_for_food_draft',
+    suggestedName: ' Стейк ',
+    suggestedCategory: ' meat ',
+    suggestedSource: 'core',
+    comment: ' ready ',
+  });
+
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].status, 'approved_for_food_draft');
+  assert.equal(updates[0].reviewer_id, 'admin-1');
+  assert.ok(updates[0].reviewed_at);
+  assert.equal(updates[0].suggested_name, 'Стейк');
+  assert.equal(updates[0].suggested_category, 'meat');
+  assert.equal(updates[0].suggested_source, 'core');
+  assert.equal(updates[0].comment, 'ready');
+});

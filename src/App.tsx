@@ -9,6 +9,7 @@ import CoachHistory from './pages/CoachHistory';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminPanel from './pages/AdminPanel';
 import SearchAnalyticsAdminReview from './pages/SearchAnalyticsAdminReview';
+import MissingFoodReviewQueue from './pages/MissingFoodReviewQueue';
 import Notifications from './pages/Notifications';
 import Goal from './pages/Goal';
 import GoalResult from './pages/GoalResult';
@@ -155,6 +156,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <SearchAnalyticsAdminReview />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/missing-food-review"
+        element={
+          <ProtectedRoute>
+            <MissingFoodReviewQueue />
           </ProtectedRoute>
         }
       />

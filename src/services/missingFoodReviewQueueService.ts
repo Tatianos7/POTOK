@@ -29,9 +29,27 @@ export type MissingFoodReviewQueueRow = {
   updated_at: string;
 };
 
+export type MissingFoodReviewSuggestedSource = 'core' | 'brand' | 'barcode' | 'open_food_facts' | 'other';
+
+export type MissingFoodReviewFilters = {
+  status?: MissingFoodReviewStatus | 'all';
+  classification?: SearchReviewClassification | 'all';
+  context?: FoodSearchAnalyticsContext | 'all';
+};
+
 type CreateOrUpdateMissingFoodInput = {
   item: SearchReviewItem;
   suggestedName?: string | null;
+  comment?: string | null;
+};
+
+type UpdateMissingFoodReviewInput = {
+  rowId: string;
+  reviewerId: string;
+  status?: Exclude<MissingFoodReviewStatus, 'pending'>;
+  suggestedName?: string | null;
+  suggestedCategory?: string | null;
+  suggestedSource?: MissingFoodReviewSuggestedSource | null;
   comment?: string | null;
 };
 
@@ -49,6 +67,30 @@ export class MissingFoodReviewQueueService {
 
   setClientForTests(client: SupabaseClient | null): void {
     this.client = client;
+  }
+
+  async getRows(filters: MissingFoodReviewFilters = {}): Promise<MissingFoodReviewQueueRow[]> {
+    const client = this.requireClient();
+    let query = client
+      .from('food_missing_review_queue')
+      .select('id, query, normalized_query, context, frequency, classification, status, source_event_ids, suggested_name, suggested_category, suggested_source, reviewer_id, reviewed_at, comment, created_at, updated_at');
+
+    if (filters.status && filters.status !== 'all') {
+      query = query.eq('status', filters.status);
+    }
+    if (filters.classification && filters.classification !== 'all') {
+      query = query.eq('classification', filters.classification);
+    }
+    if (filters.context && filters.context !== 'all') {
+      query = query.eq('context', filters.context);
+    }
+
+    const { data, error } = await query
+      .order('frequency', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) throw error;
+    return (data ?? []) as MissingFoodReviewQueueRow[];
   }
 
   async createOrUpdatePending({ item, suggestedName, comment }: CreateOrUpdateMissingFoodInput): Promise<void> {
@@ -95,6 +137,25 @@ export class MissingFoodReviewQueueService {
       classification: item.classification,
       status: 'pending',
     });
+    if (error) throw error;
+  }
+
+  async updateRow(input: UpdateMissingFoodReviewInput): Promise<void> {
+    const client = this.requireClient();
+    const payload: Record<string, unknown> = {
+      suggested_name: cleanOptionalText(input.suggestedName),
+      suggested_category: cleanOptionalText(input.suggestedCategory),
+      suggested_source: input.suggestedSource ?? null,
+      comment: cleanOptionalText(input.comment),
+    };
+
+    if (input.status) {
+      payload.status = input.status;
+      payload.reviewer_id = input.reviewerId;
+      payload.reviewed_at = new Date().toISOString();
+    }
+
+    const { error } = await client.from('food_missing_review_queue').update(payload).eq('id', input.rowId);
     if (error) throw error;
   }
 
