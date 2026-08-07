@@ -27,6 +27,7 @@ test('Search Review Alias Apply uses the service instead of direct RPC/table wri
   assert.match(source, /aliasApplyService\.applyApprovedAlias\(row\.id, alias, comment\)/);
   assert.doesNotMatch(source, /\.rpc\('apply_admin_approved_food_alias'/);
   assert.doesNotMatch(source, /\.from\('food_aliases'\)/);
+  assert.doesNotMatch(source, /\.from\('foods'\)/);
 });
 
 test('Search Review shows Apply alias only for approved queue rows', () => {
@@ -52,4 +53,13 @@ test('Search Review displays classification guidance labels', () => {
   assert.match(source, /missing_canonical_food: 'Нужен missing food review'/);
   assert.match(source, /ambiguous_broad_query: 'Нужна дисамбигуация'/);
   assert.match(source, /typo_or_prefix: 'Шум\/префикс'/);
+});
+
+test('Search Review exposes Missing Food Review only for missing canonical food items', () => {
+  assert.match(source, /missingFoodReviewQueueService\.createOrUpdatePending\(\{/);
+  assert.match(source, /item\.classification === 'missing_canonical_food' && \(/);
+  assert.match(source, /В missing review/);
+  assert.match(source, /Alias Apply недоступен, пока canonical food не существует/);
+  assert.match(source, /Шум\/префикс: используйте reject\/snooze/);
+  assert.doesNotMatch(source, /missingFoodReviewQueueService\.createOrUpdatePending\(row/);
 });

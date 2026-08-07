@@ -4,6 +4,7 @@ import { ArrowLeft, Check, Clock, MessageSquare, Play, RefreshCw, Search, X } fr
 import { useAuth } from '../context/AuthContext';
 import { useAdminAccess } from '../hooks/useAdminAccess';
 import { aliasApplyService, type AliasApplyResult } from '../services/aliasApplyService';
+import { missingFoodReviewQueueService } from '../services/missingFoodReviewQueueService';
 import {
   searchAdminReviewService,
   type SearchReviewClassification,
@@ -260,6 +261,7 @@ const SearchAnalyticsAdminReview = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMutating, setIsMutating] = useState(false);
+  const [missingReviewMessage, setMissingReviewMessage] = useState<Record<string, string>>({});
 
   const loadItems = async () => {
     setIsLoading(true);
@@ -299,6 +301,24 @@ const SearchAnalyticsAdminReview = () => {
       await loadItems();
     } catch (mutationError: any) {
       setError(mutationError?.message || 'Не удалось обновить очередь');
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  const createMissingReview = async (item: SearchReviewItem) => {
+    setIsMutating(true);
+    setError(null);
+    setMissingReviewMessage((current) => ({ ...current, [item.key]: '' }));
+    try {
+      await missingFoodReviewQueueService.createOrUpdatePending({
+        item,
+        suggestedName: item.query,
+        comment: item.classificationReason,
+      });
+      setMissingReviewMessage((current) => ({ ...current, [item.key]: 'Добавлено в Missing Food Review' }));
+    } catch (mutationError: any) {
+      setError(mutationError?.message || 'Не удалось обновить Missing Food Review');
     } finally {
       setIsMutating(false);
     }
@@ -394,6 +414,37 @@ const SearchAnalyticsAdminReview = () => {
                     ) : (
                       <div className="rounded-lg border border-dashed border-gray-200 px-3 py-4 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
                         Кандидатов нет.
+                      </div>
+                    )}
+                    {item.classification === 'missing_canonical_food' && (
+                      <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-3 dark:border-blue-900 dark:bg-blue-950">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-200">
+                          Missing Food Review
+                        </div>
+                        <div className="mt-1 text-xs text-blue-700 dark:text-blue-200">
+                          Нужен отдельный missing food review. Alias Apply недоступен, пока canonical food не существует.
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void createMissingReview(item)}
+                          disabled={isMutating}
+                          className="mt-2 inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          В missing review
+                        </button>
+                        {missingReviewMessage[item.key] && (
+                          <div className="mt-2 text-xs text-blue-700 dark:text-blue-200">
+                            {missingReviewMessage[item.key]}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {(item.classification === 'ambiguous_broad_query' || item.classification === 'typo_or_prefix') && (
+                      <div className="rounded-lg border border-amber-100 bg-amber-50 px-3 py-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                        {item.classification === 'ambiguous_broad_query'
+                          ? 'Нужна дисамбигуация: не отправляйте широкий запрос в Missing Food Review или Alias Apply без отдельного решения.'
+                          : 'Шум/префикс: используйте reject/snooze, не создавая food или alias.'}
                       </div>
                     )}
                     <button
