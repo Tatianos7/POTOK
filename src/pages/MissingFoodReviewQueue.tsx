@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, Clock, FlaskConical, RefreshCw, Search, X } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Check, Clock, FlaskConical, RefreshCw, Save, Search, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAdminAccess } from '../hooks/useAdminAccess';
+import {
+  missingFoodDraftService,
+  validateMissingFoodDraft,
+  type EditableMissingFoodDraftStatus,
+  type MissingFoodDraftDuplicate,
+  type MissingFoodDraftRow,
+} from '../services/missingFoodDraftService';
 import {
   missingFoodReviewQueueService,
   type MissingFoodReviewQueueRow,
@@ -18,6 +25,13 @@ const statusLabels: Record<MissingFoodReviewStatus, string> = {
   approved_for_food_draft: 'Одобрено для food draft',
   rejected: 'Отклонено',
   snoozed: 'Отложено',
+};
+
+const draftStatusLabels: Record<EditableMissingFoodDraftStatus, string> = {
+  draft: 'Draft',
+  needs_revision: 'Needs revision',
+  ready_for_owner_apply: 'Ready for owner apply',
+  rejected: 'Rejected draft',
 };
 
 const classificationLabels: Record<SearchReviewClassification, string> = {
@@ -51,13 +65,302 @@ const formatDateTime = (value: string | null) => {
   });
 };
 
-const RowEditor = ({
+const parseOptionalNumber = (value: string): number | null => {
+  const cleaned = value.trim().replace(',', '.');
+  if (!cleaned) return null;
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+};
+
+const formatOptionalNumber = (value: number | null | undefined): string => {
+  return value === null || value === undefined ? '' : String(value);
+};
+
+const DraftPanel = ({
   row,
+  draft,
   reviewerId,
   disabled,
   onSaved,
 }: {
   row: MissingFoodReviewQueueRow;
+  draft?: MissingFoodDraftRow;
+  reviewerId: string;
+  disabled: boolean;
+  onSaved: () => void;
+}) => {
+  const [name, setName] = useState(draft?.name ?? row.suggested_name ?? row.query);
+  const [category, setCategory] = useState(draft?.category ?? row.suggested_category ?? '');
+  const [calories, setCalories] = useState(formatOptionalNumber(draft?.calories));
+  const [protein, setProtein] = useState(formatOptionalNumber(draft?.protein));
+  const [fat, setFat] = useState(formatOptionalNumber(draft?.fat));
+  const [carbs, setCarbs] = useState(formatOptionalNumber(draft?.carbs));
+  const [fiber, setFiber] = useState(formatOptionalNumber(draft?.fiber));
+  const [dataSource, setDataSource] = useState(draft?.data_source ?? '');
+  const [sourceUrl, setSourceUrl] = useState(draft?.source_url ?? '');
+  const [sourceNotes, setSourceNotes] = useState(draft?.source_notes ?? '');
+  const [reviewerNotes, setReviewerNotes] = useState(draft?.reviewer_notes ?? '');
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [duplicates, setDuplicates] = useState<MissingFoodDraftDuplicate[]>([]);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    setName(draft?.name ?? row.suggested_name ?? row.query);
+    setCategory(draft?.category ?? row.suggested_category ?? '');
+    setCalories(formatOptionalNumber(draft?.calories));
+    setProtein(formatOptionalNumber(draft?.protein));
+    setFat(formatOptionalNumber(draft?.fat));
+    setCarbs(formatOptionalNumber(draft?.carbs));
+    setFiber(formatOptionalNumber(draft?.fiber));
+    setDataSource(draft?.data_source ?? '');
+    setSourceUrl(draft?.source_url ?? '');
+    setSourceNotes(draft?.source_notes ?? '');
+    setReviewerNotes(draft?.reviewer_notes ?? '');
+    setMessage(null);
+    setError(null);
+  }, [draft?.id, row.id, row.query, row.suggested_name, row.suggested_category]);
+
+  const draftInput = {
+    sourceReviewId: row.id,
+    query: row.query,
+    normalizedQuery: row.normalized_query,
+    reviewerId,
+    name,
+    category,
+    calories: parseOptionalNumber(calories),
+    protein: parseOptionalNumber(protein),
+    fat: parseOptionalNumber(fat),
+    carbs: parseOptionalNumber(carbs),
+    fiber: parseOptionalNumber(fiber),
+    dataSource,
+    sourceUrl,
+    sourceNotes,
+    reviewerNotes,
+  };
+
+  const validation = validateMissingFoodDraft({
+    ...draftInput,
+    status: 'ready_for_owner_apply',
+  });
+
+  useEffect(() => {
+    const normalizedName = validation.normalizedName;
+    if (!normalizedName) {
+      setDuplicates([]);
+      return;
+    }
+
+    let cancelled = false;
+    setIsCheckingDuplicates(true);
+    missingFoodDraftService
+      .findDuplicateFoods(normalizedName)
+      .then((matches) => {
+        if (!cancelled) setDuplicates(matches);
+      })
+      .catch(() => {
+        if (!cancelled) setDuplicates([]);
+      })
+      .finally(() => {
+        if (!cancelled) setIsCheckingDuplicates(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [validation.normalizedName]);
+
+  const saveDraft = async (status: EditableMissingFoodDraftStatus) => {
+    setIsSaving(true);
+    setMessage(null);
+    setError(null);
+    try {
+      await missingFoodDraftService.saveDraft({
+        ...draftInput,
+        status,
+      });
+      setMessage(draftStatusLabels[status]);
+      onSaved();
+    } catch (saveError: any) {
+      setError(saveError?.message || 'Не удалось сохранить food draft');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const actionDisabled = disabled || isSaving || !reviewerId;
+
+  return (
+    <section className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-emerald-950 dark:text-emerald-100">Food draft</h3>
+          <p className="text-xs text-emerald-800 dark:text-emerald-200">
+            {draft ? `${draftStatusLabels[draft.status as EditableMissingFoodDraftStatus] ?? draft.status} · ${draft.id}` : 'Draft row ещё не создана'}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded bg-white px-2 py-1 font-medium text-emerald-800 dark:bg-gray-900 dark:text-emerald-200">
+            source: core
+          </span>
+          <span className="rounded bg-white px-2 py-1 font-medium text-emerald-800 dark:bg-gray-900 dark:text-emerald-200">
+            unit: g
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          Name
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          />
+        </label>
+        <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          Category
+          <input
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          />
+        </label>
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-5">
+        {[
+          ['Calories', calories, setCalories],
+          ['Protein', protein, setProtein],
+          ['Fat', fat, setFat],
+          ['Carbs', carbs, setCarbs],
+          ['Fiber', fiber, setFiber],
+        ].map(([label, value, setter]) => (
+          <label key={label as string} className="text-xs font-medium text-gray-700 dark:text-gray-300">
+            {label as string}
+            <input
+              value={value as string}
+              onChange={(event) => (setter as (next: string) => void)(event.target.value)}
+              inputMode="decimal"
+              className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            />
+          </label>
+        ))}
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          Data source
+          <input
+            value={dataSource}
+            onChange={(event) => setDataSource(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          />
+        </label>
+        <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          Source URL
+          <input
+            value={sourceUrl}
+            onChange={(event) => setSourceUrl(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          />
+        </label>
+      </div>
+
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          Source notes
+          <textarea
+            value={sourceNotes}
+            onChange={(event) => setSourceNotes(event.target.value)}
+            rows={2}
+            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          />
+        </label>
+        <label className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          Reviewer notes
+          <textarea
+            value={reviewerNotes}
+            onChange={(event) => setReviewerNotes(event.target.value)}
+            rows={2}
+            className="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          />
+        </label>
+      </div>
+
+      {duplicates.length > 0 && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <div className="flex items-center gap-2 font-semibold">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Duplicate warning
+          </div>
+          <div className="mt-1">
+            {duplicates.map((duplicate) => `${duplicate.name} (${duplicate.source})`).join(', ')}
+          </div>
+        </div>
+      )}
+
+      {validation.errors.length > 0 && (
+        <div className="mt-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+          {validation.errors.join(' ')}
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => void saveDraft('draft')}
+          disabled={actionDisabled}
+          className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+        >
+          <Save className="h-3.5 w-3.5" />
+          Save draft
+        </button>
+        <button
+          type="button"
+          onClick={() => void saveDraft('needs_revision')}
+          disabled={actionDisabled}
+          className="inline-flex items-center gap-1 rounded-lg bg-yellow-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+        >
+          <Search className="h-3.5 w-3.5" />
+          Needs revision
+        </button>
+        <button
+          type="button"
+          onClick={() => void saveDraft('ready_for_owner_apply')}
+          disabled={actionDisabled || !validation.isComplete || duplicates.length > 0 || isCheckingDuplicates}
+          className="inline-flex items-center gap-1 rounded-lg bg-green-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+        >
+          <Check className="h-3.5 w-3.5" />
+          Ready for owner apply
+        </button>
+        <button
+          type="button"
+          onClick={() => void saveDraft('rejected')}
+          disabled={actionDisabled}
+          className="inline-flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+        >
+          <X className="h-3.5 w-3.5" />
+          Reject draft
+        </button>
+      </div>
+
+      {message && <div className="mt-2 text-xs text-green-700 dark:text-green-300">{message}</div>}
+      {error && <div className="mt-2 text-xs text-red-700 dark:text-red-300">{error}</div>}
+    </section>
+  );
+};
+
+const RowEditor = ({
+  row,
+  draft,
+  reviewerId,
+  disabled,
+  onSaved,
+}: {
+  row: MissingFoodReviewQueueRow;
+  draft?: MissingFoodDraftRow;
   reviewerId: string;
   disabled: boolean;
   onSaved: () => void;
@@ -225,6 +528,16 @@ const RowEditor = ({
 
       {message && <div className="mt-2 text-xs text-green-700 dark:text-green-300">{message}</div>}
       {error && <div className="mt-2 text-xs text-red-700 dark:text-red-300">{error}</div>}
+
+      {row.status === 'approved_for_food_draft' && (
+        <DraftPanel
+          row={row}
+          draft={draft}
+          reviewerId={reviewerId}
+          disabled={disabled}
+          onSaved={onSaved}
+        />
+      )}
     </article>
   );
 };
@@ -237,6 +550,7 @@ const MissingFoodReviewQueue = () => {
   const [classification, setClassification] = useState<SearchReviewClassification | 'all'>('all');
   const [context, setContext] = useState<FoodSearchAnalyticsContext | 'all'>('all');
   const [rows, setRows] = useState<MissingFoodReviewQueueRow[]>([]);
+  const [draftsByReviewId, setDraftsByReviewId] = useState<Record<string, MissingFoodDraftRow>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -246,7 +560,14 @@ const MissingFoodReviewQueue = () => {
     setIsLoading(true);
     setError(null);
     try {
-      setRows(await missingFoodReviewQueueService.getRows(filters));
+      const nextRows = await missingFoodReviewQueueService.getRows(filters);
+      setRows(nextRows);
+      const draftRows = await missingFoodDraftService.getDraftsByReviewIds(
+        nextRows.filter((row) => row.status === 'approved_for_food_draft').map((row) => row.id)
+      );
+      setDraftsByReviewId(
+        Object.fromEntries(draftRows.map((draft) => [draft.source_review_id, draft]))
+      );
     } catch (loadError: any) {
       setError(loadError?.message || 'Не удалось загрузить Missing Food Review');
     } finally {
@@ -366,6 +687,7 @@ const MissingFoodReviewQueue = () => {
               <RowEditor
                 key={row.id}
                 row={row}
+                draft={draftsByReviewId[row.id]}
                 reviewerId={user?.id ?? ''}
                 disabled={isLoading || !user?.id}
                 onSaved={() => void loadRows()}

@@ -41,3 +41,15 @@ test('Missing Food Review Queue page does not call Alias Apply RPC or write Food
   assert.doesNotMatch(pageSource, /\.from\('foods'\)/);
   assert.doesNotMatch(pageSource, /\.from\('food_aliases'\)/);
 });
+
+test('Missing Food Review Queue page exposes draft panel only for approved food-draft rows', () => {
+  assert.match(pageSource, /row\.status === 'approved_for_food_draft'/);
+  assert.match(pageSource, /<DraftPanel/);
+  assert.match(pageSource, /missingFoodDraftService\.getDraftsByReviewIds/);
+  assert.match(pageSource, /missingFoodDraftService\.saveDraft/);
+  assert.match(pageSource, /validateMissingFoodDraft/);
+  assert.match(pageSource, /Ready for owner apply/);
+  assert.match(pageSource, /Duplicate warning/);
+  assert.match(pageSource, /findDuplicateFoods/);
+  assert.doesNotMatch(pageSource, /Create food/);
+});
