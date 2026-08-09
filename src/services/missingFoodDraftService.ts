@@ -70,6 +70,29 @@ export type MissingFoodDraftDuplicate = {
   source: string;
 };
 
+export type MissingFoodOwnerApplyResult =
+  | 'applied'
+  | 'permission_denied'
+  | 'draft_not_found'
+  | 'already_applied'
+  | 'not_ready'
+  | 'invalid_review_state'
+  | 'invalid_draft'
+  | 'duplicate_food'
+  | 'insert_failed';
+
+export type MissingFoodOwnerApplyResponse = {
+  result: MissingFoodOwnerApplyResult;
+  foodId: string | null;
+  error: string | null;
+};
+
+type MissingFoodOwnerApplyRpcRow = {
+  result: MissingFoodOwnerApplyResult;
+  food_id: string | null;
+  error: string | null;
+};
+
 const DRAFT_COLUMNS = [
   'id',
   'source_review_id',
@@ -245,6 +268,33 @@ export class MissingFoodDraftService {
 
     if (error) throw error;
     return (data ?? []) as unknown as MissingFoodDraftDuplicate[];
+  }
+
+  async applyOwnerApprovedDraft(draftId: string): Promise<MissingFoodOwnerApplyResponse> {
+    const client = this.requireClient();
+    const { data, error } = await client.rpc('apply_owner_approved_missing_food_draft', {
+      p_draft_id: draftId,
+    });
+
+    if (error) throw error;
+
+    const row = Array.isArray(data)
+      ? (data[0] as MissingFoodOwnerApplyRpcRow | undefined)
+      : (data as MissingFoodOwnerApplyRpcRow | null);
+
+    if (!row?.result) {
+      return {
+        result: 'insert_failed',
+        foodId: null,
+        error: 'RPC did not return an owner apply result.',
+      };
+    }
+
+    return {
+      result: row.result,
+      foodId: row.food_id ?? null,
+      error: row.error ?? null,
+    };
   }
 
   private requireClient(): SupabaseClient {

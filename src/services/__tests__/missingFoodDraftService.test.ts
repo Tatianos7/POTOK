@@ -204,3 +204,56 @@ test('findDuplicateFoods reads only shared foods by normalized name', async () =
     [['source', ['core', 'brand']]]
   );
 });
+
+test('applyOwnerApprovedDraft calls only the owner-approved missing food RPC', async () => {
+  const { MissingFoodDraftService } = await import('../missingFoodDraftService.ts');
+  const calls: any[] = [];
+
+  const client = {
+    from(table: string) {
+      throw new Error(`service must not write table ${table} directly`);
+    },
+    async rpc(name: string, payload: any) {
+      calls.push({ name, payload });
+      return {
+        data: [{ result: 'applied', food_id: 'food-1', error: null }],
+        error: null,
+      };
+    },
+  };
+
+  const service = new MissingFoodDraftService(client as any);
+  const result = await service.applyOwnerApprovedDraft('draft-1');
+
+  assert.deepEqual(calls, [
+    {
+      name: 'apply_owner_approved_missing_food_draft',
+      payload: {
+        p_draft_id: 'draft-1',
+      },
+    },
+  ]);
+  assert.deepEqual(result, {
+    result: 'applied',
+    foodId: 'food-1',
+    error: null,
+  });
+});
+
+test('applyOwnerApprovedDraft returns insert_failed when RPC returns no row', async () => {
+  const { MissingFoodDraftService } = await import('../missingFoodDraftService.ts');
+  const client = {
+    async rpc() {
+      return { data: [], error: null };
+    },
+  };
+
+  const service = new MissingFoodDraftService(client as any);
+  const result = await service.applyOwnerApprovedDraft('draft-1');
+
+  assert.deepEqual(result, {
+    result: 'insert_failed',
+    foodId: null,
+    error: 'RPC did not return an owner apply result.',
+  });
+});

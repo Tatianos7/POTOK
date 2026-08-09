@@ -105,6 +105,7 @@ const DraftPanel = ({
   const [duplicates, setDuplicates] = useState<MissingFoodDraftDuplicate[]>([]);
   const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
 
   useEffect(() => {
     setName(draft?.name ?? row.suggested_name ?? row.query);
@@ -189,7 +190,36 @@ const DraftPanel = ({
     }
   };
 
-  const actionDisabled = disabled || isSaving || !reviewerId;
+  const applyOwnerDraft = async () => {
+    if (!draft || draft.status !== 'ready_for_owner_apply' || draft.applied_food_id) return;
+
+    const confirmed = window.confirm(
+      'Owner apply food создаст 1 core food из этого draft. Aliases не создаст. Продолжить?'
+    );
+    if (!confirmed) return;
+
+    setIsApplying(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const result = await missingFoodDraftService.applyOwnerApprovedDraft(draft.id);
+      const details = result.foodId ? ` food_id: ${result.foodId}` : '';
+      if (result.result === 'applied') {
+        setMessage(`Owner apply result: ${result.result}.${details}`);
+      } else {
+        setError(`Owner apply result: ${result.result}. ${result.error ?? ''}`.trim());
+      }
+      onSaved();
+    } catch (applyError: any) {
+      setError(applyError?.message || 'Не удалось выполнить owner apply food');
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const actionDisabled = disabled || isSaving || isApplying || !reviewerId;
+  const ownerApplyVisible = draft?.status === 'ready_for_owner_apply';
+  const ownerApplyDisabled = actionDisabled || isApplying || !draft || Boolean(draft.applied_food_id);
 
   return (
     <section className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/30">
@@ -344,7 +374,24 @@ const DraftPanel = ({
           <X className="h-3.5 w-3.5" />
           Reject draft
         </button>
+        {ownerApplyVisible && (
+          <button
+            type="button"
+            onClick={() => void applyOwnerDraft()}
+            disabled={ownerApplyDisabled}
+            className="inline-flex items-center gap-1 rounded-lg bg-purple-700 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+          >
+            <Check className="h-3.5 w-3.5" />
+            Owner apply food
+          </button>
+        )}
       </div>
+
+      {draft?.applied_food_id && (
+        <div className="mt-2 text-xs text-emerald-800 dark:text-emerald-200">
+          Applied food: {draft.applied_food_id}
+        </div>
+      )}
 
       {message && <div className="mt-2 text-xs text-green-700 dark:text-green-300">{message}</div>}
       {error && <div className="mt-2 text-xs text-red-700 dark:text-red-300">{error}</div>}

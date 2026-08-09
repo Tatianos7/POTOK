@@ -53,3 +53,14 @@ test('Missing Food Review Queue page exposes draft panel only for approved food-
   assert.match(pageSource, /findDuplicateFoods/);
   assert.doesNotMatch(pageSource, /Create food/);
 });
+
+test('Missing Food Review Queue page gates owner apply food behind ready draft confirmation', () => {
+  assert.match(pageSource, /Owner apply food/);
+  assert.match(pageSource, /window\.confirm/);
+  assert.match(pageSource, /создаст 1 core food/);
+  assert.match(pageSource, /Aliases не создаст/);
+  assert.match(pageSource, /missingFoodDraftService\.applyOwnerApprovedDraft\(draft\.id\)/);
+  assert.match(pageSource, /draft\?\.status === 'ready_for_owner_apply'/);
+  assert.match(pageSource, /Boolean\(draft\.applied_food_id\)/);
+  assert.match(pageSource, /Applied food: \{draft\.applied_food_id\}/);
+});
