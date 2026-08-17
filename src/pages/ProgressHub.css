@@ -50,7 +50,8 @@
 
 .progress-summary-card,
 .progress-dashboard-card,
-.progress-attention-card {
+.progress-attention-card,
+.progress-daily-goal-card {
   width: 100%;
   border: 1px solid #e7e5e4;
   border-radius: 14px;
@@ -62,6 +63,166 @@
 
 .progress-summary-card {
   background: #f8faf9;
+}
+
+.progress-daily-goal-card {
+  background: #f8faf9;
+}
+
+.progress-daily-goal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.progress-daily-goal-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #57534e;
+}
+
+.progress-daily-goal-score {
+  display: inline-flex;
+  min-width: 52px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.progress-daily-goal-meter {
+  margin-top: 12px;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7e5e4;
+}
+
+.progress-daily-goal-meter div {
+  height: 100%;
+  border-radius: inherit;
+  background: #10b981;
+  transition: width 0.18s ease;
+}
+
+.progress-daily-goal-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.progress-daily-goal-item {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 8px;
+  color: #57534e;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.progress-daily-goal-item svg {
+  flex: 0 0 auto;
+  color: #a8a29e;
+}
+
+.progress-daily-goal-item-content {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.progress-daily-goal-item-label {
+  flex: 1 1 145px;
+  min-width: 0;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.progress-daily-goal-item-note {
+  flex: 0 1 auto;
+  max-width: 100%;
+  border-radius: 999px;
+  background: #f5f5f4;
+  padding: 2px 7px;
+  color: #78716c;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 650;
+}
+
+.progress-daily-goal-item.is-complete {
+  color: #166534;
+}
+
+.progress-daily-goal-item.is-complete svg {
+  color: #10b981;
+}
+
+.progress-daily-goal-item.is-disabled {
+  color: #a8a29e;
+}
+
+.progress-daily-goal-periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.progress-daily-goal-periods span {
+  display: inline-flex;
+  min-width: 0;
+  flex: 1 1 96px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #e7e5e4;
+  padding: 7px 9px;
+  color: #44403c;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.progress-daily-goal-periods strong {
+  color: #78716c;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.progress-daily-goal-message {
+  margin-top: 12px;
+  border-left: 3px solid #fbbf24;
+  padding-left: 10px;
+}
+
+.progress-daily-goal-message.is-success {
+  border-left-color: #10b981;
+}
+
+.progress-daily-goal-message strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #1c1917;
+}
+
+.progress-daily-goal-message p {
+  margin: 2px 0 0;
+  color: #57534e;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .progress-dashboard-link {
@@ -212,7 +373,8 @@
   }
 
   .progress-summary-card,
-  .progress-attention-card {
+  .progress-attention-card,
+  .progress-daily-goal-card {
     grid-column: 1 / -1;
   }
 }

@@ -2,8 +2,10 @@ import { type FC, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Dumbbell, Ruler, Target, UtensilsCrossed, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import ProgressDailyGoalCard from '../components/ProgressDailyGoalCard';
 import { progressHubService, type ProgressHubData } from '../services/progressHubService';
 import { formatUiDay } from '../utils/dateKey';
+import { deriveProgressDailyGoalState } from '../utils/progressDailyGoal';
 import './ProgressHub.css';
 
 const formatNumber = (value: number | null, unit = ''): string => {
@@ -133,6 +135,18 @@ const Progress: FC = () => {
   const summaryResults = useMemo(() => getSummaryResults(data), [data]);
   const summaryFallbackText = useMemo(() => getSummaryFallbackText(data), [data]);
   const periodLabel = data ? `${formatUiDay(data.period.startDate)} — ${formatUiDay(data.period.endDate)}` : 'Последние 30 дней';
+  const dailyGoalState = useMemo(
+    () => deriveProgressDailyGoalState({
+      caloriesLogged: data?.today.caloriesLogged ?? 0,
+      calorieTarget: data?.goal.caloriesTarget ?? data?.nutrition.caloriesTarget ?? null,
+      hasWorkoutEntries: data?.today.hasWorkoutEntries ?? false,
+      progressViewed: Boolean(data && !isLoading),
+      waterGlasses: data?.today.waterGlasses ?? null,
+      waterEnabled: data?.today.waterSource === 'meal_local_state',
+      periodMetrics: data?.dailyGoalPeriod ?? null,
+    }),
+    [data, isLoading],
+  );
 
   return (
     <div className="progress-hub">
@@ -149,6 +163,8 @@ const Progress: FC = () => {
       </header>
 
       <main className="progress-dashboard" aria-busy={isLoading}>
+        <ProgressDailyGoalCard state={dailyGoalState} />
+
         <section className="progress-summary-card">
           <p className="progress-summary-kicker">{periodLabel}</p>
           <h2 className="progress-summary-title">Основной результат</h2>

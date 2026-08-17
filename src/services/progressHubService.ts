@@ -1,9 +1,17 @@
 import { goalService, type UserGoal } from './goalService';
 import { measurementsService, type MeasurementHistory } from './measurementsService';
+import { mealService } from './mealService';
 import { progressNutritionService } from './progressNutritionService';
 import { workoutProgressService, type WorkoutProgressSummary } from './workoutProgressService';
+import { workoutService } from './workoutService';
+import type { DailyMeals } from '../types';
 import type { NutritionStats } from '../types/progressDashboard';
+import type { WorkoutEntry } from '../types/workout';
 import { getLocalDayKey } from '../utils/dayKey';
+import {
+  deriveProgressDailyGoalPeriodMetrics,
+  type ProgressDailyGoalPeriodMetrics,
+} from '../utils/progressDailyGoal';
 
 export type ProgressHubSectionState = 'ok' | 'empty' | 'error';
 
@@ -54,8 +62,21 @@ export interface ProgressHubWorkoutsSummary {
   lastWorkoutDate: string | null;
 }
 
+export interface ProgressHubTodaySummary {
+  date: string;
+  hasFoodEntries: boolean;
+  foodEntriesCount: number;
+  caloriesLogged: number;
+  hasWorkoutEntries: boolean;
+  workoutEntriesCount: number;
+  waterGlasses: number | null;
+  waterSource: 'meal_local_state' | 'unavailable';
+}
+
 export interface ProgressHubData {
   period: ProgressHubPeriod;
+  today: ProgressHubTodaySummary;
+  dailyGoalPeriod: ProgressDailyGoalPeriodMetrics;
   goal: ProgressHubGoalSummary;
   nutrition: ProgressHubNutritionSummary;
   measurements: ProgressHubMeasurementsSummary;
@@ -69,6 +90,12 @@ interface ProgressHubDeps {
   };
   nutritionRepo: {
     getNutritionProgressForRange(userId: string, startDate: string, endDate: string): Promise<NutritionStats>;
+  };
+  todayMealsRepo: {
+    getMealsForDate(userId: string, date: string): Promise<DailyMeals>;
+  };
+  todayWorkoutsRepo: {
+    getWorkoutEntries(userId: string, date: string): Promise<WorkoutEntry[]>;
   };
   measurementsRepo: {
     getMeasurementHistory(userId: string): Promise<MeasurementHistory[]>;
@@ -276,6 +303,70 @@ function buildWorkoutsSummary(summary: WorkoutProgressSummary, period: ProgressH
   };
 }
 
+function countMealEntries(meals: DailyMeals | null): number {
+  if (!meals) return 0;
+
+  return (
+    (meals.breakfast?.length ?? 0) +
+    (meals.lunch?.length ?? 0) +
+    (meals.dinner?.length ?? 0) +
+    (meals.snack?.length ?? 0)
+  );
+}
+
+function sumMealCalories(meals: DailyMeals | null): number {
+  if (!meals) return 0;
+
+  const entries = [...(meals.breakfast ?? []), ...(meals.lunch ?? []), ...(meals.dinner ?? []), ...(meals.snack ?? [])];
+  return entries.reduce((total, entry) => total + Math.max(0, toFiniteNumber(entry.calories) ?? 0), 0);
+}
+
+function buildTodaySummary(params: {
+  date: string;
+  meals: DailyMeals | null;
+  workoutEntries: WorkoutEntry[] | null;
+}): ProgressHubTodaySummary {
+  const foodEntriesCount = countMealEntries(params.meals);
+  const caloriesLogged = sumMealCalories(params.meals);
+  const workoutEntriesCount = params.workoutEntries?.length ?? 0;
+  const waterGlasses = typeof params.meals?.water === 'number' ? params.meals.water : null;
+
+  return {
+    date: params.date,
+    hasFoodEntries: foodEntriesCount > 0,
+    foodEntriesCount,
+    caloriesLogged,
+    hasWorkoutEntries: workoutEntriesCount > 0,
+    workoutEntriesCount,
+    waterGlasses,
+    waterSource: waterGlasses === null ? 'unavailable' : 'meal_local_state',
+  };
+}
+
+function buildDailyGoalPeriodMetrics(params: {
+  period: ProgressHubPeriod;
+  calorieTarget: number | null;
+  nutritionStats: NutritionStats | null;
+  workoutSummary: WorkoutProgressSummary | null;
+}): ProgressDailyGoalPeriodMetrics {
+  const dailyCalories = new Map(
+    (params.nutritionStats?.dailyCalories ?? []).map((day) => [day.date, toFiniteNumber(day.calories) ?? 0]),
+  );
+  const workoutDates = new Set(params.workoutSummary?.workoutDates ?? []);
+
+  const days = Array.from({ length: params.period.totalDays }, (_, index) => {
+    const date = shiftIsoDay(params.period.startDate, index);
+    return {
+      date,
+      caloriesLogged: dailyCalories.get(date) ?? 0,
+      calorieTarget: params.calorieTarget,
+      hasWorkoutEntries: workoutDates.has(date),
+    };
+  });
+
+  return deriveProgressDailyGoalPeriodMetrics(days);
+}
+
 function buildAttentionMessages(input: {
   period: ProgressHubPeriod;
   goal: ProgressHubGoalSummary;
@@ -353,11 +444,14 @@ export class ProgressHubService {
   constructor(private readonly deps: ProgressHubDeps) {}
 
   async getProgressHubData(userId: string): Promise<ProgressHubData> {
-    const period = buildPeriod(this.deps.getToday());
+    const todayDate = this.deps.getToday();
+    const period = buildPeriod(todayDate);
 
-    const [goalResult, nutritionResult, measurementsResult, workoutsResult] = await Promise.allSettled([
+    const [goalResult, nutritionResult, todayMealsResult, todayWorkoutsResult, measurementsResult, workoutsResult] = await Promise.allSettled([
       this.deps.goalRepo.getUserGoal(userId),
       this.deps.nutritionRepo.getNutritionProgressForRange(userId, period.startDate, period.endDate),
+      this.deps.todayMealsRepo.getMealsForDate(userId, todayDate),
+      this.deps.todayWorkoutsRepo.getWorkoutEntries(userId, todayDate),
       this.deps.measurementsRepo.getMeasurementHistory(userId),
       this.deps.workoutsRepo.getWorkoutProgressSummary({
         userId,
@@ -381,9 +475,22 @@ export class ProgressHubService {
       workoutsResult.status === 'fulfilled'
         ? buildWorkoutsSummary(workoutsResult.value, period)
         : errorWorkoutsSummary(workoutsResult.reason);
+    const today = buildTodaySummary({
+      date: todayDate,
+      meals: todayMealsResult.status === 'fulfilled' ? todayMealsResult.value : null,
+      workoutEntries: todayWorkoutsResult.status === 'fulfilled' ? todayWorkoutsResult.value : null,
+    });
+    const dailyGoalPeriod = buildDailyGoalPeriodMetrics({
+      period,
+      calorieTarget: goal.caloriesTarget ?? nutrition.caloriesTarget,
+      nutritionStats: nutritionResult.status === 'fulfilled' ? nutritionResult.value : null,
+      workoutSummary: workoutsResult.status === 'fulfilled' ? workoutsResult.value : null,
+    });
 
     return {
       period,
+      today,
+      dailyGoalPeriod,
       goal,
       nutrition,
       measurements,
@@ -398,6 +505,8 @@ export const createProgressHubService = (deps: ProgressHubDeps): ProgressHubServ
 export const progressHubService = new ProgressHubService({
   goalRepo: goalService,
   nutritionRepo: progressNutritionService,
+  todayMealsRepo: mealService,
+  todayWorkoutsRepo: workoutService,
   measurementsRepo: measurementsService,
   workoutsRepo: workoutProgressService,
   getToday: () => getLocalDayKey(),
@@ -409,6 +518,8 @@ export const progressHubTestUtils = {
   buildMeasurementsSummary,
   buildNutritionSummary,
   buildPeriod,
+  buildDailyGoalPeriodMetrics,
+  buildTodaySummary,
   buildWorkoutsSummary,
   formatTimesPerWeek,
 };

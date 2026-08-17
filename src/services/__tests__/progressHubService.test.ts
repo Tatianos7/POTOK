@@ -9,6 +9,7 @@ import {
 import type { MeasurementHistory } from '../measurementsService';
 import type { WorkoutProgressSummary } from '../workoutProgressService';
 import type { NutritionStats } from '../../types/progressDashboard';
+import type { DailyMeals } from '../../types';
 
 const emptyNutritionStats = (overrides: Partial<NutritionStats> = {}): NutritionStats => ({
   average: {
@@ -52,6 +53,16 @@ const workoutSummary = (overrides: Partial<WorkoutProgressSummary> = {}): Workou
   ...overrides,
 });
 
+const dailyMeals = (overrides: Partial<DailyMeals> = {}): DailyMeals => ({
+  date: '2026-06-24',
+  breakfast: [],
+  lunch: [],
+  dinner: [],
+  snack: [],
+  water: 0,
+  ...overrides,
+});
+
 function createMeasurement(date: string, values: Partial<Record<'weight' | 'waist', string>>): MeasurementHistory {
   return {
     id: date,
@@ -68,6 +79,8 @@ function createMeasurement(date: string, values: Partial<Record<'weight' | 'wais
 async function getHubData(overrides?: {
   goal?: Parameters<typeof progressHubTestUtils.buildGoalSummary>[0];
   nutrition?: NutritionStats;
+  todayMeals?: DailyMeals;
+  todayWorkoutEntries?: Array<{ id: string }>;
   measurements?: MeasurementHistory[];
   workouts?: WorkoutProgressSummary;
   failNutrition?: boolean;
@@ -84,6 +97,16 @@ async function getHubData(overrides?: {
       async getNutritionProgressForRange() {
         if (overrides?.failNutrition) throw new Error('nutrition failed');
         return overrides?.nutrition ?? emptyNutritionStats();
+      },
+    },
+    todayMealsRepo: {
+      async getMealsForDate() {
+        return overrides?.todayMeals ?? dailyMeals();
+      },
+    },
+    todayWorkoutsRepo: {
+      async getWorkoutEntries() {
+        return (overrides?.todayWorkoutEntries ?? []) as any;
       },
     },
     measurementsRepo: {
@@ -135,6 +158,82 @@ test('nutrition summary reports logged days and data sufficiency', async () => {
   assert.equal(result.nutrition.loggedDays, 24);
   assert.equal(result.nutrition.hasEnoughData, true);
   assert.equal(result.attentionMessages.includes('Питание заполнено не полностью.'), false);
+});
+
+test('today summary derives food and workout completion facts without writing diaries', async () => {
+  const result = await getHubData({
+    todayMeals: dailyMeals({
+      breakfast: [{ id: 'meal-1', calories: 320 }] as any,
+      water: 3,
+    }),
+    todayWorkoutEntries: [{ id: 'workout-entry-1' }],
+  });
+
+  assert.equal(result.today.date, '2026-06-24');
+  assert.equal(result.today.hasFoodEntries, true);
+  assert.equal(result.today.foodEntriesCount, 1);
+  assert.equal(result.today.caloriesLogged, 320);
+  assert.equal(result.today.hasWorkoutEntries, true);
+  assert.equal(result.today.workoutEntriesCount, 1);
+  assert.equal(result.today.waterGlasses, 3);
+  assert.equal(result.today.waterSource, 'meal_local_state');
+});
+
+test('today summary stays safe when current day sources are empty', async () => {
+  const result = await getHubData();
+
+  assert.equal(result.today.hasFoodEntries, false);
+  assert.equal(result.today.foodEntriesCount, 0);
+  assert.equal(result.today.hasWorkoutEntries, false);
+  assert.equal(result.today.workoutEntriesCount, 0);
+});
+
+test('daily goal period metrics derive objective week month and streak facts from range summaries', async () => {
+  const result = await getHubData({
+    goal: {
+      calories: 2000,
+      protein: 100,
+      fat: 70,
+      carbs: 250,
+      goal_type: 'maintain',
+    },
+    nutrition: emptyNutritionStats({
+      average: { calories: 1800, protein: 90, fat: 60, carbs: 210 },
+      calories: { total: 12600, has_data: true },
+      periodCoverage: { days_with_data: 7, coverage_ratio: 7 / 30 },
+      dailyCalories: [
+        { date: '2026-05-26', calories: 2000 },
+        { date: '2026-06-18', calories: 2000 },
+        { date: '2026-06-19', calories: 2000 },
+        { date: '2026-06-20', calories: 2000 },
+        { date: '2026-06-21', calories: 2000 },
+        { date: '2026-06-22', calories: 2000 },
+        { date: '2026-06-23', calories: 2000 },
+        { date: '2026-06-24', calories: 1200 },
+      ],
+    }),
+    workouts: workoutSummary({
+      totalWorkouts: 7,
+      workoutDates: [
+        '2026-05-26',
+        '2026-06-18',
+        '2026-06-19',
+        '2026-06-20',
+        '2026-06-21',
+        '2026-06-22',
+        '2026-06-23',
+        '2026-06-24',
+      ],
+    }),
+    todayMeals: dailyMeals({ water: 5 }),
+  });
+
+  assert.equal(result.dailyGoalPeriod.weekCompletedDays, 6);
+  assert.equal(result.dailyGoalPeriod.weekTotalDays, 7);
+  assert.equal(result.dailyGoalPeriod.monthCompletedDays, 7);
+  assert.equal(result.dailyGoalPeriod.monthTotalDays, 30);
+  assert.equal(result.dailyGoalPeriod.streakDays, 6);
+  assert.equal(result.dailyGoalPeriod.conclusion, 'Питание чаще всего мешает закрыть день.');
 });
 
 test('measurements summary calculates 30 day deltas from valid points', async () => {
