@@ -5,8 +5,42 @@ import { useAuth } from '../context/AuthContext';
 import ProgressDailyGoalCard from '../components/ProgressDailyGoalCard';
 import { progressHubService, type ProgressHubData } from '../services/progressHubService';
 import { formatUiDay } from '../utils/dateKey';
-import { deriveProgressDailyGoalState } from '../utils/progressDailyGoal';
+import {
+  deriveProgressDailyGoalPeriodMetrics,
+  deriveProgressDailyGoalState,
+  normalizeProgressDailyGoalPreferences,
+  type ProgressDailyGoalPreferences,
+} from '../utils/progressDailyGoal';
 import './ProgressHub.css';
+
+const DAILY_GOAL_PREFERENCES_STORAGE_KEY = 'progress_daily_goal_preferences_v1';
+
+function getDailyGoalPreferencesStorageKey(userId: string): string {
+  return `${DAILY_GOAL_PREFERENCES_STORAGE_KEY}_${userId}`;
+}
+
+function loadDailyGoalPreferences(userId: string | undefined): ProgressDailyGoalPreferences {
+  if (!userId || typeof window === 'undefined') {
+    return normalizeProgressDailyGoalPreferences(null);
+  }
+
+  try {
+    const raw = window.localStorage.getItem(getDailyGoalPreferencesStorageKey(userId));
+    return normalizeProgressDailyGoalPreferences(raw ? JSON.parse(raw) : null);
+  } catch {
+    return normalizeProgressDailyGoalPreferences(null);
+  }
+}
+
+function saveDailyGoalPreferences(userId: string | undefined, preferences: ProgressDailyGoalPreferences): void {
+  if (!userId || typeof window === 'undefined') return;
+
+  try {
+    window.localStorage.setItem(getDailyGoalPreferencesStorageKey(userId), JSON.stringify(preferences));
+  } catch {
+    // Local preferences are best-effort only; the checklist must keep working without persistence.
+  }
+}
 
 const formatNumber = (value: number | null, unit = ''): string => {
   if (value === null || !Number.isFinite(value)) return '—';
@@ -103,6 +137,19 @@ const Progress: FC = () => {
   const [data, setData] = useState<ProgressHubData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dailyGoalPreferences, setDailyGoalPreferences] = useState<ProgressDailyGoalPreferences>(() =>
+    loadDailyGoalPreferences(user?.id),
+  );
+
+  useEffect(() => {
+    setDailyGoalPreferences(loadDailyGoalPreferences(user?.id));
+  }, [user?.id]);
+
+  const handleDailyGoalPreferencesChange = (nextPreferences: ProgressDailyGoalPreferences) => {
+    const normalizedPreferences = normalizeProgressDailyGoalPreferences(nextPreferences);
+    setDailyGoalPreferences(normalizedPreferences);
+    saveDailyGoalPreferences(user?.id, normalizedPreferences);
+  };
 
   useEffect(() => {
     if (!user?.id) {
@@ -143,9 +190,12 @@ const Progress: FC = () => {
       progressViewed: Boolean(data && !isLoading),
       waterGlasses: data?.today.waterGlasses ?? null,
       waterEnabled: data?.today.waterSource === 'meal_local_state',
-      periodMetrics: data?.dailyGoalPeriod ?? null,
+      periodMetrics: data
+        ? deriveProgressDailyGoalPeriodMetrics(data.dailyGoalPeriodDays, dailyGoalPreferences.selectedItemIds)
+        : null,
+      preferences: dailyGoalPreferences,
     }),
-    [data, isLoading],
+    [dailyGoalPreferences, data, isLoading],
   );
 
   return (
@@ -163,7 +213,7 @@ const Progress: FC = () => {
       </header>
 
       <main className="progress-dashboard" aria-busy={isLoading}>
-        <ProgressDailyGoalCard state={dailyGoalState} />
+        <ProgressDailyGoalCard state={dailyGoalState} onPreferencesChange={handleDailyGoalPreferencesChange} />
 
         <section className="progress-summary-card">
           <p className="progress-summary-kicker">{periodLabel}</p>

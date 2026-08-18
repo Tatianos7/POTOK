@@ -10,6 +10,7 @@ import type { WorkoutEntry } from '../types/workout';
 import { getLocalDayKey } from '../utils/dayKey';
 import {
   deriveProgressDailyGoalPeriodMetrics,
+  type ProgressDailyGoalPeriodDay,
   type ProgressDailyGoalPeriodMetrics,
 } from '../utils/progressDailyGoal';
 
@@ -77,6 +78,7 @@ export interface ProgressHubData {
   period: ProgressHubPeriod;
   today: ProgressHubTodaySummary;
   dailyGoalPeriod: ProgressDailyGoalPeriodMetrics;
+  dailyGoalPeriodDays: ProgressDailyGoalPeriodDay[];
   goal: ProgressHubGoalSummary;
   nutrition: ProgressHubNutritionSummary;
   measurements: ProgressHubMeasurementsSummary;
@@ -343,18 +345,18 @@ function buildTodaySummary(params: {
   };
 }
 
-function buildDailyGoalPeriodMetrics(params: {
+function buildDailyGoalPeriodDays(params: {
   period: ProgressHubPeriod;
   calorieTarget: number | null;
   nutritionStats: NutritionStats | null;
   workoutSummary: WorkoutProgressSummary | null;
-}): ProgressDailyGoalPeriodMetrics {
+}): ProgressDailyGoalPeriodDay[] {
   const dailyCalories = new Map(
     (params.nutritionStats?.dailyCalories ?? []).map((day) => [day.date, toFiniteNumber(day.calories) ?? 0]),
   );
   const workoutDates = new Set(params.workoutSummary?.workoutDates ?? []);
 
-  const days = Array.from({ length: params.period.totalDays }, (_, index) => {
+  return Array.from({ length: params.period.totalDays }, (_, index) => {
     const date = shiftIsoDay(params.period.startDate, index);
     return {
       date,
@@ -363,8 +365,15 @@ function buildDailyGoalPeriodMetrics(params: {
       hasWorkoutEntries: workoutDates.has(date),
     };
   });
+}
 
-  return deriveProgressDailyGoalPeriodMetrics(days);
+function buildDailyGoalPeriodMetrics(params: {
+  period: ProgressHubPeriod;
+  calorieTarget: number | null;
+  nutritionStats: NutritionStats | null;
+  workoutSummary: WorkoutProgressSummary | null;
+}): ProgressDailyGoalPeriodMetrics {
+  return deriveProgressDailyGoalPeriodMetrics(buildDailyGoalPeriodDays(params));
 }
 
 function buildAttentionMessages(input: {
@@ -480,17 +489,19 @@ export class ProgressHubService {
       meals: todayMealsResult.status === 'fulfilled' ? todayMealsResult.value : null,
       workoutEntries: todayWorkoutsResult.status === 'fulfilled' ? todayWorkoutsResult.value : null,
     });
-    const dailyGoalPeriod = buildDailyGoalPeriodMetrics({
+    const dailyGoalPeriodDays = buildDailyGoalPeriodDays({
       period,
       calorieTarget: goal.caloriesTarget ?? nutrition.caloriesTarget,
       nutritionStats: nutritionResult.status === 'fulfilled' ? nutritionResult.value : null,
       workoutSummary: workoutsResult.status === 'fulfilled' ? workoutsResult.value : null,
     });
+    const dailyGoalPeriod = deriveProgressDailyGoalPeriodMetrics(dailyGoalPeriodDays);
 
     return {
       period,
       today,
       dailyGoalPeriod,
+      dailyGoalPeriodDays,
       goal,
       nutrition,
       measurements,
@@ -519,6 +530,7 @@ export const progressHubTestUtils = {
   buildNutritionSummary,
   buildPeriod,
   buildDailyGoalPeriodMetrics,
+  buildDailyGoalPeriodDays,
   buildTodaySummary,
   buildWorkoutsSummary,
   formatTimesPerWeek,

@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { deriveProgressDailyGoalPeriodMetrics, deriveProgressDailyGoalState } from '../progressDailyGoal';
+import {
+  deriveProgressDailyGoalPeriodMetrics,
+  deriveProgressDailyGoalState,
+  normalizeProgressDailyGoalPreferences,
+} from '../progressDailyGoal';
 
 const periodDay = (
   date: string,
@@ -206,4 +210,119 @@ test('daily goal period metrics do not use progress check or water history', () 
 
   assert.equal(metrics.monthCompletedDays, 1);
   assert.equal(metrics.streakDays, 1);
+});
+
+test('daily goal default preferences preserve current enabled checklist', () => {
+  const preferences = normalizeProgressDailyGoalPreferences(null);
+
+  assert.equal(preferences.enabled, true);
+  assert.deepEqual(preferences.selectedItemIds, ['nutrition', 'activity', 'water', 'progress']);
+});
+
+test('daily goal preferences do not allow progress-only historical setup', () => {
+  const preferences = normalizeProgressDailyGoalPreferences({
+    enabled: true,
+    selectedItemIds: ['progress'],
+  });
+
+  assert.deepEqual(preferences.selectedItemIds, ['nutrition', 'activity', 'water', 'progress']);
+});
+
+test('daily goal selected items affect checklist count', () => {
+  const state = deriveProgressDailyGoalState({
+    caloriesLogged: 2000,
+    calorieTarget: 2000,
+    hasWorkoutEntries: false,
+    progressViewed: true,
+    waterGlasses: 4,
+    waterEnabled: true,
+    preferences: {
+      enabled: true,
+      selectedItemIds: ['nutrition', 'progress'],
+    },
+  });
+
+  assert.deepEqual(
+    state.items.map((item) => item.id),
+    ['nutrition', 'progress'],
+  );
+  assert.equal(state.completedCount, 2);
+  assert.equal(state.totalCount, 2);
+});
+
+test('daily goal nutrition-only mode works', () => {
+  const state = deriveProgressDailyGoalState({
+    caloriesLogged: 2000,
+    calorieTarget: 2000,
+    hasWorkoutEntries: false,
+    progressViewed: false,
+    waterEnabled: false,
+    preferences: {
+      enabled: true,
+      selectedItemIds: ['nutrition'],
+    },
+  });
+
+  assert.deepEqual(state.items.map((item) => item.id), ['nutrition']);
+  assert.equal(state.completedCount, 1);
+  assert.equal(state.totalCount, 1);
+  assert.equal(state.isComplete, true);
+});
+
+test('daily goal workout-only mode works', () => {
+  const state = deriveProgressDailyGoalState({
+    caloriesLogged: 0,
+    calorieTarget: 2000,
+    hasWorkoutEntries: true,
+    progressViewed: false,
+    waterEnabled: false,
+    preferences: {
+      enabled: true,
+      selectedItemIds: ['activity'],
+    },
+  });
+
+  assert.deepEqual(state.items.map((item) => item.id), ['activity']);
+  assert.equal(state.completedCount, 1);
+  assert.equal(state.totalCount, 1);
+  assert.equal(state.isComplete, true);
+});
+
+test('daily goal month respects selected nutrition objective item', () => {
+  const metrics = deriveProgressDailyGoalPeriodMetrics(
+    [
+      periodDay('2026-06-22', { caloriesLogged: 2000, hasWorkoutEntries: false }),
+      periodDay('2026-06-23', { caloriesLogged: 1200, hasWorkoutEntries: true }),
+      periodDay('2026-06-24', { caloriesLogged: 2000, hasWorkoutEntries: true }),
+    ],
+    ['nutrition'],
+  );
+
+  assert.equal(metrics.monthCompletedDays, 2);
+});
+
+test('daily goal month respects selected workout objective item', () => {
+  const metrics = deriveProgressDailyGoalPeriodMetrics(
+    [
+      periodDay('2026-06-22', { caloriesLogged: 2000, hasWorkoutEntries: false }),
+      periodDay('2026-06-23', { caloriesLogged: 1200, hasWorkoutEntries: true }),
+      periodDay('2026-06-24', { caloriesLogged: 2000, hasWorkoutEntries: true }),
+    ],
+    ['activity'],
+  );
+
+  assert.equal(metrics.monthCompletedDays, 2);
+});
+
+test('daily goal month excludes water and progress check from history', () => {
+  const metrics = deriveProgressDailyGoalPeriodMetrics(
+    [
+      periodDay('2026-06-22', { caloriesLogged: 2000, hasWorkoutEntries: false }),
+      periodDay('2026-06-23', { caloriesLogged: 1200, hasWorkoutEntries: true }),
+      periodDay('2026-06-24', { caloriesLogged: 2000, hasWorkoutEntries: true }),
+    ],
+    ['nutrition', 'water', 'progress'],
+  );
+
+  assert.equal(metrics.monthCompletedDays, 2);
 });

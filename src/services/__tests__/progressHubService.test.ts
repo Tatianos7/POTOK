@@ -234,6 +234,13 @@ test('daily goal period metrics derive objective week month and streak facts fro
   assert.equal(result.dailyGoalPeriod.monthTotalDays, 30);
   assert.equal(result.dailyGoalPeriod.streakDays, 6);
   assert.equal(result.dailyGoalPeriod.conclusion, 'Питание чаще всего мешает закрыть день.');
+  assert.equal(result.dailyGoalPeriodDays.length, 30);
+  assert.deepEqual(result.dailyGoalPeriodDays[result.dailyGoalPeriodDays.length - 1], {
+    date: '2026-06-24',
+    caloriesLogged: 1200,
+    calorieTarget: 2000,
+    hasWorkoutEntries: true,
+  });
 });
 
 test('measurements summary calculates 30 day deltas from valid points', async () => {

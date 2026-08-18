@@ -1,5 +1,17 @@
 export type ProgressDailyGoalItemId = 'nutrition' | 'activity' | 'water' | 'progress';
 
+export const PROGRESS_DAILY_GOAL_DEFAULT_SELECTED_ITEM_IDS: ProgressDailyGoalItemId[] = [
+  'nutrition',
+  'activity',
+  'water',
+  'progress',
+];
+
+export interface ProgressDailyGoalPreferences {
+  enabled: boolean;
+  selectedItemIds: ProgressDailyGoalItemId[];
+}
+
 export interface ProgressDailyGoalInput {
   caloriesLogged: number;
   calorieTarget?: number | null;
@@ -8,6 +20,7 @@ export interface ProgressDailyGoalInput {
   waterGlasses?: number | null;
   waterEnabled?: boolean;
   periodMetrics?: ProgressDailyGoalPeriodMetrics | null;
+  preferences?: ProgressDailyGoalPreferences | null;
 }
 
 export interface ProgressDailyGoalItem {
@@ -21,6 +34,8 @@ export interface ProgressDailyGoalItem {
 export interface ProgressDailyGoalState {
   title: string;
   subtitle: string;
+  enabled: boolean;
+  selectedItemIds: ProgressDailyGoalItemId[];
   items: ProgressDailyGoalItem[];
   periodMetrics: ProgressDailyGoalPeriodMetrics | null;
   completedCount: number;
@@ -49,6 +64,25 @@ export interface ProgressDailyGoalPeriodMetrics {
 
 const NUTRITION_LOWER_BOUND_RATIO = 0.9;
 const NUTRITION_UPPER_BOUND_RATIO = 1.1;
+const OBJECTIVE_HISTORICAL_ITEM_IDS = new Set<ProgressDailyGoalItemId>(['nutrition', 'activity']);
+const ALL_ITEM_IDS = new Set<ProgressDailyGoalItemId>(PROGRESS_DAILY_GOAL_DEFAULT_SELECTED_ITEM_IDS);
+
+export function normalizeProgressDailyGoalPreferences(input: unknown): ProgressDailyGoalPreferences {
+  const raw = input && typeof input === 'object' ? (input as Partial<ProgressDailyGoalPreferences>) : {};
+  const selectedItemIds = Array.isArray(raw.selectedItemIds)
+    ? raw.selectedItemIds.filter((itemId): itemId is ProgressDailyGoalItemId => ALL_ITEM_IDS.has(itemId as ProgressDailyGoalItemId))
+    : PROGRESS_DAILY_GOAL_DEFAULT_SELECTED_ITEM_IDS;
+  const uniqueSelectedItemIds = Array.from(new Set(selectedItemIds));
+  const hasHistoricalObjectiveItem = uniqueSelectedItemIds.some((itemId) => OBJECTIVE_HISTORICAL_ITEM_IDS.has(itemId));
+
+  return {
+    enabled: raw.enabled !== false,
+    selectedItemIds:
+      uniqueSelectedItemIds.length > 0 && hasHistoricalObjectiveItem
+        ? uniqueSelectedItemIds
+        : PROGRESS_DAILY_GOAL_DEFAULT_SELECTED_ITEM_IDS,
+  };
+}
 
 function formatCalories(value: number): string {
   return `${Math.round(value)} ккал`;
@@ -102,19 +136,34 @@ function isNutritionWithinGoal(caloriesLogged: number, calorieTarget?: number | 
   );
 }
 
-function isObjectiveDayCompleted(day: ProgressDailyGoalPeriodDay): boolean {
-  return isNutritionWithinGoal(day.caloriesLogged, day.calorieTarget) && day.hasWorkoutEntries;
+function getSelectedHistoricalObjectiveItemIds(selectedItemIds?: ProgressDailyGoalItemId[]): ProgressDailyGoalItemId[] {
+  const normalized = normalizeProgressDailyGoalPreferences({ enabled: true, selectedItemIds }).selectedItemIds;
+  return normalized.filter((itemId) => OBJECTIVE_HISTORICAL_ITEM_IDS.has(itemId));
+}
+
+function isObjectiveDayCompleted(day: ProgressDailyGoalPeriodDay, selectedItemIds?: ProgressDailyGoalItemId[]): boolean {
+  const objectiveItemIds = getSelectedHistoricalObjectiveItemIds(selectedItemIds);
+  if (objectiveItemIds.length === 0) return false;
+
+  return objectiveItemIds.every((itemId) => {
+    if (itemId === 'nutrition') return isNutritionWithinGoal(day.caloriesLogged, day.calorieTarget);
+    if (itemId === 'activity') return day.hasWorkoutEntries;
+    return false;
+  });
 }
 
 function hasObjectiveData(day: ProgressDailyGoalPeriodDay): boolean {
   return day.caloriesLogged > 0 || day.hasWorkoutEntries;
 }
 
-export function deriveProgressDailyGoalPeriodMetrics(days: ProgressDailyGoalPeriodDay[]): ProgressDailyGoalPeriodMetrics {
+export function deriveProgressDailyGoalPeriodMetrics(
+  days: ProgressDailyGoalPeriodDay[],
+  selectedItemIds: ProgressDailyGoalItemId[] = PROGRESS_DAILY_GOAL_DEFAULT_SELECTED_ITEM_IDS,
+): ProgressDailyGoalPeriodMetrics {
   const sortedDays = [...days].sort((a, b) => a.date.localeCompare(b.date));
   const monthDays = sortedDays.slice(-30);
   const weekDays = sortedDays.slice(-7);
-  const completedDates = new Set(monthDays.filter(isObjectiveDayCompleted).map((day) => day.date));
+  const completedDates = new Set(monthDays.filter((day) => isObjectiveDayCompleted(day, selectedItemIds)).map((day) => day.date));
 
   const weekCompletedDays = weekDays.filter((day) => completedDates.has(day.date)).length;
   const monthCompletedDays = monthDays.filter((day) => completedDates.has(day.date)).length;
@@ -124,15 +173,15 @@ export function deriveProgressDailyGoalPeriodMetrics(days: ProgressDailyGoalPeri
 
   const lastDayIndex = monthDays.length - 1;
   const streakStartIndex =
-    lastDayIndex >= 0 && isObjectiveDayCompleted(monthDays[lastDayIndex])
+    lastDayIndex >= 0 && isObjectiveDayCompleted(monthDays[lastDayIndex], selectedItemIds)
       ? lastDayIndex
-      : lastDayIndex > 0 && isObjectiveDayCompleted(monthDays[lastDayIndex - 1])
+      : lastDayIndex > 0 && isObjectiveDayCompleted(monthDays[lastDayIndex - 1], selectedItemIds)
         ? lastDayIndex - 1
         : -1;
 
   let streakDays = 0;
   for (let index = streakStartIndex; index >= 0; index -= 1) {
-    if (!isObjectiveDayCompleted(monthDays[index])) break;
+    if (!isObjectiveDayCompleted(monthDays[index], selectedItemIds)) break;
     streakDays += 1;
   }
 
@@ -160,11 +209,13 @@ export function deriveProgressDailyGoalPeriodMetrics(days: ProgressDailyGoalPeri
 }
 
 export function deriveProgressDailyGoalState(input: ProgressDailyGoalInput): ProgressDailyGoalState {
+  const preferences = normalizeProgressDailyGoalPreferences(input.preferences);
+  const selectedItemIds = new Set(preferences.selectedItemIds);
   const waterEnabled = Boolean(input.waterEnabled);
   const waterCompleted = waterEnabled && Number(input.waterGlasses ?? 0) > 0;
   const nutritionItem = deriveNutritionItem(input);
 
-  const items: ProgressDailyGoalItem[] = [
+  const allItems: ProgressDailyGoalItem[] = [
     nutritionItem,
     {
       id: 'activity',
@@ -189,6 +240,7 @@ export function deriveProgressDailyGoalState(input: ProgressDailyGoalInput): Pro
       note: 'UI-only',
     },
   ];
+  const items = allItems.filter((item) => selectedItemIds.has(item.id));
 
   const completedCount = items.filter((item) => item.completed).length;
   const totalCount = items.length;
@@ -199,8 +251,10 @@ export function deriveProgressDailyGoalState(input: ProgressDailyGoalInput): Pro
   return {
     title: 'Цель дня',
     subtitle: 'Держаться в рамках питания и выполнить активность',
+    enabled: preferences.enabled,
+    selectedItemIds: preferences.selectedItemIds,
     items,
-    periodMetrics: input.periodMetrics ?? null,
+    periodMetrics: preferences.enabled ? input.periodMetrics ?? null : null,
     completedCount,
     totalCount,
     progressText: `Выполнено ${completedCount} из ${totalCount}`,
