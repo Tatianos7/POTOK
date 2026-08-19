@@ -15,7 +15,7 @@ export const FEATURE_CARDS: FeatureCard[] = [
     title: 'План тренировок и питания',
     subtitle: 'Здесь курсы по тренировкам и питанию',
     isPremium: false,
-    route: '/plans',
+    route: '/today',
   },
   {
     id: '2',

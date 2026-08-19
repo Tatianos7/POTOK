@@ -7,7 +7,7 @@ export const features: FeatureCard[] = [
     subtitle: 'Здесь курсы по тренировкам и питанию',
     icon: 'clipboard-dumbbell',
     isPremium: false,
-    route: '/plan',
+    route: '/today',
   },
   {
     id: 'goal',

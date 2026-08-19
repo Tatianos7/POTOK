@@ -1,192 +1,113 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
-import type { ProgramTodayDTO } from '../types/programDelivery';
-import type { RuntimeContext } from '../services/uiRuntimeAdapter';
-import type { BaseExplainabilityDTO } from '../types/explainability';
-import { classifyTrustDecision } from '../services/trustSafetyService';
-import { mealService } from '../services/mealService';
-import type { CoachResponse } from '../services/coachRuntime';
+import { ClipboardList, ShieldCheck, Sparkles, UserCheck, X } from 'lucide-react';
 import ScreenContainer from '../ui/components/ScreenContainer';
 import Card from '../ui/components/Card';
-import StateContainer from '../ui/components/StateContainer';
-import TrustBanner from '../ui/components/TrustBanner';
-import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
 import Button from '../ui/components/Button';
-import Chip from '../ui/components/Chip';
-import Divider from '../ui/components/Divider';
-import ProgressBar from '../ui/components/ProgressBar';
-import CoachRequestModal from '../ui/coach/CoachRequestModal';
+
+const todayModes = [
+  {
+    id: 'ai',
+    title: 'POTOK AI',
+    subtitle: 'Адаптивный план под вашу цель',
+    icon: Sparkles,
+    points: ['Питание и тренировки на день', 'Замены, если пункт не подходит', 'Анализ дня и недели позже'],
+    cta: 'Подключить AI',
+  },
+  {
+    id: 'plans',
+    title: 'Готовые программы',
+    subtitle: 'Готовый путь без тренера',
+    icon: ClipboardList,
+    points: ['План раскрывается по дням', 'Ежедневные карточки в Today', 'Не PDF, а живой план'],
+    cta: 'Смотреть программы',
+  },
+  {
+    id: 'coach',
+    title: 'Персональный тренер',
+    subtitle: 'План от проверенного специалиста',
+    icon: UserCheck,
+    points: ['Тренер назначает план', 'План появляется в Today', 'Контроль и корректировки позже'],
+    cta: 'Найти тренера',
+  },
+];
 
 const Today = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
-  const [today, setToday] = useState<ProgramTodayDTO | null>(null);
-  const [runtimeContext, setRuntimeContext] = useState<RuntimeContext | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [explainability, setExplainability] = useState<BaseExplainabilityDTO | null>(null);
-  const [coachOverlay, setCoachOverlay] = useState<CoachResponse | null>(null);
-  const [coachRequestOpen, setCoachRequestOpen] = useState(false);
-
-  const loadToday = useCallback(async () => {
-    if (!user?.id) return;
-    setRuntimeStatus('loading');
-    setErrorMessage(null);
-    uiRuntimeAdapter.startLoadingTimer('Today', {
-      pendingSources: ['program_sessions', 'food_diary_entries', 'workout_entries', 'user_goals'],
-      onTimeout: () => {
-        setRuntimeStatus('error');
-        setErrorMessage('Загрузка дня заняла слишком много времени.');
-      },
-    });
-    try {
-      const state = await uiRuntimeAdapter.getTodayState(user.id);
-      setRuntimeStatus(state.status);
-      setToday(state.program ?? null);
-      setRuntimeContext(state.context ?? null);
-      setExplainability((state.explainability as BaseExplainabilityDTO) ?? null);
-      if (state.status === 'error') {
-        setErrorMessage(state.message || 'Не удалось загрузить день.');
-      }
-    } catch (error) {
-      classifyTrustDecision(error);
-      setRuntimeStatus('error');
-      setErrorMessage('Не удалось загрузить день.');
-    } finally {
-      uiRuntimeAdapter.clearLoadingTimer('Today');
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    loadToday();
-  }, [loadToday]);
-
-  const safetyFlags = (explainability as any)?.safety_flags ?? [];
-  const isFatigue = safetyFlags.includes('fatigue');
-  const isPain = safetyFlags.includes('pain');
-  const isRecovery = safetyFlags.includes('recovery_needed');
-
-  useEffect(() => {
-    if (!user?.id) return;
-    const trustLevel = (explainability as any)?.trust_level ?? explainability?.trust_score;
-    const subscriptionState = user?.hasPremium ? 'Premium' : 'Free';
-    uiRuntimeAdapter
-      .getCoachOverlay('Today', {
-        trustLevel,
-        safetyFlags,
-        userMode: today ? 'Follow Plan' : 'Manual',
-        subscriptionState,
-        adherence: today?.day?.status === 'completed' ? 1 : today?.day?.status === 'skipped' ? 0 : undefined,
-      })
-      .then(setCoachOverlay)
-      .catch(() => setCoachOverlay(null));
-  }, [explainability, safetyFlags, today, user?.hasPremium, user?.id]);
-
-  const mealTotals = useMemo(() => {
-    if (!runtimeContext?.meals) return null;
-    return mealService.calculateDayTotals(runtimeContext.meals);
-  }, [runtimeContext?.meals]);
-
-  const caloriesTarget = today?.day?.targets?.calories ?? null;
-  const proteinTarget = today?.day?.targets?.protein ?? null;
-  const caloriesConsumed = mealTotals?.calories ?? 0;
-
-  const trainingStatus =
-    today?.day?.status === 'completed' ? 'выполнена' : today?.day?.status === 'skipped' ? 'пропущена' : 'запланирована';
-  const trainingTone = today?.day?.status === 'completed' ? 'success' : today?.day?.status === 'skipped' ? 'warning' : 'default';
-
-  const coachMessage =
-    (isPain && 'Сегодня важно беречь себя. Мы предлагаем безопасный режим и поддержку.') ||
-    (isFatigue && 'Усталость — нормальна. Мы адаптируем день, чтобы сохранить устойчивость.') ||
-    (isRecovery && 'Это день восстановления. Сила растёт, когда мы даём телу отдых.') ||
-    coachOverlay?.coach_message ||
-    'Мы рядом, чтобы поддержать ваш день.';
-
-  const coachTone = isPain ? 'pain' : isFatigue ? 'fatigue' : isRecovery ? 'recovery' : 'safety';
 
   return (
-    <ScreenContainer padding="lg" gap="xl">
-      <StateContainer
-        status={runtimeStatus}
-        message={runtimeStatus === 'empty' ? 'План на сегодня не найден.' : errorMessage || undefined}
-        onRetry={() => {
-          if (runtimeStatus === 'offline') {
-            uiRuntimeAdapter.revalidate().finally(loadToday);
-          } else {
-            uiRuntimeAdapter.recover().finally(loadToday);
-          }
-        }}
+    <ScreenContainer padding="lg" gap="sm">
+      <Card
+        variant="surface"
+        size="md"
+        action={
+          <Button variant="ghost" size="sm" onClick={() => navigate('/')} aria-label="Закрыть">
+            <X size={18} />
+          </Button>
+        }
       >
-        <Card
-          variant="surface"
-          size="xl"
-          title="Сегодня"
-          action={
-            <Button variant="ghost" size="sm" onClick={() => navigate('/')} aria-label="Закрыть">
-              <X size={18} />
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.08em] text-stone-500">План на день</p>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-semibold leading-tight text-stone-950">Today</h1>
+            <p className="text-base font-medium leading-6 text-stone-800">План на день, который ведёт вас к цели</p>
+            <p className="text-sm leading-5 text-stone-600">
+              Идите самостоятельно в бесплатном POTOK или подключите поддержку: AI, программу или тренера.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 min-[360px]:flex-row">
+            <Button variant="outline" size="sm" onClick={() => navigate('/progress')} align="center">
+              Бесплатный Progress
             </Button>
-          }
-        >
-          <h1>{caloriesTarget ?? '—'}</h1>
-          <p>ккал</p>
-          <Divider />
-          <p>
-            <Chip>Белок {proteinTarget ?? '—'} г</Chip> <Chip>Тренировка: {trainingStatus}</Chip>
-          </p>
-          <Button variant="primary" size="lg" onClick={() => navigate('/my-program')}>
-            Перейти к плану
-          </Button>
-        </Card>
+          </div>
+        </div>
+      </Card>
 
-        <Divider />
+      <div className="grid grid-cols-1 gap-3">
+        {todayModes.map((mode) => {
+          const Icon = mode.icon;
+          return (
+            <Card key={mode.id} variant="default" size="sm">
+              <div className="flex items-start gap-3">
+                <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-stone-50 text-stone-800">
+                  <Icon size={18} aria-hidden="true" />
+                </div>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0 space-y-1">
+                      <h2 className="text-base font-semibold leading-6 text-stone-950">{mode.title}</h2>
+                      <p className="text-sm leading-5 text-stone-600">{mode.subtitle}</p>
+                    </div>
+                    <span className="flex-shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium leading-none text-stone-600">
+                      Скоро
+                    </span>
+                  </div>
+                  <ul className="space-y-1 text-sm leading-5 text-stone-700">
+                    {mode.points.map((point) => (
+                      <li key={point} className="flex gap-2">
+                        <span className="mt-[0.45rem] h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button variant="outline" size="sm" disabled align="center">
+                    {mode.cta}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
 
-        <Card variant="default" title="Питание">
-          <ProgressBar value={caloriesConsumed} max={caloriesTarget ?? 1} />
-          <p>
-            {caloriesConsumed} / {caloriesTarget ?? '—'} ккал
-          </p>
-          <Button variant="outline" size="sm" onClick={() => navigate('/nutrition')}>
-            Открыть дневник
-          </Button>
-        </Card>
-
-        <Divider />
-
-        <Card variant="default" title="Тренировка">
-          <Chip tone={trainingTone}>Статус: {trainingStatus}</Chip>
-          <p>{today?.day?.sessionPlan?.focus ?? today?.day?.sessionPlan?.intensity ?? 'План на сегодня готов.'}</p>
-          <Button variant="outline" size="sm" onClick={() => navigate('/workouts')}>
-            Открыть тренировку
-          </Button>
-        </Card>
-
-        <Divider />
-
-        <TrustBanner tone={coachTone}>{coachMessage}</TrustBanner>
-
-        <Button variant="ghost" size="sm" onClick={() => setCoachRequestOpen(true)}>
-          Спросить коуча
-        </Button>
-
-        <ExplainabilityDrawer explainability={explainability} />
-      </StateContainer>
-
-      {coachRequestOpen && (
-        <CoachRequestModal
-          open={coachRequestOpen}
-          onClose={() => setCoachRequestOpen(false)}
-          context={{
-            screen: 'Today',
-            userMode: today ? 'Follow Plan' : 'Manual',
-            subscriptionState: user?.hasPremium ? 'Premium' : 'Free',
-            trustLevel: (explainability as any)?.trust_level ?? explainability?.trust_score,
-            safetyFlags,
-          }}
-        />
-      )}
+      <Card variant="soft" size="sm">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-0.5 flex-shrink-0 text-emerald-700" size={18} aria-hidden="true" />
+          <div className="space-y-1">
+            <h2 className="text-sm font-semibold leading-5 text-stone-950">План ≠ запись в дневнике</h2>
+            <p className="text-sm leading-5 text-stone-700">В дневник попадает только подтверждённое или выполненное.</p>
+          </div>
+        </div>
+      </Card>
     </ScreenContainer>
   );
 };
