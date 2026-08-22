@@ -6,127 +6,198 @@ import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import Today from '../Today';
+import { getHomeFeatureCards } from '../../utils/constants';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const todaySource = readFileSync(resolve(currentDir, '../Today.tsx'), 'utf8');
 const demoProviderSource = readFileSync(resolve(currentDir, '../../services/demoTodayPlansProvider.ts'), 'utf8');
-const constantsSource = readFileSync(resolve(currentDir, '../../utils/constants.ts'), 'utf8');
-const featuresSource = readFileSync(resolve(currentDir, '../../data/features.ts'), 'utf8');
+const smartDayProviderSource = readFileSync(resolve(currentDir, '../../services/demoSmartDayProvider.ts'), 'utf8');
 
-function renderToday() {
+function renderToday(route = '/today') {
   return renderToStaticMarkup(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[route]}>
       <Today />
     </MemoryRouter>
   );
 }
 
-test('/today renders polished paid entry structure', () => {
+test('/today renders My Potok as the primary premium hub', () => {
   const html = renderToday();
 
-  assert.match(html, /Today/);
-  assert.match(html, /План на день/);
-  assert.match(html, /План на день, который ведёт вас к цели/);
-  assert.match(html, /Идите самостоятельно в бесплатном POTOK/);
-  assert.match(html, /подключите поддержку: AI, программу или тренера/);
-  assert.match(html, /Бесплатный Progress/);
-  assert.doesNotMatch(html, /Paid Today/);
-  assert.doesNotMatch(html, /PAID TODAY/);
+  assert.match(html, /Мой Поток/);
+  assert.match(todaySource, /Ваше питание, тренировки и рекомендации на сегодня/);
+  assert.doesNotMatch(html, /Smart Day/);
+  assert.doesNotMatch(html, /Соберите день под состояние/);
+  assert.doesNotMatch(html, /Похудение дома · 7 дней/);
 });
 
-test('/today renders AI, Plans, and Coach directions', () => {
+test('/today renders clean no-goal empty state by default', () => {
   const html = renderToday();
 
-  assert.match(html, /POTOK AI/);
-  assert.match(html, /Адаптивный план под вашу цель/);
-  assert.match(html, /Питание и тренировки на день/);
-  assert.match(html, /Готовые программы/);
-  assert.match(html, /Готовый путь без тренера/);
-  assert.match(html, /Ежедневные карточки в Today/);
-  assert.match(html, /Персональный тренер/);
-  assert.match(html, /План от проверенного специалиста/);
-  assert.doesNotMatch(html, /verified coach/);
+  assert.match(html, /Мой Поток/);
+  assert.match(html, /Рассчитайте свою цель/);
+  assert.match(html, /и здесь появится ваш план/);
+  assert.match(html, /Рассчитать цель/);
+  assert.match(html, /Создать замеры/);
+  assert.doesNotMatch(html, /TODAY Premium/i);
+  assert.doesNotMatch(html, /Показать демо планов/);
+  assert.doesNotMatch(html, /План ≠ запись в дневнике/);
+  assert.doesNotMatch(html, /План не записывается/);
+  assert.doesNotMatch(html, /Рассчитайте цель — здесь появятся ваши планы/);
+  assert.doesNotMatch(html, /POTOK подберёт питание и тренировки под вашу цель, режим и уровень/);
+  assert.doesNotMatch(html, /Ваши планы на 14 дней/);
+  assert.doesNotMatch(html, /Питание \+ тренировки/);
+  assert.doesNotMatch(html, /Питание без сложной готовки/);
+  assert.doesNotMatch(html, /Тренировки дома/);
+  assert.doesNotMatch(html, /Быстрое питание и короткие тренировки/);
+  assert.doesNotMatch(html, /Нет времени/);
+  assert.doesNotMatch(html, /Список покупок/);
 });
 
-test('/today renders separate soon badges without CTA separator copy', () => {
-  const html = renderToday();
-
-  assert.match(html, /Скоро/);
-  assert.match(html, /Подключить AI/);
-  assert.match(html, /Смотреть программы/);
-  assert.match(html, /Найти тренера/);
-  assert.doesNotMatch(html, /· Скоро/);
+test('/today no-goal source uses centered title and fixed bottom actions', () => {
+  assert.match(todaySource, /whitespace-nowrap text-center/);
+  assert.match(todaySource, /fixed inset-x-0 bottom-0/);
+  assert.match(todaySource, /fullWidth align="center"/);
 });
 
-test('/today keeps Plans card as demo entry point', () => {
-  const html = renderToday();
+test('/today empty state routes to goal and measurements screens', () => {
+  assert.match(todaySource, /navigate\('\/goal'\)/);
+  assert.match(todaySource, /navigate\('\/measurements'\)/);
+});
 
-  assert.match(html, /Готовые программы/);
-  assert.match(html, /Смотреть программы/);
-  assert.match(todaySource, /setPlansPreviewOpen/);
-  assert.match(todaySource, /Открыть день в Today/);
-  assert.match(todaySource, /Демо-превью/);
-  assert.match(todaySource, /Что появится в Today/);
+test('/today existing-goal state shows goal summary, progress, edit actions, and plans', () => {
+  const html = renderToday('/today?demoGoal=1');
+
+  assert.match(html, /Мой Поток/);
+  assert.match(html, /Похудение/);
+  assert.match(html, /70 кг/);
+  assert.match(html, /●/);
+  assert.match(html, /50 кг/);
+  assert.doesNotMatch(html, /70 → 50 кг/);
+  assert.match(html, /Дополните данные, чтобы POTOK точнее подобрал план/);
+  assert.match(html, /Дополнить данные/);
+  assert.match(html, /Изменить цель/);
+  assert.doesNotMatch(html, /Редактировать цель/);
+  assert.match(html, /Создать замеры/);
+  assert.match(html, /Питание \+ тренировки/);
+  assert.match(html, /Питание без сложной готовки/);
+  assert.match(html, /Тренировки дома/);
+  assert.match(html, /Быстрое питание и короткие тренировки/);
+  assert.doesNotMatch(html, /Ваши планы на 14 дней/);
+  assert.doesNotMatch(html, /Выберите mock-план/);
+  assert.doesNotMatch(html, /План ≠ запись в дневнике/);
+  assert.doesNotMatch(html, /План не записывается/);
+});
+
+test('/today existing-goal polish uses calm goal label, compact rows, and compact bottom actions', () => {
+  assert.match(todaySource, /text-lg font-semibold leading-6 text-stone-900">\{goalLabel\}/);
+  assert.match(todaySource, /rounded-lg border border-stone-200 bg-white px-3 py-2/);
+  assert.match(todaySource, /variant="primary" size="md" fullWidth/);
+  assert.match(todaySource, /pb-56/);
+  assert.doesNotMatch(todaySource, /text-2xl font-semibold leading-7 text-stone-950">\{goalLabel\}/);
+});
+
+test('/today progress marker position follows current weight between start and target', () => {
+  const startHtml = renderToday('/today?demoGoal=1');
+  const midHtml = renderToday('/today?demoGoalMid=1');
+  const targetHtml = renderToday('/today?demoGoalAtTarget=1');
+
+  assert.match(startHtml, /left:8%/);
+  assert.match(midHtml, /left:37%/);
+  assert.match(midHtml, /63 кг/);
+  assert.match(targetHtml, /left:92%/);
+  assert.match(targetHtml, /50 кг/);
+  assert.doesNotMatch(targetHtml, /70 → 50 кг/);
+});
+
+test('/today existing-goal state only shows current weight marker label when it differs from start and target', () => {
+  const startHtml = renderToday('/today?demoGoal=1');
+  const html = renderToday('/today?demoGoalNoCurrent=1');
+  const targetHtml = renderToday('/today?demoGoalAtTarget=1');
+
+  assert.match(html, /Похудение/);
+  assert.match(html, /●/);
+  assert.doesNotMatch(html, /70 кг/);
+  assert.doesNotMatch(html, /Цель 50 кг/);
+  assert.doesNotMatch(startHtml, /top-0[^>]*>70 кг/);
+  assert.doesNotMatch(html, /top-0[^>]*>50 кг/);
+  assert.doesNotMatch(targetHtml, /top-0[^>]*>50 кг/);
+});
+
+test('/today does not include subscription mutation or demo-access controls in My Potok UI', () => {
+  assert.doesNotMatch(todaySource, /Выйти из демо Premium/);
+  assert.doesNotMatch(todaySource, /updatePremiumStatus/);
+  assert.doesNotMatch(todaySource, /profileService/);
+});
+
+test('/today demo goal state renders 14-day plan cards', () => {
+  const html = renderToday('/today?demoGoal=1');
+
+  assert.match(html, /Питание \+ тренировки/);
+  assert.match(html, /Питание без сложной готовки/);
+  assert.match(html, /Тренировки дома/);
+  assert.match(html, /Быстрое питание и короткие тренировки/);
+  assert.match(html, /14 дней/);
+  assert.doesNotMatch(html, /Ваши планы на 14 дней/);
+  assert.doesNotMatch(html, /Выберите mock-план/);
+  assert.doesNotMatch(html, /<h3[^>]*>Нет времени<\/h3>/);
+});
+
+test('/today source supports selected plan preview and 14 days without showing all day details by default', () => {
+  assert.match(todaySource, /type TodayView = 'home' \| 'plan_preview' \| 'day_preview'/);
+  assert.match(todaySource, /setTodayView\('plan_preview'\)/);
+  assert.match(todaySource, /setTodayView\('day_preview'\)/);
+  assert.match(todaySource, /Array\.from\(\{ length: 14 \}/);
+  assert.match(todaySource, /Выбрать план/);
+  assert.match(todaySource, /Посмотреть дни/);
+  assert.match(todaySource, /День \{day\.day\}/);
+});
+
+test('/today source renders compact day preview with calories, meals, workout, and shopping placeholder', () => {
+  assert.match(todaySource, /1650 ккал · Б 120 · Ж 55 · У 160/);
+  assert.match(todaySource, /Завтрак/);
+  assert.match(todaySource, /Обед/);
+  assert.match(todaySource, /Ужин/);
+  assert.match(todaySource, /Перекус/);
+  assert.match(todaySource, /Тренировка/);
+  assert.match(todaySource, /Список покупок/);
+  assert.match(todaySource, /disabled align="center"/);
+});
+
+test('/today does not render planned-vs-actual guardrail block anymore', () => {
+  const html = renderToday('/today?demoGoal=1');
+  const defaultHtml = renderToday();
+
+  assert.doesNotMatch(html, /План ≠ запись в дневнике/);
+  assert.doesNotMatch(html, /План не записывается/);
+  assert.doesNotMatch(defaultHtml, /План ≠ запись в дневнике/);
+  assert.doesNotMatch(defaultHtml, /План не записывается/);
+  assert.doesNotMatch(todaySource, /План ≠ запись в дневнике/);
+  assert.doesNotMatch(todaySource, /План не записывается/);
+});
+
+test('/today source keeps old demo providers available but outside primary My Potok flow', () => {
   assert.match(demoProviderSource, /Похудение дома · 7 дней/);
+  assert.match(smartDayProviderSource, /buildDemoSmartDayPlan/);
+  assert.doesNotMatch(todaySource, /getDemoTodayPrograms/);
+  assert.doesNotMatch(todaySource, /buildDemoSmartDayPlan/);
 });
 
-test('/today demo flow uses polished Russian copy', () => {
-  assert.match(todaySource, /ДЕМО-ПЛАН/);
-  assert.match(todaySource, /Это пример готовой программы/);
-  assert.match(todaySource, /В демо действия не записываются в дневник/);
-  assert.doesNotMatch(todaySource, /Демо Today/);
-  assert.doesNotMatch(todaySource, /preview готовой программы/);
-  assert.doesNotMatch(todaySource, /локальное состояние demo-плана/);
-  assert.doesNotMatch(todaySource, /превращается в Today items/);
-});
-
-test('/today demo flow has Today item actions and safe routes', () => {
-  assert.match(demoProviderSource, /Перейти в дневник/);
-  assert.match(todaySource, /navigate\('\/nutrition'\)/);
-  assert.match(demoProviderSource, /Начать тренировку/);
-  assert.match(todaySource, /navigate\('\/workouts'\)/);
-  assert.match(demoProviderSource, /Выполнено/);
-  assert.match(todaySource, /Не подходит/);
-  assert.match(todaySource, /updateTodayPlanItemStatus/);
-});
-
-test('/today does not render old free self-guided checklist copy', () => {
-  const html = renderToday();
-
-  assert.doesNotMatch(html, /Self-Guided/i);
-  assert.doesNotMatch(html, /Самостоятельно/);
-  assert.doesNotMatch(html, /Цель дня/);
-  assert.doesNotMatch(html, /Питание в рамках цели/);
-  assert.doesNotMatch(html, /Провести тренировку \/ активность/);
-});
-
-test('/today renders planned-vs-actual guardrail copy', () => {
-  const html = renderToday();
-
-  assert.match(html, /План ≠ запись в дневнике/);
-  assert.match(html, /План не записывается в дневник автоматически/);
-  assert.match(html, /В дневник попадает только то, что вы подтвердили или выполнили/);
-});
-
-test('/today source does not call diary, workout, or legacy coach runtime write paths', () => {
+test('/today source does not call diary, workout, payment, AI, Coach, or voice runtime paths', () => {
   assert.doesNotMatch(todaySource, /mealService/);
   assert.doesNotMatch(todaySource, /workoutService/);
   assert.doesNotMatch(todaySource, /uiRuntimeAdapter/);
-  assert.doesNotMatch(todaySource, /CoachRequestModal/);
   assert.doesNotMatch(todaySource, /addMeal|saveMeal|updateWater|addExercisesToWorkout|completeToday|skipToday/);
-  assert.doesNotMatch(demoProviderSource, /mealService|workoutService/);
-  assert.doesNotMatch(demoProviderSource, /addMeal|saveMeal|updateWater|addExercisesToWorkout|completeToday|skipToday/);
-});
-
-test('/today source does not implement payment, AI generation, or coach marketplace', () => {
   assert.doesNotMatch(todaySource, /stripe|checkout|payment|subscribe/i);
   assert.doesNotMatch(todaySource, /generateDailyPlan|openai|aiGeneration/i);
-  assert.doesNotMatch(todaySource, /trainerMarketplace|CoachNetwork/i);
+  assert.doesNotMatch(todaySource, /trainerMarketplace|CoachNetwork|CoachRequestModal/i);
+  assert.doesNotMatch(todaySource, /voice|голос/i);
 });
 
-test('home plan entry routes to /today', () => {
-  assert.match(constantsSource, /route:\s*'\/today'/);
-  assert.doesNotMatch(constantsSource, /route:\s*'\/plans'/);
-  assert.match(featuresSource, /route:\s*'\/today'/);
-  assert.doesNotMatch(featuresSource, /route:\s*'\/plan'/);
+test('premium Home entry still opens /today for My Potok', () => {
+  const cards = getHomeFeatureCards({ hasPremium: true });
+  const myPotok = cards.find((card) => card.title === 'Мой Поток');
+
+  assert.ok(myPotok);
+  assert.equal(myPotok.route, '/today');
 });

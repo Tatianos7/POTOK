@@ -3,11 +3,11 @@ import type { FeatureCard } from '../types';
 export const features: FeatureCard[] = [
   {
     id: 'workout-nutrition-plan',
-    title: 'План тренировок и питания',
-    subtitle: 'Здесь курсы по тренировкам и питанию',
+    title: 'POTOK Premium',
+    subtitle: 'Готовый план питания и тренировок под вашу цель',
     icon: 'clipboard-dumbbell',
     isPremium: false,
-    route: '/today',
+    route: '/paywall',
   },
   {
     id: 'goal',
@@ -38,7 +38,7 @@ export const features: FeatureCard[] = [
     title: 'ТРЕНИРОВКИ',
     subtitle: 'Здесь дневник твоих тренировок',
     icon: 'dumbbell',
-    isPremium: true,
+    isPremium: false,
     route: '/workouts',
   },
   {
@@ -46,7 +46,7 @@ export const features: FeatureCard[] = [
     title: 'ПРОГРЕСС',
     subtitle: 'Здесь дневник твоего прогресса',
     icon: 'chart-bar',
-    isPremium: true,
+    isPremium: false,
     route: '/progress',
   },
 ];

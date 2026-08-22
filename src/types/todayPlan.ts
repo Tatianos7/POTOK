@@ -1,4 +1,6 @@
-export type TodayPlanSource = 'ai' | 'purchased_plan' | 'coach';
+export type TodayPlanSource = 'smart_day' | 'ai' | 'purchased_plan' | 'coach';
+
+export type TodayDayState = 'low_energy' | 'normal' | 'ready';
 
 export type TodayItemType = 'meal' | 'workout' | 'water' | 'steps' | 'habit' | 'task';
 
@@ -35,6 +37,7 @@ export interface TodayPlan {
   title: string;
   date: string;
   status: 'active' | 'completed' | 'partially_completed' | 'skipped';
+  dayState?: TodayDayState;
   demoProgramId?: string;
   demoDayIndex?: number;
   items: TodayItem[];

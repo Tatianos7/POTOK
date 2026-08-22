@@ -1,11 +1,12 @@
 import { useAuth } from '../context/AuthContext';
-import { FEATURE_CARDS, ICON_MAP } from '../utils/constants';
+import { getHomeFeatureCards, ICON_MAP } from '../utils/constants';
 import { Menu as MenuIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FeatureCard from '../components/FeatureCard';
 import Menu from '../components/Menu';
 import { activityService } from '../services/activityService';
+import { hasDemoPremiumAccess } from '../services/demoPremiumAccess';
 
 const Dashboard = () => {
   const { user, profile, authStatus, logout } = useAuth();
@@ -41,6 +42,8 @@ const Dashboard = () => {
   };
 
   const displayName = user?.profile?.firstName || user?.name || 'Пользователь';
+  const effectiveHasPremium = Boolean(user?.hasPremium || hasDemoPremiumAccess());
+  const homeCards = getHomeFeatureCards({ hasPremium: effectiveHasPremium });
 
   return (
     <div className="min-h-screen bg-white w-full min-w-[320px]">
@@ -70,14 +73,14 @@ const Dashboard = () => {
         {/* Main Content */}
         <main className="py-4 tablet:py-6">
           <div className="space-y-3">
-            {FEATURE_CARDS.map((card) => {
+            {homeCards.map((card) => {
               const IconComponent = ICON_MAP[card.icon];
               return (
                 <FeatureCard
                   key={card.id}
                   card={card}
                   icon={IconComponent}
-                  hasPremium={user?.hasPremium || false}
+                  hasPremium={effectiveHasPremium}
                 />
               );
             })}

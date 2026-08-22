@@ -1,242 +1,97 @@
-import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, ShieldCheck } from 'lucide-react';
-import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapter';
-import { useAuth } from '../context/AuthContext';
-import type { PaywallExplainabilityDTO } from '../types/explainability';
-import { classifyTrustDecision } from '../services/trustSafetyService';
+import { Check, ShoppingBasket, X } from 'lucide-react';
 import Card from '../ui/components/Card';
-import StateContainer from '../ui/components/StateContainer';
-import TrustBanner from '../ui/components/TrustBanner';
-import ExplainabilityDrawer from '../ui/components/ExplainabilityDrawer';
-import CoachMessageCard from '../ui/coach/CoachMessageCard';
-import CoachExplainabilityDrawer from '../ui/coach/CoachExplainabilityDrawer';
 import ScreenContainer from '../ui/components/ScreenContainer';
 import Button from '../ui/components/Button';
 import { colors, spacing, typography } from '../ui/theme/tokens';
-import type { CoachDecisionResponse } from '../services/coachRuntime';
+import { clearDemoPremiumAccess, enableDemoPremiumAccess, hasDemoPremiumAccess } from '../services/demoPremiumAccess';
 
-type PaywallStatus =
-  | 'free'
-  | 'trial'
-  | 'active'
-  | 'grace'
-  | 'expired'
-  | 'payment_failed'
-  | 'offline'
-  | 'error'
-  | 'recovery'
-  | 'explainable';
+const premiumValues = [
+  'Готовые планы питания и тренировок под вашу цель',
+  'Рецепты с КБЖУ, граммовками и способом приготовления',
+  'Замены блюд, если что-то не подходит',
+  'Подсказки без весов: сколько это примерно на глаз',
+  'Список покупок для выбранных дней',
+  'После 14 дней — пересмотр плана и самочувствия',
+];
 
 const Paywall = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus>('loading');
-  const [paywallStatus, setPaywallStatus] = useState<PaywallStatus>('free');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [trustMessage, setTrustMessage] = useState<string | null>(null);
-  const [explainability, setExplainability] = useState<PaywallExplainabilityDTO | null>(null);
-  const [decisionSupport, setDecisionSupport] = useState<CoachDecisionResponse | null>(null);
+  const demoAccessEnabled = hasDemoPremiumAccess();
 
-  const loadPaywall = useCallback(async () => {
-    if (!user?.id) return;
-    setRuntimeStatus('loading');
-    setErrorMessage(null);
-    setTrustMessage(null);
-    uiRuntimeAdapter.startLoadingTimer('Paywall', {
-      pendingSources: ['entitlements', 'paywall_state'],
-      onTimeout: () => {
-        const decision = classifyTrustDecision('loading_timeout');
-        setRuntimeStatus('error');
-        setErrorMessage('Загрузка paywall заняла слишком много времени.');
-        setTrustMessage(decision.message);
-      },
-    });
-    try {
-      const state = await uiRuntimeAdapter.getPaywallState('explainability');
-      setRuntimeStatus(state.status);
-      setExplainability((state.explainability as PaywallExplainabilityDTO) ?? null);
-      setTrustMessage(state.trust?.message ?? null);
+  const openDemoPremium = () => {
+    enableDemoPremiumAccess();
+    navigate('/today');
+  };
 
-      const paywallData = state.paywall as { status?: string; state?: string; tier?: string } | null;
-      const statusFromPayload =
-        paywallData?.status ??
-        paywallData?.state ??
-        (paywallData?.tier === 'free' ? 'free' : 'active');
-      setPaywallStatus((statusFromPayload as PaywallStatus) ?? 'free');
-
-      if (state.status === 'error') {
-        setErrorMessage(state.message || 'Не удалось загрузить доступы.');
-      }
-    } catch (error) {
-      const decision = classifyTrustDecision(error);
-      setRuntimeStatus('error');
-      setErrorMessage('Не удалось загрузить доступы.');
-      setTrustMessage(decision.message);
-    } finally {
-      uiRuntimeAdapter.clearLoadingTimer('Paywall');
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    loadPaywall();
-  }, [loadPaywall]);
-
-  useEffect(() => {
-    const subscriptionState =
-      paywallStatus === 'trial'
-        ? 'Trial'
-        : paywallStatus === 'active'
-          ? 'Premium'
-          : paywallStatus === 'grace'
-            ? 'Grace'
-            : paywallStatus === 'expired'
-              ? 'Expired'
-              : 'Free';
-    uiRuntimeAdapter
-      .getDecisionSupport({
-        decision_type: 'subscription_doubt',
-        emotional_state: 'neutral',
-        trust_level: 50,
-        history_pattern: `Статус подписки: ${paywallStatus}`,
-        user_mode: 'Manual',
-        screen: 'Paywall',
-        subscription_state: subscriptionState,
-        safety_flags: [],
-      })
-      .then(setDecisionSupport)
-      .catch(() => setDecisionSupport(null));
-  }, [paywallStatus]);
-
-  const statusLabel: Record<PaywallStatus, string> = {
-    free: 'Free',
-    trial: 'Пробный период',
-    active: 'Premium активен',
-    grace: 'Льготный период',
-    expired: 'Подписка истекла',
-    payment_failed: 'Платёж не прошёл',
-    offline: 'Офлайн',
-    error: 'Ошибка',
-    recovery: 'Восстановление',
-    explainable: 'Объяснение доступно',
+  const exitDemoPremium = () => {
+    clearDemoPremiumAccess();
+    navigate('/');
   };
 
   return (
-    <ScreenContainer>
-      <header className="flex items-center justify-between" style={{ marginBottom: spacing.lg }}>
+    <ScreenContainer padding="lg" gap="sm">
+      <header className="flex items-center justify-between" style={{ marginBottom: spacing.sm }}>
         <div style={{ width: 32 }} />
-        <h1 style={{ ...typography.title, textTransform: 'uppercase', textAlign: 'center' }}>Premium</h1>
+        <h1 style={{ ...typography.title, textTransform: 'uppercase', textAlign: 'center' }}>POTOK Premium</h1>
         <Button variant="ghost" size="sm" onClick={() => navigate('/')} aria-label="Закрыть">
           <X className="w-5 h-5" style={{ color: colors.text.secondary }} />
         </Button>
       </header>
 
-      <StateContainer
-        status={runtimeStatus}
-        message={
-          runtimeStatus === 'empty'
-            ? 'Premium пока не активен. Вы можете продолжать в Manual Mode.'
-            : errorMessage || undefined
-        }
-        onRetry={() => {
-          if (runtimeStatus === 'offline') {
-            uiRuntimeAdapter.revalidate().finally(loadPaywall);
-          } else {
-            uiRuntimeAdapter.recover().finally(loadPaywall);
-          }
-        }}
-      >
-            {paywallStatus === 'payment_failed' && (
-              <TrustBanner tone="safety">
-                Платёж не прошёл. Мы сохраним ваш прогресс и поможем восстановить доступ без давления.
-              </TrustBanner>
-            )}
-            {paywallStatus === 'grace' && (
-              <TrustBanner tone="recovery">
-                Льготный период активен. У вас есть время спокойно решить, как продолжать.
-              </TrustBanner>
-            )}
+      <Card variant="surface" size="md">
+        <div className="space-y-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+            <ShoppingBasket size={20} aria-hidden="true" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-semibold leading-tight text-stone-950">Меньше думайте — больше выполняйте</h2>
+            <p className="text-sm leading-5 text-stone-600">
+              POTOK соберёт питание, тренировки и покупки под вашу цель, чтобы вам не приходилось каждый день искать
+              всё вручную.
+            </p>
+          </div>
+        </div>
+      </Card>
 
-            <div className="space-y-4">
-              {decisionSupport && (
-                <CoachMessageCard
-                  mode={decisionSupport.ui_mode}
-                  message={decisionSupport.coach_message}
-                  footer={
-                    <CoachExplainabilityDrawer
-                      decisionId={decisionSupport.decision_id}
-                      trace={decisionSupport.explainability}
-                      title="Почему коуч вмешался в это решение?"
-                      confidence={decisionSupport.confidence}
-                      trustLevel={decisionSupport.trust_state}
-                      safetyFlags={decisionSupport.safety_flags}
-                    />
-                  }
-                />
-              )}
-              <Card title="Статус доступа" action={<span style={typography.micro}>{statusLabel[paywallStatus]}</span>}>
-                <div className="flex items-center gap-2" style={typography.subtitle}>
-                  <ShieldCheck className="w-4 h-4" />
-                  Мы показываем прозрачные причины и ценность, без давления.
-                </div>
-                <p style={{ ...typography.subtitle, marginTop: spacing.sm }}>
-                  Вы уже можете вести дневники и видеть базовую динамику. Premium — это поддержка ритма и адаптация.
-                </p>
-              </Card>
-
-              <Card title="Что у вас уже есть">
-                <div className="grid grid-cols-1" style={{ gap: spacing.xs }}>
-                  <div>Manual Mode: питание, тренировки, замеры</div>
-                  <div>Прогресс: базовые тренды и записи</div>
-                </div>
-              </Card>
-
-              <Card title="Что откроется с Premium" tone="premium">
-                <div className="grid grid-cols-1" style={{ gap: spacing.xs }}>
-                  <div>Follow Plan: ежедневные планы и адаптация</div>
-                  <div>Today: безопасный сценарий дня</div>
-                  <div>Explainability: «почему так» в каждом решении</div>
-                  <div>Coach Layer: поддержка и ритм восстановления</div>
-                </div>
-              </Card>
-
-              <Card title="Ваш выбор" action={<span style={typography.micro}>без давления</span>}>
-                <p style={typography.subtitle}>
-                  Вы можете остаться в Manual Mode. Premium — это ускорение и поддержка, если хотите.
-                </p>
-                <div className="flex flex-col mobile-lg:flex-row" style={{ gap: spacing.sm, marginTop: spacing.sm }}>
-                  <Button variant="primary" size="md" style={{ flex: 1 }}>
-                    Улучшить до Premium
-                  </Button>
-                  <Button variant="outline" size="md" style={{ flex: 1 }}>
-                    Восстановить покупки
-                  </Button>
-                </div>
-              </Card>
-
-              <Card tone="explainable" title="Почему доступ ограничен?">
-                <p style={typography.subtitle}>
-                  Мы объясняем причины доступа, чтобы вы сохраняли контроль.
-                </p>
-                <div className="grid grid-cols-2" style={{ gap: spacing.sm, marginTop: spacing.sm }}>
-                  <div style={typography.body}>Причина: {explainability?.decision_ref ?? 'premium_required'}</div>
-                  <div style={typography.body}>Уверенность: {explainability?.confidence ?? '—'}</div>
-                  <div style={typography.body}>Trust: {explainability?.trust_level ?? '—'}</div>
-                  <div style={typography.body}>Safety: {explainability?.safety_notes?.join(', ') || '—'}</div>
-                </div>
-                <div style={{ marginTop: spacing.md }}>
-                  <ExplainabilityDrawer explainability={explainability} />
-                </div>
-              </Card>
-
-              {trustMessage && (
-                <Card title="Поддержка">
-                  <p style={typography.subtitle}>{trustMessage}</p>
-                </Card>
-              )}
+      <Card variant="default" size="sm">
+        <div className="space-y-2">
+          {premiumValues.map((value) => (
+            <div key={value} className="flex items-start gap-2 text-sm leading-5 text-stone-700">
+              <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
+                <Check size={14} aria-hidden="true" />
+              </span>
+              <span>{value}</span>
             </div>
-          </StateContainer>
-      </ScreenContainer>
+          ))}
+        </div>
+      </Card>
+
+      <Card variant="soft" size="sm">
+        <p className="text-sm leading-5 text-stone-700">
+          Бесплатные дневники питания, тренировок, замеры и Progress остаются доступны.
+        </p>
+      </Card>
+
+      <div className="flex flex-col gap-2 min-[360px]:flex-row">
+        <Button variant="primary" size="md" style={{ flex: 1 }}>
+          Оформить подписку
+        </Button>
+        <Button variant="outline" size="md" style={{ flex: 1 }}>
+          Восстановить покупки
+        </Button>
+      </div>
+
+      <Button variant="ghost" size="sm" onClick={openDemoPremium} align="center">
+        Посмотреть демо Premium
+      </Button>
+
+      {demoAccessEnabled && (
+        <Button variant="ghost" size="sm" onClick={exitDemoPremium} align="center">
+          Выйти из демо Premium
+        </Button>
+      )}
+    </ScreenContainer>
   );
 };
 

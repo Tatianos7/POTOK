@@ -1,5 +1,6 @@
 import { FeatureCard } from '../types';
 import { 
+  BookOpen,
   ClipboardList, 
   Target, 
   Ruler, 
@@ -12,10 +13,10 @@ export const FEATURE_CARDS: FeatureCard[] = [
   {
     id: '1',
     icon: 'ClipboardList',
-    title: 'План тренировок и питания',
-    subtitle: 'Здесь курсы по тренировкам и питанию',
+    title: 'POTOK Premium',
+    subtitle: 'Готовый план питания и тренировок под вашу цель',
     isPremium: false,
-    route: '/today',
+    route: '/paywall',
   },
   {
     id: '2',
@@ -46,8 +47,7 @@ export const FEATURE_CARDS: FeatureCard[] = [
     icon: 'Dumbbell',
     title: 'ТРЕНИРОВКИ',
     subtitle: 'Здесь дневник твоих тренировок',
-    isPremium: true,
-    premiumColor: 'green',
+    isPremium: false,
     route: '/workouts',
   },
   {
@@ -55,13 +55,43 @@ export const FEATURE_CARDS: FeatureCard[] = [
     icon: 'BarChart3',
     title: 'ПРОГРЕСС',
     subtitle: 'Здесь дневник твоего прогресса',
-    isPremium: true,
-    premiumColor: 'yellow',
+    isPremium: false,
     route: '/progress',
   },
 ];
 
+export function getHomeFeatureCards({ hasPremium }: { hasPremium: boolean }): FeatureCard[] {
+  const premiumEntry: FeatureCard = hasPremium
+    ? {
+        id: '1',
+        icon: 'ClipboardList',
+        title: 'Мой Поток',
+        subtitle: 'Ваше питание, тренировки и рекомендации на сегодня',
+        isPremium: false,
+        route: '/today',
+      }
+    : FEATURE_CARDS[0];
+
+  const baseCards = FEATURE_CARDS.slice(1);
+
+  if (!hasPremium) {
+    return [premiumEntry, ...baseCards];
+  }
+
+  const premiumRecipesEntry: FeatureCard = {
+    id: 'premium-recipes',
+    icon: 'BookOpen',
+    title: 'Сборник рецептов',
+    subtitle: 'Готовые рецепты с КБЖУ и граммовками',
+    isPremium: false,
+    route: '/today',
+  };
+
+  return [premiumEntry, premiumRecipesEntry, ...baseCards];
+}
+
 export const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  BookOpen,
   ClipboardList,
   Target,
   Ruler,
