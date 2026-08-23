@@ -25,7 +25,6 @@ test('/today renders My Potok as the primary premium hub', () => {
   const html = renderToday();
 
   assert.match(html, /Мой Поток/);
-  assert.match(todaySource, /Ваше питание, тренировки и рекомендации на сегодня/);
   assert.doesNotMatch(html, /Smart Day/);
   assert.doesNotMatch(html, /Соберите день под состояние/);
   assert.doesNotMatch(html, /Похудение дома · 7 дней/);
@@ -143,25 +142,223 @@ test('/today demo goal state renders 14-day plan cards', () => {
   assert.doesNotMatch(html, /<h3[^>]*>Нет времени<\/h3>/);
 });
 
-test('/today source supports selected plan preview and 14 days without showing all day details by default', () => {
-  assert.match(todaySource, /type TodayView = 'home' \| 'plan_preview' \| 'day_preview'/);
-  assert.match(todaySource, /setTodayView\('plan_preview'\)/);
-  assert.match(todaySource, /setTodayView\('day_preview'\)/);
+test('/today source supports selected plan detail and 14 compact day rows', () => {
+  assert.match(
+    todaySource,
+    /type TodayView = 'home' \| 'plan_detail' \| 'day_detail' \| 'meal_detail' \| 'replace_meal'/
+  );
+  assert.match(todaySource, /setTodayView\('plan_detail'\)/);
   assert.match(todaySource, /Array\.from\(\{ length: 14 \}/);
   assert.match(todaySource, /Выбрать план/);
-  assert.match(todaySource, /Посмотреть дни/);
   assert.match(todaySource, /День \{day\.day\}/);
+  assert.match(todaySource, /openDay\(day\.day\)/);
+  assert.match(todaySource, /setTodayView\('day_detail'\)/);
+  assert.doesNotMatch(todaySource, /setTodayView\('day_preview'\)/);
+  assert.doesNotMatch(todaySource, /Посмотреть дни/);
 });
 
-test('/today source renders compact day preview with calories, meals, workout, and shopping placeholder', () => {
-  assert.match(todaySource, /1650 ккал · Б 120 · Ж 55 · У 160/);
-  assert.match(todaySource, /Завтрак/);
-  assert.match(todaySource, /Обед/);
-  assert.match(todaySource, /Ужин/);
-  assert.match(todaySource, /Перекус/);
-  assert.match(todaySource, /Тренировка/);
-  assert.match(todaySource, /Список покупок/);
-  assert.match(todaySource, /disabled align="center"/);
+test('/today plan row click opens the clean 14-day plan detail view', () => {
+  assert.match(todaySource, /onClick=\{\(\) => openPlan\(plan\.id\)\}/);
+  assert.match(todaySource, /setSelectedPlanId\(planId\)/);
+  assert.match(todaySource, /setTodayView\('plan_detail'\)/);
+});
+
+test('/today plan detail shows selected plan, CTA, and days 1-14 without expanded meals', () => {
+  const html = renderToday('/today?demoGoal=1&planDetail=nutrition-training-home-start');
+
+  assert.match(html, /Питание \+ тренировки/);
+  assert.match(html, /14 дней/);
+  assert.match(html, /Дом · простой старт/);
+  assert.match(html, /Питание и тренировки на 14 дней/);
+  assert.match(html, /Выбрать план/);
+  assert.match(html, /День 1/);
+  assert.match(html, /День 14/);
+  assert.match(html, /1650 ккал · Б 120 · Ж 55 · У 160/);
+  assert.match(html, /Питание \+ тренировка/);
+  assert.doesNotMatch(html, /Завтрак/);
+  assert.doesNotMatch(html, /Обед/);
+  assert.doesNotMatch(html, /Ужин/);
+  assert.doesNotMatch(html, /Перекус/);
+  assert.doesNotMatch(html, /Список покупок/);
+  assert.doesNotMatch(html, /без записи в дневник/);
+});
+
+test('/today plan detail keeps clean navigation back to My Potok plan list', () => {
+  const html = renderToday('/today?demoGoal=1&planDetail=simple-food-no-hard-cooking');
+
+  assert.match(html, /aria-label="Назад"/);
+  assert.match(html, /aria-label="Закрыть"/);
+  assert.match(todaySource, /onClick=\{\(\) => setTodayView\('home'\)\}/);
+  assert.doesNotMatch(html, /Ваши планы на 14 дней/);
+  assert.doesNotMatch(html, /План ≠ запись в дневнике/);
+  assert.doesNotMatch(html, /План не записывается/);
+});
+
+test('/today clicking day row opens day detail view by local state contract', () => {
+  assert.match(todaySource, /const openDay = \(day: number\) =>/);
+  assert.match(todaySource, /setSelectedDay\(day\)/);
+  assert.match(todaySource, /setTodayView\('day_detail'\)/);
+  assert.match(todaySource, /onClick=\{\(\) => openDay\(day\.day\)\}/);
+});
+
+test('/today day detail shows day title, macros, meals, workout, and day state options', () => {
+  const html = renderToday('/today?demoGoal=1&dayDetail=nutrition-training-home-start&day=1');
+
+  assert.match(html, /День 1/);
+  assert.match(html, /1650 ккал/);
+  assert.match(html, /Б 120 · Ж 55 · У 160/);
+  assert.match(html, /Завтрак/);
+  assert.match(html, /Овсянка, банан, йогурт/);
+  assert.match(html, /410 ккал/);
+  assert.match(html, /Обед/);
+  assert.match(html, /Курица, рис, овощи/);
+  assert.match(html, /520 ккал/);
+  assert.match(html, /Ужин/);
+  assert.match(html, /Рыба, салат/);
+  assert.match(html, /430 ккал/);
+  assert.match(html, /Перекус/);
+  assert.match(html, /Творог, ягоды/);
+  assert.match(html, /290 ккал/);
+  assert.match(html, /Тренировка дома/);
+  assert.match(html, /25 минут/);
+  assert.match(html, /Ноги и ягодицы/);
+  assert.match(html, /Состояние дня/);
+  assert.match(html, /Обычный день/);
+  assert.match(html, /Нет сил/);
+  assert.match(html, /Нет времени/);
+  assert.match(html, /Готова работать/);
+  assert.match(html, /Список покупок/);
+  assert.match(html, /Подтвердить день/);
+});
+
+test('/today clicking meal row opens meal detail view by local state contract', () => {
+  assert.match(todaySource, /const openMeal = \(mealTitle: string\) =>/);
+  assert.match(todaySource, /setSelectedMealTitle\(mealTitle\)/);
+  assert.match(todaySource, /setTodayView\('meal_detail'\)/);
+  assert.match(todaySource, /onClick=\{\(\) => openMeal\(meal\.title\)\}/);
+});
+
+test('/today meal detail shows meal title, macros, ingredients, portion hints, and prep steps', () => {
+  const html = renderToday('/today?demoGoal=1&dayDetail=nutrition-training-home-start&day=1&mealDetail=Завтрак');
+
+  assert.match(html, /Завтрак/);
+  assert.match(html, /Овсянка, банан, йогурт/);
+  assert.match(html, /410 ккал/);
+  assert.match(html, /Б 24 · Ж 10 · У 58/);
+  assert.match(html, /Ингредиенты/);
+  assert.match(html, /Овсянка — 50 г/);
+  assert.match(html, /Банан — 100 г/);
+  assert.match(html, /Йогурт — 150 г/);
+  assert.match(html, /Подсказки без весов/);
+  assert.match(html, /Без весов: используйте примерный ориентир/);
+  assert.match(html, /Банан 100 г ≈ 1 средний банан/);
+  assert.match(html, /Овсянка 50 г ≈ несколько столовых ложек/);
+  assert.match(html, /Йогурт 150 г ≈ небольшой стакан/);
+  assert.match(html, /Способ приготовления/);
+  assert.match(html, /Смешайте овсянку и йогурт/);
+  assert.match(html, /Добавьте банан/);
+  assert.match(html, /Оставьте на несколько минут или ешьте сразу/);
+  assert.match(html, /Заменить блюдо/);
+  assert.match(html, /Добавить в дневник/);
+  assert.match(html, /Добавление в дневник будет доступно после подтверждения/);
+});
+
+test('/today meal detail back returns to day screen and keeps diary action disabled mock', () => {
+  const html = renderToday('/today?demoGoal=1&dayDetail=nutrition-training-home-start&day=1&mealDetail=Завтрак');
+
+  assert.match(html, /aria-label="Назад ко дню"/);
+  assert.match(todaySource, /onClick=\{\(\) => setTodayView\('day_detail'\)\}/);
+  assert.match(todaySource, /variant="primary" size="sm" disabled fullWidth align="center"[\s\S]*Добавить в дневник/);
+  assert.doesNotMatch(html, /План ≠ запись в дневнике/);
+  assert.doesNotMatch(html, /План не записывается/);
+});
+
+test('/today replace meal opens from meal detail by local state contract', () => {
+  assert.match(todaySource, /const openReplaceMeal = \(\) =>/);
+  assert.match(todaySource, /setSelectedReplacementId\(null\)/);
+  assert.match(todaySource, /setTodayView\('replace_meal'\)/);
+  assert.match(todaySource, /onClick=\{openReplaceMeal\}[\s\S]*Заменить блюдо/);
+});
+
+test('/today replace meal view shows filters, replacement options, and disabled confirm until selected', () => {
+  const html = renderToday('/today?demoGoal=1&replaceMeal=Завтрак');
+
+  assert.match(html, /Заменить завтрак/);
+  assert.match(html, /Выберите похожий вариант по КБЖУ/);
+  assert.match(html, /Проще/);
+  assert.match(html, /Меньше калорий/);
+  assert.match(html, /Больше белка/);
+  assert.match(html, /Без готовки/);
+  assert.match(html, /Похожее КБЖУ/);
+  assert.match(html, /Омлет с овощами/);
+  assert.match(html, /420 ккал · Б 28 · Ж 18 · У 32/);
+  assert.match(html, /Творог с ягодами/);
+  assert.match(html, /390 ккал · Б 32 · Ж 9 · У 42/);
+  assert.match(html, /Сэндвич с индейкой/);
+  assert.match(html, /430 ккал · Б 30 · Ж 12 · У 48/);
+  assert.match(html, /Выбрать замену/);
+  assert.match(todaySource, /disabled=\{!selectedReplacement\}/);
+});
+
+test('/today selecting replacement enables confirm and can show selected meal detail mock data', () => {
+  const selectedHtml = renderToday('/today?demoGoal=1&replaceMeal=Завтрак&selectedReplacement=omelet-vegetables');
+  const appliedHtml = renderToday('/today?demoGoal=1&mealDetail=Завтрак&replacementApplied=omelet-vegetables');
+
+  assert.match(selectedHtml, /Выбрать замену/);
+  assert.match(todaySource, /onClick=\{applyReplacement\}/);
+  assert.match(todaySource, /setMealOverrides\(\(current\) => \(\{/);
+  assert.match(todaySource, /setTodayView\('meal_detail'\)/);
+  assert.match(appliedHtml, /Омлет с овощами/);
+  assert.match(appliedHtml, /420 ккал/);
+  assert.match(appliedHtml, /Б 28 · Ж 18 · У 32/);
+  assert.match(appliedHtml, /Яйца — 2 шт/);
+});
+
+test('/today replace meal back returns to meal detail without write/payment/AI actions', () => {
+  const html = renderToday('/today?demoGoal=1&replaceMeal=Завтрак');
+
+  assert.match(html, /aria-label="Назад к блюду"/);
+  assert.match(todaySource, /onClick=\{\(\) => setTodayView\('meal_detail'\)\}/);
+  assert.doesNotMatch(html, /Добавить в дневник/);
+  assert.doesNotMatch(html, /Оплатить|Оформить подписку|AI|Coach/);
+});
+
+test('/today day detail back returns to selected plan detail', () => {
+  const html = renderToday('/today?demoGoal=1&dayDetail=nutrition-training-home-start&day=2');
+
+  assert.match(html, /aria-label="Назад к плану"/);
+  assert.match(todaySource, /onClick=\{\(\) => setTodayView\('plan_detail'\)\}/);
+  assert.doesNotMatch(html, /Ваши планы на 14 дней/);
+  assert.doesNotMatch(html, /План ≠ запись в дневнике/);
+  assert.doesNotMatch(html, /План не записывается/);
+});
+
+test('/today plan detail keeps header safe and list padded above bottom CTA', () => {
+  assert.match(todaySource, /mx-12 max-w-\[184px\] truncate whitespace-nowrap text-center text-base/);
+  assert.match(todaySource, /min-\[430px\]:max-w-\[340px\]/);
+  assert.match(todaySource, /pb-40 pt-5/);
+  assert.match(todaySource, /space-y-1\.5 pb-8/);
+  assert.match(todaySource, /whitespace-normal text-xs leading-4 text-stone-500">\{day\.macros\}/);
+  assert.doesNotMatch(todaySource, /truncate text-xs leading-4 text-stone-500">\{day\.macros\}/);
+});
+
+test('/today day detail keeps compact safe layout and mock-only disabled actions', () => {
+  assert.match(todaySource, /pb-56 pt-5/);
+  assert.match(todaySource, /flex flex-1 flex-col gap-4 py-5/);
+  assert.match(todaySource, /rounded-lg border border-stone-200 bg-white px-3 py-1\.5/);
+  assert.match(todaySource, /\{selectedPlanDay\.workout\.duration\} · \{selectedPlanDay\.workout\.focus\}/);
+  assert.match(todaySource, /space-y-2 pb-12/);
+  assert.match(todaySource, /grid grid-cols-2 gap-1\.5/);
+  assert.match(todaySource, /variant="outline" size="sm" disabled fullWidth align="center"/);
+  assert.match(todaySource, /variant="primary" size="sm" disabled fullWidth align="center"/);
+});
+
+test('/today meal detail keeps compact safe layout and bottom actions padded', () => {
+  assert.match(todaySource, /pb-60 pt-\[max\(32px,env\(safe-area-inset-top\)\)\]/);
+  assert.match(todaySource, /flex flex-1 flex-col gap-4 pb-8 pt-5/);
+  assert.match(todaySource, /space-y-1\.5 pb-16/);
+  assert.match(todaySource, /Заменить блюдо/);
+  assert.match(todaySource, /Добавить в дневник/);
 });
 
 test('/today does not render planned-vs-actual guardrail block anymore', () => {

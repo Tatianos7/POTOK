@@ -1,19 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  CalendarDays,
-  ChevronLeft,
-  Dumbbell,
-  ShoppingBasket,
-  Utensils,
-  X,
-} from 'lucide-react';
-import ScreenContainer from '../ui/components/ScreenContainer';
-import Card from '../ui/components/Card';
+import { ChevronLeft, X } from 'lucide-react';
 import Button from '../ui/components/Button';
 
 type PlanKind = 'combined' | 'nutrition' | 'workout' | 'time_saver';
-type TodayView = 'home' | 'plan_preview' | 'day_preview';
+type TodayView = 'home' | 'plan_detail' | 'day_detail' | 'meal_detail' | 'replace_meal';
+type DayState = 'usual' | 'low_energy' | 'no_time' | 'ready';
 
 interface GoalSummary {
   goalType: string;
@@ -25,14 +17,25 @@ interface GoalSummary {
 interface DemoPlanDay {
   day: number;
   macros: string;
-  meals: {
-    breakfast: string;
-    lunch: string;
-    dinner: string;
-    snack: string;
-  };
-  workout?: string;
+  calories: string;
+  macroDetails: string;
+  meals: Array<{
+    title: string;
+    summary: string;
+    calories: string;
+    macroDetails: string;
+    ingredients: string[];
+    portionHints: string[];
+    steps: string[];
+  }>;
+  workout: {
+    title: string;
+    duration: string;
+    focus: string;
+  } | null;
 }
+
+type MealDetail = DemoPlanDay['meals'][number];
 
 interface DemoPlan {
   id: string;
@@ -41,6 +44,11 @@ interface DemoPlan {
   subtitle: string;
   description: string;
   days: DemoPlanDay[];
+}
+
+interface ReplacementOption extends MealDetail {
+  id: string;
+  note: string;
 }
 
 const demoPlans: DemoPlan[] = [
@@ -79,19 +87,108 @@ const demoPlans: DemoPlan[] = [
   },
 ];
 
+const replaceMealFilters = ['Проще', 'Меньше калорий', 'Больше белка', 'Без готовки', 'Похожее КБЖУ'];
+
+const breakfastReplacementOptions: ReplacementOption[] = [
+  {
+    id: 'omelet-vegetables',
+    title: 'Завтрак',
+    summary: 'Омлет с овощами',
+    calories: '420 ккал',
+    macroDetails: 'Б 28 · Ж 18 · У 32',
+    note: 'Тёплый вариант с большим количеством белка.',
+    ingredients: ['Яйца — 2 шт', 'Овощи — 150 г', 'Сыр — 20 г'],
+    portionHints: ['Яйца 2 шт ≈ обычная порция', 'Овощи 150 г ≈ две горсти', 'Сыр 20 г ≈ тонкий ломтик'],
+    steps: ['Взбейте яйца.', 'Добавьте овощи.', 'Готовьте на сковороде несколько минут.'],
+  },
+  {
+    id: 'cottage-cheese-berries',
+    title: 'Завтрак',
+    summary: 'Творог с ягодами',
+    calories: '390 ккал',
+    macroDetails: 'Б 32 · Ж 9 · У 42',
+    note: 'Без готовки, удобно для быстрого утра.',
+    ingredients: ['Творог — 180 г', 'Ягоды — 120 г', 'Мёд — 10 г'],
+    portionHints: ['Творог 180 г ≈ небольшая пачка', 'Ягоды 120 г ≈ горсть', 'Мёд 10 г ≈ чайная ложка'],
+    steps: ['Выложите творог.', 'Добавьте ягоды.', 'Добавьте мёд по желанию.'],
+  },
+  {
+    id: 'turkey-sandwich',
+    title: 'Завтрак',
+    summary: 'Сэндвич с индейкой',
+    calories: '430 ккал',
+    macroDetails: 'Б 30 · Ж 12 · У 48',
+    note: 'Можно взять с собой.',
+    ingredients: ['Хлеб цельнозерновой — 70 г', 'Индейка — 90 г', 'Овощи — 80 г'],
+    portionHints: ['Хлеб 70 г ≈ 2 ломтика', 'Индейка 90 г ≈ ладонь', 'Овощи 80 г ≈ горсть'],
+    steps: ['Подсушите хлеб.', 'Добавьте индейку и овощи.', 'Соберите сэндвич.'],
+  },
+];
+
 function buildDemoDays(workout?: string): DemoPlanDay[] {
   return Array.from({ length: 14 }, (_, index) => {
     const day = index + 1;
+    const hasWorkout = Boolean(
+      workout && (day === 1 || day === 3 || day === 5 || day === 8 || day === 10 || day === 12)
+    );
     return {
       day,
       macros: '1650 ккал · Б 120 · Ж 55 · У 160',
-      meals: {
-        breakfast: day % 2 === 0 ? 'Омлет, овощи, тост' : 'Овсянка, банан, йогурт',
-        lunch: day % 3 === 0 ? 'Индейка, гречка, салат' : 'Курица, рис, овощи',
-        dinner: day % 2 === 0 ? 'Рыба, картофель, зелень' : 'Творог, ягоды, орехи',
-        snack: day % 4 === 0 ? 'Йогурт и яблоко' : 'Банан и творог',
-      },
-      workout: workout && (day === 1 || day === 3 || day === 5 || day === 8 || day === 10 || day === 12) ? workout : undefined,
+      calories: '1650 ккал',
+      macroDetails: 'Б 120 · Ж 55 · У 160',
+      meals: [
+        {
+          title: 'Завтрак',
+          summary: 'Овсянка, банан, йогурт',
+          calories: '410 ккал',
+          macroDetails: 'Б 24 · Ж 10 · У 58',
+          ingredients: ['Овсянка — 50 г', 'Банан — 100 г', 'Йогурт — 150 г'],
+          portionHints: [
+            'Банан 100 г ≈ 1 средний банан',
+            'Овсянка 50 г ≈ несколько столовых ложек',
+            'Йогурт 150 г ≈ небольшой стакан',
+          ],
+          steps: [
+            'Смешайте овсянку и йогурт.',
+            'Добавьте банан.',
+            'Оставьте на несколько минут или ешьте сразу.',
+          ],
+        },
+        {
+          title: 'Обед',
+          summary: 'Курица, рис, овощи',
+          calories: '520 ккал',
+          macroDetails: 'Б 42 · Ж 12 · У 58',
+          ingredients: ['Курица — 140 г', 'Рис — 120 г', 'Овощи — 180 г'],
+          portionHints: ['Курица 140 г ≈ ладонь', 'Рис 120 г ≈ небольшая миска', 'Овощи 180 г ≈ две горсти'],
+          steps: ['Разогрейте готовый рис.', 'Добавьте курицу и овощи.', 'Перемешайте и подавайте тёплым.'],
+        },
+        {
+          title: 'Ужин',
+          summary: 'Рыба, салат',
+          calories: '430 ккал',
+          macroDetails: 'Б 34 · Ж 18 · У 28',
+          ingredients: ['Рыба — 150 г', 'Салат — 200 г', 'Оливковое масло — 10 г'],
+          portionHints: ['Рыба 150 г ≈ ладонь', 'Салат 200 г ≈ большая тарелка', 'Масло 10 г ≈ 1 столовая ложка'],
+          steps: ['Приготовьте рыбу удобным способом.', 'Смешайте овощи для салата.', 'Добавьте масло и подавайте.'],
+        },
+        {
+          title: 'Перекус',
+          summary: 'Творог, ягоды',
+          calories: '290 ккал',
+          macroDetails: 'Б 20 · Ж 8 · У 30',
+          ingredients: ['Творог — 160 г', 'Ягоды — 100 г', 'Орехи — 10 г'],
+          portionHints: ['Творог 160 г ≈ небольшая пачка', 'Ягоды 100 г ≈ горсть', 'Орехи 10 г ≈ маленькая щепотка'],
+          steps: ['Выложите творог в миску.', 'Добавьте ягоды.', 'Посыпьте орехами.'],
+        },
+      ],
+      workout: hasWorkout
+        ? {
+            title: 'Тренировка дома',
+            duration: workout?.includes('12') ? '12 минут' : '25 минут',
+            focus: workout?.includes('корот') ? 'Короткая активность' : 'Ноги и ягодицы',
+          }
+        : null,
     };
   });
 }
@@ -208,19 +305,83 @@ function getGoalMarkerPosition(startWeight?: number, currentWeight?: number, tar
   return Math.round(8 + clampedProgress * 84);
 }
 
+function getInitialPlanId(search: string) {
+  const params = new URLSearchParams(search);
+  const planId = params.get('planDetail') ?? params.get('dayDetail');
+  return demoPlans.some((plan) => plan.id === planId) ? planId! : demoPlans[0].id;
+}
+
+function getInitialDay(search: string) {
+  const day = Number(new URLSearchParams(search).get('day'));
+  return Number.isInteger(day) && day >= 1 && day <= 14 ? day : 1;
+}
+
+function getInitialMealTitle(search: string) {
+  const params = new URLSearchParams(search);
+  return params.get('mealDetail') ?? params.get('replaceMeal') ?? 'Завтрак';
+}
+
+function getInitialReplacementId(search: string) {
+  const params = new URLSearchParams(search);
+  const replacementId = params.get('selectedReplacement') ?? null;
+  return breakfastReplacementOptions.some((option) => option.id === replacementId) ? replacementId : null;
+}
+
+function getInitialMealOverrides(search: string): Record<string, MealDetail> {
+  const params = new URLSearchParams(search);
+  const replacementId = params.get('replacementApplied');
+  const replacement = breakfastReplacementOptions.find((option) => option.id === replacementId);
+
+  if (!replacement) {
+    return {};
+  }
+
+  return {
+    [getInitialMealTitle(search)]: replacement,
+  };
+}
+
+function getInitialTodayView(search: string): TodayView {
+  const params = new URLSearchParams(search);
+  if (params.has('replaceMeal')) {
+    return 'replace_meal';
+  }
+  if (params.has('mealDetail')) {
+    return 'meal_detail';
+  }
+  if (params.has('dayDetail')) {
+    return 'day_detail';
+  }
+  return params.has('planDetail') ? 'plan_detail' : 'home';
+}
+
 const Today = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [todayView, setTodayView] = useState<TodayView>('home');
+  const [todayView, setTodayView] = useState<TodayView>(() => getInitialTodayView(location.search));
   const [goalSummary, setGoalSummary] = useState<GoalSummary | null>(() => getDemoGoalSummary(location.search));
-  const [selectedPlanId, setSelectedPlanId] = useState(demoPlans[0].id);
-  const [selectedDay, setSelectedDay] = useState(1);
+  const [selectedPlanId, setSelectedPlanId] = useState(() => getInitialPlanId(location.search));
+  const [selectedDay, setSelectedDay] = useState(() => getInitialDay(location.search));
+  const [selectedMealTitle, setSelectedMealTitle] = useState(() => getInitialMealTitle(location.search));
+  const [selectedReplacementId, setSelectedReplacementId] = useState<string | null>(() =>
+    getInitialReplacementId(location.search)
+  );
+  const [mealOverrides, setMealOverrides] = useState<Record<string, MealDetail>>(() =>
+    getInitialMealOverrides(location.search)
+  );
+  const [dayState, setDayState] = useState<DayState>('usual');
 
   const selectedPlan = useMemo(
     () => demoPlans.find((plan) => plan.id === selectedPlanId) ?? demoPlans[0],
     [selectedPlanId]
   );
   const selectedPlanDay = selectedPlan.days.find((day) => day.day === selectedDay) ?? selectedPlan.days[0];
+  const selectedMeal =
+    mealOverrides[selectedMealTitle] ??
+    selectedPlanDay.meals.find((meal) => meal.title === selectedMealTitle) ??
+    selectedPlanDay.meals[0];
+  const selectedReplacement =
+    breakfastReplacementOptions.find((option) => option.id === selectedReplacementId) ?? null;
   const hasGoal = Boolean(goalSummary);
 
   useEffect(() => {
@@ -232,12 +393,34 @@ const Today = () => {
   const openPlan = (planId: string) => {
     setSelectedPlanId(planId);
     setSelectedDay(1);
-    setTodayView('plan_preview');
+    setTodayView('plan_detail');
   };
 
   const openDay = (day: number) => {
     setSelectedDay(day);
-    setTodayView('day_preview');
+    setTodayView('day_detail');
+  };
+
+  const openMeal = (mealTitle: string) => {
+    setSelectedMealTitle(mealTitle);
+    setTodayView('meal_detail');
+  };
+
+  const openReplaceMeal = () => {
+    setSelectedReplacementId(null);
+    setTodayView('replace_meal');
+  };
+
+  const applyReplacement = () => {
+    if (!selectedReplacement) {
+      return;
+    }
+
+    setMealOverrides((current) => ({
+      ...current,
+      [selectedMealTitle]: selectedReplacement,
+    }));
+    setTodayView('meal_detail');
   };
 
   const renderNoGoalScreen = () => (
@@ -274,24 +457,6 @@ const Today = () => {
         </div>
       </div>
     </div>
-  );
-
-  const renderHeader = () => (
-    <Card
-      variant="surface"
-      size="md"
-      action={
-        <Button variant="ghost" size="sm" onClick={() => navigate('/')} aria-label="Закрыть">
-          <X size={18} />
-        </Button>
-      }
-    >
-      <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-stone-500">TODAY Premium</p>
-        <h1 className="text-2xl font-semibold leading-tight text-stone-950">Мой Поток</h1>
-        <p className="text-sm leading-5 text-stone-600">Ваше питание, тренировки и рекомендации на сегодня</p>
-      </div>
-    </Card>
   );
 
   const renderExistingGoalScreen = () => {
@@ -396,102 +561,360 @@ const Today = () => {
     );
   };
 
-  const renderPlanPreview = () => (
-    <Card variant="default" size="md">
-      <div className="space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-emerald-700">Демо-план</p>
-            <h2 className="text-xl font-semibold leading-tight text-stone-950">{selectedPlan.title}</h2>
-            <p className="text-sm leading-5 text-stone-600">{selectedPlan.subtitle}</p>
+  const renderPlanDetail = () => (
+    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-40 pt-5">
+        <header className="relative flex min-h-10 items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setTodayView('home')}
+            className="absolute left-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+            aria-label="Назад"
+          >
+            <ChevronLeft size={19} aria-hidden="true" />
+          </button>
+          <h1 className="mx-12 max-w-[184px] truncate whitespace-nowrap text-center text-base font-semibold leading-6 text-stone-950 min-[360px]:max-w-[260px] min-[430px]:max-w-[340px]">
+            {selectedPlan.title}
+          </h1>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+            aria-label="Закрыть"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </header>
+
+        <main className="flex flex-1 flex-col gap-5 py-6">
+          <div className="space-y-2 text-center">
+            <p className="text-sm font-semibold leading-5 text-stone-900">14 дней</p>
+            <p className="text-sm leading-5 text-stone-500">{selectedPlan.subtitle.replace(' · 14 дней', '')}</p>
+            <p className="mx-auto max-w-[310px] text-sm leading-5 text-stone-600">
+              Питание и тренировки на 14 дней.
+            </p>
           </div>
-          <span className="flex-shrink-0 rounded-full bg-stone-100 px-2.5 py-1 text-xs font-medium text-stone-700">
-            14 дней
-          </span>
-        </div>
 
-        <p className="text-sm leading-5 text-stone-700">{selectedPlan.description}</p>
+          <div className="space-y-1.5 pb-8">
+            {selectedPlan.days.map((day) => {
+              const isSelected = day.day === selectedDay;
+              return (
+                <button
+                  key={day.day}
+                  type="button"
+                  onClick={() => openDay(day.day)}
+                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition ${
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-50/60'
+                      : 'border-stone-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
+                  }`}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-start justify-between gap-2">
+                      <span className="text-sm font-semibold leading-5 text-stone-950">День {day.day}</span>
+                      <span className="flex-shrink-0 text-xs font-medium leading-5 text-stone-500">
+                        {day.workout ? 'Питание + тренировка' : 'Питание'}
+                      </span>
+                    </span>
+                    <span className="block whitespace-normal text-xs leading-4 text-stone-500">{day.macros}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </main>
+      </div>
 
-        <div className="grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-          <Button variant="primary" size="sm" onClick={() => openDay(1)} align="center">
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+        <div className="mx-auto w-full max-w-[560px]">
+          <Button variant="primary" size="md" fullWidth align="center">
             Выбрать план
           </Button>
-          <Button variant="outline" size="sm" onClick={() => openDay(selectedDay)} align="center">
-            Посмотреть дни
-          </Button>
         </div>
-
-        <div className="grid grid-cols-2 gap-2 min-[390px]:grid-cols-4">
-          {selectedPlan.days.map((day) => (
-            <button
-              key={day.day}
-              type="button"
-              onClick={() => openDay(day.day)}
-              className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-left transition hover:border-emerald-500 hover:bg-emerald-50"
-            >
-              <span className="block text-sm font-semibold leading-5 text-stone-950">День {day.day}</span>
-              <span className="block text-xs leading-4 text-stone-500">{day.workout ? 'С тренировкой' : 'Питание'}</span>
-            </button>
-          ))}
-        </div>
-
-        <Button variant="ghost" size="sm" onClick={() => setTodayView('home')} align="start">
-          <ChevronLeft size={16} className="mr-1" aria-hidden="true" />
-          Назад к планам
-        </Button>
       </div>
-    </Card>
+    </div>
   );
 
-  const renderDayPreview = () => (
-    <Card variant="default" size="md">
-      <div className="space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-emerald-700">{selectedPlan.title}</p>
-            <h2 className="text-xl font-semibold leading-tight text-stone-950">День {selectedPlanDay.day}</h2>
-            <p className="text-sm font-medium leading-5 text-stone-700">{selectedPlanDay.macros}</p>
-          </div>
-          <CalendarDays className="flex-shrink-0 text-emerald-700" size={22} aria-hidden="true" />
-        </div>
+  const dayStateOptions: Array<{ id: DayState; label: string; hint: string }> = [
+    { id: 'usual', label: 'Обычный день', hint: 'План остаётся базовым.' },
+    { id: 'low_energy', label: 'Нет сил', hint: 'Пока только отметка состояния.' },
+    { id: 'no_time', label: 'Нет времени', hint: 'Пока только отметка состояния.' },
+    { id: 'ready', label: 'Готова работать', hint: 'Пока только отметка состояния.' },
+  ];
 
-        <div className="grid grid-cols-1 gap-2">
-          <MealRow title="Завтрак" value={selectedPlanDay.meals.breakfast} />
-          <MealRow title="Обед" value={selectedPlanDay.meals.lunch} />
-          <MealRow title="Ужин" value={selectedPlanDay.meals.dinner} />
-          <MealRow title="Перекус" value={selectedPlanDay.meals.snack} />
-          {selectedPlanDay.workout && (
-            <div className="rounded-lg border border-stone-200 bg-stone-50 p-3">
-              <div className="flex items-start gap-2">
-                <Dumbbell className="mt-0.5 flex-shrink-0 text-stone-700" size={16} aria-hidden="true" />
-                <div>
-                  <p className="text-sm font-semibold leading-5 text-stone-950">Тренировка</p>
-                  <p className="text-sm leading-5 text-stone-600">{selectedPlanDay.workout}</p>
+  const selectedDayState = dayStateOptions.find((option) => option.id === dayState) ?? dayStateOptions[0];
+
+  const renderDayDetail = () => (
+    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-56 pt-5">
+        <header className="relative flex min-h-10 items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setTodayView('plan_detail')}
+            className="absolute left-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+            aria-label="Назад к плану"
+          >
+            <ChevronLeft size={19} aria-hidden="true" />
+          </button>
+          <h1 className="mx-12 truncate whitespace-nowrap text-center text-lg font-semibold leading-6 text-stone-950">
+            День {selectedPlanDay.day}
+          </h1>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+            aria-label="Закрыть"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </header>
+
+        <main className="flex flex-1 flex-col gap-4 py-5">
+          <section className="space-y-1 text-center">
+            <p className="text-xl font-semibold leading-7 text-stone-950">{selectedPlanDay.calories}</p>
+            <p className="text-sm font-medium leading-5 text-stone-500">{selectedPlanDay.macroDetails}</p>
+          </section>
+
+          <section className="space-y-1">
+            {selectedPlanDay.meals.map((meal) => (
+              <button
+                key={meal.title}
+                type="button"
+                onClick={() => openMeal(meal.title)}
+                className="w-full rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold leading-5 text-stone-950">{meal.title}</p>
+                  <span className="flex-shrink-0 text-xs font-medium leading-5 text-stone-500">{meal.calories}</span>
                 </div>
-              </div>
-            </div>
+                <p className="text-sm leading-5 text-stone-600">{meal.summary}</p>
+              </button>
+            ))}
+          </section>
+
+          {selectedPlanDay.workout && (
+            <section className="rounded-lg border border-stone-200 bg-white px-3 py-1.5">
+              <p className="text-sm font-semibold leading-5 text-stone-950">{selectedPlanDay.workout.title}</p>
+              <p className="text-sm leading-5 text-stone-600">
+                {selectedPlanDay.workout.duration} · {selectedPlanDay.workout.focus}
+              </p>
+            </section>
           )}
-        </div>
 
-        <Button variant="outline" size="sm" disabled align="center">
-          <ShoppingBasket size={16} className="mr-2" aria-hidden="true" />
-          Список покупок
-        </Button>
+          <section className="space-y-2 pb-12">
+            <p className="text-sm font-semibold leading-5 text-stone-950">Состояние дня</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {dayStateOptions.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setDayState(option.id)}
+                  className={`rounded-lg border px-2.5 py-2 text-center text-xs font-medium leading-4 transition ${
+                    option.id === dayState
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                      : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-400 hover:bg-emerald-50/40'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs leading-4 text-stone-400">{selectedDayState.hint}</p>
+          </section>
+        </main>
+      </div>
 
-        <div className="flex flex-col gap-2 min-[360px]:flex-row">
-          <Button variant="ghost" size="sm" onClick={() => setTodayView('plan_preview')} align="center">
-            <ChevronLeft size={16} className="mr-1" aria-hidden="true" />
-            К дням плана
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[560px] flex-col gap-1.5">
+          <Button variant="outline" size="sm" disabled fullWidth align="center">
+            Список покупок
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setTodayView('home')} align="center">
-            Все планы
+          <Button variant="primary" size="sm" disabled fullWidth align="center">
+            Подтвердить день
           </Button>
         </div>
       </div>
-    </Card>
+    </div>
+  );
+
+  const renderMealDetail = () => (
+    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-60 pt-[max(32px,env(safe-area-inset-top))]">
+        <header className="relative flex min-h-10 items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setTodayView('day_detail')}
+            className="absolute left-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+            aria-label="Назад ко дню"
+          >
+            <ChevronLeft size={19} aria-hidden="true" />
+          </button>
+          <h1 className="mx-12 truncate whitespace-nowrap text-center text-lg font-semibold leading-6 text-stone-950">
+            {selectedMeal.title}
+          </h1>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+            aria-label="Закрыть"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </header>
+
+        <main className="flex flex-1 flex-col gap-4 pb-8 pt-5">
+          <section className="space-y-1 text-center">
+            <p className="mx-auto max-w-[280px] text-base font-semibold leading-6 text-stone-950">
+              {selectedMeal.summary}
+            </p>
+            <p className="text-sm font-semibold leading-5 text-stone-900">{selectedMeal.calories}</p>
+            <p className="text-sm font-medium leading-5 text-stone-500">{selectedMeal.macroDetails}</p>
+          </section>
+
+          <section className="space-y-1.5">
+            <p className="text-sm font-semibold leading-5 text-stone-950">Ингредиенты</p>
+            <div className="space-y-1">
+              {selectedMeal.ingredients.map((ingredient) => (
+                <p
+                  key={ingredient}
+                  className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm leading-5 text-stone-700"
+                >
+                  {ingredient}
+                </p>
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-1.5">
+            <p className="text-sm font-semibold leading-5 text-stone-950">Подсказки без весов</p>
+            <p className="text-sm leading-5 text-stone-500">Без весов: используйте примерный ориентир.</p>
+            <div className="space-y-1">
+              {selectedMeal.portionHints.map((hint) => (
+                <p key={hint} className="rounded-lg bg-stone-50 px-3 py-1.5 text-sm leading-5 text-stone-600">
+                  {hint}
+                </p>
+              ))}
+            </div>
+          </section>
+
+          <section className="space-y-1.5 pb-16">
+            <p className="text-sm font-semibold leading-5 text-stone-950">Способ приготовления</p>
+            <ol className="space-y-1">
+              {selectedMeal.steps.map((step, index) => (
+                <li key={step} className="flex gap-2 text-sm leading-5 text-stone-700">
+                  <span className="w-4 flex-shrink-0 text-stone-400">{index + 1}.</span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="pt-1 text-xs leading-4 text-stone-400">
+              Добавление в дневник будет доступно после подтверждения.
+            </p>
+          </section>
+        </main>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[560px] flex-col gap-1.5">
+          <Button variant="outline" size="sm" onClick={openReplaceMeal} fullWidth align="center">
+            Заменить блюдо
+          </Button>
+          <Button variant="primary" size="sm" disabled fullWidth align="center">
+            Добавить в дневник
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderReplaceMeal = () => (
+    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-44 pt-[max(32px,env(safe-area-inset-top))]">
+        <header className="relative flex min-h-10 items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setTodayView('meal_detail')}
+            className="absolute left-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+            aria-label="Назад к блюду"
+          >
+            <ChevronLeft size={19} aria-hidden="true" />
+          </button>
+          <h1 className="mx-12 max-w-[220px] truncate whitespace-nowrap text-center text-base font-semibold leading-6 text-stone-950 min-[360px]:max-w-[280px]">
+            Заменить {selectedMealTitle.toLowerCase()}
+          </h1>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+            aria-label="Закрыть"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </header>
+
+        <main className="flex flex-1 flex-col gap-4 pb-8 pt-5">
+          <p className="text-center text-sm leading-5 text-stone-500">Выберите похожий вариант по КБЖУ.</p>
+
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {replaceMealFilters.map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                className="rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium leading-4 text-stone-600"
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+
+          <section className="space-y-1.5 pb-8">
+            {breakfastReplacementOptions.map((option) => {
+              const isSelected = option.id === selectedReplacementId;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setSelectedReplacementId(option.id)}
+                  className={`w-full rounded-lg border px-3 py-2 text-left transition ${
+                    isSelected
+                      ? 'border-emerald-500 bg-emerald-50/60'
+                      : 'border-stone-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
+                  }`}
+                >
+                  <span className="block text-sm font-semibold leading-5 text-stone-950">{option.summary}</span>
+                  <span className="block text-xs leading-4 text-stone-500">
+                    {option.calories} · {option.macroDetails}
+                  </span>
+                  <span className="block pt-1 text-xs leading-4 text-stone-400">{option.note}</span>
+                </button>
+              );
+            })}
+          </section>
+        </main>
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
+        <div className="mx-auto w-full max-w-[560px]">
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!selectedReplacement}
+            onClick={applyReplacement}
+            fullWidth
+            align="center"
+          >
+            Выбрать замену
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 
   if (todayView === 'home' && !hasGoal) {
+    return renderNoGoalScreen();
+  }
+
+  if (!hasGoal) {
     return renderNoGoalScreen();
   }
 
@@ -499,31 +922,19 @@ const Today = () => {
     return renderExistingGoalScreen();
   }
 
-  return (
-    <ScreenContainer padding="lg" gap="sm">
-      {renderHeader()}
+  if (todayView === 'day_detail') {
+    return renderDayDetail();
+  }
 
-      {todayView === 'plan_preview' && renderPlanPreview()}
-      {todayView === 'day_preview' && renderDayPreview()}
-    </ScreenContainer>
-  );
+  if (todayView === 'meal_detail') {
+    return renderMealDetail();
+  }
+
+  if (todayView === 'replace_meal') {
+    return renderReplaceMeal();
+  }
+
+  return renderPlanDetail();
 };
-
-interface MealRowProps {
-  title: string;
-  value: string;
-}
-
-const MealRow = ({ title, value }: MealRowProps) => (
-  <div className="rounded-lg border border-stone-200 bg-white p-3">
-    <div className="flex items-start gap-2">
-      <Utensils className="mt-0.5 flex-shrink-0 text-stone-700" size={16} aria-hidden="true" />
-      <div>
-        <p className="text-sm font-semibold leading-5 text-stone-950">{title}</p>
-        <p className="text-sm leading-5 text-stone-600">{value}</p>
-      </div>
-    </div>
-  </div>
-);
 
 export default Today;
