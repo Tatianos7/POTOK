@@ -145,7 +145,7 @@ test('/today demo goal state renders 14-day plan cards', () => {
 test('/today source supports selected plan detail and 14 compact day rows', () => {
   assert.match(
     todaySource,
-    /type TodayView = 'home' \| 'plan_detail' \| 'day_detail' \| 'meal_detail' \| 'replace_meal'/
+    /type TodayView = 'home' \| 'plan_detail' \| 'day_detail' \| 'meal_detail' \| 'replace_meal' \| 'shopping_list'/
   );
   assert.match(todaySource, /setTodayView\('plan_detail'\)/);
   assert.match(todaySource, /Array\.from\(\{ length: 14 \}/);
@@ -236,6 +236,69 @@ test('/today clicking meal row opens meal detail view by local state contract', 
   assert.match(todaySource, /setSelectedMealTitle\(mealTitle\)/);
   assert.match(todaySource, /setTodayView\('meal_detail'\)/);
   assert.match(todaySource, /onClick=\{\(\) => openMeal\(meal\.title\)\}/);
+});
+
+test('/today shopping list opens from day detail by local state contract', () => {
+  assert.match(todaySource, /const openShoppingList = \(\) =>/);
+  assert.match(todaySource, /setTodayView\('shopping_list'\)/);
+  assert.match(todaySource, /onClick=\{openShoppingList\}[\s\S]*Список покупок/);
+  assert.doesNotMatch(todaySource, /variant="outline" size="sm" disabled fullWidth align="center"[\s\S]*Список покупок/);
+});
+
+test('/today shopping list shows periods, helper, groups, and one-day products', () => {
+  const html = renderToday('/today?demoGoal=1&shoppingList=1');
+
+  assert.match(html, /Список покупок/);
+  assert.match(html, /1 день/);
+  assert.match(html, /2 дня/);
+  assert.match(html, /3 дня/);
+  assert.match(html, /7 дней/);
+  assert.match(html, /Выберите дни, для которых собрать продукты/);
+  assert.match(html, /Белок/);
+  assert.match(html, /Овощи/);
+  assert.match(html, /Крупы/);
+  assert.match(html, /Молочные/);
+  assert.match(html, /Фрукты/);
+  assert.match(html, /Другое/);
+  assert.match(html, /Курица/);
+  assert.match(html, /200 г/);
+  assert.match(html, /Рыба/);
+  assert.match(html, /150 г/);
+  assert.match(html, /Творог/);
+  assert.match(html, /Овощи/);
+  assert.match(html, /Салат/);
+  assert.match(html, /Рис/);
+  assert.match(html, /80 г/);
+  assert.match(html, /Овсянка/);
+  assert.match(html, /50 г/);
+  assert.match(html, /Банан/);
+  assert.match(html, /1 шт/);
+  assert.match(html, /Йогурт/);
+  assert.match(html, /150 г/);
+});
+
+test('/today shopping list aggregates mock products by selected period without duplicates', () => {
+  const twoDayHtml = renderToday('/today?demoGoal=1&shoppingList=1&shoppingPeriod=2');
+  const sevenDayHtml = renderToday('/today?demoGoal=1&shoppingList=1&shoppingPeriod=7');
+
+  assert.match(twoDayHtml, /Курица/);
+  assert.match(twoDayHtml, /400 г/);
+  assert.match(twoDayHtml, /Банан/);
+  assert.match(twoDayHtml, /2 шт/);
+  assert.equal((twoDayHtml.match(/Банан/g) ?? []).length, 1);
+  assert.match(sevenDayHtml, /1400 г/);
+  assert.match(sevenDayHtml, /7 шт/);
+});
+
+test('/today shopping list checkboxes toggle local bought state and back returns to day detail', () => {
+  const html = renderToday('/today?demoGoal=1&shoppingList=1');
+
+  assert.match(html, /type="checkbox"/);
+  assert.match(todaySource, /checked=\{isBought\}/);
+  assert.match(todaySource, /onChange=\{\(\) => toggleBoughtProduct\(productKey\)\}/);
+  assert.match(todaySource, /setBoughtProducts\(\(current\) =>/);
+  assert.match(html, /aria-label="Назад ко дню"/);
+  assert.match(todaySource, /onClick=\{\(\) => setTodayView\('day_detail'\)\}/);
 });
 
 test('/today meal detail shows meal title, macros, ingredients, portion hints, and prep steps', () => {
@@ -349,7 +412,7 @@ test('/today day detail keeps compact safe layout and mock-only disabled actions
   assert.match(todaySource, /\{selectedPlanDay\.workout\.duration\} · \{selectedPlanDay\.workout\.focus\}/);
   assert.match(todaySource, /space-y-2 pb-12/);
   assert.match(todaySource, /grid grid-cols-2 gap-1\.5/);
-  assert.match(todaySource, /variant="outline" size="sm" disabled fullWidth align="center"/);
+  assert.match(todaySource, /variant="outline" size="sm" onClick=\{openShoppingList\} fullWidth align="center"/);
   assert.match(todaySource, /variant="primary" size="sm" disabled fullWidth align="center"/);
 });
 

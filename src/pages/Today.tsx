@@ -4,8 +4,9 @@ import { ChevronLeft, X } from 'lucide-react';
 import Button from '../ui/components/Button';
 
 type PlanKind = 'combined' | 'nutrition' | 'workout' | 'time_saver';
-type TodayView = 'home' | 'plan_detail' | 'day_detail' | 'meal_detail' | 'replace_meal';
+type TodayView = 'home' | 'plan_detail' | 'day_detail' | 'meal_detail' | 'replace_meal' | 'shopping_list';
 type DayState = 'usual' | 'low_energy' | 'no_time' | 'ready';
+type ShoppingPeriod = 1 | 2 | 3 | 7;
 
 interface GoalSummary {
   goalType: string;
@@ -51,6 +52,17 @@ interface ReplacementOption extends MealDetail {
   note: string;
 }
 
+interface ShoppingProduct {
+  name: string;
+  amount: number;
+  unit: string;
+}
+
+interface ShoppingGroup {
+  title: string;
+  products: ShoppingProduct[];
+}
+
 const demoPlans: DemoPlan[] = [
   {
     id: 'nutrition-training-home-start',
@@ -88,6 +100,44 @@ const demoPlans: DemoPlan[] = [
 ];
 
 const replaceMealFilters = ['Проще', 'Меньше калорий', 'Больше белка', 'Без готовки', 'Похожее КБЖУ'];
+const shoppingPeriods: ShoppingPeriod[] = [1, 2, 3, 7];
+
+const shoppingGroups: ShoppingGroup[] = [
+  {
+    title: 'Белок',
+    products: [
+      { name: 'Курица', amount: 200, unit: 'г' },
+      { name: 'Рыба', amount: 150, unit: 'г' },
+      { name: 'Творог', amount: 150, unit: 'г' },
+    ],
+  },
+  {
+    title: 'Овощи',
+    products: [
+      { name: 'Овощи', amount: 200, unit: 'г' },
+      { name: 'Салат', amount: 100, unit: 'г' },
+    ],
+  },
+  {
+    title: 'Крупы',
+    products: [
+      { name: 'Рис', amount: 80, unit: 'г' },
+      { name: 'Овсянка', amount: 50, unit: 'г' },
+    ],
+  },
+  {
+    title: 'Фрукты',
+    products: [{ name: 'Банан', amount: 1, unit: 'шт' }],
+  },
+  {
+    title: 'Молочные',
+    products: [{ name: 'Йогурт', amount: 150, unit: 'г' }],
+  },
+  {
+    title: 'Другое',
+    products: [{ name: 'Ягоды', amount: 100, unit: 'г' }],
+  },
+];
 
 const breakfastReplacementOptions: ReplacementOption[] = [
   {
@@ -327,6 +377,11 @@ function getInitialReplacementId(search: string) {
   return breakfastReplacementOptions.some((option) => option.id === replacementId) ? replacementId : null;
 }
 
+function getInitialShoppingPeriod(search: string): ShoppingPeriod {
+  const period = Number(new URLSearchParams(search).get('shoppingPeriod'));
+  return shoppingPeriods.includes(period as ShoppingPeriod) ? (period as ShoppingPeriod) : 1;
+}
+
 function getInitialMealOverrides(search: string): Record<string, MealDetail> {
   const params = new URLSearchParams(search);
   const replacementId = params.get('replacementApplied');
@@ -343,6 +398,9 @@ function getInitialMealOverrides(search: string): Record<string, MealDetail> {
 
 function getInitialTodayView(search: string): TodayView {
   const params = new URLSearchParams(search);
+  if (params.has('shoppingList')) {
+    return 'shopping_list';
+  }
   if (params.has('replaceMeal')) {
     return 'replace_meal';
   }
@@ -353,6 +411,15 @@ function getInitialTodayView(search: string): TodayView {
     return 'day_detail';
   }
   return params.has('planDetail') ? 'plan_detail' : 'home';
+}
+
+function formatShoppingAmount(product: ShoppingProduct, period: ShoppingPeriod) {
+  const total = product.amount * period;
+  return `${total} ${product.unit}`;
+}
+
+function formatShoppingPeriodLabel(period: ShoppingPeriod) {
+  return period === 1 ? '1 день' : `${period} ${period === 7 ? 'дней' : 'дня'}`;
 }
 
 const Today = () => {
@@ -370,6 +437,8 @@ const Today = () => {
     getInitialMealOverrides(location.search)
   );
   const [dayState, setDayState] = useState<DayState>('usual');
+  const [shoppingPeriod, setShoppingPeriod] = useState<ShoppingPeriod>(() => getInitialShoppingPeriod(location.search));
+  const [boughtProducts, setBoughtProducts] = useState<Set<string>>(() => new Set());
 
   const selectedPlan = useMemo(
     () => demoPlans.find((plan) => plan.id === selectedPlanId) ?? demoPlans[0],
@@ -409,6 +478,22 @@ const Today = () => {
   const openReplaceMeal = () => {
     setSelectedReplacementId(null);
     setTodayView('replace_meal');
+  };
+
+  const openShoppingList = () => {
+    setTodayView('shopping_list');
+  };
+
+  const toggleBoughtProduct = (productKey: string) => {
+    setBoughtProducts((current) => {
+      const next = new Set(current);
+      if (next.has(productKey)) {
+        next.delete(productKey);
+      } else {
+        next.add(productKey);
+      }
+      return next;
+    });
   };
 
   const applyReplacement = () => {
@@ -726,13 +811,101 @@ const Today = () => {
 
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[560px] flex-col gap-1.5">
-          <Button variant="outline" size="sm" disabled fullWidth align="center">
+          <Button variant="outline" size="sm" onClick={openShoppingList} fullWidth align="center">
             Список покупок
           </Button>
           <Button variant="primary" size="sm" disabled fullWidth align="center">
             Подтвердить день
           </Button>
         </div>
+      </div>
+    </div>
+  );
+
+  const renderShoppingList = () => (
+    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
+      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-12 pt-[max(32px,env(safe-area-inset-top))]">
+        <header className="relative flex min-h-10 items-center justify-center">
+          <button
+            type="button"
+            onClick={() => setTodayView('day_detail')}
+            className="absolute left-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+            aria-label="Назад ко дню"
+          >
+            <ChevronLeft size={19} aria-hidden="true" />
+          </button>
+          <h1 className="mx-12 truncate whitespace-nowrap text-center text-lg font-semibold leading-6 text-stone-950">
+            Список покупок
+          </h1>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+            aria-label="Закрыть"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </header>
+
+        <main className="flex flex-1 flex-col gap-4 py-5">
+          <section className="space-y-2">
+            <div className="grid grid-cols-4 gap-1.5">
+              {shoppingPeriods.map((period) => (
+                <button
+                  key={period}
+                  type="button"
+                  onClick={() => setShoppingPeriod(period)}
+                  className={`rounded-lg border px-2 py-2 text-center text-xs font-semibold leading-4 transition ${
+                    period === shoppingPeriod
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-800'
+                      : 'border-stone-200 bg-white text-stone-600 hover:border-emerald-400 hover:bg-emerald-50/40'
+                  }`}
+                >
+                  {formatShoppingPeriodLabel(period)}
+                </button>
+              ))}
+            </div>
+            <p className="text-center text-sm leading-5 text-stone-500">
+              Выберите дни, для которых собрать продукты.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            {shoppingGroups.map((group) => (
+              <div key={group.title} className="space-y-1.5">
+                <p className="text-sm font-semibold leading-5 text-stone-950">{group.title}</p>
+                <div className="space-y-1">
+                  {group.products.map((product) => {
+                    const productKey = `${group.title}:${product.name}`;
+                    const isBought = boughtProducts.has(productKey);
+                    return (
+                      <label
+                        key={productKey}
+                        className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition ${
+                          isBought ? 'border-emerald-200 bg-emerald-50/60' : 'border-stone-200 bg-white'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isBought}
+                          onChange={() => toggleBoughtProduct(productKey)}
+                          className="h-4 w-4 flex-shrink-0 rounded border-stone-300 text-emerald-600"
+                        />
+                        <span className="min-w-0 flex-1 text-sm leading-5 text-stone-700">
+                          <span className={isBought ? 'text-stone-400 line-through' : undefined}>{product.name}</span>
+                          <span className="text-stone-400"> — </span>
+                          <span className={isBought ? 'text-stone-400 line-through' : undefined}>
+                            {formatShoppingAmount(product, shoppingPeriod)}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </section>
+        </main>
       </div>
     </div>
   );
@@ -924,6 +1097,10 @@ const Today = () => {
 
   if (todayView === 'day_detail') {
     return renderDayDetail();
+  }
+
+  if (todayView === 'shopping_list') {
+    return renderShoppingList();
   }
 
   if (todayView === 'meal_detail') {
