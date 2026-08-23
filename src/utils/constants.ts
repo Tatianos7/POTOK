@@ -84,7 +84,7 @@ export function getHomeFeatureCards({ hasPremium }: { hasPremium: boolean }): Fe
     title: 'Сборник рецептов',
     subtitle: 'Готовые рецепты с КБЖУ и граммовками',
     isPremium: false,
-    route: '/today',
+    route: '/premium-recipes',
   };
 
   return [premiumEntry, premiumRecipesEntry, ...baseCards];

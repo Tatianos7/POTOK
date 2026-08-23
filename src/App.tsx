@@ -36,6 +36,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import Today from './pages/Today';
 import MyProgram from './pages/MyProgram';
 import Paywall from './pages/Paywall';
+import PremiumRecipes from './pages/PremiumRecipes';
 import AuthCallback from './pages/AuthCallback';
 import PinSetup from './pages/PinSetup';
 import PinUnlock from './pages/PinUnlock';
@@ -340,6 +341,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <Today />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/premium-recipes"
+        element={
+          <ProtectedRoute>
+            <PremiumRecipes />
           </ProtectedRoute>
         }
       />

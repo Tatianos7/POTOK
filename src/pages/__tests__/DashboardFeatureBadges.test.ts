@@ -57,7 +57,7 @@ test('home cards show My Potok and premium recipes after purchase', () => {
   assert.equal(myPotokEntry.route, '/today');
   assert.ok(premiumRecipesEntry);
   assert.equal(premiumRecipesEntry.subtitle, 'Готовые рецепты с КБЖУ и граммовками');
-  assert.equal(premiumRecipesEntry.route, '/today');
+  assert.equal(premiumRecipesEntry.route, '/premium-recipes');
   assert.equal(cards.some((card) => card.title === 'POTOK Premium'), false);
 });
 
