@@ -1,7 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
 import Button from '../ui/components/Button';
+import {
+  isPremiumCatalogStagingReadMode,
+  premiumCatalogService,
+  type PremiumRecipe as PremiumCatalogRecipe,
+  type PremiumRecipeDetail as PremiumCatalogRecipeDetail,
+} from '../services/premiumCatalogService';
 
 interface PremiumRecipe {
   id: string;
@@ -19,7 +25,7 @@ interface PremiumRecipe {
 
 const categories = ['Завтраки', 'Обеды', 'Ужины', 'Перекусы', 'Быстро', 'Без сложной готовки'];
 
-const premiumRecipes: PremiumRecipe[] = [
+export const mockPremiumRecipes: PremiumRecipe[] = [
   {
     id: 'oatmeal-banana-yogurt',
     category: 'Завтрак',
@@ -82,14 +88,101 @@ function getInitialRecipeId(search: string) {
   return new URLSearchParams(search).get('recipe');
 }
 
+function formatMacroValue(value: number | null) {
+  return value === null ? '0' : Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+function formatCalories(value: number | null) {
+  return `${value ?? 0} ккал`;
+}
+
+function mapCategory(category: string) {
+  const normalized = category.toLowerCase();
+  if (normalized === 'breakfast') return 'Завтрак';
+  if (normalized === 'lunch') return 'Обед';
+  if (normalized === 'dinner') return 'Ужин';
+  if (normalized === 'snack') return 'Перекус';
+  return category || 'Рецепт';
+}
+
+function formatMacros(recipe: Pick<PremiumCatalogRecipe, 'protein' | 'fat' | 'carbs'>) {
+  return `Б ${formatMacroValue(recipe.protein)} · Ж ${formatMacroValue(recipe.fat)} · У ${formatMacroValue(recipe.carbs)}`;
+}
+
+export function mapCatalogRecipeToPremiumRecipe(
+  recipe: PremiumCatalogRecipe,
+  detail?: PremiumCatalogRecipeDetail
+): PremiumRecipe {
+  const category = mapCategory(recipe.category);
+
+  return {
+    id: recipe.id,
+    category,
+    title: recipe.title,
+    summary: `${category} · ${formatCalories(recipe.calories)} · ${formatMacros(recipe)}`,
+    time: recipe.cookingTimeMin === null ? 'Без времени' : `${recipe.cookingTimeMin} минут`,
+    note: recipe.difficultyLabel || 'staging read-only',
+    calories: formatCalories(recipe.calories),
+    macros: formatMacros(recipe),
+    ingredients:
+      detail?.ingredients.map((ingredient) => {
+        const amount = ingredient.displayAmount || (ingredient.amountG === null ? '' : `${formatMacroValue(ingredient.amountG)} г`);
+        return amount ? `${ingredient.name} — ${amount}` : ingredient.name;
+      }) ?? [],
+    portionHints: detail?.hints.map((hint) => hint.text) ?? [],
+    steps: detail?.steps.map((step) => step.instruction) ?? [],
+  };
+}
+
 const PremiumRecipes = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const useStagingCatalog = isPremiumCatalogStagingReadMode();
+  const [recipes, setRecipes] = useState<PremiumRecipe[]>(mockPremiumRecipes);
+  const [recipeDetails, setRecipeDetails] = useState<Record<string, PremiumRecipe>>({});
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(() => getInitialRecipeId(location.search));
   const selectedRecipe = useMemo(
-    () => premiumRecipes.find((recipe) => recipe.id === selectedRecipeId) ?? null,
-    [selectedRecipeId]
+    () => (selectedRecipeId ? recipeDetails[selectedRecipeId] ?? recipes.find((recipe) => recipe.id === selectedRecipeId) ?? null : null),
+    [recipeDetails, recipes, selectedRecipeId]
   );
+
+  useEffect(() => {
+    if (!useStagingCatalog) return;
+
+    let isCancelled = false;
+
+    premiumCatalogService.getPremiumRecipeLibrary().then((result) => {
+      if (isCancelled) return;
+      if (result.ok && result.data.length > 0) {
+        setRecipes(result.data.map((recipe) => mapCatalogRecipeToPremiumRecipe(recipe)));
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [useStagingCatalog]);
+
+  useEffect(() => {
+    if (!useStagingCatalog || !selectedRecipeId || recipeDetails[selectedRecipeId]) return;
+
+    let isCancelled = false;
+
+    premiumCatalogService.getPremiumRecipeDetail(selectedRecipeId).then((result) => {
+      if (isCancelled) return;
+      if (result.ok && result.data) {
+        const detail = result.data;
+        setRecipeDetails((current) => ({
+          ...current,
+          [selectedRecipeId]: mapCatalogRecipeToPremiumRecipe(detail, detail),
+        }));
+      }
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [recipeDetails, selectedRecipeId, useStagingCatalog]);
 
   const renderHeader = (title: string, onBack?: () => void) => (
     <header className="relative flex h-12 items-center justify-center">
@@ -212,7 +305,7 @@ const PremiumRecipes = () => {
           </div>
 
           <section className="space-y-2">
-            {premiumRecipes.map((recipe) => (
+            {recipes.map((recipe) => (
               <button
                 key={recipe.id}
                 type="button"

@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import PremiumRecipes from '../PremiumRecipes';
+import PremiumRecipes, { mapCatalogRecipeToPremiumRecipe } from '../PremiumRecipes';
 import { getHomeFeatureCards } from '../../utils/constants';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -30,7 +30,7 @@ test('premium Home card opens dedicated premium recipes route', () => {
   assert.doesNotMatch(premiumRecipesSource, /\/nutrition\/recipes/);
 });
 
-test('/premium-recipes renders clean POTOK recipe library mock', () => {
+test('/premium-recipes default mode renders clean POTOK recipe library mock', () => {
   const html = renderPremiumRecipes();
 
   assert.match(html, /Сборник рецептов/);
@@ -56,7 +56,84 @@ test('/premium-recipes renders clean POTOK recipe library mock', () => {
 test('/premium-recipes recipe click opens local detail view contract', () => {
   assert.match(premiumRecipesSource, /onClick=\{\(\) => setSelectedRecipeId\(recipe\.id\)\}/);
   assert.match(premiumRecipesSource, /const \[selectedRecipeId, setSelectedRecipeId\]/);
-  assert.match(premiumRecipesSource, /premiumRecipes\.find\(\(recipe\) => recipe\.id === selectedRecipeId\)/);
+  assert.match(premiumRecipesSource, /recipes\.find\(\(recipe\) => recipe\.id === selectedRecipeId\)/);
+});
+
+test('/premium-recipes staging readonly mode calls premium catalog service read functions', () => {
+  assert.match(premiumRecipesSource, /isPremiumCatalogStagingReadMode/);
+  assert.match(premiumRecipesSource, /premiumCatalogService\.getPremiumRecipeLibrary\(\)/);
+  assert.match(premiumRecipesSource, /premiumCatalogService\.getPremiumRecipeDetail\(selectedRecipeId\)/);
+  assert.match(premiumRecipesSource, /result\.ok && result\.data\.length > 0/);
+  assert.match(premiumRecipesSource, /mockPremiumRecipes/);
+});
+
+test('/premium-recipes maps staging recipe detail ingredients, steps, and hints', () => {
+  const mapped = mapCatalogRecipeToPremiumRecipe(
+    {
+      id: 'staging-recipe-id',
+      title: 'staging_seed_recipe',
+      category: 'breakfast',
+      calories: 410,
+      protein: 31,
+      fat: 10,
+      carbs: 52,
+      cookingTimeMin: 10,
+      difficultyLabel: 'staging_test_easy',
+      isActive: true,
+    },
+    {
+      id: 'staging-recipe-id',
+      title: 'staging_seed_recipe',
+      category: 'breakfast',
+      calories: 410,
+      protein: 31,
+      fat: 10,
+      carbs: 52,
+      cookingTimeMin: 10,
+      difficultyLabel: 'staging_test_easy',
+      isActive: true,
+      ingredients: [
+        {
+          id: 'ingredient-id',
+          recipeId: 'staging-recipe-id',
+          name: 'staging_seed_oats',
+          amountG: 45,
+          displayAmount: 'half cup oats',
+          sortOrder: 1,
+        },
+      ],
+      steps: [
+        {
+          id: 'step-id',
+          recipeId: 'staging-recipe-id',
+          stepNumber: 1,
+          instruction: 'Mix oats.',
+        },
+      ],
+      hints: [
+        {
+          id: 'hint-id',
+          recipeId: 'staging-recipe-id',
+          text: 'No scale: use one small bowl.',
+          sortOrder: 1,
+        },
+      ],
+    }
+  );
+
+  assert.deepEqual(mapped, {
+    id: 'staging-recipe-id',
+    category: 'Завтрак',
+    title: 'staging_seed_recipe',
+    summary: 'Завтрак · 410 ккал · Б 31 · Ж 10 · У 52',
+    time: '10 минут',
+    note: 'staging_test_easy',
+    calories: '410 ккал',
+    macros: 'Б 31 · Ж 10 · У 52',
+    ingredients: ['staging_seed_oats — half cup oats'],
+    portionHints: ['No scale: use one small bowl.'],
+    steps: ['Mix oats.'],
+  });
 });
 
 test('/premium-recipes detail shows recipe nutrition, ingredients, hints, steps, and disabled mock actions', () => {
@@ -96,10 +173,17 @@ test('/premium-recipes detail back returns to library and keeps clean mobile lay
   assert.match(premiumRecipesSource, /pb-16/);
 });
 
-test('/premium-recipes source does not call diary, payment, AI, DB, or real recipe runtime paths', () => {
+test('/premium-recipes source does not call diary, payment, AI, DB writes, or real recipe runtime paths', () => {
   assert.doesNotMatch(premiumRecipesSource, /mealService|recipeService|recipesService|recipeDiaryService/);
-  assert.doesNotMatch(premiumRecipesSource, /uiRuntimeAdapter|supabase|insert\(|update\(|saveRecipe|addMeal/);
+  assert.doesNotMatch(premiumRecipesSource, /uiRuntimeAdapter|supabase|insert\(|update\(|upsert\(|delete\(|rpc\(|saveRecipe|addMeal/);
   assert.doesNotMatch(premiumRecipesSource, /stripe|checkout|payment|subscribe/i);
   assert.doesNotMatch(premiumRecipesSource, /generateRecipe|generateDailyPlan|openai|aiGeneration/i);
   assert.doesNotMatch(premiumRecipesSource, /shoppingService|shoppingListService|recalculate/i);
+});
+
+test('/today is not connected to premium catalog service in this package', () => {
+  const todaySource = readFileSync(resolve(currentDir, '../Today.tsx'), 'utf8');
+
+  assert.doesNotMatch(todaySource, /premiumCatalogService/);
+  assert.doesNotMatch(todaySource, /getActivePremiumPlans|getPremiumPlanDetail|getPremiumMealSlots/);
 });
