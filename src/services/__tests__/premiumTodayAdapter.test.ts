@@ -173,6 +173,7 @@ test('premium today adapter maps two seeded days without synthesizing days 3-14'
   );
   assert.equal(days.some((day) => day.day === 14), false);
   assert.equal(days[0]?.macros, '1850 ккал · Б 135 · Ж 58 · У 190');
+  assert.equal(days[0]?.catalogDayId, 'day-1');
   assert.equal(days[0]?.workout?.duration, '30 минут');
   assert.equal(days[1]?.workout, null);
 });
@@ -187,6 +188,8 @@ test('premium today adapter maps meal slots in breakfast lunch dinner snack orde
   assert.equal(meals[0]?.summary, 'staging_seed_protein_oats');
   assert.equal(meals[0]?.calories, '410 ккал');
   assert.equal(meals[0]?.macroDetails, 'Б 31 · Ж 10 · У 52');
+  assert.equal(meals[0]?.catalogSlotId, 'slot-breakfast');
+  assert.equal(meals[0]?.catalogPrimaryRecipeId, 'recipe-oats');
 });
 
 test('premium today adapter maps recipe detail to meal ingredients steps and hints', () => {
@@ -328,10 +331,13 @@ test('premium today adapter source stays pure and read-only', () => {
   }
 });
 
-test('/today uses the Today adapter only for plan list detail while /premium-recipes stays separate', () => {
+test('/today uses the Today adapter for plan day and meal detail while /premium-recipes stays separate', () => {
   assert.match(todaySource, /premiumTodayAdapter/);
   assert.match(todaySource, /buildTodayPlanFromPremiumCatalog/);
-  assert.match(todaySource, /const usesCatalogPlanSource = todayView === 'home' \|\| todayView === 'plan_detail'/);
-  assert.doesNotMatch(todaySource, /getPremiumMealSlots|getMealRecipeOptions|getPremiumRecipeDetail|buildDerivedShoppingList/);
+  assert.match(todaySource, /mapPremiumMealSlotsToTodayMeals/);
+  assert.match(todaySource, /getPremiumMealSlots\(selectedPlanDay\.catalogDayId\)/);
+  assert.match(todaySource, /getMealRecipeOptions\(slot\.id\)/);
+  assert.match(todaySource, /getPremiumRecipeDetail\(primaryOption\.recipeId\)/);
+  assert.doesNotMatch(todaySource, /buildDerivedShoppingList/);
   assert.doesNotMatch(premiumRecipesSource, /premiumTodayAdapter/);
 });

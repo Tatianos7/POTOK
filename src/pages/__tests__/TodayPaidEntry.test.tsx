@@ -162,10 +162,43 @@ test('/today staging readonly mode loads plan list and detail through premium ca
   assert.match(todaySource, /setCatalogPlans\(mappedPlans\)/);
 });
 
-test('/today staging catalog source is limited to plan list and plan detail views', () => {
-  assert.match(todaySource, /const usesCatalogPlanSource = todayView === 'home' \|\| todayView === 'plan_detail'/);
+test('/today staging catalog source is limited to plan day and meal detail views', () => {
+  assert.match(
+    todaySource,
+    /todayView === 'home' \|\| todayView === 'plan_detail' \|\| todayView === 'day_detail' \|\| todayView === 'meal_detail'/
+  );
   assert.match(todaySource, /const activePlans = usesCatalogPlanSource \? catalogPlans \?\? demoPlans : demoPlans/);
-  assert.doesNotMatch(todaySource, /getPremiumMealSlots|getMealRecipeOptions|getPremiumRecipeDetail|buildDerivedShoppingList/);
+  assert.doesNotMatch(todaySource, /buildDerivedShoppingList/);
+});
+
+test('/today staging readonly day and meal detail load meal slots and primary recipe details only under the flag', () => {
+  assert.match(todaySource, /todayView !== 'day_detail' && todayView !== 'meal_detail'/);
+  assert.match(todaySource, /premiumCatalogService\.getPremiumMealSlots\(selectedPlanDay\.catalogDayId\)/);
+  assert.match(todaySource, /premiumCatalogService\.getMealRecipeOptions\(slot\.id\)/);
+  assert.match(todaySource, /option\.optionType === 'primary'/);
+  assert.match(todaySource, /premiumCatalogService\.getPremiumRecipeDetail\(primaryOption\.recipeId\)/);
+  assert.match(todaySource, /mapPremiumMealSlotsToTodayMeals\(slotsResult\.data, primaryRecipeBySlotId\)/);
+  assert.match(todaySource, /selectedPlanDayForRender\.meals\.map\(\(meal\) =>/);
+  assert.match(todaySource, /selectedPlanDayForRender\.meals\.find\(\(meal\) => meal\.title === selectedMealTitle\)/);
+});
+
+test('/today staging day and meal read failures fall back safely without technical UI errors', () => {
+  assert.match(todaySource, /!slotsResult\.ok \|\| slotsResult\.data\.length === 0/);
+  assert.match(todaySource, /throw new Error\('catalog meal options read failed'\)/);
+  assert.match(todaySource, /throw new Error\('catalog recipe detail read failed'\)/);
+  assert.match(todaySource, /setCatalogPlans\(null\)/);
+  assert.match(todaySource, /setCatalogDayMeals\(\{\}\)/);
+  assert.match(todaySource, /fallbackPlanDay\.meals\[0\]/);
+  assert.doesNotMatch(todaySource, /read_failed|supabase_unavailable|ошибка загрузки|technical/i);
+});
+
+test('/today replacements and shopping remain mock local only after day and meal integration', () => {
+  assert.match(todaySource, /breakfastReplacementOptions\.map\(\(option\) =>/);
+  assert.match(todaySource, /shoppingGroups\.map\(\(group\) =>/);
+  assert.match(todaySource, /setMealOverrides\(\(current\) => \(\{/);
+  assert.match(todaySource, /next\.delete\(productKey\)/);
+  assert.doesNotMatch(todaySource, /buildDerivedShoppingList/);
+  assert.doesNotMatch(todaySource, /premium_shopping_items|user_premium_shopping_checks/);
 });
 
 test('/today staging readonly plan detail can render only returned day 1 and day 2 from adapter shape', () => {
@@ -449,7 +482,7 @@ test('/today day detail keeps compact safe layout and mock-only disabled actions
   assert.match(todaySource, /pb-56 pt-5/);
   assert.match(todaySource, /flex flex-1 flex-col gap-4 py-5/);
   assert.match(todaySource, /rounded-lg border border-stone-200 bg-white px-3 py-1\.5/);
-  assert.match(todaySource, /\{selectedPlanDay\.workout\.duration\} · \{selectedPlanDay\.workout\.focus\}/);
+  assert.match(todaySource, /\{selectedPlanDayForRender\.workout\.duration\} · \{selectedPlanDayForRender\.workout\.focus\}/);
   assert.match(todaySource, /space-y-2 pb-12/);
   assert.match(todaySource, /grid grid-cols-2 gap-1\.5/);
   assert.match(todaySource, /variant="outline" size="sm" onClick=\{openShoppingList\} fullWidth align="center"/);

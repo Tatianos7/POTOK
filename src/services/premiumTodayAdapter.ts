@@ -17,6 +17,8 @@ export interface TodayMealDetail {
   ingredients: string[];
   portionHints: string[];
   steps: string[];
+  catalogSlotId?: string;
+  catalogPrimaryRecipeId?: string;
 }
 
 export interface TodayPlanDay {
@@ -25,6 +27,7 @@ export interface TodayPlanDay {
   calories: string;
   macroDetails: string;
   meals: TodayMealDetail[];
+  catalogDayId?: string;
   workout: {
     title: string;
     duration: string;
@@ -162,6 +165,8 @@ export function mapPremiumMealSlotsToTodayMeals(
         summary: recipe?.title ?? slot.title,
         calories: formatCalories(slot.calories),
         macroDetails: formatMacroDetails(slot),
+        catalogSlotId: slot.id,
+        catalogPrimaryRecipeId: recipe?.id,
       };
     });
 }
@@ -190,6 +195,7 @@ export function mapPremiumPlanDaysToTodayDays(
         calories: formatCalories(day.calories),
         macroDetails: formatMacroDetails(day),
         meals: mapPremiumMealSlotsToTodayMeals(slotsByDayId[day.id], primaryRecipeBySlotId),
+        catalogDayId: day.id,
         workout,
       };
     });

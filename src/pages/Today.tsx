@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
 import Button from '../ui/components/Button';
 import { isPremiumCatalogStagingReadMode, premiumCatalogService } from '../services/premiumCatalogService';
-import { buildTodayPlanFromPremiumCatalog } from '../services/premiumTodayAdapter';
+import { buildTodayPlanFromPremiumCatalog, mapPremiumMealSlotsToTodayMeals } from '../services/premiumTodayAdapter';
 
 type PlanKind = 'combined' | 'nutrition' | 'workout' | 'time_saver';
 type TodayView = 'home' | 'plan_detail' | 'day_detail' | 'meal_detail' | 'replace_meal' | 'shopping_list';
@@ -30,7 +30,10 @@ interface DemoPlanDay {
     ingredients: string[];
     portionHints: string[];
     steps: string[];
+    catalogSlotId?: string;
+    catalogPrimaryRecipeId?: string;
   }>;
+  catalogDayId?: string;
   workout: {
     title: string;
     duration: string;
@@ -430,6 +433,7 @@ const Today = () => {
   const [todayView, setTodayView] = useState<TodayView>(() => getInitialTodayView(location.search));
   const [goalSummary, setGoalSummary] = useState<GoalSummary | null>(() => getDemoGoalSummary(location.search));
   const [catalogPlans, setCatalogPlans] = useState<DemoPlan[] | null>(null);
+  const [catalogDayMeals, setCatalogDayMeals] = useState<Record<string, MealDetail[]>>({});
   const [selectedPlanId, setSelectedPlanId] = useState(() => getInitialPlanId(location.search));
   const [selectedDay, setSelectedDay] = useState(() => getInitialDay(location.search));
   const [selectedMealTitle, setSelectedMealTitle] = useState(() => getInitialMealTitle(location.search));
@@ -443,18 +447,31 @@ const Today = () => {
   const [shoppingPeriod, setShoppingPeriod] = useState<ShoppingPeriod>(() => getInitialShoppingPeriod(location.search));
   const [boughtProducts, setBoughtProducts] = useState<Set<string>>(() => new Set());
   const hasGoal = Boolean(goalSummary);
-  const usesCatalogPlanSource = todayView === 'home' || todayView === 'plan_detail';
+  const usesCatalogPlanSource =
+    todayView === 'home' || todayView === 'plan_detail' || todayView === 'day_detail' || todayView === 'meal_detail';
   const activePlans = usesCatalogPlanSource ? catalogPlans ?? demoPlans : demoPlans;
 
   const selectedPlan = useMemo(
     () => activePlans.find((plan) => plan.id === selectedPlanId) ?? activePlans[0] ?? demoPlans[0],
     [activePlans, selectedPlanId]
   );
+  const selectedPlanUsesCatalog = Boolean(catalogPlans?.some((plan) => plan.id === selectedPlan.id));
   const selectedPlanDay = selectedPlan.days.find((day) => day.day === selectedDay) ?? selectedPlan.days[0];
+  const selectedCatalogDayKey =
+    selectedPlanUsesCatalog && selectedPlanDay?.catalogDayId ? `${selectedPlan.id}:${selectedPlanDay.day}` : null;
+  const selectedPlanDayForRender =
+    selectedCatalogDayKey && catalogDayMeals[selectedCatalogDayKey]
+      ? {
+          ...selectedPlanDay,
+          meals: catalogDayMeals[selectedCatalogDayKey],
+        }
+      : selectedPlanDay;
+  const fallbackPlanDay = demoPlans[0].days.find((day) => day.day === selectedDay) ?? demoPlans[0].days[0];
   const selectedMeal =
     mealOverrides[selectedMealTitle] ??
-    selectedPlanDay.meals.find((meal) => meal.title === selectedMealTitle) ??
-    selectedPlanDay.meals[0];
+    selectedPlanDayForRender.meals.find((meal) => meal.title === selectedMealTitle) ??
+    selectedPlanDayForRender.meals[0] ??
+    fallbackPlanDay.meals[0];
   const selectedReplacement =
     breakfastReplacementOptions.find((option) => option.id === selectedReplacementId) ?? null;
 
@@ -470,11 +487,13 @@ const Today = () => {
     async function loadCatalogPlans() {
       if (!hasGoal) {
         setCatalogPlans(null);
+        setCatalogDayMeals({});
         return;
       }
 
       if (!isPremiumCatalogStagingReadMode()) {
         setCatalogPlans(null);
+        setCatalogDayMeals({});
         return;
       }
 
@@ -484,6 +503,7 @@ const Today = () => {
 
         if (!plansResult.ok || plansResult.data.length === 0) {
           setCatalogPlans(null);
+          setCatalogDayMeals({});
           return;
         }
 
@@ -507,6 +527,7 @@ const Today = () => {
 
         if (mappedPlans.length === 0) {
           setCatalogPlans(null);
+          setCatalogDayMeals({});
           return;
         }
 
@@ -521,6 +542,7 @@ const Today = () => {
       } catch {
         if (!isCancelled) {
           setCatalogPlans(null);
+          setCatalogDayMeals({});
         }
       }
     }
@@ -531,6 +553,100 @@ const Today = () => {
       isCancelled = true;
     };
   }, [hasGoal, selectedPlanId]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadCatalogDayMeals() {
+      if (!hasGoal || !isPremiumCatalogStagingReadMode()) {
+        return;
+      }
+
+      if (todayView !== 'day_detail' && todayView !== 'meal_detail') {
+        return;
+      }
+
+      if (!selectedPlanUsesCatalog || !selectedPlanDay?.catalogDayId || !selectedCatalogDayKey) {
+        return;
+      }
+
+      if (catalogDayMeals[selectedCatalogDayKey]?.length) {
+        return;
+      }
+
+      try {
+        const slotsResult = await premiumCatalogService.getPremiumMealSlots(selectedPlanDay.catalogDayId);
+        if (isCancelled) return;
+
+        if (!slotsResult.ok || slotsResult.data.length === 0) {
+          setCatalogPlans(null);
+          setCatalogDayMeals({});
+          return;
+        }
+
+        const primaryRecipeBySlotId: Parameters<typeof mapPremiumMealSlotsToTodayMeals>[1] = {};
+
+        for (const slot of slotsResult.data) {
+          const optionsResult = await premiumCatalogService.getMealRecipeOptions(slot.id);
+          if (isCancelled) return;
+
+          if (!optionsResult.ok) {
+            throw new Error('catalog meal options read failed');
+          }
+
+          const primaryOption =
+            optionsResult.data.find((option) => option.optionType === 'primary') ?? optionsResult.data[0];
+
+          if (!primaryOption?.recipeId) {
+            continue;
+          }
+
+          const recipeResult = await premiumCatalogService.getPremiumRecipeDetail(primaryOption.recipeId);
+          if (isCancelled) return;
+
+          if (!recipeResult.ok || !recipeResult.data) {
+            throw new Error('catalog recipe detail read failed');
+          }
+
+          primaryRecipeBySlotId[slot.id] = recipeResult.data;
+        }
+
+        const meals = mapPremiumMealSlotsToTodayMeals(slotsResult.data, primaryRecipeBySlotId);
+
+        if (meals.length === 0) {
+          setCatalogPlans(null);
+          setCatalogDayMeals({});
+          return;
+        }
+
+        setCatalogDayMeals((current) => ({
+          ...current,
+          [selectedCatalogDayKey]: meals,
+        }));
+        setSelectedMealTitle((currentTitle) =>
+          meals.some((meal) => meal.title === currentTitle) ? currentTitle : meals[0]?.title ?? 'Завтрак'
+        );
+      } catch {
+        if (!isCancelled) {
+          setCatalogPlans(null);
+          setCatalogDayMeals({});
+        }
+      }
+    }
+
+    void loadCatalogDayMeals();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    catalogDayMeals,
+    hasGoal,
+    selectedCatalogDayKey,
+    selectedPlanDay?.catalogDayId,
+    selectedPlanUsesCatalog,
+    todayView,
+  ]);
 
   const openPlan = (planId: string) => {
     setSelectedPlanId(planId);
@@ -816,7 +932,7 @@ const Today = () => {
             <ChevronLeft size={19} aria-hidden="true" />
           </button>
           <h1 className="mx-12 truncate whitespace-nowrap text-center text-lg font-semibold leading-6 text-stone-950">
-            День {selectedPlanDay.day}
+            День {selectedPlanDayForRender.day}
           </h1>
           <button
             type="button"
@@ -830,12 +946,12 @@ const Today = () => {
 
         <main className="flex flex-1 flex-col gap-4 py-5">
           <section className="space-y-1 text-center">
-            <p className="text-xl font-semibold leading-7 text-stone-950">{selectedPlanDay.calories}</p>
-            <p className="text-sm font-medium leading-5 text-stone-500">{selectedPlanDay.macroDetails}</p>
+            <p className="text-xl font-semibold leading-7 text-stone-950">{selectedPlanDayForRender.calories}</p>
+            <p className="text-sm font-medium leading-5 text-stone-500">{selectedPlanDayForRender.macroDetails}</p>
           </section>
 
           <section className="space-y-1">
-            {selectedPlanDay.meals.map((meal) => (
+            {selectedPlanDayForRender.meals.map((meal) => (
               <button
                 key={meal.title}
                 type="button"
@@ -851,11 +967,11 @@ const Today = () => {
             ))}
           </section>
 
-          {selectedPlanDay.workout && (
+          {selectedPlanDayForRender.workout && (
             <section className="rounded-lg border border-stone-200 bg-white px-3 py-1.5">
-              <p className="text-sm font-semibold leading-5 text-stone-950">{selectedPlanDay.workout.title}</p>
+              <p className="text-sm font-semibold leading-5 text-stone-950">{selectedPlanDayForRender.workout.title}</p>
               <p className="text-sm leading-5 text-stone-600">
-                {selectedPlanDay.workout.duration} · {selectedPlanDay.workout.focus}
+                {selectedPlanDayForRender.workout.duration} · {selectedPlanDayForRender.workout.focus}
               </p>
             </section>
           )}
