@@ -331,13 +331,15 @@ test('premium today adapter source stays pure and read-only', () => {
   }
 });
 
-test('/today uses the Today adapter for plan day and meal detail while /premium-recipes stays separate', () => {
+test('/today uses the Today adapter for plan day meal and replacement detail while /premium-recipes stays separate', () => {
   assert.match(todaySource, /premiumTodayAdapter/);
   assert.match(todaySource, /buildTodayPlanFromPremiumCatalog/);
   assert.match(todaySource, /mapPremiumMealSlotsToTodayMeals/);
+  assert.match(todaySource, /mapMealRecipeOptionsToReplacementOptions/);
   assert.match(todaySource, /getPremiumMealSlots\(selectedPlanDay\.catalogDayId\)/);
   assert.match(todaySource, /getMealRecipeOptions\(slot\.id\)/);
   assert.match(todaySource, /getPremiumRecipeDetail\(primaryOption\.recipeId\)/);
+  assert.match(todaySource, /getMealRecipeOptions\(selectedMeal\.catalogSlotId\)/);
   assert.doesNotMatch(todaySource, /buildDerivedShoppingList/);
   assert.doesNotMatch(premiumRecipesSource, /premiumTodayAdapter/);
 });

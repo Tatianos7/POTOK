@@ -165,7 +165,7 @@ test('/today staging readonly mode loads plan list and detail through premium ca
 test('/today staging catalog source is limited to plan day and meal detail views', () => {
   assert.match(
     todaySource,
-    /todayView === 'home' \|\| todayView === 'plan_detail' \|\| todayView === 'day_detail' \|\| todayView === 'meal_detail'/
+    /todayView === 'home' \|\|[\s\S]*todayView === 'plan_detail' \|\|[\s\S]*todayView === 'day_detail' \|\|[\s\S]*todayView === 'meal_detail' \|\|[\s\S]*todayView === 'replace_meal'/
   );
   assert.match(todaySource, /const activePlans = usesCatalogPlanSource \? catalogPlans \?\? demoPlans : demoPlans/);
   assert.doesNotMatch(todaySource, /buildDerivedShoppingList/);
@@ -192,8 +192,34 @@ test('/today staging day and meal read failures fall back safely without technic
   assert.doesNotMatch(todaySource, /read_failed|supabase_unavailable|ошибка загрузки|technical/i);
 });
 
-test('/today replacements and shopping remain mock local only after day and meal integration', () => {
-  assert.match(todaySource, /breakfastReplacementOptions\.map\(\(option\) =>/);
+test('/today default replacement view keeps existing mock replacement options', () => {
+  const html = renderToday('/today?demoGoal=1&replaceMeal=Завтрак');
+
+  assert.match(html, /Омлет с овощами/);
+  assert.match(html, /Творог с ягодами/);
+  assert.match(html, /Сэндвич с индейкой/);
+  assert.match(todaySource, /: breakfastReplacementOptions/);
+});
+
+test('/today staging readonly replacement view can read replacement options without persistence', () => {
+  assert.match(todaySource, /todayView === 'replace_meal'/);
+  assert.match(todaySource, /premiumCatalogService\.getMealRecipeOptions\(selectedMeal\.catalogSlotId\)/);
+  assert.match(todaySource, /premiumCatalogService\.getPremiumRecipeDetail\(option\.recipeId\)/);
+  assert.match(todaySource, /mapMealRecipeOptionsToReplacementOptions\(optionsResult\.data, recipeDetailsById\)/);
+  assert.match(todaySource, /setCatalogReplacementOptions\(\(current\) => \(\{/);
+  assert.match(todaySource, /selectedReplacementOptions\.map\(\(option\) =>/);
+  assert.match(todaySource, /setSelectedReplacementId\(\(currentId\) =>/);
+});
+
+test('/today staging replacement read failures and empty options fall back to mock replacement options', () => {
+  assert.match(todaySource, /!optionsResult\.ok \|\| optionsResult\.data\.length === 0/);
+  assert.match(todaySource, /if \(replacements\.length === 0\)/);
+  assert.match(todaySource, /catch \{/);
+  assert.match(todaySource, /setSelectedReplacementId\(null\)/);
+  assert.doesNotMatch(todaySource, /read_failed|supabase_unavailable|ошибка загрузки|technical/i);
+});
+
+test('/today replacement apply and shopping remain local only after replacement integration', () => {
   assert.match(todaySource, /shoppingGroups\.map\(\(group\) =>/);
   assert.match(todaySource, /setMealOverrides\(\(current\) => \(\{/);
   assert.match(todaySource, /next\.delete\(productKey\)/);

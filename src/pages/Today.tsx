@@ -3,7 +3,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
 import Button from '../ui/components/Button';
 import { isPremiumCatalogStagingReadMode, premiumCatalogService } from '../services/premiumCatalogService';
-import { buildTodayPlanFromPremiumCatalog, mapPremiumMealSlotsToTodayMeals } from '../services/premiumTodayAdapter';
+import {
+  buildTodayPlanFromPremiumCatalog,
+  mapMealRecipeOptionsToReplacementOptions,
+  mapPremiumMealSlotsToTodayMeals,
+} from '../services/premiumTodayAdapter';
 
 type PlanKind = 'combined' | 'nutrition' | 'workout' | 'time_saver';
 type TodayView = 'home' | 'plan_detail' | 'day_detail' | 'meal_detail' | 'replace_meal' | 'shopping_list';
@@ -55,6 +59,8 @@ interface DemoPlan {
 interface ReplacementOption extends MealDetail {
   id: string;
   note: string;
+  optionType?: string;
+  recipeId?: string;
 }
 
 interface ShoppingProduct {
@@ -434,6 +440,7 @@ const Today = () => {
   const [goalSummary, setGoalSummary] = useState<GoalSummary | null>(() => getDemoGoalSummary(location.search));
   const [catalogPlans, setCatalogPlans] = useState<DemoPlan[] | null>(null);
   const [catalogDayMeals, setCatalogDayMeals] = useState<Record<string, MealDetail[]>>({});
+  const [catalogReplacementOptions, setCatalogReplacementOptions] = useState<Record<string, ReplacementOption[]>>({});
   const [selectedPlanId, setSelectedPlanId] = useState(() => getInitialPlanId(location.search));
   const [selectedDay, setSelectedDay] = useState(() => getInitialDay(location.search));
   const [selectedMealTitle, setSelectedMealTitle] = useState(() => getInitialMealTitle(location.search));
@@ -448,7 +455,11 @@ const Today = () => {
   const [boughtProducts, setBoughtProducts] = useState<Set<string>>(() => new Set());
   const hasGoal = Boolean(goalSummary);
   const usesCatalogPlanSource =
-    todayView === 'home' || todayView === 'plan_detail' || todayView === 'day_detail' || todayView === 'meal_detail';
+    todayView === 'home' ||
+    todayView === 'plan_detail' ||
+    todayView === 'day_detail' ||
+    todayView === 'meal_detail' ||
+    todayView === 'replace_meal';
   const activePlans = usesCatalogPlanSource ? catalogPlans ?? demoPlans : demoPlans;
 
   const selectedPlan = useMemo(
@@ -472,8 +483,12 @@ const Today = () => {
     selectedPlanDayForRender.meals.find((meal) => meal.title === selectedMealTitle) ??
     selectedPlanDayForRender.meals[0] ??
     fallbackPlanDay.meals[0];
+  const selectedReplacementOptions =
+    selectedMeal.catalogSlotId && catalogReplacementOptions[selectedMeal.catalogSlotId]?.length
+      ? catalogReplacementOptions[selectedMeal.catalogSlotId]
+      : breakfastReplacementOptions;
   const selectedReplacement =
-    breakfastReplacementOptions.find((option) => option.id === selectedReplacementId) ?? null;
+    selectedReplacementOptions.find((option) => option.id === selectedReplacementId) ?? null;
 
   useEffect(() => {
     if (!goalSummary) {
@@ -488,12 +503,14 @@ const Today = () => {
       if (!hasGoal) {
         setCatalogPlans(null);
         setCatalogDayMeals({});
+        setCatalogReplacementOptions({});
         return;
       }
 
       if (!isPremiumCatalogStagingReadMode()) {
         setCatalogPlans(null);
         setCatalogDayMeals({});
+        setCatalogReplacementOptions({});
         return;
       }
 
@@ -504,6 +521,7 @@ const Today = () => {
         if (!plansResult.ok || plansResult.data.length === 0) {
           setCatalogPlans(null);
           setCatalogDayMeals({});
+          setCatalogReplacementOptions({});
           return;
         }
 
@@ -528,6 +546,7 @@ const Today = () => {
         if (mappedPlans.length === 0) {
           setCatalogPlans(null);
           setCatalogDayMeals({});
+          setCatalogReplacementOptions({});
           return;
         }
 
@@ -543,6 +562,7 @@ const Today = () => {
         if (!isCancelled) {
           setCatalogPlans(null);
           setCatalogDayMeals({});
+          setCatalogReplacementOptions({});
         }
       }
     }
@@ -562,7 +582,7 @@ const Today = () => {
         return;
       }
 
-      if (todayView !== 'day_detail' && todayView !== 'meal_detail') {
+      if (todayView !== 'day_detail' && todayView !== 'meal_detail' && todayView !== 'replace_meal') {
         return;
       }
 
@@ -581,6 +601,7 @@ const Today = () => {
         if (!slotsResult.ok || slotsResult.data.length === 0) {
           setCatalogPlans(null);
           setCatalogDayMeals({});
+          setCatalogReplacementOptions({});
           return;
         }
 
@@ -616,6 +637,7 @@ const Today = () => {
         if (meals.length === 0) {
           setCatalogPlans(null);
           setCatalogDayMeals({});
+          setCatalogReplacementOptions({});
           return;
         }
 
@@ -630,6 +652,7 @@ const Today = () => {
         if (!isCancelled) {
           setCatalogPlans(null);
           setCatalogDayMeals({});
+          setCatalogReplacementOptions({});
         }
       }
     }
@@ -644,6 +667,82 @@ const Today = () => {
     hasGoal,
     selectedCatalogDayKey,
     selectedPlanDay?.catalogDayId,
+    selectedPlanUsesCatalog,
+    todayView,
+  ]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadCatalogReplacementOptions() {
+      if (!hasGoal || !isPremiumCatalogStagingReadMode()) {
+        return;
+      }
+
+      if (todayView !== 'replace_meal') {
+        return;
+      }
+
+      if (!selectedPlanUsesCatalog || !selectedMeal.catalogSlotId) {
+        return;
+      }
+
+      if (catalogReplacementOptions[selectedMeal.catalogSlotId]?.length) {
+        return;
+      }
+
+      try {
+        const optionsResult = await premiumCatalogService.getMealRecipeOptions(selectedMeal.catalogSlotId);
+        if (isCancelled) return;
+
+        if (!optionsResult.ok || optionsResult.data.length === 0) {
+          return;
+        }
+
+        const recipeDetailsById: Parameters<typeof mapMealRecipeOptionsToReplacementOptions>[1] = {};
+
+        for (const option of optionsResult.data) {
+          if (!option.recipeId) {
+            continue;
+          }
+
+          const recipeResult = await premiumCatalogService.getPremiumRecipeDetail(option.recipeId);
+          if (isCancelled) return;
+
+          if (recipeResult.ok && recipeResult.data) {
+            recipeDetailsById[option.recipeId] = recipeResult.data;
+          }
+        }
+
+        const replacements = mapMealRecipeOptionsToReplacementOptions(optionsResult.data, recipeDetailsById);
+
+        if (replacements.length === 0) {
+          return;
+        }
+
+        setCatalogReplacementOptions((current) => ({
+          ...current,
+          [selectedMeal.catalogSlotId!]: replacements,
+        }));
+        setSelectedReplacementId((currentId) =>
+          replacements.some((option) => option.id === currentId) ? currentId : null
+        );
+      } catch {
+        if (!isCancelled) {
+          setSelectedReplacementId(null);
+        }
+      }
+    }
+
+    void loadCatalogReplacementOptions();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    catalogReplacementOptions,
+    hasGoal,
+    selectedMeal.catalogSlotId,
     selectedPlanUsesCatalog,
     todayView,
   ]);
@@ -1231,7 +1330,7 @@ const Today = () => {
           </div>
 
           <section className="space-y-1.5 pb-8">
-            {breakfastReplacementOptions.map((option) => {
+            {selectedReplacementOptions.map((option) => {
               const isSelected = option.id === selectedReplacementId;
               return (
                 <button
