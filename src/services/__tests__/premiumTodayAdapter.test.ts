@@ -262,6 +262,7 @@ test('premium today adapter maps derived shopping to grouped in-memory shape', (
   );
   assert.equal(groups[0]?.products[0]?.amount, 0);
   assert.equal(groups[0]?.products[0]?.unit, 'г');
+  assert.equal(groups[0]?.products[0]?.isDerivedCatalogAmount, true);
 });
 
 test('premium today adapter builds Today plan from catalog input', () => {
@@ -331,15 +332,16 @@ test('premium today adapter source stays pure and read-only', () => {
   }
 });
 
-test('/today uses the Today adapter for plan day meal and replacement detail while /premium-recipes stays separate', () => {
+test('/today uses the Today adapter for plan day meal replacement and shopping detail while /premium-recipes stays separate', () => {
   assert.match(todaySource, /premiumTodayAdapter/);
   assert.match(todaySource, /buildTodayPlanFromPremiumCatalog/);
   assert.match(todaySource, /mapPremiumMealSlotsToTodayMeals/);
   assert.match(todaySource, /mapMealRecipeOptionsToReplacementOptions/);
+  assert.match(todaySource, /mapDerivedShoppingListToShoppingGroups/);
   assert.match(todaySource, /getPremiumMealSlots\(selectedPlanDay\.catalogDayId\)/);
   assert.match(todaySource, /getMealRecipeOptions\(slot\.id\)/);
   assert.match(todaySource, /getPremiumRecipeDetail\(primaryOption\.recipeId\)/);
   assert.match(todaySource, /getMealRecipeOptions\(selectedMeal\.catalogSlotId\)/);
-  assert.doesNotMatch(todaySource, /buildDerivedShoppingList/);
+  assert.match(todaySource, /buildDerivedShoppingList\(selectedPlan\.id/);
   assert.doesNotMatch(premiumRecipesSource, /premiumTodayAdapter/);
 });

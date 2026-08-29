@@ -57,6 +57,7 @@ export interface TodayShoppingProduct {
   unit: string;
   displayAmounts: string[];
   recipeIds: string[];
+  isDerivedCatalogAmount?: boolean;
 }
 
 export interface TodayShoppingGroup {
@@ -260,6 +261,7 @@ export function mapDerivedShoppingListToShoppingGroups(
       unit: 'г',
       displayAmounts: item.displayAmounts,
       recipeIds: item.recipeIds,
+      isDerivedCatalogAmount: true,
     }));
 
   return products.length === 0

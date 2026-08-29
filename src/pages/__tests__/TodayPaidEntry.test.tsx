@@ -162,13 +162,12 @@ test('/today staging readonly mode loads plan list and detail through premium ca
   assert.match(todaySource, /setCatalogPlans\(mappedPlans\)/);
 });
 
-test('/today staging catalog source is limited to plan day and meal detail views', () => {
+test('/today staging catalog source is limited to approved read-only Today views', () => {
   assert.match(
     todaySource,
-    /todayView === 'home' \|\|[\s\S]*todayView === 'plan_detail' \|\|[\s\S]*todayView === 'day_detail' \|\|[\s\S]*todayView === 'meal_detail' \|\|[\s\S]*todayView === 'replace_meal'/
+    /todayView === 'home' \|\|[\s\S]*todayView === 'plan_detail' \|\|[\s\S]*todayView === 'day_detail' \|\|[\s\S]*todayView === 'meal_detail' \|\|[\s\S]*todayView === 'replace_meal' \|\|[\s\S]*todayView === 'shopping_list'/
   );
   assert.match(todaySource, /const activePlans = usesCatalogPlanSource \? catalogPlans \?\? demoPlans : demoPlans/);
-  assert.doesNotMatch(todaySource, /buildDerivedShoppingList/);
 });
 
 test('/today staging readonly day and meal detail load meal slots and primary recipe details only under the flag', () => {
@@ -219,12 +218,40 @@ test('/today staging replacement read failures and empty options fall back to mo
   assert.doesNotMatch(todaySource, /read_failed|supabase_unavailable|ошибка загрузки|technical/i);
 });
 
-test('/today replacement apply and shopping remain local only after replacement integration', () => {
-  assert.match(todaySource, /shoppingGroups\.map\(\(group\) =>/);
+test('/today replacement apply remains local only after replacement integration', () => {
   assert.match(todaySource, /setMealOverrides\(\(current\) => \(\{/);
   assert.match(todaySource, /next\.delete\(productKey\)/);
-  assert.doesNotMatch(todaySource, /buildDerivedShoppingList/);
+  assert.match(todaySource, /setCatalogShoppingGroups\(\{\}\)/);
   assert.doesNotMatch(todaySource, /premium_shopping_items|user_premium_shopping_checks/);
+});
+
+test('/today default shopping list keeps existing mock shopping groups', () => {
+  const html = renderToday('/today?demoGoal=1&shoppingList=1');
+
+  assert.match(html, /Белок/);
+  assert.match(html, /Овощи/);
+  assert.match(html, /Крупы/);
+  assert.match(html, /Курица/);
+  assert.match(html, /200 г/);
+  assert.match(todaySource, /: shoppingGroups/);
+});
+
+test('/today staging readonly shopping list builds derived in-memory shopping groups', () => {
+  assert.match(todaySource, /todayView === 'shopping_list'/);
+  assert.match(todaySource, /premiumCatalogService\.buildDerivedShoppingList\(selectedPlan\.id/);
+  assert.match(todaySource, /startDay: selectedDay/);
+  assert.match(todaySource, /endDay: selectedDay \+ shoppingPeriod - 1/);
+  assert.match(todaySource, /mapDerivedShoppingListToShoppingGroups\(shoppingResult\.data\)/);
+  assert.match(todaySource, /setCatalogShoppingGroups\(\(current\) => \(\{/);
+  assert.match(todaySource, /selectedShoppingGroups\.map\(\(group\) =>/);
+  assert.match(todaySource, /isDerivedCatalogAmount \? 1 : period/);
+});
+
+test('/today staging shopping failures and empty derived lists fall back to mock shopping groups', () => {
+  assert.match(todaySource, /!shoppingResult\.ok \|\| shoppingResult\.data\.length === 0/);
+  assert.match(todaySource, /if \(groups\.length === 0\)/);
+  assert.match(todaySource, /Keep the existing mock shopping list as a quiet fallback/);
+  assert.doesNotMatch(todaySource, /read_failed|supabase_unavailable|ошибка загрузки|technical/i);
 });
 
 test('/today staging readonly plan detail can render only returned day 1 and day 2 from adapter shape', () => {

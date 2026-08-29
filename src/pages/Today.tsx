@@ -5,6 +5,7 @@ import Button from '../ui/components/Button';
 import { isPremiumCatalogStagingReadMode, premiumCatalogService } from '../services/premiumCatalogService';
 import {
   buildTodayPlanFromPremiumCatalog,
+  mapDerivedShoppingListToShoppingGroups,
   mapMealRecipeOptionsToReplacementOptions,
   mapPremiumMealSlotsToTodayMeals,
 } from '../services/premiumTodayAdapter';
@@ -67,6 +68,7 @@ interface ShoppingProduct {
   name: string;
   amount: number;
   unit: string;
+  isDerivedCatalogAmount?: boolean;
 }
 
 interface ShoppingGroup {
@@ -425,7 +427,7 @@ function getInitialTodayView(search: string): TodayView {
 }
 
 function formatShoppingAmount(product: ShoppingProduct, period: ShoppingPeriod) {
-  const total = product.amount * period;
+  const total = product.amount * (product.isDerivedCatalogAmount ? 1 : period);
   return `${total} ${product.unit}`;
 }
 
@@ -441,6 +443,7 @@ const Today = () => {
   const [catalogPlans, setCatalogPlans] = useState<DemoPlan[] | null>(null);
   const [catalogDayMeals, setCatalogDayMeals] = useState<Record<string, MealDetail[]>>({});
   const [catalogReplacementOptions, setCatalogReplacementOptions] = useState<Record<string, ReplacementOption[]>>({});
+  const [catalogShoppingGroups, setCatalogShoppingGroups] = useState<Record<string, ShoppingGroup[]>>({});
   const [selectedPlanId, setSelectedPlanId] = useState(() => getInitialPlanId(location.search));
   const [selectedDay, setSelectedDay] = useState(() => getInitialDay(location.search));
   const [selectedMealTitle, setSelectedMealTitle] = useState(() => getInitialMealTitle(location.search));
@@ -459,7 +462,8 @@ const Today = () => {
     todayView === 'plan_detail' ||
     todayView === 'day_detail' ||
     todayView === 'meal_detail' ||
-    todayView === 'replace_meal';
+    todayView === 'replace_meal' ||
+    todayView === 'shopping_list';
   const activePlans = usesCatalogPlanSource ? catalogPlans ?? demoPlans : demoPlans;
 
   const selectedPlan = useMemo(
@@ -489,6 +493,14 @@ const Today = () => {
       : breakfastReplacementOptions;
   const selectedReplacement =
     selectedReplacementOptions.find((option) => option.id === selectedReplacementId) ?? null;
+  const selectedShoppingKey =
+    selectedPlanUsesCatalog && todayView === 'shopping_list'
+      ? `${selectedPlan.id}:${selectedDay}:${shoppingPeriod}`
+      : null;
+  const selectedShoppingGroups =
+    selectedShoppingKey && catalogShoppingGroups[selectedShoppingKey]?.length
+      ? catalogShoppingGroups[selectedShoppingKey]
+      : shoppingGroups;
 
   useEffect(() => {
     if (!goalSummary) {
@@ -504,6 +516,7 @@ const Today = () => {
         setCatalogPlans(null);
         setCatalogDayMeals({});
         setCatalogReplacementOptions({});
+        setCatalogShoppingGroups({});
         return;
       }
 
@@ -511,6 +524,7 @@ const Today = () => {
         setCatalogPlans(null);
         setCatalogDayMeals({});
         setCatalogReplacementOptions({});
+        setCatalogShoppingGroups({});
         return;
       }
 
@@ -522,6 +536,7 @@ const Today = () => {
           setCatalogPlans(null);
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
+          setCatalogShoppingGroups({});
           return;
         }
 
@@ -547,6 +562,7 @@ const Today = () => {
           setCatalogPlans(null);
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
+          setCatalogShoppingGroups({});
           return;
         }
 
@@ -563,6 +579,7 @@ const Today = () => {
           setCatalogPlans(null);
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
+          setCatalogShoppingGroups({});
         }
       }
     }
@@ -602,6 +619,7 @@ const Today = () => {
           setCatalogPlans(null);
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
+          setCatalogShoppingGroups({});
           return;
         }
 
@@ -638,6 +656,7 @@ const Today = () => {
           setCatalogPlans(null);
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
+          setCatalogShoppingGroups({});
           return;
         }
 
@@ -653,6 +672,7 @@ const Today = () => {
           setCatalogPlans(null);
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
+          setCatalogShoppingGroups({});
         }
       }
     }
@@ -744,6 +764,67 @@ const Today = () => {
     hasGoal,
     selectedMeal.catalogSlotId,
     selectedPlanUsesCatalog,
+    todayView,
+  ]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadCatalogShoppingGroups() {
+      if (!hasGoal || !isPremiumCatalogStagingReadMode()) {
+        return;
+      }
+
+      if (todayView !== 'shopping_list') {
+        return;
+      }
+
+      if (!selectedPlanUsesCatalog || !selectedShoppingKey) {
+        return;
+      }
+
+      if (catalogShoppingGroups[selectedShoppingKey]?.length) {
+        return;
+      }
+
+      try {
+        const shoppingResult = await premiumCatalogService.buildDerivedShoppingList(selectedPlan.id, {
+          startDay: selectedDay,
+          endDay: selectedDay + shoppingPeriod - 1,
+        });
+        if (isCancelled) return;
+
+        if (!shoppingResult.ok || shoppingResult.data.length === 0) {
+          return;
+        }
+
+        const groups = mapDerivedShoppingListToShoppingGroups(shoppingResult.data);
+        if (groups.length === 0) {
+          return;
+        }
+
+        setCatalogShoppingGroups((current) => ({
+          ...current,
+          [selectedShoppingKey]: groups,
+        }));
+      } catch {
+        // Keep the existing mock shopping list as a quiet fallback.
+      }
+    }
+
+    void loadCatalogShoppingGroups();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    catalogShoppingGroups,
+    hasGoal,
+    selectedDay,
+    selectedPlan.id,
+    selectedPlanUsesCatalog,
+    selectedShoppingKey,
+    shoppingPeriod,
     todayView,
   ]);
 
@@ -1160,7 +1241,7 @@ const Today = () => {
           </section>
 
           <section className="space-y-3">
-            {shoppingGroups.map((group) => (
+            {selectedShoppingGroups.map((group) => (
               <div key={group.title} className="space-y-1.5">
                 <p className="text-sm font-semibold leading-5 text-stone-950">{group.title}</p>
                 <div className="space-y-1">
