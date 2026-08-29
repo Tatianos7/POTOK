@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
 import Button from '../ui/components/Button';
+import { isPremiumCatalogStagingReadMode, premiumCatalogService } from '../services/premiumCatalogService';
+import { buildTodayPlanFromPremiumCatalog } from '../services/premiumTodayAdapter';
 
 type PlanKind = 'combined' | 'nutrition' | 'workout' | 'time_saver';
 type TodayView = 'home' | 'plan_detail' | 'day_detail' | 'meal_detail' | 'replace_meal' | 'shopping_list';
@@ -427,6 +429,7 @@ const Today = () => {
   const location = useLocation();
   const [todayView, setTodayView] = useState<TodayView>(() => getInitialTodayView(location.search));
   const [goalSummary, setGoalSummary] = useState<GoalSummary | null>(() => getDemoGoalSummary(location.search));
+  const [catalogPlans, setCatalogPlans] = useState<DemoPlan[] | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState(() => getInitialPlanId(location.search));
   const [selectedDay, setSelectedDay] = useState(() => getInitialDay(location.search));
   const [selectedMealTitle, setSelectedMealTitle] = useState(() => getInitialMealTitle(location.search));
@@ -439,10 +442,13 @@ const Today = () => {
   const [dayState, setDayState] = useState<DayState>('usual');
   const [shoppingPeriod, setShoppingPeriod] = useState<ShoppingPeriod>(() => getInitialShoppingPeriod(location.search));
   const [boughtProducts, setBoughtProducts] = useState<Set<string>>(() => new Set());
+  const hasGoal = Boolean(goalSummary);
+  const usesCatalogPlanSource = todayView === 'home' || todayView === 'plan_detail';
+  const activePlans = usesCatalogPlanSource ? catalogPlans ?? demoPlans : demoPlans;
 
   const selectedPlan = useMemo(
-    () => demoPlans.find((plan) => plan.id === selectedPlanId) ?? demoPlans[0],
-    [selectedPlanId]
+    () => activePlans.find((plan) => plan.id === selectedPlanId) ?? activePlans[0] ?? demoPlans[0],
+    [activePlans, selectedPlanId]
   );
   const selectedPlanDay = selectedPlan.days.find((day) => day.day === selectedDay) ?? selectedPlan.days[0];
   const selectedMeal =
@@ -451,7 +457,6 @@ const Today = () => {
     selectedPlanDay.meals[0];
   const selectedReplacement =
     breakfastReplacementOptions.find((option) => option.id === selectedReplacementId) ?? null;
-  const hasGoal = Boolean(goalSummary);
 
   useEffect(() => {
     if (!goalSummary) {
@@ -459,9 +464,78 @@ const Today = () => {
     }
   }, [goalSummary]);
 
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadCatalogPlans() {
+      if (!hasGoal) {
+        setCatalogPlans(null);
+        return;
+      }
+
+      if (!isPremiumCatalogStagingReadMode()) {
+        setCatalogPlans(null);
+        return;
+      }
+
+      try {
+        const plansResult = await premiumCatalogService.getActivePremiumPlans();
+        if (isCancelled) return;
+
+        if (!plansResult.ok || plansResult.data.length === 0) {
+          setCatalogPlans(null);
+          return;
+        }
+
+        const mappedPlans: DemoPlan[] = [];
+
+        for (const plan of plansResult.data) {
+          const detailResult = await premiumCatalogService.getPremiumPlanDetail(plan.id);
+          if (isCancelled) return;
+
+          if (!detailResult.ok || !detailResult.data || detailResult.data.days.length === 0) {
+            continue;
+          }
+
+          mappedPlans.push(
+            buildTodayPlanFromPremiumCatalog({
+              plan,
+              days: detailResult.data.days,
+            })
+          );
+        }
+
+        if (mappedPlans.length === 0) {
+          setCatalogPlans(null);
+          return;
+        }
+
+        setCatalogPlans(mappedPlans);
+        setSelectedPlanId((currentPlanId) =>
+          mappedPlans.some((plan) => plan.id === currentPlanId) ? currentPlanId : mappedPlans[0].id
+        );
+        setSelectedDay((currentDay) => {
+          const nextPlan = mappedPlans.find((plan) => plan.id === selectedPlanId) ?? mappedPlans[0];
+          return nextPlan.days.some((day) => day.day === currentDay) ? currentDay : nextPlan.days[0]?.day ?? 1;
+        });
+      } catch {
+        if (!isCancelled) {
+          setCatalogPlans(null);
+        }
+      }
+    }
+
+    void loadCatalogPlans();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [hasGoal, selectedPlanId]);
+
   const openPlan = (planId: string) => {
     setSelectedPlanId(planId);
-    setSelectedDay(1);
+    const plan = activePlans.find((item) => item.id === planId);
+    setSelectedDay(plan?.days[0]?.day ?? 1);
     setTodayView('plan_detail');
   };
 
@@ -614,7 +688,7 @@ const Today = () => {
             </div>
 
             <div className="space-y-1.5">
-              {demoPlans.map((plan) => (
+              {activePlans.map((plan) => (
                 <button
                   key={plan.id}
                   type="button"

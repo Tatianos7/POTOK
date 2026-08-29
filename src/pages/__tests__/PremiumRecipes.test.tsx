@@ -181,9 +181,10 @@ test('/premium-recipes source does not call diary, payment, AI, DB writes, or re
   assert.doesNotMatch(premiumRecipesSource, /shoppingService|shoppingListService|recalculate/i);
 });
 
-test('/today is not connected to premium catalog service in this package', () => {
+test('/premium-recipes remains separate from Today adapter wiring', () => {
   const todaySource = readFileSync(resolve(currentDir, '../Today.tsx'), 'utf8');
 
-  assert.doesNotMatch(todaySource, /premiumCatalogService/);
-  assert.doesNotMatch(todaySource, /getActivePremiumPlans|getPremiumPlanDetail|getPremiumMealSlots/);
+  assert.match(todaySource, /premiumCatalogService/);
+  assert.doesNotMatch(premiumRecipesSource, /premiumTodayAdapter/);
+  assert.doesNotMatch(premiumRecipesSource, /buildTodayPlanFromPremiumCatalog/);
 });

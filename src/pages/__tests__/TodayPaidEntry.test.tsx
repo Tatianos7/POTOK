@@ -142,6 +142,46 @@ test('/today demo goal state renders 14-day plan cards', () => {
   assert.doesNotMatch(html, /<h3[^>]*>Нет времени<\/h3>/);
 });
 
+test('/today default mode keeps demoPlans and gates staging reads behind feature flag', () => {
+  const html = renderToday('/today?demoGoal=1');
+
+  assert.match(html, /Питание \+ тренировки/);
+  assert.match(html, /Питание без сложной готовки/);
+  assert.match(todaySource, /const activePlans = usesCatalogPlanSource \? catalogPlans \?\? demoPlans : demoPlans/);
+  assert.match(todaySource, /if \(!isPremiumCatalogStagingReadMode\(\)\)/);
+  assert.match(todaySource, /setCatalogPlans\(null\)/);
+});
+
+test('/today staging readonly mode loads plan list and detail through premium catalog service', () => {
+  assert.match(todaySource, /isPremiumCatalogStagingReadMode/);
+  assert.match(todaySource, /premiumCatalogService\.getActivePremiumPlans\(\)/);
+  assert.match(todaySource, /premiumCatalogService\.getPremiumPlanDetail\(plan\.id\)/);
+  assert.match(todaySource, /buildTodayPlanFromPremiumCatalog/);
+  assert.match(todaySource, /detailResult\.data\.days\.length === 0/);
+  assert.match(todaySource, /mappedPlans\.length === 0/);
+  assert.match(todaySource, /setCatalogPlans\(mappedPlans\)/);
+});
+
+test('/today staging catalog source is limited to plan list and plan detail views', () => {
+  assert.match(todaySource, /const usesCatalogPlanSource = todayView === 'home' \|\| todayView === 'plan_detail'/);
+  assert.match(todaySource, /const activePlans = usesCatalogPlanSource \? catalogPlans \?\? demoPlans : demoPlans/);
+  assert.doesNotMatch(todaySource, /getPremiumMealSlots|getMealRecipeOptions|getPremiumRecipeDetail|buildDerivedShoppingList/);
+});
+
+test('/today staging readonly plan detail can render only returned day 1 and day 2 from adapter shape', () => {
+  assert.match(todaySource, /selectedPlan\.days\.map\(\(day\) =>/);
+  assert.match(todaySource, /openDay\(day\.day\)/);
+  assert.match(todaySource, /nextPlan\.days\.some\(\(day\) => day\.day === currentDay\)/);
+  assert.doesNotMatch(todaySource, /Array\.from\(\{ length: selectedPlan\.durationDays \}/);
+});
+
+test('/today staging read failures and empty catalog fall back to demoPlans without technical UI errors', () => {
+  assert.match(todaySource, /catch \{/);
+  assert.match(todaySource, /setCatalogPlans\(null\)/);
+  assert.match(todaySource, /!plansResult\.ok \|\| plansResult\.data\.length === 0/);
+  assert.doesNotMatch(todaySource, /read_failed|supabase_unavailable|ошибка загрузки|technical/i);
+});
+
 test('/today source supports selected plan detail and 14 compact day rows', () => {
   assert.match(
     todaySource,
@@ -448,6 +488,12 @@ test('/today source does not call diary, workout, payment, AI, Coach, or voice r
   assert.doesNotMatch(todaySource, /workoutService/);
   assert.doesNotMatch(todaySource, /uiRuntimeAdapter/);
   assert.doesNotMatch(todaySource, /addMeal|saveMeal|updateWater|addExercisesToWorkout|completeToday|skipToday/);
+  assert.doesNotMatch(todaySource, /\.insert\(|\.update\(|\.upsert\(|\.rpc\(/);
+  assert.equal((todaySource.match(/\.delete\(/g) ?? []).length, 1);
+  assert.match(todaySource, /next\.delete\(productKey\)/);
+  assert.doesNotMatch(todaySource, /user_premium_plan_selections|user_premium_meal_selections/);
+  assert.doesNotMatch(todaySource, /food_diary_entries|workout_entries|public\.recipes|recipe_ingredients/);
+  assert.doesNotMatch(todaySource, /premium_shopping_items|user_premium_shopping_checks/);
   assert.doesNotMatch(todaySource, /stripe|checkout|payment|subscribe/i);
   assert.doesNotMatch(todaySource, /generateDailyPlan|openai|aiGeneration/i);
   assert.doesNotMatch(todaySource, /trainerMarketplace|CoachNetwork|CoachRequestModal/i);

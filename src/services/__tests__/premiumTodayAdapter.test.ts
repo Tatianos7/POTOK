@@ -328,8 +328,10 @@ test('premium today adapter source stays pure and read-only', () => {
   }
 });
 
-test('/today and /premium-recipes files are not wired to the Today adapter yet', () => {
-  assert.doesNotMatch(todaySource, /premiumTodayAdapter/);
-  assert.doesNotMatch(todaySource, /buildTodayPlanFromPremiumCatalog/);
+test('/today uses the Today adapter only for plan list detail while /premium-recipes stays separate', () => {
+  assert.match(todaySource, /premiumTodayAdapter/);
+  assert.match(todaySource, /buildTodayPlanFromPremiumCatalog/);
+  assert.match(todaySource, /const usesCatalogPlanSource = todayView === 'home' \|\| todayView === 'plan_detail'/);
+  assert.doesNotMatch(todaySource, /getPremiumMealSlots|getMealRecipeOptions|getPremiumRecipeDetail|buildDerivedShoppingList/);
   assert.doesNotMatch(premiumRecipesSource, /premiumTodayAdapter/);
 });
