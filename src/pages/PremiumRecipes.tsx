@@ -24,6 +24,7 @@ interface PremiumRecipe {
 }
 
 const categories = ['Завтраки', 'Обеды', 'Ужины', 'Перекусы', 'Быстро', 'Без сложной готовки'];
+type CatalogReadStatus = 'idle' | 'loading' | 'catalog' | 'fallback';
 
 export const mockPremiumRecipes: PremiumRecipe[] = [
   {
@@ -109,6 +110,18 @@ function formatMacros(recipe: Pick<PremiumCatalogRecipe, 'protein' | 'fat' | 'ca
   return `Б ${formatMacroValue(recipe.protein)} · Ж ${formatMacroValue(recipe.fat)} · У ${formatMacroValue(recipe.carbs)}`;
 }
 
+function renderCatalogReadStatus(status: CatalogReadStatus) {
+  if (status === 'loading') {
+    return <p className="text-center text-xs leading-4 text-stone-400">Готовим рецепты для просмотра...</p>;
+  }
+
+  if (status === 'fallback') {
+    return <p className="text-center text-xs leading-4 text-stone-400">Показываем демо-рецепты.</p>;
+  }
+
+  return null;
+}
+
 export function mapCatalogRecipeToPremiumRecipe(
   recipe: PremiumCatalogRecipe,
   detail?: PremiumCatalogRecipeDetail
@@ -139,6 +152,8 @@ const PremiumRecipes = () => {
   const location = useLocation();
   const useStagingCatalog = isPremiumCatalogStagingReadMode();
   const [recipes, setRecipes] = useState<PremiumRecipe[]>(mockPremiumRecipes);
+  const [libraryReadStatus, setLibraryReadStatus] = useState<CatalogReadStatus>('idle');
+  const [detailReadStatus, setDetailReadStatus] = useState<CatalogReadStatus>('idle');
   const [recipeDetails, setRecipeDetails] = useState<Record<string, PremiumRecipe>>({});
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(() => getInitialRecipeId(location.search));
   const selectedRecipe = useMemo(
@@ -147,15 +162,22 @@ const PremiumRecipes = () => {
   );
 
   useEffect(() => {
-    if (!useStagingCatalog) return;
+    if (!useStagingCatalog) {
+      setLibraryReadStatus('idle');
+      return;
+    }
 
     let isCancelled = false;
+    setLibraryReadStatus('loading');
 
     premiumCatalogService.getPremiumRecipeLibrary().then((result) => {
       if (isCancelled) return;
       if (result.ok && result.data.length > 0) {
         setRecipes(result.data.map((recipe) => mapCatalogRecipeToPremiumRecipe(recipe)));
+        setLibraryReadStatus('catalog');
+        return;
       }
+      setLibraryReadStatus('fallback');
     });
 
     return () => {
@@ -164,9 +186,18 @@ const PremiumRecipes = () => {
   }, [useStagingCatalog]);
 
   useEffect(() => {
-    if (!useStagingCatalog || !selectedRecipeId || recipeDetails[selectedRecipeId]) return;
+    if (!useStagingCatalog || !selectedRecipeId) {
+      setDetailReadStatus('idle');
+      return;
+    }
+
+    if (recipeDetails[selectedRecipeId]) {
+      setDetailReadStatus('catalog');
+      return;
+    }
 
     let isCancelled = false;
+    setDetailReadStatus('loading');
 
     premiumCatalogService.getPremiumRecipeDetail(selectedRecipeId).then((result) => {
       if (isCancelled) return;
@@ -176,7 +207,10 @@ const PremiumRecipes = () => {
           ...current,
           [selectedRecipeId]: mapCatalogRecipeToPremiumRecipe(detail, detail),
         }));
+        setDetailReadStatus('catalog');
+        return;
       }
+      setDetailReadStatus('fallback');
     });
 
     return () => {
@@ -219,6 +253,8 @@ const PremiumRecipes = () => {
           {renderHeader(selectedRecipe.category, () => setSelectedRecipeId(null))}
 
           <main className="flex flex-1 flex-col gap-4 pb-8 pt-5">
+            {renderCatalogReadStatus(detailReadStatus)}
+
             <section className="rounded-lg border border-stone-200 bg-white p-4">
               <p className="text-lg font-semibold leading-6 text-stone-950">{selectedRecipe.title}</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
@@ -239,11 +275,17 @@ const PremiumRecipes = () => {
             <section className="space-y-2">
               <p className="text-sm font-semibold leading-5 text-stone-950">Ингредиенты</p>
               <div className="space-y-1.5">
-                {selectedRecipe.ingredients.map((ingredient) => (
-                  <div key={ingredient} className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm leading-5 text-stone-700">
-                    {ingredient}
-                  </div>
-                ))}
+                {selectedRecipe.ingredients.length > 0 ? (
+                  selectedRecipe.ingredients.map((ingredient) => (
+                    <div key={ingredient} className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm leading-5 text-stone-700">
+                      {ingredient}
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm leading-5 text-stone-500">
+                    Ингредиенты пока не заполнены. Ориентируйтесь на описание рецепта.
+                  </p>
+                )}
               </div>
             </section>
 
@@ -252,9 +294,11 @@ const PremiumRecipes = () => {
               <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2">
                 <p className="text-sm leading-5 text-emerald-900">Без весов: используйте примерный ориентир.</p>
                 <div className="mt-2 space-y-1 text-sm leading-5 text-emerald-800">
-                  {selectedRecipe.portionHints.map((hint) => (
-                    <p key={hint}>{hint}</p>
-                  ))}
+                  {selectedRecipe.portionHints.length > 0 ? (
+                    selectedRecipe.portionHints.map((hint) => <p key={hint}>{hint}</p>)
+                  ) : (
+                    <p>Подсказки появятся, когда рецепт будет заполнен подробнее.</p>
+                  )}
                 </div>
               </div>
             </section>
@@ -262,11 +306,17 @@ const PremiumRecipes = () => {
             <section className="space-y-2 pb-16">
               <p className="text-sm font-semibold leading-5 text-stone-950">Способ приготовления</p>
               <div className="space-y-1.5">
-                {selectedRecipe.steps.map((step, index) => (
-                  <div key={step} className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm leading-5 text-stone-700">
-                    {index + 1}. {step}
-                  </div>
-                ))}
+                {selectedRecipe.steps.length > 0 ? (
+                  selectedRecipe.steps.map((step, index) => (
+                    <div key={step} className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm leading-5 text-stone-700">
+                      {index + 1}. {step}
+                    </div>
+                  ))
+                ) : (
+                  <p className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm leading-5 text-stone-500">
+                    Шаги приготовления пока не заполнены.
+                  </p>
+                )}
               </div>
             </section>
           </main>
@@ -300,6 +350,7 @@ const PremiumRecipes = () => {
           <p className="text-center text-sm leading-5 text-stone-600">
             Готовые рецепты POTOK с КБЖУ, граммовками и подсказками без весов.
           </p>
+          {renderCatalogReadStatus(libraryReadStatus)}
 
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
@@ -310,20 +361,26 @@ const PremiumRecipes = () => {
           </div>
 
           <section className="space-y-2">
-            {recipes.map((recipe) => (
-              <button
-                key={recipe.id}
-                type="button"
-                onClick={() => setSelectedRecipeId(recipe.id)}
-                className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-left shadow-sm"
-              >
-                <p className="text-sm font-semibold leading-5 text-stone-950">{recipe.title}</p>
-                <p className="mt-1 text-xs leading-4 text-stone-600">{recipe.summary}</p>
-                <p className="mt-1 text-xs leading-4 text-stone-500">
-                  {recipe.time} · {recipe.note}
-                </p>
-              </button>
-            ))}
+            {recipes.length > 0 ? (
+              recipes.map((recipe) => (
+                <button
+                  key={recipe.id}
+                  type="button"
+                  onClick={() => setSelectedRecipeId(recipe.id)}
+                  className="w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-left shadow-sm"
+                >
+                  <p className="text-sm font-semibold leading-5 text-stone-950">{recipe.title}</p>
+                  <p className="mt-1 text-xs leading-4 text-stone-600">{recipe.summary}</p>
+                  <p className="mt-1 text-xs leading-4 text-stone-500">
+                    {recipe.time} · {recipe.note}
+                  </p>
+                </button>
+              ))
+            ) : (
+              <p className="rounded-lg border border-stone-200 bg-white px-3 py-3 text-center text-sm leading-5 text-stone-500">
+                Рецепты пока не найдены. Показываем демо-рецепты.
+              </p>
+            )}
           </section>
         </main>
       </div>

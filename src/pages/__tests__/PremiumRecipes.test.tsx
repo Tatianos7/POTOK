@@ -63,7 +63,11 @@ test('/premium-recipes staging readonly mode calls premium catalog service read 
   assert.match(premiumRecipesSource, /isPremiumCatalogStagingReadMode/);
   assert.match(premiumRecipesSource, /premiumCatalogService\.getPremiumRecipeLibrary\(\)/);
   assert.match(premiumRecipesSource, /premiumCatalogService\.getPremiumRecipeDetail\(selectedRecipeId\)/);
+  assert.match(premiumRecipesSource, /setLibraryReadStatus\('loading'\)/);
+  assert.match(premiumRecipesSource, /setDetailReadStatus\('loading'\)/);
   assert.match(premiumRecipesSource, /result\.ok && result\.data\.length > 0/);
+  assert.match(premiumRecipesSource, /setLibraryReadStatus\('fallback'\)/);
+  assert.match(premiumRecipesSource, /setDetailReadStatus\('fallback'\)/);
   assert.match(premiumRecipesSource, /mockPremiumRecipes/);
 });
 
@@ -160,6 +164,29 @@ test('/premium-recipes detail shows recipe nutrition, ingredients, hints, steps,
   assert.match(html, /Пока это просмотр: запись в план и дневник появится после подключения плана/);
   assert.match(premiumRecipesSource, /variant="outline" size="sm" disabled fullWidth align="center"[\s\S]*Добавить в план/);
   assert.match(premiumRecipesSource, /variant="primary" size="sm" disabled fullWidth align="center"[\s\S]*Добавить в дневник/);
+});
+
+test('/premium-recipes detail empty states stay product-facing and non-technical', () => {
+  const mapped = mapCatalogRecipeToPremiumRecipe({
+    id: 'empty-detail-recipe',
+    title: 'empty_detail_recipe',
+    category: 'dinner',
+    calories: 320,
+    protein: 25,
+    fat: 9,
+    carbs: 34,
+    cookingTimeMin: null,
+    difficultyLabel: '',
+    isActive: true,
+  });
+
+  assert.deepEqual(mapped.ingredients, []);
+  assert.deepEqual(mapped.steps, []);
+  assert.deepEqual(mapped.portionHints, []);
+  assert.match(premiumRecipesSource, /Ингредиенты пока не заполнены\. Ориентируйтесь на описание рецепта/);
+  assert.match(premiumRecipesSource, /Подсказки появятся, когда рецепт будет заполнен подробнее/);
+  assert.match(premiumRecipesSource, /Шаги приготовления пока не заполнены/);
+  assert.doesNotMatch(premiumRecipesSource, /read_failed|supabase_unavailable|Supabase error|stack/);
 });
 
 test('/premium-recipes detail back returns to library and keeps clean mobile layout', () => {
