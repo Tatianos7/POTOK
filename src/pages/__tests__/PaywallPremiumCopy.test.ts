@@ -25,6 +25,7 @@ test('paywall uses owner-approved Premium value proposition copy', () => {
   assert.match(html, /Оформить подписку/);
   assert.match(html, /Восстановить покупки/);
   assert.match(html, /Посмотреть демо Premium/);
+  assert.match(html, /Демо Premium можно посмотреть без оформления/);
   assert.match(html, /Готовые планы питания и тренировок/);
   assert.match(html, /Рецепты с КБЖУ/);
   assert.match(html, /Замены блюд/);

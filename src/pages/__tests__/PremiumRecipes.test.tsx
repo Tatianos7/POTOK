@@ -157,6 +157,7 @@ test('/premium-recipes detail shows recipe nutrition, ingredients, hints, steps,
   assert.match(html, /Оставьте на 5 минут или ешьте сразу/);
   assert.match(html, /Добавить в план/);
   assert.match(html, /Добавить в дневник/);
+  assert.match(html, /Пока это просмотр: запись в план и дневник появится после подключения плана/);
   assert.match(premiumRecipesSource, /variant="outline" size="sm" disabled fullWidth align="center"[\s\S]*Добавить в план/);
   assert.match(premiumRecipesSource, /variant="primary" size="sm" disabled fullWidth align="center"[\s\S]*Добавить в дневник/);
 });

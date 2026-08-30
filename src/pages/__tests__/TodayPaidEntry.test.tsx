@@ -355,6 +355,7 @@ test('/today day detail shows day title, macros, meals, workout, and day state o
   assert.match(html, /Готова работать/);
   assert.match(html, /Список покупок/);
   assert.match(html, /Подтвердить день/);
+  assert.match(html, /Пока это просмотр: подтверждение дня не записывает данные/);
 });
 
 test('/today clicking meal row opens meal detail view by local state contract', () => {
@@ -380,6 +381,7 @@ test('/today shopping list shows periods, helper, groups, and one-day products',
   assert.match(html, /3 дня/);
   assert.match(html, /7 дней/);
   assert.match(html, /Выберите дни, для которых собрать продукты/);
+  assert.match(html, /Отметки покупок остаются только здесь/);
   assert.match(html, /Белок/);
   assert.match(html, /Овощи/);
   assert.match(html, /Крупы/);
@@ -449,7 +451,7 @@ test('/today meal detail shows meal title, macros, ingredients, portion hints, a
   assert.match(html, /Оставьте на несколько минут или ешьте сразу/);
   assert.match(html, /Заменить блюдо/);
   assert.match(html, /Добавить в дневник/);
-  assert.match(html, /Добавление в дневник будет доступно после подтверждения/);
+  assert.match(html, /Пока это просмотр: добавление в дневник появится после подключения плана/);
 });
 
 test('/today meal detail back returns to day screen and keeps diary action disabled mock', () => {
@@ -474,6 +476,7 @@ test('/today replace meal view shows filters, replacement options, and disabled 
 
   assert.match(html, /Заменить завтрак/);
   assert.match(html, /Выберите похожий вариант по КБЖУ/);
+  assert.match(html, /Выбор применится только на этом экране/);
   assert.match(html, /Проще/);
   assert.match(html, /Меньше калорий/);
   assert.match(html, /Больше белка/);

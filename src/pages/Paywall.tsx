@@ -69,7 +69,8 @@ const Paywall = () => {
 
       <Card variant="soft" size="sm">
         <p className="text-sm leading-5 text-stone-700">
-          Бесплатные дневники питания, тренировок, замеры и Progress остаются доступны.
+          Бесплатные дневники питания, тренировок, замеры и Progress остаются доступны. Демо Premium можно посмотреть
+          без оформления.
         </p>
       </Card>
 

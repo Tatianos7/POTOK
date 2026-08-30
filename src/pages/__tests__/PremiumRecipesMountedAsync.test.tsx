@@ -82,6 +82,7 @@ test('/premium-recipes default detail keeps disabled no-write actions', () => {
   assert.match(html, /Способ приготовления/);
   assert.match(html, /Добавить в план/);
   assert.match(html, /Добавить в дневник/);
+  assert.match(html, /Пока это просмотр: запись в план и дневник появится после подключения плана/);
   assert.match(premiumRecipesSource, /variant="outline" size="sm" disabled fullWidth align="center"[\s\S]*Добавить в план/);
   assert.match(premiumRecipesSource, /variant="primary" size="sm" disabled fullWidth align="center"[\s\S]*Добавить в дневник/);
 });

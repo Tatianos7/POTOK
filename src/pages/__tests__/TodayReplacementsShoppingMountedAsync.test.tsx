@@ -82,7 +82,9 @@ test('/today default replacement and shopping views render mock data without exe
     assert.match(replacementHtml, /Омлет с овощами/);
     assert.match(replacementHtml, /Творог с ягодами/);
     assert.match(replacementHtml, /Сэндвич с индейкой/);
+    assert.match(replacementHtml, /Выбор применится только на этом экране/);
     assert.match(shoppingHtml, /Список покупок/);
+    assert.match(shoppingHtml, /Отметки покупок остаются только здесь/);
     assert.match(shoppingHtml, /Белок/);
     assert.match(shoppingHtml, /Курица/);
     assert.match(shoppingHtml, /1 день/);

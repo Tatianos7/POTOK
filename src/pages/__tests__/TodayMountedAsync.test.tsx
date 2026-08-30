@@ -119,7 +119,9 @@ test('/today default day and meal actions remain disabled no-write actions', () 
   const mealHtml = renderToday('/today?demoGoal=1&dayDetail=nutrition-training-home-start&day=1&mealDetail=Завтрак');
 
   assert.match(dayHtml, /Подтвердить день/);
+  assert.match(dayHtml, /Пока это просмотр: подтверждение дня не записывает данные/);
   assert.match(mealHtml, /Добавить в дневник/);
+  assert.match(mealHtml, /Пока это просмотр: добавление в дневник появится после подключения плана/);
   assert.match(todaySource, /variant="primary" size="sm" disabled fullWidth align="center"[\s\S]*Подтвердить день/);
   assert.match(todaySource, /variant="primary" size="sm" disabled fullWidth align="center"[\s\S]*Добавить в дневник/);
   assert.doesNotMatch(dayHtml, /read_failed|supabase_unavailable|stack|Supabase error/);

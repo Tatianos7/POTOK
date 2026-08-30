@@ -121,7 +121,7 @@ export function mapCatalogRecipeToPremiumRecipe(
     title: recipe.title,
     summary: `${category} · ${formatCalories(recipe.calories)} · ${formatMacros(recipe)}`,
     time: recipe.cookingTimeMin === null ? 'Без времени' : `${recipe.cookingTimeMin} минут`,
-    note: recipe.difficultyLabel || 'staging read-only',
+    note: recipe.difficultyLabel || 'Пока доступно как просмотр',
     calories: formatCalories(recipe.calories),
     macros: formatMacros(recipe),
     ingredients:
@@ -273,13 +273,18 @@ const PremiumRecipes = () => {
         </div>
 
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-stone-200 bg-white/95 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
-          <div className="mx-auto grid w-full max-w-md grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" disabled fullWidth align="center">
-              Добавить в план
-            </Button>
-            <Button variant="primary" size="sm" disabled fullWidth align="center">
-              Добавить в дневник
-            </Button>
+          <div className="mx-auto flex w-full max-w-md flex-col gap-2">
+            <p className="text-center text-xs leading-4 text-stone-500">
+              Пока это просмотр: запись в план и дневник появится после подключения плана.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" size="sm" disabled fullWidth align="center">
+                Добавить в план
+              </Button>
+              <Button variant="primary" size="sm" disabled fullWidth align="center">
+                Добавить в дневник
+              </Button>
+            </div>
           </div>
         </div>
       </div>

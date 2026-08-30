@@ -1181,6 +1181,9 @@ const Today = () => {
 
       <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[560px] flex-col gap-1.5">
+          <p className="text-center text-xs leading-4 text-stone-500">
+            Пока это просмотр: подтверждение дня не записывает данные.
+          </p>
           <Button variant="outline" size="sm" onClick={openShoppingList} fullWidth align="center">
             Список покупок
           </Button>
@@ -1236,7 +1239,7 @@ const Today = () => {
               ))}
             </div>
             <p className="text-center text-sm leading-5 text-stone-500">
-              Выберите дни, для которых собрать продукты.
+              Выберите дни, для которых собрать продукты. Отметки покупок остаются только здесь.
             </p>
           </section>
 
@@ -1351,7 +1354,7 @@ const Today = () => {
               ))}
             </ol>
             <p className="pt-1 text-xs leading-4 text-stone-400">
-              Добавление в дневник будет доступно после подтверждения.
+              Пока это просмотр: добавление в дневник появится после подключения плана.
             </p>
           </section>
         </main>
@@ -1396,7 +1399,9 @@ const Today = () => {
         </header>
 
         <main className="flex flex-1 flex-col gap-4 pb-8 pt-5">
-          <p className="text-center text-sm leading-5 text-stone-500">Выберите похожий вариант по КБЖУ.</p>
+          <p className="text-center text-sm leading-5 text-stone-500">
+            Выберите похожий вариант по КБЖУ. Выбор применится только на этом экране.
+          </p>
 
           <div className="flex flex-wrap justify-center gap-1.5">
             {replaceMealFilters.map((filter) => (
