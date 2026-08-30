@@ -150,6 +150,7 @@ test('/today replacement fallback and apply remain local-only no-write contracts
   assert.match(todaySource, /if \(replacements\.length === 0\)/);
   assert.match(todaySource, /catch \{/);
   assert.match(todaySource, /setSelectedReplacementId\(null\)/);
+  assert.match(todaySource, /Подходящие замены пока не найдены/);
   assert.match(todaySource, /const applyReplacement = \(\) =>/);
   assert.match(todaySource, /setMealOverrides\(\(current\) => \(\{/);
   assert.match(todaySource, /setTodayView\('meal_detail'\)/);
@@ -203,6 +204,7 @@ test('/today shopping fallback and checkbox remain local-only contracts', () => 
   assert.match(todaySource, /!shoppingResult\.ok \|\| shoppingResult\.data\.length === 0/);
   assert.match(todaySource, /if \(groups\.length === 0\)/);
   assert.match(todaySource, /Keep the existing mock shopping list as a quiet fallback/);
+  assert.match(todaySource, /Список продуктов пока пуст/);
   assert.match(todaySource, /const \[boughtProducts, setBoughtProducts\] = useState<Set<string>>\(\(\) => new Set\(\)\)/);
   assert.match(todaySource, /onChange=\{\(\) => toggleBoughtProduct\(productKey\)\}/);
   assert.match(todaySource, /next\.delete\(productKey\)/);

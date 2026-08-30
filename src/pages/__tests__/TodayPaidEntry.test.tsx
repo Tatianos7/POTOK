@@ -187,6 +187,8 @@ test('/today staging day and meal read failures fall back safely without technic
   assert.match(todaySource, /throw new Error\('catalog recipe detail read failed'\)/);
   assert.match(todaySource, /setCatalogPlans\(null\)/);
   assert.match(todaySource, /setCatalogDayMeals\(\{\}\)/);
+  assert.match(todaySource, /setCatalogReadStatus\('fallback'\)/);
+  assert.match(todaySource, /Показываем демо-вариант/);
   assert.match(todaySource, /fallbackPlanDay\.meals\[0\]/);
   assert.doesNotMatch(todaySource, /read_failed|supabase_unavailable|ошибка загрузки|technical/i);
 });
@@ -215,6 +217,7 @@ test('/today staging replacement read failures and empty options fall back to mo
   assert.match(todaySource, /if \(replacements\.length === 0\)/);
   assert.match(todaySource, /catch \{/);
   assert.match(todaySource, /setSelectedReplacementId\(null\)/);
+  assert.match(todaySource, /Подходящие замены пока не найдены/);
   assert.doesNotMatch(todaySource, /read_failed|supabase_unavailable|ошибка загрузки|technical/i);
 });
 
@@ -251,6 +254,7 @@ test('/today staging shopping failures and empty derived lists fall back to mock
   assert.match(todaySource, /!shoppingResult\.ok \|\| shoppingResult\.data\.length === 0/);
   assert.match(todaySource, /if \(groups\.length === 0\)/);
   assert.match(todaySource, /Keep the existing mock shopping list as a quiet fallback/);
+  assert.match(todaySource, /Список продуктов пока пуст/);
   assert.doesNotMatch(todaySource, /read_failed|supabase_unavailable|ошибка загрузки|technical/i);
 });
 
@@ -549,6 +553,9 @@ test('/today meal detail keeps compact safe layout and bottom actions padded', (
   assert.match(todaySource, /pb-60 pt-\[max\(32px,env\(safe-area-inset-top\)\)\]/);
   assert.match(todaySource, /flex flex-1 flex-col gap-4 pb-8 pt-5/);
   assert.match(todaySource, /space-y-1\.5 pb-16/);
+  assert.match(todaySource, /Ингредиенты пока не заполнены/);
+  assert.match(todaySource, /Подсказки появятся/);
+  assert.match(todaySource, /Шаги приготовления пока не заполнены/);
   assert.match(todaySource, /Заменить блюдо/);
   assert.match(todaySource, /Добавить в дневник/);
 });

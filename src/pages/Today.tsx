@@ -14,6 +14,7 @@ type PlanKind = 'combined' | 'nutrition' | 'workout' | 'time_saver';
 type TodayView = 'home' | 'plan_detail' | 'day_detail' | 'meal_detail' | 'replace_meal' | 'shopping_list';
 type DayState = 'usual' | 'low_energy' | 'no_time' | 'ready';
 type ShoppingPeriod = 1 | 2 | 3 | 7;
+type CatalogReadStatus = 'idle' | 'loading' | 'catalog' | 'fallback';
 
 interface GoalSummary {
   goalType: string;
@@ -435,6 +436,18 @@ function formatShoppingPeriodLabel(period: ShoppingPeriod) {
   return period === 1 ? '1 день' : `${period} ${period === 7 ? 'дней' : 'дня'}`;
 }
 
+function renderCatalogReadStatus(status: CatalogReadStatus) {
+  if (status === 'loading') {
+    return <p className="text-center text-xs leading-4 text-stone-400">Готовим план для просмотра...</p>;
+  }
+
+  if (status === 'fallback') {
+    return <p className="text-center text-xs leading-4 text-stone-400">Показываем демо-вариант.</p>;
+  }
+
+  return null;
+}
+
 const Today = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -444,6 +457,7 @@ const Today = () => {
   const [catalogDayMeals, setCatalogDayMeals] = useState<Record<string, MealDetail[]>>({});
   const [catalogReplacementOptions, setCatalogReplacementOptions] = useState<Record<string, ReplacementOption[]>>({});
   const [catalogShoppingGroups, setCatalogShoppingGroups] = useState<Record<string, ShoppingGroup[]>>({});
+  const [catalogReadStatus, setCatalogReadStatus] = useState<CatalogReadStatus>('idle');
   const [selectedPlanId, setSelectedPlanId] = useState(() => getInitialPlanId(location.search));
   const [selectedDay, setSelectedDay] = useState(() => getInitialDay(location.search));
   const [selectedMealTitle, setSelectedMealTitle] = useState(() => getInitialMealTitle(location.search));
@@ -471,7 +485,8 @@ const Today = () => {
     [activePlans, selectedPlanId]
   );
   const selectedPlanUsesCatalog = Boolean(catalogPlans?.some((plan) => plan.id === selectedPlan.id));
-  const selectedPlanDay = selectedPlan.days.find((day) => day.day === selectedDay) ?? selectedPlan.days[0];
+  const fallbackPlanDay = demoPlans[0].days.find((day) => day.day === selectedDay) ?? demoPlans[0].days[0];
+  const selectedPlanDay = selectedPlan.days.find((day) => day.day === selectedDay) ?? selectedPlan.days[0] ?? fallbackPlanDay;
   const selectedCatalogDayKey =
     selectedPlanUsesCatalog && selectedPlanDay?.catalogDayId ? `${selectedPlan.id}:${selectedPlanDay.day}` : null;
   const selectedPlanDayForRender =
@@ -481,7 +496,6 @@ const Today = () => {
           meals: catalogDayMeals[selectedCatalogDayKey],
         }
       : selectedPlanDay;
-  const fallbackPlanDay = demoPlans[0].days.find((day) => day.day === selectedDay) ?? demoPlans[0].days[0];
   const selectedMeal =
     mealOverrides[selectedMealTitle] ??
     selectedPlanDayForRender.meals.find((meal) => meal.title === selectedMealTitle) ??
@@ -517,6 +531,7 @@ const Today = () => {
         setCatalogDayMeals({});
         setCatalogReplacementOptions({});
         setCatalogShoppingGroups({});
+        setCatalogReadStatus('idle');
         return;
       }
 
@@ -525,10 +540,12 @@ const Today = () => {
         setCatalogDayMeals({});
         setCatalogReplacementOptions({});
         setCatalogShoppingGroups({});
+        setCatalogReadStatus('idle');
         return;
       }
 
       try {
+        setCatalogReadStatus('loading');
         const plansResult = await premiumCatalogService.getActivePremiumPlans();
         if (isCancelled) return;
 
@@ -537,6 +554,7 @@ const Today = () => {
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
           setCatalogShoppingGroups({});
+          setCatalogReadStatus('fallback');
           return;
         }
 
@@ -563,10 +581,12 @@ const Today = () => {
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
           setCatalogShoppingGroups({});
+          setCatalogReadStatus('fallback');
           return;
         }
 
         setCatalogPlans(mappedPlans);
+        setCatalogReadStatus('catalog');
         setSelectedPlanId((currentPlanId) =>
           mappedPlans.some((plan) => plan.id === currentPlanId) ? currentPlanId : mappedPlans[0].id
         );
@@ -580,6 +600,7 @@ const Today = () => {
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
           setCatalogShoppingGroups({});
+          setCatalogReadStatus('fallback');
         }
       }
     }
@@ -620,6 +641,7 @@ const Today = () => {
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
           setCatalogShoppingGroups({});
+          setCatalogReadStatus('fallback');
           return;
         }
 
@@ -657,6 +679,7 @@ const Today = () => {
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
           setCatalogShoppingGroups({});
+          setCatalogReadStatus('fallback');
           return;
         }
 
@@ -673,6 +696,7 @@ const Today = () => {
           setCatalogDayMeals({});
           setCatalogReplacementOptions({});
           setCatalogShoppingGroups({});
+          setCatalogReadStatus('fallback');
         }
       }
     }
@@ -995,7 +1019,13 @@ const Today = () => {
                   <span className="text-xs font-medium text-stone-400">14 дней</span>
                 </button>
               ))}
+              {activePlans.length === 0 && (
+                <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-center text-sm leading-5 text-stone-500">
+                  Планы пока не найдены. Показываем демо-вариант.
+                </p>
+              )}
             </div>
+            {renderCatalogReadStatus(catalogReadStatus)}
           </main>
         </div>
 
@@ -1051,32 +1081,39 @@ const Today = () => {
           </div>
 
           <div className="space-y-1.5 pb-8">
-            {selectedPlan.days.map((day) => {
-              const isSelected = day.day === selectedDay;
-              return (
-                <button
-                  key={day.day}
-                  type="button"
-                  onClick={() => openDay(day.day)}
-                  className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition ${
-                    isSelected
-                      ? 'border-emerald-500 bg-emerald-50/60'
-                      : 'border-stone-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
-                  }`}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-start justify-between gap-2">
-                      <span className="text-sm font-semibold leading-5 text-stone-950">День {day.day}</span>
-                      <span className="flex-shrink-0 text-xs font-medium leading-5 text-stone-500">
-                        {day.workout ? 'Питание + тренировка' : 'Питание'}
+            {selectedPlan.days.length > 0 ? (
+              selectedPlan.days.map((day) => {
+                const isSelected = day.day === selectedDay;
+                return (
+                  <button
+                    key={day.day}
+                    type="button"
+                    onClick={() => openDay(day.day)}
+                    className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left transition ${
+                      isSelected
+                        ? 'border-emerald-500 bg-emerald-50/60'
+                        : 'border-stone-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
+                    }`}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-start justify-between gap-2">
+                        <span className="text-sm font-semibold leading-5 text-stone-950">День {day.day}</span>
+                        <span className="flex-shrink-0 text-xs font-medium leading-5 text-stone-500">
+                          {day.workout ? 'Питание + тренировка' : 'Питание'}
+                        </span>
                       </span>
+                      <span className="block whitespace-normal text-xs leading-4 text-stone-500">{day.macros}</span>
                     </span>
-                    <span className="block whitespace-normal text-xs leading-4 text-stone-500">{day.macros}</span>
-                  </span>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })
+            ) : (
+              <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-center text-sm leading-5 text-stone-500">
+                Дни плана пока не найдены. Показываем демо-вариант.
+              </p>
+            )}
           </div>
+          {renderCatalogReadStatus(catalogReadStatus)}
         </main>
       </div>
 
@@ -1131,20 +1168,26 @@ const Today = () => {
           </section>
 
           <section className="space-y-1">
-            {selectedPlanDayForRender.meals.map((meal) => (
-              <button
-                key={meal.title}
-                type="button"
-                onClick={() => openMeal(meal.title)}
-                className="w-full rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold leading-5 text-stone-950">{meal.title}</p>
-                  <span className="flex-shrink-0 text-xs font-medium leading-5 text-stone-500">{meal.calories}</span>
-                </div>
-                <p className="text-sm leading-5 text-stone-600">{meal.summary}</p>
-              </button>
-            ))}
+            {selectedPlanDayForRender.meals.length > 0 ? (
+              selectedPlanDayForRender.meals.map((meal) => (
+                <button
+                  key={meal.title}
+                  type="button"
+                  onClick={() => openMeal(meal.title)}
+                  className="w-full rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-left transition hover:border-emerald-400 hover:bg-emerald-50/40"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold leading-5 text-stone-950">{meal.title}</p>
+                    <span className="flex-shrink-0 text-xs font-medium leading-5 text-stone-500">{meal.calories}</span>
+                  </div>
+                  <p className="text-sm leading-5 text-stone-600">{meal.summary}</p>
+                </button>
+              ))
+            ) : (
+              <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-center text-sm leading-5 text-stone-500">
+                Блюда на этот день пока не найдены. Показываем демо-вариант.
+              </p>
+            )}
           </section>
 
           {selectedPlanDayForRender.workout && (
@@ -1244,39 +1287,47 @@ const Today = () => {
           </section>
 
           <section className="space-y-3">
-            {selectedShoppingGroups.map((group) => (
-              <div key={group.title} className="space-y-1.5">
-                <p className="text-sm font-semibold leading-5 text-stone-950">{group.title}</p>
-                <div className="space-y-1">
-                  {group.products.map((product) => {
-                    const productKey = `${group.title}:${product.name}`;
-                    const isBought = boughtProducts.has(productKey);
-                    return (
-                      <label
-                        key={productKey}
-                        className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition ${
-                          isBought ? 'border-emerald-200 bg-emerald-50/60' : 'border-stone-200 bg-white'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isBought}
-                          onChange={() => toggleBoughtProduct(productKey)}
-                          className="h-4 w-4 flex-shrink-0 rounded border-stone-300 text-emerald-600"
-                        />
-                        <span className="min-w-0 flex-1 text-sm leading-5 text-stone-700">
-                          <span className={isBought ? 'text-stone-400 line-through' : undefined}>{product.name}</span>
-                          <span className="text-stone-400"> — </span>
-                          <span className={isBought ? 'text-stone-400 line-through' : undefined}>
-                            {formatShoppingAmount(product, shoppingPeriod)}
+            {selectedShoppingGroups.length > 0 ? (
+              selectedShoppingGroups.map((group) => (
+                <div key={group.title} className="space-y-1.5">
+                  <p className="text-sm font-semibold leading-5 text-stone-950">{group.title}</p>
+                  <div className="space-y-1">
+                    {group.products.map((product) => {
+                      const productKey = `${group.title}:${product.name}`;
+                      const isBought = boughtProducts.has(productKey);
+                      return (
+                        <label
+                          key={productKey}
+                          className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition ${
+                            isBought ? 'border-emerald-200 bg-emerald-50/60' : 'border-stone-200 bg-white'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isBought}
+                            onChange={() => toggleBoughtProduct(productKey)}
+                            className="h-4 w-4 flex-shrink-0 rounded border-stone-300 text-emerald-600"
+                          />
+                          <span className="min-w-0 flex-1 text-sm leading-5 text-stone-700">
+                            <span className={isBought ? 'text-stone-400 line-through' : undefined}>
+                              {product.name}
+                            </span>
+                            <span className="text-stone-400"> — </span>
+                            <span className={isBought ? 'text-stone-400 line-through' : undefined}>
+                              {formatShoppingAmount(product, shoppingPeriod)}
+                            </span>
                           </span>
-                        </span>
-                      </label>
-                    );
-                  })}
+                        </label>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-center text-sm leading-5 text-stone-500">
+                Список продуктов пока пуст. Показываем демо-вариант.
+              </p>
+            )}
           </section>
         </main>
       </div>
@@ -1320,14 +1371,20 @@ const Today = () => {
           <section className="space-y-1.5">
             <p className="text-sm font-semibold leading-5 text-stone-950">Ингредиенты</p>
             <div className="space-y-1">
-              {selectedMeal.ingredients.map((ingredient) => (
-                <p
-                  key={ingredient}
-                  className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm leading-5 text-stone-700"
-                >
-                  {ingredient}
+              {selectedMeal.ingredients.length > 0 ? (
+                selectedMeal.ingredients.map((ingredient) => (
+                  <p
+                    key={ingredient}
+                    className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm leading-5 text-stone-700"
+                  >
+                    {ingredient}
+                  </p>
+                ))
+              ) : (
+                <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm leading-5 text-stone-500">
+                  Ингредиенты пока не заполнены. Ориентируйтесь на описание блюда.
                 </p>
-              ))}
+              )}
             </div>
           </section>
 
@@ -1335,24 +1392,36 @@ const Today = () => {
             <p className="text-sm font-semibold leading-5 text-stone-950">Подсказки без весов</p>
             <p className="text-sm leading-5 text-stone-500">Без весов: используйте примерный ориентир.</p>
             <div className="space-y-1">
-              {selectedMeal.portionHints.map((hint) => (
-                <p key={hint} className="rounded-lg bg-stone-50 px-3 py-1.5 text-sm leading-5 text-stone-600">
-                  {hint}
+              {selectedMeal.portionHints.length > 0 ? (
+                selectedMeal.portionHints.map((hint) => (
+                  <p key={hint} className="rounded-lg bg-stone-50 px-3 py-1.5 text-sm leading-5 text-stone-600">
+                    {hint}
+                  </p>
+                ))
+              ) : (
+                <p className="rounded-lg bg-stone-50 px-3 py-1.5 text-sm leading-5 text-stone-500">
+                  Подсказки появятся, когда блюдо будет заполнено подробнее.
                 </p>
-              ))}
+              )}
             </div>
           </section>
 
           <section className="space-y-1.5 pb-16">
             <p className="text-sm font-semibold leading-5 text-stone-950">Способ приготовления</p>
-            <ol className="space-y-1">
-              {selectedMeal.steps.map((step, index) => (
-                <li key={step} className="flex gap-2 text-sm leading-5 text-stone-700">
-                  <span className="w-4 flex-shrink-0 text-stone-400">{index + 1}.</span>
-                  <span>{step}</span>
-                </li>
-              ))}
-            </ol>
+            {selectedMeal.steps.length > 0 ? (
+              <ol className="space-y-1">
+                {selectedMeal.steps.map((step, index) => (
+                  <li key={step} className="flex gap-2 text-sm leading-5 text-stone-700">
+                    <span className="w-4 flex-shrink-0 text-stone-400">{index + 1}.</span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="rounded-lg bg-stone-50 px-3 py-1.5 text-sm leading-5 text-stone-500">
+                Шаги приготовления пока не заполнены.
+              </p>
+            )}
             <p className="pt-1 text-xs leading-4 text-stone-400">
               Пока это просмотр: добавление в дневник появится после подключения плана.
             </p>
@@ -1416,27 +1485,33 @@ const Today = () => {
           </div>
 
           <section className="space-y-1.5 pb-8">
-            {selectedReplacementOptions.map((option) => {
-              const isSelected = option.id === selectedReplacementId;
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setSelectedReplacementId(option.id)}
-                  className={`w-full rounded-lg border px-3 py-2 text-left transition ${
-                    isSelected
-                      ? 'border-emerald-500 bg-emerald-50/60'
-                      : 'border-stone-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
-                  }`}
-                >
-                  <span className="block text-sm font-semibold leading-5 text-stone-950">{option.summary}</span>
-                  <span className="block text-xs leading-4 text-stone-500">
-                    {option.calories} · {option.macroDetails}
-                  </span>
-                  <span className="block pt-1 text-xs leading-4 text-stone-400">{option.note}</span>
-                </button>
-              );
-            })}
+            {selectedReplacementOptions.length > 0 ? (
+              selectedReplacementOptions.map((option) => {
+                const isSelected = option.id === selectedReplacementId;
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setSelectedReplacementId(option.id)}
+                    className={`w-full rounded-lg border px-3 py-2 text-left transition ${
+                      isSelected
+                        ? 'border-emerald-500 bg-emerald-50/60'
+                        : 'border-stone-200 bg-white hover:border-emerald-400 hover:bg-emerald-50/40'
+                    }`}
+                  >
+                    <span className="block text-sm font-semibold leading-5 text-stone-950">{option.summary}</span>
+                    <span className="block text-xs leading-4 text-stone-500">
+                      {option.calories} · {option.macroDetails}
+                    </span>
+                    <span className="block pt-1 text-xs leading-4 text-stone-400">{option.note}</span>
+                  </button>
+                );
+              })
+            ) : (
+              <p className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-center text-sm leading-5 text-stone-500">
+                Подходящие замены пока не найдены. Можно вернуться к блюду.
+              </p>
+            )}
           </section>
         </main>
       </div>

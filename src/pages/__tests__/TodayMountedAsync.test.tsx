@@ -215,6 +215,13 @@ test('/today fallback contracts preserve mock demo state and hide technical stri
   assert.match(todaySource, /throw new Error\('catalog recipe detail read failed'\)/);
   assert.match(todaySource, /setCatalogPlans\(null\)/);
   assert.match(todaySource, /setCatalogDayMeals\(\{\}\)/);
+  assert.match(todaySource, /setCatalogReadStatus\('loading'\)/);
+  assert.match(todaySource, /setCatalogReadStatus\('fallback'\)/);
+  assert.match(todaySource, /Готовим план для просмотра/);
+  assert.match(todaySource, /Показываем демо-вариант/);
+  assert.match(todaySource, /Дни плана пока не найдены/);
+  assert.match(todaySource, /Блюда на этот день пока не найдены/);
+  assert.match(todaySource, /Ингредиенты пока не заполнены/);
 
   const html = renderToday('/today?demoGoal=1&dayDetail=nutrition-training-home-start&day=1&mealDetail=Завтрак');
 
