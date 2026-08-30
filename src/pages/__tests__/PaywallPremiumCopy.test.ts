@@ -22,14 +22,17 @@ test('paywall uses owner-approved Premium value proposition copy', () => {
 
   assert.match(html, /POTOK Premium/);
   assert.match(html, /Меньше думайте — больше выполняйте/);
-  assert.match(html, /Оформить подписку/);
-  assert.match(html, /Восстановить покупки/);
+  assert.match(html, /Сейчас демо помогает оценить/);
+  assert.match(html, /Подписка скоро/);
+  assert.match(html, /Покупки скоро/);
   assert.match(html, /Посмотреть демо Premium/);
-  assert.match(html, /Демо Premium можно посмотреть без оформления/);
+  assert.match(html, /Демо Premium можно открыть без покупки/);
   assert.match(html, /Готовые планы питания и тренировок/);
   assert.match(html, /Рецепты с КБЖУ/);
   assert.match(html, /Замены блюд/);
   assert.match(html, /Список покупок/);
+  assert.match(paywallSource, /variant="primary" size="md" disabled/);
+  assert.match(paywallSource, /variant="outline" size="md" disabled/);
 });
 
 test('paywall does not render technical, AI, or Coach copy', () => {

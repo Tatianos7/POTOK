@@ -12,7 +12,7 @@ const premiumValues = [
   'Замены блюд, если что-то не подходит',
   'Подсказки без весов: сколько это примерно на глаз',
   'Список покупок для выбранных дней',
-  'После 14 дней — пересмотр плана и самочувствия',
+  'Просмотр 14 дней с понятной структурой плана',
 ];
 
 const Paywall = () => {
@@ -47,8 +47,8 @@ const Paywall = () => {
           <div className="space-y-2">
             <h2 className="text-2xl font-semibold leading-tight text-stone-950">Меньше думайте — больше выполняйте</h2>
             <p className="text-sm leading-5 text-stone-600">
-              POTOK соберёт питание, тренировки и покупки под вашу цель, чтобы вам не приходилось каждый день искать
-              всё вручную.
+              Посмотрите, как POTOK собирает питание, тренировки и покупки под вашу цель. Сейчас демо помогает оценить
+              структуру Premium без оформления.
             </p>
           </div>
         </div>
@@ -69,17 +69,17 @@ const Paywall = () => {
 
       <Card variant="soft" size="sm">
         <p className="text-sm leading-5 text-stone-700">
-          Бесплатные дневники питания, тренировок, замеры и Progress остаются доступны. Демо Premium можно посмотреть
-          без оформления.
+          Бесплатные дневники питания, тренировок, замеры и Progress остаются доступны. Демо Premium можно открыть без
+          покупки: оно показывает сценарий, но не оформляет доступ.
         </p>
       </Card>
 
       <div className="flex flex-col gap-2 min-[360px]:flex-row">
-        <Button variant="primary" size="md" style={{ flex: 1 }}>
-          Оформить подписку
+        <Button variant="primary" size="md" disabled style={{ flex: 1 }}>
+          Подписка скоро
         </Button>
-        <Button variant="outline" size="md" style={{ flex: 1 }}>
-          Восстановить покупки
+        <Button variant="outline" size="md" disabled style={{ flex: 1 }}>
+          Покупки скоро
         </Button>
       </div>
 

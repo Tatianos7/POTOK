@@ -14,7 +14,7 @@ export const FEATURE_CARDS: FeatureCard[] = [
     id: '1',
     icon: 'ClipboardList',
     title: 'POTOK Premium',
-    subtitle: 'Готовый план питания и тренировок под вашу цель',
+    subtitle: 'План питания, тренировки и покупки в демо-просмотре',
     isPremium: false,
     route: '/paywall',
   },
@@ -66,7 +66,7 @@ export function getHomeFeatureCards({ hasPremium }: { hasPremium: boolean }): Fe
         id: '1',
         icon: 'ClipboardList',
         title: 'Мой Поток',
-        subtitle: 'Ваше питание, тренировки и рекомендации на сегодня',
+        subtitle: 'План питания, тренировки и покупки на сегодня',
         isPremium: false,
         route: '/today',
       }
@@ -82,7 +82,7 @@ export function getHomeFeatureCards({ hasPremium }: { hasPremium: boolean }): Fe
     id: 'premium-recipes',
     icon: 'BookOpen',
     title: 'Сборник рецептов',
-    subtitle: 'Готовые рецепты с КБЖУ и граммовками',
+    subtitle: 'Рецепты с КБЖУ, граммовками и подсказками',
     isPremium: false,
     route: '/premium-recipes',
   };

@@ -35,8 +35,9 @@ test('home cards show POTOK Premium entry before purchase', () => {
   const premiumEntry = cards[0];
 
   assert.equal(premiumEntry.title, 'POTOK Premium');
-  assert.equal(premiumEntry.subtitle, 'Готовый план питания и тренировок под вашу цель');
+  assert.equal(premiumEntry.subtitle, 'План питания, тренировки и покупки в демо-просмотре');
   assert.equal(premiumEntry.route, '/paywall');
+  assert.equal(premiumEntry.isPremium, false);
   assert.equal(cards.some((card) => card.title === 'Мой Поток'), false);
   assert.equal(cards.some((card) => card.title === 'Сборник рецептов'), false);
 });
@@ -53,11 +54,13 @@ test('home cards show My Potok and premium recipes after purchase', () => {
   const premiumRecipesEntry = cards.find((card) => card.title === 'Сборник рецептов');
 
   assert.equal(myPotokEntry.title, 'Мой Поток');
-  assert.equal(myPotokEntry.subtitle, 'Ваше питание, тренировки и рекомендации на сегодня');
+  assert.equal(myPotokEntry.subtitle, 'План питания, тренировки и покупки на сегодня');
   assert.equal(myPotokEntry.route, '/today');
+  assert.equal(myPotokEntry.isPremium, false);
   assert.ok(premiumRecipesEntry);
-  assert.equal(premiumRecipesEntry.subtitle, 'Готовые рецепты с КБЖУ и граммовками');
+  assert.equal(premiumRecipesEntry.subtitle, 'Рецепты с КБЖУ, граммовками и подсказками');
   assert.equal(premiumRecipesEntry.route, '/premium-recipes');
+  assert.equal(premiumRecipesEntry.isPremium, false);
   assert.equal(cards.some((card) => card.title === 'POTOK Premium'), false);
 });
 
