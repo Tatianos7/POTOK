@@ -184,6 +184,16 @@ const FoodDiary = () => {
   useEffect(() => {
     const nextDate = resolveDiarySelectedDateFromState(location.state, getTodayDate());
     setSelectedDate((prev) => (prev === nextDate ? prev : nextDate));
+
+    const navigationState = location.state as
+      | { mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack' }
+      | undefined;
+    if (navigationState?.mealType) {
+      setExpandedMeals((prev) => ({
+        ...prev,
+        [navigationState.mealType as string]: true,
+      }));
+    }
   }, [location.state]);
 
   const meals = [

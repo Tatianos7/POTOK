@@ -1,16 +1,28 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, ScanLine, ArrowRight, Trash2, Check, Circle } from 'lucide-react';
+import { ArrowLeft, Mic, ScanLine, ArrowRight, Trash2, Check, Circle, Plus } from 'lucide-react';
 import ProductSearch from '../components/ProductSearch';
 import BarcodeScanner from '../components/BarcodeScanner';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
+import FoodMultiAddCartButton from '../components/FoodMultiAddCartButton';
+import FoodMultiAddCartSheet from '../components/FoodMultiAddCartSheet';
 import { Food, MealEntry, UserCustomFood } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { mealService } from '../services/mealService';
 import { foodService, isSuspiciousAllZeroCatalogFood } from '../services/foodService';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
 import { getLocalDayKey } from '../utils/dayKey';
-import { saveDiaryEntryForReturnToDiary } from '../utils/diaryAddNavigation';
+import { saveDiaryEntriesForReturnToDiary, saveDiaryEntryForReturnToDiary } from '../utils/diaryAddNavigation';
+import {
+  addFoodDiaryMultiAddDraft,
+  buildMealEntryFromMultiAddDraft,
+  FoodDiaryMultiAddDraft,
+  getFoodDiaryMultiAddKey,
+  getFoodDiaryMultiAddTotals,
+  isFoodDiaryMultiAddBasketValid,
+  removeFoodDiaryMultiAddDraft,
+  updateFoodDiaryMultiAddDraft,
+} from '../utils/foodDiaryMultiAdd';
 
 interface LocationState {
   mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack';
@@ -39,10 +51,49 @@ const FoodSearch = () => {
   const [selectedMealType] = useState<LocationState['mealType']>(state?.mealType || 'breakfast');
   const [activeTab, setActiveTab] = useState<'search' | 'favorites'>('search');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [multiAddDrafts, setMultiAddDrafts] = useState<FoodDiaryMultiAddDraft[]>([]);
+  const [highlightedDraftKey, setHighlightedDraftKey] = useState<string | null>(null);
+  const [multiAddError, setMultiAddError] = useState<string | null>(null);
+  const [isBatchSaving, setIsBatchSaving] = useState(false);
+  const [isCartSheetOpen, setIsCartSheetOpen] = useState(false);
+  const highlightTimeoutRef = useRef<number | null>(null);
+  const searchOverlayRef = useRef<HTMLDivElement>(null);
   const selectedDate = useMemo(
     () => state?.selectedDate || getLocalDayKey(),
     [state?.selectedDate]
   );
+
+  const multiAddTotals = useMemo(
+    () => getFoodDiaryMultiAddTotals(multiAddDrafts),
+    [multiAddDrafts]
+  );
+  const canSaveMultiAdd =
+    !isBatchSaving && isFoodDiaryMultiAddBasketValid(multiAddDrafts);
+  const selectedDraftKeys = useMemo(
+    () => new Set(multiAddDrafts.map((draft) => draft.key)),
+    [multiAddDrafts]
+  );
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'search' || !query.trim()) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!searchOverlayRef.current?.contains(event.target as Node)) {
+        setQuery('');
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [activeTab, query]);
 
   /**
    * Единый обработчик для открытия модального окна добавления продукта
@@ -58,6 +109,30 @@ const FoodSearch = () => {
     setIsAddFoodModalOpen(true);
   };
 
+  const highlightDraft = (key: string) => {
+    setHighlightedDraftKey(key);
+    if (highlightTimeoutRef.current !== null) {
+      window.clearTimeout(highlightTimeoutRef.current);
+    }
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightedDraftKey(null);
+      highlightTimeoutRef.current = null;
+    }, 1200);
+  };
+
+  const addFoodToMultiAddBasket = (food: Food, weight = 100) => {
+    setMultiAddError(null);
+    setMultiAddDrafts((current) => {
+      const result = addFoodDiaryMultiAddDraft(current, food, weight);
+      if (result.duplicateKey) {
+        highlightDraft(result.duplicateKey);
+      } else {
+        highlightDraft(result.drafts[result.drafts.length - 1].key);
+      }
+      return result.drafts;
+    });
+  };
+
   /**
    * Обработчик выбора продукта из результатов поиска
    * Использует единый обработчик для всех продуктов
@@ -69,6 +144,7 @@ const FoodSearch = () => {
       return;
     }
     openAddProductSheet(hydrated);
+    setQuery('');
     // Не добавляем в recent здесь, т.к. граммы еще не известны
     // Добавим в handleAdd после добавления продукта с граммами
   };
@@ -189,6 +265,121 @@ const FoodSearch = () => {
     setDefaultWeight(undefined);
     navigate('/nutrition', { state: diaryNavigationState });
   };
+
+  const handleMultiAddDraftChange = (
+    key: string,
+    patch: Partial<Pick<FoodDiaryMultiAddDraft, 'quantity' | 'unit'>>
+  ) => {
+    setMultiAddError(null);
+    setMultiAddDrafts((current) => updateFoodDiaryMultiAddDraft(current, key, patch));
+  };
+
+  const handleRemoveMultiAddDraft = (key: string) => {
+    setMultiAddError(null);
+    setMultiAddDrafts((current) => {
+      const next = removeFoodDiaryMultiAddDraft(current, key);
+      if (next.length === 0) {
+        setIsCartSheetOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const handleClearMultiAdd = () => {
+    setMultiAddDrafts([]);
+    setMultiAddError(null);
+    setIsCartSheetOpen(false);
+  };
+
+  const handleSaveMultiAdd = async () => {
+    if (!user?.id || !selectedMealType || isBatchSaving) return;
+
+    if (!isFoodDiaryMultiAddBasketValid(multiAddDrafts)) {
+      setMultiAddError('Проверьте вес каждого продукта перед сохранением.');
+      return;
+    }
+
+    let entries: MealEntry[];
+    try {
+      entries = multiAddDrafts.map((draft) => buildMealEntryFromMultiAddDraft(draft));
+    } catch (error) {
+      console.error('[FoodSearch] Failed to build multi-add entries:', error);
+      setMultiAddError('Проверьте выбранные продукты и вес.');
+      return;
+    }
+
+    setIsBatchSaving(true);
+    setMultiAddError(null);
+    try {
+      const diaryNavigationState = await saveDiaryEntriesForReturnToDiary({
+        addMealEntry: (userId, date, mealType, mealEntry) =>
+          mealService.addMealEntry(userId, date, mealType, mealEntry),
+        userId: user.id,
+        selectedDate,
+        mealType: selectedMealType,
+        entries,
+      });
+
+      entries.forEach((entry) => {
+        addRecent({
+          foodId: entry.foodId,
+          foodName: getFoodDisplayName(entry.food),
+          weight: entry.weight,
+          lastUsedAt: new Date().toISOString(),
+        });
+      });
+
+      setMultiAddDrafts([]);
+      setIsCartSheetOpen(false);
+      navigate('/nutrition', { state: diaryNavigationState });
+    } catch (error) {
+      console.error('[FoodSearch] Failed to save multi-add basket:', error);
+      setMultiAddError('Не удалось сохранить все продукты. Корзина осталась на экране, попробуйте ещё раз.');
+    } finally {
+      setIsBatchSaving(false);
+    }
+  };
+
+  const handleBasketAddFromSearch = async (food: Food | UserCustomFood, weight = 100) => {
+    const hydrated = await foodService.hydrateFoodForDiarySelection(food as Food, user?.id);
+    if (isSuspiciousAllZeroCatalogFood(hydrated)) {
+      alert('Этот продукт временно скрыт: в каталоге повреждены КБЖУ. Выберите другой продукт.');
+      return;
+    }
+    setSelectedId(hydrated.id);
+    addFoodToMultiAddBasket(hydrated, weight);
+    setQuery('');
+  };
+
+  const handleRecentBasketAdd = async (recentFood: RecentFood) => {
+    if (!recentFood || !recentFood.foodName) return;
+
+    try {
+      let food: Food | null = null;
+
+      if (recentFood.foodId && recentFood.foodId.trim()) {
+        food = foodService.getFoodById(recentFood.foodId, user?.id);
+      }
+
+      if (!food) {
+        const searchResults = await foodService.search(recentFood.foodName.trim(), { limit: 5, userId: user?.id });
+        food = searchResults[0] || null;
+      }
+
+      if (!food) {
+        alert(`Продукт "${recentFood.foodName}" не найден в базе. Попробуйте найти его через поиск.`);
+        return;
+      }
+
+      await handleBasketAddFromSearch(food, recentFood.weight);
+    } catch (error) {
+      console.error('Error adding recent product to basket:', error);
+      alert('Ошибка при добавлении продукта. Попробуйте еще раз.');
+    }
+  };
+
+  const isFoodInMultiAddBasket = (food: Food): boolean =>
+    selectedDraftKeys.has(getFoodDiaryMultiAddKey(food));
 
   const handleVoice = () => {
     if (user?.hasPremium) {
@@ -373,6 +564,8 @@ const FoodSearch = () => {
               if (activeTab === 'favorites') {
                 setActiveTab('search');
                 setQuery('');
+              } else if (query.trim()) {
+                setQuery('');
               } else {
                 navigate(-1);
               }
@@ -421,34 +614,49 @@ const FoodSearch = () => {
       </header>
 
         {/* Search results with custom bar + recent */}
-        <main className="py-4 space-y-4">
-        <div
-          className="flex items-center bg-white dark:bg-gray-900 pl-3 pr-0 w-full"
-          style={{ border: '1px solid #c9d0d9', borderRadius: '10px', height: '50px' }}
-        >
-          <span className="text-gray-500">🔍</span>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => handleQueryChange(e.target.value)}
-            placeholder={activeTab === 'favorites' ? 'Поиск избранного' : 'Поиск еды'}
-            className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white ml-2"
-            style={{ height: '100%' }}
-          />
-          <button
-            onClick={() => setQuery(query.trim())}
-            className="flex items-center justify-center"
-            style={{
-              height: '100%',
-              width: '50px',
-              borderRadius: '10px',
-              border: '1px solid #c9d0d9',
-              marginLeft: 'auto',
-              marginRight: 0,
-            }}
+        <main className="py-4 space-y-4 pb-24">
+        <div ref={searchOverlayRef} className="relative z-30">
+          <div
+            className="flex items-center bg-white dark:bg-gray-900 pl-3 pr-0 w-full"
+            style={{ border: '1px solid #c9d0d9', borderRadius: '10px', height: '50px' }}
           >
-            <ArrowRight className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-          </button>
+            <span className="text-gray-500">🔍</span>
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => handleQueryChange(e.target.value)}
+              placeholder={activeTab === 'favorites' ? 'Поиск избранного' : 'Поиск еды'}
+              className="flex-1 bg-transparent outline-none text-base text-gray-900 dark:text-white ml-2"
+              style={{ height: '100%' }}
+            />
+            <button
+              onClick={() => setQuery(query.trim())}
+              className="flex items-center justify-center"
+              style={{
+                height: '100%',
+                width: '50px',
+                borderRadius: '10px',
+                border: '1px solid #c9d0d9',
+                marginLeft: 'auto',
+                marginRight: 0,
+              }}
+            >
+              <ArrowRight className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+            </button>
+          </div>
+
+          {activeTab === 'search' && query.trim().length > 0 && (
+            <ProductSearch
+              onSelect={handleSelect}
+              onAddToBasket={(food) => handleBasketAddFromSearch(food)}
+              isInBasket={isFoodInMultiAddBasket}
+              userId={user?.id || ''}
+              value={query}
+              onChangeQuery={(q) => handleQueryChange(q)}
+              hideInput
+              variant="overlay"
+            />
+          )}
         </div>
 
         {/* Рендер в зависимости от активной вкладки */}
@@ -460,6 +668,7 @@ const FoodSearch = () => {
               if (!food) return null; // Пропускаем продукты, которые не найдены в базе
               
               const isActive = selectedId === recentFood.foodId;
+              const isAdded = isFoodInMultiAddBasket(food);
               return (
                 <div
                   key={recentFood.foodId || recentFood.foodName}
@@ -489,6 +698,23 @@ const FoodSearch = () => {
                         </span>
                       )}
                     </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRecentBasketAdd(recentFood);
+                    }}
+                    disabled={isAdded || isBatchSaving}
+                    className={`p-2 ml-2 rounded-lg transition-colors disabled:opacity-80 ${
+                      isAdded
+                        ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+                        : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-green-900/20 dark:hover:text-green-400'
+                    }`}
+                    title={isAdded ? 'Добавлено' : 'Добавить'}
+                    aria-label={isAdded ? 'Продукт добавлен' : 'Добавить продукт'}
+                  >
+                    {isAdded ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
                   </button>
                   <button
                     onClick={(e) => {
@@ -522,23 +748,48 @@ const FoodSearch = () => {
                 return (
                   <div className="space-y-2">
                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Часто используемые продукты</div>
-                    {recent.map((item, index) => (
-                      <button
-                        key={item.foodId || `${item.foodName}_${index}`}
-                        onClick={() => handleRecentProductClick(item)}
-                        className="w-full flex items-start text-left py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
-                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                            {item.foodName}
-                          </span>
+                    {recent.map((item, index) => {
+                      const food = item.foodId ? foodService.getFoodById(item.foodId, user?.id) : null;
+                      const isAdded = food ? isFoodInMultiAddBasket(food) : false;
+
+                      return (
+                        <div
+                          key={item.foodId || `${item.foodName}_${index}`}
+                          className="w-full flex items-center gap-2 py-1"
+                        >
+                          <button
+                            onClick={() => handleRecentProductClick(item)}
+                            className="flex-1 min-w-0 flex items-start text-left py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <ArrowRight className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                                <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                                  {item.foodName}
+                                </span>
+                              </div>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                                {Math.round(item.weight)} г
+                              </span>
+                            </div>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRecentBasketAdd(item)}
+                            disabled={isAdded || isBatchSaving}
+                            className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors disabled:opacity-80 ${
+                              isAdded
+                                ? 'bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+                                : 'bg-gray-100 text-gray-700 hover:bg-green-50 hover:text-green-600 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-green-900/20 dark:hover:text-green-400'
+                            }`}
+                            title={isAdded ? 'Добавлено' : 'Добавить'}
+                            aria-label={isAdded ? 'Продукт добавлен' : 'Добавить продукт'}
+                          >
+                            {isAdded ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                          </button>
                         </div>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-6">
-                          {Math.round(item.weight)} г
-                        </span>
-                      </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               }
@@ -546,18 +797,8 @@ const FoodSearch = () => {
               return null;
             }
             
-            // Если пользователь НАЧАЛ ВВОД (hasQuery === true):
-            // - часто используемые продукты НЕ рендерятся
-            // - показываем ТОЛЬКО результаты поиска
-            return (
-              <ProductSearch
-                onSelect={handleSelect}
-                userId={user?.id || ''}
-                value={query}
-                onChangeQuery={(q) => handleQueryChange(q)}
-                hideInput
-              />
-            );
+            // Если пользователь начал ввод, результаты уже показаны overlay под поиском.
+            return null;
           })()
         )}
       </main>
@@ -566,13 +807,18 @@ const FoodSearch = () => {
       {/* Bottom bar */}
       <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3">
         <div className="container-responsive">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <button
               onClick={() => setIsBarcodeModalOpen(true)}
               className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <ScanLine className="w-6 h-6 text-gray-700 dark:text-gray-300" />
             </button>
+            <FoodMultiAddCartButton
+              count={multiAddDrafts.length}
+              totals={multiAddTotals}
+              onClick={() => setIsCartSheetOpen(true)}
+            />
             <button
               onClick={handleVoice}
               className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -583,6 +829,22 @@ const FoodSearch = () => {
         </div>
       </div>
       <div className="h-16" />
+
+      <FoodMultiAddCartSheet
+        isOpen={isCartSheetOpen}
+        drafts={multiAddDrafts}
+        totals={multiAddTotals}
+        highlightedKey={highlightedDraftKey}
+        error={multiAddError}
+        isSaving={isBatchSaving}
+        canSave={canSaveMultiAdd}
+        onClose={() => setIsCartSheetOpen(false)}
+        onAddMore={() => setIsCartSheetOpen(false)}
+        onClear={handleClearMultiAdd}
+        onSave={handleSaveMultiAdd}
+        onRemove={handleRemoveMultiAddDraft}
+        onChange={handleMultiAddDraftChange}
+      />
 
       {/* Barcode modal */}
       {isBarcodeModalOpen && user && (

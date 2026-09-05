@@ -7,15 +7,29 @@ import { Search, Loader2 } from 'lucide-react';
 
 interface ProductSearchProps {
   onSelect: (food: Food) => void;
+  onAddToBasket?: (food: Food) => void;
+  isInBasket?: (food: Food) => boolean;
   userId?: string;
   value?: string; // контролируемый запрос
   onChangeQuery?: (q: string) => void;
   hideInput?: boolean; // спрятать инпут, если родитель рисует свой
   forceTrigger?: number; // менять число, чтобы форсировать повторный поиск даже с тем же запросом
   searchContext?: FoodSearchAnalyticsContext;
+  variant?: 'inline' | 'overlay';
 }
 
-const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forceTrigger, searchContext = 'diary' }: ProductSearchProps) => {
+const ProductSearch = ({
+  onSelect,
+  onAddToBasket,
+  isInBasket,
+  userId,
+  value,
+  onChangeQuery,
+  hideInput,
+  forceTrigger,
+  searchContext = 'diary',
+  variant = 'inline',
+}: ProductSearchProps) => {
   const isControlled = typeof value === 'string';
   const [internalQuery, setInternalQuery] = useState('');
   const query = isControlled ? value || '' : internalQuery;
@@ -81,8 +95,25 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
     onSelect(food);
   };
 
+  const handleAddToBasket = async (food: Food) => {
+    await searchAnalyticsService.logSelection({
+      query,
+      context: searchContext,
+      userId,
+      food,
+      resultCount: results.length,
+      metadata: { source_surface: `${searchContext}_multi_add` },
+    });
+    onAddToBasket?.(food);
+  };
+
+  const resultsContainerClass =
+    variant === 'overlay'
+      ? 'absolute left-0 right-0 top-full z-40 mt-2 max-h-[340px] overflow-y-auto overflow-x-hidden rounded-xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900'
+      : 'w-full max-w-full overflow-hidden';
+
   return (
-    <div className="w-full max-w-full overflow-hidden">
+    <div className={resultsContainerClass} data-search-results-variant={variant}>
       {/* Search Input (optional) */}
       {!hideInput && (
         <div className="relative mb-4 w-full max-w-full">
@@ -106,7 +137,7 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
       {query.trim() && (
         <>
           {!isLoading && (
-            <div className="space-y-4 max-h-[400px] overflow-y-auto overflow-x-hidden w-full max-w-full">
+            <div className={`space-y-4 overflow-x-hidden w-full max-w-full ${variant === 'overlay' ? 'p-3' : 'max-h-[400px] overflow-y-auto'}`}>
               {results.length > 0 ? (
                 <>
                   {/* Ваши продукты */}
@@ -123,6 +154,8 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
                               <ProductCard
                                 food={food}
                                 onClick={() => handleSelect(food)}
+                                onAddClick={onAddToBasket ? () => handleAddToBasket(food) : undefined}
+                                isAdded={isInBasket?.(food) ?? false}
                               />
                             </div>
                           ))}
@@ -144,6 +177,8 @@ const ProductSearch = ({ onSelect, userId, value, onChangeQuery, hideInput, forc
                               <ProductCard
                                 food={food}
                                 onClick={() => handleSelect(food)}
+                                onAddClick={onAddToBasket ? () => handleAddToBasket(food) : undefined}
+                                isAdded={isInBasket?.(food) ?? false}
                               />
                             </div>
                           ))}
