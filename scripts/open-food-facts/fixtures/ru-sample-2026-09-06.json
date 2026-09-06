@@ -1,0 +1,398 @@
+[
+  {
+    "code": "4607035892370",
+    "url": "https://world.openfoodfacts.org/product/4607035892370",
+    "product_name": "Томатная паста",
+    "product_name_ru": "Томатная паста",
+    "brands": "помидорка",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Tomato pastes",
+    "categories_tags": ["en:tomato-pastes"],
+    "nutriments": {
+      "energy-kcal_100g": 100,
+      "proteins_100g": 4.8,
+      "fat_100g": 0.5,
+      "carbohydrates_100g": 19,
+      "fiber_100g": 2.8
+    }
+  },
+  {
+    "code": "4600605033043",
+    "url": "https://world.openfoodfacts.org/product/4600605033043",
+    "product_name": "АктиБио с пробиотиками и злаками",
+    "product_name_ru": "АктиБио с пробиотиками и злаками",
+    "brands": "АктиБио",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Fermented dairy desserts",
+    "categories_tags": ["en:dairies", "en:fermented-foods"],
+    "nutriments": {
+      "energy-kcal_100g": 89,
+      "proteins_100g": 3.5,
+      "fat_100g": 2.9,
+      "carbohydrates_100g": 12,
+      "fiber_100g": 0.8
+    }
+  },
+  {
+    "code": "4607004891373",
+    "url": "https://world.openfoodfacts.org/product/4607004891373",
+    "product_name": "Сыр творожный сливочный",
+    "product_name_ru": "Сыр творожный сливочный",
+    "brands": "Hochland",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Cream cheeses",
+    "categories_tags": ["en:cheeses", "en:cream-cheeses"],
+    "nutriments": {
+      "energy-kcal_100g": 245,
+      "proteins_100g": 6,
+      "fat_100g": 22,
+      "carbohydrates_100g": 5.5,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4601662000016",
+    "url": "https://world.openfoodfacts.org/product/4601662000016",
+    "product_name": "Молоко ультрапастеризованное 3,5 %",
+    "product_name_ru": "Молоко ультрапастеризованное 3,5 %",
+    "brands": "Parmalat",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Milks",
+    "categories_tags": ["en:milks", "en:beverages"],
+    "nutriments": {
+      "energy-kcal_100g": 62,
+      "proteins_100g": 3,
+      "fat_100g": 3.5,
+      "carbohydrates_100g": 4.7,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4604248003517",
+    "url": "https://world.openfoodfacts.org/product/4604248003517",
+    "product_name": "Горчица Русская",
+    "product_name_ru": "Горчица Русская",
+    "brands": "Махеевъ",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Mustards",
+    "categories_tags": ["en:condiments", "en:mustards"],
+    "nutriments": {
+      "energy-kcal_100g": 141,
+      "proteins_100g": 9,
+      "fat_100g": 10,
+      "carbohydrates_100g": 5,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4600494696763",
+    "url": "https://world.openfoodfacts.org/product/4600494696763",
+    "product_name": "актив цитрус смотка",
+    "product_name_ru": "актив цитрус смотка",
+    "brands": "Aqua Minerale",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Beverages",
+    "categories_tags": ["en:beverages"],
+    "nutriments": {
+      "energy-kcal_100g": 35,
+      "proteins_100g": 0,
+      "fat_100g": 0,
+      "carbohydrates_100g": 8.5,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4690329014077",
+    "url": "https://world.openfoodfacts.org/product/4690329014077",
+    "product_name": "Молочный шоколад Babyfox",
+    "product_name_ru": "Молочный шоколад Babyfox",
+    "brands": "Babyfox",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Chocolate",
+    "categories_tags": ["en:chocolates"],
+    "nutriments": {
+      "energy-kcal_100g": 552,
+      "proteins_100g": 7,
+      "fat_100g": 34,
+      "carbohydrates_100g": 54,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4601662006162",
+    "url": "https://world.openfoodfacts.org/product/4601662006162",
+    "product_name": "молоко безлактозное parmalat comfort",
+    "product_name_ru": "молоко безлактозное parmalat comfort",
+    "brands": "parmalat",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Milks",
+    "categories_tags": ["en:milks", "en:beverages"],
+    "nutriments": {
+      "energy-kcal_100g": 45,
+      "proteins_100g": 3,
+      "fat_100g": 1.8,
+      "carbohydrates_100g": 4.7,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4603934000786",
+    "url": "https://world.openfoodfacts.org/product/4603934000786",
+    "product_name": "Вода питьевая Святой Источник негазированная",
+    "product_name_ru": "Вода питьевая Святой Источник негазированная",
+    "brands": "Святой Источник",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Waters",
+    "categories_tags": ["en:waters", "en:mineral-waters", "en:beverages"],
+    "nutriments": {
+      "energy-kcal_100g": 0,
+      "proteins_100g": 0,
+      "fat_100g": 0,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4603934000977",
+    "url": "https://world.openfoodfacts.org/product/4603934000977",
+    "product_name": "святой-источник",
+    "product_name_ru": "святой-источник",
+    "brands": "Святой источник",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Waters",
+    "categories_tags": ["en:waters", "en:beverages"],
+    "nutriments": {
+      "energy-kcal_100g": 10,
+      "proteins_100g": 0,
+      "fat_100g": 0,
+      "carbohydrates_100g": 2.5,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4600680026671",
+    "url": "https://world.openfoodfacts.org/product/4600680026671",
+    "product_name": "Хрутка хлопья",
+    "product_name_ru": "",
+    "brands": "Хрутка",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Breakfast cereals",
+    "categories_tags": ["en:breakfast-cereals"],
+    "nutriments": {
+      "energy-kcal_100g": 390,
+      "proteins_100g": 8,
+      "fat_100g": 3,
+      "carbohydrates_100g": 82,
+      "fiber_100g": 5
+    }
+  },
+  {
+    "code": "4602481809156",
+    "url": "https://world.openfoodfacts.org/product/4602481809156",
+    "product_name": "Green milk almond",
+    "product_name_ru": "",
+    "brands": "Green milk",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "en",
+    "languages": "English",
+    "languages_tags": ["en:english"],
+    "categories": "Plant-based beverages",
+    "categories_tags": ["en:plant-based-beverages", "en:beverages"],
+    "nutriments": {
+      "energy-kcal_100g": 30,
+      "proteins_100g": 0.7,
+      "fat_100g": 1.5,
+      "carbohydrates_100g": 3.2,
+      "fiber_100g": 0.5
+    }
+  },
+  {
+    "code": "5449000054227",
+    "url": "https://world.openfoodfacts.org/product/5449000054227",
+    "product_name": "Coca-Cola Original Taste",
+    "product_name_ru": "",
+    "brands": "Coca-Cola",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "en",
+    "languages": "English",
+    "languages_tags": ["en:english"],
+    "categories": "Sodas",
+    "categories_tags": ["en:sodas", "en:beverages"],
+    "nutriments": {
+      "energy-kcal_100g": 42,
+      "proteins_100g": 0,
+      "fat_100g": 0,
+      "carbohydrates_100g": 10.6,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4607001771753",
+    "url": "https://world.openfoodfacts.org/product/4607001771753",
+    "product_name": "MONARCH",
+    "product_name_ru": "",
+    "brands": "",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "en",
+    "languages": "English",
+    "languages_tags": ["en:english"],
+    "categories": "",
+    "categories_tags": [],
+    "nutriments": {
+      "proteins_100g": 0,
+      "fat_100g": 0,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4600494693335",
+    "url": "https://world.openfoodfacts.org/product/4600494693335",
+    "product_name": "Agua aqua minerale без газа смотка на витрине",
+    "product_name_ru": "",
+    "brands": "",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Beverages",
+    "categories_tags": ["en:beverages"],
+    "nutriments": {
+      "energy-kcal_100g": 0,
+      "proteins_100g": 20,
+      "fat_100g": 0,
+      "carbohydrates_100g": 0,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4607035892370",
+    "url": "https://world.openfoodfacts.org/product/4607035892370",
+    "product_name": "Томатная паста",
+    "product_name_ru": "Томатная паста",
+    "brands": "помидорка",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Tomato pastes",
+    "categories_tags": ["en:tomato-pastes"],
+    "nutriments": {
+      "energy-kcal_100g": 100,
+      "proteins_100g": 4.8,
+      "fat_100g": 0.5,
+      "carbohydrates_100g": 19,
+      "fiber_100g": 2.8
+    }
+  },
+  {
+    "code": "4820000000001",
+    "url": "https://world.openfoodfacts.org/product/4820000000001",
+    "product_name": "Молоко незбиране",
+    "product_name_ru": "Молоко незбиране",
+    "brands": "Тест",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "uk",
+    "languages": "Ukrainian",
+    "languages_tags": ["en:ukrainian"],
+    "categories": "Milks",
+    "categories_tags": ["en:milks", "en:beverages"],
+    "nutriments": {
+      "energy-kcal_100g": 60,
+      "proteins_100g": 3,
+      "fat_100g": 3.2,
+      "carbohydrates_100g": 4.7,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4600000000002",
+    "url": "https://world.openfoodfacts.org/product/4600000000002",
+    "product_name": "Вода с лимоном",
+    "product_name_ru": "Вода с лимоном",
+    "brands": "Тест",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Beverages",
+    "categories_tags": ["en:beverages"],
+    "nutriments": {
+      "energy-kcal_100g": 5,
+      "proteins_100g": 0,
+      "fat_100g": 0,
+      "carbohydrates_100g": 1.2,
+      "fiber_100g": 0
+    }
+  },
+  {
+    "code": "4600000000003",
+    "url": "https://world.openfoodfacts.org/product/4600000000003",
+    "product_name": "Драже M&M",
+    "product_name_ru": "Драже M&M",
+    "brands": "M&M",
+    "countries": "Russia",
+    "countries_tags": ["en:russia"],
+    "lang": "ru",
+    "languages": "Russian",
+    "languages_tags": ["en:russian"],
+    "categories": "Candies",
+    "categories_tags": ["en:candies"],
+    "nutriments": {
+      "energy-kcal_100g": 497,
+      "proteins_100g": 4.5,
+      "fat_100g": 22,
+      "fiber_100g": 0
+    }
+  }
+]
