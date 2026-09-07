@@ -5,8 +5,8 @@
     "totalRows": 19,
     "countByClassification": {
       "candidate_ok": 4,
-      "needs_language_review": 6,
-      "needs_quality_review": 4,
+      "needs_language_review": 7,
+      "needs_quality_review": 3,
       "needs_duplicate_review": 1,
       "auto_reject": 4
     },
@@ -15,11 +15,11 @@
       "ocr_or_scan_noise": 3,
       "mixed_language_name": 4,
       "water_exception_needs_review": 1,
+      "brand_only_name": 2,
       "missing_product_name_ru": 5,
       "latin_primary_name": 3,
       "missing_brand": 2,
       "category_only_name": 1,
-      "brand_only_name": 2,
       "missing_calories": 1,
       "missing_macros": 2,
       "energy_macro_mismatch": 1,
@@ -140,7 +140,7 @@
       "nutrition_score": 0.95,
       "market_score": 0.95,
       "duplicate_score": 0,
-      "overall_quality_score": 0.95,
+      "overall_quality_score": 0.9,
       "notes": [
         "classification=needs_quality_review",
         "reasons=per_100ml_needs_handling",
@@ -198,11 +198,11 @@
         "ocr_or_scan_noise"
       ],
       "language_score": 1,
-      "ru_display_name_score": 0.45,
+      "ru_display_name_score": 0,
       "nutrition_score": 0.95,
       "market_score": 0.95,
       "duplicate_score": 0,
-      "overall_quality_score": 0.84,
+      "overall_quality_score": 0.68,
       "notes": [
         "classification=needs_language_review",
         "reasons=per_100ml_needs_handling,ocr_or_scan_noise",
@@ -266,7 +266,7 @@
       "nutrition_score": 0.95,
       "market_score": 0.95,
       "duplicate_score": 0,
-      "overall_quality_score": 0.82,
+      "overall_quality_score": 0.77,
       "notes": [
         "classification=needs_language_review",
         "reasons=mixed_language_name,per_100ml_needs_handling",
@@ -299,7 +299,7 @@
       "nutrition_score": 0.55,
       "market_score": 0.95,
       "duplicate_score": 0,
-      "overall_quality_score": 0.85,
+      "overall_quality_score": 0.8,
       "notes": [
         "classification=needs_quality_review",
         "reasons=water_exception_needs_review,per_100ml_needs_handling",
@@ -321,20 +321,21 @@
       "fat": 0,
       "carbs": 2.5,
       "fiber": 0,
-      "classification": "needs_quality_review",
+      "classification": "needs_language_review",
       "review_status_suggestion": "needs_review",
       "reason_codes": [
-        "per_100ml_needs_handling"
+        "per_100ml_needs_handling",
+        "brand_only_name"
       ],
       "language_score": 1,
-      "ru_display_name_score": 0.9,
+      "ru_display_name_score": 0.2,
       "nutrition_score": 0.95,
       "market_score": 0.95,
       "duplicate_score": 0,
-      "overall_quality_score": 0.95,
+      "overall_quality_score": 0.73,
       "notes": [
-        "classification=needs_quality_review",
-        "reasons=per_100ml_needs_handling",
+        "classification=needs_language_review",
+        "reasons=per_100ml_needs_handling,brand_only_name",
         "beverage/liquid candidate needs explicit per-100ml handling"
       ]
     },
@@ -396,7 +397,7 @@
       "nutrition_score": 0.95,
       "market_score": 0.65,
       "duplicate_score": 0,
-      "overall_quality_score": 0.43,
+      "overall_quality_score": 0.38,
       "notes": [
         "classification=auto_reject",
         "reasons=missing_product_name_ru,per_100ml_needs_handling,latin_primary_name",
@@ -430,7 +431,7 @@
       "nutrition_score": 0.95,
       "market_score": 0.65,
       "duplicate_score": 0,
-      "overall_quality_score": 0.43,
+      "overall_quality_score": 0.38,
       "notes": [
         "classification=auto_reject",
         "reasons=missing_product_name_ru,per_100ml_needs_handling,latin_primary_name",
@@ -504,7 +505,7 @@
       "nutrition_score": 0.35,
       "market_score": 0.95,
       "duplicate_score": 0,
-      "overall_quality_score": 0.33,
+      "overall_quality_score": 0.28,
       "notes": [
         "classification=needs_language_review",
         "reasons=mixed_language_name,missing_product_name_ru,energy_macro_mismatch,per_100ml_needs_handling,ocr_or_scan_noise,missing_brand",
@@ -568,7 +569,7 @@
       "nutrition_score": 0.95,
       "market_score": 0.9,
       "duplicate_score": 0,
-      "overall_quality_score": 0.8,
+      "overall_quality_score": 0.75,
       "notes": [
         "classification=needs_language_review",
         "reasons=suspected_non_russian_cyrillic,per_100ml_needs_handling",
@@ -600,7 +601,7 @@
       "nutrition_score": 0.95,
       "market_score": 0.95,
       "duplicate_score": 0,
-      "overall_quality_score": 0.95,
+      "overall_quality_score": 0.9,
       "notes": [
         "classification=needs_quality_review",
         "reasons=per_100ml_needs_handling",
@@ -627,18 +628,17 @@
       "reason_codes": [
         "mixed_language_name",
         "ocr_or_scan_noise",
-        "brand_only_name",
         "missing_macros"
       ],
       "language_score": 0.7,
-      "ru_display_name_score": 0,
+      "ru_display_name_score": 0.2,
       "nutrition_score": 0,
       "market_score": 0.95,
       "duplicate_score": 0,
-      "overall_quality_score": 0.42,
+      "overall_quality_score": 0.47,
       "notes": [
         "classification=auto_reject",
-        "reasons=mixed_language_name,ocr_or_scan_noise,brand_only_name,missing_macros"
+        "reasons=mixed_language_name,ocr_or_scan_noise,missing_macros"
       ]
     }
   ]

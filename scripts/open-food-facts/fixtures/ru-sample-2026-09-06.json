@@ -313,6 +313,8 @@
     }
   },
   {
+    "_fixture_kind": "synthetic_edge_case",
+    "_fixture_note": "Intentional duplicate of tomato paste to exercise duplicate barcode detection.",
     "code": "4607035892370",
     "url": "https://world.openfoodfacts.org/product/4607035892370",
     "product_name": "Томатная паста",
@@ -334,6 +336,8 @@
     }
   },
   {
+    "_fixture_kind": "synthetic_edge_case",
+    "_fixture_note": "Synthetic Ukrainian-marker row to exercise non-Russian Cyrillic review behavior.",
     "code": "4820000000001",
     "url": "https://world.openfoodfacts.org/product/4820000000001",
     "product_name": "Молоко незбиране",
@@ -355,6 +359,8 @@
     }
   },
   {
+    "_fixture_kind": "synthetic_edge_case",
+    "_fixture_note": "Synthetic beverage row with test brand to exercise per-100ml handling without all-zero water.",
     "code": "4600000000002",
     "url": "https://world.openfoodfacts.org/product/4600000000002",
     "product_name": "Вода с лимоном",
@@ -376,6 +382,8 @@
     }
   },
   {
+    "_fixture_kind": "synthetic_edge_case",
+    "_fixture_note": "Synthetic missing-macro row to exercise incomplete nutrition rejection.",
     "code": "4600000000003",
     "url": "https://world.openfoodfacts.org/product/4600000000003",
     "product_name": "Драже M&M",

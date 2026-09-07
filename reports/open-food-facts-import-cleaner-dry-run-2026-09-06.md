@@ -15,8 +15,8 @@ Run the local Open Food Facts RU/Russia fixture through the POTOK cleaner/scorin
 
 - Total rows processed: 19
 - `candidate_ok`: 4
-- `needs_language_review`: 6
-- `needs_quality_review`: 4
+- `needs_language_review`: 7
+- `needs_quality_review`: 3
 - `needs_duplicate_review`: 1
 - `auto_reject`: 4
 
@@ -46,18 +46,17 @@ Run the local Open Food Facts RU/Russia fixture through the POTOK cleaner/scorin
 
 ## Examples: needs_language_review
 
-- `4600494696763` - актив цитрус смотка, brand `Aqua Minerale`, reasons: `per_100ml_needs_handling, ocr_or_scan_noise`, overall: 0.84
+- `4600494696763` - актив цитрус смотка, brand `Aqua Minerale`, reasons: `per_100ml_needs_handling, ocr_or_scan_noise`, overall: 0.68
 - `4690329014077` - Молочный шоколад Babyfox, brand `Babyfox`, reasons: `mixed_language_name`, overall: 0.82
-- `4601662006162` - молоко безлактозное parmalat comfort, brand `parmalat`, reasons: `mixed_language_name, per_100ml_needs_handling`, overall: 0.82
+- `4601662006162` - молоко безлактозное parmalat comfort, brand `parmalat`, reasons: `mixed_language_name, per_100ml_needs_handling`, overall: 0.77
+- `4603934000977` - святой-источник, brand `Святой источник`, reasons: `per_100ml_needs_handling, brand_only_name`, overall: 0.73
 - `4600680026671` - Хрутка хлопья, brand `Хрутка`, reasons: `missing_product_name_ru`, overall: 0.55
-- `4600494693335` - Agua aqua minerale без газа смотка на витрине, brand `missing brand`, reasons: `mixed_language_name, missing_product_name_ru, energy_macro_mismatch, per_100ml_needs_handling, ocr_or_scan_noise, missing_brand`, overall: 0.33
 
 ## Examples: needs_quality_review
 
-- `4601662000016` - Молоко ультрапастеризованное 3,5 %, brand `Parmalat`, reasons: `per_100ml_needs_handling`, overall: 0.95
-- `4603934000786` - Вода питьевая Святой Источник негазированная, brand `Святой Источник`, reasons: `water_exception_needs_review, per_100ml_needs_handling`, overall: 0.85
-- `4603934000977` - святой-источник, brand `Святой источник`, reasons: `per_100ml_needs_handling`, overall: 0.95
-- `4600000000002` - Вода с лимоном, brand `Тест`, reasons: `per_100ml_needs_handling`, overall: 0.95
+- `4601662000016` - Молоко ультрапастеризованное 3,5 %, brand `Parmalat`, reasons: `per_100ml_needs_handling`, overall: 0.9
+- `4603934000786` - Вода питьевая Святой Источник негазированная, brand `Святой Источник`, reasons: `water_exception_needs_review, per_100ml_needs_handling`, overall: 0.8
+- `4600000000002` - Вода с лимоном, brand `Тест`, reasons: `per_100ml_needs_handling`, overall: 0.9
 
 ## Examples: needs_duplicate_review
 
@@ -65,37 +64,37 @@ Run the local Open Food Facts RU/Russia fixture through the POTOK cleaner/scorin
 
 ## Examples: auto_reject
 
-- `4602481809156` - Green milk almond, brand `Green milk`, reasons: `missing_product_name_ru, per_100ml_needs_handling, latin_primary_name`, overall: 0.43
-- `5449000054227` - Coca-Cola Original Taste, brand `Coca-Cola`, reasons: `missing_product_name_ru, per_100ml_needs_handling, latin_primary_name`, overall: 0.43
+- `4602481809156` - Green milk almond, brand `Green milk`, reasons: `missing_product_name_ru, per_100ml_needs_handling, latin_primary_name`, overall: 0.38
+- `5449000054227` - Coca-Cola Original Taste, brand `Coca-Cola`, reasons: `missing_product_name_ru, per_100ml_needs_handling, latin_primary_name`, overall: 0.38
 - `4607001771753` - MONARCH, brand `missing brand`, reasons: `missing_product_name_ru, missing_brand, category_only_name, brand_only_name, latin_primary_name, missing_calories, missing_macros`, overall: 0.2
-- `4600000000003` - Драже M&M, brand `M&M`, reasons: `mixed_language_name, ocr_or_scan_noise, brand_only_name, missing_macros`, overall: 0.42
+- `4600000000003` - Драже M&M, brand `M&M`, reasons: `mixed_language_name, ocr_or_scan_noise, missing_macros`, overall: 0.47
 
 ## Top Noisy Names
 
-- `4600494696763` - актив цитрус смотка, brand `Aqua Minerale`, reasons: `per_100ml_needs_handling, ocr_or_scan_noise`, overall: 0.84
+- `4600494696763` - актив цитрус смотка, brand `Aqua Minerale`, reasons: `per_100ml_needs_handling, ocr_or_scan_noise`, overall: 0.68
 - `4690329014077` - Молочный шоколад Babyfox, brand `Babyfox`, reasons: `mixed_language_name`, overall: 0.82
-- `4601662006162` - молоко безлактозное parmalat comfort, brand `parmalat`, reasons: `mixed_language_name, per_100ml_needs_handling`, overall: 0.82
-- `4602481809156` - Green milk almond, brand `Green milk`, reasons: `missing_product_name_ru, per_100ml_needs_handling, latin_primary_name`, overall: 0.43
-- `5449000054227` - Coca-Cola Original Taste, brand `Coca-Cola`, reasons: `missing_product_name_ru, per_100ml_needs_handling, latin_primary_name`, overall: 0.43
+- `4601662006162` - молоко безлактозное parmalat comfort, brand `parmalat`, reasons: `mixed_language_name, per_100ml_needs_handling`, overall: 0.77
+- `4603934000977` - святой-источник, brand `Святой источник`, reasons: `per_100ml_needs_handling, brand_only_name`, overall: 0.73
+- `4602481809156` - Green milk almond, brand `Green milk`, reasons: `missing_product_name_ru, per_100ml_needs_handling, latin_primary_name`, overall: 0.38
 
 ## Nutrition Problems
 
-- `4603934000786` - Вода питьевая Святой Источник негазированная, brand `Святой Источник`, reasons: `water_exception_needs_review, per_100ml_needs_handling`, overall: 0.85
+- `4603934000786` - Вода питьевая Святой Источник негазированная, brand `Святой Источник`, reasons: `water_exception_needs_review, per_100ml_needs_handling`, overall: 0.8
 - `4607001771753` - MONARCH, brand `missing brand`, reasons: `missing_product_name_ru, missing_brand, category_only_name, brand_only_name, latin_primary_name, missing_calories, missing_macros`, overall: 0.2
-- `4600494693335` - Agua aqua minerale без газа смотка на витрине, brand `missing brand`, reasons: `mixed_language_name, missing_product_name_ru, energy_macro_mismatch, per_100ml_needs_handling, ocr_or_scan_noise, missing_brand`, overall: 0.33
-- `4600000000003` - Драже M&M, brand `M&M`, reasons: `mixed_language_name, ocr_or_scan_noise, brand_only_name, missing_macros`, overall: 0.42
+- `4600494693335` - Agua aqua minerale без газа смотка на витрине, brand `missing brand`, reasons: `mixed_language_name, missing_product_name_ru, energy_macro_mismatch, per_100ml_needs_handling, ocr_or_scan_noise, missing_brand`, overall: 0.28
+- `4600000000003` - Драже M&M, brand `M&M`, reasons: `mixed_language_name, ocr_or_scan_noise, missing_macros`, overall: 0.47
 
 ## Water / All-Zero Exceptions
 
-- `4603934000786` - Вода питьевая Святой Источник негазированная, brand `Святой Источник`, reasons: `water_exception_needs_review, per_100ml_needs_handling`, overall: 0.85
+- `4603934000786` - Вода питьевая Святой Источник негазированная, brand `Святой Источник`, reasons: `water_exception_needs_review, per_100ml_needs_handling`, overall: 0.8
 
 ## Per-100ml Beverage Candidates
 
-- `4601662000016` - Молоко ультрапастеризованное 3,5 %, brand `Parmalat`, reasons: `per_100ml_needs_handling`, overall: 0.95
-- `4600494696763` - актив цитрус смотка, brand `Aqua Minerale`, reasons: `per_100ml_needs_handling, ocr_or_scan_noise`, overall: 0.84
-- `4601662006162` - молоко безлактозное parmalat comfort, brand `parmalat`, reasons: `mixed_language_name, per_100ml_needs_handling`, overall: 0.82
-- `4603934000786` - Вода питьевая Святой Источник негазированная, brand `Святой Источник`, reasons: `water_exception_needs_review, per_100ml_needs_handling`, overall: 0.85
-- `4603934000977` - святой-источник, brand `Святой источник`, reasons: `per_100ml_needs_handling`, overall: 0.95
+- `4601662000016` - Молоко ультрапастеризованное 3,5 %, brand `Parmalat`, reasons: `per_100ml_needs_handling`, overall: 0.9
+- `4600494696763` - актив цитрус смотка, brand `Aqua Minerale`, reasons: `per_100ml_needs_handling, ocr_or_scan_noise`, overall: 0.68
+- `4601662006162` - молоко безлактозное parmalat comfort, brand `parmalat`, reasons: `mixed_language_name, per_100ml_needs_handling`, overall: 0.77
+- `4603934000786` - Вода питьевая Святой Источник негазированная, brand `Святой Источник`, reasons: `water_exception_needs_review, per_100ml_needs_handling`, overall: 0.8
+- `4603934000977` - святой-источник, brand `Святой источник`, reasons: `per_100ml_needs_handling, brand_only_name`, overall: 0.73
 
 ## Owner Decision Checklist
 

@@ -42,6 +42,8 @@ export type OffReasonCode =
   | 'provider_payload_incomplete';
 
 export interface OffRecord {
+  _fixture_kind?: unknown;
+  _fixture_note?: unknown;
   code?: unknown;
   url?: unknown;
   product_name?: unknown;
@@ -235,14 +237,44 @@ const isMostlyUppercaseNoise = (value: string): boolean => {
   return letters.length >= 8 && letters === letters.toUpperCase() && hasLatin(value);
 };
 
-const hasProductTypeSignal = (value: string, categories: string[]): boolean => {
+const hasDisplayProductTypeSignal = (value: string): boolean => {
   const normalized = value.toLowerCase();
-  if (/\b(паста|молоко|сыр|горчица|вода|шоколад|драже|хлопья|йогурт|кефир|сок|напиток|чай|кофе|хлеб|масло)\b/i.test(normalized)) {
-    return true;
-  }
+  const productTypeTokens = [
+    'паста',
+    'молоко',
+    'сыр',
+    'горчица',
+    'вода',
+    'шоколад',
+    'драже',
+    'хлопья',
+    'йогурт',
+    'кефир',
+    'сок',
+    'напиток',
+    'чай',
+    'кофе',
+    'хлеб',
+    'масло',
+    'пробиотик',
+    'злак',
+  ];
+  return productTypeTokens.some((token) => normalized.includes(token));
+};
+
+const hasCategoryProductTypeSignal = (categories: string[]): boolean => {
   return categories.some((category) =>
     /(tomato|milk|cheese|mustard|water|chocolate|candy|cereals|beverages|sodas|dairies)/i.test(category)
   );
+};
+
+const isDisplayNameBrandLike = (value: string, brand: string): boolean => {
+  const normalizedValue = buildNormalizedName(value);
+  const normalizedBrand = buildNormalizedBrand(brand);
+  if (!normalizedValue) return false;
+  if (normalizedBrand && normalizedValue === normalizedBrand) return true;
+  const wordCount = normalizedValue.split(/\s+/).filter(Boolean).length;
+  return !hasDisplayProductTypeSignal(value) && wordCount <= 2 && /^[\p{L}\p{N}\s-]+$/u.test(value);
 };
 
 const isWater = (record: OffRecord, name: string): boolean => {
@@ -300,6 +332,7 @@ export const scoreRuDisplayName = (record: OffRecord): number => {
   if (!displayName) return 0;
 
   const categories = toTags(record.categories_tags);
+  const brand = toText(record.brands);
   let score = 0.9;
   if (displayName.length < 4) score -= 0.35;
   if (displayName.length > 80) score -= 0.3;
@@ -307,7 +340,9 @@ export const scoreRuDisplayName = (record: OffRecord): number => {
   if (hasNoiseSignal(displayName)) score -= 0.45;
   if (isPlaceholderName(displayName)) score -= 0.6;
   if (isMostlyUppercaseNoise(displayName)) score -= 0.35;
-  if (!hasProductTypeSignal(displayName, categories)) score -= 0.25;
+  if (!hasDisplayProductTypeSignal(displayName)) score -= 0.35;
+  if (!hasDisplayProductTypeSignal(displayName) && hasCategoryProductTypeSignal(categories)) score -= 0.1;
+  if (isDisplayNameBrandLike(displayName, brand)) score -= 0.25;
 
   return clampScore(score);
 };
@@ -402,10 +437,19 @@ export const buildReasonCodes = (record: OffRecord, scores: OffScores): OffReaso
   if (hasLatin(targetName) && hasCyrillic(targetName)) reasons.add('mixed_language_name');
   if (!ruName && hasLatin(rawName) && !hasCyrillic(rawName)) reasons.add('latin_primary_name');
   if (isMostlyUppercaseNoise(targetName)) reasons.add('brand_only_name');
-  if (targetName && !hasProductTypeSignal(targetName, categories)) reasons.add('brand_only_name');
+  if (targetName && isDisplayNameBrandLike(targetName, brand)) reasons.add('brand_only_name');
 
   if (calories === null) reasons.add('missing_calories');
   if (protein === null || fat === null || carbs === null) reasons.add('missing_macros');
+  if (
+    calories !== null &&
+    protein !== null &&
+    fat !== null &&
+    carbs !== null &&
+    [calories, protein, fat, carbs, fiber].some((value) => value < 0)
+  ) {
+    reasons.add('provider_payload_incomplete');
+  }
 
   if (calories !== null && protein !== null && fat !== null && carbs !== null) {
     if (calories === 0 && protein === 0 && fat === 0 && carbs === 0) {
@@ -495,7 +539,8 @@ export const cleanOffRecord = (record: OffRecord, context: OffCleanerContext = {
       ru_display_name_score * 0.25 +
       nutrition_score * 0.25 +
       market_score * 0.15 +
-      (1 - duplicate_score) * 0.1
+      (1 - duplicate_score) * 0.1 -
+      (isPer100mlCandidate(record, proposedName) ? 0.05 : 0)
   );
   const scores = {
     language_score,

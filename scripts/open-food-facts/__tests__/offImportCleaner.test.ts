@@ -1,11 +1,19 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
   OffRecord,
   cleanOffRecord,
   cleanOffRecords,
   resolveRussianDisplayName,
+  summarizeCleanedRecords,
 } from '../offImportCleaner.ts';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const fixturePath = path.join(__dirname, '../fixtures/ru-sample-2026-09-06.json');
 
 const makeRecord = (overrides: Partial<OffRecord> = {}): OffRecord => ({
   code: '4607035892370',
@@ -231,4 +239,102 @@ test('Russian display resolver does not invent names from raw provider text', ()
   }));
 
   assert.equal(resolved, '');
+});
+
+test('synthetic fixture metadata is present for edge-case rows', () => {
+  const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as OffRecord[];
+  const syntheticRows = fixture.filter((record) => record._fixture_kind === 'synthetic_edge_case');
+
+  assert.equal(syntheticRows.length, 4);
+  assert.ok(syntheticRows.every((record) => typeof record._fixture_note === 'string' && record._fixture_note.length > 0));
+});
+
+test('missing barcode for branded packaged product needs quality review', () => {
+  const cleaned = cleanOffRecord(makeRecord({ code: '' }));
+
+  assert.equal(cleaned.classification, 'needs_quality_review');
+  assert.ok(cleaned.reason_codes.includes('missing_barcode'));
+});
+
+test('missing brand needs quality review unless later treated as generic core', () => {
+  const cleaned = cleanOffRecord(makeRecord({ brands: '' }));
+
+  assert.equal(cleaned.classification, 'needs_quality_review');
+  assert.ok(cleaned.reason_codes.includes('missing_brand'));
+});
+
+test('negative nutrition becomes auto_reject through incomplete provider payload', () => {
+  const cleaned = cleanOffRecord(makeRecord({
+    nutriments: {
+      'energy-kcal_100g': 100,
+      proteins_100g: -1,
+      fat_100g: 1,
+      carbohydrates_100g: 1,
+      fiber_100g: 0,
+    },
+  }));
+
+  assert.equal(cleaned.classification, 'auto_reject');
+  assert.ok(cleaned.reason_codes.includes('provider_payload_incomplete'));
+});
+
+test('suspicious high nutrition needs quality review', () => {
+  const cleaned = cleanOffRecord(makeRecord({
+    nutriments: {
+      'energy-kcal_100g': 1200,
+      proteins_100g: 10,
+      fat_100g: 10,
+      carbohydrates_100g: 10,
+      fiber_100g: 0,
+    },
+  }));
+
+  assert.equal(cleaned.classification, 'needs_quality_review');
+  assert.ok(cleaned.reason_codes.includes('suspicious_nutrition'));
+});
+
+test('non-food category becomes auto_reject', () => {
+  const cleaned = cleanOffRecord(makeRecord({
+    categories: 'Pet food',
+    categories_tags: ['en:pet-food'],
+  }));
+
+  assert.equal(cleaned.classification, 'auto_reject');
+  assert.ok(cleaned.reason_codes.includes('non_food_category'));
+});
+
+test('weak brand-like display name is not candidate_ok and score is not misleadingly high', () => {
+  const cleaned = cleanOffRecord(makeRecord({
+    product_name: 'святой-источник',
+    product_name_ru: 'святой-источник',
+    brands: 'Святой источник',
+    categories: 'Waters',
+    categories_tags: ['en:waters', 'en:beverages'],
+    nutriments: {
+      'energy-kcal_100g': 10,
+      proteins_100g: 0,
+      fat_100g: 0,
+      carbohydrates_100g: 2.5,
+      fiber_100g: 0,
+    },
+  }));
+
+  assert.notEqual(cleaned.classification, 'candidate_ok');
+  assert.ok(cleaned.reason_codes.includes('brand_only_name'));
+  assert.ok(cleaned.ru_display_name_score <= 0.25);
+  assert.ok(cleaned.overall_quality_score < 0.75);
+});
+
+test('runner fixture summary snapshot stays stable for current tuning sample', () => {
+  const fixture = JSON.parse(readFileSync(fixturePath, 'utf8')) as OffRecord[];
+  const summary = summarizeCleanedRecords(cleanOffRecords(fixture));
+
+  assert.deepEqual(summary.countByClassification, {
+    candidate_ok: 4,
+    needs_language_review: 7,
+    needs_quality_review: 3,
+    needs_duplicate_review: 1,
+    auto_reject: 4,
+  });
+  assert.equal(summary.totalRows, 19);
 });
