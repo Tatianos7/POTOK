@@ -1,0 +1,48 @@
+{
+  "generated_at": "2026-09-07",
+  "target_package": "OPEN_FOOD_FACTS_LARGER_SAMPLE_DRY_RUN_STAGE_A",
+  "verdict": "REQUIRES_FIXES",
+  "status": "blocked_by_provider_503",
+  "intended_sample_size": 100,
+  "records_collected": 0,
+  "fixture_created": false,
+  "fixture_path": "scripts/open-food-facts/fixtures/ru-sample-stage-a-100-2026-09-07.json",
+  "request_count": 2,
+  "attempts": [
+    {
+      "url": "https://world.openfoodfacts.org/api/v2/search?countries_tags_en=Russia&fields=code,url,product_name,product_name_ru,brands,countries,countries_tags,lang,languages,languages_tags,categories,categories_tags,nutriments&page_size=100&page=1",
+      "user_agent": "POTOK Open Food Facts Stage A dry-run audit; local report only; no runtime integration",
+      "result": "503"
+    },
+    {
+      "url": "https://world.openfoodfacts.org/api/v2/search?countries_tags_en=Russia&fields=code,url,product_name,product_name_ru,brands,countries,countries_tags,lang,languages,languages_tags,categories,categories_tags,nutriments&page_size=100&page=2",
+      "user_agent": "POTOK Open Food Facts Stage A dry-run audit; local report only; no runtime integration",
+      "result": "503"
+    }
+  ],
+  "baseline_19_rows": {
+    "candidate_ok": 4,
+    "needs_language_review": 7,
+    "needs_quality_review": 3,
+    "needs_duplicate_review": 1,
+    "auto_reject": 4
+  },
+  "stage_a_counts": null,
+  "stage_a_percentages": null,
+  "safety": {
+    "runtime_app_integration": false,
+    "ui_changes": false,
+    "config_dependency_changes": false,
+    "new_dependencies": false,
+    "api_keys_used": false,
+    "secrets_used": false,
+    "images_or_photos_requested": false,
+    "valid_new_provider_sample_stored": false,
+    "supabase_client_used": false,
+    "supabase_sql_executed": false,
+    "db_import_staging_production_mutation": false,
+    "premium_or_diary_writes": false,
+    "pr_created": false,
+    "commit_created": false
+  }
+}
