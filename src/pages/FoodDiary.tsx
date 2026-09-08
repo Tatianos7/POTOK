@@ -1660,6 +1660,10 @@ const FoodDiary = () => {
       {showAddProductModal && (
         <AddProductModal
           onClose={() => setShowAddProductModal(false)}
+          onFindProduct={() => {
+            setShowAddProductModal(false);
+            navigate('/nutrition/search', { state: { selectedDate } });
+          }}
           onBrandInput={() => {
             setShowAddProductModal(false);
             navigate('/nutrition/create-brand-product', { state: { selectedDate } });
