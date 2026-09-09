@@ -91,9 +91,53 @@ test('my products view renders empty state and custom product CTA', () => {
   );
 
   assert.match(html, /Мои продукты/);
+  assert.doesNotMatch(html, /<select/);
+  assert.match(html, /role="group"/);
+  assert.match(html, /Завтрак/);
+  assert.match(html, /Обед/);
+  assert.match(html, /Ужин/);
+  assert.match(html, /Перекус/);
+  assert.match(html, /Выберите приём пищи/);
   assert.match(html, /Вы ещё не добавляли свои продукты/);
   assert.match(html, /Создайте продукт один раз/);
   assert.match(html, /Добавить свой продукт/);
+});
+
+test('my products meal selector shows selected meal as pressed pill', () => {
+  const html = renderToStaticMarkup(
+    <MyProductsView
+      foods={[]}
+      status="ready"
+      mealType="lunch"
+      mealTypeError={null}
+      onMealTypeChange={() => {}}
+      onSelectFood={() => {}}
+      onAddCustomFood={() => {}}
+      onBack={() => {}}
+    />
+  );
+
+  assert.match(html, /aria-pressed="true"[^>]*>Обед/);
+  assert.match(html, /border-gray-900 bg-gray-900 text-white/);
+  assert.match(html, /Выбрано/);
+});
+
+test('my products meal selector renders soft error when meal is required', () => {
+  const html = renderToStaticMarkup(
+    <MyProductsView
+      foods={[]}
+      status="ready"
+      mealType=""
+      mealTypeError="Выберите приём пищи"
+      onMealTypeChange={() => {}}
+      onSelectFood={() => {}}
+      onAddCustomFood={() => {}}
+      onBack={() => {}}
+    />
+  );
+
+  assert.match(html, /text-red-600/);
+  assert.match(html, /Выберите приём пищи/);
 });
 
 test('my products filtering keeps only current user private foods', () => {

@@ -169,22 +169,34 @@ export const MyProductsView = ({
       </button>
     </div>
 
-    <label className="block">
-      <span className="mb-1 block text-xs font-semibold text-gray-700">Приём пищи</span>
-      <select
-        value={mealType}
-        onChange={(event) => onMealTypeChange(event.target.value as MealType)}
-        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-xs font-semibold text-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900"
-      >
-        <option value="">Выберите приём пищи</option>
-        {mealOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      {mealTypeError && <span className="mt-1 block text-xs text-red-600">{mealTypeError}</span>}
-    </label>
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="block text-xs font-semibold text-gray-700">Приём пищи</span>
+        <span className={`text-[11px] ${mealTypeError ? 'text-red-600' : 'text-gray-500'}`}>
+          {mealTypeError || (mealType ? 'Выбрано' : 'Выберите приём пищи')}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="Выберите приём пищи">
+        {mealOptions.map((option) => {
+          const isSelected = mealType === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onMealTypeChange(option.value)}
+              aria-pressed={isSelected}
+              className={`min-h-9 rounded-full border px-3 py-2 text-xs font-semibold transition-colors ${
+                isSelected
+                  ? 'border-gray-900 bg-gray-900 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
 
     {status === 'loading' && (
       <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-5 text-center text-xs font-semibold text-gray-600">
