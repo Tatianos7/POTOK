@@ -46,6 +46,7 @@ const FoodDiary = () => {
   const [dailyMeals, setDailyMeals] = useState<DailyMeals | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [goalTargets, setGoalTargets] = useState<{
     calories: number;
     proteins: number;
@@ -69,6 +70,9 @@ const FoodDiary = () => {
   const [selectedFood, setSelectedFood] = useState<Food | null>(null);
   const [scannedFood, setScannedFood] = useState<Food | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<'breakfast' | 'lunch' | 'dinner' | 'snack' | null>(null);
+  const [myProducts, setMyProducts] = useState<Food[]>([]);
+  const [myProductsStatus, setMyProductsStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [myProductsError, setMyProductsError] = useState<string | null>(null);
   
   // State для раскрытия/сворачивания приёмов пищи
   const [expandedMeals, setExpandedMeals] = useState<Record<string, boolean>>({
@@ -418,6 +422,7 @@ const FoodDiary = () => {
 
   const reportError = (message: string, error?: unknown) => {
     console.error('[FoodDiary]', message, error);
+    setSuccessMessage(null);
     setErrorMessage(message);
   };
 
@@ -447,6 +452,44 @@ const FoodDiary = () => {
   const handleMealClick = (mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack') => {
     setSelectedMealType(mealType);
     navigate('/nutrition/search', { state: { mealType, selectedDate } });
+  };
+
+  const loadMyProducts = useCallback(async () => {
+    if (!user?.id) {
+      setMyProducts([]);
+      setMyProductsStatus('error');
+      setMyProductsError('Войдите, чтобы увидеть свои продукты');
+      return;
+    }
+
+    setMyProductsStatus('loading');
+    setMyProductsError(null);
+    try {
+      const foods = await foodService.getUserFoods(user.id);
+      setMyProducts(foods);
+      setMyProductsStatus('ready');
+    } catch (error) {
+      console.error('[FoodDiary] Failed to load my products:', error);
+      setMyProducts([]);
+      setMyProductsStatus('error');
+      setMyProductsError('Не удалось загрузить мои продукты');
+    }
+  }, [user?.id]);
+
+  const handleMyProductSelect = async (
+    food: Food,
+    mealType: 'breakfast' | 'lunch' | 'dinner' | 'snack'
+  ) => {
+    const hydrated = await foodService.hydrateFoodForDiarySelection(food, user?.id);
+    if (isSuspiciousAllZeroCatalogFood(hydrated)) {
+      alert('Этот продукт временно скрыт: в каталоге повреждены КБЖУ. Выберите другой продукт.');
+      return;
+    }
+
+    setSelectedMealType(mealType);
+    setSelectedFood(hydrated);
+    setShowAddProductModal(false);
+    setIsAddFoodModalOpen(true);
   };
 
   const handleFoodSelect = async (food: Food) => {
@@ -616,6 +659,8 @@ const FoodDiary = () => {
     
     try {
       await mealService.addMealEntry(user.id, selectedDate, selectedMealType, normalizedEntry);
+      setSuccessMessage('Добавлено в дневник');
+      setErrorMessage(null);
       setIsAddFoodModalOpen(false);
       setSelectedFood(null);
       setSelectedMealType(null);
@@ -1365,6 +1410,11 @@ const FoodDiary = () => {
               </div>
             </div>
           )}
+          {successMessage && !errorMessage && (
+            <div className="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              {successMessage}
+            </div>
+          )}
           {runtimeStatus === 'empty' && !isLoading && (
             <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
               День пока пустой. Добавьте продукты, чтобы начать.
@@ -1664,6 +1714,11 @@ const FoodDiary = () => {
             setShowAddProductModal(false);
             navigate('/nutrition/search', { state: { selectedDate } });
           }}
+          onMyProducts={loadMyProducts}
+          myProducts={myProducts}
+          myProductsStatus={myProductsStatus}
+          myProductsError={myProductsError}
+          onSelectMyProduct={handleMyProductSelect}
           onBrandInput={() => {
             setShowAddProductModal(false);
             navigate('/nutrition/create-brand-product', { state: { selectedDate } });

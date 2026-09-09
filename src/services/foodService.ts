@@ -9,6 +9,7 @@ import {
   normalizeFoodText,
   validateNutrition,
 } from '../utils/foodNormalizer';
+import { filterVisibleUserFoods } from '../utils/myProductsVisibility';
 import { searchAnalyticsService, type FoodSearchAnalyticsContext } from './searchAnalyticsService';
 // TODO: Re-enable Open Food Facts / USDA when stable
 // import { openFoodFactsService } from './openFoodFactsService';
@@ -926,7 +927,7 @@ class FoodService {
         created_by_user_id: sessionUserId,
       }));
       this.saveUserFoods(sessionUserId, userFoods as UserCustomFood[]);
-      return mapped;
+      return userFoods;
     } catch (error) {
       // Продолжаем работу без Supabase
       return [];
@@ -1052,6 +1053,33 @@ class FoodService {
     }
 
     return freshestCandidate ?? food;
+  }
+
+  async getUserFoods(userId: string): Promise<Food[]> {
+    let sessionUserId = userId;
+    try {
+      sessionUserId = await this.getSessionUserId(userId);
+    } catch {
+      sessionUserId = userId;
+    }
+
+    const byId = new Map<string, Food>();
+
+    filterVisibleUserFoods(this.loadUserFoods(sessionUserId), sessionUserId).forEach((food) => {
+      byId.set(food.id, food);
+    });
+
+    const foodsTableExists = await this.checkFoodsTableExists();
+    if (foodsTableExists) {
+      const supabaseFoods = await this.loadUserFoodsFromSupabase(sessionUserId);
+      filterVisibleUserFoods(supabaseFoods, sessionUserId).forEach((food) => {
+        byId.set(food.id, food);
+      });
+    }
+
+    return Array.from(byId.values()).sort((a, b) =>
+      String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || ''))
+    );
   }
 
   // === Пользовательские продукты ===
