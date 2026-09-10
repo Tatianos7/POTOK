@@ -21,8 +21,7 @@ interface AddProductModalProps {
   myProductsStatus?: MyProductsStatus;
   myProductsError?: string | null;
   onSelectMyProduct?: (food: Food, mealType: MealType) => void;
-  onBrandInput?: () => void;
-  onCustomInput?: () => void;
+  onProductInput?: () => void;
   onRecipeAnalyzer?: () => void;
 }
 
@@ -35,14 +34,12 @@ export const buildAddProductModalActions = ({
   onClose,
   onFindProduct,
   onMyProducts,
-  onBrandInput,
-  onCustomInput,
+  onProductInput,
   onRecipeAnalyzer,
 }: AddProductModalProps): AddProductModalAction[] => [
   { label: 'Найти продукт', onClick: onFindProduct || onClose },
   { label: 'Мои продукты', onClick: onMyProducts || onClose },
-  { label: 'Ввод марки продукта', onClick: onBrandInput || onClose },
-  { label: 'Ввод своего продукта', onClick: onCustomInput || onClose },
+  { label: 'Ввод продукта', onClick: onProductInput || onClose },
   { label: 'Анализатор рецепта', onClick: onRecipeAnalyzer || onClose },
 ];
 
@@ -54,8 +51,7 @@ const AddProductModal = ({
   myProductsStatus = 'idle',
   myProductsError,
   onSelectMyProduct,
-  onBrandInput,
-  onCustomInput,
+  onProductInput,
   onRecipeAnalyzer,
 }: AddProductModalProps) => {
   const [view, setView] = useState<'actions' | 'my-products'>('actions');
@@ -70,8 +66,7 @@ const AddProductModal = ({
     onClose,
     onFindProduct,
     onMyProducts: openMyProducts,
-    onBrandInput,
-    onCustomInput,
+    onProductInput,
     onRecipeAnalyzer,
   });
   const handleSelectMyProduct = (food: Food) => {
@@ -124,7 +119,7 @@ const AddProductModal = ({
               setMealTypeError(null);
             }}
             onSelectFood={handleSelectMyProduct}
-            onAddCustomFood={onCustomInput || onClose}
+            onAddCustomFood={onProductInput || onClose}
             onBack={() => setView('actions')}
             onRetry={onMyProducts}
           />

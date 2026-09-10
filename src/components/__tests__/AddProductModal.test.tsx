@@ -24,13 +24,12 @@ function buildFood(overrides: Partial<Food>): Food {
   };
 }
 
-test('add product modal shows new entries above existing unchanged buttons', () => {
+test('add product modal shows unified product input entry with simplified order', () => {
   const html = renderToStaticMarkup(<AddProductModal onClose={() => {}} />);
   const labels = [
     'Найти продукт',
     'Мои продукты',
-    'Ввод марки продукта',
-    'Ввод своего продукта',
+    'Ввод продукта',
     'Анализатор рецепта',
   ];
 
@@ -43,16 +42,17 @@ test('add product modal shows new entries above existing unchanged buttons', () 
     positions,
     [...positions].sort((a, b) => a - b)
   );
+  assert.doesNotMatch(html, /Ввод марки продукта/);
+  assert.doesNotMatch(html, /Ввод своего продукта/);
 });
 
-test('add product modal actions keep existing labels and wire new handlers', () => {
+test('add product modal actions wire unified product input and keep surrounding handlers', () => {
   const calls: string[] = [];
   const actions = buildAddProductModalActions({
     onClose: () => calls.push('close'),
     onFindProduct: () => calls.push('find'),
     onMyProducts: () => calls.push('my-products'),
-    onBrandInput: () => calls.push('brand'),
-    onCustomInput: () => calls.push('custom'),
+    onProductInput: () => calls.push('product'),
     onRecipeAnalyzer: () => calls.push('recipe'),
   });
 
@@ -61,8 +61,7 @@ test('add product modal actions keep existing labels and wire new handlers', () 
     [
       'Найти продукт',
       'Мои продукты',
-      'Ввод марки продукта',
-      'Ввод своего продукта',
+      'Ввод продукта',
       'Анализатор рецепта',
     ]
   );
@@ -71,9 +70,8 @@ test('add product modal actions keep existing labels and wire new handlers', () 
   actions[1].onClick();
   actions[2].onClick();
   actions[3].onClick();
-  actions[4].onClick();
 
-  assert.deepEqual(calls, ['find', 'my-products', 'brand', 'custom', 'recipe']);
+  assert.deepEqual(calls, ['find', 'my-products', 'product', 'recipe']);
 });
 
 test('my products view renders empty state and custom product CTA', () => {

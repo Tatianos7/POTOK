@@ -26,6 +26,7 @@ const CreateCustomProductPage = () => {
   const selectedDate = (location.state as any)?.selectedDate || getTodayDate();
 
   const [name, setName] = useState('');
+  const [brandName, setBrandName] = useState('');
   const [nutritionUnit, setNutritionUnit] = useState<'100g' | '100ml' | '1portion'>('100g');
   const [protein, setProtein] = useState('');
   const [fat, setFat] = useState('');
@@ -76,7 +77,7 @@ const CreateCustomProductPage = () => {
       // 1. Создаём продукт через foodService
       const customFood = await foodService.createCustomFood(user.id, {
         name: name.trim(),
-        brand: null,
+        brand: brandName.trim() || null,
         calories: caloriesValue,
         protein: proteinValue,
         fat: fatValue,
@@ -165,7 +166,7 @@ const CreateCustomProductPage = () => {
       <header className="px-2 sm:px-4 md:px-6 lg:px-8 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <h1 className="text-sm font-semibold text-gray-900 dark:text-white uppercase flex-1 text-center">
-            ДОБАВИТЬ СВОЙ ПРОДУКТ
+            ДОБАВИТЬ ПРОДУКТ
           </h1>
           <button
             onClick={() => navigate(-1)}
@@ -189,6 +190,20 @@ const CreateCustomProductPage = () => {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Введите название продукта"
+            className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
+          />
+        </div>
+
+        {/* Марка / бренд */}
+        <div>
+          <label className="block text-sm font-medium text-gray-900 dark:text-white mb-2">
+            Марка / бренд <span className="text-gray-500 dark:text-gray-400">(необязательно)</span>
+          </label>
+          <input
+            type="text"
+            value={brandName}
+            onChange={(e) => setBrandName(e.target.value)}
+            placeholder="Например: Домашний, Простоквашино"
             className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:focus:ring-gray-100"
           />
         </div>

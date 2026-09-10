@@ -1719,11 +1719,7 @@ const FoodDiary = () => {
           myProductsStatus={myProductsStatus}
           myProductsError={myProductsError}
           onSelectMyProduct={handleMyProductSelect}
-          onBrandInput={() => {
-            setShowAddProductModal(false);
-            navigate('/nutrition/create-brand-product', { state: { selectedDate } });
-          }}
-          onCustomInput={() => {
+          onProductInput={() => {
             setShowAddProductModal(false);
             navigate('/nutrition/create-custom-product', { state: { selectedDate } });
           }}
