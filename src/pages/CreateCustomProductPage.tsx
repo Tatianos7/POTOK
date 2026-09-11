@@ -10,6 +10,32 @@ import { getFoodDisplayName } from '../utils/foodDisplayName';
 import { getInvalidFoodMacroMessage, getInvalidFoodMacroReason } from '../utils/foodNormalizer';
 import { buildDiaryReturnNavigationState } from '../utils/manualFoodFlow';
 
+export const buildCustomProductCreateData = ({
+  name,
+  brandName,
+  calories,
+  protein,
+  fat,
+  carbs,
+}: {
+  name: string;
+  brandName: string;
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+}): Omit<Food, 'id' | 'source' | 'created_by_user_id' | 'createdAt' | 'updatedAt'> => ({
+  name: name.trim(),
+  brand: brandName.trim() || null,
+  calories,
+  protein,
+  fat,
+  carbs,
+  barcode: null,
+  photo: null,
+  category: undefined,
+});
+
 const CreateCustomProductPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -75,17 +101,17 @@ const CreateCustomProductPage = () => {
 
     try {
       // 1. Создаём продукт через foodService
-      const customFood = await foodService.createCustomFood(user.id, {
-        name: name.trim(),
-        brand: brandName.trim() || null,
-        calories: caloriesValue,
-        protein: proteinValue,
-        fat: fatValue,
-        carbs: carbsValue,
-        barcode: null,
-        photo: null,
-        category: undefined, // Категория продукта, не приёма пищи
-      });
+      const customFood = await foodService.createCustomFood(
+        user.id,
+        buildCustomProductCreateData({
+          name,
+          brandName,
+          calories: caloriesValue,
+          protein: proteinValue,
+          fat: fatValue,
+          carbs: carbsValue,
+        })
+      );
 
       // 2. Добавляем в избранное, если опция включена
       if (addToFavorites) {
