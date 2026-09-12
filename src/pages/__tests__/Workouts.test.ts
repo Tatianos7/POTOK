@@ -73,6 +73,19 @@ test('current workout muscle map aggregates primary and secondary muscles', () =
   assert.ok(result.secondaryMuscles.includes('core_muscles'));
 });
 
+test('current workout muscle map ignores soft-deleted entries', () => {
+  const result = buildCurrentWorkoutMuscleMapMuscles([
+    {
+      ...createEntry('standing_barbell_biceps_curl', 'Подъём штанги на бицепс'),
+      deletedAt: '2026-09-12T10:00:00.000Z',
+    },
+    createEntry('standing_barbell_press', 'Жим штанги стоя'),
+  ]);
+
+  assert.equal(result.primaryMuscles.includes('biceps'), false);
+  assert.ok(result.primaryMuscles.includes('front_delts'));
+});
+
 test('current workout muscle map uses custom exercise linked muscles as primary fallback', () => {
   const customEntry = createEntry('custom-leg-curl', 'Свое упражнение');
   customEntry.exercise = {

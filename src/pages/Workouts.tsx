@@ -90,6 +90,10 @@ export function buildCurrentWorkoutMuscleMapMuscles(
   const secondaryCandidates: unknown[] = [];
 
   entries.forEach((entry) => {
+    if (entry.deletedAt) {
+      return;
+    }
+
     const content = getExerciseContentForExercise(entry);
 
     if (content) {

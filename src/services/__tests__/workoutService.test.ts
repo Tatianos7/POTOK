@@ -141,7 +141,7 @@ test.beforeEach(() => {
   installBrowserStubs();
 });
 
-test('single delete really removes workout entry and updates synced state in local-only mode', async (t) => {
+test('single delete soft-deletes workout entry and updates synced active state in local-only mode', async (t) => {
   if (supabase) {
     t.skip('Тест рассчитан на local-only режим без Supabase');
     return;
@@ -161,8 +161,13 @@ test('single delete really removes workout entry and updates synced state in loc
   await workoutService.deleteWorkoutEntry('entry-1', USER_ID, DATE);
 
   const stored = readWorkoutStorage();
-  assert.equal(stored[DATE].length, 1);
-  assert.equal(stored[DATE][0].id, 'entry-2');
+  assert.equal(stored[DATE].length, 2);
+  assert.equal(stored[DATE][0].id, 'entry-1');
+  assert.ok(stored[DATE][0].deletedAt);
+  assert.equal(stored[DATE][0].deletedByUserId, USER_ID);
+  assert.equal(stored[DATE][1].id, 'entry-2');
+  const activeEntries = await workoutService.getWorkoutEntries(USER_ID, DATE);
+  assert.deepEqual(activeEntries.map((entry) => entry.id), ['entry-2']);
   if (!syncedEntries) {
     assert.fail('Ожидали событие workouts-synced');
   }
@@ -171,7 +176,7 @@ test('single delete really removes workout entry and updates synced state in loc
   assert.equal(eventEntries[0].id, 'entry-2');
 });
 
-test('whole day delete removes entries only for selected day in local-only mode', async (t) => {
+test('whole day delete soft-deletes active entries only for selected day in local-only mode', async (t) => {
   if (supabase) {
     t.skip('Тест рассчитан на local-only режим без Supabase');
     return;
@@ -185,20 +190,40 @@ test('whole day delete removes entries only for selected day in local-only mode'
   await workoutService.deleteWorkoutDay(USER_ID, DATE);
 
   const stored = readWorkoutStorage();
-  assert.deepEqual(stored[DATE], []);
+  assert.equal(stored[DATE].length, 2);
+  assert.equal(stored[DATE].every((entry) => Boolean(entry.deletedAt)), true);
+  const activeEntries = await workoutService.getWorkoutEntries(USER_ID, DATE);
+  assert.deepEqual(activeEntries, []);
   assert.equal(stored['2026-03-26'].length, 1);
   assert.equal(stored['2026-03-26'][0].id, 'entry-3');
 });
 
-test('whole day delete uses day-level cascade contract for persisted path', () => {
+test('whole day delete soft-deletes entries and does not physically delete workout day for persisted path', () => {
   const source = readFileSync(resolve(currentDir, '../workoutService.ts'), 'utf8');
   const deleteWorkoutDayStart = source.indexOf('async deleteWorkoutDay');
   const deleteWorkoutDayEnd = source.indexOf('\\n  }\\n\\n}', deleteWorkoutDayStart);
   const deleteWorkoutDaySource = source.slice(deleteWorkoutDayStart, deleteWorkoutDayEnd);
 
   assert.notEqual(deleteWorkoutDayStart, -1);
-  assert.match(deleteWorkoutDaySource, /\.from\('workout_days'\)[\s\S]*\.delete\(\)/);
+  assert.match(deleteWorkoutDaySource, /\.from\('workout_entries'\)[\s\S]*\.update\(\{/);
+  assert.match(deleteWorkoutDaySource, /deleted_at/);
+  assert.match(deleteWorkoutDaySource, /deleted_by_user_id/);
+  assert.doesNotMatch(deleteWorkoutDaySource, /\.from\('workout_days'\)[\s\S]*\.delete\(\)/);
   assert.doesNotMatch(deleteWorkoutDaySource, /\.from\('workout_entries'\)[\s\S]*\.delete\(\)/);
+});
+
+test('single entry delete soft-deletes entry and does not physically delete persisted row', () => {
+  const source = readFileSync(resolve(currentDir, '../workoutService.ts'), 'utf8');
+  const deleteWorkoutEntryStart = source.indexOf('async deleteWorkoutEntry');
+  const deleteWorkoutEntryEnd = source.indexOf('\n\n  async deleteWorkoutDay', deleteWorkoutEntryStart);
+  const deleteWorkoutEntrySource = source.slice(deleteWorkoutEntryStart, deleteWorkoutEntryEnd);
+
+  assert.notEqual(deleteWorkoutEntryStart, -1);
+  assert.match(deleteWorkoutEntrySource, /\.from\('workout_entries'\)[\s\S]*\.update\(\{/);
+  assert.match(deleteWorkoutEntrySource, /deleted_at/);
+  assert.match(deleteWorkoutEntrySource, /deleted_by_user_id: sessionUserId/);
+  assert.match(deleteWorkoutEntrySource, /\.is\('deleted_at', null\)/);
+  assert.doesNotMatch(deleteWorkoutEntrySource, /\.from\('workout_entries'\)[\s\S]*\.delete\(\)/);
 });
 
 test('edit updates only workout entry and preserves exercise definition in local-only mode', async (t) => {
@@ -589,6 +614,43 @@ test('getWorkoutProgressObservations returns persisted observation rows for peri
   assert.equal(observations[1].date, '2026-03-21');
 });
 
+test('getWorkoutProgressObservations excludes soft-deleted rows from progress mapping', () => {
+  const observations = buildWorkoutProgressObservations(
+    [
+      {
+        id: 'entry-active',
+        workout_day_id: 'day-1',
+        created_at: '2026-03-20T08:00:00.000Z',
+        exercise_id: 'exercise-bench',
+        sets: 3,
+        reps: 10,
+        weight: 70,
+        exercise: {
+          id: 'exercise-bench',
+          name: 'Жим лежа',
+        },
+      },
+      {
+        id: 'entry-deleted',
+        workout_day_id: 'day-1',
+        created_at: '2026-03-20T08:05:00.000Z',
+        deleted_at: '2026-09-12T10:00:00.000Z',
+        exercise_id: 'exercise-squat',
+        sets: 5,
+        reps: 5,
+        weight: 100,
+        exercise: {
+          id: 'exercise-squat',
+          name: 'Присед',
+        },
+      },
+    ],
+    new Map([['day-1', '2026-03-20']]),
+  );
+
+  assert.deepEqual(observations.map((entry) => entry.entryId), ['entry-active']);
+});
+
 test('getWorkoutProgressObservations preserves repeated entries for same exercise on same day', () => {
   const observations = buildWorkoutProgressObservations(
     [
@@ -726,6 +788,40 @@ test('repeat copy creates new workout entries on target date', async (t) => {
   assert.equal(copied[0].reps, 8);
   assert.equal(copied[0].weight, 70);
   assert.match(copied[0].idempotencyKey ?? '', /^repeat:/);
+});
+
+test('repeat copy ignores soft-deleted source entries in local-only mode', async (t) => {
+  if (supabase) {
+    t.skip('Тест рассчитан на local-only режим без Supabase');
+    return;
+  }
+
+  const sourceDate = '2026-03-20';
+  const targetDate = '2026-03-25';
+  seedWorkoutStorage({
+    [sourceDate]: [
+      {
+        ...createEntry('source-deleted', 'Жим', {
+          workout_day_id: `day-${sourceDate}`,
+          exercise_id: 'exercise-bench',
+        }),
+        deletedAt: '2026-09-12T10:00:00.000Z',
+      },
+    ],
+    [targetDate]: [],
+  });
+
+  await assert.rejects(
+    () => workoutService.copyWorkoutEntriesToDate(
+      USER_ID,
+      sourceDate,
+      targetDate,
+      ['exercise-bench'],
+    ),
+    /Не удалось найти выбранные упражнения/,
+  );
+
+  assert.deepEqual(readWorkoutStorage()[targetDate], []);
 });
 
 test('repeat copy hard-blocks archived custom exercise before target write', async (t) => {
@@ -877,6 +973,30 @@ test('repeat copy service does not copy user exercise media rows', () => {
   assert.notEqual(repeatStart, -1);
   assert.doesNotMatch(repeatSource, /user_exercise_media/);
   assert.doesNotMatch(repeatSource, /userExerciseMediaService/);
+});
+
+test('workout persisted read paths filter active entries by deleted_at', () => {
+  const source = readFileSync(resolve(currentDir, '../workoutService.ts'), 'utf8');
+
+  const historyStart = source.indexOf('async getWorkoutHistoryDays');
+  const progressStart = source.indexOf('async getWorkoutProgressObservations');
+  const detailsStart = source.indexOf('async getWorkoutProgressEntryDetails');
+  const entriesStart = source.indexOf('private async getWorkoutEntriesFromSupabase');
+  const addStart = source.indexOf('\\n  /**\\n   * Добавить упражнения', entriesStart);
+
+  assert.notEqual(historyStart, -1);
+  assert.notEqual(progressStart, -1);
+  assert.notEqual(detailsStart, -1);
+  assert.notEqual(entriesStart, -1);
+
+  const historySource = source.slice(historyStart, progressStart);
+  const progressSource = source.slice(progressStart, detailsStart);
+  const detailsSource = source.slice(detailsStart, entriesStart);
+  const entriesSource = source.slice(entriesStart, addStart);
+
+  [historySource, progressSource, detailsSource, entriesSource].forEach((section) => {
+    assert.match(section, /\.is\('deleted_at', null\)/);
+  });
 });
 
 test('returns workout history day summaries for date range', () => {

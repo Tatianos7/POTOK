@@ -138,6 +138,8 @@ export interface WorkoutEntry {
   displayUnit?: string; // отображаемая единица (например, кг)
   displayAmount?: number; // отображаемое значение веса
   idempotencyKey?: string; // ключ для dedup/upsert
+  deletedAt?: string | null;
+  deletedByUserId?: string | null;
   created_at?: string;
   updated_at?: string;
   exercise?: Exercise;

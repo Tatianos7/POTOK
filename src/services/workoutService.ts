@@ -16,7 +16,7 @@ import { userStateService } from './userStateService';
 import { convertWeightToKg } from '../utils/workoutUnits';
 import { aggregateWorkoutEntries, calculateVolume } from '../utils/workoutMetrics';
 import { coachRuntime } from './coachRuntime';
-import { clearWorkoutEntriesForDay, removeWorkoutEntryFromList, updateWorkoutEntryInList } from '../utils/workoutDiaryMutations';
+import { updateWorkoutEntryInList } from '../utils/workoutDiaryMutations';
 import {
   getWorkoutMetricUnit,
   normalizeWorkoutMetricType,
@@ -52,6 +52,7 @@ type WorkoutProgressObservationRow = {
   workout_day_id?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+  deleted_at?: string | null;
   exercise_id?: string | null;
   exercise_name_snapshot?: string | null;
   metric_type?: WorkoutMetricType | null;
@@ -430,6 +431,10 @@ export function buildWorkoutProgressObservations(
   const observations: WorkoutProgressObservation[] = [];
 
   rows.forEach((row) => {
+    if (row.deleted_at) {
+      return;
+    }
+
     const exerciseId = String(row.exercise?.id ?? row.exercise_id ?? '').trim();
     const exerciseName = String(row.exercise_name_snapshot ?? row.exercise?.name ?? 'Unknown').trim() || 'Unknown';
     const canonicalExerciseId = '';
@@ -478,6 +483,32 @@ class WorkoutService {
   private schemaWarned = false;
   private metricTypeSchemaAvailable: boolean | null = null;
   private metricTypeFallbackWarned = false;
+
+  private isSoftDeletedWorkoutEntry(entry: Pick<WorkoutEntry, 'deletedAt'> & { deleted_at?: string | null }): boolean {
+    return Boolean(entry.deletedAt ?? entry.deleted_at ?? null);
+  }
+
+  private filterActiveWorkoutEntries(entries: WorkoutEntry[]): WorkoutEntry[] {
+    return entries.filter((entry) => !this.isSoftDeletedWorkoutEntry(entry));
+  }
+
+  private markLocalWorkoutEntryDeleted(entries: WorkoutEntry[], entryId: string, userId?: string): WorkoutEntry[] {
+    const deletedAt = new Date().toISOString();
+    return entries.map((entry) =>
+      entry.id === entryId && !this.isSoftDeletedWorkoutEntry(entry)
+        ? { ...entry, deletedAt, deletedByUserId: userId ?? null, updated_at: deletedAt }
+        : entry,
+    );
+  }
+
+  private markLocalWorkoutEntriesDeletedForDay(entries: WorkoutEntry[], userId?: string): WorkoutEntry[] {
+    const deletedAt = new Date().toISOString();
+    return entries.map((entry) =>
+      this.isSoftDeletedWorkoutEntry(entry)
+        ? entry
+        : { ...entry, deletedAt, deletedByUserId: userId ?? null, updated_at: deletedAt },
+    );
+  }
 
   private warnMetricTypeSchemaFallback() {
     if (this.metricTypeFallbackWarned) return;
@@ -690,14 +721,17 @@ class WorkoutService {
     try {
       const stored = localStorage.getItem(`${this.WORKOUTS_STORAGE_KEY}_${userId}`);
       const allEntries: Record<string, WorkoutEntry[]> = stored ? JSON.parse(stored) : {};
-      allEntries[date] = entries;
+      const incomingIds = new Set(entries.map((entry) => entry.id));
+      const preservedDeletedEntries = (allEntries[date] || [])
+        .filter((entry) => this.isSoftDeletedWorkoutEntry(entry) && !incomingIds.has(entry.id));
+      allEntries[date] = [...preservedDeletedEntries, ...entries];
       localStorage.setItem(`${this.WORKOUTS_STORAGE_KEY}_${userId}`, JSON.stringify(allEntries));
     } catch (error) {
       console.error('[workoutService] Error saving workouts to localStorage:', error);
     }
   }
 
-  private getWorkoutsFromLocalStorage(userId: string, date: string): WorkoutEntry[] | null {
+  private getAllWorkoutsFromLocalStorage(userId: string, date: string): WorkoutEntry[] | null {
     try {
       const stored = localStorage.getItem(`${this.WORKOUTS_STORAGE_KEY}_${userId}`);
       if (!stored) return null;
@@ -709,6 +743,11 @@ class WorkoutService {
     }
   }
 
+  private getWorkoutsFromLocalStorage(userId: string, date: string): WorkoutEntry[] | null {
+    const entries = this.getAllWorkoutsFromLocalStorage(userId, date);
+    return entries ? this.filterActiveWorkoutEntries(entries) : null;
+  }
+
   private emitWorkoutsSynced(date: string, entries: WorkoutEntry[]): void {
     try {
       window.dispatchEvent(new CustomEvent('workouts-synced', { detail: { date, entries } }));
@@ -718,11 +757,12 @@ class WorkoutService {
   }
 
   private updateLocalWorkoutEntries(userId: string, date: string, updater: (entries: WorkoutEntry[]) => WorkoutEntry[]): WorkoutEntry[] {
-    const current = this.getWorkoutsFromLocalStorage(userId, date) || [];
+    const current = this.getAllWorkoutsFromLocalStorage(userId, date) || [];
     const next = updater(current);
     this.saveWorkoutsToLocalStorage(userId, date, next);
-    this.emitWorkoutsSynced(date, next);
-    return next;
+    const activeEntries = this.filterActiveWorkoutEntries(next);
+    this.emitWorkoutsSynced(date, activeEntries);
+    return activeEntries;
   }
 
   private mapWorkoutEntryRow(entry: any): WorkoutEntry {
@@ -781,6 +821,8 @@ class WorkoutService {
       displayUnit: metricUnit,
       displayAmount: normalizeWorkoutMetricValue(metricType, Number(entry.display_amount ?? entry.weight ?? 0)),
       idempotencyKey: entry.idempotency_key ?? undefined,
+      deletedAt: entry.deleted_at ?? null,
+      deletedByUserId: entry.deleted_by_user_id ?? null,
       created_at: entry.created_at,
       updated_at: entry.updated_at,
       exercise: liveExercise || exerciseName
@@ -1038,7 +1080,8 @@ class WorkoutService {
     const { data: entryRows, error: entriesError } = await supabase
       .from('workout_entries')
       .select('workout_day_id, exercise_id, sets, reps, weight')
-      .in('workout_day_id', dayIds);
+      .in('workout_day_id', dayIds)
+      .is('deleted_at', null);
 
     if (entriesError) {
       if (entriesError.code !== 'PGRST205') {
@@ -1110,6 +1153,7 @@ class WorkoutService {
         .from('workout_entries')
         .select(getWorkoutProgressObservationsSelectClause(metricSchemaAvailable))
         .in('workout_day_id', dayIds)
+        .is('deleted_at', null)
         .order('created_at', { ascending: true });
 
     const usesLegacyRead = this.getCachedMetricTypeSchemaCapability() === false;
@@ -1177,6 +1221,7 @@ class WorkoutService {
         .from('workout_entries')
         .select(getWorkoutProgressEntryDetailsSelectClause(metricSchemaAvailable))
         .in('workout_day_id', dayIds)
+        .is('deleted_at', null)
         .order('created_at', { ascending: true });
 
     const usesLegacyRead = this.getCachedMetricTypeSchemaCapability() === false;
@@ -1246,6 +1291,7 @@ class WorkoutService {
         workout_day:workout_days(*)
       `)
       .eq('workout_day_id', workoutDay.id)
+      .is('deleted_at', null)
       .order('created_at', { ascending: true });
 
     if (error) {
@@ -1829,7 +1875,7 @@ class WorkoutService {
   async deleteWorkoutEntry(entryId: string, userId?: string, date?: string): Promise<void> {
     if (!supabase) {
       if (userId && date) {
-        this.updateLocalWorkoutEntries(userId, date, (entries) => removeWorkoutEntryFromList(entries, entryId));
+        this.updateLocalWorkoutEntries(userId, date, (entries) => this.markLocalWorkoutEntryDeleted(entries, entryId, userId));
         return;
       }
       throw new Error('Supabase не инициализирован. Проверьте переменные окружения VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY');
@@ -1840,16 +1886,21 @@ class WorkoutService {
       sessionUserId = await this.getSessionUserId(userId);
     } catch (error) {
       if (userId && date) {
-        this.updateLocalWorkoutEntries(userId, date, (entries) => removeWorkoutEntryFromList(entries, entryId));
+        this.updateLocalWorkoutEntries(userId, date, (entries) => this.markLocalWorkoutEntryDeleted(entries, entryId, userId));
         return;
       }
       throw error;
     }
 
+    const deletedAt = new Date().toISOString();
     const { data, error } = await supabase
       .from('workout_entries')
-      .delete()
+      .update({
+        deleted_at: deletedAt,
+        deleted_by_user_id: sessionUserId,
+      })
       .eq('id', entryId)
+      .is('deleted_at', null)
       .select('workout_day_id, workout_day:workout_days(date)')
       .single();
 
@@ -1869,7 +1920,7 @@ class WorkoutService {
       ? workoutDayData?.[0]?.date
       : workoutDayData?.date;
     if (sessionUserId && workoutDate) {
-      this.updateLocalWorkoutEntries(sessionUserId, workoutDate, (entries) => removeWorkoutEntryFromList(entries, entryId));
+      this.updateLocalWorkoutEntries(sessionUserId, workoutDate, (entries) => this.markLocalWorkoutEntryDeleted(entries, entryId, sessionUserId));
     }
     if (workoutDate) {
       try {
@@ -1882,7 +1933,7 @@ class WorkoutService {
 
   async deleteWorkoutDay(userId: string, date: string): Promise<void> {
     if (!supabase) {
-      this.updateLocalWorkoutEntries(userId, date, () => clearWorkoutEntriesForDay());
+      this.updateLocalWorkoutEntries(userId, date, (entries) => this.markLocalWorkoutEntriesDeletedForDay(entries, userId));
       return;
     }
 
@@ -1890,7 +1941,7 @@ class WorkoutService {
     try {
       sessionUserId = await this.getSessionUserId(userId);
     } catch (error) {
-      this.updateLocalWorkoutEntries(userId, date, () => clearWorkoutEntriesForDay());
+      this.updateLocalWorkoutEntries(userId, date, (entries) => this.markLocalWorkoutEntriesDeletedForDay(entries, userId));
       return;
     }
 
@@ -1911,25 +1962,30 @@ class WorkoutService {
     }
 
     if (!workoutDay?.id) {
-      this.updateLocalWorkoutEntries(sessionUserId, date, () => clearWorkoutEntriesForDay());
+      this.updateLocalWorkoutEntries(sessionUserId, date, (entries) => this.markLocalWorkoutEntriesDeletedForDay(entries, sessionUserId));
       return;
     }
 
+    const deletedAt = new Date().toISOString();
     const { error: workoutDayDeleteError } = await supabase
-      .from('workout_days')
-      .delete()
-      .eq('id', workoutDay.id);
+      .from('workout_entries')
+      .update({
+        deleted_at: deletedAt,
+        deleted_by_user_id: sessionUserId,
+      })
+      .eq('workout_day_id', workoutDay.id)
+      .is('deleted_at', null);
 
     if (workoutDayDeleteError) {
       const errorMessage = workoutDayDeleteError.message || 'Ошибка удаления тренировки';
-      console.error('[workoutService] Error deleting workout day container:', workoutDayDeleteError);
+      console.error('[workoutService] Error soft-deleting workout day entries:', workoutDayDeleteError);
       if (workoutDayDeleteError.code === '42501' || errorMessage.includes('row-level security')) {
         throw new Error('Ошибка доступа: обновите RLS политики в Supabase SQL Editor. Выполните команды из файла supabase/workout_schema.sql (строки 135-145)');
       }
       throw new Error(errorMessage);
     }
 
-    this.updateLocalWorkoutEntries(sessionUserId, date, () => clearWorkoutEntriesForDay());
+    this.updateLocalWorkoutEntries(sessionUserId, date, (entries) => this.markLocalWorkoutEntriesDeletedForDay(entries, sessionUserId));
 
     try {
       await aiTrainingPlansService.markTrainingPlanOutdated(sessionUserId, date);
