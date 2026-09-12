@@ -26,3 +26,7 @@ test('repeat button is hidden when selected date has no workout', () => {
   assert.equal(shouldShowWorkoutHistoryRepeatButton(0, false), false);
   assert.equal(shouldShowWorkoutHistoryRepeatButton(2, true), false);
 });
+
+test('repeat button stays hidden while loading even if stale entries are present', () => {
+  assert.equal(shouldShowWorkoutHistoryRepeatButton(5, true), false);
+});

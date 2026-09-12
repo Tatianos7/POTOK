@@ -89,6 +89,27 @@ test('repeat options mark archived custom exercises as disabled', () => {
   assert.match(options[0].disabledReason ?? '', /Архивное пользовательское упражнение: Подъем ног тест/);
 });
 
+test('repeat options dedupe repeated same-exercise rows without losing archived restore reason', () => {
+  const options = buildRepeatWorkoutOptions([
+    entries[0],
+    {
+      ...entries[0],
+      id: 'entry-archived-repeat',
+      exercise: {
+        id: 'exercise-1',
+        name: 'Жим лёжа',
+        category_id: 'chest',
+        is_custom: true,
+        archived_at: '2026-07-29T10:00:00Z',
+      },
+    },
+  ]);
+
+  assert.equal(options.length, 1);
+  assert.equal(options[0].exerciseId, 'exercise-1');
+  assert.match(options[0].disabledReason ?? '', /Архивное пользовательское упражнение: Жим лёжа/);
+});
+
 test('repeat modal allows selecting target date via default date contract', () => {
   assert.equal(getDefaultRepeatTargetDate(new Date('2026-03-31T12:00:00.000Z')), '2026-03-31');
 });
@@ -115,4 +136,17 @@ test('confirm calls copyWorkoutEntriesToDate with expected sourceDate targetDate
     },
   ]);
   assert.equal(result.selectedDate, '2026-04-01');
+});
+
+test('repeat flow returns user-facing success message for navigation target date', async () => {
+  const result = await runRepeatWorkoutCopy({
+    copyWorkoutEntriesToDate: async () => {},
+    userId: 'user-1',
+    sourceDate: '2026-03-20',
+    targetDate: '2026-04-02',
+    exerciseIds: ['exercise-1', 'exercise-2'],
+  });
+
+  assert.equal(result.selectedDate, '2026-04-02');
+  assert.equal(result.successMessage, 'Упражнения добавлены в тренировку на 2026-04-02');
 });
