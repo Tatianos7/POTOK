@@ -5,9 +5,11 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpFromLine,
+  Camera,
   ChevronDown,
   ChevronUp,
   CircleDot,
+  Image as ImageIcon,
   Play,
   Shield,
   Trash2,
@@ -338,44 +340,50 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
       />
       <div className="fixed inset-0 z-[90] flex items-center justify-center p-2 min-[376px]:p-4">
         <div
-          className={`flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl transition-all duration-200 ease-out dark:bg-gray-900 ${
+          className={`flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl transition-all duration-200 ease-out dark:bg-gray-900 ${
             isVisible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-2 scale-[0.985] opacity-0'
           }`}
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4 dark:border-gray-700">
+          <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/60 px-4 py-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
             <div className="w-10" />
-            <h2 className="whitespace-nowrap text-[13px] font-semibold uppercase tracking-[0.05em] text-gray-900 dark:text-white">
+            <h2 className="whitespace-nowrap text-[13px] font-semibold uppercase tracking-[0.08em] text-emerald-950 dark:text-emerald-100">
               Карточка тренировки
             </h2>
             <button
               onClick={onClose}
-              className="rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-lg p-2 transition-colors hover:bg-white/70 dark:hover:bg-emerald-900/40"
               aria-label="Закрыть карточку тренировки"
             >
-              <X className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+              <X className="h-5 w-5 text-emerald-900 dark:text-emerald-100" />
             </button>
           </div>
 
-          <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
-            <section className="space-y-2">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <div className="flex-1 space-y-4 overflow-y-auto bg-white px-5 py-5 dark:bg-gray-900">
+            <section className="space-y-2 rounded-xl border border-emerald-100 bg-emerald-50/45 px-4 py-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">
+                Workout Fact
+              </div>
+              <h3 className="text-xl font-semibold leading-6 text-emerald-950 dark:text-white">
                 {exercise?.name || 'Упражнение'}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="inline-flex rounded-lg bg-white/80 px-3 py-1.5 text-sm font-medium text-emerald-900 shadow-sm dark:bg-gray-900/70 dark:text-emerald-100">
                 {renderEntry.sets} × {renderEntry.reps} × {formatWorkoutMetricValue(renderEntry.displayAmount ?? renderEntry.weight, normalizeWorkoutMetricType(renderEntry.metricType), renderEntry.metricUnit ?? renderEntry.displayUnit)}
               </p>
             </section>
 
             {shouldRenderMyWorkoutSection ? (
-            <section className="space-y-3 border-t border-gray-100 pt-5 dark:border-gray-800">
-              <div className="text-sm font-semibold uppercase text-gray-900 dark:text-white">Моя тренировка</div>
+            <section className="space-y-3 rounded-xl border border-emerald-100 bg-white px-4 py-4 shadow-sm dark:border-emerald-900/40 dark:bg-gray-900">
+              <div className={`${SECTION_HEADING_ROW_CLASS} text-sm font-semibold uppercase text-emerald-950 dark:text-emerald-100`}>
+                <Camera className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
+                <span>Моя тренировка</span>
+              </div>
               {!isUserCreatedExercise ? (
                 <>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full rounded-[18px] border border-green-200 bg-green-50/80 px-4 py-3 text-sm font-semibold uppercase text-green-900 transition-colors hover:bg-green-100 dark:border-green-900/40 dark:bg-green-950/30 dark:text-green-100"
+                    className="w-full rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm font-semibold uppercase text-emerald-900 transition-colors hover:bg-emerald-100 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-100"
                   >
                     Загрузить фото/видео
                   </button>
@@ -401,7 +409,7 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
               ) : null}
 
               {isLoadingPersisted ? (
-                <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-8 text-center text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200">
                   Загрузка медиа...
                 </div>
               ) : null}
@@ -447,8 +455,11 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
               )))}
 
               {!isLoadingPersisted && persistedItems.length === 0 && draftItems.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-                  Фото и видео для этого упражнения ещё не добавлены.
+                <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-8 text-center text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-emerald-700 shadow-sm dark:bg-gray-900 dark:text-emerald-300">
+                    <Camera className="h-5 w-5" />
+                  </span>
+                  <span>Фото и видео для этого упражнения ещё не добавлены.</span>
                 </div>
               ) : null}
 
@@ -465,48 +476,57 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
             ) : null}
 
             {shouldRenderExerciseDetailsSection ? (
-            <section className="space-y-5 border-t border-gray-100 pt-5 dark:border-gray-800">
+            <section className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-4 dark:border-gray-800 dark:bg-gray-900">
               {referenceImageUrl ? (
-                <img
-                  src={referenceImageUrl}
-                  onError={(e) => {
-                    if (import.meta.env.DEV) {
-                      console.warn('image failed', referenceImageUrl);
-                    }
-                    e.currentTarget.style.display = 'none';
-                  }}
-                  alt={exercise?.name || techniqueContent?.exercise_name || 'Изображение упражнения'}
-                  className="w-full rounded-[12px] object-contain"
-                />
+                <div className="overflow-hidden rounded-xl border border-white bg-white shadow-sm dark:border-gray-800 dark:bg-gray-950">
+                  <img
+                    src={referenceImageUrl}
+                    onError={(e) => {
+                      if (import.meta.env.DEV) {
+                        console.warn('image failed', referenceImageUrl);
+                      }
+                      e.currentTarget.style.display = 'none';
+                    }}
+                    alt={exercise?.name || techniqueContent?.exercise_name || 'Изображение упражнения'}
+                    className="w-full object-contain"
+                  />
+                </div>
+              ) : !isUserCreatedExercise ? (
+                <div className="flex items-center gap-3 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-4 text-sm leading-5 text-slate-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <ImageIcon className="h-4 w-4" />
+                  </span>
+                  <span>Изображение техники пока не добавлено.</span>
+                </div>
               ) : null}
 
               {shouldRenderPrimaryMuscles ? (
-              <div className="space-y-2 rounded-2xl bg-gray-50/70 px-4 py-3 dark:bg-gray-800/40">
-                <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+              <div className="space-y-2 rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 dark:border-amber-900/30 dark:bg-amber-950/20">
+                <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-amber-950 dark:text-amber-100`}>
                   <Activity className={`${SECTION_ICON_CLASS} ${ICON_COLORS.primary}`} />
                   <span>Основные работающие мышцы</span>
                 </div>
-                <p className="text-sm leading-6 text-gray-700 dark:text-gray-200">
+                <p className="text-sm leading-6 text-amber-900 dark:text-amber-100">
                   {primaryMuscles.length > 0 ? primaryMuscles.map(getMuscleLabel).join(', ') : 'Не указаны'}
                 </p>
               </div>
               ) : null}
 
               {shouldRenderSecondaryMuscles ? (
-              <div className="space-y-2 rounded-2xl bg-gray-50/70 px-4 py-3 dark:bg-gray-800/40">
-                <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+              <div className="space-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-950">
+                <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-slate-800 dark:text-gray-200`}>
                   <CircleDot className={`${SECTION_ICON_CLASS} ${ICON_COLORS.secondary}`} />
                   <span>Второстепенные мышцы</span>
                 </div>
-                <p className="text-sm leading-6 text-gray-700 dark:text-gray-200">
+                <p className="text-sm leading-6 text-slate-700 dark:text-gray-200">
                     {secondaryMuscles.length > 0 ? secondaryMuscles.map(getMuscleLabel).join(', ') : 'Не указаны'}
                 </p>
               </div>
               ) : null}
 
               {shouldRenderMuscleMap ? (
-              <div className="space-y-3 rounded-2xl bg-gray-50/70 px-4 py-4 dark:bg-gray-800/40">
-                <div className="text-xs font-bold uppercase text-gray-700 dark:text-gray-300">
+              <div className="space-y-3 rounded-xl border border-emerald-100 bg-white px-4 py-4 shadow-sm dark:border-emerald-900/40 dark:bg-gray-950">
+                <div className="text-xs font-bold uppercase text-emerald-950 dark:text-emerald-100">
                   Карта мышц
                 </div>
                 <MuscleMap
@@ -518,14 +538,14 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
               ) : null}
 
               {shouldRenderTechniqueBlock ? (
-              <>
+              <div className="space-y-4 rounded-xl border border-violet-100 bg-violet-50/40 px-4 py-4 dark:border-violet-900/30 dark:bg-violet-950/10">
               <button
                 type="button"
                 onClick={() => setIsTechniqueExpanded((current) => !current)}
                 className="flex w-full items-center justify-between text-left"
                 aria-expanded={isTechniqueExpanded}
               >
-                <div className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-gray-900 dark:text-white`}>
+                <div className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-violet-950 dark:text-violet-100`}>
                   <Activity className={`${SECTION_ICON_CLASS} ${ICON_COLORS.technique}`} />
                   <span>Техника</span>
                 </div>
@@ -544,8 +564,8 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                     {hasStructuredTechniqueText ? (
                       <>
                         {techniqueSections.map((section) => (
-                          <div key={section.label} className="space-y-2 border-t border-gray-100 pt-4 first:border-t-0 first:pt-0 dark:border-gray-800">
-                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+                          <div key={section.label} className="space-y-2 rounded-lg bg-white/80 px-3 py-3 shadow-sm dark:bg-gray-950/80">
+                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-violet-900 dark:text-violet-100`}>
                               {section.label === 'Исходное положение' ? <ArrowUpFromLine className={`${SECTION_ICON_CLASS} ${ICON_COLORS.start}`} /> : null}
                               {section.label === 'Выполнение' ? <Play className={`${SECTION_ICON_CLASS} ${ICON_COLORS.execution}`} /> : null}
                               {section.label === 'Верхняя точка' ? <ArrowUp className={`${SECTION_ICON_CLASS} ${ICON_COLORS.top}`} /> : null}
@@ -562,8 +582,8 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                         ))}
 
                         {techniqueMistakes.length > 0 ? (
-                          <div className="space-y-2 border-t border-gray-100 pt-4 dark:border-gray-800">
-                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+                          <div className="space-y-2 rounded-lg border border-red-100 bg-white px-3 py-3 shadow-sm dark:border-red-900/30 dark:bg-gray-950">
+                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-red-900 dark:text-red-100`}>
                               <AlertTriangle className={`${SECTION_ICON_CLASS} ${ICON_COLORS.mistakes}`} />
                               <span>Ошибки</span>
                             </div>
@@ -578,8 +598,8 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                     ) : (
                       <>
                         {exerciseDescription || !isUserCreatedExercise ? (
-                          <div className="space-y-2">
-                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+                          <div className="space-y-2 rounded-lg bg-white/80 px-3 py-3 shadow-sm dark:bg-gray-950/80">
+                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-violet-900 dark:text-violet-100`}>
                               <Activity className={`${SECTION_ICON_CLASS} ${ICON_COLORS.technique}`} />
                               <span>{isUserCreatedExercise ? 'Описание упражнения' : 'Описание техники'}</span>
                             </div>
@@ -590,8 +610,8 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                         ) : null}
 
                         {exerciseMistakesText ? (
-                          <div className="space-y-2 border-t border-gray-100 pt-4 dark:border-gray-800">
-                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700 dark:text-gray-300`}>
+                          <div className="space-y-2 rounded-lg border border-red-100 bg-white px-3 py-3 shadow-sm dark:border-red-900/30 dark:bg-gray-950">
+                            <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-red-900 dark:text-red-100`}>
                               <AlertTriangle className={`${SECTION_ICON_CLASS} ${ICON_COLORS.mistakes}`} />
                               <span>Рекомендации и ошибки</span>
                             </div>
@@ -605,14 +625,14 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                   </div>
                 </div>
               </div>
-              </>
+              </div>
               ) : null}
             </section>
             ) : null}
           </div>
 
           {!isUserCreatedExercise || hasDraftMedia ? (
-          <div className="border-t border-gray-200 px-5 py-4 dark:border-gray-700">
+          <div className="border-t border-emerald-100 bg-white px-5 py-4 dark:border-emerald-900/40 dark:bg-gray-900">
             <button
               type="button"
               disabled={!hasDraftMedia || isSavingPersisted}
@@ -644,7 +664,7 @@ const WorkoutExerciseCardSheet = ({ isOpen, entry, onClose }: WorkoutExerciseCar
                     setIsSavingPersisted(false);
                   });
               }}
-              className="w-full rounded-[18px] border-2 border-gray-900 px-4 py-3 text-sm font-semibold uppercase text-gray-900 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400 dark:border-white dark:text-white dark:hover:bg-gray-800 dark:disabled:border-gray-700 dark:disabled:text-gray-500"
+              className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold uppercase text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-500"
             >
               {isSavingPersisted ? 'Сохранение...' : 'Сохранить'}
             </button>

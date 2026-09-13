@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronUp,
   CircleDot,
+  Image as ImageIcon,
   Play,
   Shield,
   Wind,
@@ -161,58 +162,71 @@ const ExerciseDefinitionSheet = ({
       />
       <div className="fixed inset-0 z-[80] flex items-center justify-center p-2 min-[376px]:p-4">
         <div
-          className={`flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[28px] bg-white shadow-2xl transition-all duration-200 ease-out ${
+          className={`flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl transition-all duration-200 ease-out ${
             isVisible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-2 scale-[0.985] opacity-0'
           }`}
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4">
+          <div className="flex items-center justify-between border-b border-emerald-100 bg-emerald-50/60 px-4 py-4">
             <div className="w-10" />
-            <h2 className="whitespace-nowrap text-[13px] font-semibold uppercase tracking-[0.05em] text-gray-900">
+            <h2 className="whitespace-nowrap text-[13px] font-semibold uppercase tracking-[0.08em] text-emerald-950">
               Карточка упражнения
             </h2>
             <button
               onClick={onClose}
-              className="rounded-lg p-2 transition-colors hover:bg-gray-100"
+              className="rounded-lg p-2 transition-colors hover:bg-white/70"
               aria-label="Закрыть карточку упражнения"
             >
-              <X className="h-5 w-5 text-gray-700" />
+              <X className="h-5 w-5 text-emerald-900" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 py-5">
+          <div className="flex-1 overflow-y-auto bg-white px-5 py-5">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-green-500" />
               </div>
             ) : renderExercise ? (
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900">{renderExercise.name}</h3>
+              <div className="space-y-4">
+                <section className="space-y-4 rounded-xl border border-emerald-100 bg-emerald-50/45 px-4 py-4">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700">
+                      Exercise Card
+                    </div>
+                    <h3 className="mt-1 text-xl font-semibold leading-6 text-emerald-950">{renderExercise.name}</h3>
+                  </div>
 
                   {referenceImageUrl ? (
-                    <img
-                      src={referenceImageUrl}
-                      alt={renderExercise.name}
-                      onError={(event) => {
-                        if (import.meta.env.DEV) {
-                          console.warn('image failed', referenceImageUrl);
-                        }
-                        event.currentTarget.style.display = 'none';
-                      }}
-                      className="w-full rounded-[12px] object-contain"
-                    />
+                    <div className="overflow-hidden rounded-xl border border-white bg-white shadow-sm">
+                      <img
+                        src={referenceImageUrl}
+                        alt={renderExercise.name}
+                        onError={(event) => {
+                          if (import.meta.env.DEV) {
+                            console.warn('image failed', referenceImageUrl);
+                          }
+                          event.currentTarget.style.display = 'none';
+                        }}
+                        className="w-full object-contain"
+                      />
+                    </div>
+                  ) : !isUserCreatedExercise ? (
+                    <div className="flex items-center gap-3 rounded-xl border border-dashed border-emerald-200 bg-white/75 px-4 py-4 text-sm leading-5 text-emerald-800">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+                        <ImageIcon className="h-4 w-4" />
+                      </span>
+                      <span>Изображение техники пока не добавлено.</span>
+                    </div>
                   ) : null}
-
-                </div>
+                </section>
 
                 {shouldRenderPrimaryMuscles ? (
-                  <section className="space-y-2 rounded-2xl bg-gray-50/70 px-4 py-3">
-                    <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-gray-900`}>
+                  <section className="space-y-2 rounded-xl border border-amber-100 bg-amber-50/60 px-4 py-3">
+                    <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-amber-950`}>
                       <Activity className={`${SECTION_ICON_CLASS} ${ICON_COLORS.primary}`} />
                       <span>Основные мышцы</span>
                     </h4>
-                    <p className="text-sm leading-6 text-gray-700">
+                    <p className="text-sm leading-6 text-amber-900">
                       {primaryMuscles.length > 0
                         ? primaryMuscles.map(getMuscleLabel).join(', ')
                         : 'Не указаны'}
@@ -221,12 +235,12 @@ const ExerciseDefinitionSheet = ({
                 ) : null}
 
                 {shouldRenderSecondaryMuscles ? (
-                  <section className="space-y-2 rounded-2xl bg-gray-50/70 px-4 py-3">
-                    <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-gray-900`}>
+                  <section className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-slate-900`}>
                       <CircleDot className={`${SECTION_ICON_CLASS} ${ICON_COLORS.secondary}`} />
                       <span>Второстепенные мышцы</span>
                     </h4>
-                    <p className="text-sm leading-6 text-gray-700">
+                    <p className="text-sm leading-6 text-slate-700">
                       {secondaryMuscles.length > 0
                         ? secondaryMuscles.map(getMuscleLabel).join(', ')
                         : 'Не указаны'}
@@ -235,8 +249,8 @@ const ExerciseDefinitionSheet = ({
                 ) : null}
 
                 {shouldRenderMuscleMap ? (
-                  <section className="space-y-3 rounded-2xl bg-gray-50/70 px-4 py-4">
-                    <h4 className="text-sm font-bold uppercase text-gray-900">Карта мышц</h4>
+                  <section className="space-y-3 rounded-xl border border-emerald-100 bg-white px-4 py-4 shadow-sm">
+                    <h4 className="text-sm font-bold uppercase text-emerald-950">Карта мышц</h4>
                     <MuscleMap
                       primaryMuscles={primaryMuscleKeys}
                       secondaryMuscles={secondaryMuscleKeys}
@@ -246,14 +260,14 @@ const ExerciseDefinitionSheet = ({
                 ) : null}
 
                 {shouldRenderTechniqueBlock ? (
-                <section className="space-y-5 border-t border-gray-100 pt-5">
+                <section className="space-y-5 rounded-xl border border-violet-100 bg-violet-50/35 px-4 py-4">
                   <button
                     type="button"
                     onClick={() => setIsTechniqueExpanded((current) => !current)}
                     className="flex w-full items-center justify-between text-left"
                     aria-expanded={isTechniqueExpanded}
                   >
-                    <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-gray-900`}>
+                    <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-violet-950`}>
                       <Activity className={`${SECTION_ICON_CLASS} ${ICON_COLORS.technique}`} />
                       <span>Техника</span>
                     </h4>
@@ -272,8 +286,8 @@ const ExerciseDefinitionSheet = ({
                         {hasStructuredTechniqueText ? (
                           <>
                             {techniqueSections.map((section) => (
-                              <div key={section.label} className="space-y-2 border-t border-gray-100 pt-4 first:border-t-0 first:pt-0">
-                                <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700`}>
+                              <div key={section.label} className="space-y-2 rounded-lg bg-white/75 px-3 py-3 shadow-sm">
+                                <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-violet-900`}>
                                   {section.label === 'Исходное положение' ? <ArrowUpFromLine className={`${SECTION_ICON_CLASS} ${ICON_COLORS.start}`} /> : null}
                                   {section.label === 'Выполнение' ? <Play className={`${SECTION_ICON_CLASS} ${ICON_COLORS.execution}`} /> : null}
                                   {section.label === 'Верхняя точка' ? <ArrowUp className={`${SECTION_ICON_CLASS} ${ICON_COLORS.top}`} /> : null}
@@ -290,8 +304,8 @@ const ExerciseDefinitionSheet = ({
                             ))}
 
                             {techniqueMistakes.length > 0 ? (
-                              <div className="space-y-2 border-t border-gray-100 pt-4">
-                                <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-gray-700`}>
+                              <div className="space-y-2 rounded-lg border border-red-100 bg-white px-3 py-3 shadow-sm">
+                                <div className={`${SECTION_HEADING_ROW_CLASS} text-xs font-bold uppercase text-red-900`}>
                                   <AlertTriangle className={`${SECTION_ICON_CLASS} ${ICON_COLORS.mistakes}`} />
                                   <span>Ошибки</span>
                                 </div>
@@ -306,8 +320,8 @@ const ExerciseDefinitionSheet = ({
                         ) : (
                           <>
                             {exerciseDescription || !isUserCreatedExercise ? (
-                              <section className="space-y-2">
-                                <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-gray-900`}>
+                              <section className="space-y-2 rounded-lg bg-white/75 px-3 py-3 shadow-sm">
+                                <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-violet-950`}>
                                   <Activity className={`${SECTION_ICON_CLASS} ${ICON_COLORS.technique}`} />
                                   <span>{isUserCreatedExercise ? 'Описание упражнения' : 'Техника'}</span>
                                 </h4>
@@ -318,8 +332,8 @@ const ExerciseDefinitionSheet = ({
                             ) : null}
 
                             {exerciseMistakesText ? (
-                              <section className="space-y-2 border-t border-gray-100 pt-4">
-                                <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-gray-900`}>
+                              <section className="space-y-2 rounded-lg border border-red-100 bg-white px-3 py-3 shadow-sm">
+                                <h4 className={`${SECTION_HEADING_ROW_CLASS} text-sm font-bold uppercase text-red-900`}>
                                   <AlertTriangle className={`${SECTION_ICON_CLASS} ${ICON_COLORS.mistakes}`} />
                                   <span>Основные рекомендации и ошибки</span>
                                 </h4>
@@ -337,18 +351,18 @@ const ExerciseDefinitionSheet = ({
                 ) : null}
               </div>
             ) : (
-              <div className="py-10 text-center text-sm text-gray-500">
+              <div className="rounded-xl border border-dashed border-emerald-200 bg-emerald-50/50 px-4 py-10 text-center text-sm text-emerald-800">
                 {error || 'Не удалось загрузить карточку упражнения'}
               </div>
             )}
           </div>
 
-          <div className="border-t border-gray-200 px-5 py-4">
+          <div className="border-t border-emerald-100 bg-white px-5 py-4">
             <button
               type="button"
               onClick={onAddToWorkout}
               disabled={!renderExercise || isLoading || isSelected || !canAddToWorkout}
-              className="w-full rounded-[18px] border-2 border-gray-900 px-4 py-3 text-sm font-semibold uppercase text-gray-900 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:border-gray-300 disabled:text-gray-400"
+              className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold uppercase text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500"
             >
               {isSelected ? 'Уже добавлено' : canAddToWorkout ? 'Добавить в тренировку' : addToWorkoutDisabledLabel}
             </button>
