@@ -10,6 +10,10 @@ type CategoryMuscleFilter = {
   muscleNames?: readonly string[];
 };
 
+type ExerciseListFilterOptions = {
+  includeArchived?: boolean;
+};
+
 const CATEGORY_MUSCLE_FILTERS: Record<string, readonly CategoryMuscleFilter[]> = {
   arms: [
     { id: 'arms-biceps', name: 'Бицепс', muscleKeys: ['biceps'], muscleNames: ['Бицепс', 'Бицепсы'] },
@@ -165,6 +169,10 @@ function getCuratedFiltersForCategory(category?: ExerciseCategory | null) {
   return categoryKey ? CATEGORY_MUSCLE_FILTERS[categoryKey] : undefined;
 }
 
+function isActiveExerciseForList(exercise: Exercise) {
+  return !exercise.archived_at;
+}
+
 function exerciseMatchesCuratedFilter(exercise: Exercise, filter: CategoryMuscleFilter) {
   const primaryKeys = getExercisePrimaryMuscleKeys(exercise);
   if (primaryKeys.length > 0) {
@@ -176,18 +184,23 @@ function exerciseMatchesCuratedFilter(exercise: Exercise, filter: CategoryMuscle
   return (exercise.muscles ?? []).some((muscle) => filterNames.has(normalizeMuscleName(muscle.name || '')));
 }
 
-export function deriveAvailableMuscles(exercises: Exercise[], category?: ExerciseCategory | null): Muscle[] {
+export function deriveAvailableMuscles(
+  exercises: Exercise[],
+  category?: ExerciseCategory | null,
+  options: ExerciseListFilterOptions = {},
+): Muscle[] {
   const curatedFilters = getCuratedFiltersForCategory(category);
+  const activeExercises = options.includeArchived ? exercises : exercises.filter(isActiveExerciseForList);
 
   if (curatedFilters) {
     return curatedFilters
-      .filter((filter) => exercises.some((exercise) => exerciseMatchesCuratedFilter(exercise, filter)))
+      .filter((filter) => activeExercises.some((exercise) => exerciseMatchesCuratedFilter(exercise, filter)))
       .map((filter) => ({ id: filter.id, name: filter.name }));
   }
 
   const musclesMap = new Map<string, Muscle>();
 
-  exercises.forEach((exercise) => {
+  activeExercises.forEach((exercise) => {
     exercise.muscles?.forEach((muscle) => {
       const normalizedName = normalizeMuscleName(muscle.name || '');
       if (!normalizedName) return;
@@ -246,8 +259,9 @@ export function filterExercisesForList(
   searchTerm: string,
   selectedMuscles: Set<string>,
   category?: ExerciseCategory | null,
+  options: ExerciseListFilterOptions = {},
 ): Exercise[] {
-  let filtered = dedupeExercisesForList(exercises);
+  let filtered = dedupeExercisesForList(options.includeArchived ? exercises : exercises.filter(isActiveExerciseForList));
 
   if (searchTerm.trim()) {
     const term = searchTerm.toLowerCase();

@@ -152,12 +152,21 @@ const ExerciseListSheet = ({
   useEffect(() => {
     setLocalSearchTerm(searchTerm);
   }, [searchTerm]);
-  const availableMuscles = useMemo(() => deriveAvailableMuscles(exercises, category), [category, exercises]);
+  const availableMuscles = useMemo(
+    () => deriveAvailableMuscles(exercises, category, { includeArchived: isArchivedCustomView }),
+    [category, exercises, isArchivedCustomView],
+  );
 
   // Фильтруем и дедуплицируем упражнения по поисковому запросу и выбранным мышцам
   const filteredExercises = useMemo(
-    () => dedupeExercisesForList(filterExercisesForList(exercises, localSearchTerm, selectedMuscles, category)),
-    [category, exercises, localSearchTerm, selectedMuscles],
+    () => dedupeExercisesForList(filterExercisesForList(
+      exercises,
+      localSearchTerm,
+      selectedMuscles,
+      category,
+      { includeArchived: isArchivedCustomView },
+    )),
+    [category, exercises, isArchivedCustomView, localSearchTerm, selectedMuscles],
   );
 
   const handleToggleExercise = (exerciseId: string) => {

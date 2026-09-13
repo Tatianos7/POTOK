@@ -156,6 +156,47 @@ test('muscle filter ignores custom exercises without muscle links but keeps link
   assert.equal(filtered[0].name, 'Новое упражнение');
 });
 
+test('archived custom exercises are excluded from active muscle filters and results', () => {
+  const exercises = [
+    {
+      ...createExercise('custom-archived', 'Архивный жим', ['Грудь']),
+      is_custom: true,
+      created_by_user_id: 'user-1',
+      archived_at: '2026-09-13T10:00:00.000Z',
+    },
+    {
+      ...createExercise('custom-active', 'Активный жим', ['Грудь']),
+      is_custom: true,
+      created_by_user_id: 'user-1',
+    },
+  ];
+
+  const muscles = deriveAvailableMuscles(exercises);
+  const filtered = filterExercisesForList(exercises, '', new Set(['Средний пучок']));
+  const searchFiltered = filterExercisesForList(exercises, 'жим', new Set());
+
+  assert.deepEqual(muscles.map((muscle) => muscle.name), ['Средний пучок']);
+  assert.deepEqual(filtered.map((exercise) => exercise.name), ['Активный жим']);
+  assert.deepEqual(searchFiltered.map((exercise) => exercise.name), ['Активный жим']);
+});
+
+test('archived custom exercise does not expose a muscle filter by itself', () => {
+  const exercises = [
+    {
+      ...createExercise('custom-archived', 'Архивная тяга', ['Широчайшие']),
+      is_custom: true,
+      created_by_user_id: 'user-1',
+      archived_at: '2026-09-13T10:00:00.000Z',
+    },
+  ];
+
+  const muscles = deriveAvailableMuscles(exercises);
+  const filtered = filterExercisesForList(exercises, '', new Set(['Широчайшие']));
+
+  assert.deepEqual(muscles, []);
+  assert.deepEqual(filtered, []);
+});
+
 test('edited custom exercise stays discoverable by updated name in browse search', () => {
   const exercises = [
     {
