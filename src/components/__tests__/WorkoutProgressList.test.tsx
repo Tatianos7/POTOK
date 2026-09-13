@@ -47,17 +47,17 @@ test('progress screen shows latest sets reps and weight correctly', () => {
   assert.match(html, />80 кг</);
 });
 
-test('progress screen keeps compact table-like layout', () => {
+test('progress screen keeps desktop table-like layout', () => {
   const html = renderToStaticMarkup(<WorkoutProgressList rows={rows} />);
 
-  assert.match(html, /grid-cols-\[minmax\(0,1fr\)_56px_56px_56px\]/);
+  assert.match(html, /sm:grid-cols-\[minmax\(0,1fr\)_56px_56px_56px\]/);
   assert.match(html, /Название упражнения/);
   assert.match(html, />Подход</);
   assert.match(html, />Повтор</);
   assert.match(html, />Метрика</);
 });
 
-test('progress screen keeps exercise name column wide enough for mobile wrapping', () => {
+test('progress screen uses mobile card layout so long exercise names do not break by letters', () => {
   const html = renderToStaticMarkup(
     <WorkoutProgressList
       rows={[
@@ -77,8 +77,10 @@ test('progress screen keeps exercise name column wide enough for mobile wrapping
     />,
   );
 
-  assert.match(html, /min-w-0 py-4 pr-2/);
-  assert.match(html, /\[overflow-wrap:anywhere\]/);
+  assert.match(html, /block py-3/);
+  assert.match(html, /grid grid-cols-3 gap-2 sm:contents/);
+  assert.match(html, /min-w-0 break-words pb-3/);
+  assert.doesNotMatch(html, /\[overflow-wrap:anywhere\]/);
   assert.doesNotMatch(html, /78px_78px_78px/);
 });
 
@@ -161,5 +163,5 @@ test('existing progress training screen can expose row action without breaking c
   const html = renderToStaticMarkup(<WorkoutProgressList rows={rows} onRowSelect={() => {}} />);
 
   assert.match(html, /aria-label="Открыть прогресс упражнения Жим лежа"/);
-  assert.match(html, /grid-cols-\[minmax\(0,1fr\)_56px_56px_56px\]/);
+  assert.match(html, /sm:grid-cols-\[minmax\(0,1fr\)_56px_56px_56px\]/);
 });
