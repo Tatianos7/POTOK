@@ -100,15 +100,21 @@ test('workout progress UI uses one recommendation block instead of split insight
   assert.doesNotMatch(source, /Что стоит поправить/);
 });
 
-test('workout progress UI keeps exercise progress directly after period result', () => {
+test('workout progress UI omits duplicate period result summary block', () => {
   const mainSource = source.slice(source.indexOf('<main className='));
-  const periodResultIndex = mainSource.indexOf('Результат за период');
+
+  assert.equal(mainSource.includes('Результат за период'), false);
+  assert.equal(mainSource.includes('Средняя частота'), false);
+  assert.equal(mainSource.includes('Последняя тренировка'), false);
+});
+
+test('workout progress UI keeps workout-specific sections in order', () => {
+  const mainSource = source.slice(source.indexOf('<main className='));
   const exerciseProgressIndex = mainSource.indexOf('Прогресс по упражнениям');
   const muscleMapIndex = mainSource.indexOf('Тренируемые мышцы');
   const recommendationIndex = mainSource.indexOf('{workoutRecommendation.title}');
 
-  assert.ok(periodResultIndex >= 0);
-  assert.ok(exerciseProgressIndex > periodResultIndex);
+  assert.ok(exerciseProgressIndex >= 0);
   assert.ok(muscleMapIndex > exerciseProgressIndex);
   assert.ok(recommendationIndex > muscleMapIndex);
 });
