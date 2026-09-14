@@ -448,7 +448,11 @@ function renderCatalogReadStatus(status: CatalogReadStatus) {
   return null;
 }
 
-const Today = () => {
+interface TodayProps {
+  embeddedInAppShell?: boolean;
+}
+
+const Today = ({ embeddedInAppShell = false }: TodayProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [todayView, setTodayView] = useState<TodayView>(() => getInitialTodayView(location.search));
@@ -468,6 +472,33 @@ const Today = () => {
     getInitialMealOverrides(location.search)
   );
   const [dayState, setDayState] = useState<DayState>('usual');
+
+  const getTodayViewportClass = () =>
+    embeddedInAppShell ? 'w-full min-w-[320px] bg-white' : 'min-h-[100dvh] w-full min-w-[320px] bg-white';
+
+  const getTodayContentClass = (
+    standaloneBottomPadding: string,
+    standaloneTopPadding: string,
+    embeddedTopPadding = 'pt-5',
+  ) =>
+    `relative mx-auto flex w-full max-w-[560px] flex-col px-5 ${
+      embeddedInAppShell ? embeddedTopPadding : standaloneTopPadding
+    } ${
+      embeddedInAppShell ? 'pb-0' : `min-h-[100dvh] ${standaloneBottomPadding}`
+    }`;
+
+  const getTodayBottomActionBarClass = (density: 'comfortable' | 'compact' = 'comfortable') => {
+    const positionClass = embeddedInAppShell ? 'static' : 'fixed inset-x-0 bottom-0';
+    const spacingClass =
+      density === 'compact'
+        ? 'pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5'
+        : 'pb-[max(24px,env(safe-area-inset-bottom))] pt-3';
+    const embeddedSpacingClass = density === 'compact' ? 'mt-3 pb-4 pt-2.5' : 'mt-4 pb-5 pt-3';
+
+    return `${positionClass} z-10 border-t border-stone-100 bg-white/95 px-5 ${
+      embeddedInAppShell ? embeddedSpacingClass : spacingClass
+    } backdrop-blur`;
+  };
   const [shoppingPeriod, setShoppingPeriod] = useState<ShoppingPeriod>(() => getInitialShoppingPeriod(location.search));
   const [boughtProducts, setBoughtProducts] = useState<Set<string>>(() => new Set());
   const hasGoal = Boolean(goalSummary);
@@ -903,19 +934,21 @@ const Today = () => {
   };
 
   const renderNoGoalScreen = () => (
-    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
-      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-32 pt-5">
-        <header className="relative flex min-h-10 items-center justify-center">
-          <h1 className="whitespace-nowrap text-center text-xl font-semibold leading-6 text-stone-950">Мой Поток</h1>
-          <button
-            type="button"
-            onClick={() => navigate('/')}
-            className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
-            aria-label="Закрыть"
-          >
-            <X size={18} aria-hidden="true" />
-          </button>
-        </header>
+    <div className={getTodayViewportClass()}>
+      <div className={getTodayContentClass('pb-32', 'pt-5', 'pt-0')}>
+        {!embeddedInAppShell ? (
+          <header className="relative flex min-h-10 items-center justify-center">
+            <h1 className="whitespace-nowrap text-center text-xl font-semibold leading-6 text-stone-950">Мой Поток</h1>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+              aria-label="Закрыть"
+            >
+              <X size={18} aria-hidden="true" />
+            </button>
+          </header>
+        ) : null}
 
         <main className="flex flex-1 items-center justify-center pb-8">
           <p className="max-w-[220px] text-center text-sm font-medium leading-5 text-stone-400">
@@ -925,7 +958,7 @@ const Today = () => {
         </main>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+      <div className={getTodayBottomActionBarClass()}>
         <div className="mx-auto flex w-full max-w-[560px] flex-col gap-2">
           <Button variant="primary" size="lg" onClick={() => navigate('/goal')} fullWidth align="center">
             Рассчитать цель
@@ -953,19 +986,21 @@ const Today = () => {
       Boolean(currentWeight) && currentWeight !== startWeight && currentWeight !== targetWeight;
 
     return (
-      <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
-        <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-56 pt-5">
-          <header className="relative flex min-h-10 items-center justify-center">
-            <h1 className="whitespace-nowrap text-center text-xl font-semibold leading-6 text-stone-950">Мой Поток</h1>
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
-              aria-label="Закрыть"
-            >
-              <X size={18} aria-hidden="true" />
-            </button>
-          </header>
+      <div className={getTodayViewportClass()}>
+        <div className={getTodayContentClass('pb-56', 'pt-5', 'pt-0')}>
+          {!embeddedInAppShell ? (
+            <header className="relative flex min-h-10 items-center justify-center">
+              <h1 className="whitespace-nowrap text-center text-xl font-semibold leading-6 text-stone-950">Мой Поток</h1>
+              <button
+                type="button"
+                onClick={() => navigate('/')}
+                className="absolute right-0 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-stone-500 transition hover:bg-stone-100"
+                aria-label="Закрыть"
+              >
+                <X size={18} aria-hidden="true" />
+              </button>
+            </header>
+          ) : null}
 
           <main className="flex flex-1 flex-col justify-center gap-4 py-6">
             <div className="space-y-3 text-center">
@@ -1029,7 +1064,7 @@ const Today = () => {
           </main>
         </div>
 
-        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+        <div className={getTodayBottomActionBarClass()}>
           <div className="mx-auto flex w-full max-w-[560px] flex-col gap-2">
             <Button variant="primary" size="md" fullWidth align="center">
               Дополнить данные
@@ -1047,8 +1082,8 @@ const Today = () => {
   };
 
   const renderPlanDetail = () => (
-    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
-      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-40 pt-5">
+    <div className={getTodayViewportClass()}>
+      <div className={getTodayContentClass('pb-40', 'pt-5')}>
         <header className="relative flex min-h-10 items-center justify-center">
           <button
             type="button"
@@ -1117,7 +1152,7 @@ const Today = () => {
         </main>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+      <div className={getTodayBottomActionBarClass()}>
         <div className="mx-auto w-full max-w-[560px]">
           <Button variant="primary" size="md" fullWidth align="center">
             Выбрать план
@@ -1137,8 +1172,8 @@ const Today = () => {
   const selectedDayState = dayStateOptions.find((option) => option.id === dayState) ?? dayStateOptions[0];
 
   const renderDayDetail = () => (
-    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
-      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-56 pt-5">
+    <div className={getTodayViewportClass()}>
+      <div className={getTodayContentClass('pb-56', 'pt-5')}>
         <header className="relative flex min-h-10 items-center justify-center">
           <button
             type="button"
@@ -1222,7 +1257,7 @@ const Today = () => {
         </main>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
+      <div className={getTodayBottomActionBarClass('compact')}>
         <div className="mx-auto flex w-full max-w-[560px] flex-col gap-1.5">
           <p className="text-center text-xs leading-4 text-stone-500">
             Пока это просмотр: подтверждение дня не записывает данные.
@@ -1239,8 +1274,8 @@ const Today = () => {
   );
 
   const renderShoppingList = () => (
-    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
-      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-12 pt-[max(32px,env(safe-area-inset-top))]">
+    <div className={getTodayViewportClass()}>
+      <div className={getTodayContentClass('pb-12', 'pt-[max(32px,env(safe-area-inset-top))]')}>
         <header className="relative flex min-h-10 items-center justify-center">
           <button
             type="button"
@@ -1335,8 +1370,8 @@ const Today = () => {
   );
 
   const renderMealDetail = () => (
-    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
-      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-60 pt-[max(32px,env(safe-area-inset-top))]">
+    <div className={getTodayViewportClass()}>
+      <div className={getTodayContentClass('pb-60', 'pt-[max(32px,env(safe-area-inset-top))]')}>
         <header className="relative flex min-h-10 items-center justify-center">
           <button
             type="button"
@@ -1429,7 +1464,7 @@ const Today = () => {
         </main>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
+      <div className={getTodayBottomActionBarClass('compact')}>
         <div className="mx-auto flex w-full max-w-[560px] flex-col gap-1.5">
           <Button variant="outline" size="sm" onClick={openReplaceMeal} fullWidth align="center">
             Заменить блюдо
@@ -1443,8 +1478,8 @@ const Today = () => {
   );
 
   const renderReplaceMeal = () => (
-    <div className="min-h-[100dvh] w-full min-w-[320px] bg-white">
-      <div className="relative mx-auto flex min-h-[100dvh] w-full max-w-[560px] flex-col px-5 pb-44 pt-[max(32px,env(safe-area-inset-top))]">
+    <div className={getTodayViewportClass()}>
+      <div className={getTodayContentClass('pb-44', 'pt-[max(32px,env(safe-area-inset-top))]')}>
         <header className="relative flex min-h-10 items-center justify-center">
           <button
             type="button"
@@ -1516,7 +1551,7 @@ const Today = () => {
         </main>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-100 bg-white/95 px-5 pb-[max(18px,env(safe-area-inset-bottom))] pt-2.5 backdrop-blur">
+      <div className={getTodayBottomActionBarClass('compact')}>
         <div className="mx-auto w-full max-w-[560px]">
           <Button
             variant="primary"

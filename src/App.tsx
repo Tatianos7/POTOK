@@ -42,6 +42,8 @@ import PinSetup from './pages/PinSetup';
 import PinUnlock from './pages/PinUnlock';
 import PinOffer from './pages/PinOffer';
 import MuscleMapDemo from './pages/MuscleMapDemo';
+import AppBottomNavigation, { shouldShowBottomNavigation } from './components/AppBottomNavigation';
+import { hasDemoPremiumAccess } from './services/demoPremiumAccess';
 import { getPostLoginRoute, isPinLockEnabled, isPinOfferSkipped, isPinSessionUnlocked } from './services/pinLockService';
 
 function AppRoutes() {
@@ -405,6 +407,23 @@ function AppRoutes() {
   );
 }
 
+function AppShell() {
+  const { authStatus, user } = useAuth();
+  const location = useLocation();
+  const showBottomNavigation = shouldShowBottomNavigation(authStatus, location.pathname);
+  const hasPremiumAccess = Boolean(user?.hasPremium || hasDemoPremiumAccess());
+
+  return (
+    <div
+      className="min-h-screen"
+      style={showBottomNavigation ? { paddingBottom: 'calc(5.75rem + env(safe-area-inset-bottom))' } : undefined}
+    >
+      <AppRoutes />
+      {showBottomNavigation ? <AppBottomNavigation hasPremiumAccess={hasPremiumAccess} /> : null}
+    </div>
+  );
+}
+
 function App() {
   return (
     <Router
@@ -416,7 +435,7 @@ function App() {
     >
       <div className="app-container">
         <ErrorBoundary>
-          <AppRoutes />
+          <AppShell />
         </ErrorBoundary>
       </div>
     </Router>

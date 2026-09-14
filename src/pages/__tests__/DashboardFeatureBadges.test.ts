@@ -45,7 +45,29 @@ test('home cards show POTOK Premium entry before purchase', () => {
 test('dashboard uses demo premium access as effective premium state', () => {
   assert.match(dashboardSource, /hasDemoPremiumAccess/);
   assert.match(dashboardSource, /effectiveHasPremium = Boolean\(user\?\.hasPremium \|\| hasDemoPremiumAccess\(\)\)/);
-  assert.match(dashboardSource, /getHomeFeatureCards\(\{ hasPremium: effectiveHasPremium \}\)/);
+});
+
+test('free home dashboard no longer renders the old section card grid', () => {
+  assert.match(dashboardSource, /ProgressDailyGoalCard/);
+  assert.match(dashboardSource, /Основной результат/);
+  assert.doesNotMatch(dashboardSource, /FeatureCard/);
+  assert.doesNotMatch(dashboardSource, /homeCards\.map/);
+  assert.doesNotMatch(dashboardSource, /getHomeFeatureCards/);
+});
+
+test('premium home reuses existing Today surface without adding premium writes', () => {
+  assert.match(dashboardSource, /import Today from '\.\/Today'/);
+  assert.match(dashboardSource, /<Today embeddedInAppShell \/>/);
+  assert.doesNotMatch(dashboardSource, /Сборник рецептов/);
+  assert.doesNotMatch(dashboardSource, /navigate\('\/premium-recipes'\)/);
+  assert.doesNotMatch(dashboardSource, /План на день собран/);
+  assert.doesNotMatch(dashboardSource, /Питание на день/);
+  assert.doesNotMatch(dashboardSource, /Тренировка на день/);
+  assert.doesNotMatch(dashboardSource, /Действия сегодня/);
+  assert.doesNotMatch(dashboardSource, /Открыть день/);
+  assert.doesNotMatch(dashboardSource, /navigate\('\/today'\)/);
+  assert.doesNotMatch(dashboardSource, /addExercisesToWorkout/);
+  assert.doesNotMatch(dashboardSource, /buildTodayPlanFromPremiumCatalog/);
 });
 
 test('home cards show My Potok and premium recipes after purchase', () => {

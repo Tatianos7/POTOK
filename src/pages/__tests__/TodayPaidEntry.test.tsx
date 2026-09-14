@@ -13,10 +13,10 @@ const todaySource = readFileSync(resolve(currentDir, '../Today.tsx'), 'utf8');
 const demoProviderSource = readFileSync(resolve(currentDir, '../../services/demoTodayPlansProvider.ts'), 'utf8');
 const smartDayProviderSource = readFileSync(resolve(currentDir, '../../services/demoSmartDayProvider.ts'), 'utf8');
 
-function renderToday(route = '/today') {
+function renderToday(route = '/today', embeddedInAppShell = false) {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={[route]}>
-      <Today />
+      <Today embeddedInAppShell={embeddedInAppShell} />
     </MemoryRouter>
   );
 }
@@ -57,6 +57,42 @@ test('/today no-goal source uses centered title and fixed bottom actions', () =>
   assert.match(todaySource, /whitespace-nowrap text-center/);
   assert.match(todaySource, /fixed inset-x-0 bottom-0/);
   assert.match(todaySource, /fullWidth align="center"/);
+});
+
+test('/today embedded mode keeps actions in normal flow without viewport spacer', () => {
+  const html = renderToday('/today?demoGoal=1', true);
+  const plansIndex = html.indexOf('Быстрое питание и короткие тренировки');
+  const actionsIndex = html.indexOf('Дополнить данные');
+  const editGoalIndex = html.indexOf('Изменить цель');
+  const measurementsIndex = html.indexOf('Создать замеры');
+
+  assert.match(html, /w-full min-w-\[320px\] bg-white/);
+  assert.match(html, /pt-0 pb-0/);
+  assert.match(html, /static z-10/);
+  assert.match(html, /mt-4 pb-5 pt-3/);
+  assert.doesNotMatch(html, /Мой Поток/);
+  assert.doesNotMatch(html, /aria-label="Закрыть"/);
+  assert.match(html, /Похудение/);
+  assert.match(html, /70 кг/);
+  assert.match(html, /50 кг/);
+  assert.doesNotMatch(html, /sticky/);
+  assert.doesNotMatch(html, /min-h-\[100dvh\]/);
+  assert.doesNotMatch(html, /pb-56/);
+  assert.ok(plansIndex >= 0);
+  assert.ok(actionsIndex > plansIndex);
+  assert.ok(editGoalIndex > actionsIndex);
+  assert.ok(measurementsIndex > editGoalIndex);
+  assert.match(todaySource, /getTodayViewportClass/);
+  assert.match(todaySource, /getTodayContentClass/);
+});
+
+test('/today standalone mode keeps My Potok header and close action', () => {
+  const html = renderToday('/today?demoGoal=1');
+
+  assert.match(html, /Мой Поток/);
+  assert.match(html, /aria-label="Закрыть"/);
+  assert.match(html, /min-h-\[100dvh\]/);
+  assert.match(html, /fixed inset-x-0 bottom-0/);
 });
 
 test('/today empty state routes to goal and measurements screens', () => {
@@ -532,14 +568,14 @@ test('/today day detail back returns to selected plan detail', () => {
 test('/today plan detail keeps header safe and list padded above bottom CTA', () => {
   assert.match(todaySource, /mx-12 max-w-\[184px\] truncate whitespace-nowrap text-center text-base/);
   assert.match(todaySource, /min-\[430px\]:max-w-\[340px\]/);
-  assert.match(todaySource, /pb-40 pt-5/);
+  assert.match(todaySource, /getTodayContentClass\('pb-40', 'pt-5'\)/);
   assert.match(todaySource, /space-y-1\.5 pb-8/);
   assert.match(todaySource, /whitespace-normal text-xs leading-4 text-stone-500">\{day\.macros\}/);
   assert.doesNotMatch(todaySource, /truncate text-xs leading-4 text-stone-500">\{day\.macros\}/);
 });
 
 test('/today day detail keeps compact safe layout and mock-only disabled actions', () => {
-  assert.match(todaySource, /pb-56 pt-5/);
+  assert.match(todaySource, /getTodayContentClass\('pb-56', 'pt-5'\)/);
   assert.match(todaySource, /flex flex-1 flex-col gap-4 py-5/);
   assert.match(todaySource, /rounded-lg border border-stone-200 bg-white px-3 py-1\.5/);
   assert.match(todaySource, /\{selectedPlanDayForRender\.workout\.duration\} · \{selectedPlanDayForRender\.workout\.focus\}/);
@@ -550,7 +586,7 @@ test('/today day detail keeps compact safe layout and mock-only disabled actions
 });
 
 test('/today meal detail keeps compact safe layout and bottom actions padded', () => {
-  assert.match(todaySource, /pb-60 pt-\[max\(32px,env\(safe-area-inset-top\)\)\]/);
+  assert.match(todaySource, /getTodayContentClass\('pb-60', 'pt-\[max\(32px,env\(safe-area-inset-top\)\)\]'\)/);
   assert.match(todaySource, /flex flex-1 flex-col gap-4 pb-8 pt-5/);
   assert.match(todaySource, /space-y-1\.5 pb-16/);
   assert.match(todaySource, /Ингредиенты пока не заполнены/);
