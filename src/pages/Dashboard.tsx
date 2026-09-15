@@ -6,7 +6,7 @@ import Menu from '../components/Menu';
 import ProgressDailyGoalCard from '../components/ProgressDailyGoalCard';
 import Today from './Today';
 import { activityService } from '../services/activityService';
-import { hasDemoPremiumAccess } from '../services/demoPremiumAccess';
+import { hasEffectivePremiumAccess } from '../utils/premiumAccess';
 import { progressHubService, type ProgressHubData } from '../services/progressHubService';
 import {
   deriveProgressDailyGoalPeriodMetrics,
@@ -157,7 +157,7 @@ const Dashboard = () => {
   };
 
   const displayName = user?.profile?.firstName || user?.name || 'Пользователь';
-  const effectiveHasPremium = Boolean(user?.hasPremium || hasDemoPremiumAccess());
+  const effectiveHasPremium = hasEffectivePremiumAccess(user);
   const summaryResults = useMemo(() => getHomeSummaryResults(progressData), [progressData]);
   const dailyGoalState = useMemo(
     () =>

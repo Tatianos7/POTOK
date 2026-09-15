@@ -42,9 +42,10 @@ test('home cards show POTOK Premium entry before purchase', () => {
   assert.equal(cards.some((card) => card.title === 'Сборник рецептов'), false);
 });
 
-test('dashboard uses demo premium access as effective premium state', () => {
-  assert.match(dashboardSource, /hasDemoPremiumAccess/);
-  assert.match(dashboardSource, /effectiveHasPremium = Boolean\(user\?\.hasPremium \|\| hasDemoPremiumAccess\(\)\)/);
+test('dashboard uses the shared effective premium access helper', () => {
+  assert.match(dashboardSource, /import \{ hasEffectivePremiumAccess \} from '\.\.\/utils\/premiumAccess'/);
+  assert.match(dashboardSource, /effectiveHasPremium = hasEffectivePremiumAccess\(user\)/);
+  assert.doesNotMatch(dashboardSource, /hasDemoPremiumAccess/);
 });
 
 test('free home dashboard no longer renders the old section card grid', () => {

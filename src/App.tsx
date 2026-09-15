@@ -32,6 +32,7 @@ import ProgressWorkoutExercise from './pages/ProgressWorkoutExercise';
 import ImportExercises from './pages/ImportExercises';
 import PoseCoach from './pages/PoseCoach';
 import ProtectedRoute from './components/ProtectedRoute';
+import PremiumRoute from './components/PremiumRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import Today from './pages/Today';
 import MyProgram from './pages/MyProgram';
@@ -43,7 +44,7 @@ import PinUnlock from './pages/PinUnlock';
 import PinOffer from './pages/PinOffer';
 import MuscleMapDemo from './pages/MuscleMapDemo';
 import AppBottomNavigation, { shouldShowBottomNavigation } from './components/AppBottomNavigation';
-import { hasDemoPremiumAccess } from './services/demoPremiumAccess';
+import { hasEffectivePremiumAccess } from './utils/premiumAccess';
 import { getPostLoginRoute, isPinLockEnabled, isPinOfferSkipped, isPinSessionUnlocked } from './services/pinLockService';
 
 function AppRoutes() {
@@ -341,17 +342,17 @@ function AppRoutes() {
       <Route
         path="/today"
         element={
-          <ProtectedRoute>
+          <PremiumRoute>
             <Today />
-          </ProtectedRoute>
+          </PremiumRoute>
         }
       />
       <Route
         path="/premium-recipes"
         element={
-          <ProtectedRoute>
+          <PremiumRoute>
             <PremiumRecipes />
-          </ProtectedRoute>
+          </PremiumRoute>
         }
       />
       <Route
@@ -411,7 +412,7 @@ function AppShell() {
   const { authStatus, user } = useAuth();
   const location = useLocation();
   const showBottomNavigation = shouldShowBottomNavigation(authStatus, location.pathname);
-  const hasPremiumAccess = Boolean(user?.hasPremium || hasDemoPremiumAccess());
+  const hasPremiumAccess = hasEffectivePremiumAccess(user);
 
   return (
     <div
