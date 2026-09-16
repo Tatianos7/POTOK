@@ -58,19 +58,21 @@ test('more menu keeps measurements progress and profile available', () => {
   assert.match(bottomNavigationSource, /setIsMoreOpen\(false\)/);
 });
 
-test('free more menu does not include premium recipe collection', () => {
+test('free more menu includes Premium paywall entry without premium recipe collection', () => {
   const items = getBottomNavOverflowItems(false);
 
-  assert.deepEqual(items.map((item) => item.label), ['Замеры', 'Прогресс', 'Профиль']);
+  assert.deepEqual(items.map((item) => item.label), ['Premium', 'Замеры', 'Прогресс', 'Профиль']);
+  assert.equal(items[0]?.to, '/paywall');
   assert.equal(items.some((item) => item.label === 'Сборник рецептов'), false);
 });
 
-test('premium more menu includes recipe collection route before shared items', () => {
+test('premium more menu includes recipe collection without subscribe CTA', () => {
   const items = getBottomNavOverflowItems(true);
 
   assert.equal(items[0]?.label, 'Сборник рецептов');
   assert.equal(items[0]?.to, '/premium-recipes');
   assert.deepEqual(items.slice(1).map((item) => item.label), ['Замеры', 'Прогресс', 'Профиль']);
+  assert.equal(items.some((item) => item.label === 'Premium' || item.to === '/paywall'), false);
 });
 
 test('more menu uses compact mobile popup sizing', () => {

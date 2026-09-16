@@ -22,17 +22,29 @@ test('paywall uses owner-approved Premium value proposition copy', () => {
 
   assert.match(html, /POTOK Premium/);
   assert.match(html, /Меньше думайте — больше выполняйте/);
-  assert.match(html, /Сейчас демо помогает оценить/);
-  assert.match(html, /Подписка скоро/);
+  assert.match(html, /демо Premium доступно без покупки/);
+  assert.match(html, /Оформление подписки скоро/);
   assert.match(html, /Покупки скоро/);
   assert.match(html, /Посмотреть демо Premium/);
-  assert.match(html, /Демо Premium можно открыть без покупки/);
+  assert.match(html, /Бесплатные дневники питания и тренировок, замеры и Progress остаются доступны/);
+  assert.match(html, /не оформляет платный доступ и не подтверждает оплату/);
   assert.match(html, /Готовые планы питания и тренировок/);
   assert.match(html, /Рецепты с КБЖУ/);
   assert.match(html, /Замены блюд/);
   assert.match(html, /Список покупок/);
-  assert.match(paywallSource, /variant="primary" size="md" disabled/);
-  assert.match(paywallSource, /variant="outline" size="md" disabled/);
+});
+
+test('paywall makes demo primary and keeps future purchase actions disabled', () => {
+  const html = renderPaywall();
+  const disabledPurchaseActions = paywallSource.match(/<Button variant="outline" size="sm" disabled/g) ?? [];
+
+  assert.match(
+    paywallSource,
+    /<Button variant="primary" size="md" onClick=\{openDemoPremium\} fullWidth align="center">[\s\S]*Посмотреть демо Premium/
+  );
+  assert.equal(disabledPurchaseActions.length, 2);
+  assert.ok(html.indexOf('Посмотреть демо Premium') < html.indexOf('Оформление подписки скоро'));
+  assert.doesNotMatch(paywallSource, /variant="primary"[^>]*disabled/);
 });
 
 test('paywall does not render technical, AI, or Coach copy', () => {

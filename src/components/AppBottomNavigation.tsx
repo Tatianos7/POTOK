@@ -1,4 +1,15 @@
-import { BarChart3, BookOpen, Dumbbell, Home, MoreHorizontal, Ruler, Target, User, UtensilsCrossed } from 'lucide-react';
+import {
+  BarChart3,
+  BookOpen,
+  Dumbbell,
+  Home,
+  MoreHorizontal,
+  Ruler,
+  Sparkles,
+  Target,
+  User,
+  UtensilsCrossed,
+} from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 
@@ -40,8 +51,13 @@ const premiumOverflowItems = [
   ...overflowItems,
 ];
 
+const freeOverflowItems = [
+  { label: 'Premium', to: '/paywall', icon: Sparkles },
+  ...overflowItems,
+];
+
 export function getBottomNavOverflowItems(hasPremiumAccess: boolean) {
-  return hasPremiumAccess ? premiumOverflowItems : overflowItems;
+  return hasPremiumAccess ? premiumOverflowItems : freeOverflowItems;
 }
 
 export function shouldShowBottomNavigation(authStatus: AuthStatus, pathname: string): boolean {

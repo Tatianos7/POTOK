@@ -56,6 +56,21 @@ test('free home dashboard no longer renders the old section card grid', () => {
   assert.doesNotMatch(dashboardSource, /getHomeFeatureCards/);
 });
 
+test('free home with a goal keeps a compact Premium CTA to paywall', () => {
+  assert.match(dashboardSource, /aria-label="POTOK Premium"/);
+  assert.match(dashboardSource, /Готовый план питания и тренировок под вашу цель/);
+  assert.match(dashboardSource, /Узнать про Premium/);
+  assert.match(dashboardSource, /navigate\('\/paywall'\)/);
+  assert.match(dashboardSource, /!effectiveHasPremium && !showFreeNoGoalHome \? \(/);
+});
+
+test('free no-goal home reuses Today with a single subscription entry', () => {
+  assert.match(dashboardSource, /progressData\?\.goal\.state === 'empty'/);
+  assert.match(dashboardSource, /!progressData\.goal\.hasGoal/);
+  assert.match(dashboardSource, /<Today embeddedInAppShell showPremiumSubscriptionEntry \/>/);
+  assert.match(dashboardSource, /aria-label="Free no-goal dashboard"/);
+});
+
 test('premium home reuses existing Today surface without adding premium writes', () => {
   assert.match(dashboardSource, /import Today from '\.\/Today'/);
   assert.match(dashboardSource, /<Today embeddedInAppShell \/>/);

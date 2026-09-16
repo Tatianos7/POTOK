@@ -450,9 +450,10 @@ function renderCatalogReadStatus(status: CatalogReadStatus) {
 
 interface TodayProps {
   embeddedInAppShell?: boolean;
+  showPremiumSubscriptionEntry?: boolean;
 }
 
-const Today = ({ embeddedInAppShell = false }: TodayProps) => {
+const Today = ({ embeddedInAppShell = false, showPremiumSubscriptionEntry = false }: TodayProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [todayView, setTodayView] = useState<TodayView>(() => getInitialTodayView(location.search));
@@ -966,6 +967,21 @@ const Today = ({ embeddedInAppShell = false }: TodayProps) => {
           <Button variant="outline" size="lg" onClick={() => navigate('/measurements')} fullWidth align="center">
             Создать замеры
           </Button>
+          {embeddedInAppShell && showPremiumSubscriptionEntry ? (
+            <section className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/70 p-3 text-left" aria-label="POTOK Premium">
+              <h2 className="text-sm font-semibold text-stone-950">POTOK Premium</h2>
+              <p className="mt-1 text-xs leading-4 text-stone-600">
+                Готовый план питания и тренировок после расчёта цели
+              </p>
+              <button
+                type="button"
+                className="mt-2 text-sm font-semibold text-emerald-800 underline decoration-emerald-300 underline-offset-4"
+                onClick={() => navigate('/paywall')}
+              >
+                Узнать про Premium
+              </button>
+            </section>
+          ) : null}
         </div>
       </div>
     </div>

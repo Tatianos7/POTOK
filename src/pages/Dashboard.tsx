@@ -1,5 +1,5 @@
 import { useAuth } from '../context/AuthContext';
-import { Menu as MenuIcon } from 'lucide-react';
+import { Menu as MenuIcon, Sparkles } from 'lucide-react';
 import { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Menu from '../components/Menu';
@@ -158,6 +158,12 @@ const Dashboard = () => {
 
   const displayName = user?.profile?.firstName || user?.name || 'Пользователь';
   const effectiveHasPremium = hasEffectivePremiumAccess(user);
+  const showFreeNoGoalHome =
+    !effectiveHasPremium &&
+    !isProgressLoading &&
+    !progressErrorMessage &&
+    progressData?.goal.state === 'empty' &&
+    !progressData.goal.hasGoal;
   const summaryResults = useMemo(() => getHomeSummaryResults(progressData), [progressData]);
   const dailyGoalState = useMemo(
     () =>
@@ -215,7 +221,13 @@ const Dashboard = () => {
             </div>
           ) : null}
 
-          {!effectiveHasPremium ? (
+          {showFreeNoGoalHome ? (
+            <div className="space-y-4" aria-label="Free no-goal dashboard">
+              <Today embeddedInAppShell showPremiumSubscriptionEntry />
+            </div>
+          ) : null}
+
+          {!effectiveHasPremium && !showFreeNoGoalHome ? (
             <div className="space-y-4">
               <ProgressDailyGoalCard state={dailyGoalState} onPreferencesChange={handleDailyGoalPreferencesChange} />
 
@@ -237,6 +249,30 @@ const Dashboard = () => {
                 ) : (
                   <p className="progress-summary-text">Здесь появится результат по цели, питанию и тренировкам.</p>
                 )}
+              </section>
+
+              <section
+                className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-4"
+                aria-label="POTOK Premium"
+              >
+                <div className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-emerald-700 shadow-sm">
+                    <Sparkles className="h-4 w-4" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-semibold text-gray-950">POTOK Premium</h2>
+                    <p className="mt-1 text-sm leading-5 text-gray-600">
+                      Готовый план питания и тренировок под вашу цель
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="mt-3 w-full rounded-lg border border-emerald-700 bg-white px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+                  onClick={() => navigate('/paywall')}
+                >
+                  Узнать про Premium
+                </button>
               </section>
             </div>
           ) : null}

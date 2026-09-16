@@ -13,10 +13,13 @@ const todaySource = readFileSync(resolve(currentDir, '../Today.tsx'), 'utf8');
 const demoProviderSource = readFileSync(resolve(currentDir, '../../services/demoTodayPlansProvider.ts'), 'utf8');
 const smartDayProviderSource = readFileSync(resolve(currentDir, '../../services/demoSmartDayProvider.ts'), 'utf8');
 
-function renderToday(route = '/today', embeddedInAppShell = false) {
+function renderToday(route = '/today', embeddedInAppShell = false, showPremiumSubscriptionEntry = false) {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={[route]}>
-      <Today embeddedInAppShell={embeddedInAppShell} />
+      <Today
+        embeddedInAppShell={embeddedInAppShell}
+        showPremiumSubscriptionEntry={showPremiumSubscriptionEntry}
+      />
     </MemoryRouter>
   );
 }
@@ -51,6 +54,22 @@ test('/today renders clean no-goal empty state by default', () => {
   assert.doesNotMatch(html, /Быстрое питание и короткие тренировки/);
   assert.doesNotMatch(html, /Нет времени/);
   assert.doesNotMatch(html, /Список покупок/);
+  assert.doesNotMatch(html, /POTOK Premium/);
+  assert.doesNotMatch(html, /Узнать про Premium/);
+});
+
+test('/today Free no-goal embedded state keeps goal actions before the Premium entry', () => {
+  const html = renderToday('/today', true, true);
+  const goalIndex = html.indexOf('Рассчитать цель');
+  const measurementsIndex = html.indexOf('Создать замеры');
+  const premiumIndex = html.indexOf('POTOK Premium');
+
+  assert.ok(goalIndex >= 0);
+  assert.ok(measurementsIndex > goalIndex);
+  assert.ok(premiumIndex > measurementsIndex);
+  assert.match(html, /Готовый план питания и тренировок после расчёта цели/);
+  assert.match(html, /Узнать про Premium/);
+  assert.match(todaySource, /navigate\('\/paywall'\)/);
 });
 
 test('/today no-goal source uses centered title and fixed bottom actions', () => {

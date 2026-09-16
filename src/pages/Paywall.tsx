@@ -47,8 +47,8 @@ const Paywall = () => {
           <div className="space-y-2">
             <h2 className="text-2xl font-semibold leading-tight text-stone-950">Меньше думайте — больше выполняйте</h2>
             <p className="text-sm leading-5 text-stone-600">
-              Посмотрите, как POTOK собирает питание, тренировки и покупки под вашу цель. Сейчас демо помогает оценить
-              структуру Premium без оформления.
+              Посмотрите, как POTOK собирает питание, тренировки и покупки под вашу цель. Сейчас демо Premium доступно
+              без покупки.
             </p>
           </div>
         </div>
@@ -69,23 +69,23 @@ const Paywall = () => {
 
       <Card variant="soft" size="sm">
         <p className="text-sm leading-5 text-stone-700">
-          Бесплатные дневники питания, тренировок, замеры и Progress остаются доступны. Демо Premium можно открыть без
-          покупки: оно показывает сценарий, но не оформляет доступ.
+          Бесплатные дневники питания и тренировок, замеры и Progress остаются доступны. Демо показывает Premium-сценарий,
+          но не оформляет платный доступ и не подтверждает оплату.
         </p>
       </Card>
 
+      <Button variant="primary" size="md" onClick={openDemoPremium} fullWidth align="center">
+        Посмотреть демо Premium
+      </Button>
+
       <div className="flex flex-col gap-2 min-[360px]:flex-row">
-        <Button variant="primary" size="md" disabled style={{ flex: 1 }}>
-          Подписка скоро
+        <Button variant="outline" size="sm" disabled style={{ flex: 1 }}>
+          Оформление подписки скоро
         </Button>
-        <Button variant="outline" size="md" disabled style={{ flex: 1 }}>
+        <Button variant="outline" size="sm" disabled style={{ flex: 1 }}>
           Покупки скоро
         </Button>
       </div>
-
-      <Button variant="ghost" size="sm" onClick={openDemoPremium} align="center">
-        Посмотреть демо Premium
-      </Button>
 
       {demoAccessEnabled && (
         <Button variant="ghost" size="sm" onClick={exitDemoPremium} align="center">
