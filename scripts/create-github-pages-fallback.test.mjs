@@ -116,7 +116,7 @@ test('writes redirect fallback with GitHub Pages route preservation', () => {
     const fallbackHtml = [
       '<script>',
       "var repoBase = '/POTOK/';",
-      "window.location.replace(repoBase + '?p=nutrition');",
+      "window.location.replace(repoBase + '?spa=1&p=nutrition');",
       '</script>',
     ].join('');
 
@@ -130,6 +130,12 @@ test('writes redirect fallback with GitHub Pages route preservation', () => {
 
     const fallback = readFileSync(fallbackPath, 'utf8');
     assert.match(fallback, /repoBase = '\/POTOK\/'/);
-    assert.match(fallback, /\?p=/);
+    assert.match(fallback, /\?spa=1&p=/);
   });
+});
+
+test('public fallback template marks route restoration as a real 404 redirect', () => {
+  const fallback = readFileSync(join(process.cwd(), 'public', '404.html'), 'utf8');
+
+  assert.match(fallback, /\?spa=1&p=/);
 });

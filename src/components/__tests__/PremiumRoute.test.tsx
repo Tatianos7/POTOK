@@ -84,6 +84,13 @@ test('only Today and Premium Recipes use the premium route gate', () => {
   assert.match(getRouteBlock('/coach-history'), /<ProtectedRoute>[\s\S]*?<CoachHistory \/>/);
 });
 
+test('authenticated Free root stays on Dashboard without mounting the premium gate', () => {
+  const rootRoute = getRouteBlock('/');
+
+  assert.match(rootRoute, /<ProtectedRoute>[\s\S]*?<Dashboard \/>[\s\S]*?<\/ProtectedRoute>/);
+  assert.doesNotMatch(rootRoute, /PremiumRoute|paywall/);
+});
+
 test('app shell and premium routes share the effective premium helper', () => {
   assert.match(appSource, /hasPremiumAccess = hasEffectivePremiumAccess\(user\)/);
   assert.match(premiumRouteSource, /hasEffectivePremiumAccess/);

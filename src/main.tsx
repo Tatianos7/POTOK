@@ -5,15 +5,12 @@ import './index.css'
 import { testSupabaseConnection } from './lib/supabaseClient'
 import { ThemeProvider } from './context/ThemeContext'
 import { AuthProvider } from './context/AuthContext'
+import { resolveGithubPagesFallbackRoute } from './utils/githubPagesRouteRestore'
 
 // Restore original SPA route after GitHub Pages 404 fallback redirect.
 (() => {
-  const searchParams = new URLSearchParams(window.location.search);
-  const encodedPath = searchParams.get('p');
-  if (!encodedPath) return;
-  const decoded = decodeURIComponent(encodedPath);
-  const normalizedPath = decoded.startsWith('/') ? decoded : `/${decoded}`;
-  const nextUrl = `${import.meta.env.BASE_URL.replace(/\/$/, '')}${normalizedPath}`;
+  const nextUrl = resolveGithubPagesFallbackRoute(window.location.search, import.meta.env.BASE_URL);
+  if (!nextUrl) return;
   window.history.replaceState(null, '', nextUrl);
 })();
 

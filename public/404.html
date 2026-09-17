@@ -12,7 +12,7 @@
         var routePath = path.indexOf(repoBase) === 0 ? path.slice(repoBase.length) : '';
         var query = window.location.search || '';
         var hash = window.location.hash || '';
-        var redirect = repoBase + '?p=' + encodeURIComponent(routePath + query + hash);
+        var redirect = repoBase + '?spa=1&p=' + encodeURIComponent(routePath + query + hash);
         window.location.replace(redirect);
       })();
     </script>

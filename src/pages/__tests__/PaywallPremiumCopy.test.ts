@@ -78,3 +78,8 @@ test('paywall demo Premium button enables only local demo access and navigates t
   assert.doesNotMatch(paywallSource, /PaymentModal|SubscriptionManagement|ChangeSubscriptionModal/);
   assert.doesNotMatch(paywallSource, /stripe|checkout|payment|subscribe/i);
 });
+
+test('paywall close and demo exit return to safe Home without a redirect loop', () => {
+  assert.match(paywallSource, /onClick=\{\(\) => navigate\('\/'\)\} aria-label="Закрыть"/);
+  assert.match(paywallSource, /clearDemoPremiumAccess\(\);[\s\S]*navigate\('\/'\);/);
+});

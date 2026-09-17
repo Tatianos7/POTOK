@@ -3,8 +3,8 @@
 - Date: 2026-09-16
 - Branch: `master`
 - Source gate commit: `df3d424d87148061f2539f895b23f8ad12c70006`
-- Target package: `POTOK_PREMIUM_PAYWALL_DEMO_PRIMARY_UX`
-- Verdict: **POTOK_PREMIUM_PAYWALL_DEMO_PRIMARY_UX_READY**
+- Target package: `POTOK_PREMIUM_SUBSCRIPTION_ENTRY_UX_DELAYED_PAYWALL_FIX`
+- Verdict: **POTOK_PREMIUM_SUBSCRIPTION_ENTRY_UX_DELAYED_PAYWALL_FIX_READY**
 
 ## Scope
 
@@ -42,6 +42,21 @@ The Paywall now presents the currently available action honestly:
 - the supporting copy states that demo access requires no purchase, does not grant paid access, and does not confirm payment;
 - Free diaries, measurements, and Progress remain explicitly available.
 
+## Owner Smoke Blocker And Fix
+
+Owner browser smoke found that an authenticated Free user could first see Home and later arrive at `/paywall` without an intentional Premium click.
+
+The route audit found no automatic Paywall navigation in Dashboard. The delayed behavior came from an ambiguous GitHub Pages fallback contract: any base URL containing `?p=paywall` or `?p=today` was treated as a route restoration, even when the query was stale and did not come from the current `404.html` redirect. Auth/profile bootstrap then made the restored route visible later.
+
+The fallback now uses an explicit `spa=1` marker. Runtime restores `p` only when that marker is present:
+
+- `/POTOK/` and `/POTOK/?p=paywall` remain on Home;
+- an actual GitHub Pages fallback redirects through `/?spa=1&p=...` and still restores direct routes;
+- authenticated Free direct `/today` and `/premium-recipes` still reach `/paywall` through `PremiumRoute`;
+- explicit `/paywall` remains available;
+- Paywall close and demo exit return to `/`;
+- Premium/demo Home behavior is unchanged.
+
 ## Preserved Behavior
 
 - the no-goal Today state keeps `Рассчитать цель` before `Создать замеры`;
@@ -61,11 +76,17 @@ The Paywall now presents the currently available action honestly:
 - `src/pages/__tests__/DashboardFeatureBadges.test.ts`;
 - `src/pages/__tests__/PaywallPremiumCopy.test.ts`;
 - `src/pages/__tests__/TodayPaidEntry.test.tsx`;
+- `src/main.tsx`;
+- `src/utils/githubPagesRouteRestore.ts`;
+- `src/utils/__tests__/githubPagesRouteRestore.test.ts`;
+- `public/404.html`;
+- `scripts/create-github-pages-fallback.test.mjs`;
 - `reports/premium-subscription-entry-ux-2026-09-16.md`.
 
 ## Verification
 
-- Related Dashboard, Bottom Navigation, Paywall, PremiumRoute, Today, Premium Recipes, and demo-access tests: passed, 94/94.
+- Related routing, Dashboard, Bottom Navigation, Paywall, PremiumRoute, Today, Premium Recipes, demo-access, and route-restoration tests: passed, 100/100.
+- GitHub Pages fallback generator tests: passed, 7/7.
 - `npm run build`: passed.
 - `git diff --check`: passed.
 
@@ -86,4 +107,4 @@ Existing React SSR `useLayoutEffect`, local missing Supabase environment, bundle
 
 ## Final Verdict
 
-**POTOK_PREMIUM_PAYWALL_DEMO_PRIMARY_UX_READY**
+**POTOK_PREMIUM_SUBSCRIPTION_ENTRY_UX_DELAYED_PAYWALL_FIX_READY**
