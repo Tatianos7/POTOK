@@ -13,12 +13,18 @@ const todaySource = readFileSync(resolve(currentDir, '../Today.tsx'), 'utf8');
 const demoProviderSource = readFileSync(resolve(currentDir, '../../services/demoTodayPlansProvider.ts'), 'utf8');
 const smartDayProviderSource = readFileSync(resolve(currentDir, '../../services/demoSmartDayProvider.ts'), 'utf8');
 
-function renderToday(route = '/today', embeddedInAppShell = false, showPremiumSubscriptionEntry = false) {
+function renderToday(
+  route = '/today',
+  embeddedInAppShell = false,
+  showPremiumSubscriptionEntry = false,
+  currentUserId?: string,
+) {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={[route]}>
       <Today
         embeddedInAppShell={embeddedInAppShell}
         showPremiumSubscriptionEntry={showPremiumSubscriptionEntry}
+        currentUserId={currentUserId}
       />
     </MemoryRouter>
   );
@@ -56,6 +62,24 @@ test('/today renders clean no-goal empty state by default', () => {
   assert.doesNotMatch(html, /Список покупок/);
   assert.doesNotMatch(html, /POTOK Premium/);
   assert.doesNotMatch(html, /Узнать про Premium/);
+});
+
+test('/today scopes stored goal state to currentUserId and clears stale state before re-resolving', () => {
+  assert.match(todaySource, /getTodayGoalSummaryForUser\(currentUserId\)/);
+  assert.match(todaySource, /userGoalState\.currentUserId === currentUserId \? userGoalState\.summary : null/);
+  assert.match(todaySource, /setUserGoalState\(\{[\s\S]*?currentUserId,[\s\S]*?getTodayGoalSummaryForUser\(currentUserId\)/);
+  assert.match(todaySource, /\}, \[currentUserId\]\);/);
+  assert.doesNotMatch(todaySource, /Object\.keys\(window\.localStorage\)/);
+  assert.doesNotMatch(todaySource, /startsWith\('goal_'\)/);
+});
+
+test('/today explicit demo goal remains separate from current-user storage lookup', () => {
+  const html = renderToday('/today?demoGoal=1', false, false, 'current-user');
+
+  assert.match(todaySource, /getDemoGoalSummary\(location\.search\) \?\? userGoalSummary/);
+  assert.match(html, /Похудение/);
+  assert.match(html, /70 кг/);
+  assert.match(html, /50 кг/);
 });
 
 test('/today Free no-goal embedded state keeps goal actions before the Premium entry', () => {

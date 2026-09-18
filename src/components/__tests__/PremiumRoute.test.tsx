@@ -73,7 +73,10 @@ test('premium route renders auth and paywall redirects from its resolver', () =>
 });
 
 test('only Today and Premium Recipes use the premium route gate', () => {
-  assert.match(getRouteBlock('/today'), /<PremiumRoute>[\s\S]*?<Today \/>[\s\S]*?<\/PremiumRoute>/);
+  assert.match(
+    getRouteBlock('/today'),
+    /<PremiumRoute>[\s\S]*?<Today currentUserId=\{user\?\.id\} \/>[\s\S]*?<\/PremiumRoute>/,
+  );
   assert.match(
     getRouteBlock('/premium-recipes'),
     /<PremiumRoute>[\s\S]*?<PremiumRecipes \/>[\s\S]*?<\/PremiumRoute>/,

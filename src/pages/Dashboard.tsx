@@ -217,13 +217,13 @@ const Dashboard = () => {
         <main className="py-4 tablet:py-6">
           {effectiveHasPremium ? (
             <div className="space-y-4" aria-label="Premium dashboard">
-              <Today embeddedInAppShell />
+              <Today embeddedInAppShell currentUserId={user?.id} />
             </div>
           ) : null}
 
           {showFreeNoGoalHome ? (
             <div className="space-y-4" aria-label="Free no-goal dashboard">
-              <Today embeddedInAppShell showPremiumSubscriptionEntry />
+              <Today embeddedInAppShell showPremiumSubscriptionEntry currentUserId={user?.id} />
             </div>
           ) : null}
 

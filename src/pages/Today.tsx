@@ -9,19 +9,16 @@ import {
   mapMealRecipeOptionsToReplacementOptions,
   mapPremiumMealSlotsToTodayMeals,
 } from '../services/premiumTodayAdapter';
+import {
+  getTodayGoalSummaryForUser,
+  type TodayGoalSummary,
+} from '../utils/todayGoalSummary';
 
 type PlanKind = 'combined' | 'nutrition' | 'workout' | 'time_saver';
 type TodayView = 'home' | 'plan_detail' | 'day_detail' | 'meal_detail' | 'replace_meal' | 'shopping_list';
 type DayState = 'usual' | 'low_energy' | 'no_time' | 'ready';
 type ShoppingPeriod = 1 | 2 | 3 | 7;
 type CatalogReadStatus = 'idle' | 'loading' | 'catalog' | 'fallback';
-
-interface GoalSummary {
-  goalType: string;
-  startWeight?: number;
-  currentWeight?: number;
-  targetWeight?: number;
-}
 
 interface DemoPlanDay {
   day: number;
@@ -268,60 +265,7 @@ function getGoalLabel(goalType: string) {
   return 'Поддержание';
 }
 
-function toWeight(value: unknown): number | undefined {
-  const weight = Number(value);
-  return Number.isFinite(weight) && weight > 0 ? weight : undefined;
-}
-
-function parseGoalSummary(raw: string | null): GoalSummary | null {
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const goalType = String(parsed.goalType ?? parsed.goal_type ?? '');
-    const currentWeight = toWeight(parsed.currentWeight ?? parsed.current_weight);
-    const targetWeight = toWeight(parsed.targetWeight ?? parsed.target_weight);
-    const startWeight = toWeight(parsed.startWeight ?? parsed.start_weight ?? parsed.initialWeight) ?? currentWeight;
-    const hasGoalPayload = Boolean(goalType || currentWeight || targetWeight || parsed.calories || parsed.proteins || parsed.protein);
-
-    if (!hasGoalPayload) {
-      return null;
-    }
-
-    return {
-      goalType: goalType || 'maintain',
-      startWeight,
-      currentWeight,
-      targetWeight,
-    };
-  } catch {
-    return null;
-  }
-}
-
-function getStoredGoalSummary(): GoalSummary | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  try {
-    const goalKeys = Object.keys(window.localStorage).filter((key) => key.startsWith('goal_'));
-    for (const key of goalKeys) {
-      const summary = parseGoalSummary(window.localStorage.getItem(key));
-      if (summary) {
-        return summary;
-      }
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-function getDemoGoalSummary(search: string): GoalSummary | null {
+function getDemoGoalSummary(search: string): TodayGoalSummary | null {
   if (search.includes('demoGoalAtTarget=1')) {
     return {
       goalType: 'weight-loss',
@@ -451,13 +395,26 @@ function renderCatalogReadStatus(status: CatalogReadStatus) {
 interface TodayProps {
   embeddedInAppShell?: boolean;
   showPremiumSubscriptionEntry?: boolean;
+  currentUserId?: string;
 }
 
-const Today = ({ embeddedInAppShell = false, showPremiumSubscriptionEntry = false }: TodayProps) => {
+interface UserGoalState {
+  currentUserId?: string;
+  summary: TodayGoalSummary | null;
+}
+
+const Today = ({
+  embeddedInAppShell = false,
+  showPremiumSubscriptionEntry = false,
+  currentUserId,
+}: TodayProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [todayView, setTodayView] = useState<TodayView>(() => getInitialTodayView(location.search));
-  const [goalSummary, setGoalSummary] = useState<GoalSummary | null>(() => getDemoGoalSummary(location.search));
+  const [userGoalState, setUserGoalState] = useState<UserGoalState>(() => ({
+    currentUserId,
+    summary: getTodayGoalSummaryForUser(currentUserId),
+  }));
   const [catalogPlans, setCatalogPlans] = useState<DemoPlan[] | null>(null);
   const [catalogDayMeals, setCatalogDayMeals] = useState<Record<string, MealDetail[]>>({});
   const [catalogReplacementOptions, setCatalogReplacementOptions] = useState<Record<string, ReplacementOption[]>>({});
@@ -502,6 +459,8 @@ const Today = ({ embeddedInAppShell = false, showPremiumSubscriptionEntry = fals
   };
   const [shoppingPeriod, setShoppingPeriod] = useState<ShoppingPeriod>(() => getInitialShoppingPeriod(location.search));
   const [boughtProducts, setBoughtProducts] = useState<Set<string>>(() => new Set());
+  const userGoalSummary = userGoalState.currentUserId === currentUserId ? userGoalState.summary : null;
+  const goalSummary = getDemoGoalSummary(location.search) ?? userGoalSummary;
   const hasGoal = Boolean(goalSummary);
   const usesCatalogPlanSource =
     todayView === 'home' ||
@@ -549,10 +508,11 @@ const Today = ({ embeddedInAppShell = false, showPremiumSubscriptionEntry = fals
       : shoppingGroups;
 
   useEffect(() => {
-    if (!goalSummary) {
-      setGoalSummary(getStoredGoalSummary());
-    }
-  }, [goalSummary]);
+    setUserGoalState({
+      currentUserId,
+      summary: getTodayGoalSummaryForUser(currentUserId),
+    });
+  }, [currentUserId]);
 
   useEffect(() => {
     let isCancelled = false;

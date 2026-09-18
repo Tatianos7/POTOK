@@ -48,7 +48,7 @@ import { hasEffectivePremiumAccess } from './utils/premiumAccess';
 import { getPostLoginRoute, isPinLockEnabled, isPinOfferSkipped, isPinSessionUnlocked } from './services/pinLockService';
 
 function AppRoutes() {
-  const { authStatus } = useAuth();
+  const { authStatus, user } = useAuth();
   const location = useLocation();
 
   if (authStatus === 'booting') {
@@ -343,7 +343,7 @@ function AppRoutes() {
         path="/today"
         element={
           <PremiumRoute>
-            <Today />
+            <Today currentUserId={user?.id} />
           </PremiumRoute>
         }
       />

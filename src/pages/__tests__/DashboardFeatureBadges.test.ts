@@ -67,13 +67,16 @@ test('free home with a goal keeps a compact Premium CTA to paywall', () => {
 test('free no-goal home reuses Today with a single subscription entry', () => {
   assert.match(dashboardSource, /progressData\?\.goal\.state === 'empty'/);
   assert.match(dashboardSource, /!progressData\.goal\.hasGoal/);
-  assert.match(dashboardSource, /<Today embeddedInAppShell showPremiumSubscriptionEntry \/>/);
+  assert.match(
+    dashboardSource,
+    /<Today embeddedInAppShell showPremiumSubscriptionEntry currentUserId=\{user\?\.id\} \/>/,
+  );
   assert.match(dashboardSource, /aria-label="Free no-goal dashboard"/);
 });
 
 test('premium home reuses existing Today surface without adding premium writes', () => {
   assert.match(dashboardSource, /import Today from '\.\/Today'/);
-  assert.match(dashboardSource, /<Today embeddedInAppShell \/>/);
+  assert.match(dashboardSource, /<Today embeddedInAppShell currentUserId=\{user\?\.id\} \/>/);
   assert.doesNotMatch(dashboardSource, /Сборник рецептов/);
   assert.doesNotMatch(dashboardSource, /navigate\('\/premium-recipes'\)/);
   assert.doesNotMatch(dashboardSource, /План на день собран/);
