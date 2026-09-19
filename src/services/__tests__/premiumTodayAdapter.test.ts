@@ -163,6 +163,17 @@ const eggsRecipe: PremiumRecipeDetail = {
   hints: [],
 };
 
+test('unknown plan nutrition stays unavailable while confirmed zero remains zero', () => {
+  const days = mapPremiumPlanDaysToTodayDays([
+    { ...day1, calories: null, protein: null, fat: 0, carbs: null },
+    { ...day2, calories: 0, protein: 0, fat: 0, carbs: 0 },
+  ]);
+  assert.equal(days[0].calories, 'Калории не указаны');
+  assert.equal(days[0].macroDetails, 'Б — · Ж 0 · У —');
+  assert.equal(days[1].calories, '0 ккал');
+  assert.equal(days[1].macroDetails, 'Б 0 · Ж 0 · У 0');
+});
+
 test('premium today adapter maps two seeded days without synthesizing days 3-14', () => {
   const days = mapPremiumPlanDaysToTodayDays([day2, day1], { 'day-1': mealSlots }, { 'slot-breakfast': oatsRecipe });
 
@@ -303,8 +314,8 @@ test('premium today adapter empty inputs are safe and fallback-ready', () => {
   assert.deepEqual(mapPremiumRecipeDetailToTodayMealDetail(null), {
     title: 'Приём пищи',
     summary: 'Блюдо',
-    calories: '0 ккал',
-    macroDetails: 'Б 0 · Ж 0 · У 0',
+    calories: 'Калории не указаны',
+    macroDetails: 'Б — · Ж — · У —',
     ingredients: [],
     portionHints: [],
     steps: [],

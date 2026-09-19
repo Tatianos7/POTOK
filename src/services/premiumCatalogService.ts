@@ -223,7 +223,7 @@ export interface PremiumCatalogService {
 }
 
 function toNumber(value: number | string | null | undefined): number | null {
-  if (value === null || value === undefined) return null;
+  if (value === null || value === undefined || (typeof value === 'string' && !value.trim())) return null;
   const numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : null;
 }

@@ -2,7 +2,8 @@ import { Recipe, RecipeTab } from '../types/recipe';
 import { trackEvent } from './analyticsService';
 import { supabase } from '../lib/supabaseClient';
 import { aiMealPlansService } from './aiMealPlansService';
-import { normalizeFoodText } from '../utils/foodNormalizer';
+import { canonicalFoodResolver } from './canonicalFoodResolver';
+import { parseDiaryNutrient } from './diaryCreateService';
 import {
   getOptionalSupabaseResourceState,
   isOptionalSupabaseResourceMissingError,
@@ -23,20 +24,110 @@ export class RecipeSaveValidationError extends Error {
 }
 
 export function ensureRecipeIngredientsResolved(
-  ingredients: Array<{ name: string; canonical_food_id?: string | null }>
+  ingredients: Array<{ name: string; canonical_food_id?: string | null; resolution_status?: 'resolved' | 'ambiguous' | 'unresolved' }>
 ): void {
   const isValidUUID = (value: unknown): value is string =>
     typeof value === 'string' &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 
   const unresolvedIngredients = ingredients
-    .filter((ingredient) => !ingredient.canonical_food_id || !isValidUUID(ingredient.canonical_food_id))
+    .filter((ingredient) => !ingredient.canonical_food_id || !isValidUUID(ingredient.canonical_food_id) ||
+      (ingredient.resolution_status !== undefined && ingredient.resolution_status !== 'resolved'))
     .map((ingredient) => ingredient.name)
     .filter(Boolean);
 
   if (unresolvedIngredients.length > 0) {
     throw new RecipeSaveValidationError('Some ingredients are not matched to foods catalog', unresolvedIngredients);
   }
+}
+
+export function validateRecipeIngredients(ingredients: Recipe['ingredients']): void {
+  if (!ingredients || ingredients.length === 0) {
+    throw new Error('[recipesService] Recipe has no ingredients');
+  }
+
+  const invalid = ingredients.some((ing) =>
+    !ing.name?.trim() ||
+    !Number.isFinite(ing.grams) ||
+    ing.grams <= 0 ||
+    !Number.isFinite(ing.calories) ||
+    ing.calories < 0 ||
+    !Number.isFinite(ing.proteins) ||
+    ing.proteins < 0 ||
+    !Number.isFinite(ing.fats) ||
+    ing.fats < 0 ||
+    !Number.isFinite(ing.carbs) ||
+    ing.carbs < 0
+  );
+
+  if (invalid) {
+    throw new Error('[recipesService] Invalid ingredient values');
+  }
+  for (const field of ['grams', 'calories', 'proteins', 'fats', 'carbs'] as const) {
+    if (!Number.isFinite(ingredients.reduce((sum, ingredient) => sum + ingredient[field], 0))) {
+      throw new Error('[recipesService] Recipe quantity or nutrition exceeds numeric range');
+    }
+  }
+}
+
+export async function prepareRecipeIngredients(
+  ingredients: Recipe['ingredients'],
+  userId: string,
+  resolve = canonicalFoodResolver.resolve
+): Promise<NonNullable<Recipe['ingredients']>> {
+  if (!ingredients?.length || ingredients.some((ingredient) =>
+    !ingredient.name?.trim() || !Number.isFinite(ingredient.grams) || ingredient.grams <= 0)) {
+    throw new Error('[recipesService] Invalid ingredient quantity or name');
+  }
+  // Keep the name, amount and selected snapshot from the same invocation while
+  // catalog requests are pending. The caller may edit its draft in the meantime.
+  const snapshots = ingredients.map((ingredient) => ({ ...ingredient }));
+  const enrichedIngredients = await Promise.all(
+    snapshots.map(async (ingredient) => {
+      if (ingredient.canonical_food_id || (ingredient.resolution_status !== undefined && ingredient.resolution_status !== 'resolved')) {
+        return ingredient;
+      }
+      try {
+        const result = await resolve(ingredient.name, userId);
+        if (result.status !== 'resolved') return { ...ingredient, canonical_food_id: null, resolution_status: result.status };
+        const k = ingredient.grams / 100;
+        return { ...ingredient, canonical_food_id: result.food.canonical_food_id, resolution_status: 'resolved' as const,
+          calories: result.food.calories * k, proteins: result.food.protein * k,
+          fats: result.food.fat * k, carbs: result.food.carbs * k };
+      } catch {
+        return ingredient;
+      }
+    })
+  );
+  validateRecipeIngredients(enrichedIngredients);
+  ensureRecipeIngredientsResolved(enrichedIngredients);
+  return enrichedIngredients;
+}
+
+export function mapRecipeGraphIngredient(row: {
+  food_id: string | null;
+  amount_g: unknown;
+  food: unknown;
+}): NonNullable<Recipe['ingredients']>[number] {
+  // The joined relation must be one food object. Missing/array responses are
+  // unavailable; never select an arbitrary first related row.
+  const food = row.food && typeof row.food === 'object' && !Array.isArray(row.food)
+    ? row.food as Record<string, unknown> : null;
+  const grams = parseDiaryNutrient(row.amount_g);
+  const k = grams / 100;
+  return {
+    name: typeof food?.name === 'string' && food.name ? food.name : 'Unknown',
+    canonical_food_id: row.food_id,
+    quantity: grams,
+    unit: 'г',
+    grams,
+    // Missing joined food/nutrients must remain invalid for the save preflight.
+    // Converting them to zero would overwrite a recipe with invented nutrition.
+    calories: parseDiaryNutrient(food?.calories) * k,
+    proteins: parseDiaryNutrient(food?.protein) * k,
+    fats: parseDiaryNutrient(food?.fat) * k,
+    carbs: parseDiaryNutrient(food?.carbs) * k,
+  };
 }
 
 class RecipesService {
@@ -70,27 +161,6 @@ class RecipesService {
     return (data || []).map((row: any) => row.recipe_id).filter(Boolean);
   }
 
-  private mapGraphRowToIngredient(row: any) {
-    const grams = Number(row.amount_g) || 0;
-    const calories100 = Number(row.food?.calories) || 0;
-    const proteins100 = Number(row.food?.protein) || 0;
-    const fats100 = Number(row.food?.fat) || 0;
-    const carbs100 = Number(row.food?.carbs) || 0;
-    const k = grams / 100;
-
-    return {
-      name: row.food?.name || 'Unknown',
-      canonical_food_id: row.food_id ?? null,
-      quantity: grams,
-      unit: 'г',
-      grams,
-      calories: calories100 * k,
-      proteins: proteins100 * k,
-      fats: fats100 * k,
-      carbs: carbs100 * k,
-    };
-  }
-
   private async loadIngredientsFromGraph(recipeIds: string[]): Promise<Map<string, Recipe['ingredients']>> {
     const map = new Map<string, Recipe['ingredients']>();
     if (!supabase || recipeIds.length === 0) return map;
@@ -109,7 +179,7 @@ class RecipesService {
       if (!recipeId) continue;
       if (!map.has(recipeId)) map.set(recipeId, []);
       const list = map.get(recipeId)!;
-      list.push(this.mapGraphRowToIngredient(row));
+      list.push(mapRecipeGraphIngredient(row));
     }
 
     return map;
@@ -177,40 +247,10 @@ class RecipesService {
     }
 
     if (userId && userId !== data.user.id) {
-      console.warn('[recipesService] Передан userId не совпадает с сессией');
+      throw new Error('[recipesService] Пользователь изменился. Повторите действие в текущем аккаунте.');
     }
 
     return data.user.id;
-  }
-
-  private async resolveCanonicalFoodId(name: string): Promise<string | null> {
-    if (!supabase) {
-      throw new Error('Supabase не инициализирован');
-    }
-    const normalized = normalizeFoodText(name);
-    if (!normalized) {
-      return null;
-    }
-
-    const { data: foods, error: foodError } = await supabase
-      .from('foods')
-      .select('id')
-      .eq('normalized_name', normalized)
-      .limit(1);
-    if (!foodError && foods && foods.length > 0) {
-      return foods[0].id;
-    }
-
-    const { data: aliases, error: aliasError } = await supabase
-      .from('food_aliases')
-      .select('canonical_food_id')
-      .eq('normalized_alias', normalized)
-      .limit(1);
-    if (!aliasError && aliases && aliases.length > 0) {
-      return aliases[0].canonical_food_id;
-    }
-
-    return null;
   }
 
   private async assertNoRecipeConflict(recipeId: string, expectedUpdatedAt?: string): Promise<void> {
@@ -252,30 +292,6 @@ class RecipesService {
     };
   }
 
-  private assertIngredients(ingredients: Recipe['ingredients']): void {
-    if (!ingredients || ingredients.length === 0) {
-      throw new Error('[recipesService] Recipe has no ingredients');
-    }
-
-    const invalid = ingredients.some((ing) =>
-      !ing.name ||
-      !Number.isFinite(ing.grams) ||
-      ing.grams < 0 ||
-      !Number.isFinite(ing.calories) ||
-      ing.calories < 0 ||
-      !Number.isFinite(ing.proteins) ||
-      ing.proteins < 0 ||
-      !Number.isFinite(ing.fats) ||
-      ing.fats < 0 ||
-      !Number.isFinite(ing.carbs) ||
-      ing.carbs < 0
-    );
-
-    if (invalid) {
-      throw new Error('[recipesService] Invalid ingredient values');
-    }
-  }
-
   private calcTotals(ingredients: Recipe['ingredients']) {
     const totals = ingredients?.reduce(
       (sum, ing) => ({
@@ -287,6 +303,9 @@ class RecipesService {
       { calories: 0, proteins: 0, fats: 0, carbs: 0 }
     );
 
+    if (totals && Object.values(totals).some((value) => !Number.isFinite(value))) {
+      throw new Error('[recipesService] Recipe nutrition exceeds numeric range');
+    }
     return totals ?? { calories: 0, proteins: 0, fats: 0, carbs: 0 };
   }
 
@@ -453,22 +472,7 @@ class RecipesService {
     }
 
     const sessionUserId = await this.getSessionUserId(recipe.userId);
-    const ingredients = recipe.ingredients ?? [];
-    const enrichedIngredients = await Promise.all(
-      ingredients.map(async (ingredient) => {
-        if (ingredient.canonical_food_id) {
-          return ingredient;
-        }
-        try {
-          const canonicalId = await this.resolveCanonicalFoodId(ingredient.name);
-          return { ...ingredient, canonical_food_id: canonicalId };
-        } catch (error) {
-          return ingredient;
-        }
-      })
-    );
-    this.assertIngredients(enrichedIngredients);
-    ensureRecipeIngredientsResolved(enrichedIngredients);
+    const enrichedIngredients = await prepareRecipeIngredients(recipe.ingredients, sessionUserId);
     const totals = this.calcTotals(enrichedIngredients);
 
     const payload: any = {

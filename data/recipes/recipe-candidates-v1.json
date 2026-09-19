@@ -3,36 +3,126 @@
     "stable_recipe_id": "oatmeal_with_apple",
     "title": "Овсяная каша с яблоком",
     "description": "Каша на воде с тёртым яблоком. Хлопья указаны в сухом виде, яблоко — без сердцевины.",
-    "category": "breakfast", "servings": 1, "preparation_time_min": 15,
-    "tags": ["quick"], "provenance": "POTOK authored candidate 2026-09-18; culinary and canonical review pending",
-    "steps": ["Залейте хлопья водой и доведите до кипения.", "Варите на слабом огне 5–10 минут, помешивая; ориентируйтесь на инструкцию хлопьев.", "Натрите яблоко без сердцевины и добавьте в готовую кашу."],
-    "ingredients": [{"stable_food_id": "oat_flakes", "amount_g": 50}, {"stable_food_id": "water", "amount_g": 200}, {"stable_food_id": "apple", "amount_g": 120}]
+    "category": "breakfast",
+    "servings": 1,
+    "preparation_time_min": 15,
+    "tags": [
+      "quick"
+    ],
+    "provenance": "POTOK authored candidate 2026-09-18; semantic ingredients checked against local Food_Core_v02_with_aliases.xlsx on 2026-09-19; live UUID mapping and culinary review pending",
+    "steps": [
+      "Залейте хлопья водой и доведите до кипения.",
+      "Варите на слабом огне 5–10 минут, помешивая; ориентируйтесь на инструкцию хлопьев.",
+      "Натрите яблоко без сердцевины и добавьте в готовую кашу."
+    ],
+    "ingredients": [
+      {
+        "stable_food_id": "oat_flakes",
+        "amount_g": 50
+      },
+      {
+        "stable_food_id": "water",
+        "amount_g": 200
+      },
+      {
+        "stable_food_id": "apple",
+        "amount_g": 120
+      }
+    ]
   },
   {
     "stable_recipe_id": "buckwheat_with_carrot",
     "title": "Гречка с морковью и луком",
-    "description": "Две порции гречки с тушёными овощами. Крупа указана в сухом виде, овощи — очищенные.",
-    "category": "lunch", "servings": 2, "preparation_time_min": 30,
-    "tags": [], "provenance": "POTOK authored candidate 2026-09-18; culinary and canonical review pending",
-    "steps": ["Промойте гречку, залейте водой и варите под крышкой около 20 минут до впитывания воды.", "Натрите морковь, мелко нарежьте лук. Тушите на масле на слабом огне под крышкой 10–15 минут, помешивая.", "Смешайте овощи с готовой гречкой и разделите на две равные порции."],
-    "ingredients": [{"stable_food_id": "buckwheat", "amount_g": 120}, {"stable_food_id": "water", "amount_g": 300}, {"stable_food_id": "carrot", "amount_g": 160}, {"stable_food_id": "onion", "amount_g": 80}, {"stable_food_id": "sunflower_oil", "amount_g": 10}]
+    "description": "Две порции гречки с тушёными овощами. Гречневая крупа ядрица указана в сухом виде, морковь и репчатый лук — очищенные.",
+    "category": "lunch",
+    "servings": 2,
+    "preparation_time_min": 30,
+    "tags": [],
+    "provenance": "POTOK authored candidate 2026-09-18; semantic ingredients checked against local Food_Core_v02_with_aliases.xlsx on 2026-09-19; live UUID mapping and culinary review pending",
+    "steps": [
+      "Промойте гречку, залейте водой и варите под крышкой около 20 минут до впитывания воды.",
+      "Натрите морковь, мелко нарежьте лук. Тушите на масле на слабом огне под крышкой 10–15 минут, помешивая.",
+      "Смешайте овощи с готовой гречкой и разделите на две равные порции."
+    ],
+    "ingredients": [
+      {
+        "stable_food_id": "whole_buckwheat_groats",
+        "amount_g": 120
+      },
+      {
+        "stable_food_id": "water",
+        "amount_g": 300
+      },
+      {
+        "stable_food_id": "carrot",
+        "amount_g": 160
+      },
+      {
+        "stable_food_id": "bulb_onion",
+        "amount_g": 80
+      },
+      {
+        "stable_food_id": "sunflower_oil",
+        "amount_g": 10
+      }
+    ]
   },
   {
     "stable_recipe_id": "tomato_omelet",
     "title": "Омлет с помидорами",
     "description": "Омлет на сковороде. Яйца взвешиваются без скорлупы; количество яиц зависит от их размера.",
-    "category": "dinner", "servings": 1, "preparation_time_min": 15,
-    "tags": ["quick"], "provenance": "POTOK authored candidate 2026-09-18; culinary and canonical review pending",
-    "steps": ["Нарежьте помидоры небольшими кусочками.", "Разогрейте масло на сковороде и тушите помидоры 3–4 минуты.", "Взбейте яйца, залейте помидоры и готовьте под крышкой на слабом огне до полного схватывания яиц, около 5–7 минут."],
-    "ingredients": [{"stable_food_id": "egg_chicken", "amount_g": 120}, {"stable_food_id": "tomato", "amount_g": 150}, {"stable_food_id": "sunflower_oil", "amount_g": 5}]
+    "category": "dinner",
+    "servings": 1,
+    "preparation_time_min": 15,
+    "tags": [
+      "quick"
+    ],
+    "provenance": "POTOK authored candidate 2026-09-18; semantic ingredients checked against local Food_Core_v02_with_aliases.xlsx on 2026-09-19; live UUID mapping and culinary review pending",
+    "steps": [
+      "Нарежьте помидоры небольшими кусочками.",
+      "Разогрейте масло на сковороде и тушите помидоры 3–4 минуты.",
+      "Взбейте яйца, залейте помидоры и готовьте под крышкой на слабом огне до полного схватывания яиц, около 5–7 минут."
+    ],
+    "ingredients": [
+      {
+        "stable_food_id": "egg_chicken",
+        "amount_g": 120
+      },
+      {
+        "stable_food_id": "tomato",
+        "amount_g": 150
+      },
+      {
+        "stable_food_id": "sunflower_oil",
+        "amount_g": 5
+      }
+    ]
   },
   {
     "stable_recipe_id": "cottage_cheese_with_apple",
     "title": "Творог с яблоком",
-    "description": "Перекус без готовки. Яблоко указано без сердцевины; жирность творога должна совпадать с выбранным продуктом каталога.",
-    "category": "snack", "servings": 1, "preparation_time_min": 5,
-    "tags": ["quick", "no_cook"], "provenance": "POTOK authored candidate 2026-09-18; culinary and canonical review pending",
-    "steps": ["Удалите сердцевину яблока и нарежьте мякоть небольшими кубиками.", "Смешайте яблоко с творогом и подавайте."],
-    "ingredients": [{"stable_food_id": "cottage_cheese_5", "amount_g": 150}, {"stable_food_id": "apple", "amount_g": 100}]
+    "description": "Перекус без готовки. Яблоко указано без сердцевины; используется обычный творог 5% жирности.",
+    "category": "snack",
+    "servings": 1,
+    "preparation_time_min": 5,
+    "tags": [
+      "quick",
+      "no_cook"
+    ],
+    "provenance": "POTOK authored candidate 2026-09-18; semantic ingredients checked against local Food_Core_v02_with_aliases.xlsx on 2026-09-19; live UUID mapping and culinary review pending",
+    "steps": [
+      "Удалите сердцевину яблока и нарежьте мякоть небольшими кубиками.",
+      "Смешайте яблоко с творогом и подавайте."
+    ],
+    "ingredients": [
+      {
+        "stable_food_id": "cottage_cheese_5_percent",
+        "amount_g": 150
+      },
+      {
+        "stable_food_id": "apple",
+        "amount_g": 100
+      }
+    ]
   }
 ]

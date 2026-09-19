@@ -22,12 +22,17 @@ function installLocalStorageMock() {
 
 installLocalStorageMock();
 
-const [{ foodService }, { analyzeRecipeTextReal }, { calcTotals }, { parseRecipeText }] = await Promise.all([
+const [{ foodService }, { analyzeRecipeTextReal: analyzeReal }, { calcTotals }, { parseRecipeText }] = await Promise.all([
   import('../foodService'),
   import('../recipeAnalyzerReal'),
   import('../../utils/nutritionCalculator'),
   import('../../utils/recipeParser'),
 ]);
+
+const { resolveExactFoodCandidates } = await import('../canonicalFoodResolver');
+const analyzeRecipeTextReal = (text: string) => analyzeReal(text, {
+  resolve: async (query, userId) => resolveExactFoodCandidates(query, await foodService.search(query), userId),
+});
 
 const FOOD_CORE = [
   {

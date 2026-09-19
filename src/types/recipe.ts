@@ -15,6 +15,7 @@ export interface Recipe {
   ingredients?: Array<{
     name: string;
     canonical_food_id?: string | null;
+    resolution_status?: 'resolved' | 'ambiguous' | 'unresolved';
     quantity: number;
     unit: string;
     grams: number;

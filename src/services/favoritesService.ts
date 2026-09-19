@@ -1,6 +1,7 @@
 import { Food } from '../types';
 import { foodService } from './foodService';
 import { supabase } from '../lib/supabaseClient';
+import { canonicalFoodResolver } from './canonicalFoodResolver';
 
 interface FavoriteEntry {
   productId: string;
@@ -46,7 +47,7 @@ const getSessionUserId = async (userId?: string): Promise<string> => {
   }
 
   if (userId && userId !== data.user.id) {
-    console.warn('[favoritesService] Передан userId не совпадает с сессией');
+    throw new Error('[favoritesService] Пользователь изменился. Повторите действие в текущем аккаунте.');
   }
 
   return data.user.id;
@@ -73,10 +74,11 @@ const resolveFavoriteKey = (userId: string, productId: string): string => {
   return food?.name?.trim() || productId;
 };
 
-const resolveCanonicalFavoriteId = async (
+export const resolveCanonicalFavoriteId = async (
   userId: string,
   productId: string,
-  food?: Food | null
+  food?: Food | null,
+  resolve = canonicalFoodResolver.resolve
 ): Promise<string | null> => {
   if (isValidUUID(food?.canonical_food_id ?? null)) return food?.canonical_food_id ?? null;
   if (isValidUUID(food?.id ?? null)) return food?.id ?? null;
@@ -86,13 +88,8 @@ const resolveCanonicalFavoriteId = async (
   if (!lookupName) return null;
 
   try {
-    const candidates = await foodService.search(lookupName, { userId, limit: 5 });
-    const exact = candidates.find((item) => item.name?.trim().toLowerCase() === lookupName.toLowerCase());
-    if (exact && isValidUUID(exact.canonical_food_id ?? null)) return exact.canonical_food_id ?? null;
-    if (exact && isValidUUID(exact.id)) return exact.id;
-    const first = candidates[0];
-    if (first && isValidUUID(first.canonical_food_id ?? null)) return first.canonical_food_id ?? null;
-    if (first && isValidUUID(first.id)) return first.id;
+    const result = await resolve(lookupName, userId);
+    return result.status === 'resolved' ? result.food.canonical_food_id ?? null : null;
   } catch {
     // fallback handled by null
   }

@@ -70,11 +70,25 @@ Summary food counts are unique unresolved/ambiguous semantic IDs; duplicate and
 outlier counts are affected recipes. Issues retain exact ingredient/candidate IDs.
 No partial nutrition totals are returned for unresolved recipes.
 
-## Current sample state and gates
+## Current sample state and gates (updated 2026-09-19)
 
-No fresh canonical export was available/queried in this run. Testing against an
-empty input deliberately rejects all four candidates; this is a fail-closed
-test, **not** a statement that staging or production has an empty food catalog.
+Two bounded anon REST GET attempts could not export current canonical foods:
+the first returned missing `needs_review` (42703); a second selecting existing
+fields returned permission denied (42501). No service-role retry or SQL was used.
+
+Read-only local workbook inspection found exact source rows for all ten required
+semantic IDs after correcting three authored candidate references:
+`whole_buckwheat_groats`, `bulb_onion`, `cottage_cheese_5_percent`.
+These corrections change candidate content only, not any canonical catalog identity.
+See `reports/recipe-local-availability-2026-09-19.json` for source SHA-256, sheet
+rows, numeric inputs and independently reproducible portion arithmetic.
+
+The four local nutrition previews are **not canonical-validated recipes**.
+The workbook uses semantic IDs where the runtime requires UUIDs and does not
+establish current searchability or live review policy. Strict canonical preflight
+rejects all four candidates (`invalid_canonical_identity`), with no partial
+canonical totals. No UUID or missing review/searchability flag was invented.
+Fiber stays unknown; cooked yield/per-100g finished dish is not inferred.
 There is no valid/imported production recipe dataset from this package.
 
 Next: actual canonical availability audit -> adjust ingredients -> recompute

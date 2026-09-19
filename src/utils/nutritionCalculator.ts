@@ -6,8 +6,8 @@ export interface CalculatedIngredient extends ParsedRecipeIngredient {
   carbs: number;
   calories: number;
   canonical_food_id?: string | null;
-  resolution_status?: 'resolved' | 'unresolved';
-  resolution_reason?: 'catalog_match' | 'catalog_unmatched' | 'demo_match_only' | 'unit_conversion_missing';
+  resolution_status?: 'resolved' | 'ambiguous' | 'unresolved';
+  resolution_reason?: 'catalog_match' | 'catalog_unmatched' | 'demo_match_only' | 'unit_conversion_missing' | 'catalog_ambiguous' | 'catalog_unavailable' | 'invalid_nutrition';
   resolved_food_name?: string | null;
   candidate_food_names?: string[];
   warning?: string | null;

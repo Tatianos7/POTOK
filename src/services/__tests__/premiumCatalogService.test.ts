@@ -21,6 +21,18 @@ import {
 const testDir = dirname(fileURLToPath(import.meta.url));
 const serviceSource = readFileSync(resolve(testDir, '../premiumCatalogService.ts'), 'utf8');
 
+test('blank catalog nutrients remain unknown and numeric zero remains confirmed', () => {
+  const recipe = mapPremiumRecipe({
+    id: 'recipe', title: 'Recipe', category: null, calories: null,
+    protein: '', fat: '0', carbs: '   ', cooking_time_min: null,
+    difficulty_label: null, is_active: true, created_at: '', updated_at: '',
+  });
+  assert.equal(recipe.calories, null);
+  assert.equal(recipe.protein, null);
+  assert.equal(recipe.fat, 0);
+  assert.equal(recipe.carbs, null);
+});
+
 test('premium catalog service exports expected read functions', () => {
   assert.equal(PREMIUM_CATALOG_READ_MODE, 'staging_readonly');
 

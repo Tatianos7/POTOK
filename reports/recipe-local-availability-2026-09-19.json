@@ -1,0 +1,431 @@
+{
+  "status": "BLOCKED_CANONICAL_MAPPING_AND_AUTHENTICATED_READ",
+  "publishable": false,
+  "source": {
+    "kind": "local_import_workbook",
+    "path": "data/food-core/Food_Core_v02_with_aliases.xlsx",
+    "sheet": "foods_import",
+    "sha256": "d6f271958c41582f5e1c97d64befa4af28307379d364a20bdd99b228ba2f66a8",
+    "inspected_on": "2026-09-19"
+  },
+  "candidates": {
+    "path": "data/recipes/recipe-candidates-v1.json",
+    "sha256": "9045469af6af882d10c42ad8bb6dbb3fc8efb24e83f2aa833626ea8211d2d96c",
+    "count": 4
+  },
+  "findings": {
+    "exact_local_ingredients": 10,
+    "unresolved_local_ingredients": 0,
+    "current_database_uuid_mappings": 0,
+    "missing_evidence": [
+      "current UUID/stable-ID mapping",
+      "current review/searchability policy and flags",
+      "culinary approval",
+      "staging validation"
+    ],
+    "api_read_attempts": [
+      {
+        "project_ref": "dtsdnhbcwpbfrhcazqkb",
+        "method": "GET",
+        "role": "anon",
+        "status": 400,
+        "code": "42703",
+        "issue": "foods.needs_review does not exist"
+      },
+      {
+        "project_ref": "dtsdnhbcwpbfrhcazqkb",
+        "method": "GET",
+        "role": "anon",
+        "status": 401,
+        "code": "42501",
+        "issue": "permission denied for table foods"
+      }
+    ]
+  },
+  "foods": [
+    {
+      "stable_food_id": "egg_chicken",
+      "source_canonical_id": "egg_chicken",
+      "name": "Яйцо куриное",
+      "source_row": 3,
+      "source": "core",
+      "source_verified": true,
+      "source_needs_review": false,
+      "source_is_safe_canonical": true,
+      "cooking_state": "raw",
+      "declared_unit": "g",
+      "per_100g": {
+        "calories": 143,
+        "protein": 12.5,
+        "fat": 9.5,
+        "carbs": 0.7,
+        "fiber": null
+      }
+    },
+    {
+      "stable_food_id": "sunflower_oil",
+      "source_canonical_id": "sunflower_oil",
+      "name": "Масло подсолнечное",
+      "source_row": 100,
+      "source": "core",
+      "source_verified": true,
+      "source_needs_review": false,
+      "source_is_safe_canonical": true,
+      "cooking_state": "unknown",
+      "declared_unit": "ml",
+      "per_100g": {
+        "calories": 900,
+        "protein": 0,
+        "fat": 99.9,
+        "carbs": 0,
+        "fiber": null
+      }
+    },
+    {
+      "stable_food_id": "cottage_cheese_5_percent",
+      "source_canonical_id": "cottage_cheese_5_percent",
+      "name": "Творог 5%",
+      "source_row": 679,
+      "source": "core",
+      "source_verified": true,
+      "source_needs_review": false,
+      "source_is_safe_canonical": true,
+      "cooking_state": "unknown",
+      "declared_unit": "g",
+      "per_100g": {
+        "calories": 121,
+        "protein": 17.2,
+        "fat": 5,
+        "carbs": 1.8,
+        "fiber": null
+      }
+    },
+    {
+      "stable_food_id": "tomato",
+      "source_canonical_id": "tomato",
+      "name": "Помидор",
+      "source_row": 687,
+      "source": "core",
+      "source_verified": true,
+      "source_needs_review": false,
+      "source_is_safe_canonical": true,
+      "cooking_state": "raw",
+      "declared_unit": "g",
+      "per_100g": {
+        "calories": 24,
+        "protein": 0.9,
+        "fat": 0.2,
+        "carbs": 3.9,
+        "fiber": null
+      }
+    },
+    {
+      "stable_food_id": "whole_buckwheat_groats",
+      "source_canonical_id": "whole_buckwheat_groats",
+      "name": "Гречневая крупа (ядрица)",
+      "source_row": 786,
+      "source": "core",
+      "source_verified": true,
+      "source_needs_review": false,
+      "source_is_safe_canonical": true,
+      "cooking_state": "dried",
+      "declared_unit": "g",
+      "per_100g": {
+        "calories": 313,
+        "protein": 12.6,
+        "fat": 3.3,
+        "carbs": 62.1,
+        "fiber": null
+      }
+    },
+    {
+      "stable_food_id": "oat_flakes",
+      "source_canonical_id": "oat_flakes",
+      "name": "Овсяные хлопья",
+      "source_row": 803,
+      "source": "core",
+      "source_verified": true,
+      "source_needs_review": false,
+      "source_is_safe_canonical": true,
+      "cooking_state": "dried",
+      "declared_unit": "g",
+      "per_100g": {
+        "calories": 366,
+        "protein": 11.9,
+        "fat": 7.2,
+        "carbs": 69.3,
+        "fiber": null
+      }
+    },
+    {
+      "stable_food_id": "bulb_onion",
+      "source_canonical_id": "bulb_onion",
+      "name": "Лук репчатый",
+      "source_row": 1031,
+      "source": "core",
+      "source_verified": true,
+      "source_needs_review": false,
+      "source_is_safe_canonical": true,
+      "cooking_state": "fresh",
+      "declared_unit": "g",
+      "per_100g": {
+        "calories": 41,
+        "protein": 1.4,
+        "fat": 0.2,
+        "carbs": 8.2,
+        "fiber": null
+      }
+    },
+    {
+      "stable_food_id": "carrot",
+      "source_canonical_id": "carrot",
+      "name": "Морковь",
+      "source_row": 1045,
+      "source": "core",
+      "source_verified": true,
+      "source_needs_review": false,
+      "source_is_safe_canonical": true,
+      "cooking_state": "fresh",
+      "declared_unit": "g",
+      "per_100g": {
+        "calories": 35,
+        "protein": 1.3,
+        "fat": 0.1,
+        "carbs": 6.9,
+        "fiber": null
+      }
+    },
+    {
+      "stable_food_id": "apple",
+      "source_canonical_id": "apple",
+      "name": "Яблоко",
+      "source_row": 1543,
+      "source": "core",
+      "source_verified": true,
+      "source_needs_review": false,
+      "source_is_safe_canonical": true,
+      "cooking_state": "fresh",
+      "declared_unit": "g",
+      "per_100g": {
+        "calories": 47,
+        "protein": 0.4,
+        "fat": 0.4,
+        "carbs": 9.8,
+        "fiber": null
+      }
+    },
+    {
+      "stable_food_id": "water",
+      "source_canonical_id": "water",
+      "name": "Вода",
+      "source_row": 1951,
+      "source": "core",
+      "source_verified": true,
+      "source_needs_review": false,
+      "source_is_safe_canonical": true,
+      "cooking_state": "unknown",
+      "declared_unit": "ml",
+      "per_100g": {
+        "calories": 0,
+        "protein": 0,
+        "fat": 0,
+        "carbs": 0,
+        "fiber": null
+      }
+    }
+  ],
+  "local_nutrition_preview": [
+    {
+      "stable_recipe_id": "oatmeal_with_apple",
+      "status": "local_nutrition_preview_only",
+      "canonical_validated": false,
+      "servings": 1,
+      "totals": {
+        "calories": 239.4,
+        "protein": 6.43,
+        "fat": 4.08,
+        "carbs": 46.41,
+        "fiber": null
+      },
+      "per_serving": {
+        "calories": 239.4,
+        "protein": 6.43,
+        "fat": 4.08,
+        "carbs": 46.41,
+        "fiber": null
+      }
+    },
+    {
+      "stable_recipe_id": "buckwheat_with_carrot",
+      "status": "local_nutrition_preview_only",
+      "canonical_validated": false,
+      "servings": 2,
+      "totals": {
+        "calories": 554.4,
+        "protein": 18.32,
+        "fat": 14.27,
+        "carbs": 92.12,
+        "fiber": null
+      },
+      "per_serving": {
+        "calories": 277.2,
+        "protein": 9.16,
+        "fat": 7.14,
+        "carbs": 46.06,
+        "fiber": null
+      }
+    },
+    {
+      "stable_recipe_id": "tomato_omelet",
+      "status": "local_nutrition_preview_only",
+      "canonical_validated": false,
+      "servings": 1,
+      "totals": {
+        "calories": 252.6,
+        "protein": 16.35,
+        "fat": 16.7,
+        "carbs": 6.69,
+        "fiber": null
+      },
+      "per_serving": {
+        "calories": 252.6,
+        "protein": 16.35,
+        "fat": 16.7,
+        "carbs": 6.69,
+        "fiber": null
+      }
+    },
+    {
+      "stable_recipe_id": "cottage_cheese_with_apple",
+      "status": "local_nutrition_preview_only",
+      "canonical_validated": false,
+      "servings": 1,
+      "totals": {
+        "calories": 228.5,
+        "protein": 26.2,
+        "fat": 7.9,
+        "carbs": 12.5,
+        "fiber": null
+      },
+      "per_serving": {
+        "calories": 228.5,
+        "protein": 26.2,
+        "fat": 7.9,
+        "carbs": 12.5,
+        "fiber": null
+      }
+    }
+  ],
+  "strict_canonical_preflight": {
+    "mode": "offline_dry_run",
+    "publishable": false,
+    "summary": {
+      "total_recipes": 4,
+      "valid": 0,
+      "rejected": 4,
+      "review": 0,
+      "unresolved_foods": 0,
+      "ambiguous_foods": 0,
+      "duplicates": 0,
+      "near_duplicates": 0,
+      "calorie_outliers": 0,
+      "macro_outliers": 0
+    },
+    "recipes": [
+      {
+        "stable_recipe_id": "oatmeal_with_apple",
+        "status": "rejected",
+        "issues": [
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "oat_flakes"
+          },
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "water"
+          },
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "apple"
+          }
+        ],
+        "ingredients": [],
+        "totals": null,
+        "per_serving": null
+      },
+      {
+        "stable_recipe_id": "buckwheat_with_carrot",
+        "status": "rejected",
+        "issues": [
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "whole_buckwheat_groats"
+          },
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "water"
+          },
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "carrot"
+          },
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "bulb_onion"
+          },
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "sunflower_oil"
+          }
+        ],
+        "ingredients": [],
+        "totals": null,
+        "per_serving": null
+      },
+      {
+        "stable_recipe_id": "tomato_omelet",
+        "status": "rejected",
+        "issues": [
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "egg_chicken"
+          },
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "tomato"
+          },
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "sunflower_oil"
+          }
+        ],
+        "ingredients": [],
+        "totals": null,
+        "per_serving": null
+      },
+      {
+        "stable_recipe_id": "cottage_cheese_with_apple",
+        "status": "rejected",
+        "issues": [
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "cottage_cheese_5_percent"
+          },
+          {
+            "code": "invalid_canonical_identity",
+            "ingredient": "apple"
+          }
+        ],
+        "ingredients": [],
+        "totals": null,
+        "per_serving": null
+      }
+    ]
+  },
+  "limitations": [
+    "Local source nutrition preview is not a live canonical catalog validation or dietary plan.",
+    "UUIDs were not generated or borrowed from old snapshots. No import was performed.",
+    "All nutrient calculations use explicitly labeled per-100g source columns; recipe weights are grams, not source display units.",
+    "Fiber remains unknown. Cooked yield and final per-100g dish nutrition were not inferred."
+  ]
+}

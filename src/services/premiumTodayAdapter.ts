@@ -80,11 +80,12 @@ const mealTypeLabels: Record<string, string> = {
 };
 
 function formatNumber(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '0';
+  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 function formatCalories(value: number | null | undefined): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) return 'Калории не указаны';
   return `${formatNumber(value)} ккал`;
 }
 

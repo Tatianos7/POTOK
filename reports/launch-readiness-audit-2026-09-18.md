@@ -5,10 +5,12 @@
 **NOT LAUNCH READY. Updated 2026-09-19 after local implementation and checks.**
 Historical report review remains incomplete; no SQL/data/billing mutations or deployment were performed.
 
-Actual branch `master`; HEAD and local `origin/master` both
-`3b891f2070e365fb84f88c4d177acef8787b489c`. The historical handoff workflow for this SHA succeeded
+Branch `master`. Original audit baseline HEAD/local `origin/master`:
+`3b891f2070e365fb84f88c4d177acef8787b489c`. Current local HEAD:
+`4fed6b38eecfd636843e94fbbb1aaba7de62b722` (approved 27-file LOCAL commit; NO PUSH). The historical handoff workflow for this SHA succeeded
 ([run 35381218307](https://github.com/Tatianos7/POTOK/actions/runs/35381218307)).
-Current local changes have not been committed or deployed. The installed Git lacks `branch --show-current`;
+The initial package is committed locally; subsequent resolver/source-review changes
+remain uncommitted. Neither package has been pushed or deployed. The installed Git lacks `branch --show-current`;
 `symbolic-ref --short HEAD` confirmed the branch.
 
 Baseline: 229 pre-existing dirty/untracked files, including 14 tracked edits.
@@ -66,7 +68,7 @@ reapply the draft based on its old status.
 
 ## 4. PARTIAL
 
-Recipe save still has a `limit(1)` name resolver and non-atomic graph replacement;
+Recipe save now uses a strict shared resolver but still has non-atomic graph replacement;
 read-side graph failure can retain shadow JSON. Premium uses a separate accepted
 read-only catalog, whose ingredients currently have names/grams without canonical
 food references. Recipes, plan targets and shopping therefore cannot yet meet
@@ -91,8 +93,8 @@ and owner checkpoints remain open. Do not create substitute schemas.
 - Premium persistence and canonical recipe integration: reviewed schema/content
   contract and approved staging package needed before DB mutation.
 - Billing: owner provider/platform/scope decision, then implementation approval.
-- Commit/push: no unambiguous authorization in this session; prepare exact
-  allowlist and checks, then ask once under prompt section 39.
+- Approved selective LOCAL commit of exactly 27 files completed as `4fed6b3`.
+  Additional commits, push/deploy and all SQL execution remain unauthorized.
 
 ## 7. SECURITY / PRIVACY / DATA RISKS
 
@@ -107,8 +109,9 @@ and owner checkpoints remain open. Do not create substitute schemas.
 3. Search now filters the combined result set, including alias results, to public
    core/brand plus exact own user foods before limit/ranking. Salt ranking regression
    repaired. Server RLS remains authoritative and unverified in this run.
-4. `recipeAnalyzerReal.ts` picks a ranked candidate as resolved, while
-   `recipesService.ts` uses `limit(1)`. Ambiguity is not enforced end-to-end.
+4. Analyzer, recipe-save fallback and favorite name fallback now use exact counted
+   name/alias reads and reject ambiguity/incomplete reads. The package is locally
+   verified; authenticated/browser verification remains outstanding.
 5. `recipesService.saveRecipe` deletes ingredients before replacement insert;
    failed edits can lose the old graph. Existing atomic RPC and current deployed
    trigger behavior need reconciliation before changing this write contract.
@@ -156,15 +159,15 @@ and browser gaps remain explicit. Every grouped row retains its constituent task
 | Food UUID/stable TEXT identity + staging patch | IMPLEMENTED_NOT_VERIFIED | import-food-core maps semantic IDs to stable_food_id; tests; historical staging smoke | current schema / baseline importer edits | read-only contract check, no SQL apply |
 | Aliases/normalization/duplicates/verification/review/searchability/source | PARTIAL | food schemas, review/admin services, importer and tests | fresh data health and full visibility review | read-only audit, exact correction packages |
 | Private user foods / catalog candidates after review | PARTIAL | manual create and merged-search visibility tests; candidate SQL draft | actual RLS and candidate workflow | authenticated staging isolation proof |
-| Deterministic resolver all six sources / ambiguity | PARTIAL | diary resolver type; staging smoke; manual choice path | recipe/favorites first-match guessing | strict shared resolver integration with regression |
+| Deterministic resolver all six sources / ambiguity | PARTIAL | strict analyzer/save/favorite resolver and ambiguity/count/visibility tests; explicit diary choice | fresh authenticated/browser proof of all source paths | read-only staging resolver comparison |
 | Diary snapshot/visibility/idempotency/errors | IMPLEMENTED_NOT_VERIFIED | validation, missing nutrition, overflow, null fiber and immutable replay tests pass | browser/live server enforcement | authenticated staging smoke |
 | Recipe diary kind/null canonical/totals | PARTIAL | dedicated recipe path, recipeId; canonicalFoodId null | no explicit entry_kind in current runtime | schema + historical semantics checkpoint |
 | Food diary edit | IMPLEMENTED_NOT_VERIFIED | updateMealEntry and edit UI exist | snapshot/edit regression and browser proof | audit live-food recalc risk |
 | Food diary notes | IMPLEMENTED_NOT_VERIFIED | mealEntryNotesService + modal tests | deployed optional schema/browser | verify |
 | Quick repeat meal | IMPLEMENTED_NOT_VERIFIED | FoodDiary repeat UI and copyMeal runtime; service tests pass | authenticated browser repeat/snapshot proof | verify existing behavior; no new implementation needed |
 | Recipe production model + graph macro truth | PARTIAL | recipes + recipe_ingredients + recompute migration | shadow fallback, atomic edits, Premium graph gap | reconcile existing models; no parallel schema |
-| Recipe content contract / ingredient availability | PARTIAL | offline content contract, exact stable-ID validator and CLI | current canonical nutrition export unavailable | read-only availability audit |
-| Small sample / computed nutrition / validation | PARTIAL | four authored candidates; arithmetic/ambiguity/duplicate/outlier tests | mappings and culinary review not verified; no valid dataset | real export → small-sample dry-run and review |
+| Recipe content contract / ingredient availability | PARTIAL | ten exact local source ingredients; report hashes and row references | live UUID mapping/review/searchability export unavailable | authenticated staging GET-only evidence or current owner export |
+| Small sample / computed nutrition / validation | PARTIAL | four local source nutrition previews independently calculated; strict dry-run rejects all four without UUIDs | no canonical-approved sample or culinary acceptance | obtain canonical mapping; rerun strict preflight |
 | Scale / dry-run / owner review / staging / production catalog | BLOCKED | legacy ingredient importer exists | content/model + approval before imports | staged workflow, never direct production batch |
 | Premium Recipes entry/gate/categories/list/detail/portions | PARTIAL | honest unavailable/empty/error states; explicit labeled demo; SSR/async helper tests | category chips, validated content, browser proof | canonical content contract and mobile QA |
 | Premium recipes Add to plan/diary | BLOCKED | disabled buttons | execution semantics + RLS | owner-reviewed explicit action contract |
@@ -185,7 +188,7 @@ and browser gaps remain explicit. Every grouped row retains its constituent task
 | Mobile visual/safe area/theme/cards/actions | IMPLEMENTED_NOT_VERIFIED | shell safe-area spacing, responsive components | browser unavailable | visual QA later, no redesign |
 | Exercise illustrations | LATER | established exerciseContent/media assets | content gaps need review | retain style; no random generated replacements |
 | AI technique coach | LATER | separate Pose/AI surfaces | not launch scope | separate future block |
-| Broad tests/build/lint/deploy/no blocker TODO | PARTIAL | 1049 pass, 1 skip, build/typecheck/diff pass; existing deployment HTTP/assets verified | unchanged lint debt; browser; local changes not deployed | owner commit decision and remaining launch gates |
+| Broad tests/build/lint/deploy/no blocker TODO | PARTIAL | latest: 1077 pass, 1 skip, build pass; historical deployment HTTP/assets verified | 121 lint errors / 491 warnings, no new diagnostics; browser; no new deployment | authenticated evidence and remaining release gates |
 
 ## 10. DEPENDENCY-ORDERED ROADMAP TO LAUNCH
 
@@ -222,7 +225,7 @@ identity model and historical snapshots preserved. Server authorization unchange
 Payment/security source audit and metadata-only SQL inspection script prepared.
 No schema apply, actual export, imported recipe catalog or payment integration.
 
-### Final verification, 2026-09-19
+### Initial 27-file commit package verification, 2026-09-19
 
 - All 138 discovered test files: **1050 tests, 1049 pass, 0 fail, 1 skipped**.
   The skipped diary integration test requires a dedicated Supabase test environment.
@@ -233,7 +236,7 @@ No schema apply, actual export, imported recipe catalog or payment integration.
   by file/severity/rule/message against baseline shows **zero additions/removals**.
   This is existing debt, not a green lint gate.
 - All **229** pre-existing dirty/untracked file hashes are unchanged.
-- Index remains empty. No commit/push/deployment made.
+- This verification preceded the approved LOCAL commit `4fed6b3`. No push/deployment made.
 - **PASS_STATIC_ONLY / NOT_TESTED_BROWSER**: a repeat browser discovery still
   returned no browser. Auth helper/SSR tests do not prove mounted UI behavior.
 - Read-only SQL inspection script is **NOT_EXECUTED / NOT_DB_VALIDATED**.
@@ -242,11 +245,12 @@ No schema apply, actual export, imported recipe catalog or payment integration.
 
 ### Exact commit allowlist
 
-The following 27 files are the complete session package, excluding all baseline
-owner changes. It is prepared for selective review/commit, **not a launch-ready
-release**. The known repository lint failure is explicit. Under prompt §39,
-owner authorization is needed before committing; SQL remains a read-only draft
-and billing remains an audit. Commit authorization cannot approve DB application.
+The following exact 27 files were selectively committed with owner approval in
+`4fed6b38eecfd636843e94fbbb1aaba7de62b722`, excluding all baseline owner changes.
+Both whitespace checks passed after removing a trailing blank report line; the
+index was empty afterwards and all 229 original file hashes matched.
+**LOCAL COMMIT ONLY / NO PUSH / NO DEPLOY.** SQL remains an unexecuted draft and
+billing remains an audit. Commit authorization did not authorize DB application.
 
 ```text
 README.md
@@ -278,21 +282,44 @@ src/utils/myProductsVisibility.ts
 src/utils/premiumRecipeReadState.ts
 ```
 
-Suggested commit: `fix: harden account and diary boundaries and recipe preflight`.
-Commit only these paths, inspect staged diff/names, then repeat staged whitespace
-check. Roll back an approved code package with a scoped revert; never reset or
-remove the baseline owner work. No production rollback is needed before deployment.
+Committed message: `fix: harden account and diary boundaries and recipe preflight`.
+No subsequent commit was made. Additional package files are listed in `astra-resume.md`.
 
-### Resume point / exact outstanding decisions
+### Current continuation, 2026-09-19
 
-Ask once for selective local commit of this exact package; push/deploy is a
-separate decision unless explicitly included. Then complete read-only live
-schema/grants evidence and recipe canonical availability using secure configured
-access. Two-user staging write probes require their own reviewed checkpoint.
+After the authorized commit, continued safe runtime work: strict exact canonical
+resolver shared by analyzer/save/favorite fallback; recipe preflight validation;
+account-scoped analysis results; honest missing Premium nutrition. Completed a
+focused historical blocker cross-check and local source availability inspection.
+Four local source nutrition previews exist, but strict canonical preflight rejects
+all four because the current UUID mapping is absent. No identity was invented.
 
-Payment scope/platform decision is specified in the separate audit. No response
-has been received; payment is **not** treated as excluded. Remaining critical
-work: strict runtime resolver across all sources; atomic recipe edits and canonical
-Premium graph; target-validated 14-day content/persistence and explicit execution;
-server privilege/entitlement policy; actual recipe validation/import; browser QA;
-legacy lint gate and approved release/deploy verification.
+Latest broad regression: **1078 tests, 1077 pass, 0 fail, 1 skipped** across 141 files.
+Build passes. Lint remains **121 errors / 491 warnings**, zero new diagnostics and
+11 removed warnings versus the original baseline. Last browser discovery returned
+no connected backend: **NOT_TESTED_BROWSER**. All 229 baseline hashes are unchanged.
+
+Canonical export is **PARKED / OPEN_EXTERNAL_DEPENDENCY** by owner instruction.
+It still requires authenticated read-only staging evidence or a current
+owner-provided canonical export. Anon REST reads could not export foods (missing
+`needs_review`, then table permission denied). No service-role retry or SQL occurred.
+Non-atomic recipe edits require a separately reviewed server/RPC contract; a new
+metadata-only SQL artifact is drafted but has not been executed.
+
+Resume from [astra-resume.md](astra-resume.md), not a fresh audit. Detailed evidence,
+14-day plan gaps and exact external/server checkpoints:
+[recipe-resolver-safety-checkpoint-2026-09-19.md](recipe-resolver-safety-checkpoint-2026-09-19.md).
+Payment remains in launch scope unless the owner explicitly excludes it; no such
+answer has been received. RLS, canonical sample/import, complete target-aware
+plan/execution, payment, browser QA and approved deployment remain launch gates.
+
+Current follow-up is complete locally: conflicting same-UUID snapshots now fail
+closed; identical duplicates remain valid; alias targets require exact membership.
+Recipe preflight preserves its input across async lookup and checks total weight
+overflow; missing graph nutrients no longer become zeros on re-save. Entitlement
+reads reject account mismatch before RPC. Focused tests: 36 passed. Extended
+metadata/acceptance drafts remain unexecuted. Premium Nutrition/Plan implementation
+is ON HOLD pending the owner's separate product contract. Next dependent task is
+review current recipe/server metadata, then draft atomic save against that evidence.
+The exact remaining checkpoints and 24 uncommitted paths are in the resume file.
+MASTER PROMPT v2 remains incomplete. No new commit/push/deploy/SQL/DB writes.

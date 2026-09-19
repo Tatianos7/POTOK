@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { PaywallExplainabilityDTO } from '../types/explainability';
 
 export interface EntitlementStatus {
@@ -7,27 +8,29 @@ export interface EntitlementStatus {
   flags?: Record<string, boolean>;
 }
 
-class EntitlementService {
+export class EntitlementService {
+  constructor(private readonly client: Pick<SupabaseClient, 'auth' | 'rpc'> | null = supabase) {}
+
   private async getSessionUserId(userId?: string): Promise<string> {
-    if (!supabase) {
+    if (!this.client) {
       throw new Error('Supabase не инициализирован');
     }
-    const { data, error } = await supabase.auth.getUser();
+    const { data, error } = await this.client.auth.getUser();
     if (error || !data?.user?.id) {
       throw new Error('Пользователь не авторизован');
     }
     if (userId && userId !== data.user.id) {
-      console.warn('[entitlementService] Передан userId не совпадает с сессией');
+      throw new Error('[entitlementService] Пользователь изменился. Повторите действие в текущем аккаунте.');
     }
     return data.user.id;
   }
 
   async getEntitlements(userId?: string) {
-    if (!supabase) {
+    if (!this.client) {
       throw new Error('Supabase не инициализирован');
     }
     const sessionUserId = await this.getSessionUserId(userId);
-    const { data, error } = await supabase.rpc('get_entitlements', {
+    const { data, error } = await this.client.rpc('get_entitlements', {
       p_user_id: sessionUserId,
     });
     if (error) throw error;
@@ -35,11 +38,11 @@ class EntitlementService {
   }
 
   async getPaywallState(feature: 'adaptation' | 'explainability' | 'spatial', userId?: string) {
-    if (!supabase) {
+    if (!this.client) {
       throw new Error('Supabase не инициализирован');
     }
     const sessionUserId = await this.getSessionUserId(userId);
-    const { data, error } = await supabase.rpc('get_paywall_state', {
+    const { data, error } = await this.client.rpc('get_paywall_state', {
       p_feature: feature,
       p_user_id: sessionUserId,
     });

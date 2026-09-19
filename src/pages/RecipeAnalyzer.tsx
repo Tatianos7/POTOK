@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { recipeAnalyzerService } from '../services/recipeAnalyzerService';
@@ -12,6 +12,7 @@ import { recipeDiaryService } from '../services/recipeDiaryService';
 import { getLocalDayKey } from '../utils/dayKey';
 import { runCombinedRecipeSave } from '../utils/recipeCombinedSave';
 import { RecipeImageError, recipeImagesService } from '../services/recipeImagesService';
+import { createAuthRequestGuard } from '../utils/authRequestGuard';
 
 const placeholderIngredients =
   'Пример: 250 г говядина постная, 1–2 морковки, 1 луковица, 2 дольки чеснока, полтора литра молока, 400 г картофеля';
@@ -23,12 +24,28 @@ const RecipeAnalyzer = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState('');
   const [ingredientsText, setIngredientsText] = useState('');
-  const [items, setItems] = useState<CalculatedIngredient[]>([]);
+  const [analysisResult, setAnalysisResult] = useState<{ userId?: string; items: CalculatedIngredient[] }>({ userId: user?.id, items: [] });
+  const analysisRequests = useRef(createAuthRequestGuard());
+  const items = useMemo(() => analysisResult.userId === user?.id ? analysisResult.items : [], [analysisResult, user?.id]);
   const [isSaveOpen, setIsSaveOpen] = useState(false);
   const [isSaveRecipeModalOpen, setIsSaveRecipeModalOpen] = useState(false);
   const [recipeImage, setRecipeImage] = useState<string | null>(null);
   const [saveMode, setSaveMode] = useState<'recipe' | 'combined' | null>(null);
   const [pendingCombinedRecipeName, setPendingCombinedRecipeName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const guard = analysisRequests.current;
+    guard.invalidate();
+    setAnalysisResult({ userId: user?.id, items: [] });
+    setName('');
+    setIngredientsText('');
+    setRecipeImage(null);
+    setIsSaveOpen(false);
+    setIsSaveRecipeModalOpen(false);
+    setSaveMode(null);
+    setPendingCombinedRecipeName(null);
+    return () => guard.invalidate();
+  }, [user?.id]);
 
   const totals = calcTotals(items);
   const per100 = useMemo(
@@ -60,8 +77,10 @@ const RecipeAnalyzer = () => {
 
   const handleAnalyze = async () => {
     if (!ingredientsText.trim()) return;
-    const result = await recipeAnalyzerService.analyze(ingredientsText);
-    setItems(result);
+    const isCurrent = analysisRequests.current.begin();
+    const userId = user?.id;
+    const result = await recipeAnalyzerService.analyze(ingredientsText, user?.id);
+    if (isCurrent()) setAnalysisResult({ userId, items: result });
   };
 
   const handlePhoto = () => {
@@ -89,6 +108,7 @@ const RecipeAnalyzer = () => {
     items.map((item) => ({
       name: item.name,
       canonical_food_id: item.canonical_food_id ?? null,
+      resolution_status: item.resolution_status,
       quantity: item.originalAmount ?? item.quantity ?? item.amount ?? 0,
       unit: item.unit || 'g',
       grams: item.quantity_g ?? item.gramsEquivalent ?? item.amountGrams,
