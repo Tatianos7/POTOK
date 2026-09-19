@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
 import Button from '../ui/components/Button';
+import { hasDemoPremiumAccess } from '../services/demoPremiumAccess';
+import { readPremiumRecipeCatalog, type RecipeCatalogReadStatus } from '../utils/premiumRecipeReadState';
 import {
   isPremiumCatalogStagingReadMode,
   premiumCatalogService,
@@ -24,7 +26,7 @@ interface PremiumRecipe {
 }
 
 const categories = ['Завтраки', 'Обеды', 'Ужины', 'Перекусы', 'Быстро', 'Без сложной готовки'];
-type CatalogReadStatus = 'idle' | 'loading' | 'catalog' | 'fallback';
+type CatalogReadStatus = RecipeCatalogReadStatus;
 
 export const mockPremiumRecipes: PremiumRecipe[] = [
   {
@@ -90,11 +92,11 @@ function getInitialRecipeId(search: string) {
 }
 
 function formatMacroValue(value: number | null) {
-  return value === null ? '0' : Number.isInteger(value) ? String(value) : value.toFixed(1);
+  return value === null ? '—' : Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 function formatCalories(value: number | null) {
-  return `${value ?? 0} ккал`;
+  return value === null ? 'Не указаны' : `${value} ккал`;
 }
 
 function mapCategory(category: string) {
@@ -115,8 +117,11 @@ function renderCatalogReadStatus(status: CatalogReadStatus) {
     return <p className="text-center text-xs leading-4 text-stone-400">Готовим рецепты для просмотра...</p>;
   }
 
-  if (status === 'fallback') {
-    return <p className="text-center text-xs leading-4 text-stone-400">Показываем демо-рецепты.</p>;
+  if (status === 'unavailable') {
+    return <p role="status" className="text-center text-sm leading-5 text-stone-600">Каталог рецептов пока недоступен. Попробуйте открыть его позже.</p>;
+  }
+  if (status === 'empty') {
+    return <p role="status" className="text-center text-sm leading-5 text-stone-600">Рецепты пока не найдены.</p>;
   }
 
   return null;
@@ -147,43 +152,47 @@ export function mapCatalogRecipeToPremiumRecipe(
   };
 }
 
-const PremiumRecipes = () => {
+const PremiumRecipes = ({ demoMode = hasDemoPremiumAccess() }: { demoMode?: boolean }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const useStagingCatalog = isPremiumCatalogStagingReadMode();
-  const [recipes, setRecipes] = useState<PremiumRecipe[]>(mockPremiumRecipes);
-  const [libraryReadStatus, setLibraryReadStatus] = useState<CatalogReadStatus>('idle');
+  const displayDemo = demoMode && !useStagingCatalog;
+  const [recipes, setRecipes] = useState<PremiumRecipe[]>([]);
+  const activeRecipes = useMemo(
+    () => displayDemo ? mockPremiumRecipes : useStagingCatalog ? recipes : [],
+    [displayDemo, useStagingCatalog, recipes]
+  );
+  const [libraryReadStatus, setLibraryReadStatus] = useState<CatalogReadStatus>(useStagingCatalog ? 'loading' : displayDemo ? 'idle' : 'unavailable');
   const [detailReadStatus, setDetailReadStatus] = useState<CatalogReadStatus>('idle');
   const [recipeDetails, setRecipeDetails] = useState<Record<string, PremiumRecipe>>({});
   const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(() => getInitialRecipeId(location.search));
   const selectedRecipe = useMemo(
-    () => (selectedRecipeId ? recipeDetails[selectedRecipeId] ?? recipes.find((recipe) => recipe.id === selectedRecipeId) ?? null : null),
-    [recipeDetails, recipes, selectedRecipeId]
+    () => (selectedRecipeId ? (useStagingCatalog ? recipeDetails[selectedRecipeId] : null) ?? activeRecipes.find((recipe) => recipe.id === selectedRecipeId) ?? null : null),
+    [recipeDetails, activeRecipes, selectedRecipeId, useStagingCatalog]
   );
 
   useEffect(() => {
     if (!useStagingCatalog) {
-      setLibraryReadStatus('idle');
+      setRecipes([]);
+      setRecipeDetails({});
+      setLibraryReadStatus(displayDemo ? 'idle' : 'unavailable');
       return;
     }
 
     let isCancelled = false;
+    setRecipes([]);
     setLibraryReadStatus('loading');
 
-    premiumCatalogService.getPremiumRecipeLibrary().then((result) => {
+    readPremiumRecipeCatalog(() => premiumCatalogService.getPremiumRecipeLibrary(), []).then((result) => {
       if (isCancelled) return;
-      if (result.ok && result.data.length > 0) {
-        setRecipes(result.data.map((recipe) => mapCatalogRecipeToPremiumRecipe(recipe)));
-        setLibraryReadStatus('catalog');
-        return;
-      }
-      setLibraryReadStatus('fallback');
+      setRecipes(result.data.map((recipe) => mapCatalogRecipeToPremiumRecipe(recipe)));
+      setLibraryReadStatus(result.status);
     });
 
     return () => {
       isCancelled = true;
     };
-  }, [useStagingCatalog]);
+  }, [useStagingCatalog, displayDemo]);
 
   useEffect(() => {
     if (!useStagingCatalog || !selectedRecipeId) {
@@ -199,9 +208,9 @@ const PremiumRecipes = () => {
     let isCancelled = false;
     setDetailReadStatus('loading');
 
-    premiumCatalogService.getPremiumRecipeDetail(selectedRecipeId).then((result) => {
+    readPremiumRecipeCatalog(() => premiumCatalogService.getPremiumRecipeDetail(selectedRecipeId), null).then((result) => {
       if (isCancelled) return;
-      if (result.ok && result.data) {
+      if (result.data) {
         const detail = result.data;
         setRecipeDetails((current) => ({
           ...current,
@@ -210,7 +219,7 @@ const PremiumRecipes = () => {
         setDetailReadStatus('catalog');
         return;
       }
-      setDetailReadStatus('fallback');
+      setDetailReadStatus(result.status);
     });
 
     return () => {
@@ -246,6 +255,17 @@ const PremiumRecipes = () => {
     </header>
   );
 
+  if (selectedRecipeId && !selectedRecipe) {
+    return (
+      <div className="mx-auto min-h-screen w-full max-w-md px-4 pb-36 pt-[max(32px,env(safe-area-inset-top))]">
+        {renderHeader('Рецепт', () => setSelectedRecipeId(null))}
+        <main className="pt-5">
+          {renderCatalogReadStatus(useStagingCatalog ? (detailReadStatus === 'idle' ? 'loading' : detailReadStatus) : displayDemo ? 'empty' : 'unavailable')}
+        </main>
+      </div>
+    );
+  }
+
   if (selectedRecipe) {
     return (
       <div className="min-h-screen min-w-[320px] bg-stone-50">
@@ -253,6 +273,7 @@ const PremiumRecipes = () => {
           {renderHeader(selectedRecipe.category, () => setSelectedRecipeId(null))}
 
           <main className="flex flex-1 flex-col gap-4 pb-8 pt-5">
+            {displayDemo ? <p className="text-center text-xs text-stone-500">Демо-рецепт · пример для знакомства с Premium</p> : null}
             {renderCatalogReadStatus(detailReadStatus)}
 
             <section className="rounded-lg border border-stone-200 bg-white p-4">
@@ -351,6 +372,7 @@ const PremiumRecipes = () => {
             Готовые рецепты POTOK с КБЖУ, граммовками и подсказками без весов.
           </p>
           {renderCatalogReadStatus(libraryReadStatus)}
+          {displayDemo ? <p className="text-center text-xs text-stone-500">Демо-рецепты · примеры для знакомства с Premium</p> : null}
 
           <div className="flex flex-wrap gap-2">
             {categories.map((category) => (
@@ -361,8 +383,8 @@ const PremiumRecipes = () => {
           </div>
 
           <section className="space-y-2">
-            {recipes.length > 0 ? (
-              recipes.map((recipe) => (
+            {activeRecipes.length > 0 ? (
+              activeRecipes.map((recipe) => (
                 <button
                   key={recipe.id}
                   type="button"
@@ -376,11 +398,7 @@ const PremiumRecipes = () => {
                   </p>
                 </button>
               ))
-            ) : (
-              <p className="rounded-lg border border-stone-200 bg-white px-3 py-3 text-center text-sm leading-5 text-stone-500">
-                Рецепты пока не найдены. Показываем демо-рецепты.
-              </p>
-            )}
+            ) : null}
           </section>
         </main>
       </div>

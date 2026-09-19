@@ -21,6 +21,13 @@ export interface UserProfile {
   updated_at: string;
 }
 
+export class ProfileUserScopeError extends Error {
+  constructor() {
+    super('Пользователь изменился. Откройте профиль текущего аккаунта.');
+    this.name = 'ProfileUserScopeError';
+  }
+}
+
 class ProfileService {
   private readonly AVATAR_STORAGE_KEY = 'potok_user_avatar';
   private readonly COACH_SETTINGS_KEY = 'potok_coach_settings';
@@ -230,7 +237,7 @@ class ProfileService {
     }
 
     if (userId && userId !== data.user.id) {
-      console.warn('[profileService] Передан userId не совпадает с сессией');
+      throw new ProfileUserScopeError();
     }
 
     return data.user.id;
@@ -247,7 +254,8 @@ class ProfileService {
     let sessionUserId = userId;
     try {
       sessionUserId = await this.getSessionUserId(userId);
-    } catch {
+    } catch (error) {
+      if (error instanceof ProfileUserScopeError) return null;
       const fallback = this.readCachedProfile(userId) ?? this.buildDefaultProfile(userId);
       this.devLog('fallback used: cache/default (session unavailable)');
       return fallback;
@@ -396,7 +404,8 @@ class ProfileService {
     let sessionUserId = userId;
     try {
       sessionUserId = await this.getSessionUserId(userId);
-    } catch {
+    } catch (error) {
+      if (error instanceof ProfileUserScopeError) throw error;
       const base = this.readCachedProfile(userId) ?? this.buildDefaultProfile(userId);
       const optimistic = this.mergeProfileWithDetails(base, profile);
       this.writeCachedProfile(optimistic);

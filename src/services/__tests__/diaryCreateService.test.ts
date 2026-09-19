@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   calculateDiarySnapshot,
+  parseDiaryNutrient,
   DiaryCreateService,
   DiaryCreateServiceError,
   type CreateDiaryEntryRequest,
@@ -100,7 +101,7 @@ function buildFood(overrides: Partial<DiaryFoodRecord> = {}): DiaryFoodRecord {
   };
 }
 
-test('resolved happy path computes snapshot server-side', async () => {
+test('resolved happy path computes snapshot from canonical nutrition', async () => {
   const diaryRepo = new InMemoryDiaryRepo();
   const service = new DiaryCreateService({
     diaryRepo,
@@ -117,6 +118,69 @@ test('resolved happy path computes snapshot server-side', async () => {
   assert.equal(result.entry.fiber, 0);
   assert.equal(diaryRepo.inserts.length, 1);
   assert.equal(diaryRepo.inserts[0].calories, 232.5);
+});
+
+test('invalid calendar dates and non-finite weights never reach diary insert', async () => {
+  const diaryRepo = new InMemoryDiaryRepo();
+  const service = new DiaryCreateService({ diaryRepo, foodsRepo: new InMemoryFoodsRepo({ 'food-1': buildFood() }) });
+  for (const date of ['2026-02-29', '2026-02-31', '2026-04-31', '2026-00-01', '0000-01-01', '2026-13-01']) {
+    await assert.rejects(service.create('user-1', buildRequest({ date })), { code: 'invalid_date' });
+  }
+  for (const weight_g of [Infinity, -Infinity, NaN, 0, -1]) {
+    await assert.rejects(service.create('user-1', buildRequest({ weight_g })), { code: 'invalid_weight_g' });
+  }
+  assert.equal(diaryRepo.inserts.length, 0);
+  await service.create('user-1', buildRequest({ date: '2024-02-29' }));
+  assert.equal(diaryRepo.inserts.length, 1);
+});
+
+test('invalid canonical nutrition cannot become a completed snapshot', async () => {
+  for (const field of ['calories', 'protein', 'fat', 'carbs', 'fiber'] as const) {
+    for (const value of [NaN, Infinity, -1, undefined]) {
+      const diaryRepo = new InMemoryDiaryRepo();
+      const service = new DiaryCreateService({
+        diaryRepo,
+        foodsRepo: new InMemoryFoodsRepo({ 'food-1': buildFood({ [field]: value }) }),
+      });
+      await assert.rejects(service.create('user-1', buildRequest()), { code: 'invalid_food_macros' });
+      assert.equal(diaryRepo.inserts.length, 0);
+    }
+  }
+});
+
+test('PostgREST nutrient coercion preserves numeric strings and rejects missing values before insert', async () => {
+  assert.equal(parseDiaryNutrient('0'), 0);
+  assert.equal(parseDiaryNutrient('13.5'), 13.5);
+  for (const raw of [null, undefined, '', ' ', true, [], 'invalid']) {
+    const diaryRepo = new InMemoryDiaryRepo();
+    const service = new DiaryCreateService({ diaryRepo, foodsRepo: new InMemoryFoodsRepo({
+      'food-1': buildFood({ calories: parseDiaryNutrient(raw) }),
+    }) });
+    await assert.rejects(service.create('user-1', buildRequest()), { code: 'invalid_food_macros' });
+    assert.equal(diaryRepo.inserts.length, 0);
+  }
+});
+
+test('snapshot overflow is rejected but zero-nutrition foods remain valid', async () => {
+  const diaryRepo = new InMemoryDiaryRepo();
+  const service = new DiaryCreateService({ diaryRepo, foodsRepo: new InMemoryFoodsRepo({ 'food-1': buildFood() }) });
+  await assert.rejects(service.create('user-1', buildRequest({ weight_g: Number.MAX_VALUE })), { code: 'invalid_food_macros' });
+  assert.equal(diaryRepo.inserts.length, 0);
+  assert.deepEqual(calculateDiarySnapshot(buildFood({ calories: 0, protein: 0, fat: 0, carbs: 0, fiber: null }), 2), {
+    calories: 0, protein: 0, fat: 0, carbs: 0, fiber: null,
+  });
+});
+
+test('idempotent replay preserves history even if current catalog nutrition becomes invalid', async () => {
+  const diaryRepo = new InMemoryDiaryRepo();
+  const food = buildFood();
+  const service = new DiaryCreateService({ diaryRepo, foodsRepo: new InMemoryFoodsRepo({ 'food-1': food }) });
+  const first = await service.create('user-1', buildRequest());
+  food.calories = NaN;
+  const replay = await service.create('user-1', buildRequest());
+  assert.equal(replay.idempotent_replay, true);
+  assert.deepEqual(replay.entry, first.entry);
+  assert.equal(diaryRepo.inserts.length, 1);
 });
 
 test('snapshot scaling preserves null fiber and keeps confirmed zero', () => {

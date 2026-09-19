@@ -117,6 +117,7 @@ export class DiaryCreateServiceError extends Error {
       | 'invalid_weight_g'
       | 'invalid_meal_type'
       | 'invalid_date'
+      | 'invalid_food_macros'
       | 'idempotency_conflict_payload_mismatch'
       | 'unauthorized_user_scope',
     message: string
@@ -134,8 +135,20 @@ export interface CreateDiaryEntryResult {
 const VALID_MEAL_TYPES: DiaryMealType[] = ['breakfast', 'lunch', 'dinner', 'snack'];
 
 function assertValidDate(date: string): void {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  const parsed = new Date(`${date}T00:00:00.000Z`);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+    date.startsWith('0000-') ||
+    !Number.isFinite(parsed.getTime()) ||
+    parsed.toISOString().slice(0, 10) !== date
+  ) {
     throw new DiaryCreateServiceError('invalid_date', 'Invalid date format');
+  }
+}
+
+function assertValidWeight(weightG: number): void {
+  if (!Number.isFinite(weightG) || weightG <= 0) {
+    throw new DiaryCreateServiceError('invalid_weight_g', 'weight_g must be finite and greater than zero');
   }
 }
 
@@ -176,16 +189,34 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+// PostgREST numeric values may be strings. Missing/invalid required nutrients
+// must reach validation as invalid, never be silently replaced with zero.
+export function parseDiaryNutrient(value: unknown): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim()) return Number(value);
+  return NaN;
+}
+
 export function calculateDiarySnapshot(food: DiaryFoodRecord, weightG: number) {
+  assertValidWeight(weightG);
+  const macros = [food.calories, food.protein, food.fat, food.carbs];
+  if (food.fiber !== null) macros.push(food.fiber);
+  if (macros.some((value) => !Number.isFinite(value) || value < 0)) {
+    throw new DiaryCreateServiceError('invalid_food_macros', 'Food nutrition must be finite and non-negative');
+  }
   const factor = weightG / 100;
 
-  return {
+  const snapshot = {
     calories: round2(food.calories * factor),
     protein: round2(food.protein * factor),
     fat: round2(food.fat * factor),
     carbs: round2(food.carbs * factor),
     fiber: food.fiber == null ? null : round2(food.fiber * factor),
   };
+  if (Object.values(snapshot).some((value) => value !== null && !Number.isFinite(value))) {
+    throw new DiaryCreateServiceError('invalid_food_macros', 'Calculated nutrition exceeds the numeric range');
+  }
+  return snapshot;
 }
 
 function matchesSemanticPayload(existing: DiaryEntryRecord, request: CreateDiaryEntryRequest, canonicalFoodId: string): boolean {
@@ -221,9 +252,7 @@ export class DiaryCreateService {
     assertValidDate(request.date);
     assertValidMealType(request.meal_type);
 
-    if (!(request.weight_g > 0)) {
-      throw new DiaryCreateServiceError('invalid_weight_g', 'weight_g must be greater than zero');
-    }
+    assertValidWeight(request.weight_g);
 
     assertResolvedResolver(request.resolver);
 
@@ -290,9 +319,7 @@ export async function buildDiaryInsertPayload(
   assertValidDate(request.date);
   assertValidMealType(request.meal_type);
 
-  if (!(request.weight_g > 0)) {
-    throw new DiaryCreateServiceError('invalid_weight_g', 'weight_g must be greater than zero');
-  }
+  assertValidWeight(request.weight_g);
 
   assertResolvedResolver(request.resolver);
 

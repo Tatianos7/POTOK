@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import {
   User,
@@ -7,12 +7,13 @@ import {
   ProfileUpdatePayload,
   ResetPasswordPayload,
 } from '../types';
-import { getSessionCached, supabase } from '../lib/supabaseClient';
+import { getSessionCached, invalidateSessionCache, supabase } from '../lib/supabaseClient';
 import { activityService } from '../services/activityService';
 import { profileService, type UserProfile } from '../services/profileService';
 import { clearPinSessionUnlocked } from '../services/pinLockService';
 import { getAuthCallbackRedirectUrl } from '../utils/authRedirect';
 import { useTheme } from './ThemeContext';
+import { createAuthRequestGuard } from '../utils/authRequestGuard';
 
 type AuthStatus = 'booting' | 'authenticated' | 'unauthenticated';
 
@@ -45,6 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [entitlements, setEntitlements] = useState<Record<string, boolean> | null>(null);
   const [trustScore, setTrustScore] = useState<number | null>(null);
   const { setThemeExplicit } = useTheme();
+  const authRequests = useRef(createAuthRequestGuard());
   const isInvalidRefreshTokenError = (error: unknown): boolean => {
     if (!error || typeof error !== 'object') return false;
     const message = ((error as { message?: string }).message || '').toLowerCase();
@@ -83,7 +85,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let supabaseProfile: UserProfile | null = null;
     try {
       const profileResult = await withTimeout(profileService.getProfile(sessionUser.id), 5000);
-      supabaseProfile = profileResult ?? null;
+      supabaseProfile = profileResult?.id_user === sessionUser.id ? profileResult : null;
     } catch (error) {
       console.warn('[AuthContext] getProfile failed, continue without profile:', error);
     }
@@ -134,6 +136,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const clearSessionState = () => {
+    authRequests.current.invalidate();
+    invalidateSessionCache();
     resetMealSyncState();
     clearPinSessionUnlocked();
     setUser(null);
@@ -150,27 +154,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     const supabaseClient = supabase;
+    const requestGuard = authRequests.current;
     let isMounted = true;
     let lastAuthUserId: string | null = null;
     const resetSyncIfUserChanged = (nextUserId: string | null) => {
       if (lastAuthUserId !== nextUserId) {
         resetMealSyncState();
+        if (lastAuthUserId !== null) clearPinSessionUnlocked();
+        setUser(null);
+        setProfile(null);
+        setEntitlements(null);
+        setTrustScore(null);
+        setAuthStatus(nextUserId ? 'booting' : 'unauthenticated');
         lastAuthUserId = nextUserId;
       }
     };
 
     const init = async () => {
-      const sessionResult = await withTimeout(getSessionCached(), 12000);
-      if (!isMounted) return;
+      const isCurrent = requestGuard.begin();
+      const sessionResult = await withTimeout(getSessionCached(), 12000).catch(() => null);
+      if (!isMounted || !isCurrent()) return;
       if (!sessionResult) {
         console.warn('[AuthContext] getSession timeout, retrying direct session fetch');
         try {
           const directSession = await withTimeout(supabaseClient.auth.getSession(), 5000);
-          if (!isMounted) return;
+          if (!isMounted || !isCurrent()) return;
           const directUser = directSession?.data?.session?.user ?? null;
+          resetSyncIfUserChanged(directUser?.id ?? null);
           if (directUser) {
             const built = await withTimeout(buildUser(directUser), 8000);
-            if (!isMounted) return;
+            if (!isMounted || !isCurrent()) return;
             if (built) {
               setUser(built.user);
               setProfile(built.profile);
@@ -183,12 +196,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             clearSessionState();
           }
         } catch {
+          if (!isMounted || !isCurrent()) return;
           clearSessionState();
         }
         return;
       }
       const { data, error } = sessionResult;
-      if (!isMounted) return;
+      if (!isMounted || !isCurrent()) return;
 
       if (error) {
         if (isInvalidRefreshTokenError(error)) {
@@ -204,7 +218,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (currentSession?.user) {
         try {
           const built = await withTimeout(buildUser(currentSession.user), 8000);
-          if (!isMounted) return;
+          if (!isMounted || !isCurrent()) return;
           if (built) {
             setUser(built.user);
             setProfile(built.profile);
@@ -241,6 +255,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setAuthStatus('authenticated');
           activityService.updateActivity(currentSession.user.id);
         } catch (buildError) {
+          if (!isMounted || !isCurrent()) return;
           if (isInvalidRefreshTokenError(buildError)) {
             resetInvalidSessionSafely(supabaseClient);
             return;
@@ -286,19 +301,64 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setAuthStatus((prev) => (prev === 'booting' ? 'unauthenticated' : prev));
     }, 20000);
 
-    init();
+    void init();
 
-    const { data: authListener } = supabaseClient.auth.onAuthStateChange(async (_event, newSession) => {
+    const { data: authListener } = supabaseClient.auth.onAuthStateChange((_event, newSession) => {
+      if (!isMounted) return;
+      window.clearTimeout(authInitGuard);
+      invalidateSessionCache();
+      const isCurrent = requestGuard.begin();
       resetSyncIfUserChanged(newSession?.user?.id ?? null);
       if (newSession?.user) {
-        try {
-          const built = await withTimeout(buildUser(newSession.user), 8000);
-          if (!isMounted) return;
-          if (built) {
-            setUser(built.user);
-            setProfile(built.profile);
-          } else {
-            setUser({
+        // Return synchronously to Supabase before starting profile requests.
+        // Awaiting its client from the auth callback can hold the auth lock.
+        void Promise.resolve().then(async () => {
+          if (!isMounted || !isCurrent()) return;
+          try {
+            const built = await withTimeout(buildUser(newSession.user), 8000);
+            if (!isMounted || !isCurrent()) return;
+            if (built) {
+              setUser(built.user);
+              setProfile(built.profile);
+            } else {
+              setUser({
+                id: newSession.user.id,
+                name:
+                  newSession.user.email ||
+                  newSession.user.phone ||
+                  'Пользователь',
+                email: newSession.user.email ?? undefined,
+                phone: newSession.user.phone ?? undefined,
+                hasPremium: false,
+                createdAt: newSession.user.created_at || new Date().toISOString(),
+                profile: {
+                  firstName:
+                    (newSession.user.user_metadata?.first_name as string | undefined) || '',
+                  lastName:
+                    (newSession.user.user_metadata?.last_name as string | undefined) || undefined,
+                  middleName:
+                    (newSession.user.user_metadata?.middle_name as string | undefined) || undefined,
+                  birthDate: undefined,
+                  age: undefined,
+                  height: undefined,
+                  goal: undefined,
+                  email: newSession.user.email ?? undefined,
+                  phone: newSession.user.phone ?? undefined,
+                },
+                isAdmin: false,
+              });
+              setProfile(null);
+            }
+            setAuthStatus('authenticated');
+            activityService.updateActivity(newSession.user.id);
+          } catch (buildError) {
+            if (!isMounted || !isCurrent()) return;
+            if (isInvalidRefreshTokenError(buildError)) {
+              resetInvalidSessionSafely(supabaseClient);
+              return;
+            }
+            console.warn('[AuthContext] buildUser error:', buildError);
+            const fallbackUser: User = {
               id: newSession.user.id,
               name:
                 newSession.user.email ||
@@ -323,47 +383,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 phone: newSession.user.phone ?? undefined,
               },
               isAdmin: false,
-            });
+            };
+            setUser(fallbackUser);
             setProfile(null);
+            setAuthStatus('authenticated');
           }
-          setAuthStatus('authenticated');
-          activityService.updateActivity(newSession.user.id);
-        } catch (buildError) {
-          if (isInvalidRefreshTokenError(buildError)) {
-            resetInvalidSessionSafely(supabaseClient);
-            return;
-          }
-          console.warn('[AuthContext] buildUser error:', buildError);
-          const fallbackUser: User = {
-            id: newSession.user.id,
-            name:
-              newSession.user.email ||
-              newSession.user.phone ||
-              'Пользователь',
-            email: newSession.user.email ?? undefined,
-            phone: newSession.user.phone ?? undefined,
-            hasPremium: false,
-            createdAt: newSession.user.created_at || new Date().toISOString(),
-            profile: {
-              firstName:
-                (newSession.user.user_metadata?.first_name as string | undefined) || '',
-              lastName:
-                (newSession.user.user_metadata?.last_name as string | undefined) || undefined,
-              middleName:
-                (newSession.user.user_metadata?.middle_name as string | undefined) || undefined,
-              birthDate: undefined,
-              age: undefined,
-              height: undefined,
-              goal: undefined,
-              email: newSession.user.email ?? undefined,
-              phone: newSession.user.phone ?? undefined,
-            },
-            isAdmin: false,
-          };
-          setUser(fallbackUser);
-          setProfile(null);
-          setAuthStatus('authenticated');
-        }
+        });
       } else {
         clearSessionState();
       }
@@ -371,6 +396,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => {
       isMounted = false;
+      requestGuard.invalidate();
       window.clearTimeout(authInitGuard);
       authListener?.subscription?.unsubscribe();
     };
@@ -465,12 +491,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const updateProfile = async (data: ProfileUpdatePayload) => {
     if (!user) return;
+    const userId = user.id;
+    const isCurrent = authRequests.current.capture();
     try {
-      await profileService.saveProfile(user.id, data);
-      const updatedProfile = await profileService.getProfile(user.id);
-      if (updatedProfile) {
+      await profileService.saveProfile(userId, data);
+      if (!isCurrent()) return;
+      const updatedProfile = await profileService.getProfile(userId);
+      if (!isCurrent()) return;
+      if (updatedProfile?.id_user === userId) {
         setUser((prev) =>
-          prev
+          prev?.id === userId && isCurrent()
             ? {
                 ...prev,
                 name: updatedProfile.first_name || prev.name,

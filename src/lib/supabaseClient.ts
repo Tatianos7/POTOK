@@ -26,6 +26,11 @@ export const supabase: SupabaseClient | null =
 let sessionCache: Promise<{ data: { session: any } | null; error: any } | null> | null = null;
 let sessionCacheTs = 0;
 
+export const invalidateSessionCache = () => {
+  sessionCache = null;
+  sessionCacheTs = 0;
+};
+
 export const getSessionCached = async (ttlMs = 5000) => {
   if (!supabase) return null;
   const now = Date.now();

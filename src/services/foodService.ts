@@ -9,7 +9,7 @@ import {
   normalizeFoodText,
   validateNutrition,
 } from '../utils/foodNormalizer';
-import { filterVisibleUserFoods } from '../utils/myProductsVisibility';
+import { filterVisibleFoods, filterVisibleUserFoods } from '../utils/myProductsVisibility';
 import { searchAnalyticsService, type FoodSearchAnalyticsContext } from './searchAnalyticsService';
 // TODO: Re-enable Open Food Facts / USDA when stable
 // import { openFoodFactsService } from './openFoodFactsService';
@@ -202,6 +202,11 @@ const getStableTieBreaker = (food: Food): string => {
   return (food.stable_food_id ?? food.canonical_food_id ?? food.id ?? food.name).toString();
 };
 
+// Preserve the reviewed generic salt result even when PostgREST omits aliases.
+// This only ranks displayed candidates; it does not resolve or rewrite identity.
+const getReviewedQueryPreference = (food: Food, query: string): number =>
+  query === 'соль' && food.stable_food_id === 'salt' && food.source === 'core' ? 1 : 0;
+
 const compareSearchFoods = (a: SearchRankedFood, b: SearchRankedFood, normalizedQuery: string): number => {
   const aMatch = getSearchMatch(a, normalizedQuery);
   const bMatch = getSearchMatch(b, normalizedQuery);
@@ -215,6 +220,9 @@ const compareSearchFoods = (a: SearchRankedFood, b: SearchRankedFood, normalized
   if ((a.verified ?? false) !== (b.verified ?? false)) {
     return (b.verified ? 1 : 0) - (a.verified ? 1 : 0);
   }
+
+  const reviewedPreference = getReviewedQueryPreference(b, normalizedQuery) - getReviewedQueryPreference(a, normalizedQuery);
+  if (reviewedPreference !== 0) return reviewedPreference;
 
   const specificityDelta = getSpecificityScore(a, normalizedQuery) - getSpecificityScore(b, normalizedQuery);
   if (specificityDelta !== 0) return specificityDelta;
@@ -743,7 +751,9 @@ class FoodService {
     // 5. Open Food Facts API - ОТКЛЮЧЕНО
     // 6. USDA API - ОТКЛЮЧЕНО
 
-    const finalResults = finalizeFoodSearchResults(allResults, q, limit);
+    // Apply visibility after combining every source, including alias lookups,
+    // before deduplication/ranking can let a private row replace a public row.
+    const finalResults = finalizeFoodSearchResults(filterVisibleFoods(allResults, userId), q, limit);
     const normalizedQuery = normalizeFoodText(query);
     void searchAnalyticsService.logSearchResult({
       query,

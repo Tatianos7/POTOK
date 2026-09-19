@@ -22,10 +22,10 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 const premiumRecipesSource = readFileSync(resolve(currentDir, '../PremiumRecipes.tsx'), 'utf8');
 const catalogServiceSource = readFileSync(resolve(currentDir, '../../services/premiumCatalogService.ts'), 'utf8');
 
-function renderPremiumRecipes(route = '/premium-recipes') {
+function renderPremiumRecipes(route = '/premium-recipes', demoMode = true) {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={[route]}>
-      <PremiumRecipes />
+      <PremiumRecipes demoMode={demoMode} />
     </MemoryRouter>
   );
 }
@@ -47,7 +47,7 @@ test('/premium-recipes mounted async harness records current DOM limitation with
   }
 });
 
-test('/premium-recipes default mode renders mock library and does not execute catalog reads in static render', () => {
+test('/premium-recipes explicit demo mode renders mock library and does not execute catalog reads in static render', () => {
   const originalGetLibrary = premiumCatalogService.getPremiumRecipeLibrary;
   const originalGetDetail = premiumCatalogService.getPremiumRecipeDetail;
   const calls: string[] = [];
@@ -74,7 +74,7 @@ test('/premium-recipes default mode renders mock library and does not execute ca
   }
 });
 
-test('/premium-recipes default detail keeps disabled no-write actions', () => {
+test('/premium-recipes explicit demo detail keeps disabled no-write actions', () => {
   const html = renderPremiumRecipes(`/premium-recipes?recipe=${mockPremiumRecipes[0].id}`);
 
   assert.match(html, /Ингредиенты/);
@@ -89,12 +89,12 @@ test('/premium-recipes default detail keeps disabled no-write actions', () => {
 
 test('/premium-recipes flag-enabled library success is wired to read-only catalog data', () => {
   assert.match(premiumRecipesSource, /const useStagingCatalog = isPremiumCatalogStagingReadMode\(\)/);
-  assert.match(premiumRecipesSource, /if \(!useStagingCatalog\) \{[\s\S]*setLibraryReadStatus\('idle'\)[\s\S]*return;/);
+  assert.match(premiumRecipesSource, /setLibraryReadStatus\(displayDemo \? 'idle' : 'unavailable'\)/);
   assert.match(premiumRecipesSource, /premiumCatalogService\.getPremiumRecipeLibrary\(\)/);
   assert.match(premiumRecipesSource, /setLibraryReadStatus\('loading'\)/);
-  assert.match(premiumRecipesSource, /result\.ok && result\.data\.length > 0/);
+  assert.match(premiumRecipesSource, /setLibraryReadStatus\(result\.status\)/);
   assert.match(premiumRecipesSource, /setRecipes\(result\.data\.map\(\(recipe\) => mapCatalogRecipeToPremiumRecipe\(recipe\)\)\)/);
-  assert.match(premiumRecipesSource, /setLibraryReadStatus\('catalog'\)/);
+  assert.match(premiumRecipesSource, /readPremiumRecipeCatalog/);
 
   const mappedRecipe = mapCatalogRecipeToPremiumRecipe(premiumFixtureRecipeLibrary[0]);
 
@@ -110,7 +110,7 @@ test('/premium-recipes flag-enabled library success is wired to read-only catalo
 test('/premium-recipes flag-enabled detail success maps catalog ingredients steps and hints', () => {
   assert.match(premiumRecipesSource, /premiumCatalogService\.getPremiumRecipeDetail\(selectedRecipeId\)/);
   assert.match(premiumRecipesSource, /setDetailReadStatus\('loading'\)/);
-  assert.match(premiumRecipesSource, /result\.ok && result\.data/);
+  assert.match(premiumRecipesSource, /if \(result\.data\)/);
   assert.match(premiumRecipesSource, /\[selectedRecipeId\]: mapCatalogRecipeToPremiumRecipe\(detail, detail\)/);
   assert.match(premiumRecipesSource, /setDetailReadStatus\('catalog'\)/);
 
@@ -123,7 +123,7 @@ test('/premium-recipes flag-enabled detail success maps catalog ingredients step
   assert.equal(mappedDetail.macros, 'Б 31 · Ж 10 · У 52');
 });
 
-test('/premium-recipes fallback result shapes preserve mock state and hide technical errors', () => {
+test('/premium-recipes failures show unavailable state without silently selecting demo', () => {
   assert.deepEqual(catalogUnavailable([]), {
     ok: false,
     source: 'fallback',
@@ -143,12 +143,13 @@ test('/premium-recipes fallback result shapes preserve mock state and hide techn
   });
 
   assert.match(premiumRecipesSource, /mockPremiumRecipes/);
-  assert.match(premiumRecipesSource, /result\.ok && result\.data\.length > 0/);
-  assert.match(premiumRecipesSource, /result\.ok && result\.data/);
-  assert.match(premiumRecipesSource, /setLibraryReadStatus\('fallback'\)/);
-  assert.match(premiumRecipesSource, /setDetailReadStatus\('fallback'\)/);
+  assert.match(premiumRecipesSource, /setLibraryReadStatus\(result\.status\)/);
+  assert.match(premiumRecipesSource, /if \(result\.data\)/);
+  assert.doesNotMatch(premiumRecipesSource, /setLibraryReadStatus\('fallback'\)/);
+  assert.match(premiumRecipesSource, /setDetailReadStatus\(result\.status\)/);
   assert.match(premiumRecipesSource, /Готовим рецепты для просмотра/);
-  assert.match(premiumRecipesSource, /Показываем демо-рецепты/);
+  assert.match(premiumRecipesSource, /Каталог рецептов пока недоступен/);
+  assert.doesNotMatch(premiumRecipesSource, /Показываем демо-рецепты/);
   assert.match(premiumRecipesSource, /Рецепты пока не найдены/);
   assert.match(premiumRecipesSource, /Ингредиенты пока не заполнены/);
   assert.match(premiumRecipesSource, /Подсказки появятся, когда рецепт будет заполнен подробнее/);

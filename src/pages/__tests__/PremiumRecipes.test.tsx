@@ -12,10 +12,10 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 const premiumRecipesSource = readFileSync(resolve(currentDir, '../PremiumRecipes.tsx'), 'utf8');
 const appSource = readFileSync(resolve(currentDir, '../../App.tsx'), 'utf8');
 
-function renderPremiumRecipes(route = '/premium-recipes') {
+function renderPremiumRecipes(route = '/premium-recipes', demoMode = true) {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={[route]}>
-      <PremiumRecipes />
+      <PremiumRecipes demoMode={demoMode} />
     </MemoryRouter>
   );
 }
@@ -30,7 +30,24 @@ test('premium Home card opens dedicated premium recipes route', () => {
   assert.doesNotMatch(premiumRecipesSource, /\/nutrition\/recipes/);
 });
 
-test('/premium-recipes default mode renders clean POTOK recipe library mock', () => {
+test('real catalog unavailable state does not render demo recipes, including direct detail URLs', () => {
+  for (const route of ['/premium-recipes', '/premium-recipes?recipe=oatmeal-banana-yogurt']) {
+    const html = renderPremiumRecipes(route, false);
+    assert.match(html, /Каталог рецептов пока недоступен/);
+    assert.doesNotMatch(html, /Овсянка с бананом и йогуртом|410 ккал|Показываем демо/);
+  }
+});
+
+test('catalog recipe unknown nutrition is not displayed as confirmed zero', () => {
+  const mapped = mapCatalogRecipeToPremiumRecipe({
+    id: 'unknown', title: 'Рецепт', category: 'breakfast', calories: null,
+    protein: null, fat: 0, carbs: null, cookingTimeMin: null, difficultyLabel: '', isActive: true,
+  });
+  assert.equal(mapped.calories, 'Не указаны');
+  assert.equal(mapped.macros, 'Б — · Ж 0 · У —');
+});
+
+test('/premium-recipes explicit demo mode renders clean POTOK recipe library mock', () => {
   const html = renderPremiumRecipes();
 
   assert.match(html, /Сборник рецептов/);
@@ -56,7 +73,7 @@ test('/premium-recipes default mode renders clean POTOK recipe library mock', ()
 test('/premium-recipes recipe click opens local detail view contract', () => {
   assert.match(premiumRecipesSource, /onClick=\{\(\) => setSelectedRecipeId\(recipe\.id\)\}/);
   assert.match(premiumRecipesSource, /const \[selectedRecipeId, setSelectedRecipeId\]/);
-  assert.match(premiumRecipesSource, /recipes\.find\(\(recipe\) => recipe\.id === selectedRecipeId\)/);
+  assert.match(premiumRecipesSource, /activeRecipes\.find\(\(recipe\) => recipe\.id === selectedRecipeId\)/);
 });
 
 test('/premium-recipes staging readonly mode calls premium catalog service read functions', () => {
@@ -65,9 +82,9 @@ test('/premium-recipes staging readonly mode calls premium catalog service read 
   assert.match(premiumRecipesSource, /premiumCatalogService\.getPremiumRecipeDetail\(selectedRecipeId\)/);
   assert.match(premiumRecipesSource, /setLibraryReadStatus\('loading'\)/);
   assert.match(premiumRecipesSource, /setDetailReadStatus\('loading'\)/);
-  assert.match(premiumRecipesSource, /result\.ok && result\.data\.length > 0/);
-  assert.match(premiumRecipesSource, /setLibraryReadStatus\('fallback'\)/);
-  assert.match(premiumRecipesSource, /setDetailReadStatus\('fallback'\)/);
+  assert.match(premiumRecipesSource, /setLibraryReadStatus\(result\.status\)/);
+  assert.doesNotMatch(premiumRecipesSource, /setLibraryReadStatus\('fallback'\)/);
+  assert.match(premiumRecipesSource, /setDetailReadStatus\(result\.status\)/);
   assert.match(premiumRecipesSource, /mockPremiumRecipes/);
 });
 
