@@ -6,6 +6,8 @@ import type {
   PremiumRecipeDetail,
   PremiumShoppingListItem,
 } from './premiumCatalogService';
+import type { NutritionScope } from '../types/adaptiveNutrition';
+import { nutritionWeekDates, shiftNutritionDate } from '../utils/nutritionWeek';
 
 export type TodayPlanKind = 'combined' | 'nutrition' | 'workout' | 'time_saver';
 
@@ -278,4 +280,70 @@ export function mapDerivedShoppingListToShoppingGroups(
 export function buildTodayPlanFromPremiumCatalog(input: BuildTodayPlanInput): TodayPlan {
   const days = mapPremiumPlanDaysToTodayDays(input.days, input.slotsByDayId, input.primaryRecipeBySlotId);
   return mapPremiumPlanToTodayPlan(input.plan, days);
+}
+
+export interface PremiumNutritionWeek {
+  scope: NutritionScope;
+  status: 'active' | 'provisional';
+  startDate: string;
+  endDate: string;
+  contentStatus: 'complete' | 'incomplete';
+  targetValidation: 'not-validated';
+  days: Array<{ date: string; kind: 'planned'; sourceDay: TodayPlanDay | null }>;
+}
+
+/** Compatibility projection; preserves source 14-day records/IDs and writes nothing. */
+export function buildPremiumNutritionWeeks(input: BuildTodayPlanInput & {
+  scope: NutritionScope;
+  sourceStartDate: string;
+  today: string;
+}): { active: PremiumNutritionWeek; provisional: PremiumNutritionWeek } {
+  if (Object.values(input.scope).some((value) => !value.trim()) || !input.plan?.isActive || input.plan.id !== input.scope.planId) {
+    throw new Error('invalid_nutrition_plan_scope');
+  }
+  if (!Number.isSafeInteger(input.plan.durationDays) || input.plan.durationDays <= 0) throw new Error('invalid_plan_duration');
+  const sourceDays = input.days ?? [];
+  const ids = new Set<string>();
+  for (const day of sourceDays) {
+    if (day.planId !== input.plan.id || !day.id || ids.has(day.id) || !Number.isSafeInteger(day.dayNumber) ||
+        day.dayNumber < 1 || day.dayNumber > input.plan.durationDays) throw new Error('invalid_source_plan_day');
+    ids.add(day.id);
+    const slots = input.slotsByDayId?.[day.id] ?? [];
+    if (slots.some((slot) => slot.dayId !== day.id)) throw new Error('invalid_source_meal_scope');
+  }
+  return projectTodayNutritionWeeks({ ...input, plan: buildTodayPlanFromPremiumCatalog(input), sourceDurationDays: input.plan.durationDays });
+}
+
+/** Reuse the existing Today view model for both legacy demo and catalog previews. */
+export function projectTodayNutritionWeeks(input: {
+  plan: TodayPlan;
+  scope: NutritionScope;
+  sourceStartDate: string;
+  sourceDurationDays: number;
+  today: string;
+}): { active: PremiumNutritionWeek; provisional: PremiumNutritionWeek } {
+  if (Object.values(input.scope).some((value) => !value.trim()) || input.plan.id !== input.scope.planId) {
+    throw new Error('invalid_nutrition_plan_scope');
+  }
+  if (!Number.isSafeInteger(input.sourceDurationDays) || input.sourceDurationDays <= 0) throw new Error('invalid_plan_duration');
+  const byDate = new Map<string, TodayPlanDay>();
+  for (const day of input.plan.days) {
+    if (!Number.isSafeInteger(day.day) || day.day < 1 || day.day > input.sourceDurationDays) throw new Error('invalid_source_plan_day');
+    const date = shiftNutritionDate(input.sourceStartDate, day.day - 1);
+    if (byDate.has(date)) throw new Error('duplicate_source_plan_day');
+    const slotIds = day.meals.map((meal) => meal.catalogSlotId).filter(Boolean);
+    if (new Set(slotIds).size !== slotIds.length) throw new Error('duplicate_source_meal_slot');
+    byDate.set(date, day);
+  }
+  // Validate even an empty source rather than silently accepting a malformed anchor.
+  shiftNutritionDate(input.sourceStartDate, 0);
+  const project = (offset: 0 | 1): PremiumNutritionWeek => {
+    const dates = nutritionWeekDates(input.today, offset);
+    const days = dates.map((date) => ({ date, kind: 'planned' as const, sourceDay: byDate.get(date) ?? null }));
+    return { scope: { ...input.scope }, status: offset === 0 ? 'active' : 'provisional',
+      startDate: dates[0], endDate: dates[6], days,
+      contentStatus: days.every((day) => day.sourceDay && day.sourceDay.meals.length > 0) ? 'complete' : 'incomplete',
+      targetValidation: 'not-validated' };
+  };
+  return { active: project(0), provisional: project(1) };
 }

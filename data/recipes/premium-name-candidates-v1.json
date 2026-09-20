@@ -1,0 +1,608 @@
+{
+  "contract": "premium_adaptive_nutrition_v1",
+  "stage": "names_owner_review",
+  "publishable": false,
+  "notice": "Только названия для выбора владельцем. Ингредиенты, порции, нутриенты, dietary tags и аллергены не утверждены. Candidate ID не является recipe UUID.",
+  "recipes": [
+    {
+      "candidate_id": "review_breakfast_01",
+      "meal_type": "breakfast",
+      "title": "Овсянка с яблоком и корицей"
+    },
+    {
+      "candidate_id": "review_breakfast_02",
+      "meal_type": "breakfast",
+      "title": "Овсянка с бананом и натуральным йогуртом"
+    },
+    {
+      "candidate_id": "review_breakfast_03",
+      "meal_type": "breakfast",
+      "title": "Овсянка с грушей и грецким орехом"
+    },
+    {
+      "candidate_id": "review_breakfast_04",
+      "meal_type": "breakfast",
+      "title": "Овсянка с тыквой"
+    },
+    {
+      "candidate_id": "review_breakfast_05",
+      "meal_type": "breakfast",
+      "title": "Гречневая каша с молоком"
+    },
+    {
+      "candidate_id": "review_breakfast_06",
+      "meal_type": "breakfast",
+      "title": "Рисовая каша с ягодами"
+    },
+    {
+      "candidate_id": "review_breakfast_07",
+      "meal_type": "breakfast",
+      "title": "Пшённая каша с тыквой"
+    },
+    {
+      "candidate_id": "review_breakfast_08",
+      "meal_type": "breakfast",
+      "title": "Перловая каша с яблоком"
+    },
+    {
+      "candidate_id": "review_breakfast_09",
+      "meal_type": "breakfast",
+      "title": "Киноа с ягодами и йогуртом"
+    },
+    {
+      "candidate_id": "review_breakfast_10",
+      "meal_type": "breakfast",
+      "title": "Омлет с помидорами"
+    },
+    {
+      "candidate_id": "review_breakfast_11",
+      "meal_type": "breakfast",
+      "title": "Омлет со шпинатом"
+    },
+    {
+      "candidate_id": "review_breakfast_12",
+      "meal_type": "breakfast",
+      "title": "Омлет с брокколи"
+    },
+    {
+      "candidate_id": "review_breakfast_13",
+      "meal_type": "breakfast",
+      "title": "Омлет с грибами"
+    },
+    {
+      "candidate_id": "review_breakfast_14",
+      "meal_type": "breakfast",
+      "title": "Яичница с болгарским перцем"
+    },
+    {
+      "candidate_id": "review_breakfast_15",
+      "meal_type": "breakfast",
+      "title": "Яйца с цельнозерновым тостом и огурцом"
+    },
+    {
+      "candidate_id": "review_breakfast_16",
+      "meal_type": "breakfast",
+      "title": "Творог с клубникой"
+    },
+    {
+      "candidate_id": "review_breakfast_17",
+      "meal_type": "breakfast",
+      "title": "Творог с грушей"
+    },
+    {
+      "candidate_id": "review_breakfast_18",
+      "meal_type": "breakfast",
+      "title": "Творог с яблоком и корицей"
+    },
+    {
+      "candidate_id": "review_breakfast_19",
+      "meal_type": "breakfast",
+      "title": "Творожная запеканка с ягодами"
+    },
+    {
+      "candidate_id": "review_breakfast_20",
+      "meal_type": "breakfast",
+      "title": "Запечённые сырники с натуральным йогуртом"
+    },
+    {
+      "candidate_id": "review_breakfast_21",
+      "meal_type": "breakfast",
+      "title": "Цельнозерновой тост с творогом и помидором"
+    },
+    {
+      "candidate_id": "review_breakfast_22",
+      "meal_type": "breakfast",
+      "title": "Цельнозерновой тост с яйцом и авокадо"
+    },
+    {
+      "candidate_id": "review_breakfast_23",
+      "meal_type": "breakfast",
+      "title": "Ролл из лаваша с индейкой и овощами"
+    },
+    {
+      "candidate_id": "review_breakfast_24",
+      "meal_type": "breakfast",
+      "title": "Гречневые блины с творогом"
+    },
+    {
+      "candidate_id": "review_breakfast_25",
+      "meal_type": "breakfast",
+      "title": "Овсяные оладьи с бананом"
+    },
+    {
+      "candidate_id": "review_breakfast_26",
+      "meal_type": "breakfast",
+      "title": "Тофу со шпинатом на сковороде"
+    },
+    {
+      "candidate_id": "review_breakfast_27",
+      "meal_type": "breakfast",
+      "title": "Тофу с помидорами и цельнозерновым хлебом"
+    },
+    {
+      "candidate_id": "review_breakfast_28",
+      "meal_type": "breakfast",
+      "title": "Гречневая каша с грибами"
+    },
+    {
+      "candidate_id": "review_breakfast_29",
+      "meal_type": "breakfast",
+      "title": "Тост с хумусом и огурцом"
+    },
+    {
+      "candidate_id": "review_breakfast_30",
+      "meal_type": "breakfast",
+      "title": "Пшённая каша с грушей"
+    },
+    {
+      "candidate_id": "review_lunch_01",
+      "meal_type": "lunch",
+      "title": "Постная говядина с картофелем"
+    },
+    {
+      "candidate_id": "review_lunch_02",
+      "meal_type": "lunch",
+      "title": "Куриная грудка с рисом"
+    },
+    {
+      "candidate_id": "review_lunch_03",
+      "meal_type": "lunch",
+      "title": "Индейка с гречкой"
+    },
+    {
+      "candidate_id": "review_lunch_04",
+      "meal_type": "lunch",
+      "title": "Форель со стручковой фасолью"
+    },
+    {
+      "candidate_id": "review_lunch_05",
+      "meal_type": "lunch",
+      "title": "Треска с картофелем и морковью"
+    },
+    {
+      "candidate_id": "review_lunch_06",
+      "meal_type": "lunch",
+      "title": "Хек с рисом и брокколи"
+    },
+    {
+      "candidate_id": "review_lunch_07",
+      "meal_type": "lunch",
+      "title": "Курица с булгуром и кабачком"
+    },
+    {
+      "candidate_id": "review_lunch_08",
+      "meal_type": "lunch",
+      "title": "Индейка с кускусом и перцем"
+    },
+    {
+      "candidate_id": "review_lunch_09",
+      "meal_type": "lunch",
+      "title": "Говядина с перловкой и грибами"
+    },
+    {
+      "candidate_id": "review_lunch_10",
+      "meal_type": "lunch",
+      "title": "Кролик с картофелем и морковью"
+    },
+    {
+      "candidate_id": "review_lunch_11",
+      "meal_type": "lunch",
+      "title": "Лосось с бурым рисом"
+    },
+    {
+      "candidate_id": "review_lunch_12",
+      "meal_type": "lunch",
+      "title": "Минтай с гречкой и овощами"
+    },
+    {
+      "candidate_id": "review_lunch_13",
+      "meal_type": "lunch",
+      "title": "Куриная грудка с цельнозерновой пастой"
+    },
+    {
+      "candidate_id": "review_lunch_14",
+      "meal_type": "lunch",
+      "title": "Паста с тунцом и томатами"
+    },
+    {
+      "candidate_id": "review_lunch_15",
+      "meal_type": "lunch",
+      "title": "Рис с креветками и овощами"
+    },
+    {
+      "candidate_id": "review_lunch_16",
+      "meal_type": "lunch",
+      "title": "Гречка с куриной печенью"
+    },
+    {
+      "candidate_id": "review_lunch_17",
+      "meal_type": "lunch",
+      "title": "Индейка с фасолью в томатном соусе"
+    },
+    {
+      "candidate_id": "review_lunch_18",
+      "meal_type": "lunch",
+      "title": "Чечевица с рисом и морковью"
+    },
+    {
+      "candidate_id": "review_lunch_19",
+      "meal_type": "lunch",
+      "title": "Нут с булгуром и помидорами"
+    },
+    {
+      "candidate_id": "review_lunch_20",
+      "meal_type": "lunch",
+      "title": "Фасоль с картофелем и зеленью"
+    },
+    {
+      "candidate_id": "review_lunch_21",
+      "meal_type": "lunch",
+      "title": "Тофу с рисом и брокколи"
+    },
+    {
+      "candidate_id": "review_lunch_22",
+      "meal_type": "lunch",
+      "title": "Тофу с гречневой лапшой и перцем"
+    },
+    {
+      "candidate_id": "review_lunch_23",
+      "meal_type": "lunch",
+      "title": "Овощной суп с чечевицей"
+    },
+    {
+      "candidate_id": "review_lunch_24",
+      "meal_type": "lunch",
+      "title": "Куриный суп с рисом"
+    },
+    {
+      "candidate_id": "review_lunch_25",
+      "meal_type": "lunch",
+      "title": "Суп с индейкой и гречкой"
+    },
+    {
+      "candidate_id": "review_lunch_26",
+      "meal_type": "lunch",
+      "title": "Рыбный суп с картофелем"
+    },
+    {
+      "candidate_id": "review_lunch_27",
+      "meal_type": "lunch",
+      "title": "Тыквенный суп с нутом"
+    },
+    {
+      "candidate_id": "review_lunch_28",
+      "meal_type": "lunch",
+      "title": "Говядина с киноа и овощами"
+    },
+    {
+      "candidate_id": "review_lunch_29",
+      "meal_type": "lunch",
+      "title": "Курица с запечённой свёклой и картофелем"
+    },
+    {
+      "candidate_id": "review_lunch_30",
+      "meal_type": "lunch",
+      "title": "Цельнозерновая паста с чечевицей и томатами"
+    },
+    {
+      "candidate_id": "review_dinner_01",
+      "meal_type": "dinner",
+      "title": "Куриная грудка с цветной капустой"
+    },
+    {
+      "candidate_id": "review_dinner_02",
+      "meal_type": "dinner",
+      "title": "Индейка с тушёной капустой"
+    },
+    {
+      "candidate_id": "review_dinner_03",
+      "meal_type": "dinner",
+      "title": "Говядина с кабачками"
+    },
+    {
+      "candidate_id": "review_dinner_04",
+      "meal_type": "dinner",
+      "title": "Форель с брокколи"
+    },
+    {
+      "candidate_id": "review_dinner_05",
+      "meal_type": "dinner",
+      "title": "Треска с овощами в духовке"
+    },
+    {
+      "candidate_id": "review_dinner_06",
+      "meal_type": "dinner",
+      "title": "Хек со стручковой фасолью"
+    },
+    {
+      "candidate_id": "review_dinner_07",
+      "meal_type": "dinner",
+      "title": "Лосось со шпинатом"
+    },
+    {
+      "candidate_id": "review_dinner_08",
+      "meal_type": "dinner",
+      "title": "Минтай с цветной капустой"
+    },
+    {
+      "candidate_id": "review_dinner_09",
+      "meal_type": "dinner",
+      "title": "Креветки с кабачками"
+    },
+    {
+      "candidate_id": "review_dinner_10",
+      "meal_type": "dinner",
+      "title": "Кальмар с овощами"
+    },
+    {
+      "candidate_id": "review_dinner_11",
+      "meal_type": "dinner",
+      "title": "Куриные тефтели с гречкой"
+    },
+    {
+      "candidate_id": "review_dinner_12",
+      "meal_type": "dinner",
+      "title": "Тефтели из индейки с рисом"
+    },
+    {
+      "candidate_id": "review_dinner_13",
+      "meal_type": "dinner",
+      "title": "Рыбные котлеты с картофельным пюре"
+    },
+    {
+      "candidate_id": "review_dinner_14",
+      "meal_type": "dinner",
+      "title": "Говяжьи котлеты с запечённой морковью"
+    },
+    {
+      "candidate_id": "review_dinner_15",
+      "meal_type": "dinner",
+      "title": "Курица с тыквой и грибами"
+    },
+    {
+      "candidate_id": "review_dinner_16",
+      "meal_type": "dinner",
+      "title": "Индейка с баклажаном и помидорами"
+    },
+    {
+      "candidate_id": "review_dinner_17",
+      "meal_type": "dinner",
+      "title": "Омлет с зелёной фасолью"
+    },
+    {
+      "candidate_id": "review_dinner_18",
+      "meal_type": "dinner",
+      "title": "Запеканка из брокколи с яйцом"
+    },
+    {
+      "candidate_id": "review_dinner_19",
+      "meal_type": "dinner",
+      "title": "Творожная запеканка с кабачком"
+    },
+    {
+      "candidate_id": "review_dinner_20",
+      "meal_type": "dinner",
+      "title": "Тофу с цветной капустой"
+    },
+    {
+      "candidate_id": "review_dinner_21",
+      "meal_type": "dinner",
+      "title": "Тофу с грибами и зеленью"
+    },
+    {
+      "candidate_id": "review_dinner_22",
+      "meal_type": "dinner",
+      "title": "Чечевица с запечёнными овощами"
+    },
+    {
+      "candidate_id": "review_dinner_23",
+      "meal_type": "dinner",
+      "title": "Нут со шпинатом и томатами"
+    },
+    {
+      "candidate_id": "review_dinner_24",
+      "meal_type": "dinner",
+      "title": "Фасоль с грибами и капустой"
+    },
+    {
+      "candidate_id": "review_dinner_25",
+      "meal_type": "dinner",
+      "title": "Гречка с овощами и яйцом"
+    },
+    {
+      "candidate_id": "review_dinner_26",
+      "meal_type": "dinner",
+      "title": "Киноа с тыквой и нутом"
+    },
+    {
+      "candidate_id": "review_dinner_27",
+      "meal_type": "dinner",
+      "title": "Картофель с творогом и зеленью"
+    },
+    {
+      "candidate_id": "review_dinner_28",
+      "meal_type": "dinner",
+      "title": "Салат с курицей и фасолью"
+    },
+    {
+      "candidate_id": "review_dinner_29",
+      "meal_type": "dinner",
+      "title": "Салат с тунцом и яйцом"
+    },
+    {
+      "candidate_id": "review_dinner_30",
+      "meal_type": "dinner",
+      "title": "Салат с индейкой и печёной свёклой"
+    },
+    {
+      "candidate_id": "review_snack_01",
+      "meal_type": "snack",
+      "title": "Натуральный йогурт с ягодами"
+    },
+    {
+      "candidate_id": "review_snack_02",
+      "meal_type": "snack",
+      "title": "Натуральный йогурт с персиком"
+    },
+    {
+      "candidate_id": "review_snack_03",
+      "meal_type": "snack",
+      "title": "Натуральный йогурт с киви"
+    },
+    {
+      "candidate_id": "review_snack_04",
+      "meal_type": "snack",
+      "title": "Греческий йогурт с бананом"
+    },
+    {
+      "candidate_id": "review_snack_05",
+      "meal_type": "snack",
+      "title": "Греческий йогурт с яблоком"
+    },
+    {
+      "candidate_id": "review_snack_06",
+      "meal_type": "snack",
+      "title": "Творог с черникой"
+    },
+    {
+      "candidate_id": "review_snack_07",
+      "meal_type": "snack",
+      "title": "Творог с малиной"
+    },
+    {
+      "candidate_id": "review_snack_08",
+      "meal_type": "snack",
+      "title": "Творог с абрикосом"
+    },
+    {
+      "candidate_id": "review_snack_09",
+      "meal_type": "snack",
+      "title": "Творог с огурцом и укропом"
+    },
+    {
+      "candidate_id": "review_snack_10",
+      "meal_type": "snack",
+      "title": "Кефир с ягодами"
+    },
+    {
+      "candidate_id": "review_snack_11",
+      "meal_type": "snack",
+      "title": "Ряженка с грушей"
+    },
+    {
+      "candidate_id": "review_snack_12",
+      "meal_type": "snack",
+      "title": "Яблоко с арахисовой пастой"
+    },
+    {
+      "candidate_id": "review_snack_13",
+      "meal_type": "snack",
+      "title": "Груша с миндалём"
+    },
+    {
+      "candidate_id": "review_snack_14",
+      "meal_type": "snack",
+      "title": "Банан с натуральным йогуртом и какао"
+    },
+    {
+      "candidate_id": "review_snack_15",
+      "meal_type": "snack",
+      "title": "Хумус с морковными палочками"
+    },
+    {
+      "candidate_id": "review_snack_16",
+      "meal_type": "snack",
+      "title": "Хумус с болгарским перцем"
+    },
+    {
+      "candidate_id": "review_snack_17",
+      "meal_type": "snack",
+      "title": "Цельнозерновые хлебцы с творожным сыром"
+    },
+    {
+      "candidate_id": "review_snack_18",
+      "meal_type": "snack",
+      "title": "Цельнозерновые хлебцы с тунцом"
+    },
+    {
+      "candidate_id": "review_snack_19",
+      "meal_type": "snack",
+      "title": "Цельнозерновой бутерброд с индейкой"
+    },
+    {
+      "candidate_id": "review_snack_20",
+      "meal_type": "snack",
+      "title": "Яйцо с огурцом"
+    },
+    {
+      "candidate_id": "review_snack_21",
+      "meal_type": "snack",
+      "title": "Яйцо с помидорами черри"
+    },
+    {
+      "candidate_id": "review_snack_22",
+      "meal_type": "snack",
+      "title": "Запечённое яблоко с творогом"
+    },
+    {
+      "candidate_id": "review_snack_23",
+      "meal_type": "snack",
+      "title": "Ягодный творожный крем"
+    },
+    {
+      "candidate_id": "review_snack_24",
+      "meal_type": "snack",
+      "title": "Овсяный пудинг с йогуртом"
+    },
+    {
+      "candidate_id": "review_snack_25",
+      "meal_type": "snack",
+      "title": "Салат из фруктов с натуральным йогуртом"
+    },
+    {
+      "candidate_id": "review_snack_26",
+      "meal_type": "snack",
+      "title": "Соевый йогурт с ягодами"
+    },
+    {
+      "candidate_id": "review_snack_27",
+      "meal_type": "snack",
+      "title": "Соевый йогурт с грушей"
+    },
+    {
+      "candidate_id": "review_snack_28",
+      "meal_type": "snack",
+      "title": "Эдамаме с лимоном"
+    },
+    {
+      "candidate_id": "review_snack_29",
+      "meal_type": "snack",
+      "title": "Паштет из фасоли с хлебцами"
+    },
+    {
+      "candidate_id": "review_snack_30",
+      "meal_type": "snack",
+      "title": "Тофу с огурцом и зеленью"
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import RecipeFilterDropdown, {
 import { foodService } from '../services/foodService';
 import RecipesGrid from '../components/RecipesGrid';
 import RecipesList from '../components/RecipesList';
+import { visiblePrivateRecipes } from '../utils/privateRecipeVisibility';
 
 type ViewMode = 'grid' | 'list';
 
@@ -20,7 +21,7 @@ const Recipes = () => {
   const navigate = useNavigate();
   const { user, authStatus } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<RecipeTab>('my');
+  const [activeTab, setActiveTab] = useState<Exclude<RecipeTab, 'collection'>>('my');
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [typeFilter, setTypeFilter] = useState<RecipeTypeFilter>('all');
   const [goalFilter, setGoalFilter] = useState<RecipeGoalFilter>('all');
@@ -199,12 +200,12 @@ const Recipes = () => {
 
   // Фильтрация рецептов (применяем оба фильтра)
   const filteredRecipes = useMemo(() => {
-    return recipes.filter((recipe) => {
+    return visiblePrivateRecipes(recipes, authStatus === 'authenticated' ? user?.id : undefined).filter((recipe) => {
       const matchesType = filterByType(recipe);
       const matchesGoal = filterByGoal(recipe);
       return matchesType && matchesGoal;
     });
-  }, [recipes, typeFilter, goalFilter, user?.id]);
+  }, [recipes, typeFilter, goalFilter, user?.id, authStatus]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
@@ -245,16 +246,6 @@ const Recipes = () => {
             }`}
           >
             ИЗБРАННЫЕ
-          </button>
-          <button
-            onClick={() => setActiveTab('collection')}
-            className={`pb-2 border-b-2 transition-colors ${
-              activeTab === 'collection'
-                ? 'border-gray-900 dark:border-gray-100 text-gray-900 dark:text-white font-semibold'
-                : 'border-transparent'
-            }`}
-          >
-            СБОРНИК
           </button>
         </div>
 
@@ -330,4 +321,3 @@ const Recipes = () => {
 };
 
 export default Recipes;
-

@@ -2,6 +2,12 @@
 
 ## 1. CURRENT STATE
 
+Current target contract is Premium Adaptive Nutrition v1 (2026-09-19): active
+Monday–Sunday week, next week provisional. Earlier fixed-14-day backlog entries
+below are historical compatibility context, superseded by
+`docs/premium/adaptive-nutrition-v1.md`. Canonical export and recipe metadata audit
+are PARKED; do not retry the CLI. Continue from the short `astra-resume.md`.
+
 **NOT LAUNCH READY. Updated 2026-09-19 after local implementation and checks.**
 Historical report review remains incomplete; no SQL/data/billing mutations or deployment were performed.
 

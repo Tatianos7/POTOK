@@ -8,7 +8,11 @@ import {
   mapDerivedShoppingListToShoppingGroups,
   mapMealRecipeOptionsToReplacementOptions,
   mapPremiumMealSlotsToTodayMeals,
+  projectTodayNutritionWeeks,
 } from '../services/premiumTodayAdapter';
+import NutritionWeekPreview, { type NutritionWeekPreviewProps } from '../components/NutritionWeekPreview';
+import { getLocalDayKey } from '../utils/dayKey';
+import { nutritionWeekDates } from '../utils/nutritionWeek';
 import {
   getTodayGoalSummaryForUser,
   type TodayGoalSummary,
@@ -396,6 +400,8 @@ interface TodayProps {
   embeddedInAppShell?: boolean;
   showPremiumSubscriptionEntry?: boolean;
   currentUserId?: string;
+  /** Explicit local/test preview input. App routes do not supply this in production. */
+  weeklyPreview?: Omit<NutritionWeekPreviewProps, 'currentUserId'>;
 }
 
 interface UserGoalState {
@@ -1575,4 +1581,24 @@ const Today = ({
   return renderPlanDetail();
 };
 
-export default Today;
+function TodayEntry(props: TodayProps) {
+  const location = useLocation();
+  if (props.weeklyPreview) return <NutritionWeekPreview {...props.weeklyPreview} currentUserId={props.currentUserId} />;
+  const isLocalDevelopment = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
+  if (isLocalDevelopment && new URLSearchParams(location.search).get('weeklyPreview') === 'demo') {
+    if (!props.currentUserId) return <p className="p-6">Войдите, чтобы открыть недельный предпросмотр.</p>;
+    const today = getLocalDayKey();
+    const source = demoPlans[0];
+    const weeks = projectTodayNutritionWeeks({
+      plan: { ...source, days: source.days.map((day) => ({ ...day,
+        meals: day.meals.map((meal, index) => ({ ...meal, catalogSlotId: `demo:${source.id}:${day.day}:${index}` })),
+      })) },
+      scope: { userId: props.currentUserId, planId: source.id, planVersion: 'local-demo-v1', goalVersion: 'unvalidated-demo' },
+      today, sourceStartDate: nutritionWeekDates(today)[0], sourceDurationDays: source.days.length,
+    });
+    return <NutritionWeekPreview currentUserId={props.currentUserId} today={today} weeks={weeks} source="demo" />;
+  }
+  return <Today {...props} />;
+}
+
+export default TodayEntry;

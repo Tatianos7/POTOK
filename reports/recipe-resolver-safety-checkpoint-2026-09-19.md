@@ -240,3 +240,55 @@ The independent client mismatch fix is complete. Matching-account and legacy
 implicit-current-account reads retain the existing capability policy. Missing or
 failed authentication sends no RPC. No server authority, capability tier rule or
 payment behavior was changed. All tests use an in-memory client, not staging.
+
+## Parked staging metadata attempt after commit 4c441db
+
+
+The approved artifact was manually inspected and checked before execution:
+seven SELECT statements over PostgreSQL catalogs/information_schema only;
+no DML/DDL, grants/revokes, transaction commands, fixture writes, policy changes
+or application RPC calls. `pg_get_functiondef`, `pg_get_constraintdef` and
+`pg_get_triggerdef` inspect definitions rather than execute those definitions.
+Artifact SHA-256:
+`059934a7f678d78a063cfb9946ff0c0380c2d6e488d9daf7265e666d35096777`.
+The artifact itself remains unchanged from the reviewed committed version.
+
+Local configuration checks (no secret values printed): worktree staging env and
+both CLI project-ref / linked-project.json identify `ozidryfvhkcbtpnulakq`.
+Pooler URL also identifies staging but contains no password. No DB/auth config
+variables were present in the process environment; no .pgpass or .pg_service.conf
+was present. No service-role key was loaded into the audit command. Production
+env was not used. No credentials were created or requested.
+
+Installed Supabase CLI 2.109.1 documents `db query --linked` as querying through
+Management API. Following that help, one invocation used the unchanged artifact:
+
+```text
+supabase db query --linked --file scripts/sql/recipe-save-contract-read-only-audit.sql --output json --log-level error
+```
+
+Project refs and artifact hash were asserted immediately before invocation;
+stdin was closed to prevent an interactive login. The actual CLI path unexpectedly
+reported `Initialising login role...`, then HTTP **544**:
+`Failed to create login role: Connection terminated due to connection timeout`.
+Exit code 1; zero stdout/metadata returned. This preparatory role-creation attempt
+is outside the metadata-only authorization. **Stopped immediately: no retry,
+debug rerun, direct-connection workaround, login, service role or production access.**
+The error does not establish that role initialization left no side effects;
+no successful role creation was reported, but absence of changes is unverified.
+Do not state that the CLI was proven fully non-mutating. Metadata SELECT execution
+is not confirmed, and no actual table/column/precision/FK/trigger/RPC/RLS/grant/
+version findings may be inferred from this failed attempt or from local migrations.
+
+Restricted local stdout/stderr evidence:
+`/tmp/potok-launch-audit-2026-09-18/staging-recipe-metadata.{stdout,stderr}`.
+At that handoff only the resume was changed after commit; 229 owner hashes remained unchanged.
+
+The atomic-save acceptance matrix remains a proposal, not staging validation.
+Proposed invariants: one transaction for recipe header and full ingredient graph;
+exact authenticated ownership; strict validation before mutation; locked expected
+version check; authoritative nutrition/recompute within the same transaction;
+failure preserves the prior header/graph/totals/version; no historical diary rewrite.
+Actual RPC signature, supported version column, precision/rounding, trigger order,
+create/retry idempotency and compatibility cannot be finalized without metadata.
+**No guessed atomic SQL patch or client integration was prepared/applied.**
