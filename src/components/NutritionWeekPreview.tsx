@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import NutritionMealActionPreview from './NutritionMealActionPreview';
+import NutritionRecoveryStatus from './NutritionRecoveryStatus';
+import { nutritionRecoveryPreviewView, type NutritionRecoveryState } from '../utils/nutritionRecovery';
 import type { PremiumNutritionWeek } from '../services/premiumTodayAdapter';
 import { DAILY_NUTRITION_STATES, type MealConfirmationChoice } from '../utils/nutritionAdaptation';
 import { createWeekPreviewState, reduceWeekPreview, weekPreviewContextKey,
@@ -9,6 +12,8 @@ export interface NutritionWeekPreviewProps {
   today: string;
   weeks: { active: PremiumNutritionWeek; provisional: PremiumNutritionWeek };
   source: 'demo' | 'catalog-preview';
+  /** Explicit local/test scenario only; production App does not supply this. */
+  recovery?: { state: NutritionRecoveryState; timeZone: string };
 }
 
 const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -19,7 +24,8 @@ const choices: Array<{ id: MealConfirmationChoice; label: string }> = [
 ];
 const formatDate = (date: string) => `${date.slice(8, 10)}.${date.slice(5, 7)}`;
 
-function WeekContent({ context, source }: { context: WeekPreviewContext; source: NutritionWeekPreviewProps['source'] }) {
+function WeekContent({ context, source, recoveryView }: { context: WeekPreviewContext; source: NutritionWeekPreviewProps['source'];
+  recoveryView?: ReturnType<typeof nutritionRecoveryPreviewView> }) {
   const [state, setState] = useState(() => createWeekPreviewState(context));
   const dispatch = (action: WeekPreviewActionPayload) => {
     setState((current) => reduceWeekPreview(current, { ...action, contextKey: current.contextKey }, context));
@@ -27,8 +33,6 @@ function WeekContent({ context, source }: { context: WeekPreviewContext; source:
   const day = context.week.days.find((item) => item.date === state.selectedDate)!;
   const dayState = state.dayStates[day.date] ?? 'normal';
   const isFuture = day.date > context.today;
-  const intentLabel = state.intent?.choice === 'extra-food' ? 'Было что-то ещё' :
-    choices.find((choice) => choice.id === state.intent?.choice)?.label;
 
   return <main className="mx-auto w-full max-w-[560px] space-y-5 px-4 pb-36 pt-6">
     <header className="space-y-2">
@@ -41,6 +45,7 @@ function WeekContent({ context, source }: { context: WeekPreviewContext; source:
         Здесь можно посмотреть действия; записи в дневник пока недоступны.
       </p>
     </header>
+    {recoveryView && <NutritionRecoveryStatus view={recoveryView} />}
     <nav aria-label="Дни активной недели" className="grid grid-cols-7 gap-1">
       {context.week.days.map((item, index) => <button key={item.date} type="button"
         aria-pressed={item.date === day.date} aria-label={`${weekdays[index]} ${formatDate(item.date)}`}
@@ -65,14 +70,7 @@ function WeekContent({ context, source }: { context: WeekPreviewContext; source:
       <button type="button" disabled={isFuture} onClick={() => dispatch({ type: 'meal-intent', slotId: null, choice: 'extra-food' })}
         className="min-h-11 rounded-xl border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-800 disabled:opacity-40">+ Было что-то ещё</button>
     </section>
-    {state.intent && <section aria-label="Предпросмотр отметки" role="status" className="space-y-3 rounded-2xl bg-emerald-50 p-4">
-      <h2 className="font-semibold">{intentLabel}</h2>
-      <p className="text-sm text-stone-700">Это выбранное действие, не сохранённый факт. План и дневник не изменены.</p>
-      {state.intent.choice === 'ate-with-changes' && <p className="text-sm">Перед записью нужно уточнить продукты и порции.</p>}
-      {state.intent.choice === 'extra-food' && <p className="text-sm">Добавление еды вне плана не будет автоматически сокращать питание завтра.</p>}
-      <button type="button" disabled className="rounded-lg bg-stone-200 px-3 py-2 text-sm text-stone-500">Сохранение пока недоступно</button>
-      <button type="button" onClick={() => dispatch({ type: 'dismiss-intent' })} className="ml-3 px-3 py-2 text-sm">Закрыть</button>
-    </section>}
+    {state.intent && <NutritionMealActionPreview choice={state.intent.choice} onClose={() => dispatch({ type: 'dismiss-intent' })} />}
     <section className="space-y-3" aria-label="Состояние дня">
       <h2 className="text-lg font-semibold">Как проходит день?</h2>
       <div className="grid grid-cols-2 gap-2">{DAILY_NUTRITION_STATES.map((option) => <button key={option.id} type="button"
@@ -94,5 +92,15 @@ export default function NutritionWeekPreview(props: NutritionWeekPreviewProps) {
   try { key = weekPreviewContextKey(context); } catch {
     return <p className="p-6 text-sm text-stone-600" role="status">Недельный предпросмотр недоступен для текущего аккаунта или версии плана.</p>;
   }
-  return <WeekContent key={key} context={context} source={props.source} />;
+  const recoveryView = props.recovery ? nutritionRecoveryPreviewView(props.recovery.state, {
+    accountId: context.currentUserId, planId: context.week.scope.planId, weekAnchor: context.week.startDate,
+    timeZone: props.recovery.timeZone, today: context.today,
+  }, { planRevision: context.week.scope.planVersion, goalRevision: context.week.scope.goalVersion,
+    slots: context.week.days.flatMap((day) => (day.sourceDay?.meals ?? []).map((meal) => ({ date: day.date,
+      slotId: meal.catalogSlotId ?? '', recipeId: meal.catalogPrimaryRecipeId ?? null }))),
+  }) : undefined;
+  if (recoveryView && !recoveryView.canReview) return <main className="mx-auto max-w-[560px] p-4">
+    <NutritionRecoveryStatus view={recoveryView} />
+  </main>;
+  return <WeekContent key={`${key}:${props.recovery?.state.session ?? 'standalone'}`} context={context} source={props.source} recoveryView={recoveryView} />;
 }

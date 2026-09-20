@@ -113,11 +113,10 @@ interaction/mobile visual QA; runtime discovery returned no connected browsers o
 2026-09-20, so browser coverage remains an explicit gap. Production
 Today/Goal behavior is not migrated to adaptive execution by this package.
 
-Next functional integration checkpoint: confirm authoritative dated plan/goal
-versions and meal-action persistence semantics before wiring save or production
-activation. Requirements are recorded in the current resume below. Independent
-local review may cover the preview's mounted/mobile behavior; do not retry parked
-DB/metadata access or infer approval for a new persistence implementation.
+Owner confirmed PLAN/FACT/version/history domain semantics on 2026-09-20. The new
+local state machine is documented in `plan-fact-persistence-domain-v1.md`. Real
+server read-model/endpoint metadata and atomic persistence remain unconfirmed.
+Do not retry parked DB/metadata access or infer approval for writes/activation.
 Free legacy collection/favorite relations were not deleted or published into Premium.
 
 ### Replacement, shopping and feedback design boundary
@@ -150,9 +149,9 @@ The generic `cooked` state exists for compatibility, not permission to silently
 change new catalog weighing rules. Existing candidate validation remains v1; a
 state-aware versioned extension is still needed before new ingredient expansion.
 
-## Exact uncommitted package
+## Committed foundation package
 
-29 paths; not staged or newly committed.
+Exact 29 paths selectively committed with owner approval as `38f2e68`; no push.
 
 ```text
 data/recipes/premium-name-candidates-v1.json
@@ -184,4 +183,64 @@ src/utils/nutritionShopping.ts
 src/utils/nutritionWeek.ts
 src/utils/nutritionWeekPreview.ts
 src/utils/privateRecipeVisibility.ts
+```
+
+## PLAN / FACT semantics implementation — 2026-09-20
+
+Owner domain semantics are now accepted and implemented as a pure local simulation:
+versioned context/snapshots, proposal/preview/explicit confirmation, exact idempotent
+replay, conflict rejection, immutable consumed snapshots, skip annotations, plan-only
+replacement, revision-bound shopping selection and retained edit/undo history.
+Weekly action-preview copy reflects these effects; saving remains disabled.
+
+See `plan-fact-persistence-domain-v1.md` for trust boundaries and the future server
+acceptance contract. Simulation histories never become actual diary/Progress inputs.
+The existing arithmetic preview's persistence blocker now means the unconfirmed
+server contract; the owner's domain semantics do not need repeated approval.
+
+Verification: 39 focused PASS; 151 files / 1135 PASS / 1 skipped; build PASS;
+0 new lint diagnostics (121 existing errors, 491 warnings). Browser gap retained.
+229 owner file hashes and the 120-name dataset are unchanged.
+
+## Read-model / recovery package — completed locally
+
+`nutritionRecovery.ts` implements synthetic request/attempt generation binding,
+account/calendar isolation, revision/content checks, unknown-result retention,
+original-key retry and exact accepted graph reconciliation. Pending review never
+survives a changed revision. Unknown results are neither success nor failure.
+Account-scoped memory quarantine preserves unresolved work across A→B→A and
+calendar changes; completed idempotency records remain account scoped.
+
+Optional recovery input is connected through Today to `NutritionWeekPreview`.
+The weekly screen validates plan/goal revisions plus dated slot/recipe identities;
+loading/unknown/conflict/mismatch hides stale food/actions. The status panel states
+that request/diary writes are off. No production route enables this feature.
+
+Freshness of unseen opaque revisions cannot be proved client-side. Authenticated
+receipt/read-consistency and idempotency/history lookup protocol remain concrete
+server-contract checkpoints. Details and next safe artifact review are recorded in
+`plan-fact-persistence-domain-v1.md` and `reports/astra-resume.md`.
+
+Final package verification: **47 focused PASS; 153 files / 1160 PASS / 1 skipped;
+build PASS; no added lint diagnostics** (121 existing errors, 491 warnings).
+All 229 owner hashes and the 120-name dataset preserved. Browser gap retained.
+
+## Exact current uncommitted package
+
+13 paths; not staged; no new commit permission inferred.
+
+```text
+docs/premium/adaptive-nutrition-v1.md
+docs/premium/plan-fact-persistence-domain-v1.md
+reports/astra-resume.md
+src/components/NutritionMealActionPreview.tsx
+src/components/NutritionRecoveryStatus.tsx
+src/components/NutritionWeekPreview.tsx
+src/components/__tests__/NutritionMealActionPreview.test.tsx
+src/pages/__tests__/TodayNutritionRecoveryPreview.test.tsx
+src/types/nutritionPersistence.ts
+src/utils/__tests__/nutritionPersistence.test.ts
+src/utils/__tests__/nutritionRecovery.test.ts
+src/utils/nutritionPersistence.ts
+src/utils/nutritionRecovery.ts
 ```

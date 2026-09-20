@@ -5,136 +5,142 @@
 ## HEAD / authorization
 
 - Worktree: `/Users/urijurij/Desktop/POTOK/.worktrees/workout-muscle-map-foundation`.
-- Branch master; HEAD `4c441dbd35e1feab674009d180ba1fbd56798fa1`.
-- Local commits not pushed: `4fed6b3` (approved 27 files), `4c441db` (approved 24 files).
-- Current Adaptive Nutrition package: **29 UNCOMMITTED paths**; index empty.
-  Exact list: `docs/premium/adaptive-nutrition-v1.md` → Exact uncommitted package.
-  Earlier local changes preserved; no authorization for another commit inferred.
-- NO PUSH / DEPLOY / SQL / DB / RLS writes / payment integration / real import.
-- All 229 original owner file hashes unchanged. Manifest:
+- Branch master; HEAD `38f2e68ca129838b2b6469ade58e51fb15612289`.
+- Local commits not pushed: `4fed6b3` (27 approved files), `4c441db` (24),
+  `38f2e68` (exact 29 Adaptive Nutrition paths, approved by owner).
+- Commit message: `feat: add adaptive nutrition domain and weekly preview`.
+- Before the latest commit: exact selective staging/name comparison, no owner
+  paths, cached diff check. After commit: index empty. No push/deploy.
+- Current PLAN/FACT + read-model/recovery package: **13 UNCOMMITTED paths**,
+  index empty; no further commit permission inferred. Exact allowlist is in
+  `docs/premium/adaptive-nutrition-v1.md`. Earlier local changes preserved.
+- All 229 owner baseline file hashes unchanged. Manifest:
   `/tmp/potok-launch-audit-2026-09-18/baseline.json`.
+- NO SQL / DB / RLS writes / payment / import / production activation.
 
-## Active contract
+## Active contract / accepted owner decisions
 
-Owner's **Premium Nutrition / Adaptive Plan Contract v1** supersedes fixed 14-day
-nutrition as the target. Active calendar week is Monday–Sunday; next week is
-provisional. Preserve legacy IDs/routes/history until explicit compatibility work.
-Plan is not fact; all changes require explicit confirmation. No new Goal formula,
-clinical bounds, calorie cycling, automatic compensation or sensitive persistence.
-Map/status: `docs/premium/adaptive-nutrition-v1.md`.
+Adaptive Nutrition v1 replaces fixed-14-day nutrition as the target. Active week
+is local Monday–Sunday; next week remains provisional. Legacy IDs/routes retained.
 
-## Completed this local package
+Owner confirmed PLAN/FACT/persistence **domain semantics** on 2026-09-20:
+consumed-as-planned requires explicit confirmation of the exact plan snapshot;
+modified/extra food requires actual payload; skipped is annotation only; replacement
+mutates PLAN, never FACT; shopping follows confirmed graph revision. No punitive
+compensation. Stale revisions conflict; idempotency and non-destructive supersession
+history are required. Do not ask the owner to reconfirm these same semantics.
 
-- Added compatible Goal/training/preferences/safety/cycle domain types around
-  existing UserGoal and Premium catalog; no new store or competing service.
-- Advanced macro **math preview** supports grams and g/kg, computes residual carbs,
-  rejects negative energy/invalid inputs; cannot activate or clinically approve goals.
-- Existing Premium adapter projects dated catalog days into seven active and
-  seven provisional dates. Missing seed days remain missing; source IDs and day
-  numbers preserved; incomplete content never borrows demo data.
-- Confirmation intents and daily review distinguish actual diary coverage from
-  planned intake; no automatic next-day deduction, goal update or diary write.
-- Approved-only curated multi-tag filter contract and explicit ingredient density
-  conversion; unknown ml density never becomes 1 g/ml.
-- Active-week shopping preview counts each selected slot/portion, handles changed
-  compositions, separates raw/cooked states, rejects incomplete canonical amounts.
-- Free Recipes no longer offers a general Collection tab; current-account private
-  recipes/favorites remain, old relations/history preserved. Immediate visibility
-  filter hides stale foreign-account content. Not proof of server RLS.
-- 120 unique owner-review names, 30 per meal, no UUIDs/nutrients/ingredient expansion:
-  `docs/premium/recipe-names-owner-review-v1.md` and
-  `data/recipes/premium-name-candidates-v1.json`.
-- Preliminary evidence register: `docs/premium/nutrition-safety-evidence-v1.md`.
-  NIDDK page read; IOC/ISSN full text not retrieved. No clinical policy approved.
+This does not approve server implementation, schema, endpoint, SQL or writes.
+Contract/details: `docs/premium/plan-fact-persistence-domain-v1.md`.
 
-## Latest completed safe package
+## Completed foundation (committed)
 
-- Integrated legacy/catalog Today view models into the dated rolling-week adapter;
-  kept existing source IDs, day numbers and old routes. No return to fixed-14-day
-  nutrition as the new product contract.
-- Added local weekly UI: active Monday–Sunday dates, planned meals, honest missing
-  days, next-week provisional explanation, clear PLAN != FACT. Today accepts an
-  explicit preview input; development-only `?weeklyPreview=demo` labels unvalidated
-  legacy demo meals. Existing production App routes do not activate weekly preview.
-- All four food actions are in-memory confirmation intents, not completed facts.
-  Save is disabled; no persistence callback/storage/network. Future food cannot be
-  confirmed. Account/plan/goal version/week/date changes reset local context;
-  stale/foreign/provisional-as-active inputs are rejected.
-- Six daily states match the contract exactly: normal, no_time, tired, hungry,
-  training_day, rest_day. Context/help text only; no calorie or compensation writes.
-- Six primary catalog filters: cut, bulk, vegan, high_protein, high_carb, keto.
-  Earlier unpersisted spellings have explicit aliases; private recipes cannot opt in.
-- Added scoped replacement arithmetic preview: reviewed recipe/batch/portion
-  evidence, exact dated original slot, all macro deltas and complete day/week totals.
-  Missing/duplicate evidence, stale scope, incomplete totals and overflow fail closed.
-  Originals remain unchanged. Application always blocked by restriction/allergen
-  review, reviewed portion/safety policy and persistence contract. Shopping does not
-  consume a merely proposed replacement automatically.
+- Compatible Goal/training/preferences/safety/cycle types and advanced macro math
+  preview; no new clinical thresholds or Goal activation.
+- Seven-day projection through the existing Premium/Today adapter. Local weekly
+  preview with planned meals, four food actions and six daily states. Missing days
+  remain missing. Production App does not enable it; legacy routes preserved.
+- Approved-only curated filters cut/bulk/vegan/high_protein/high_carb/keto.
+  Free shows only current-account private user recipes; old relations retained.
+- Scoped replacement arithmetic preview and occurrence/portion-aware shopping;
+  canonical/portion/safety evidence is still required before application.
+- 120 owner-review names (30 per meal) preserved unchanged. No ingredients, grams,
+  instructions, UUID expansion or import. Evidence register remains preliminary.
 
-Production adaptive UI, goal changes, facts and plan persistence remain disabled.
-120-name owner-review dataset preserved; no ingredient expansion or canonical IDs.
+## Latest completed local package (uncommitted)
 
-## Tests / build
+- Versioned domain context: account, plan/goal revisions, local week/timezone,
+  dated slot, recipe/portion/snapshot revisions and idempotency key.
+- Pure `PROPOSE → PREVIEW → CONFIRM` simulation with explicit confirmation,
+  account/version/content checks, exact replay no-op and changed-key-payload conflict.
+  Future consumption and provisional active-week input fail closed.
+- As-planned copies the exact snapshot; modified/extra requires actual payload.
+  Skip and skip undo only append annotation events. Extra food leaves graph intact.
+- Replacement confirmation changes only the simulated graph. Revision-bound shopping
+  selection sees the new snapshot; pending proposals and diary actions do not alter
+  it. Earlier consumed snapshots remain intact after later replacements.
+- Edit/undo appends supersession/retraction history. Original events remain; stale
+  history targets reject. Plan restoration is a fresh replacement with retained
+  snapshots. No destructive deletion or silent resurrection.
+- Contradictory content under the same snapshot/portion revision fails closed.
+- Weekly action-preview UX explains separate consequences and keeps saving disabled.
 
-- Focused: **84 passed** (week adapter/UI SSR/reducer, adaptation, replacement,
-  shopping and existing Today route behavior).
-- Broad: **149 files; 1117 tests; 1116 passed; 0 failed; 1 skipped**.
-  Skipped diary integration requires dedicated Supabase test environment.
-- Build **PASS** (TypeScript, Vite, Pages fallback).
-- Lint **FAIL: 121 existing errors / 491 warnings**; **0 added diagnostics** versus
-  preceding Adaptive package (and last committed package). No mass cleanup.
-- Whitespace, empty index and all 229 owner fingerprints checked.
-- Browser: **NOT_TESTED_BROWSER / EXTERNAL_TOOL_UNAVAILABLE**. Runtime bootstrap
-  succeeded, default selection reported "No browser is available", discovery
-  returned `[]` on 2026-09-20. No fallback browser, app session or staging access.
-  React SSR and pure interaction reducer tests passed; no mobile visual QA claimed.
-- Logs: `/tmp/potok-launch-audit-2026-09-18/weekly-{focused,tests,build,lint}.log`.
+**Simulation is not persistence.** `networkWritesEnabled: false`; local sequence
+numbers are never authoritative server revisions. No writer, storage, RPC, transport
+or real diary facts are created. Real server confirmation is not integrated. Synthetic read-model reconciliation
+and optional preview integration are implemented below; this is not complete
+end-to-end adaptive execution.
 
-## Parked dependencies / checkpoints
+## Completed recovery/read-model package
 
-- **Canonical export: OPEN_EXTERNAL_DEPENDENCY / PARKED.** No retry, invented
-  UUIDs, service role, production catalog claim or import. Existing four canonical
-  candidates remain rejected; new 120-name list is content-review only.
-- **Recipe atomic-save metadata: PARKED.** Do not retry CLI. Prior authorized
-  metadata-only attempt unexpectedly initialized login role and failed HTTP 544;
-  no metadata received; absence of side effects was not proven. Exact evidence and
-  approved SQL hash retained in `reports/recipe-resolver-safety-checkpoint-2026-09-19.md`.
-- Clinical thresholds/formula activation need authoritative evidence and explicit
-  review. DB/schema/RLS/persistence, fact-write endpoint, payment/import/deploy
-  require separate concrete checkpoints. No broad approval inferred.
-- **Actual content checkpoint:** owner reviews the 120-name list before ingredients,
-  grams and instructions are expanded. Approval is not permission to import.
+- Pure adapter against synthetic inputs: account/calendar/timezone binding, session
+  and request/attempt generations, late/foreign response rejection, current graph
+  validation, preview invalidation on plan/goal revision changes. No new endpoint.
+- Cross-read plan/snapshot/portion immutability and known-retired-revision rejection.
+  Opaque revisions are not ordered by guessed numbers, timestamps or lexical order.
+- Timeout remains UNKNOWN, neither success nor failure. New key/action is blocked
+  while unresolved; explicit retry preserves original payload, expected revisions
+  and idempotency key. A fresh-looking graph alone never proves mutation outcome.
+- Accepted outcome requires matching fresh read identifiers/revisions; replacement
+  also requires a new plan revision and exact confirmed slot snapshot. Old reads
+  cannot overwrite the receipt constraint. Conflict requires refresh and new review.
+- Unknown operations survive A→B→A in account-scoped memory quarantine and reattach
+  under a fresh session. Another week/timezone keeps unresolved work blocked pending
+  proper reconciliation. Foreign account view exposes neither payload nor outcome.
+  Settled keys also remain account scoped. No restart persistence is claimed.
+- Optional recovery input wired into existing Today weekly preview only. It checks
+  account/date/week/timezone, plan/goal revisions and dated slot/recipe identity set.
+  Loading/unknown/conflict/mismatch hide stale meal content/actions. No request or
+  diary write controls enabled; App production routes do not supply this input.
 
-## Actual next functional owner checkpoint
+## Verification
 
-Before enabling persistence or production weekly plan, confirm a versioned contract:
+- Focused **47 PASS** (domain, recovery, weekly/Today SSR).
+- Broad **153 files; 1161 tests; 1160 PASS; 0 failed; 1 skipped** (dedicated diary
+  Supabase integration environment unavailable).
+- Build **PASS**: TypeScript, Vite, Pages fallback.
+- Lint **FAIL: 121 existing errors / 491 warnings; 0 added diagnostics** versus
+  the preceding persistence package / committed weekly baseline. No mass cleanup.
+- Diff/whitespace checks, empty index, 229 owner hashes and unchanged name dataset
+  verified. Logs: `/tmp/potok-launch-audit-2026-09-18/recovery-{focused,tests,build,lint}.log`.
+- Browser gap **NOT_TESTED_BROWSER / EXTERNAL_TOOL_UNAVAILABLE** retained.
+  Previous discovery returned `[]`; not retried. SSR/reducer tests are not mobile QA.
 
-1. Authoritative account-bound plan assignment with local-calendar anchor/timezone,
-   plan revision, goal revision and recipe/portion snapshot revision. A client demo
-   key is not an authoritative concurrency token.
-2. Meal actions: explicit reviewed food/portion/date payload; did-not-eat is a plan
-   annotation, not a zero-valued consumed meal; extra food does not silently deduct
-   future intake. Define edit/undo/history behavior without deleting existing facts.
-3. Atomic/idempotent server boundary validating current account/entitlement and
-   expected revisions; concurrent or stale requests reject; failure leaves both
-   plan graph and diary unchanged. Client preview cannot assert server permission.
-4. Confirmed replacements and shopping use the same approved graph/portion revision.
-   Reviewed restrictions, canonical nutrition and portion/safety policy are required
-   before labeling replacements safe or activating numerical adaptation.
+## Parked dependencies / real checkpoints
 
-This is a contract/review checkpoint, not permission to apply SQL, test writes,
-activate production, use service role or revisit parked metadata access. Exact DB
-patch cannot be finalized from missing live schema evidence.
+- Canonical export: **OPEN_EXTERNAL_DEPENDENCY / PARKED**. No retry, invented UUID,
+  service role, import or production catalog-readiness claim.
+- Recipe atomic metadata: **PARKED**. No SQL/CLI retry. Earlier authorized metadata
+  attempt unexpectedly initialized login role and failed HTTP 544; no metadata
+  received and absence of side effects was not proven. Evidence remains in
+  `reports/recipe-resolver-safety-checkpoint-2026-09-19.md`.
+- Actual transport/persistence needs verified schema/read-model metadata and an
+  approved authenticated atomic/idempotent endpoint contract, including server-owned
+  revisions and history identity mapping. Exact storage remains undecided.
+- Recipe ingredient expansion waits for owner review of the preserved 120-name list.
+- Numerical adaptation/safety policy needs authoritative evidence review; deployment,
+  import, payment and production activation are separately unauthorized.
 
-## Exact next safe task
+## Remaining boundary / exact next safe task
 
-Resume the 29-path package, not a fresh audit. Browser discovery is currently empty;
-do not repeat discovery until the environment changes. Once connected, verify the isolated weekly preview at mobile widths and exercise its
-four actions, date navigation, six states and account/version resets without
-connecting to staging or writing diary data. Current SSR/reducer coverage does not
-replace this check. Otherwise preserve the browser gap and review the persistence
-contract above with the owner before functional save integration. Name-list approval
-is independently required before recipe ingredient expansion. No new numerical
-policy, new commit, DB access or activation is authorized by this handoff.
+The requested local recovery package is complete. Real port integration is blocked
+on a reviewable authenticated server contract proving:
 
-MASTER PROMPT remains incomplete; canonical export and atomic metadata remain parked.
+1. Freshness/successor ordering for previously unseen opaque graph revisions and
+   races after an accepted mutation. Latest client request generation is not proof
+   of server freshness; do not implement a client oracle.
+2. Receipt provenance and account/entitlement enforcement; exact returned plan,
+   goal, dated slot and recipe/portion snapshot identities.
+3. Outcome lookup by original idempotency key/payload, including unknown results
+   from another week/timezone or across reload; no fresh key on retry.
+4. Authoritative history identities and atomic conflict/rollback semantics.
+
+Exact next safe task: review a supplied read-only server protocol/schema artifact
+against `docs/premium/plan-fact-persistence-domain-v1.md`, then add synthetic contract
+fixtures matching verified behavior. Do not guess endpoint/storage or resume parked
+metadata access. The owner checkpoint is for this real server contract, not repeated
+approval of already accepted PLAN/FACT semantics. No broad write permission requested.
+
+Browser/mobile QA remains a separate external gap; only resume when availability
+changes. Canonical export, atomic metadata and recipe expansion remain parked.
+MASTER PROMPT remains incomplete; no production activation or new commit performed.
