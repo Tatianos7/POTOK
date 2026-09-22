@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import NutritionMealActionPreview from './NutritionMealActionPreview';
 import NutritionRecoveryStatus from './NutritionRecoveryStatus';
+import AdaptiveNutritionRuntimeWeekPreview from './AdaptiveNutritionRuntimeWeekPreview';
+import { isAdaptiveNutritionRuntimeEnabled } from '../services/adaptiveNutritionPersistenceService';
 import { nutritionRecoveryPreviewView, type NutritionRecoveryState } from '../utils/nutritionRecovery';
 import type { PremiumNutritionWeek } from '../services/premiumTodayAdapter';
 import { DAILY_NUTRITION_STATES, type MealConfirmationChoice } from '../utils/nutritionAdaptation';
@@ -14,6 +16,8 @@ export interface NutritionWeekPreviewProps {
   source: 'demo' | 'catalog-preview';
   /** Explicit local/test scenario only; production App does not supply this. */
   recovery?: { state: NutritionRecoveryState; timeZone: string };
+  /** Server-created offers only. This UI does not create or validate replacements. */
+  runtimeReplacementOfferIds?: Readonly<Record<string, string>>;
 }
 
 const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -91,6 +95,10 @@ export default function NutritionWeekPreview(props: NutritionWeekPreviewProps) {
   let key: string;
   try { key = weekPreviewContextKey(context); } catch {
     return <p className="p-6 text-sm text-stone-600" role="status">Недельный предпросмотр недоступен для текущего аккаунта или версии плана.</p>;
+  }
+  if (isAdaptiveNutritionRuntimeEnabled()) {
+    return <AdaptiveNutritionRuntimeWeekPreview currentUserId={context.currentUserId} today={context.today}
+      week={context.week} replacementOfferIds={props.runtimeReplacementOfferIds} />;
   }
   const recoveryView = props.recovery ? nutritionRecoveryPreviewView(props.recovery.state, {
     accountId: context.currentUserId, planId: context.week.scope.planId, weekAnchor: context.week.startDate,

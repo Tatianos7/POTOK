@@ -11,6 +11,7 @@ import {
   projectTodayNutritionWeeks,
 } from '../services/premiumTodayAdapter';
 import NutritionWeekPreview, { type NutritionWeekPreviewProps } from '../components/NutritionWeekPreview';
+import { getAdaptiveNutritionSmokePreview } from '../services/adaptiveNutritionSmokePreview';
 import { getLocalDayKey } from '../utils/dayKey';
 import { nutritionWeekDates } from '../utils/nutritionWeek';
 import {
@@ -1584,10 +1585,20 @@ const Today = ({
 function TodayEntry(props: TodayProps) {
   const location = useLocation();
   if (props.weeklyPreview) return <NutritionWeekPreview {...props.weeklyPreview} currentUserId={props.currentUserId} />;
+  const today = getLocalDayKey();
+  const smokePreview = getAdaptiveNutritionSmokePreview(props.currentUserId, today);
+  if (smokePreview.kind === 'blocked') {
+    return <p className="p-6 text-sm text-stone-600" role="status">
+      Тестовый серверный план недоступен для текущего аккаунта или окружения.
+    </p>;
+  }
+  if (smokePreview.kind === 'ready') {
+    return <NutritionWeekPreview currentUserId={props.currentUserId} today={today}
+      weeks={smokePreview.weeks} source="catalog-preview" />;
+  }
   const isLocalDevelopment = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
   if (isLocalDevelopment && new URLSearchParams(location.search).get('weeklyPreview') === 'demo') {
     if (!props.currentUserId) return <p className="p-6">Войдите, чтобы открыть недельный предпросмотр.</p>;
-    const today = getLocalDayKey();
     const source = demoPlans[0];
     const weeks = projectTodayNutritionWeeks({
       plan: { ...source, days: source.days.map((day) => ({ ...day,

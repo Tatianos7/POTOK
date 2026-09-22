@@ -5,8 +5,10 @@ import { MemoryRouter } from 'react-router-dom';
 import Today from '../Today';
 import NutritionWeekPreview from '../../components/NutritionWeekPreview';
 import { nutritionWeekPreviewFixture } from '../../test/nutritionWeekPreviewFixture';
+import { isAdaptiveNutritionRuntimeEnabled } from '../../services/adaptiveNutritionPersistenceService';
 
 test('Today local preview displays dated Mon–Sun plan and four explicit food actions', () => {
+  assert.equal(isAdaptiveNutritionRuntimeEnabled(), false);
   const fixture = nutritionWeekPreviewFixture();
   const html = renderToStaticMarkup(<MemoryRouter><Today currentUserId={fixture.scope.userId}
     weeklyPreview={{ today: fixture.today, weeks: fixture.weeks, source: 'catalog-preview' }} /></MemoryRouter>);
