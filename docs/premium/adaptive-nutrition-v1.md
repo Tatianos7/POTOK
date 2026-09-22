@@ -225,9 +225,9 @@ Final package verification: **47 focused PASS; 153 files / 1160 PASS / 1 skipped
 build PASS; no added lint diagnostics** (121 existing errors, 491 warnings).
 All 229 owner hashes and the 120-name dataset preserved. Browser gap retained.
 
-## Exact current uncommitted package
+## Committed recovery / PLAN-FACT package
 
-13 paths; not staged; no new commit permission inferred.
+Exact 13 paths committed with owner approval as `b0e9bd5`; no push/deploy.
 
 ```text
 docs/premium/adaptive-nutrition-v1.md
@@ -243,4 +243,51 @@ src/utils/__tests__/nutritionPersistence.test.ts
 src/utils/__tests__/nutritionRecovery.test.ts
 src/utils/nutritionPersistence.ts
 src/utils/nutritionRecovery.ts
+```
+
+## Server contract evidence follow-up
+
+[Required server contract / evidence v1](adaptive-nutrition-server-contract-required-v1.md)
+is a documentation-only package based on local runtime and historical artifacts.
+No current deployed schema or server behavior is inferred. It defines identity,
+atomic effects/receipts, idempotency lookup, history, auth/Premium and read-freshness
+requirements, including FACT/diary revisions separately from plan graph revisions.
+
+Owner-exported redacted evidence is the next checkpoint. The owner requested and
+received a [Dashboard export package](adaptive-nutrition-server-contract-owner-export-instructions.md)
+with an unexecuted SELECT-only metadata artifact for staging `ozidryfvhkcbtpnulakq`.
+No connection or SQL execution occurred. No persistence or schema/RPC implementation.
+
+The owner subsequently supplied the complete staging export (1693 rows, sections
+0–15). [Factual gaps and minimal server design](adaptive-nutrition-staging-gap-analysis-v1.md)
+record the deployed catalog/profile security gaps and missing execution guarantees.
+The agent analyzed it locally only. The next checkpoint is trusted entitlement
+authority and design/legacy compatibility; do not ask to repeat the same export.
+
+[Schema/RPC/DTO review draft](adaptive-nutrition-server-draft-v1.md) is now prepared
+with owner authorization, all decisions PROPOSED. Comment-only schema/RPC specification,
+standalone DTO/synthetic predicates, 18 synthetic cases, consumer/rollback review
+and future DB acceptance plan are local only. The refined draft recommends generated
+origin_kind/nullable template lineage, Free corrections after expiry, coordinated
+compatibility/barrier enrollment and separate executor/provisioner roles. Locking,
+decimal wire and restart outbox contracts refined. P01–P11 reduced to technical
+recommendations/evidence blockers and three owner operational inputs.
+Trusted provisioning and external consumers remain OPEN. 57 focused and 1178 broad tests PASS; build/typecheck PASS;
+0 added lint diagnostics. One live integration test file excluded. No persistence.
+
+## Exact current uncommitted package
+
+10 review/evidence paths; not staged; no further commit authorization inferred.
+
+```text
+docs/premium/adaptive-nutrition-server-contract-required-v1.md
+docs/premium/adaptive-nutrition-server-contract-owner-export-instructions.md
+docs/premium/adaptive-nutrition-staging-gap-analysis-v1.md
+docs/premium/adaptive-nutrition-server-draft-v1.md
+docs/premium/adaptive-nutrition-v1.md
+docs/premium/drafts/adaptive-nutrition-server-v1.schema-rpc.sql
+reports/astra-resume.md
+scripts/contracts/adaptive-nutrition-server-v1.ts
+scripts/contracts/adaptive-nutrition-server-v1.test.ts
+scripts/sql/adaptive-nutrition-server-contract-owner-readonly.sql
 ```
