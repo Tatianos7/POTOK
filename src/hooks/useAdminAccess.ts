@@ -10,14 +10,12 @@ export type AdminAccessStatus = 'checking' | 'allowed' | 'denied';
 export const useAdminAccess = ({
   authStatus,
   user,
-  profile,
 }: {
   authStatus: AuthStatus;
   user: User | null;
   profile: UserProfile | null;
 }): AdminAccessStatus => {
   const [status, setStatus] = useState<AdminAccessStatus>('checking');
-  const contextAllowsAdmin = Boolean(user?.isAdmin || profile?.is_admin);
 
   useEffect(() => {
     let isActive = true;
@@ -31,13 +29,6 @@ export const useAdminAccess = ({
 
     if (authStatus === 'unauthenticated') {
       setStatus('denied');
-      return () => {
-        isActive = false;
-      };
-    }
-
-    if (contextAllowsAdmin) {
-      setStatus('allowed');
       return () => {
         isActive = false;
       };
@@ -59,7 +50,7 @@ export const useAdminAccess = ({
     return () => {
       isActive = false;
     };
-  }, [authStatus, contextAllowsAdmin, user?.id]);
+  }, [authStatus, user?.id]);
 
   return status;
 };

@@ -16,9 +16,11 @@ export interface User {
   email?: string;
   phone?: string;
   hasPremium: boolean;
+  premiumAccessVerified?: boolean;
   createdAt: string;
   profile: ProfileDetails;
   isAdmin?: boolean;
+  adminAccessVerified?: boolean;
 }
 
 export interface LoginCredentials {

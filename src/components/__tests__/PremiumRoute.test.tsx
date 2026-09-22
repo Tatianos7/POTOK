@@ -18,7 +18,15 @@ function getRouteBlock(path: string): string {
 }
 
 test('effective premium access allows real Premium or approved demo access', () => {
-  assert.equal(hasEffectivePremiumAccess({ hasPremium: true }, false), true);
+  assert.equal(
+    hasEffectivePremiumAccess({ hasPremium: true, premiumAccessVerified: true }, false),
+    true,
+  );
+  assert.equal(hasEffectivePremiumAccess({ hasPremium: true }, false), false);
+  assert.equal(
+    hasEffectivePremiumAccess({ hasPremium: true, premiumAccessVerified: false }, false),
+    false,
+  );
   assert.equal(hasEffectivePremiumAccess({ hasPremium: false }, true), true);
   assert.equal(hasEffectivePremiumAccess({ hasPremium: false }, false), false);
   assert.equal(hasEffectivePremiumAccess(null, false), false);
@@ -52,8 +60,8 @@ test('real Premium and demo Premium routes are allowed', () => {
   assert.equal(
     resolvePremiumRouteAccess(
       'authenticated',
-      { hasPremium: true },
-      hasEffectivePremiumAccess({ hasPremium: true }, false),
+      { hasPremium: true, premiumAccessVerified: true },
+      hasEffectivePremiumAccess({ hasPremium: true, premiumAccessVerified: true }, false),
     ),
     'allow',
   );

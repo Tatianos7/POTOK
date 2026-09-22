@@ -14,6 +14,7 @@ import { clearPinSessionUnlocked } from '../services/pinLockService';
 import { getAuthCallbackRedirectUrl } from '../utils/authRedirect';
 import { useTheme } from './ThemeContext';
 import { createAuthRequestGuard } from '../utils/authRequestGuard';
+import { adminAccessService } from '../services/adminAccessService';
 
 type AuthStatus = 'booting' | 'authenticated' | 'unauthenticated';
 
@@ -89,6 +90,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       console.warn('[AuthContext] getProfile failed, continue without profile:', error);
     }
+    const verifiedCapabilities = await withTimeout(
+      adminAccessService.getVerifiedCurrentUserCapabilities(sessionUser.id),
+      5000,
+    ).catch(() => null);
     const email = sessionUser.email ?? supabaseProfile?.email ?? undefined;
     const phone = sessionUser.phone ?? supabaseProfile?.phone ?? undefined;
     const firstName =
@@ -117,7 +122,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       name,
       email,
       phone,
-      hasPremium: supabaseProfile?.has_premium ?? false,
+      hasPremium: verifiedCapabilities?.premium === true,
+      premiumAccessVerified: verifiedCapabilities?.premiumVerified === true,
       createdAt: sessionUser.created_at || new Date().toISOString(),
       profile: {
         firstName,
@@ -130,7 +136,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email,
         phone,
       },
-      isAdmin: supabaseProfile?.is_admin ?? false,
+      isAdmin: verifiedCapabilities?.admin === true,
+      adminAccessVerified: verifiedCapabilities?.adminVerified === true,
       },
     };
   };
@@ -233,6 +240,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               email: currentSession.user.email ?? undefined,
               phone: currentSession.user.phone ?? undefined,
               hasPremium: false,
+              premiumAccessVerified: false,
               createdAt: currentSession.user.created_at || new Date().toISOString(),
               profile: {
                 firstName:
@@ -249,6 +257,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 phone: currentSession.user.phone ?? undefined,
               },
               isAdmin: false,
+              adminAccessVerified: false,
             });
             setProfile(null);
           }
@@ -270,6 +279,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             email: currentSession.user.email ?? undefined,
             phone: currentSession.user.phone ?? undefined,
             hasPremium: false,
+            premiumAccessVerified: false,
             createdAt: currentSession.user.created_at || new Date().toISOString(),
             profile: {
               firstName:
@@ -286,6 +296,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               phone: currentSession.user.phone ?? undefined,
             },
             isAdmin: false,
+            adminAccessVerified: false,
           };
           setUser(fallbackUser);
           setProfile(null);
@@ -330,6 +341,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 email: newSession.user.email ?? undefined,
                 phone: newSession.user.phone ?? undefined,
                 hasPremium: false,
+                premiumAccessVerified: false,
                 createdAt: newSession.user.created_at || new Date().toISOString(),
                 profile: {
                   firstName:
@@ -346,6 +358,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                   phone: newSession.user.phone ?? undefined,
                 },
                 isAdmin: false,
+                adminAccessVerified: false,
               });
               setProfile(null);
             }
@@ -367,6 +380,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               email: newSession.user.email ?? undefined,
               phone: newSession.user.phone ?? undefined,
               hasPremium: false,
+              premiumAccessVerified: false,
               createdAt: newSession.user.created_at || new Date().toISOString(),
               profile: {
                 firstName:
@@ -383,6 +397,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 phone: newSession.user.phone ?? undefined,
               },
               isAdmin: false,
+              adminAccessVerified: false,
             };
             setUser(fallbackUser);
             setProfile(null);
@@ -493,39 +508,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user) return;
     const userId = user.id;
     const isCurrent = authRequests.current.capture();
-    try {
-      await profileService.saveProfile(userId, data);
-      if (!isCurrent()) return;
-      const updatedProfile = await profileService.getProfile(userId);
-      if (!isCurrent()) return;
-      if (updatedProfile?.id_user === userId) {
-        setUser((prev) =>
-          prev?.id === userId && isCurrent()
-            ? {
-                ...prev,
-                name: updatedProfile.first_name || prev.name,
-                email: updatedProfile.email || prev.email,
-                phone: updatedProfile.phone || prev.phone,
-                hasPremium: updatedProfile.has_premium ?? prev.hasPremium,
-                isAdmin: updatedProfile.is_admin ?? prev.isAdmin,
-                profile: {
-                  ...prev.profile,
-                  firstName: updatedProfile.first_name || prev.profile.firstName,
-                  lastName: updatedProfile.last_name || prev.profile.lastName,
-                  middleName: updatedProfile.middle_name || prev.profile.middleName,
-                  birthDate: updatedProfile.birth_date || prev.profile.birthDate,
-                  age: updatedProfile.age ?? prev.profile.age,
-                  height: updatedProfile.height ?? prev.profile.height,
-                  goal: updatedProfile.goal || prev.profile.goal,
-                  email: updatedProfile.email || prev.profile.email,
-                  phone: updatedProfile.phone || prev.profile.phone,
-                },
-              }
-            : prev
-        );
-      }
-    } catch (error) {
-      throw error;
+    await profileService.saveProfile(userId, data);
+    if (!isCurrent()) return;
+    const updatedProfile = await profileService.getProfile(userId);
+    if (!isCurrent()) return;
+    if (updatedProfile?.id_user === userId) {
+      setUser((prev) =>
+        prev?.id === userId && isCurrent()
+          ? {
+              ...prev,
+              name: updatedProfile.first_name || prev.name,
+              email: updatedProfile.email || prev.email,
+              phone: updatedProfile.phone || prev.phone,
+              profile: {
+                ...prev.profile,
+                firstName: updatedProfile.first_name || prev.profile.firstName,
+                lastName: updatedProfile.last_name || prev.profile.lastName,
+                middleName: updatedProfile.middle_name || prev.profile.middleName,
+                birthDate: updatedProfile.birth_date || prev.profile.birthDate,
+                age: updatedProfile.age ?? prev.profile.age,
+                height: updatedProfile.height ?? prev.profile.height,
+                goal: updatedProfile.goal || prev.profile.goal,
+                email: updatedProfile.email || prev.profile.email,
+                phone: updatedProfile.phone || prev.profile.phone,
+              },
+            }
+          : prev
+      );
     }
   };
 
@@ -590,7 +599,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           name,
           email: profile?.email || undefined,
           phone: profile?.phone || undefined,
-          hasPremium: profile?.has_premium ?? false,
+          hasPremium: false,
+          premiumAccessVerified: false,
           createdAt: profile?.created_at || new Date().toISOString(),
           profile: {
             firstName,
@@ -603,7 +613,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             email: profile?.email || undefined,
             phone: profile?.phone || undefined,
           },
-          isAdmin: profile?.is_admin ?? false,
+          isAdmin: false,
+          adminAccessVerified: false,
         };
       };
 
@@ -644,14 +655,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
 
       const setAdminStatus = async (userId: string, isAdmin: boolean) => {
-        if (!supabase) return;
-        const { error } = await supabase!
-          .from('user_profiles')
-          .update({ is_admin: isAdmin })
-          .eq('id_user', userId);
-        if (error) {
-          console.warn('[AuthContext] setAdminStatus error:', error.message || error);
-        }
+        await profileService.updateAdminStatus(userId, isAdmin);
       };
 
       const isLoading = authStatus === 'booting';

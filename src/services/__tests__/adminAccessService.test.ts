@@ -1,72 +1,115 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-type QueryResult = { data: any; error: any };
+type CapabilityResult = { data: boolean | null; error: { message: string } | null };
+type EntitlementClient = Pick<SupabaseClient, 'auth' | 'rpc'>;
 
-const buildClient = (results: QueryResult[], columns: string[]) => ({
-  from(table: string) {
-    assert.equal(table, 'user_profiles');
-    return {
-      select(columnsToSelect: string) {
-        assert.equal(columnsToSelect, 'is_admin');
-        return this;
-      },
-      eq(column: string, value: string) {
-        columns.push(`${column}:${value}`);
-        return this;
-      },
-      async maybeSingle() {
-        return results.shift() ?? { data: null, error: null };
-      },
-    };
+const buildClient = ({
+  sessionUserId = 'account-a',
+  sessionUserIds,
+  results,
+  calls,
+}: {
+  sessionUserId?: string | null;
+  sessionUserIds?: Array<string | null>;
+  results: Record<'premium' | 'admin', CapabilityResult>;
+  calls: string[];
+}) => ({
+  auth: {
+    async getUser() {
+      calls.push('auth:getUser');
+      const currentUserId = sessionUserIds?.shift() ?? sessionUserId;
+      return {
+        data: { user: currentUserId ? { id: currentUserId } : null },
+        error: null,
+      };
+    },
+  },
+  async rpc(name: string, args: { p_capability: 'premium' | 'admin' }) {
+    calls.push(`${name}:${args.p_capability}`);
+    return results[args.p_capability];
   },
 });
 
-test('verifyCurrentUserIsAdmin reads production id_user admin flag', async () => {
+test('verified server predicate is the only source of Premium/admin UI capabilities', async () => {
   const { AdminAccessService } = await import('../adminAccessService.ts');
-  const columns: string[] = [];
-  const service = new AdminAccessService(
-    buildClient([{ data: { is_admin: true }, error: null }], columns) as any
-  );
+  const calls: string[] = [];
+  const service = new AdminAccessService(buildClient({
+    calls,
+    results: {
+      premium: { data: false, error: null },
+      admin: { data: true, error: null },
+    },
+  }) as unknown as EntitlementClient);
 
-  const isAdmin = await service.verifyCurrentUserIsAdmin('admin-1');
-
-  assert.equal(isAdmin, true);
-  assert.deepEqual(columns, ['id_user:admin-1']);
+  assert.deepEqual(await service.getVerifiedCurrentUserCapabilities('account-a'), {
+    premium: false,
+    admin: true,
+    premiumVerified: true,
+    adminVerified: true,
+  });
+  assert.deepEqual(calls, [
+    'auth:getUser',
+    'has_verified_entitlement_v1:premium',
+    'has_verified_entitlement_v1:admin',
+    'auth:getUser',
+  ]);
 });
 
-test('verifyCurrentUserIsAdmin falls back to user_id only for schema compatibility', async () => {
+test('account mismatch fails closed before entitlement RPC', async () => {
   const { AdminAccessService } = await import('../adminAccessService.ts');
-  const columns: string[] = [];
-  const service = new AdminAccessService(
-    buildClient(
-      [
-        { data: null, error: { code: '42703', message: 'column user_profiles.id_user does not exist' } },
-        { data: { is_admin: true }, error: null },
-      ],
-      columns
-    ) as any
-  );
+  const calls: string[] = [];
+  const service = new AdminAccessService(buildClient({
+    sessionUserId: 'account-b',
+    calls,
+    results: {
+      premium: { data: true, error: null },
+      admin: { data: true, error: null },
+    },
+  }) as unknown as EntitlementClient);
 
-  const isAdmin = await service.verifyCurrentUserIsAdmin('admin-1');
-
-  assert.equal(isAdmin, true);
-  assert.deepEqual(columns, ['id_user:admin-1', 'user_id:admin-1']);
+  assert.deepEqual(await service.getVerifiedCurrentUserCapabilities('account-a'), {
+    premium: false,
+    admin: false,
+    premiumVerified: false,
+    adminVerified: false,
+  });
+  assert.deepEqual(calls, ['auth:getUser']);
 });
 
-test('verifyCurrentUserIsAdmin returns false for non-admin, blank user, and read errors', async () => {
+test('account switch during verified predicate reads discards both results', async () => {
   const { AdminAccessService } = await import('../adminAccessService.ts');
+  const calls: string[] = [];
+  const service = new AdminAccessService(buildClient({
+    sessionUserIds: ['account-a', 'account-b'],
+    calls,
+    results: {
+      premium: { data: true, error: null },
+      admin: { data: true, error: null },
+    },
+  }) as unknown as EntitlementClient);
 
-  assert.equal(await new AdminAccessService(null).verifyCurrentUserIsAdmin('admin-1'), false);
-  assert.equal(await new AdminAccessService(buildClient([], []) as any).verifyCurrentUserIsAdmin(' '), false);
+  assert.deepEqual(await service.getVerifiedCurrentUserCapabilities('account-a'), {
+    premium: false,
+    admin: false,
+    premiumVerified: false,
+    adminVerified: false,
+  });
+});
 
-  const service = new AdminAccessService(
-    buildClient([{ data: null, error: { code: '42501', message: 'permission denied' } }], []) as any
-  );
-  assert.equal(await service.verifyCurrentUserIsAdmin('user-1'), false);
+test('missing predicate, malformed result, and blank account fail closed', async () => {
+  const { AdminAccessService } = await import('../adminAccessService.ts');
+  const calls: string[] = [];
+  const service = new AdminAccessService(buildClient({
+    calls,
+    results: {
+      premium: { data: null, error: null },
+      admin: { data: null, error: { message: 'function does not exist' } },
+    },
+  }) as unknown as EntitlementClient);
 
-  const nonAdminService = new AdminAccessService(
-    buildClient([{ data: { is_admin: false }, error: null }], []) as any
-  );
-  assert.equal(await nonAdminService.verifyCurrentUserIsAdmin('user-1'), false);
+  assert.equal(await service.verifyCurrentUserIsAdmin('account-a'), false);
+  assert.equal(await service.verifyCurrentUserIsAdmin(' '), false);
+  assert.equal(await new AdminAccessService(null).verifyCurrentUserIsAdmin('account-a'), false);
 });

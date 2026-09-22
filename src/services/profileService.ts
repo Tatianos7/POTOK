@@ -21,10 +21,120 @@ export interface UserProfile {
   updated_at: string;
 }
 
+const ORDINARY_PROFILE_WRITE_FIELDS = [
+  'first_name',
+  'last_name',
+  'middle_name',
+  'birth_date',
+  'age',
+  'height',
+  'goal',
+  'email',
+  'phone',
+  'avatar_url',
+] as const;
+
+const EXPLICIT_PROTECTED_PROFILE_FIELDS = [
+  'has_premium',
+  'is_admin',
+  'premium_provenance_id',
+  'premium_valid_until',
+  'admin_provenance_id',
+  'admin_valid_until',
+] as const;
+
+type OrdinaryProfileWriteField = (typeof ORDINARY_PROFILE_WRITE_FIELDS)[number];
+export type OrdinaryProfileWritePayload = Partial<Record<OrdinaryProfileWriteField, unknown>>;
+
+export interface PendingProfileWriteV2 {
+  version: 2;
+  account_id: string;
+  ordinary: OrdinaryProfileWritePayload;
+}
+
+export interface ProfilePrivilegeQuarantineV1 {
+  version: 1;
+  account_id: string;
+  status: 'requires_trusted_authority';
+  omitted_fields: string[];
+}
+
+export interface DecodedPendingProfileWrite {
+  pending: PendingProfileWriteV2 | null;
+  quarantine: ProfilePrivilegeQuarantineV1 | null;
+  shouldRewrite: boolean;
+  accountMismatch: boolean;
+}
+
+const isProtectedProfileField = (field: string): boolean => {
+  if ((EXPLICIT_PROTECTED_PROFILE_FIELDS as readonly string[]).includes(field)) return true;
+  return /^(?:premium|admin)_.+(?:provenance|attestation|valid_until|expires_at|expiry)$/.test(field);
+};
+
+export const buildOrdinaryProfileWritePayload = (
+  source: Record<string, unknown>,
+): OrdinaryProfileWritePayload => {
+  const payload: OrdinaryProfileWritePayload = {};
+  for (const field of ORDINARY_PROFILE_WRITE_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(source, field)) {
+      payload[field] = source[field] ?? null;
+    }
+  }
+  return payload;
+};
+
+export const decodePendingProfileWrite = (
+  accountId: string,
+  raw: Record<string, unknown>,
+): DecodedPendingProfileWrite => {
+  const isV2 = raw.version === 2 && raw.ordinary !== null && typeof raw.ordinary === 'object';
+  const rawAccountId = isV2
+    ? raw.account_id
+    : raw.id_user ?? raw.user_id ?? accountId;
+
+  if (typeof rawAccountId !== 'string' || rawAccountId !== accountId) {
+    return { pending: null, quarantine: null, shouldRewrite: false, accountMismatch: true };
+  }
+
+  const ordinarySource = isV2
+    ? raw.ordinary as Record<string, unknown>
+    : raw;
+  const protectedFields = [...new Set([
+    ...Object.keys(raw).filter(isProtectedProfileField),
+    ...Object.keys(ordinarySource).filter(isProtectedProfileField),
+  ])].sort();
+  const pending: PendingProfileWriteV2 = {
+    version: 2,
+    account_id: accountId,
+    ordinary: buildOrdinaryProfileWritePayload(ordinarySource),
+  };
+
+  return {
+    pending,
+    quarantine: protectedFields.length > 0
+      ? {
+          version: 1,
+          account_id: accountId,
+          status: 'requires_trusted_authority',
+          omitted_fields: protectedFields,
+        }
+      : null,
+    shouldRewrite: !isV2 || protectedFields.length > 0,
+    accountMismatch: false,
+  };
+};
+
 export class ProfileUserScopeError extends Error {
   constructor() {
     super('Пользователь изменился. Откройте профиль текущего аккаунта.');
     this.name = 'ProfileUserScopeError';
+  }
+}
+
+export class ProfilePrivilegeWriteBlockedError extends Error {
+  constructor() {
+    super('Изменение Premium/admin доступно только через защищённый серверный канал.');
+    this.name = 'ProfilePrivilegeWriteBlockedError';
   }
 }
 
@@ -34,6 +144,7 @@ class ProfileService {
   private readonly VOICE_SETTINGS_KEY = 'potok_voice_settings';
   private readonly PROFILE_CACHE_KEY = 'profile_cache_v1';
   private readonly PROFILE_PENDING_KEY = 'profile_pending_v1';
+  private readonly PROFILE_PRIVILEGE_QUARANTINE_KEY = 'profile_privilege_quarantine_v1';
   private userIdColumn: 'id_user' | 'user_id' = 'id_user';
   private isRemoteProfileQueryDisabled = false;
   private readonly unsupportedProfileColumns = new Set<string>();
@@ -59,6 +170,10 @@ class ProfileService {
 
   private pendingKey(userId: string): string {
     return `${this.PROFILE_PENDING_KEY}_${userId}`;
+  }
+
+  private privilegeQuarantineKey(userId: string): string {
+    return `${this.PROFILE_PRIVILEGE_QUARANTINE_KEY}_${userId}`;
   }
 
   private buildDefaultProfile(userId: string): UserProfile {
@@ -88,8 +203,9 @@ class ProfileService {
       email: typeof raw.email === 'string' ? raw.email : undefined,
       phone: typeof raw.phone === 'string' ? raw.phone : undefined,
       avatar_url: typeof raw.avatar_url === 'string' ? raw.avatar_url : undefined,
-      has_premium: Boolean(raw.has_premium),
-      is_admin: Boolean(raw.is_admin),
+      // Legacy booleans have no verified attestation and must never authorize UI access.
+      has_premium: false,
+      is_admin: false,
       created_at: typeof raw.created_at === 'string' ? raw.created_at : new Date().toISOString(),
       updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : new Date().toISOString(),
     };
@@ -114,22 +230,73 @@ class ProfileService {
     }
   }
 
-  private readPendingProfile(userId: string): UserProfile | null {
+  private readPendingProfile(userId: string): PendingProfileWriteV2 | null {
     try {
       const raw = localStorage.getItem(this.pendingKey(userId));
       if (!raw) return null;
       const parsed = JSON.parse(raw) as Record<string, unknown>;
-      return this.normalizeProfile(parsed, userId);
+      const decoded = decodePendingProfileWrite(userId, parsed);
+      if (decoded.accountMismatch) {
+        this.lastProfileNotice = 'Отложенные изменения относятся к другому аккаунту и не синхронизированы.';
+        return null;
+      }
+      if (!decoded.pending) return null;
+      if (decoded.shouldRewrite) {
+        try {
+          localStorage.setItem(this.pendingKey(userId), JSON.stringify(decoded.pending));
+        } catch (error) {
+          console.warn('[profileService] Error rewriting legacy pending profile:', error);
+        }
+      }
+      if (decoded.quarantine) {
+        this.writePrivilegeQuarantine(decoded.quarantine);
+        this.lastProfileNotice =
+          'Обычные поля профиля сохранены отдельно. Старые поля Premium/admin помещены в карантин и не отправлены.';
+      }
+      return decoded.pending;
     } catch {
       return null;
     }
   }
 
-  private writePendingProfile(profile: UserProfile): void {
+  private writePendingProfile(userId: string, ordinary: OrdinaryProfileWritePayload): void {
     try {
-      localStorage.setItem(this.pendingKey(profile.id_user), JSON.stringify(profile));
+      const pending: PendingProfileWriteV2 = { version: 2, account_id: userId, ordinary };
+      localStorage.setItem(this.pendingKey(userId), JSON.stringify(pending));
     } catch (error) {
       console.warn('[profileService] Error writing pending profile:', error);
+    }
+  }
+
+  private writePrivilegeQuarantine(next: ProfilePrivilegeQuarantineV1): void {
+    try {
+      const key = this.privilegeQuarantineKey(next.account_id);
+      const currentRaw = localStorage.getItem(key);
+      const current = currentRaw ? JSON.parse(currentRaw) as Partial<ProfilePrivilegeQuarantineV1> : null;
+      const omittedFields = [...new Set([
+        ...(Array.isArray(current?.omitted_fields) ? current.omitted_fields.filter((field): field is string => typeof field === 'string') : []),
+        ...next.omitted_fields,
+      ])].sort();
+      localStorage.setItem(key, JSON.stringify({ ...next, omitted_fields: omittedFields }));
+    } catch (error) {
+      console.warn('[profileService] Error writing privilege quarantine:', error);
+    }
+  }
+
+  getProfilePrivilegeQuarantine(userId: string): ProfilePrivilegeQuarantineV1 | null {
+    try {
+      const raw = localStorage.getItem(this.privilegeQuarantineKey(userId));
+      if (!raw) return null;
+      const parsed = JSON.parse(raw) as ProfilePrivilegeQuarantineV1;
+      if (
+        parsed.version !== 1 ||
+        parsed.account_id !== userId ||
+        parsed.status !== 'requires_trusted_authority' ||
+        !Array.isArray(parsed.omitted_fields)
+      ) return null;
+      return parsed;
+    } catch {
+      return null;
     }
   }
 
@@ -268,24 +435,10 @@ class ProfileService {
       const pending = this.readPendingProfile(sessionUserId);
       if (!pending) return;
       try {
-        const payload = {
-          first_name: pending.first_name || null,
-          last_name: pending.last_name || null,
-          middle_name: pending.middle_name || null,
-          birth_date: pending.birth_date || null,
-          age: pending.age || null,
-          height: pending.height || null,
-          goal: pending.goal || null,
-          email: pending.email || null,
-          phone: pending.phone || null,
-          avatar_url: pending.avatar_url || null,
-          has_premium: pending.has_premium,
-          is_admin: pending.is_admin,
-        };
         const upsertByColumn = async (column: 'id_user' | 'user_id') =>
           await client
             .from('user_profiles')
-            .upsert({ [column]: sessionUserId, ...payload }, { onConflict: column });
+            .upsert({ [column]: sessionUserId, ...pending.ordinary }, { onConflict: column });
         let { error } = await upsertByColumn(primaryUserIdColumn);
         if (error && this.isProfileSchemaError(error)) {
           const fallbackColumn = this.getAlternateUserIdColumn(primaryUserIdColumn);
@@ -342,11 +495,7 @@ class ProfileService {
         const insertByColumn = async (column: 'id_user' | 'user_id') =>
           await client
             .from('user_profiles')
-            .insert({
-              [column]: sessionUserId,
-              has_premium: false,
-              is_admin: false,
-            });
+            .insert({ [column]: sessionUserId });
         let { error: insertError } = await insertByColumn(primaryUserIdColumn);
         if (insertError && this.isProfileSchemaError(insertError)) {
           const fallbackColumn = this.getAlternateUserIdColumn(primaryUserIdColumn);
@@ -409,14 +558,20 @@ class ProfileService {
       const base = this.readCachedProfile(userId) ?? this.buildDefaultProfile(userId);
       const optimistic = this.mergeProfileWithDetails(base, profile);
       this.writeCachedProfile(optimistic);
-      this.writePendingProfile(optimistic);
+      this.writePendingProfile(
+        userId,
+        buildOrdinaryProfileWritePayload(optimistic as unknown as Record<string, unknown>),
+      );
       return;
     }
     const primaryUserIdColumn = this.userIdColumn;
     const existingProfile = this.readCachedProfile(sessionUserId) ?? this.buildDefaultProfile(sessionUserId);
     const updatedProfile = this.mergeProfileWithDetails(existingProfile, profile);
     this.writeCachedProfile(updatedProfile);
-    this.writePendingProfile(updatedProfile);
+    const ordinaryPayload = buildOrdinaryProfileWritePayload(
+      updatedProfile as unknown as Record<string, unknown>,
+    );
+    this.writePendingProfile(sessionUserId, ordinaryPayload);
 
     // Try to save to Supabase
     if (supabase) {
@@ -427,18 +582,7 @@ class ProfileService {
             .from('user_profiles')
             .upsert({
               [column]: sessionUserId,
-              first_name: updatedProfile.first_name || null,
-              last_name: updatedProfile.last_name || null,
-              middle_name: updatedProfile.middle_name || null,
-              birth_date: updatedProfile.birth_date || null,
-              age: updatedProfile.age || null,
-              height: updatedProfile.height || null,
-              goal: updatedProfile.goal || null,
-              email: updatedProfile.email || null,
-              phone: updatedProfile.phone || null,
-              avatar_url: updatedProfile.avatar_url || null,
-              has_premium: updatedProfile.has_premium,
-              is_admin: updatedProfile.is_admin,
+              ...ordinaryPayload,
             }, {
               onConflict: column,
             });
@@ -471,46 +615,16 @@ class ProfileService {
 
   // Обновить админ статус
   async updateAdminStatus(userId: string, isAdmin: boolean): Promise<void> {
-    const sessionUserId = await this.getSessionUserId(userId);
-    const userIdColumn = this.userIdColumn;
-
-    // Try to update in Supabase
-    if (supabase) {
-      try {
-        const { error } = await supabase
-          .from('user_profiles')
-          .update({ is_admin: isAdmin })
-          .eq(userIdColumn, sessionUserId);
-
-        if (error) {
-          console.error('[profileService] Supabase admin status update error:', error);
-        }
-      } catch (err) {
-        console.error('[profileService] Supabase admin status update connection error:', err);
-      }
-    }
+    void userId;
+    void isAdmin;
+    throw new ProfilePrivilegeWriteBlockedError();
   }
 
   // Обновить премиум статус
   async updatePremiumStatus(userId: string, hasPremium: boolean): Promise<void> {
-    const sessionUserId = await this.getSessionUserId(userId);
-    const userIdColumn = this.userIdColumn;
-
-    // Try to update in Supabase
-    if (supabase) {
-      try {
-        const { error } = await supabase
-          .from('user_profiles')
-          .update({ has_premium: hasPremium })
-          .eq(userIdColumn, sessionUserId);
-
-        if (error) {
-          console.error('[profileService] Supabase premium status update error:', error);
-        }
-      } catch (err) {
-        console.error('[profileService] Supabase premium status update connection error:', err);
-      }
-    }
+    void userId;
+    void hasPremium;
+    throw new ProfilePrivilegeWriteBlockedError();
   }
 
   // Сохранить аватар (base64 или URL)
@@ -543,8 +657,6 @@ class ProfileService {
               .insert({
                 [userIdColumn]: sessionUserId,
                 avatar_url: avatarData,
-                has_premium: false,
-                is_admin: false,
               });
 
             if (insertError) {

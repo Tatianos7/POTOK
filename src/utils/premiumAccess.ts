@@ -2,11 +2,12 @@ import { hasDemoPremiumAccess } from '../services/demoPremiumAccess';
 
 export interface PremiumAccessUser {
   hasPremium?: boolean | null;
+  premiumAccessVerified?: boolean | null;
 }
 
 export function hasEffectivePremiumAccess(
   user: PremiumAccessUser | null | undefined,
   demoPremiumAccess = hasDemoPremiumAccess(),
 ): boolean {
-  return user?.hasPremium === true || demoPremiumAccess;
+  return (user?.hasPremium === true && user?.premiumAccessVerified === true) || demoPremiumAccess;
 }

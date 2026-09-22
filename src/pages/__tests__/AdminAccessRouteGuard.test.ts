@@ -25,8 +25,8 @@ test('admin pages wait during admin access verification instead of redirecting',
   assert.match(missingFoodReviewSource, /adminAccessStatus === 'denied'/);
 });
 
-test('admin access hook verifies admin remotely before denying fallback non-admin context', () => {
+test('admin access hook requires verified server access and ignores local legacy flags', () => {
   assert.match(hookSource, /adminAccessService\.verifyCurrentUserIsAdmin\(user\.id\)/);
   assert.match(hookSource, /setStatus\(isAdmin \? 'allowed' : 'denied'\)/);
-  assert.match(hookSource, /user\?\.isAdmin \|\| profile\?\.is_admin/);
+  assert.doesNotMatch(hookSource, /user\?\.isAdmin \|\| profile\?\.is_admin/);
 });
