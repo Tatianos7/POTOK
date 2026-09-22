@@ -1190,3 +1190,44 @@ MASTER PROMPT remains incomplete. All existing local work preserved.
 - No push, deploy, browser smoke, Supabase request/write, production activation or
   runtime production-flag change occurred. The exact proposed next Git action is
   `git push origin master`, requiring separate owner authorization.
+
+## Retained STAGING smoke evidence / retirement v1.1 review — 2026-09-22
+
+- Current HEAD remains `de2f45486597d41af57617d3d4bcaac22156fc96`. Owner reports
+  the browser smoke and exact SELECT-only post-smoke check completed against STAGING
+  `ozidryfvhkcbtpnulakq`, account `88c26f6b-ebc8-4bff-864d-9194fbd27f8d`, selection
+  `7e710000-0000-4000-8000-000000000001`. This is owner evidence; Codex did not
+  connect to Supabase or execute SQL.
+- Live evidence is clean but contains two complete action pairs: five accepted
+  receipts (one bootstrap, two SKIPPED, two UNDO), four events (two annotations,
+  two retractions), zero live annotations, digest mismatches, wrong successor counts,
+  FACT/PLAN_REPLACED, diary, meal-selection, replacement-offer or foreign fixture
+  rows. Premium was effective at the time of that read-only check.
+- The committed post-smoke/retirement/post-retirement artifacts hard-required one
+  pair (`3` receipts / `2` events). Existing retirement would therefore fail safely
+  before revoke/archive on the current state; it is not safe to run as-is because it
+  cannot complete the intended retirement.
+- Prepared local v1.1 review changes only. The checks and retirement now accept one
+  exact bootstrap plus `N >= 1` fully paired accepted SKIPPED/UNDO histories, require
+  every annotation to have exactly one same-fixture retraction, reject orphaned,
+  live, second-successor, unexpected or nonaccepted history, preserve digest and
+  exact account/selection/Goal/graph/lineage checks, and require zero prohibited or
+  foreign effects. Retirement still appends only the exact protected revoke and
+  archives only the exact retained selection under one BEGIN/COMMIT transaction;
+  exact successful replay remains a no-op and later entitlement lineage fails closed.
+- Revised hashes: post-smoke
+  `5ae171d262ecd77f0caa2bf5e975da03572f3bfa7f609bc9aebdd52e6f9fc38d`;
+  retirement
+  `9f5bd64325f65afe11b6bf42f769452d0050cc46b8d544f9f8c249d163d8208f`;
+  post-retirement
+  `90c6ac1baa87af1c56b6087c9e2fa81f396a209b2f21edf0e2beb61ce6e0f084`.
+  Preflight/setup hashes remain unchanged.
+- Fresh local verification: retained static contracts **9/9 PASS**; strict TypeScript
+  **PASS**; targeted ESLint with zero warnings **PASS**; `git diff --check` **PASS**.
+  Static checks are not deployed/server behavior proof; no PostgreSQL parser/server
+  execution was performed.
+- Next checkpoint: owner first approves and runs only revised SELECT-only post-smoke
+  hash and requires `retained_smoke_acceptance_pass=true`; only then separately
+  approves the exact v1.1 retirement hash. Post-retirement SELECT-only verification
+  follows retirement. No SQL was executed and no Supabase, production, push, deploy
+  or append-only cleanup occurred. All PARKED blockers remain PARKED.

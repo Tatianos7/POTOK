@@ -1,8 +1,10 @@
 # Adaptive Nutrition retained STAGING smoke v1
 
-Status: **SETUP APPLIED ON STAGING / BROWSER SMOKE NOT RUN**. The owner reports that
-the retained setup completed successfully on Supabase STAGING project
-`ozidryfvhkcbtpnulakq`. Codex did not execute or independently query that apply.
+Status: **SETUP APPLIED / BROWSER SMOKE COMPLETE / V1.1 RETIREMENT REVIEW READY**.
+The owner reports that the retained setup and browser smoke completed on Supabase
+STAGING project `ozidryfvhkcbtpnulakq`. Codex did not execute or independently query
+the setup or smoke. The owner-provided SELECT-only evidence records two complete
+SKIPPED/UNDO pairs, zero live annotations and no FACT/diary/replacement effects.
 Supabase Branching is not used because the current project is on the Free plan and
 preview branches require an upgrade. Production is excluded.
 
@@ -37,13 +39,13 @@ No disposable `9a22…` identity is reused.
   — `b935cf9ec1aa40a0b0e34bc05bf3d899db98251b9683c4f756ff442bf56314b0`
 - SELECT-only post-smoke check:
   `docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.post-smoke.sql`
-  — `8a64d64514fc2b54d913c6701311f0e93f96e6b1e3f381c26d671d7737d1f1ff`
+  — `5ae171d262ecd77f0caa2bf5e975da03572f3bfa7f609bc9aebdd52e6f9fc38d`
 - retirement, not cleanup:
   `docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.retirement.sql`
-  — `750a8ef69582f39b1573eb3b4268fbb4454829895b306f5e0c496836adf4a3ba`
+  — `9f5bd64325f65afe11b6bf42f769452d0050cc46b8d544f9f8c249d163d8208f`
 - SELECT-only post-retirement check:
   `docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.post-retirement.sql`
-  — `74a793f8aa21c64803804545bc37a04a653373b4bd9b9df894497fbeb5ab19bf`
+  — `90c6ac1baa87af1c56b6087c9e2fa81f396a209b2f21edf0e2beb61ce6e0f084`
 - inert build-config example:
   `docs/premium/drafts/adaptive-nutrition-retained-staging-smoke-v1.env.example`
 
@@ -110,11 +112,15 @@ editing or rerunning setup; return for a separately reviewed action if it expire
 
 ## Retirement semantics
 
-Retirement requires the exact successful post-smoke state: three accepted receipts
-(bootstrap, SKIPPED, UNDO), two events (annotation and retraction), no diary row and
-no replacement offer. It then calls the protected owner-only revoke routine with the
-exact fixture evidence ref and changes only the exact active fixture selection to
-`archived`. Both changes share one transaction. Any later failure rolls back both.
+Retirement v1.1 requires one exact bootstrap plus `N >= 1` accepted SKIPPED receipts,
+the same number of accepted UNDO receipts and exactly `2N` annotation/retraction
+events. Every annotation must have exactly one same-fixture retraction; no live,
+orphaned, second-successor or unexpected event/receipt is accepted. Digests, graph,
+Goal, account, selection and retained lineage remain exact. FACT/PLAN_REPLACED,
+diary, meal-selection, replacement-offer and foreign-fixture rows must remain zero.
+It then calls the protected owner-only revoke routine with the exact fixture evidence
+ref and changes only the exact active fixture selection to `archived`. Both changes
+share one transaction. Any later failure rolls back both.
 
 Re-running retirement after exact completion is an idempotent no-op. A partial,
 foreign or later entitlement lineage fails closed. Receipt, graph, events, Goal,
@@ -132,14 +138,13 @@ claim.
 
 1. **OWNER-REPORTED COMPLETE:** preflight and retained setup ran on STAGING
    `ozidryfvhkcbtpnulakq`; exact retained account and selection are present.
-2. Follow the dedicated owner runbook to configure the ignored local smoke
-   environment and run only the bounded browser smoke. Do not enable any production
-   environment.
-3. Return the browser evidence without credentials. Run the exact SELECT-only
-   post-smoke check only as the next explicit checkpoint. Stop unless
+2. **OWNER-REPORTED COMPLETE:** the browser smoke produced two complete SKIPPED/UNDO
+   pairs; the original exact-one-pair postcheck therefore returned false while all
+   safety measurements were clean.
+3. Run the revised SELECT-only post-smoke hash and require
    `retained_smoke_acceptance_pass=true`.
-4. Separately approve the exact retirement hash. Run it only after the post-smoke
-   pass. It is retirement, not cleanup.
+4. Separately approve the exact v1.1 retirement hash. Run it only after that revised
+   post-smoke pass. It is retirement, not cleanup.
 5. Run the exact SELECT-only post-retirement check and require
    `retained_fixture_retirement_pass=true`.
 6. Remove the local env file, logout and clear local site data. Leave all retained

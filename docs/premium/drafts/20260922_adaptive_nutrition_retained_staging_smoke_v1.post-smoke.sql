@@ -1,5 +1,5 @@
 -- POTOK retained Adaptive Nutrition STAGING smoke v1 — SELECT-ONLY POST-SMOKE CHECK.
--- Run after exactly one successful SKIPPED and its UNDO on STAGING ozidryfvhkcbtpnulakq.
+-- Accepts one bootstrap plus N fully paired SKIPPED/UNDO histories, where N >= 1.
 
 WITH constants AS (
   SELECT
@@ -18,7 +18,8 @@ WITH constants AS (
     (SELECT pg_catalog.count(*) FROM public.user_premium_plan_selections s CROSS JOIN constants c
       WHERE s.user_id = c.account_id AND s.id = c.selection_id
         AND s.status = 'active' AND s.contract_version = 1
-        AND s.origin_lineage ->> 'source' = 'potok-retained-staging-smoke-v1') AS active_selections,
+        AND s.origin_lineage ->> 'source' = 'potok-retained-staging-smoke-v1'
+        AND s.origin_lineage ->> 'discoveryPolicy' = 'explicit-smoke-selection-only') AS active_selections,
     (SELECT pg_catalog.count(*) FROM public.user_goals g CROSS JOIN constants c
       WHERE g.user_id = c.account_id AND g.goal_type = 'potok_retained_staging_smoke_v1') AS fixture_goals,
     (SELECT pg_catalog.count(*) FROM public.adaptive_nutrition_graph_revisions g CROSS JOIN constants c
@@ -34,6 +35,14 @@ WITH constants AS (
     (SELECT pg_catalog.count(*) FROM fixture_operations
       WHERE action_type = 'ANNOTATION_RETRACTION' AND outcome = 'accepted') AS accepted_undo_receipts,
     (SELECT pg_catalog.count(*) FROM fixture_operations WHERE outcome <> 'accepted') AS nonaccepted_receipts,
+    (SELECT pg_catalog.count(*) FROM fixture_operations o CROSS JOIN constants c
+      WHERE NOT (
+        (o.operation_id = c.bootstrap_operation_id
+          AND o.idempotency_key = 'potok-retained-staging-smoke-v1/bootstrap'
+          AND o.action_type = 'FIXTURE_BOOTSTRAP' AND o.outcome = 'accepted')
+        OR (o.action_type IN ('ANNOTATION', 'ANNOTATION_RETRACTION')
+          AND o.outcome = 'accepted')
+      )) AS unexpected_receipts,
     (SELECT pg_catalog.count(*) FROM fixture_operations
       WHERE request_digest <> extensions.digest(canonical_request, 'sha256')) AS digest_mismatches,
     (SELECT pg_catalog.count(*) FROM fixture_events) AS total_events,
@@ -41,16 +50,28 @@ WITH constants AS (
     (SELECT pg_catalog.count(*) FROM fixture_events WHERE kind = 'ANNOTATION_RETRACTION')
       AS annotation_retractions,
     (SELECT pg_catalog.count(*) FROM fixture_events
+      WHERE kind NOT IN ('ANNOTATION', 'ANNOTATION_RETRACTION')) AS unexpected_events,
+    (SELECT pg_catalog.count(*) FROM fixture_events
       WHERE kind IN ('FACT', 'FACT_RETRACTION', 'PLAN_REPLACED')) AS fact_or_plan_replaced_events,
     (SELECT pg_catalog.count(*) FROM fixture_events e
       WHERE e.kind = 'ANNOTATION' AND NOT EXISTS (
-        SELECT 1 FROM fixture_events successor WHERE successor.supersedes_event_id = e.event_id
+        SELECT 1 FROM fixture_events successor
+         WHERE successor.kind = 'ANNOTATION_RETRACTION'
+           AND successor.supersedes_event_id = e.event_id
       )) AS live_annotations,
     (SELECT pg_catalog.count(*) FROM fixture_events e
       WHERE e.kind = 'ANNOTATION' AND (
         SELECT pg_catalog.count(*) FROM fixture_events successor
-         WHERE successor.supersedes_event_id = e.event_id
+         WHERE successor.kind = 'ANNOTATION_RETRACTION'
+           AND successor.supersedes_event_id = e.event_id
       ) <> 1) AS wrong_successor_counts,
+    (SELECT pg_catalog.count(*) FROM fixture_events retraction
+      WHERE retraction.kind = 'ANNOTATION_RETRACTION'
+        AND NOT EXISTS (
+          SELECT 1 FROM fixture_events annotation
+           WHERE annotation.kind = 'ANNOTATION'
+             AND annotation.event_id = retraction.supersedes_event_id
+        )) AS invalid_retraction_targets,
     (SELECT pg_catalog.count(*) FROM public.food_diary_entries d CROSS JOIN constants c
       WHERE d.user_id = c.account_id) AS diary_rows,
     (SELECT pg_catalog.count(*) FROM public.user_premium_meal_selections m CROSS JOIN constants c
@@ -83,12 +104,18 @@ SELECT
   c.selection_id,
   m.*,
   m.active_selections = 1 AND m.fixture_goals = 1 AND m.graph_revisions = 1
-    AND m.total_receipts = 3 AND m.bootstrap_receipts = 1
-    AND m.accepted_skipped_receipts = 1 AND m.accepted_undo_receipts = 1
-    AND m.nonaccepted_receipts = 0 AND m.digest_mismatches = 0
-    AND m.total_events = 2 AND m.annotations = 1 AND m.annotation_retractions = 1
+    AND m.bootstrap_receipts = 1 AND m.accepted_skipped_receipts >= 1
+    AND m.accepted_undo_receipts = m.accepted_skipped_receipts
+    AND m.total_receipts = 1 + (2 * m.accepted_skipped_receipts)
+    AND m.nonaccepted_receipts = 0 AND m.unexpected_receipts = 0
+    AND m.digest_mismatches = 0
+    AND m.annotations = m.accepted_skipped_receipts
+    AND m.annotation_retractions = m.accepted_skipped_receipts
+    AND m.total_events = 2 * m.accepted_skipped_receipts
+    AND m.unexpected_events = 0
     AND m.fact_or_plan_replaced_events = 0 AND m.live_annotations = 0
-    AND m.wrong_successor_counts = 0 AND m.diary_rows = 0
+    AND m.wrong_successor_counts = 0 AND m.invalid_retraction_targets = 0
+    AND m.diary_rows = 0
     AND m.meal_selection_rows = 0 AND m.replacement_offers = 0
     AND m.foreign_fixture_rows = 0 AND m.premium_effective
     AS retained_smoke_acceptance_pass

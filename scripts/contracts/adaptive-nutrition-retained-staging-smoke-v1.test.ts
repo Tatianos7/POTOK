@@ -92,16 +92,43 @@ test('retirement is idempotent, appends only the exact revoke and archives only 
   assertLocalDoScopes(retirement, ['retire', 'verify_retirement']);
 });
 
-test('postchecks enforce annotation-only history, digest parity, retirement and account isolation', () => {
+test('v1.1 retirement accepts N complete pairs and rejects partial or foreign history', () => {
+  const executable = withoutComments(retirement);
   for (const evidence of [
-    'bootstrap_receipts = 1', 'accepted_skipped_receipts = 1', 'accepted_undo_receipts = 1',
-    'annotations = 1', 'annotation_retractions = 1', 'live_annotations = 0',
+    'v_pair_count < 1', '<> 1 + (2 * v_pair_count)', '<> 2 * v_pair_count',
+    "o.action_type NOT IN ('FIXTURE_BOOTSTRAP', 'ANNOTATION', 'ANNOTATION_RETRACTION')",
+    "e.kind NOT IN ('ANNOTATION', 'ANNOTATION_RETRACTION')", 'request_digest',
+    'retraction.supersedes_event_id = annotation.event_id',
+    "o.idempotency_key LIKE 'potok-retained-staging-smoke-v1/%'",
+    "v_head.evidence_ref = 'potok-retained-staging-smoke-v1/revoke'",
+  ]) assert.ok(executable.includes(evidence), evidence);
+  assert.doesNotMatch(executable, /<>\s*3(?!\s*[*+])/);
+  assert.doesNotMatch(executable, /<>\s*2(?!\s*\*)/);
+});
+
+test('postchecks enforce paired annotation-only history, digest parity, retirement and isolation', () => {
+  for (const evidence of [
+    'bootstrap_receipts = 1', 'accepted_skipped_receipts >= 1',
+    'accepted_undo_receipts = m.accepted_skipped_receipts',
+    'total_receipts = 1 + (2 * m.accepted_skipped_receipts)',
+    'annotations = m.accepted_skipped_receipts',
+    'annotation_retractions = m.accepted_skipped_receipts',
+    'total_events = 2 * m.accepted_skipped_receipts', 'live_annotations = 0',
+    'wrong_successor_counts = 0', 'invalid_retraction_targets = 0',
+    'unexpected_receipts = 0', 'unexpected_events = 0',
     'fact_or_plan_replaced_events = 0', 'diary_rows = 0', 'replacement_offers = 0',
     'foreign_fixture_rows = 0', 'digest_mismatches = 0',
   ]) assert.ok(postSmoke.includes(evidence), evidence);
   for (const evidence of [
     "latest_premium_effect = 'REVOKE'", 'premium_effective_false', 'archived_selections = 1',
-    'retained_receipts = 3', 'retained_graph_revisions = 1', 'retained_events = 2',
+    'bootstrap_receipts = 1', 'accepted_skipped_receipts >= 1',
+    'accepted_undo_receipts = m.accepted_skipped_receipts',
+    'retained_receipts = 1 + (2 * m.accepted_skipped_receipts)',
+    'retained_graph_revisions = 1',
+    'retained_events = 2 * m.accepted_skipped_receipts',
+    'live_annotations = 0', 'wrong_successor_counts = 0',
+    'invalid_retraction_targets = 0', 'meal_selection_rows = 0',
+    'digest_mismatches = 0',
     'historical_read_grants_present', 'current_denied_exact_history_contract_present',
     'foreign_fixture_rows = 0',
   ]) assert.ok(postRetirement.includes(evidence), evidence);
@@ -140,9 +167,9 @@ test('review workflow pins every retained SQL hash and excludes fixture lineage 
   const expected: Array<[string, string]> = [
     ['docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.preflight.sql', 'a776fae4843c46898652e4fb548422eba4582c49c0637e63b362fc6a93162a8f'],
     ['docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.setup.sql', 'b935cf9ec1aa40a0b0e34bc05bf3d899db98251b9683c4f756ff442bf56314b0'],
-    ['docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.post-smoke.sql', '8a64d64514fc2b54d913c6701311f0e93f96e6b1e3f381c26d671d7737d1f1ff'],
-    ['docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.retirement.sql', '750a8ef69582f39b1573eb3b4268fbb4454829895b306f5e0c496836adf4a3ba'],
-    ['docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.post-retirement.sql', '74a793f8aa21c64803804545bc37a04a653373b4bd9b9df894497fbeb5ab19bf'],
+    ['docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.post-smoke.sql', '5ae171d262ecd77f0caa2bf5e975da03572f3bfa7f609bc9aebdd52e6f9fc38d'],
+    ['docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.retirement.sql', '9f5bd64325f65afe11b6bf42f769452d0050cc46b8d544f9f8c249d163d8208f'],
+    ['docs/premium/drafts/20260922_adaptive_nutrition_retained_staging_smoke_v1.post-retirement.sql', '90c6ac1baa87af1c56b6087c9e2fa81f396a209b2f21edf0e2beb61ce6e0f084'],
   ];
   for (const [path, digest] of expected) {
     assert.equal(createHash('sha256').update(read(path)).digest('hex'), digest, path);

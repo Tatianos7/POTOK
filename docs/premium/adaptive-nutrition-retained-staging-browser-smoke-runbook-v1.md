@@ -1,8 +1,10 @@
 # Adaptive Nutrition retained STAGING browser smoke — owner runbook v1
 
-Status: **OWNER-RUN ONLY / NOT RUN BY CODEX**. The retained setup is reported by
-the owner as successfully applied on Supabase STAGING project
-`ozidryfvhkcbtpnulakq`. Production is excluded.
+Status: **OWNER-RUN COMPLETE / DO NOT RERUN**. The retained setup and browser smoke
+are reported by the owner as completed on Supabase STAGING project
+`ozidryfvhkcbtpnulakq`. Production is excluded. The resulting append-only history
+contains two fully retracted SKIPPED/UNDO pairs; this checklist is retained as the
+audit procedure, not authorization for another browser mutation.
 
 Exact retained identities:
 
@@ -11,8 +13,9 @@ Exact retained identities:
 
 This runbook performs the approved browser actions `SKIPPED` and
 `UNDO_ANNOTATION`. They create retained append-only STAGING operation/event rows.
-Run it only when ready to complete the whole checklist. Do not run setup again,
-enable demo Premium, test REPLACE, or use any FACT action.
+Do not run it again, run setup again, enable demo Premium, test REPLACE, or use any
+FACT action. The next step is the separately reviewed v1.1 SELECT-only post-smoke
+check, followed by a separate owner checkpoint for retirement.
 
 ## 1. Values and secret boundary
 
