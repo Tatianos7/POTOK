@@ -10,6 +10,7 @@ import {
 const account = ADAPTIVE_NUTRITION_SMOKE_ACCOUNT_ID;
 const readyEnv = {
   VITE_ADAPTIVE_NUTRITION_STAGING_SMOKE_V1: 'true',
+  VITE_ADAPTIVE_NUTRITION_READ_V1: 'true',
   VITE_ADAPTIVE_NUTRITION_RUNTIME_V1: 'true',
   VITE_ADAPTIVE_NUTRITION_SMOKE_PROJECT_REF: ADAPTIVE_NUTRITION_SMOKE_PROJECT_REF,
   VITE_ADAPTIVE_NUTRITION_SMOKE_ACCOUNT_ID: account,
@@ -25,6 +26,9 @@ test('smoke preview defaults OFF and cannot be enabled by runtime gate alone', (
 });
 
 test('smoke preview requires both gates and the exact STAGING URL/ref binding', () => {
+  assert.deepEqual(resolveAdaptiveNutritionSmokePreview({ ...readyEnv,
+    VITE_ADAPTIVE_NUTRITION_READ_V1: 'false' }, account, '2026-09-22'),
+  { kind: 'blocked', reason: 'read-off' });
   assert.deepEqual(resolveAdaptiveNutritionSmokePreview({ ...readyEnv,
     VITE_ADAPTIVE_NUTRITION_RUNTIME_V1: 'false' }, account, '2026-09-22'),
   { kind: 'blocked', reason: 'runtime-off' });

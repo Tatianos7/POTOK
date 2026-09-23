@@ -12,7 +12,7 @@ const premiumValues = [
   'Замены блюд, если что-то не подходит',
   'Подсказки без весов: сколько это примерно на глаз',
   'Список покупок для выбранных дней',
-  'Просмотр 14 дней с понятной структурой плана',
+  'Просмотр активной недели по дням Пн–Вс',
 ];
 
 const Paywall = () => {
@@ -21,7 +21,7 @@ const Paywall = () => {
 
   const openDemoPremium = () => {
     enableDemoPremiumAccess();
-    navigate('/today');
+    navigate('/today?weeklyPreview=demo');
   };
 
   const exitDemoPremium = () => {

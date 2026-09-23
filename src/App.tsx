@@ -343,7 +343,15 @@ function AppRoutes() {
         path="/today"
         element={
           <PremiumRoute>
-            <Today currentUserId={user?.id} />
+            <Today
+              currentUserId={user?.id}
+              verifiedPremium={user?.hasPremium === true && user?.premiumAccessVerified === true}
+              demoPremiumAccess={
+                user?.hasPremium !== true || user?.premiumAccessVerified !== true
+                  ? hasEffectivePremiumAccess(user)
+                  : false
+              }
+            />
           </PremiumRoute>
         }
       />

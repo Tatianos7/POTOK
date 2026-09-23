@@ -158,6 +158,7 @@ const Dashboard = () => {
 
   const displayName = user?.profile?.firstName || user?.name || 'Пользователь';
   const effectiveHasPremium = hasEffectivePremiumAccess(user);
+  const verifiedPremium = user?.hasPremium === true && user?.premiumAccessVerified === true;
   const showFreeNoGoalHome =
     !effectiveHasPremium &&
     !isProgressLoading &&
@@ -217,13 +218,39 @@ const Dashboard = () => {
         <main className="py-4 tablet:py-6">
           {effectiveHasPremium ? (
             <div className="space-y-4" aria-label="Premium dashboard">
-              <Today embeddedInAppShell currentUserId={user?.id} />
+              <Today embeddedInAppShell currentUserId={user?.id} verifiedPremium={verifiedPremium}
+                demoPremiumAccess={effectiveHasPremium && !verifiedPremium} />
             </div>
           ) : null}
 
           {showFreeNoGoalHome ? (
             <div className="space-y-4" aria-label="Free no-goal dashboard">
-              <Today embeddedInAppShell showPremiumSubscriptionEntry currentUserId={user?.id} />
+              <section className="rounded-lg border border-gray-200 bg-white p-4">
+                <h2 className="text-base font-semibold text-gray-950">Рассчитайте свою цель</h2>
+                <p className="mt-1 text-sm leading-5 text-gray-600">
+                  После расчёта здесь появятся ваши бесплатные дневники и прогресс.
+                </p>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => navigate('/goal')}
+                    className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white">
+                    Рассчитать цель
+                  </button>
+                  <button type="button" onClick={() => navigate('/measurements')}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-800">
+                    Создать замеры
+                  </button>
+                </div>
+              </section>
+              <section className="rounded-lg border border-emerald-200 bg-emerald-50/70 p-4" aria-label="POTOK Premium">
+                <h2 className="text-sm font-semibold text-gray-950">POTOK Premium</h2>
+                <p className="mt-1 text-sm leading-5 text-gray-600">
+                  Персональный недельный план питания и тренировок
+                </p>
+                <button type="button" onClick={() => navigate('/paywall')}
+                  className="mt-3 w-full rounded-lg border border-emerald-700 bg-white px-3 py-2 text-sm font-semibold text-emerald-800">
+                  Узнать про Premium
+                </button>
+              </section>
             </div>
           ) : null}
 

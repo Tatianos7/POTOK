@@ -7,7 +7,7 @@ export const ADAPTIVE_NUTRITION_SMOKE_SELECTION_ID = '7e710000-0000-4000-8000-00
 
 export type AdaptiveNutritionSmokePreview =
   | { kind: 'disabled' }
-  | { kind: 'blocked'; reason: 'runtime-off' | 'invalid-project' | 'missing-config' | 'account-mismatch' }
+  | { kind: 'blocked'; reason: 'read-off' | 'runtime-off' | 'invalid-project' | 'missing-config' | 'account-mismatch' }
   | { kind: 'ready'; weeks: { active: PremiumNutritionWeek; provisional: PremiumNutritionWeek } };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -45,6 +45,7 @@ export function resolveAdaptiveNutritionSmokePreview(
   today: string,
 ): AdaptiveNutritionSmokePreview {
   if (env.VITE_ADAPTIVE_NUTRITION_STAGING_SMOKE_V1 !== 'true') return { kind: 'disabled' };
+  if (env.VITE_ADAPTIVE_NUTRITION_READ_V1 !== 'true') return { kind: 'blocked', reason: 'read-off' };
   if (env.VITE_ADAPTIVE_NUTRITION_RUNTIME_V1 !== 'true') return { kind: 'blocked', reason: 'runtime-off' };
 
   const projectRef = env.VITE_ADAPTIVE_NUTRITION_SMOKE_PROJECT_REF;

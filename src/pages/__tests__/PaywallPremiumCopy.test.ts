@@ -67,9 +67,9 @@ test('paywall does not render technical, AI, or Coach copy', () => {
   assert.doesNotMatch(forbidden, /Произошла ошибка/);
 });
 
-test('paywall demo Premium button enables only local demo access and navigates to Today', () => {
+test('paywall demo Premium button enables only local demo access and navigates to explicit weekly demo', () => {
   assert.match(paywallSource, /enableDemoPremiumAccess/);
-  assert.match(paywallSource, /navigate\('\/today'\)/);
+  assert.match(paywallSource, /navigate\('\/today\?weeklyPreview=demo'\)/);
   assert.match(paywallSource, /Посмотреть демо Premium/);
   assert.match(paywallSource, /clearDemoPremiumAccess/);
   assert.match(paywallSource, /Выйти из демо Premium/);

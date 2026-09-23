@@ -7,7 +7,7 @@ import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 
-import Today from '../Today';
+import { LegacyFixed14DayToday as Today } from '../Today';
 import { premiumCatalogService } from '../../services/premiumCatalogService';
 import {
   buildTodayPlanFromPremiumCatalog,

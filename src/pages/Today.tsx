@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
 import Button from '../ui/components/Button';
 import { isPremiumCatalogStagingReadMode, premiumCatalogService } from '../services/premiumCatalogService';
@@ -11,7 +11,12 @@ import {
   projectTodayNutritionWeeks,
 } from '../services/premiumTodayAdapter';
 import NutritionWeekPreview, { type NutritionWeekPreviewProps } from '../components/NutritionWeekPreview';
+import AdaptiveNutritionReadOnlyEntry from '../components/AdaptiveNutritionReadOnlyEntry';
 import { getAdaptiveNutritionSmokePreview } from '../services/adaptiveNutritionSmokePreview';
+import {
+  getAdaptiveNutritionLocalTimeZone,
+} from '../services/adaptiveNutritionReadOnlyService';
+import { shouldUseAdaptiveNutritionReadOnlyEntry } from '../services/adaptiveNutritionReadOnlyEntry';
 import { getLocalDayKey } from '../utils/dayKey';
 import { nutritionWeekDates } from '../utils/nutritionWeek';
 import {
@@ -401,6 +406,10 @@ interface TodayProps {
   embeddedInAppShell?: boolean;
   showPremiumSubscriptionEntry?: boolean;
   currentUserId?: string;
+  /** Server-verified entitlement only. Demo access must never set this value. */
+  verifiedPremium?: boolean;
+  /** Explicit local demo entitlement. It is never accepted as verified Premium. */
+  demoPremiumAccess?: boolean;
   /** Explicit local/test preview input. App routes do not supply this in production. */
   weeklyPreview?: Omit<NutritionWeekPreviewProps, 'currentUserId'>;
 }
@@ -410,7 +419,9 @@ interface UserGoalState {
   summary: TodayGoalSummary | null;
 }
 
-const Today = ({
+/** @deprecated Fixed 14-day implementation retained only for isolated legacy tests.
+ * It is unreachable from normal application routing and is a later removal candidate. */
+export const LegacyFixed14DayToday = ({
   embeddedInAppShell = false,
   showPremiumSubscriptionEntry = false,
   currentUserId,
@@ -1586,6 +1597,21 @@ function TodayEntry(props: TodayProps) {
   const location = useLocation();
   if (props.weeklyPreview) return <NutritionWeekPreview {...props.weeklyPreview} currentUserId={props.currentUserId} />;
   const today = getLocalDayKey();
+  const isLocalDevelopment = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
+  const demoPreviewRequested = new URLSearchParams(location.search).get('weeklyPreview') === 'demo';
+  if (demoPreviewRequested && (isLocalDevelopment || (props.demoPremiumAccess === true && props.verifiedPremium !== true))) {
+    if (!props.currentUserId) return <p className="p-6">Войдите, чтобы открыть недельный предпросмотр.</p>;
+    const source = demoPlans[0];
+    const weeks = projectTodayNutritionWeeks({
+      plan: { ...source, days: source.days.map((day) => ({ ...day,
+        meals: day.meals.map((meal, index) => ({ ...meal, catalogSlotId: `demo:${source.id}:${day.day}:${index}` })),
+      })) },
+      scope: { userId: props.currentUserId, planId: source.id, planVersion: 'local-demo-v1', goalVersion: 'unvalidated-demo' },
+      today, sourceStartDate: nutritionWeekDates(today)[0], sourceDurationDays: source.days.length,
+    });
+    return <NutritionWeekPreview currentUserId={props.currentUserId} today={today} weeks={weeks}
+      source="demo" readOnly />;
+  }
   const smokePreview = getAdaptiveNutritionSmokePreview(props.currentUserId, today);
   if (smokePreview.kind === 'blocked') {
     return <p className="p-6 text-sm text-stone-600" role="status">
@@ -1596,20 +1622,31 @@ function TodayEntry(props: TodayProps) {
     return <NutritionWeekPreview currentUserId={props.currentUserId} today={today}
       weeks={smokePreview.weeks} source="catalog-preview" />;
   }
-  const isLocalDevelopment = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
-  if (isLocalDevelopment && new URLSearchParams(location.search).get('weeklyPreview') === 'demo') {
-    if (!props.currentUserId) return <p className="p-6">Войдите, чтобы открыть недельный предпросмотр.</p>;
-    const source = demoPlans[0];
-    const weeks = projectTodayNutritionWeeks({
-      plan: { ...source, days: source.days.map((day) => ({ ...day,
-        meals: day.meals.map((meal, index) => ({ ...meal, catalogSlotId: `demo:${source.id}:${day.day}:${index}` })),
-      })) },
-      scope: { userId: props.currentUserId, planId: source.id, planVersion: 'local-demo-v1', goalVersion: 'unvalidated-demo' },
-      today, sourceStartDate: nutritionWeekDates(today)[0], sourceDurationDays: source.days.length,
-    });
-    return <NutritionWeekPreview currentUserId={props.currentUserId} today={today} weeks={weeks} source="demo" />;
+  if (props.verifiedPremium === true) {
+    if (!shouldUseAdaptiveNutritionReadOnlyEntry(true)) {
+      return <main className="mx-auto w-full max-w-[560px] px-5 py-10">
+        <h1 className="text-xl font-semibold text-stone-950">Активная неделя</h1>
+        <p className="mt-3 rounded-xl bg-stone-50 p-4 text-sm text-stone-600">
+          Персональный недельный план сейчас недоступен
+        </p>
+      </main>;
+    }
+    const timeZone = getAdaptiveNutritionLocalTimeZone();
+    if (!props.currentUserId || !timeZone) {
+      return <p className="p-6 text-sm text-stone-600" role="status">
+        Подтверждённый недельный план сейчас недоступен.
+      </p>;
+    }
+    return <AdaptiveNutritionReadOnlyEntry
+      currentUserId={props.currentUserId}
+      today={today}
+      timeZone={timeZone}
+    />;
   }
-  return <Today {...props} />;
+  if (props.demoPremiumAccess === true) {
+    return <Navigate to="/today?weeklyPreview=demo" replace />;
+  }
+  return <Navigate to="/paywall" replace />;
 }
 
 export default TodayEntry;

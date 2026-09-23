@@ -25,6 +25,7 @@ interface RuntimeWeekViewProps {
   week: PremiumNutritionWeek;
   selectedDate: string;
   replacementOfferIds?: Readonly<Record<string, string>>;
+  readOnly?: boolean;
   onSelectDate: (date: string) => void;
   onSkip: (slotId: string) => void;
   onUndo: (eventId: string) => void;
@@ -91,6 +92,7 @@ export function AdaptiveNutritionRuntimeWeekView({
   week,
   selectedDate,
   replacementOfferIds,
+  readOnly = false,
   onSelectDate,
   onSkip,
   onUndo,
@@ -108,7 +110,9 @@ export function AdaptiveNutritionRuntimeWeekView({
     <header className="space-y-2">
       <h1 className="text-2xl font-semibold text-stone-950">Активная неделя</h1>
       <p className="text-sm text-stone-600">{formatDate(dates[0])} — {formatDate(dates[6])}</p>
-      <p className="text-sm text-stone-600">План — это рекомендация. Отметка «Не ел(а)» меняет только плановую историю и не создаёт запись о съеденном.</p>
+      <p className="text-sm text-stone-600">{readOnly
+        ? 'План — это рекомендация. Здесь показана подтверждённая сервером версия без действий.'
+        : 'План — это рекомендация. Отметка «Не ел(а)» меняет только плановую историю и не создаёт запись о съеденном.'}</p>
     </header>
 
     <RuntimeStatus state={state} onResolveUnknown={onResolveUnknown}
@@ -135,7 +139,7 @@ export function AdaptiveNutritionRuntimeWeekView({
               <p className="text-xs text-stone-500">Запланировано</p>
               <h3 className="font-semibold text-stone-950">{meal?.summary ?? 'Блюдо подтверждено сервером'}</h3>
             </div>
-            <div className="flex flex-wrap gap-2">
+            {!readOnly && <div className="flex flex-wrap gap-2">
               {annotation ? <button type="button" disabled={!actionsEnabled}
                 onClick={() => onUndo(annotation.eventId)}
                 className="min-h-11 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-700 disabled:opacity-40">
@@ -150,11 +154,14 @@ export function AdaptiveNutritionRuntimeWeekView({
                 className="min-h-11 rounded-lg border border-emerald-600 px-3 py-2 text-sm font-medium text-emerald-800 disabled:opacity-40">
                 Заменить блюдо
               </button>}
-            </div>
+            </div>}
           </article>;
         }) : <p className="rounded-xl bg-stone-50 p-4 text-sm text-stone-600">На этот день сервер не вернул запланированных блюд.</p>}
         {selected > today && <p className="text-sm text-stone-500">Будущая еда остаётся планом. Изменить её можно будет в соответствующий день.</p>}
       </section>
+      {readOnly && <p className="rounded-xl bg-stone-50 p-3 text-sm text-stone-600">
+        Просмотр подтверждённого плана. Действия с планом и дневником пока недоступны.
+      </p>}
     </>}
   </main>;
 }

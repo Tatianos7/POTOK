@@ -87,7 +87,7 @@ function client(options: {
 }
 
 function enabledService(mockClient: Pick<SupabaseClient, 'auth' | 'rpc'>) {
-  return new AdaptiveNutritionPersistenceService(mockClient, true);
+  return new AdaptiveNutritionPersistenceService(mockClient, true, true);
 }
 
 test('strict duplicate-aware decoder runs before mutation transport and FACT actions stay disabled', async () => {
@@ -186,6 +186,27 @@ test('feature flag OFF returns unavailable with zero auth or RPC calls', async (
     rpc: () => ({ data: settled('0'.repeat(64)), error: null }) }));
   const session = service.beginSession(ids.accountA);
   assert.deepEqual(await service.mutate(session, rawRequest()), { kind: 'unavailable' });
+  assert.deepEqual(await service.lookup(session, ids.key), { kind: 'unavailable' });
+  assert.deepEqual(await service.readCurrent(session, ids.selection), { kind: 'unavailable' });
+  assert.deepEqual(calls, []);
+});
+
+test('read gate can expose reads without making any mutation RPC reachable', async () => {
+  const calls: string[] = [];
+  const service = new AdaptiveNutritionPersistenceService(client({ calls, rpc(name) {
+    return { data: name === 'adaptive_nutrition_read_v1' ? ready(null) : { kind: 'unknown' }, error: null };
+  } }), false, true);
+  const session = service.beginSession(ids.accountA);
+  assert.equal((await service.readCurrent(session, ids.selection)).kind, 'ready');
+  assert.deepEqual(await service.mutate(session, rawRequest()), { kind: 'unavailable' });
+  assert.equal(calls.includes('adaptive_nutrition_mutate_v1'), false);
+});
+
+test('mutation gate cannot implicitly enable lookup or read RPCs', async () => {
+  const calls: string[] = [];
+  const service = new AdaptiveNutritionPersistenceService(client({ calls,
+    rpc: () => ({ data: ready(null), error: null }) }), true, false);
+  const session = service.beginSession(ids.accountA);
   assert.deepEqual(await service.lookup(session, ids.key), { kind: 'unavailable' });
   assert.deepEqual(await service.readCurrent(session, ids.selection), { kind: 'unavailable' });
   assert.deepEqual(calls, []);

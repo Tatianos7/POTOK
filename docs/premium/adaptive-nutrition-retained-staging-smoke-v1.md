@@ -86,6 +86,7 @@ existing STAGING public anon/publishable key, and launch locally with
 `vite --mode adaptive-smoke`. The client requires all of these exact values:
 
 - `VITE_ADAPTIVE_NUTRITION_RUNTIME_V1=true`
+- `VITE_ADAPTIVE_NUTRITION_READ_V1=true`
 - `VITE_ADAPTIVE_NUTRITION_STAGING_SMOKE_V1=true`
 - project ref and URL exactly `ozidryfvhkcbtpnulakq`
 - authenticated account exactly `88c26f6b-ebc8-4bff-864d-9194fbd27f8d`

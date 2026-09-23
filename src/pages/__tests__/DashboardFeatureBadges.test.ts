@@ -64,19 +64,19 @@ test('free home with a goal keeps a compact Premium CTA to paywall', () => {
   assert.match(dashboardSource, /!effectiveHasPremium && !showFreeNoGoalHome \? \(/);
 });
 
-test('free no-goal home reuses Today with a single subscription entry', () => {
+test('free no-goal home uses a bounded Free shell and never mounts legacy Today', () => {
   assert.match(dashboardSource, /progressData\?\.goal\.state === 'empty'/);
   assert.match(dashboardSource, /!progressData\.goal\.hasGoal/);
-  assert.match(
-    dashboardSource,
-    /<Today embeddedInAppShell showPremiumSubscriptionEntry currentUserId=\{user\?\.id\} \/>/,
-  );
   assert.match(dashboardSource, /aria-label="Free no-goal dashboard"/);
+  assert.match(dashboardSource, /Рассчитайте свою цель/);
+  assert.match(dashboardSource, /navigate\('\/paywall'\)/);
+  assert.doesNotMatch(dashboardSource, /showPremiumSubscriptionEntry/);
 });
 
 test('premium home reuses existing Today surface without adding premium writes', () => {
   assert.match(dashboardSource, /import Today from '\.\/Today'/);
-  assert.match(dashboardSource, /<Today embeddedInAppShell currentUserId=\{user\?\.id\} \/>/);
+  assert.match(dashboardSource,
+    /<Today embeddedInAppShell currentUserId=\{user\?\.id\} verifiedPremium=\{verifiedPremium\}/);
   assert.doesNotMatch(dashboardSource, /Сборник рецептов/);
   assert.doesNotMatch(dashboardSource, /navigate\('\/premium-recipes'\)/);
   assert.doesNotMatch(dashboardSource, /План на день собран/);

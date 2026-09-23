@@ -1231,3 +1231,257 @@ MASTER PROMPT remains incomplete. All existing local work preserved.
   approves the exact v1.1 retirement hash. Post-retirement SELECT-only verification
   follows retirement. No SQL was executed and no Supabase, production, push, deploy
   or append-only cleanup occurred. All PARKED blockers remain PARKED.
+
+## Adaptive Nutrition read-only entry foundation — 2026-09-22
+
+- Current HEAD remains `b079cf9f605c64f634613e2fad2d35aececcfa3c`; production remains on that
+  commit. This package is local and uncommitted. No SQL was applied, and no push,
+  deploy, production environment or Supabase data changed.
+- Added independent build-time gate `VITE_ADAPTIVE_NUTRITION_READ_V1`, default OFF.
+  Existing `VITE_ADAPTIVE_NUTRITION_RUNTIME_V1` remains the independent mutation
+  gate, also default OFF. Read/lookup RPC methods use only the read gate; mutation
+  dispatch still requires the mutation gate. A targeted regression proves read ON +
+  mutation OFF makes no mutation RPC call.
+- Prepared runnable-but-not-applied STAGING discovery draft
+  `docs/premium/drafts/20260922_adaptive_nutrition_read_only_entry_v1.sql`, SHA-256
+  `9ae90f023875bde8dd86fc99cff1c63c8b9860a48fb1d07b8ef75f3b411ed580`.
+  It derives the actor from `auth.uid()`, validates IANA timezone, derives the local
+  Monday anchor, requires verified Premium, selects only own active
+  `contract_version=1` rows, excludes retained-smoke lineage, returns explicit
+  no-plan/ambiguous states, grants EXECUTE only to authenticated, and performs no
+  plan/data creation or mutation.
+- Added an isolated client discovery/current-read service and an account-bound
+  controller with generation checks. It accepts no client account override, storage
+  selection override or retained-smoke identity. Discovery/read disagreement,
+  archived/multiple results and late account responses fail closed.
+- `TodayEntry` now has a dormant route for server-verified Premium + read gate ON:
+  discovery -> authoritative current read -> read-only 7-day UI. Free, demo Premium
+  and verified Premium with read gate OFF keep existing legacy behavior. A verified
+  Premium account with no active selection sees `Персональный недельный план ещё не
+  создан`; it does not receive a demo plan or auto-created plan.
+- Read-only weekly mode keeps Monday-Sunday navigation and server plan cards while
+  removing SKIPPED, UNDO, REPLACE, FACT and extra-food controls. It imports no
+  mutation controller and exposes no mutation method. Historical smoke configuration
+  now requires the read gate explicitly as well as its separate smoke/mutation gates.
+- Fresh verification: focused entry/runtime/security tests **123/123 PASS**;
+  retained/disposable static smoke contracts **16/16 PASS**; strict TypeScript
+  **PASS**; targeted ESLint with zero warnings **PASS**; production build **PASS**;
+  `git diff --check` and cached diff checks **PASS**; index empty; all **229/229
+  baseline owner hashes and statuses unchanged**. Build emitted only the existing
+  browser-data age, mixed `mealService` import and chunk-size warnings.
+- Next owner checkpoint: review and separately approve applying the exact discovery
+  SQL hash to STAGING, followed by authenticated read-only acceptance. Only after
+  deployed discovery evidence and a real non-smoke active weekly selection exist can
+  a separate STAGING read-gate activation be reviewed. Production read activation
+  remains a later explicit checkpoint; mutation/FACT/REPLACE stay OFF.
+- Canonical food export, recipe atomic metadata and recipe expansion remain
+  **PARKED**. Goal/plan generation, selection auto-create, FACT/diary writes,
+  replacement-offer production, payment and service-role provisioning remain absent
+  or out of scope.
+
+## Adaptive Nutrition read-only entry STAGING acceptance package — 2026-09-22
+
+- Current HEAD remains `b079cf9f605c64f634613e2fad2d35aececcfa3c`. The package is local and
+  uncommitted. No SQL was executed, and no Supabase, production, commit, push,
+  deploy, feature flag or persisted data changed.
+- Reverified the unchanged discovery draft at
+  `docs/premium/drafts/20260922_adaptive_nutrition_read_only_entry_v1.sql`, SHA-256
+  `9ae90f023875bde8dd86fc99cff1c63c8b9860a48fb1d07b8ef75f3b411ed580`.
+  Static review confirms `auth.uid()` is the only account authority, fixed-search-path
+  SECURITY DEFINER execution, verified-Premium enforcement, local Monday week
+  binding, active v1 ownership filtering, retained-smoke/archived exclusion, explicit
+  zero/one/multiple outcomes, SELECT-only body and authenticated-only EXECUTE. It
+  grants no mutation RPC and performs no auto-create or data write.
+- Added SELECT-only preflight
+  `docs/premium/drafts/20260922_adaptive_nutrition_read_only_entry_v1.preflight.sql`,
+  SHA-256 `154a4197220f9ecd1aca6b862011c9e5f2b8355d65452dee7ea690dd6de82ad1`.
+  It requires discovery to be absent before apply and checks entitlement, persistence,
+  read RPC, selection columns/index/constraints, RLS/FORCE RLS, immutable guards and
+  grants. The Supabase project ref remains an explicit Dashboard/operator assertion;
+  PostgreSQL metadata alone cannot prove it.
+- Added rollback-only behavioral acceptance
+  `docs/premium/drafts/20260922_adaptive_nutrition_read_only_entry_v1.behavioral-acceptance.sql`,
+  SHA-256 `05f6626dd6fdedd117426ae2e52f1791fa3cef2ff690c613db46348d60ea5a57`.
+  It uses only preverified auth accounts `d6eb4e97-90d0-470f-bc4a-2f3e401e1fde`
+  (Premium fixture) and `8f82ff67-39d1-4bb1-9d55-028af99d5cca` (Free/foreign
+  fixture), fails closed if either has conflicting state, creates all fixture rows in
+  one `BEGIN` transaction and ends with mandatory `ROLLBACK`. It does not use the
+  retained smoke account, invoke grant/revoke, mutation/read/lookup runtime RPCs, or
+  create canonical food, recipe, FACT, diary, meal-selection or replacement-offer
+  rows.
+- Behavioral cases cover missing auth actor, invalid timezone, Free denial, literal
+  zero-selection `no_active_plan`, foreign/archived/retained-lineage/wrong-week/
+  wrong-timezone exclusion, exact one-selection `ready`, exact owner binding and
+  absence of discovery side effects. The deployed unique active-week index makes two
+  eligible selections structurally unreachable: acceptance proves a second insert
+  raises `unique_violation`, keeps the first row intact, and verifies the deployed
+  function retains the defensive `v_match_count > 1 -> ambiguous` branch. It does not
+  weaken/drop that invariant merely to manufacture an ambiguous runtime state.
+- Added SELECT-only rollback residue check
+  `docs/premium/drafts/20260922_adaptive_nutrition_read_only_entry_v1.postcheck.sql`,
+  SHA-256 `089d3cf816b11738a7caf07b74f57e92cd9c4b62ded7778c6d91915fd23e5a5c`.
+  It checks exact fixture accounts/markers have zero residue while the discovery RPC
+  remains deployed.
+- Fresh local verification: acceptance/static contracts **12/12 PASS**; complete
+  relevant read-entry/runtime/security set **131/131 PASS**; strict TypeScript
+  **PASS**; targeted ESLint with zero warnings **PASS**; production build **PASS**.
+  Build emitted only the existing browser-data age, mixed `mealService` import and
+  chunk-size warnings. `git diff --check` and cached diff checks **PASS**; index is
+  empty; all **229/229 baseline owner hashes and statuses are unchanged**. No local
+  PostgreSQL parser/server was available, so no parser or deployed-behavior PASS is
+  claimed.
+- Exact next safe task is owner-authorized execution of the SELECT-only preflight on
+  STAGING `ozidryfvhkcbtpnulakq` and return of its complete result. Applying the
+  discovery draft and running rollback-only acceptance remain later, separate owner
+  checkpoints. All PARKED blockers remain PARKED.
+
+## Adaptive Nutrition read-only entry behavioral acceptance v1.1 — 2026-09-22
+
+- Owner-provided STAGING evidence: the applied discovery contract was reached, but
+  rollback-only behavioral acceptance stopped after `SET LOCAL ROLE authenticated`
+  with `ERROR 42501: permission denied for table
+  potok_read_entry_acceptance_config`. No discovery/schema/client/gate change was
+  required for this harness-only failure.
+- Prepared a minimal local repair in
+  `docs/premium/drafts/20260922_adaptive_nutrition_read_only_entry_v1.behavioral-acceptance.sql`:
+  `GRANT SELECT ON TABLE pg_temp.potok_read_entry_acceptance_config TO authenticated`.
+  This is the only GRANT in the executable harness, gives no write privilege, affects
+  no permanent relation or public-schema ACL, and disappears with the temp table at
+  mandatory final `ROLLBACK`.
+- Reviewed every `postgres -> authenticated -> postgres` transition. Only the config
+  temp table is referenced while authenticated (two DO blocks); the effect-baseline
+  temp table is read only after `RESET ROLE`, so it needs no grant. The harness still
+  has one `BEGIN`, no `COMMIT`, the same two fixture accounts/cases, no mutation/FACT/
+  REPLACE call and mandatory final `ROLLBACK`.
+- New behavioral acceptance SHA-256:
+  `ab427b2aa1673eeb20552c14b8db3b9d97112b3e8599e1e8034c80681fbc749d`.
+  Applied discovery draft remains byte-identical at
+  `9ae90f023875bde8dd86fc99cff1c63c8b9860a48fb1d07b8ef75f3b411ed580`.
+  SELECT-only postcheck remains byte-identical and valid at
+  `089d3cf816b11738a7caf07b74f57e92cd9c4b62ded7778c6d91915fd23e5a5c`.
+- Targeted static contracts **13/13 PASS**; strict TypeScript and targeted ESLint with
+  zero warnings **PASS**; `git diff --check` and cached diff check pass; index remains
+  empty; **229/229 owner baseline files are unchanged**. No SQL was executed by
+  Codex; no commit, push, deploy, production or Supabase mutation occurred. All
+  PARKED blockers remain PARKED.
+- Exact next checkpoint: separate owner approval to execute only the repaired
+  rollback-only behavioral acceptance v1.1 on STAGING, followed by the unchanged
+  SELECT-only postcheck.
+
+## Adaptive Nutrition read-only entry behavioral acceptance v1.2 — 2026-09-22
+
+- Owner-provided STAGING evidence: v1.1 passed the temp-config ACL point but failed
+  inside `$premium_zero_selection$` with `ERROR 42501: permission denied for table
+  adaptive_nutrition_operations`. The unchanged SELECT-only postcheck subsequently
+  reported `read_entry_acceptance_rollback_clean=true`, zero fixture/residue counts
+  and `discovery_still_applied=true`. This confirms a harness assertion-boundary
+  defect, not a discovery RPC defect.
+- Prepared a minimal local v1.2 harness repair. Removed the now-unnecessary temp-table
+  SELECT grant. The authenticated zero-selection block now calls only
+  `adaptive_nutrition_discover_current_v1` and checks its returned JSON; operations,
+  graph, event and diary state checks run in a new owner block after `RESET ROLE`.
+  The ready block likewise no longer reads temp/permanent tables: expected transaction
+  values are bound before role transition, the returned RPC fields are checked while
+  authenticated, and exact selection/account ownership is checked by postgres after
+  `RESET ROLE`.
+- Audited all nine `SET LOCAL ROLE authenticated` segments. Each invokes discovery
+  and checks only its returned value; none reads `public`, `potok_control`,
+  `potok_nutrition`, `pg_temp`, either temp fixture table, or performs a write/grant.
+  No permanent/table SELECT privileges were added.
+- The harness retains one `BEGIN`, zero `COMMIT`, mandatory final `ROLLBACK`, the same
+  fixture accounts and denied/no-plan/ready/exclusion coverage, the unique-index
+  ambiguity invariant, and no mutation/FACT/REPLACE RPC. New behavioral acceptance
+  SHA-256: `d3869387d37435e7c84cc7d991456bd3910713abe7bffbf6f9de4a18f23bbd1d`.
+- Applied discovery remains byte-identical at
+  `9ae90f023875bde8dd86fc99cff1c63c8b9860a48fb1d07b8ef75f3b411ed580`.
+  The postcheck contract remains byte-identical and valid at
+  `089d3cf816b11738a7caf07b74f57e92cd9c4b62ded7778c6d91915fd23e5a5c`.
+- Targeted static contracts **13/13 PASS** and the explicit nine-segment privilege
+  audit **9/9 PASS**; strict TypeScript, targeted ESLint with zero warnings and diff
+  checks **PASS**; index is empty; **229/229 owner baseline files are unchanged**.
+  No SQL was executed by Codex; no commit, push, deploy, production, schema, RLS,
+  grant, client or feature-gate change occurred. All PARKED blockers remain PARKED.
+- Exact next checkpoint: owner approval to execute only rollback-only behavioral
+  acceptance v1.2 on STAGING, followed by the unchanged SELECT-only postcheck.
+
+## Adaptive Nutrition owner development visibility — 2026-09-23
+
+- Goal/Plan Engine development remains stopped. Current worktree is
+  `/Users/urijurij/Desktop/POTOK/.worktrees/workout-muscle-map-foundation`, branch
+  `master`, HEAD `b079cf9f605c64f634613e2fad2d35aececcfa3c`. No commit, push, deploy, SQL,
+  Supabase write or production flag change occurred.
+- Exact legacy cause: ordinary `/today` has no preview query; local `.env.local` and
+  `.env.staging.local` contain no `VITE_ADAPTIVE_NUTRITION_READ_V1`, so the independent
+  read gate is OFF. With no active smoke config and no DEV preview query,
+  `TodayEntry` reaches legacy `<Today />`, whose local `demoPlans` provide the four
+  14-day cards. No email/account special case exists or was added.
+- Existing DEV-only `/today?weeklyPreview=demo` was close but insufficient: it used
+  the shared `NutritionWeekPreview` and seven-day data, yet exposed local consumed,
+  SKIPPED, extra-food and adaptation intent controls. Prepared the minimal local fix:
+  the query route passes a `readOnly` display contract to the same shared component;
+  read-only mode hides all meal intents, extra food and day adaptation controls and
+  cannot enter `AdaptiveNutritionRuntimeWeekPreview` even if a mutation environment
+  flag were accidentally present. Normal preview behavior remains available to its
+  existing explicit callers.
+- The preview remains behind `import.meta.env.DEV === true`, inside the existing
+  authenticated/Premium route. It does not use email as authority, bypass verified
+  server entitlement, create a selection, read the retired fixture or call Supabase.
+  Production build inspection found no DEV query lookup, `local-demo-v1` or
+  `unvalidated-demo`, so GitHub Pages cannot activate this path.
+- Exact owner route after login: `http://localhost:5173/today?weeklyPreview=demo`.
+  The existing Vite process PID `58945` runs from this exact worktree and returned
+  HTTP 200; served HMR modules contain the DEV guard, read-only route and runtime
+  exclusion. The browser-control surface was unavailable, so no authenticated browser
+  action was performed; rendered UI behavior is covered by the targeted React test.
+- Local visibility delta: `src/components/NutritionWeekPreview.tsx`,
+  `src/pages/Today.tsx`, and
+  `src/pages/__tests__/TodayNutritionWeekPreview.test.tsx`. Focused tests **18/18
+  PASS**; strict TypeScript and targeted ESLint with zero warnings **PASS**;
+  production build **PASS**; diff/index checks and visibility-diff secret scan
+  **PASS**; index empty; **229/229 owner baseline files unchanged**. Existing build
+  warnings remain browser-data age, mixed `mealService` import and chunk size.
+- Next checkpoint is owner visual review of the local URL. Mutation runtime, FACT,
+  SKIPPED/UNDO, REPLACE, extra food and production activation remain OFF/unreachable.
+
+## Premium entry routing fix — local only — 2026-09-23
+
+- Normal application routing no longer exposes the fixed 14-day Premium UI. Free
+  `/today` remains protected by `PremiumRoute` and resolves to `/paywall`; the Free
+  no-goal dashboard no longer embeds `Today`. Explicit demo access resolves to
+  `/today?weeklyPreview=demo` and renders the shared seven-day
+  `NutritionWeekPreview` in strict read-only mode. Demo access is kept separate from
+  verified Premium and is never accepted as server entitlement.
+- Verified Premium now has one entry path. With the independent read gate enabled it
+  performs authenticated discovery followed by authoritative current read and renders
+  the seven-day read-only entry. Zero selection shows `Персональный недельный план ещё
+  не создан`; discovery ambiguity and account-switch/late-response conditions remain
+  fail closed. With the read gate disabled it shows a neutral unavailable state and
+  never falls back to legacy or demo content.
+- The fixed 14-day implementation remains as the explicitly named/deprecated
+  `LegacyFixed14DayToday` export solely for isolated compatibility tests. `TodayEntry`
+  has no path that renders it. There is no email/account special case. The paywall
+  copy now describes an active Monday-Sunday week rather than 14 days.
+- Read-only rendering hides consumed, extra-food, SKIPPED, UNDO, adaptation and
+  REPLACE controls and cannot enter the mutation runtime component. FACT and diary
+  writes, mutation runtime, replacement producer, plan generation and auto-create
+  remain unavailable.
+- Local owner verification uses ignored mode-600 `.env.development.local` with the
+  protected STAGING URL/public anon configuration and only
+  `VITE_ADAPTIVE_NUTRITION_READ_V1=true`; no service-role field or mutation flag is
+  present. Vite PID `60220` is running from this worktree on port 5173. Exact routes:
+  `http://localhost:5173/today`, `http://localhost:5173/paywall`, and explicit demo
+  `http://localhost:5173/today?weeklyPreview=demo` all return HTTP 200.
+- Fresh verification after the routing change: targeted entry/security/runtime set
+  **135/135 PASS**; strict TypeScript **PASS**; targeted ESLint with zero warnings
+  **PASS**; production build **PASS**; diff checks **PASS**. Existing non-blocking
+  output is limited to missing Supabase env notices in isolated tests, React SSR
+  `useLayoutEffect` test warnings, stale browser-data notices, the mixed
+  `mealService` import warning and the existing large-chunk warning. Scoped secret
+  scan is clean, index is empty, the local env is ignored/untracked/unstaged, and all
+  **229/229 owner baseline files remain unchanged**.
+- Production/default env inputs contain none of the Adaptive read, mutation or smoke
+  activation values. This verified local package is the exact scope of the
+  owner-authorized selective commit; push, deploy, SQL, Supabase writes and production
+  flag changes remain prohibited. Legacy fixed-14-day physical deletion remains
+  **LATER**. The next implementation task after the local checkpoint is Goal/Plan
+  Engine foundation.

@@ -40,9 +40,9 @@ function readyState(events: unknown[] = []): AdaptiveNutritionTodayState {
 }
 
 const noop = () => undefined;
-function render(state: AdaptiveNutritionTodayState, replacementOfferIds?: Readonly<Record<string, string>>) {
+function render(state: AdaptiveNutritionTodayState, replacementOfferIds?: Readonly<Record<string, string>>, readOnly = false) {
   return renderToStaticMarkup(<AdaptiveNutritionRuntimeWeekView state={state} today={dates[1]} week={week}
-    selectedDate={dates[1]} replacementOfferIds={replacementOfferIds}
+    selectedDate={dates[1]} replacementOfferIds={replacementOfferIds} readOnly={readOnly}
     onSelectDate={noop} onSkip={noop} onUndo={noop} onReplace={noop}
     onResolveUnknown={noop} onAcknowledgeConflict={noop} />);
 }
@@ -87,4 +87,13 @@ test('unmatched server snapshot never borrows local catalog labels or macros', (
   const html = render(state);
   assert.match(html, /Блюдо подтверждено сервером/);
   assert.doesNotMatch(html, /Проверенное локальное название|420 ккал|Б 30/);
+});
+
+test('read-only view exposes the authoritative week with no mutation or FACT controls', () => {
+  const html = render(readyState([{ event_id: eventId, kind: 'ANNOTATION', slot_id: slotId,
+    local_date: dates[1], supersedes_event_id: null }]), { [slotId]: offerId }, true);
+  assert.match(html, /Активная неделя|Проверенное локальное название/);
+  assert.match(html, /Действия с планом и дневником пока недоступны/);
+  assert.doesNotMatch(html,
+    /Не ел\(а\)|Отменить отметку|Заменить блюдо|Съел\(а\) по плану|Съел\(а\) с изменениями|Было что-то ещё/);
 });

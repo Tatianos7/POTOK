@@ -18,6 +18,8 @@ export interface NutritionWeekPreviewProps {
   recovery?: { state: NutritionRecoveryState; timeZone: string };
   /** Server-created offers only. This UI does not create or validate replacements. */
   runtimeReplacementOfferIds?: Readonly<Record<string, string>>;
+  /** Development/QA display mode. It exposes no intent, adaptation or runtime actions. */
+  readOnly?: boolean;
 }
 
 const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -28,8 +30,9 @@ const choices: Array<{ id: MealConfirmationChoice; label: string }> = [
 ];
 const formatDate = (date: string) => `${date.slice(8, 10)}.${date.slice(5, 7)}`;
 
-function WeekContent({ context, source, recoveryView }: { context: WeekPreviewContext; source: NutritionWeekPreviewProps['source'];
-  recoveryView?: ReturnType<typeof nutritionRecoveryPreviewView> }) {
+function WeekContent({ context, source, recoveryView, readOnly = false }: { context: WeekPreviewContext;
+  source: NutritionWeekPreviewProps['source']; recoveryView?: ReturnType<typeof nutritionRecoveryPreviewView>;
+  readOnly?: boolean }) {
   const [state, setState] = useState(() => createWeekPreviewState(context));
   const dispatch = (action: WeekPreviewActionPayload) => {
     setState((current) => reduceWeekPreview(current, { ...action, contextKey: current.contextKey }, context));
@@ -43,10 +46,12 @@ function WeekContent({ context, source, recoveryView }: { context: WeekPreviewCo
       <p className="text-xs font-medium text-emerald-700">Локальный предпросмотр · {source === 'demo' ? 'демо' : 'каталог'}</p>
       <h1 className="text-2xl font-semibold text-stone-950">Активная неделя</h1>
       <p className="text-sm text-stone-600">{formatDate(context.week.startDate)} — {formatDate(context.week.endDate)}</p>
-      <p className="text-sm text-stone-600">План — это рекомендация. Запись о съеденном появится только после вашего подтверждения.</p>
+      <p className="text-sm text-stone-600">{readOnly
+        ? 'План — это рекомендация. Это режим просмотра без действий и записей в дневник.'
+        : 'План — это рекомендация. Запись о съеденном появится только после вашего подтверждения.'}</p>
       <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
         {source === 'demo' ? 'Демо-блюда показывают устройство недели, а не персональный рацион. ' : 'Рацион пока не проверен под вашу цель. '}
-        Здесь можно посмотреть действия; записи в дневник пока недоступны.
+        {readOnly ? 'Действия отключены.' : 'Здесь можно посмотреть действия; записи в дневник пока недоступны.'}
       </p>
     </header>
     {recoveryView && <NutritionRecoveryStatus view={recoveryView} />}
@@ -65,24 +70,26 @@ function WeekContent({ context, source, recoveryView }: { context: WeekPreviewCo
         <div><p className="text-xs text-stone-500">Запланировано · {meal.title}</p>
           <h3 className="font-semibold text-stone-950">{meal.summary}</h3>
           <p className="mt-1 text-sm text-stone-600">{meal.calories} · {meal.macroDetails}</p></div>
-        <div className="flex flex-wrap gap-2">{choices.map((choice) => <button key={choice.id} type="button"
+        {!readOnly && <div className="flex flex-wrap gap-2">{choices.map((choice) => <button key={choice.id} type="button"
           disabled={isFuture || !meal.catalogSlotId}
           onClick={() => dispatch({ type: 'meal-intent', slotId: meal.catalogSlotId ?? null, choice: choice.id })}
-          className="min-h-11 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-700 disabled:opacity-40">{choice.label}</button>)}</div>
+          className="min-h-11 rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-700 disabled:opacity-40">{choice.label}</button>)}</div>}
       </article>) : <p className="rounded-xl bg-stone-50 p-4 text-sm text-stone-600">Блюда на этот день ещё не подготовлены.</p>}
-      {isFuture && <p className="text-sm text-stone-500">Будущая еда остаётся планом. Отметить её можно будет в соответствующий день.</p>}
-      <button type="button" disabled={isFuture} onClick={() => dispatch({ type: 'meal-intent', slotId: null, choice: 'extra-food' })}
-        className="min-h-11 rounded-xl border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-800 disabled:opacity-40">+ Было что-то ещё</button>
+      {isFuture && <p className="text-sm text-stone-500">{readOnly
+        ? 'Будущая еда остаётся планом.'
+        : 'Будущая еда остаётся планом. Отметить её можно будет в соответствующий день.'}</p>}
+      {!readOnly && <button type="button" disabled={isFuture} onClick={() => dispatch({ type: 'meal-intent', slotId: null, choice: 'extra-food' })}
+        className="min-h-11 rounded-xl border border-emerald-600 px-4 py-2 text-sm font-medium text-emerald-800 disabled:opacity-40">+ Было что-то ещё</button>}
     </section>
-    {state.intent && <NutritionMealActionPreview choice={state.intent.choice} onClose={() => dispatch({ type: 'dismiss-intent' })} />}
-    <section className="space-y-3" aria-label="Состояние дня">
+    {!readOnly && state.intent && <NutritionMealActionPreview choice={state.intent.choice} onClose={() => dispatch({ type: 'dismiss-intent' })} />}
+    {!readOnly && <section className="space-y-3" aria-label="Состояние дня">
       <h2 className="text-lg font-semibold">Как проходит день?</h2>
       <div className="grid grid-cols-2 gap-2">{DAILY_NUTRITION_STATES.map((option) => <button key={option.id} type="button"
         aria-pressed={dayState === option.id} onClick={() => dispatch({ type: 'day-state', value: option.id })}
         className={`min-h-11 rounded-xl border p-3 text-sm ${dayState === option.id ? 'border-emerald-600 bg-emerald-50' : 'border-stone-200'}`}>{option.label}</button>)}</div>
       <p className="text-sm text-stone-600">{DAILY_NUTRITION_STATES.find((option) => option.id === dayState)?.hint}</p>
       <p className="text-xs text-stone-500">Выбор остаётся только на этом экране. Изменения питания будут предложены отдельно.</p>
-    </section>
+    </section>}
     <section className="rounded-2xl border border-dashed border-stone-300 p-4">
       <h2 className="font-semibold">Следующая неделя — предварительная</h2>
       <p className="mt-1 text-sm text-stone-600">Она уточняется после обратной связи и не становится подтверждённым рационом автоматически.</p>
@@ -96,7 +103,7 @@ export default function NutritionWeekPreview(props: NutritionWeekPreviewProps) {
   try { key = weekPreviewContextKey(context); } catch {
     return <p className="p-6 text-sm text-stone-600" role="status">Недельный предпросмотр недоступен для текущего аккаунта или версии плана.</p>;
   }
-  if (isAdaptiveNutritionRuntimeEnabled()) {
+  if (!props.readOnly && isAdaptiveNutritionRuntimeEnabled()) {
     return <AdaptiveNutritionRuntimeWeekPreview currentUserId={context.currentUserId} today={context.today}
       week={context.week} replacementOfferIds={props.runtimeReplacementOfferIds} />;
   }
@@ -110,5 +117,6 @@ export default function NutritionWeekPreview(props: NutritionWeekPreviewProps) {
   if (recoveryView && !recoveryView.canReview) return <main className="mx-auto max-w-[560px] p-4">
     <NutritionRecoveryStatus view={recoveryView} />
   </main>;
-  return <WeekContent key={`${key}:${props.recovery?.state.session ?? 'standalone'}`} context={context} source={props.source} recoveryView={recoveryView} />;
+  return <WeekContent key={`${key}:${props.recovery?.state.session ?? 'standalone'}`} context={context}
+    source={props.source} recoveryView={recoveryView} readOnly={props.readOnly} />;
 }

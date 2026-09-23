@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
-import Today from '../Today';
+import { LegacyFixed14DayToday as Today } from '../Today';
 import { getHomeFeatureCards } from '../../utils/constants';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
