@@ -1485,3 +1485,1829 @@ MASTER PROMPT remains incomplete. All existing local work preserved.
   flag changes remain prohibited. Legacy fixed-14-day physical deletion remains
   **LATER**. The next implementation task after the local checkpoint is Goal/Plan
   Engine foundation.
+
+## Goal/Plan Engine foundation v1 — review package — 2026-09-23
+
+- Current HEAD is `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`. This package is
+  uncommitted and not applied. No push, deploy, SQL execution, Supabase write,
+  production flag change or runtime activation occurred.
+- Added the PROPOSED architecture contract at
+  `docs/premium/goal-plan-engine-foundation-v1.md`. Provisioning is an explicit
+  authenticated/user-confirmed command after server-verified Premium and an own
+  revisioned Goal; login, entitlement grant, discovery and read remain side-effect
+  free. Inputs are only IANA timezone and UUID idempotency key; account, Monday week,
+  Goal revision and all result revisions are server-derived.
+- Selected the honest pre-generation state: one authoritative
+  `pending_generation` weekly identity with `plan_revision=null`, exact Goal revision,
+  generated lineage and durable settled receipt. It creates no graph, meal, recipe,
+  canonical food, event, FACT, diary, shopping, SKIPPED/UNDO or REPLACE state. Current
+  discovery therefore continues to return `no_active_plan` until a separately
+  validated graph is atomically created and activated; no demo/legacy fallback.
+- Reuse is limited to `user_goals`, `user_premium_plan_selections`,
+  `adaptive_nutrition_operations`, the future graph table and existing read
+  foundation. No new table is needed. The applied selection constraints cannot
+  represent a graph-free v1 instance, so a minimal schema/RPC draft is required.
+- Added the runnable-but-not-applied review draft
+  `docs/premium/drafts/20260923_adaptive_nutrition_plan_provision_v1.sql`, SHA-256
+  `7839dedb8adcb784de92971d48089c1c12e52313c1b7cbc307a1d9bbd5a9245e`.
+  It adds `pending_generation`, permits null plan revision only in that state,
+  strengthens the v1 week index to one immutable identity across every status and
+  adds a fixed-search-path, authenticated-only provisioning RPC. Exact replay is
+  checked before entitlement; a new paid effect after expiry/revoke is denied.
+- Lifecycle contract: Monday never causes a hidden write; next-week provisional is
+  permitted later but not created here; timezone never rewrites an existing identity;
+  Goal change never rewrites a started week. Active Goal changes require a future
+  proposal/confirmation plus immutable graph revision, while a stale pending Goal
+  requires a separate explicit rebase operation.
+- Added `scripts/contracts/adaptive-nutrition-plan-provision-v1.test.ts`. Fresh
+  targeted static tests **14/14 PASS**, strict TypeScript **PASS**, targeted ESLint
+  with zero warnings **PASS**, SQL tag/transaction static checks and `git diff
+  --check` **PASS**. No local PostgreSQL parser or server behavior PASS is claimed.
+  Index is empty and **229/229 baseline owner paths remain byte/status identical**.
+- OPEN/PARKED: canonical food export, validated canonical recipe source, recipe atomic
+  metadata and recipe expansion. Persisted nutrition preferences and authoritative
+  training schedule/load are not confirmed, so neither is a v1 required input.
+- Exact next safe checkpoint: owner review/approval of explicit provisioning,
+  `pending_generation`, immutable one-instance-per-week identity, and no silent
+  Monday/timezone/Goal rewrite. After approval, prepare SELECT-only STAGING preflight
+  and rollback-only behavioral acceptance for the exact SQL hash above. SQL apply and
+  client CTA/transport remain later separate checkpoints.
+
+## Goal/Plan provisioning v1 acceptance package — 2026-09-23
+
+- Owner approved explicit authenticated provisioning, graph-free
+  `pending_generation` with null plan revision, one immutable identity per
+  account/week/version and no silent Goal/timezone/Monday rewrite. Architecture status
+  now records **PRODUCT CONTRACT APPROVED / SERVER SQL NOT APPLIED**.
+- Owner-approved UX requirement remains **LATER**: after real client wiring, a pending
+  instance must render a distinct `План формируется` equivalent and must not be
+  collapsed into `Персональный недельный план ещё не создан`. No client CTA/UI/runtime
+  change was made in this package.
+- Main review SQL remains byte-identical:
+  `docs/premium/drafts/20260923_adaptive_nutrition_plan_provision_v1.sql`, SHA-256
+  `7839dedb8adcb784de92971d48089c1c12e52313c1b7cbc307a1d9bbd5a9245e`.
+- Added SELECT-only STAGING preflight
+  `docs/premium/drafts/20260923_adaptive_nutrition_plan_provision_v1.preflight.sql`,
+  SHA-256 `57a02a72ca7f00b7531ba80bd1591983f091f1b489f8c71c411cbd0c0e749757`.
+  It checks trusted entitlement v2, protected Goal revision, current selection
+  constraints/index, no all-state v1 duplicates, v0 compatibility, operation/graph
+  foundation, discovery/read RPCs, provisioning absence, current grants, selection
+  RLS state, FORCE RLS internal tables and immutable/profile/selection guards. It
+  returns one `ready_for_plan_provision_v1_apply` verdict and performs no write.
+- Added rollback-only behavioral acceptance
+  `docs/premium/drafts/20260923_adaptive_nutrition_plan_provision_v1.behavioral-acceptance.sql`,
+  SHA-256 `741adc340ab3681eb91be9cc6a3f51832f4794315f667666428ee8811f955b04`.
+  It uses only previously verified empty STAGING Auth accounts
+  `d6eb4e97-90d0-470f-bc4a-2f3e401e1fde` and
+  `8f82ff67-39d1-4bb1-9d55-028af99d5cca`, has one BEGIN/no COMMIT/final ROLLBACK,
+  adds no permanent grant, and keeps every authenticated segment limited to the
+  provisioning RPC plus returned-JSON assertions.
+- Acceptance covers missing auth, expired/effectively-Free denial despite a stale
+  true flag, Premium without Goal, invalid timezone/null key, initial pending
+  selection and one receipt, exact replay, same-key mismatch, different-key same-week
+  convergence, immutable timezone conflict, Goal revision drift without selection
+  rewrite, revoke denial with original replay, all-state uniqueness including archived
+  identity, retained-smoke blocking and zero graph/event/FACT/diary/meal/offer writes.
+  Internal assertions execute only after RESET ROLE as postgres.
+- Added SELECT-only rollback postcheck
+  `docs/premium/drafts/20260923_adaptive_nutrition_plan_provision_v1.postcheck.sql`,
+  SHA-256 `b566985491adf54310147aaf385f1cd6b5870db5f57fe5a4156c08adcc5e834d`.
+  It requires zero fixture account and marker residue while the provisioning RPC
+  remains applied.
+- Static contracts **25/25 PASS**; strict TypeScript **PASS**; targeted ESLint with
+  zero warnings **PASS**; SQL transaction/tag/role-boundary checks and diff checks
+  **PASS**; index empty. No local PostgreSQL parser/server is available, so no parser
+  or deployed behavior PASS is claimed. All **229/229 baseline owner paths remain
+  byte/status identical**.
+- Nothing was executed in Supabase. No commit, push, deploy, graph generation,
+  FACT/REPLACE/mutation, client CTA or production change occurred. PARKED canonical
+  food/recipe and recipe metadata/expansion blockers remain PARKED.
+- Exact next checkpoint: owner authorization to run only the SELECT-only preflight on
+  STAGING `ozidryfvhkcbtpnulakq` and return its complete single-row output. SQL apply
+  and rollback-only acceptance remain later separate approvals.
+
+## Pending-generation read state and UI — local, not applied — 2026-09-23
+
+- Owner-confirmed live STAGING baseline: trusted weekly provisioning v1 is deployed,
+  semantically matches the reviewed contract, rollback-only behavioral acceptance
+  reached its final `ROLLBACK`, and its SELECT-only postcheck returned zero residue
+  with `provisioning_still_applied=true`. Production remains untouched.
+- The current discovery RPC is active-only, so an own current-week
+  `pending_generation` identity currently collapses to `no_active_plan`. Prepared a
+  bounded `CREATE OR REPLACE FUNCTION` draft that preserves `auth.uid()` ownership,
+  verified Premium, current local Monday/timezone binding, retained-smoke exclusion,
+  defensive ambiguity and the existing active `ready` DTO. Pending returns only
+  selection/week/timezone/status/contract/Goal-revision metadata and no graph payload.
+- Client discovery now decodes that exact strict pending DTO. The read-only entry
+  terminates before `adaptive_nutrition_read_v1`, retains account-switch/late-response
+  protection and renders `Персональный недельный план формируется` without week cards,
+  progress, demo/legacy fallback or mutation controls. Active and `no_active_plan`
+  paths remain unchanged; read and mutation gates remain independent and default OFF.
+- Review artifacts, all **NOT APPLIED**:
+  `20260923_adaptive_nutrition_pending_generation_read_v1.sql`, SELECT-only preflight,
+  rollback-only behavioral acceptance and SELECT-only postcheck under
+  `docs/premium/drafts/`. The acceptance uses only transaction-local synthetic state,
+  calls discovery only under `authenticated`, verifies pending/active/no-plan,
+  Premium/ownership/retained-lineage boundaries and finishes with `ROLLBACK`.
+- Exact SHA-256 values: apply draft
+  `2f801862d7f49dd2eaeabd168417bc9fdde9c2b2b4ad3c2be22bf3e2ac76c839`;
+  preflight `014e64ed7a711b3a18fca1bd6f874394de44ea04e54e69e45d341e036ddaca72`;
+  behavioral acceptance
+  `0a44db39c143188a3e8d740a43d09e674768ad3ab00166e5bb9d4cd6f4c46b`;
+  postcheck `01fa1177b1e632da16795eba906cebb765249f3021f8a45b92b0176d8e32db9c`.
+- First owner-run preflight returned every prerequisite true except
+  `all_state_week_unique`. Existing deployed-state evidence already proves the named
+  index is unique/valid/ready/live btree on exact ordered keys
+  `(user_id, week_anchor)` with sole predicate `contract_version = 1`; the false result
+  was exact `pg_get_expr` parentheses/formatting sensitivity. Classification:
+  **INDEX_SEMANTICALLY_CORRECT_PREFLIGHT_TOO_STRICT**. Added SELECT-only index audit
+  `20260923_adaptive_nutrition_pending_generation_read_v1.index-audit.sql`, SHA-256
+  `779212db046ce0ed52ac3f8ff8b9401b47c24f7d682fc336c3bf660f628586c1`.
+  The repaired preflight now checks btree, all four index state flags, exact key count
+  and ordered column array, then normalizes only whitespace/parentheses in the sole
+  predicate. Apply SQL remains byte-identical.
+- Fresh local verification: relevant targeted regression **56/56 PASS**; strict
+  TypeScript **PASS**; targeted ESLint with zero warnings **PASS**; production build
+  **PASS**. Build output contains only the existing stale browser-data, mixed
+  `mealService` import and large-chunk warnings.
+- No Supabase execution, commit, push, deploy, production flag, FACT/diary,
+  SKIPPED/UNDO, replacement, payment, canonical food/recipe or persistent graph action
+  occurred. Next external checkpoint is owner authorization to run only the exact
+  SELECT-only preflight; SQL apply and rollback-only acceptance require later separate
+  approvals.
+
+## Goal / Plan Engine architecture audit — 2026-09-23
+
+- Completed a focused repository/schema audit at HEAD
+  `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`; findings are recorded in
+  `docs/premium/goal-plan-engine-architecture-audit-v1.md`. This was documentation
+  only: no SQL execution, Supabase write, commit, push, deploy, production flag,
+  fixture, FACT/diary or replacement action occurred.
+- Reusable authoritative inputs are the own revisioned `user_goals` row, trusted
+  Premium predicate, server-derived timezone/Monday binding and durable idempotency
+  key. Persisted nutrition preferences/allergies and detailed training context are not
+  confirmed server inputs. Client/localStorage Goal data cannot authorize generation.
+- Reusable persistence is `user_premium_plan_selections`,
+  `adaptive_nutrition_operations`, immutable graph revisions/events and the applied
+  discovery/read contract. Existing read UI requires one active seven-day graph with
+  stable slot and snapshot/recipe/portion identities.
+- Legacy `programGenerationService` and `aiMealPlansService` are separate client-side
+  writers with unreviewed formulas/authorization/atomicity and are not suitable for
+  trusted weekly provisioning. The Premium catalog has legacy plan/recipe display
+  data but no confirmed immutable recipe/portion revisions or canonical ingredient
+  completeness.
+- Minimal architecture is two-phase: explicit authenticated provisioning creates one
+  idempotent `pending_generation` weekly identity; a protected server worker later
+  validates real curated/canonical content and atomically inserts one graph revision,
+  advances the same selection to `active` and settles its receipt. Reads never create
+  plans; activation writes no FACT, diary, event, replacement or shopping state.
+- Safe work independent of canonical content is limited to the pending provisioning
+  gate, pending UI state, graph-v1 schema/pure validators, execution DTOs and atomic
+  activation design. Real recipe/portion choice, active graph generation and nutrient
+  optimization remain **BLOCKED** by PARKED canonical food/recipe evidence, immutable
+  recipe/portion metadata, preference/allergy policy and a trusted generator channel.
+- Exact next checkpoint remains owner authorization to run only the prepared
+  SELECT-only provisioning preflight on STAGING. Applying the pending RPC, its
+  rollback-only acceptance, graph contract approval, generator authority and future
+  activation SQL are separate checkpoints.
+
+## Adaptive Nutrition Graph v1 contract — local only — 2026-09-23
+
+- Added the exact immutable graph, recipe snapshot, component identity, Collection
+  scaling and POTOK-assigned portion contract at
+  `docs/premium/adaptive-nutrition-graph-v1.md`. Premium Recipe Collection selected
+  servings remain presentation-only; Adaptive assigned portions are generator-owned
+  graph state. Day/week planned totals are derived from immutable slot snapshots.
+- Added pure strict validators and fixed-scale BigInt arithmetic in
+  `src/utils/adaptiveNutritionGraphV1.ts`. Canonical Graph v1 uses exactly seven
+  Monday-Sunday days, immutable UUID links, scale-3 decimal strings, ordered arrays,
+  strict unknown-field rejection, canonical UTF-8 JSON and server-recomputable
+  SHA-256 bytes. No runtime, Supabase, storage, UI or mutation wiring was added.
+- The 120 recipe names remain **0/120 generator-ready**: stable recipe/revision and
+  portion identities, base yield, canonical components, reproducible nutrition/fiber,
+  reviewed classification and safety evidence are absent. The owner workbook is not
+  present locally; the contract records a non-destructive four-sheet mapping and
+  minimal proposed fields without changing or generating that workbook.
+- Schema verdict: **EXISTING_SCHEMA_SUFFICIENT** for storage because the existing
+  immutable JSONB graph revision envelope already provides revision, Goal, digest and
+  operation linkage. Trusted generation/validation and atomic pending-to-active
+  activation remain separate future boundaries and are not prepared or enabled here.
+- Fresh targeted synthetic tests **17/17 PASS**; strict TypeScript **PASS**; targeted
+  ESLint with zero warnings **PASS**. No SQL, Supabase call, commit, push, deploy,
+  production change, FACT/diary/replacement/shopping/payment action or fake persistent
+  recipe identity was created. All **229/229 owner baseline paths remain unchanged**.
+- Owner finalized **HYBRID** for Adaptive assigned portions: continuous quantities
+  scale decimal-safe and countable quantities must satisfy recipe-specific reviewed
+  increments. Collection previews remain a separate proportional cooking contract and
+  may show exact fractional pieces such as `0.250 piece`; they never create a recipe,
+  portion revision or graph state. Targeted tests cover both valid Collection
+  fractional pieces and Adaptive accept/reject increment behavior.
+- Added `docs/premium/adaptive-nutrition-trusted-generator-activation-v1.md`. The local
+  design defines server-built generator input/output DTOs, pinned Goal and catalog
+  manifests, server canonical digest recomputation, entitlement and CAS rechecks,
+  event-free atomic graph insert plus same-selection pending-to-active transition,
+  durable receipt/replay behavior and full rollback. No SQL draft or runtime worker
+  was created.
+- Existing tables are sufficient for the minimal atomic transaction; a new protected
+  internal activation function/service is required because the current plan-transition
+  boundary always writes an event. Trusted execution/restart authority, exact Goal
+  snapshot allowlist and real curated/canonical recipe/portion evidence remain OPEN.
+- Exact next checkpoint: owner review of the generator DTO, event-free activation
+  semantics, operation/receipt naming, locking/CAS order, Goal snapshot approach and
+  trusted execution channel. Only after approval should a runnable-but-not-applied
+  activation draft and acceptance plan be prepared.
+
+## Trusted generator activation v1 — runnable local review package — 2026-09-23
+
+- Owner approved Graph v1, distinct Collection proportional fractional-piece scaling,
+  Adaptive HYBRID assigned portions, conceptual generator DTOs, event-free
+  `PLAN_ACTIVATED`, exact lock/CAS order, exact Goal allowlisting and a protected
+  durable server execution principle. The worker technology remains intentionally
+  undecided. Status: **DURABLE_CHANNEL_REQUIREMENTS_READY**.
+- `PotokAdaptiveGoalSnapshotV1` is now executable and exact: account ID, Goal revision,
+  nullable verbatim `goal_type`, and positive calories/non-negative protein/fat/carbs,
+  all scale-3. Fiber target, allergies/preferences, clinical data, authoritative
+  training schedule/load and normalized Goal taxonomy remain blocked; unrelated
+  Goal/profile/date/body/training fields are excluded from the activation snapshot.
+- Added pure strict Goal/manifest/activation/receipt/replay contracts in
+  `src/utils/adaptiveNutritionActivationV1.ts`, including deterministic canonical
+  Goal/catalog/activation bytes, SHA-256, Graph/Goal/manifest binding, exact replay,
+  mismatch conflict, snake-case SQL receipt decoding and the event-free effect list.
+- Final design: `docs/premium/adaptive-nutrition-trusted-generator-activation-v1.md`.
+  Existing tables/columns are sufficient. A future worker must durably preserve the
+  input, idempotency key and proposed plan revision across restart, remain server-only
+  and account-isolated, use bounded retries and auditable lineage, and receive only a
+  separately reviewed narrow execution authority. No Edge Function/backend choice is
+  made.
+- Runnable-but-not-applied function draft:
+  `docs/premium/drafts/20260923_adaptive_nutrition_plan_activate_v1.sql`, SHA-256
+  `e6c99863ecbd34ca07010e88ac3376340a906b3c74295a72360c6697b674cfb9`.
+  It adds only the protected fixed-search-path activation function, grants no runtime
+  role, recomputes and compares Graph/manifest digests, rebuilds the locked Goal
+  snapshot, enforces Premium/ownership/CAS/current-week/manifest/HYBRID rules, inserts
+  one graph and advances the same pending selection atomically, then settles one
+  accepted empty-event receipt. It writes no event/FACT/diary/replacement/shopping.
+- SELECT-only preflight:
+  `docs/premium/drafts/20260923_adaptive_nutrition_plan_activate_v1.preflight.sql`,
+  SHA-256 `a41d1fe48cc3e2b77ad9e48b687ec0b16fd956cad3b08b43b500a0dfd50c7b25`.
+  It checks the expected schema, entitlement/provisioning/read foundation, columns,
+  all-state week uniqueness, deferred FKs, RLS/FORCE, immutable guards and absence of
+  a conflicting activation function. Its explicit external real-recipe gate is false,
+  so `ready_for_plan_activate_v1_apply` cannot be true in this package.
+- Rollback-only acceptance draft:
+  `docs/premium/drafts/20260923_adaptive_nutrition_plan_activate_v1.behavioral-acceptance.sql`,
+  SHA-256 `a0fff41fc3053e35f15e53a04554f4b60b79c7619030c04cd55d6a4d35c234e2`.
+  It has one BEGIN/no COMMIT/final ROLLBACK, uses two previously verified empty Auth
+  fixture accounts, creates no recipe/canonical rows, and covers Premium activation,
+  exact stored graph/digest/receipt, unchanged selection ID, exact replay, uniqueness/
+  stale CAS and zero event/diary/meal/offer effects. Fail-closed cases cover expired
+  Free, foreign selection, active/archived, stale Goal, changed timezone/week, bad
+  digest/shape, non-manifest recipe, invalid increment, changed same-key payload,
+  retained smoke lineage and replay/new-effect behavior after revoke.
+- Fresh focused pure/static tests **32/32 PASS**; strict TypeScript **PASS**; targeted
+  ESLint with zero diagnostics **PASS**. No PostgreSQL parser/server execution or DB
+  behavioral PASS is claimed. SQL was not executed; Supabase was not contacted.
+- **STAGING APPLY IS NOT ALLOWED.** It remains blocked until at least one real curated
+  recipe passes stable identity, immutable recipe/portion revisions, canonical
+  component identity, complete nutrition including fiber, reviewed base yield,
+  reviewed HYBRID rules and generator eligibility. Canonical food/recipe and recipe
+  metadata blockers remain PARKED. No commit, push, deploy or production change.
+
+## Trusted generator activation authority repair — local only — 2026-09-23
+
+- Owner review found two real defects in the preceding draft: comparing caller bytes
+  with a caller digest did not prove canonicalization, and a manifest supplied by the
+  generator made recipe authorization circular. That preceding hash must not be
+  applied. No Supabase or SQL execution occurred during this repair.
+- Exact Graph byte authority is now a separately protected trusted canonical-validator
+  service boundary. It reuses the raw recursive duplicate-key scanner before
+  `JSON.parse`, strict-decodes the exact Graph v1 envelope, reconstructs bytes with
+  `encodeAdaptiveNutritionGraphCanonicalV1`, rejects noncanonical raw bytes and
+  computes SHA-256 itself. Caller digest fields are rejected by the strict DTO.
+  PostgreSQL adds duplicate-key/shape defense and computes the received-byte digest;
+  it is not claimed to reproduce the Graph serializer.
+- Catalog audit verdict: **CATALOG_MANIFEST_AUTHORITY_NEEDS_NEW_STORAGE**. Mutable
+  legacy recipe/catalog rows do not prove immutable recipe/portion/eligibility
+  revisions or historical snapshots. The repaired draft adds one protected,
+  append-only `potok_nutrition.adaptive_catalog_manifests_v1` table with canonical
+  bytes/digest/evidence, RLS+FORCE, application-role revokes and immutable guards.
+  It creates no publisher and grants no generator/application access.
+- Activation now accepts Graph bytes plus `manifestRevision` only, no caller Graph
+  digest, manifest bytes or manifest digest. After account lock, operation lookup,
+  selection lock and Goal lock, it reads the exact published manifest `FOR SHARE`,
+  verifies stored bytes/digest/snapshot integrity and independently enforces manifest
+  membership/HYBRID rules. Generator and app roles cannot call the function; a future
+  canonical-validator execution identity remains a separate review checkpoint.
+- Repaired runnable-but-not-applied SQL:
+  `docs/premium/drafts/20260923_adaptive_nutrition_plan_activate_v1.sql`, SHA-256
+  `2410d6fe6d3a170bf606087ab5aae3e335e67f87616b19c6fe179808968cfbe8`.
+  Repaired SELECT-only preflight SHA-256
+  `62fb436f18e3835b42df3e93f31983f5ebe55c9c3d892264821cd7b366a413ca`;
+  its real curated recipe gate remains deliberately false. Repaired rollback-only
+  acceptance SHA-256
+  `bd4951c133a0feab6e02f7c9aff91a51f1a1389dd287da5f0bd20ec1ff201fcd`.
+- Acceptance now publishes only transaction-local synthetic manifest rows and covers
+  raw duplicate keys, unpublished manifest revision, corrupt stored digest, absent
+  recipe, modified snapshot under valid IDs, HYBRID failure, DB-computed changed-byte
+  idempotency conflict and the existing entitlement/CAS/replay/event-free cases. One
+  BEGIN, no COMMIT, final ROLLBACK remain. Exact noncanonical serialization is covered
+  by pure canonical-validator tests, not misrepresented as PostgreSQL proof.
+- Fresh focused pure/static tests **38/38 PASS** after the final SQL/static update;
+  strict TypeScript **PASS**; targeted ESLint with zero diagnostics **PASS**;
+  production build **PASS** with only the pre-existing stale browser-data, mixed
+  `mealService` import and large-chunk warnings. `git diff --check` and index checks
+  pass; **229/229 owner baseline paths remain byte-identical**.
+- Excel remains authoring-only. Required future path is reviewed compiler → canonical
+  ingredient resolution → immutable recipe/portion/eligibility revisions → canonical
+  manifest publication → generator read → activation re-read. No workbook import,
+  real recipe IDs, publisher, worker credential or runtime wiring was added.
+- **STAGING APPLY: NO.** Real curated/canonical recipe evidence, reviewed publication
+  process, manifest publisher authority and a separated durable canonical-validator
+  execution identity remain blockers. Canonical food/recipe and atomic recipe metadata
+  dependencies stay PARKED. Index remains empty; no commit, push or deploy occurred.
+
+## Curated Recipe Publication Foundation v1 — local only — 2026-09-24
+
+- Added the pure authoring/readiness/compiler contract in
+  `src/utils/curatedRecipePublicationV1.ts` and its review note in
+  `docs/premium/curated-recipe-publication-v1.md`. Excel remains authoring-only;
+  the seven current sheet names are mapped without restructuring. No workbook parser,
+  publisher, persistence, network or Supabase path was added.
+- Readiness is deterministic and fail closed. It separates Collection and Adaptive
+  scopes while keeping canonical identity, complete reviewed nutrition including
+  fiber, source evidence and safety review common. Collection may display exact
+  fractional pieces; Adaptive continues to require HYBRID discrete increments.
+- The compiler accepts only caller-supplied publication UUIDs and never mints or
+  persists identities. A ready DTO compiles to strict `GraphRecipeSnapshotV1`,
+  immutable recipe/portion/eligibility candidates and the exact existing
+  `AdaptiveCatalogManifestRecipeV1` tuple. BigInt scale-3 arithmetic and the existing
+  Graph/manifest decoders enforce nutrition sums, order and HYBRID compatibility.
+- Repository audit found no exact local record or recipe-master workbook for
+  `protein_tortilla_envelope_cottage_cheese_5_cheese_40`. Remembered prompt values
+  were not treated as evidence. The vertical slice remains **BLOCKED** by missing
+  reviewed source/nutrition/fiber/basis, canonical pointers/evidence, portion
+  increments, tags and allergen/dietary evidence. No manifest tuple was produced.
+- No schema change or SQL draft is needed for this pure phase. Persistent immutable
+  recipe/portion/eligibility storage and protected manifest publication remain later
+  review boundaries. The activation apply gate stays false and its SQL remains not
+  applied.
+- Fresh synthetic targeted tests cover complete compilation, manifest compatibility,
+  Collection `0.250 piece`, Adaptive increment rejection and all requested blocker
+  classes. Strict TypeScript, targeted ESLint, production build and diff/baseline
+  checks are recorded in the final task report. No commit, push or deploy occurred;
+  index remains empty and the 229 owner baseline is preserved.
+- Exact next checkpoint: owner provides a reviewed, non-secret export of one recipe's
+  existing workbook rows plus reviewed canonical-food evidence. Re-audit comes before
+  any schema, publisher, manifest insertion or activation approval.
+
+## Adaptive Meal Composition Contract v1 — local only — 2026-09-24
+
+- Added the pure deterministic composition contract in
+  `src/utils/adaptiveNutritionMealCompositionV1.ts`, its 16-case focused suite in
+  `src/utils/__tests__/adaptiveNutritionMealCompositionV1.test.ts`, and the architecture,
+  workbook-impact and boundary note in
+  `docs/premium/adaptive-nutrition-meal-composition-v1.md`.
+- Existing Graph v1 remains unchanged. Its slot pins one recipe/portion snapshot and
+  cannot losslessly carry several recipe revisions. The new immutable, separately
+  digested `MealSnapshotV1` is additive; a future reviewed Graph v2/additive envelope
+  is required before composed meals can enter activation or runtime reads.
+- V1 uses the exact eight reviewed roles `COMPLETE_MEAL`, `MAIN_PROTEIN`, `CARB_SIDE`,
+  `VEGETABLE_SIDE`, `SALAD`, `EXTRA`, `SAUCE`, `BEVERAGE`. Completeness, companion
+  sets, pairing, repeats, energy class and beverage class come from immutable reviewed
+  eligibility metadata, never names or AI guesses.
+- Composition is deterministic and fail closed: reviewed role patterns, one anchor,
+  required companions, unique recipe revisions, bidirectional incompatibility checks,
+  Adaptive HYBRID portion validation, BigInt scale-3 nutrition totals and hard maxima.
+  Exact nutrition fit ranks first; Goal energy class only breaks equal scores.
+- Caloric beverages are included in nutrition. A non-caloric beverage requires an
+  explicitly reviewed all-zero nutrition snapshot. Premium Recipe Collection remains
+  separate and keeps proportional fractional-piece presentation semantics.
+- The authoritative workbook was not modified. Composition metadata should first be
+  carried by the reviewed publication layer; role, completeness, companion/pairing,
+  repeat, energy and beverage classification need content/owner review. The current
+  120 names and recipe drafts are not promoted to generator-ready content.
+- Fresh focused meal tests **16/16 PASS**; Graph/publication/meal relevant regression
+  **43/43 PASS**; strict TypeScript **PASS**; targeted ESLint with zero diagnostics
+  **PASS**; production build **PASS** with only existing browser-data, mixed
+  `mealService` import and large-chunk warnings. Diff/whitespace and secret-pattern
+  checks pass; git index is empty. No owner-baseline path was touched by this package,
+  so the recorded **229/229 owner baseline remains preserved**.
+- No SQL, Supabase, workbook write, generator/runtime activation, commit, push or
+  deploy occurred. Canonical food/recipe and atomic recipe metadata blockers remain
+  PARKED. Exact next checkpoint is review of this composition contract, followed by a
+  representative owner-classified curated batch before any Graph/storage integration.
+
+## Representative Meal Classification v1 — local review — 2026-09-24
+
+- Read the current authoritative workbook
+  `/Users/urijurij/Desktop/POTOK_recipe_master_v1_007.xlsx` without modifying it;
+  SHA-256 remained
+  `7bae79a23b93e74bb6e41341d6713a26dbc14aa4a24c546e03d7b4f6e1dbfb6f`.
+  It contains 19 populated recipe rows: two explicit demonstration examples, twelve
+  real DRAFT rows and five `READY_FOR_REVIEW` breakfast rows. There are no APPROVED
+  rows; ingredient resolution is 160 UNRESOLVED / 1 AMBIGUOUS.
+- Added the classification report
+  `docs/premium/adaptive-nutrition-representative-meal-classification-v1.md`.
+  Real evidence covers complete porridge/breakfast candidates, complete lunch/casserole
+  candidates, a snack wrap, one unresolved salad classification and one caloric
+  smoothie candidate. The workbook has no real reviewed standalone fish/cutlet/side,
+  tofu/legume/hummus component or zero-calorie beverage; those contract probes remain
+  explicitly SYNTHETIC/NAMES_ONLY and have no invented identities.
+- Verdict: **ANCHOR_TAXONOMY_GAP_FOUND**. Complete recipes and animal-protein partial
+  meals fit v1, but the rule limiting anchors to `COMPLETE_MEAL` or `MAIN_PROTEIN`
+  forces artificial classification for hummus/toast/grain/dairy partial anchors. A
+  complete caloric smoothie also cannot retain beverage semantics and be an anchor
+  because v1 couples beverage role and completeness.
+- Proposed, not implemented: generic `MAIN_COMPONENT`/`MEAL_ANCHOR`, orthogonal
+  `anchorKind = COMPLETE | PARTIAL | NONE`, and orthogonal beverage class. Preserve
+  exactly one anchor and require companion sets for partial anchors. Owner review is
+  required before any contract/Graph code change.
+- Recommendation: keep composition metadata in the publication eligibility layer
+  now. Do not modify workbook columns/sheets. Role, anchor kind, companion/pairing,
+  repeat, energy and beverage class require explicit content review and must not be
+  inferred from names/macros.
+- Focused existing composition tests were rerun for this review; final result is
+  recorded in the task report. Git index remains empty; this package touched only the
+  new report and this resume addition, outside the 229 owner baseline. No Supabase,
+  SQL, workbook, Graph, runtime, generator, commit, push or deploy action occurred.
+
+## Adaptive Meal Composition Contract v1.1 — local only — 2026-09-24
+
+- Owner confirmed the representative anchor-taxonomy gap. The pure composition
+  implementation in `src/utils/adaptiveNutritionMealCompositionV1.ts` now uses protocol,
+  eligibility and canonical encoding IDs ending in `v1.1`; no runtime consumer is
+  wired to it.
+- Final minimal roles are `MAIN_COMPONENT`, `CARB_SIDE`, `VEGETABLE_SIDE`, `SALAD`,
+  `EXTRA`, `SAUCE`, `BEVERAGE`. `COMPLETE_MEAL` and `MAIN_PROTEIN` role semantics were
+  removed. Eligibility now carries independent
+  `anchorKind = COMPLETE | PARTIAL | NONE` instead of `isCompleteMeal`.
+- Exactly one non-NONE anchor is mandatory. COMPLETE has no required companions;
+  PARTIAL requires reviewed companion sets and is complete only when every set is
+  satisfied; NONE cannot declare companions. Role patterns no longer imply an anchor.
+- Beverage class is orthogonal to anchor kind while remaining consistent with
+  beverage role. A caloric smoothie can be `BEVERAGE + COMPLETE`; an optional drink is
+  `BEVERAGE + NONE`. Caloric totals and all-zero non-caloric validation are unchanged.
+- Added `docs/premium/adaptive-nutrition-meal-composition-v1-1.md`; marked the v1 note
+  as superseded and the representative gap report as resolved by this local contract.
+  The outer `MealSnapshotV1` shape remains stable; its nested eligibility uses
+  `anchorKind`, and v1.1 canonical IDs prevent old bytes from being silently accepted.
+- Focused v1.1 suite: **22/22 PASS**, including the fifteen owner-required representative
+  cases. Graph/publication/composition relevant regression: **49/49 PASS**. Strict
+  TypeScript and targeted ESLint pass; final build/diff checks are recorded in the
+  task report.
+- Graph v1 and the authoritative workbook are unchanged. No Supabase, SQL, workbook,
+  Graph integration, generator activation, commit, push or deploy occurred. Real
+  curated classification/publication and canonical recipe/food evidence remain the
+  blockers before future Graph integration design.
+
+## Curated recipes 6–15 — workbook write + local review — 2026-09-24
+
+- Owner authorized an exact write of recipes 6–10 to the authoritative external
+  workbook `/Users/urijurij/Desktop/POTOK_recipe_master_v1_007.xlsx`. A byte-for-byte
+  pre-write backup was created at
+  `/Users/urijurij/Desktop/POTOK_recipe_master_v1_007.backup-before-recipes6-10-2026-09-24.xlsx`.
+  Source/backup SHA-256 was
+  `7bae79a23b93e74bb6e41341d6713a26dbc14aa4a24c546e03d7b4f6e1dbfb6f`; verified
+  post-write SHA-256 is
+  `633ca82c86679c42d9f2aca89581a874ad94cacafa74c9b02d5ef9bc282c8606`.
+- Exact written ranges: `01_Рецепты!A21:G25`, `I21:J25`, `L21:X25`;
+  `02_Ингредиенты!A163:M191`; `03_Шаги!A91:G111`; `04_Теги!A36:D46`.
+  Existing formulas in recipe columns H/K and every pre-existing owner cell were
+  preserved. The seven-sheet structure, formula integrity, recalculated checks,
+  workbook ZIP integrity and rendered recipe/ingredient/step/tag/check views passed.
+- Recipes 6–10 are `READY_FOR_REVIEW` with the exact owner note
+  `READY_FOR_OWNER_REVIEW; not APPROVED; not TEST_COOKED; not canonical-ready`.
+  Cooked/serving yield fields remain NULL. The 29 new ingredient rows are all
+  `UNRESOLVED`; USDA FDC is `REVIEWED_REFERENCE` only, with no canonical/stable/runtime
+  identity created.
+- Added the local, non-workbook review
+  `docs/premium/curated-recipes-11-15-evidence-review-v1.md` for recipes 11–15. It
+  records at least two culinary references where available, exact raw/edible bases,
+  original POTOK steps, component-to-full-to-serving KBJU/fibre arithmetic,
+  DISCRETE egg/bread handling, test-cooking uncertainties, goal candidates and
+  proposed Meal Composition v1.1 metadata. These five recipes were not written to
+  the workbook; their 28 proposed ingredient identities remain unresolved.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Diff/whitespace and scoped secret checks pass; the git index is empty.
+  This package changed no path in the recorded 229-file owner baseline, so all
+  **229/229 remain preserved**. Owner review is required before any write of
+  recipes 11–15.
+
+## Curated recipes 11–20 — workbook write + local review — 2026-09-24
+
+- Owner authorized recipes 11–15 only. The actual current authoritative workbook was
+  located at `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.xlsx`;
+  its pre-write SHA-256 matched the prior recipes 6–10 output exactly:
+  `633ca82c86679c42d9f2aca89581a874ad94cacafa74c9b02d5ef9bc282c8606`.
+  A byte-identical backup is preserved beside it as
+  `POTOK_recipe_master_v1_007.backup-before-recipes11-15-2026-09-24.xlsx`.
+- Recipes 11–15 were written only to `01_Рецепты!A26:G30`, `I26:J30`, `L26:X30`;
+  `02_Ингредиенты!A192:M219`; `03_Шаги!A112:G136`; and `04_Теги!A47:D59`.
+  Composition v1.1 proposals were deliberately excluded from workbook cells. The
+  final authoritative/output SHA-256 is
+  `93b42c504e86b8bd1f8b1578bc32227170fc6aed9fe37268cb81edce7b322b2b`.
+- Workbook verification passed: exact seven-sheet structure; all pre-existing owner
+  cells and formulas unchanged; H/K formulas preserved; zero formula errors; ZIP
+  integrity and rendered recipe/ingredient/step/tag/check ranges valid. Added counts:
+  five recipes, 28 ingredients, 25 steps, 13 tags. All 28 added ingredients are
+  `UNRESOLVED`; no canonical/stable/runtime/revision identity was created. Recipes are
+  `READY_FOR_REVIEW`; yield fields remain NULL pending test-cooking.
+- Added `docs/premium/curated-recipes-16-20-evidence-review-v1.md`. Recipes 16–20 were
+  **not** written. The review contains exact formulations, independent culinary
+  evidence, raw/edible bases, original POTOK steps, component/full/serving KBJU and
+  fibre arithmetic, DISCRETE egg policy, test-cooking plans, goal candidates and
+  Meal Composition v1.1 proposals. Its central open evidence item is the provisional
+  Russian-style dry tvorog 5% authoring average; it is not canonical or an exact USDA
+  FDC product. The 20 proposed ingredient rows remain unresolved.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. The git index remains empty. Task changes are outside the recorded
+  229-file owner baseline, which remains **229/229 preserved**. Next checkpoint is
+  owner review of recipes 16–20 and a separate explicit authorization before any
+  workbook write.
+
+## Curated recipes 16–25 — workbook write + local review — 2026-09-24
+
+- Owner approved recipes 16–20 and the provisional authoring-only dry-tvorog 5%
+  profile (121 kcal / P17 / F5 / C1.8 per 100 g). This remains
+  `REVIEWED_REFERENCE`, not canonical production authority.
+- Pre-write authoritative/backup SHA-256:
+  `93b42c504e86b8bd1f8b1578bc32227170fc6aed9fe37268cb81edce7b322b2b`.
+  Backup: `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes16-20-2026-09-24.xlsx`.
+- Exact writes were limited to `01_Рецепты!A31:G35`, `I31:J35`, `L31:X35`;
+  `02_Ингредиенты!A220:M237`; `03_Шаги!A137:G162`; and
+  `04_Теги!A60:D69`. Final authoritative SHA-256:
+  `02f8ae387e1e6d758696ed3eca946cd9b99c895a1d07a64a204bbc2dda169ad4`.
+  Composition v1.1 metadata stayed outside the workbook.
+- Verification passed: seven exact sheets, all existing owner values/formulas
+  unchanged, H/K formulas present, zero formula errors, ZIP integrity and visual
+  recipe/ingredient/step/check renders. Added: 5 recipes, 18 ingredients, 26 steps,
+  10 tags. All 18 added ingredients remain `UNRESOLVED`; yield fields remain NULL.
+  Workbook checks now show 32 recipes, 229 ingredients, 228 UNRESOLVED, 1 AMBIGUOUS
+  and 156 preparation steps.
+- Added `docs/premium/curated-recipes-21-25-evidence-review-v1.md`; recipes 21–25 were
+  not written. It records independent sources, exact formulations, raw/dry/cooked
+  bases, original POTOK steps, reproducible component/full/serving nutrition
+  arithmetic, countable policies, test-cooking plans, goal candidates and v1.1
+  composition proposals. Twenty-five proposed ingredient rows remain unresolved.
+- Main review blockers for 21–25: recipe 23 still uses white-pita FDC only as a
+  transparent nutrition proxy pending exact lavash evidence; recipe 24's 100%
+  buckwheat batter and recipes 24/25 finished counts require test-cooking. No previous
+  ingredient formulations existed in the repository, only approved names.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Git index remains empty and no recorded owner-baseline path was changed;
+  **229/229 owner baseline is preserved**. Next checkpoint is owner content review of
+  recipes 21–25 and separate write authorization.
+
+## Curated recipes 21–30 — workbook write + local review — 2026-09-24
+
+- Owner authorized the exact approved recipes 21–25 only. Pre-write authoritative
+  SHA-256 was `02f8ae387e1e6d758696ed3eca946cd9b99c895a1d07a64a204bbc2dda169ad4`.
+  A byte-identical backup was created at
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes21-25-2026-09-24.xlsx`.
+- Exact writes were limited to `01_Рецепты!A36:G40`, `I36:J40`, `L36:X40`;
+  `02_Ингредиенты!A238:M262`; `03_Шаги!A163:G187`; and
+  `04_Теги!A70:D79`. Final authoritative SHA-256 is
+  `9c1cf40cf0a3b9be04638a013de579819ec606e9872856d6f378109327eb58a5`.
+  Recipes 1–20, owner cells, formulas, seven-sheet structure and demo/example content
+  are unchanged. Composition v1.1 proposals remain outside the workbook.
+- Workbook verification passed: exact append-range guard; five recipe rows; 25
+  ingredient rows; 25 step rows; ten tag rows; H/K formulas present; zero formula
+  errors; ZIP integrity; and visual recipe/ingredient/step/tag/check renders. The 25
+  added ingredient identities are all `UNRESOLVED`; no stable/canonical/runtime or
+  revision identity was written. Yield fields remain NULL. Recipe 23 retains the
+  explicit white-pita nutrition proxy and `PUBLICATION_BLOCKED` marker.
+- Added `docs/premium/curated-recipes-26-30-evidence-review-v1.md`. Recipes 26–30 were
+  **not written**. The report contains independent culinary evidence, exact
+  formulations and state bases, original POTOK preparation, component/full/serving
+  KBJU and fibre arithmetic, test-cooking plans, goal candidates and Meal Composition
+  v1.1 proposals. Twenty proposed ingredient rows remain `UNRESOLVED`; no IDs were
+  invented. Recipe 29 is publication-blocked until an exact plain-hummus product or
+  reviewed house formulation replaces the generic commercial-hummus reference.
+- Open content decisions: approve/revise recipes 26–30; confirm recipe 28 as a
+  one-serving savory breakfast rather than a side; choose the exact hummus basis for
+  recipe 29. All five require measured test-cooking yield. A separate owner approval
+  is required before any workbook write of recipes 26–30.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. The git index remains empty. Task edits are limited to the two curated
+  review documents and this resume, outside the recorded owner baseline; **229/229
+  owner baseline files remain preserved**.
+
+## Curated recipes 26–35 — workbook write + local review — 2026-09-24
+
+- Owner authorized the exact recipes 26–30. Pre-write authoritative/backup SHA-256
+  was `9c1cf40cf0a3b9be04638a013de579819ec606e9872856d6f378109327eb58a5`.
+  Byte-identical backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes26-30-2026-09-24.xlsx`.
+- Exact writes were limited to `01_Рецепты!A41:G45`, `I41:J45`, `L41:X45`;
+  `02_Ингредиенты!A263:M282`; `03_Шаги!A188:G211`; and
+  `04_Теги!A80:D89`. Final authoritative SHA-256:
+  `5a552a9073e8557f4647ceaffb79fb521c203e9e9daee9eb797764796becd7cd`.
+  Recipes 1–25, owner cells, formulas, examples and seven-sheet structure are
+  unchanged. Composition v1.1 proposals remain outside the workbook.
+- Workbook verification passed: exact append guard; five recipe rows, 20 ingredient
+  rows, 24 step rows and ten tag rows; H/K formulas; zero formula errors; ZIP
+  integrity; and visual recipe/ingredient/step/tag/check renders. All 20 new
+  ingredient identities are `UNRESOLVED`; no stable/canonical/runtime/revision ID was
+  created. Yield fields remain NULL. Recipe 28 retains breakfast-only review use;
+  recipe 29 retains its commercial-hummus proxy and `PUBLICATION_BLOCKED` marker.
+- Updated `docs/premium/curated-recipes-26-30-evidence-review-v1.md` with the factual
+  workbook lifecycle and added
+  `docs/premium/curated-recipes-31-35-evidence-review-v1.md`. Recipes 31–35 were not
+  written. Their review provides independent culinary sources, exact raw/dry bases,
+  original POTOK steps, component/full/serving KBJU and fiber arithmetic,
+  test-cooking uncertainties, goal candidates and composition v1.1 proposals.
+  Twenty-two proposed ingredient rows remain unresolved.
+- Material owner decisions before any write of 31–35: accept each formulation;
+  decide whether recipe 31 is COMPLETE without a substantial non-starchy vegetable;
+  confirm the long-grain white rice basis, wild rainbow trout basis and Atlantic cod
+  basis. Canonical resolution and measured yield remain later blockers.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Git index is empty. The stored tracked owner-baseline diff remains
+  byte-identical, and no owner-baseline path was touched; **229/229 remain preserved**.
+
+## Curated recipes 31–40 — workbook write + local review — 2026-09-25
+
+- Owner authorized recipes 31–35 only. Pre-write authoritative and byte-identical
+  backup SHA-256:
+  `5a552a9073e8557f4647ceaffb79fb521c203e9e9daee9eb797764796becd7cd`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes31-35-2026-09-25.xlsx`.
+- Exact writes: `01_Рецепты!A46:G50`, `I46:J50`, `L46:X50` with H/K formulas;
+  `02_Ингредиенты!A283:M304`; `03_Шаги!A212:G236`;
+  `04_Теги!A90:D99`. Final authoritative SHA-256:
+  `8a7c377e932f1e9faf8ede717df609a7cc9c69c6ef796948dbec877a4cb07682`.
+- Verification passed: exact seven-sheet structure; all prior owner cells/formulas
+  unchanged; five recipe rows, 22 ingredient rows, 25 steps, ten tags; H/K formulas;
+  zero formula errors; ZIP integrity; rendered ranges; composition metadata excluded
+  from workbook. All 22 added identities remain `UNRESOLVED`; yields remain NULL.
+- Updated `docs/premium/curated-recipes-31-35-evidence-review-v1.md` to the factual
+  written state. Added `docs/premium/curated-recipes-36-40-evidence-review-v1.md`;
+  recipes 36–40 were not written. It contains exact raw/dry bases, culinary evidence,
+  original POTOK steps, component/full/serving KBJU and fiber arithmetic,
+  test-cooking plans, goal candidates and Meal Composition v1.1 proposals.
+- Recipes 36–40 propose 27 unresolved ingredient rows. Material review points:
+  Pacific whiting is only the authoring reference for hake; couscous is ordinary fine
+  couscous, not pearl; barley is unsoaked with a 1:3 absorption method; rabbit uses
+  300 g raw boneless edible domesticated-rabbit composite cuts (FDC 172521), never
+  bone-in package weight. Canonical identities and finished yields remain unresolved.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy.
+  Next checkpoint: owner content decisions for recipes 36–40 before any workbook
+  write. PARKED canonical/recipe metadata blockers remain open.
+
+## Curated recipes 36–45 — workbook write + local review — 2026-09-25
+
+- Owner authorized the exact reviewed formulations for recipes 36–40. The current
+  authoritative workbook was
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.xlsx`.
+  Pre-write SHA-256 was
+  `8a7c377e932f1e9faf8ede717df609a7cc9c69c6ef796948dbec877a4cb07682`;
+  a byte-identical backup is preserved beside it as
+  `POTOK_recipe_master_v1_007.backup-before-recipes36-40-2026-09-25.xlsx`.
+- Exact writes were limited to `01_Рецепты!A51:G55`, `I51:J55`, `L51:X55` with
+  H/K formulas; `02_Ингредиенты!A305:M331`; `03_Шаги!A237:G261`; and
+  `04_Теги!A100:D109`. Final authoritative SHA-256 is
+  `000934d99f84ecb466190f937eb6bf19be4d37344bb4c04923827c79cc8b7c7d`.
+- Verification passed: exact seven-sheet structure; all previous owner cells and
+  formulas unchanged; five recipes, 27 ingredient rows, 25 steps and ten tags added;
+  H/K formulas present; zero formula errors; ZIP integrity and rendered-range checks
+  passed. All 27 added ingredient rows remain `UNRESOLVED`; cooked and serving yields
+  remain NULL. Pacific-whiting and rabbit product/cut publication blockers remain
+  explicit in owner notes.
+- Updated `docs/premium/curated-recipes-36-40-evidence-review-v1.md` to the factual
+  written state. Added `docs/premium/curated-recipes-41-45-evidence-review-v1.md`;
+  recipes 41–45 were **not written**. The new review records independent culinary
+  evidence, exact raw/dry/drained bases, original POTOK steps, component/full/serving
+  KBJU and fiber arithmetic, test-cooking plans, goal candidates and Meal Composition
+  v1.1 proposals. Its 26 proposed ingredient rows remain unresolved.
+- Material decisions for 41–45: confirm the farmed-Atlantic-salmon authoring basis;
+  Alaska-pollock proxy and exact commercial product; 100% whole-wheat pasta; tuna in
+  water at exactly 240 g measured drained solids; and raw peeled/deveined shrimp
+  reference/product. Recipes 41 and 43 are proposed as PARTIAL anchors requiring a
+  reviewed vegetable or salad companion; 42, 44 and 45 are proposed COMPLETE.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Composition metadata was not written to the workbook. Canonical food and
+  recipe metadata blockers remain PARKED. Git/index, secret-pattern and recorded
+  owner-baseline verification results are recorded in the final task report.
+
+## Curated recipes 41–50 — workbook write + local review — 2026-09-25
+
+- Owner authorized only recipes 41–45. The authoritative workbook pre-write SHA-256
+  was `000934d99f84ecb466190f937eb6bf19be4d37344bb4c04923827c79cc8b7c7d`.
+  A byte-identical backup is preserved as
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes41-45-2026-09-25.xlsx`.
+- Exact writes were limited to `01_Рецепты!A56:G60`, `I56:J60`, `L56:X60` with
+  H/K formulas; `02_Ингредиенты!A332:M357`; `03_Шаги!A262:G283`; and
+  `04_Теги!A110:D119`. The final authoritative SHA-256 is
+  `01423033af92fdd93d9b8dbde9c959644dc70873397e923cd9a184627d4ba5d1`.
+- Workbook verification passed against the authoritative file: seven exact sheets;
+  all previous owner values and formulas unchanged; five recipes, 26 ingredient
+  rows, 22 steps and ten tags; H/K formulas present; zero formula errors; workbook
+  checks, ZIP integrity and rendered views valid. Composition metadata stayed outside
+  workbook cells. All 26 new identities remain `UNRESOLVED`; yields remain NULL and
+  all product/proxy publication blockers are preserved.
+- Updated `docs/premium/curated-recipes-41-45-evidence-review-v1.md` to the factual
+  written state. Recipes 41 and 43 retain PARTIAL composition proposals requiring a
+  vegetable or salad companion outside the workbook; recipes 42, 44 and 45 remain
+  COMPLETE proposals only.
+- Added `docs/premium/curated-recipes-46-50-evidence-review-v1.md`. Recipes 46–50 were
+  **not written**. It records independent culinary evidence where available, exact
+  raw/dry/drained bases, original POTOK preparation, component/full/serving KBJU and
+  fiber arithmetic, safety/product constraints, test-cooking plans, goal candidates
+  and Meal Composition v1.1 proposals. Its 34 proposed ingredient rows remain
+  `UNRESOLVED`; no identifiers were invented.
+- Material next decisions: approve/revise each formulation; confirm chicken-liver
+  edible-trim and organ-meat publication handling; accept the exact canned-bean and
+  canned-tomato bases; confirm recipes 48/49 as COMPLETE; and decide whether recipe
+  50 remains conservative PARTIAL or becomes COMPLETE after content/test-cooking
+  review. Canonical/product resolution and measured yields remain later blockers.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Git index remains empty. The stored tracked owner-baseline diff is
+  byte-identical to its recorded baseline, and this package touched no owner-baseline
+  path; **229/229 owner baseline files remain preserved**.
+
+## Curated recipes 46–55 — workbook write + local review — 2026-09-25
+
+- Owner authorized only recipes 46–50. Authoritative pre-write SHA-256 was
+  `01423033af92fdd93d9b8dbde9c959644dc70873397e923cd9a184627d4ba5d1`;
+  the byte-identical backup is
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes46-50-2026-09-25.xlsx`.
+- Exact writes were limited to `01_Рецепты!A61:G65`, `I61:J65`, `L61:X65`
+  with H/K formulas; `02_Ингредиенты!A358:M391`;
+  `03_Шаги!A284:G304`; and `04_Теги!A120:D129`. Final authoritative
+  SHA-256 is
+  `a13543b3e93dac225febfedc304e96f411ebaec691656970b217487e2dc7a785`.
+- Verification passed: seven-sheet structure; all prior owner values/formulas
+  unchanged; five recipe rows, 34 ingredient rows, 21 steps and ten tags; H/K
+  formulas; zero formula errors; workbook checks; ZIP integrity; and visual range
+  review. All 34 written identities remain `UNRESOLVED`; yields remain NULL.
+  Chicken-liver exact product/canonical/organ-meat metadata blockers remain explicit.
+  Recipes 46 and 50 remain PARTIAL composition proposals outside the workbook.
+- Updated `docs/premium/curated-recipes-46-50-evidence-review-v1.md` to the factual
+  written state. Added `docs/premium/curated-recipes-51-55-evidence-review-v1.md`;
+  recipes 51–55 were **not written**. It contains independent culinary evidence,
+  exact raw/dry/drained/product bases, original POTOK steps, component/full/serving
+  KBJU and fiber arithmetic, test-cooking plans, goal candidates and Meal Composition
+  v1.1 proposals. Its 37 proposed ingredient rows remain `UNRESOLVED`.
+- Material owner decisions before any write of 51–55: accept each exact formulation;
+  for recipe 52 accept the MUSO NDL030 100%-buckwheat product reference or provide
+  the intended exact noodle product for recalculation; confirm recipes 53–55 as
+  four-serving BATCH soups with NULL yield until test-cooking. Exact products,
+  canonical identities and measured yields remain later publication blockers.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Git index remains empty. Package edits do not intersect the recorded
+  229-file owner baseline; **229/229 owner baseline files remain preserved**.
+
+## Curated recipes 51–60 — accessibility policy, subset write and review — 2026-09-25
+
+- Owner-approved accessibility policy is recorded in
+  `docs/premium/curated-recipe-accessibility-policy-v1.md` for recipes 51–120
+  and future catalog work.
+- Recipe 52 decision is `REVISION_REQUIRED_BEFORE_WRITE`. Reviewed Russian retail
+  examples were wheat/buckwheat blends, so a generic 100% buckwheat soba baseline
+  was not established. Recipe 52 was not written or silently substituted.
+- Owner-authorized unaffected recipes 51 and 53–55 were written as
+  `READY_FOR_REVIEW`. Authoritative pre-write and byte-identical backup SHA-256:
+  `a13543b3e93dac225febfedc304e96f411ebaec691656970b217487e2dc7a785`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes51-55-subset-2026-09-25.xlsx`.
+- Exact writes: `01_Рецепты!A66:G69,H66:H69,I66:J69,K66:K69,L66:X69`;
+  `02_Ингредиенты!A392:M422`; `03_Шаги!A305:G324`;
+  `04_Теги!A130:D137`. Final authoritative SHA-256:
+  `4f279b447e50ea3147206d0ec7a65b39869cb6d751de5c332475dcee23b72a48`.
+- Verification passed: seven sheets, all prior owner values/formulas unchanged,
+  four recipe rows, 31 ingredient rows, 20 steps, eight tags, H/K formulas, zero
+  formula errors, ZIP integrity, byte-identical authoritative copy and rendered
+  changed ranges. Recipe 52 is absent. All 31 added identities remain
+  `UNRESOLVED`; yield fields remain NULL.
+- Added `docs/premium/curated-recipes-56-60-evidence-review-v1.md`; recipes
+  56–60 were not written. Accessibility results: 56 and 59
+  `COMMON_RU_RETAIL`; 57 `SEASONAL_BUT_COMMON`; 58
+  `EXPENSIVE_OPTIONAL`; 60 `COMMON_RU_RETAIL` with exact whole-wheat pasta
+  product unresolved. The five drafts have 36 proposed unresolved rows.
+- Exact owner decisions remain: approve an accessible recipe-52 blended-soba
+  revision and nutrition basis; decide recipe 57 PARTIAL versus COMPLETE after
+  test-cooking; retain recipe 58 only as limited expensive variety or replace its
+  catalog slot; approve/revise formulations 56 and 59–60 before any write.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Canonical blockers remain PARKED.
+
+## Curated recipes 52 and 56–65 — accessible evidence gate, workbook write and review — 2026-09-25
+
+- Recipe 52 accessible mixed wheat/buckwheat soba direction is owner-approved, but
+  the reviewed ordinary Russian-retail product pages did not provide dietary fiber.
+  Complete authoring kcal/P/F/C/fiber therefore cannot be established without an
+  invented average. Recipe 52 is `EVIDENCE_BLOCKED`, remains absent from the
+  workbook and retains unresolved canonical identity.
+- Owner-authorized recipes 56–60 were appended as `READY_FOR_REVIEW`. Authoritative
+  pre-write and byte-identical backup SHA-256:
+  `4f279b447e50ea3147206d0ec7a65b39869cb6d751de5c332475dcee23b72a48`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes56-60-2026-09-25.xlsx`.
+- Exact writes: `01_Рецепты!A70:G74,H70:H74,I70:J74,K70:K74,L70:X74`;
+  `02_Ингредиенты!A423:M458`; `03_Шаги!A325:G349`;
+  `04_Теги!A138:D147`. Final authoritative SHA-256:
+  `a9c4ddb68a327f90288c21a01275a559f54e875202c5c2e167d18e51303fbda9`.
+- Verification passed: exact seven-sheet structure; all prior owner cells/formulas
+  unchanged; five recipes, 36 ingredients, 25 steps and ten tags; H/K formulas;
+  zero formula errors; ZIP integrity; byte-identical authoritative copy and visual
+  range review. All 36 new identities remain `UNRESOLVED`; yields remain NULL.
+  Recipe 57 is owner-approved `MAIN_COMPONENT / COMPLETE` without a required carb
+  companion. Recipe 58 remains `EXPENSIVE_OPTIONAL` limited variety and must not be
+  required for successful Adaptive generation.
+- Added `docs/premium/curated-recipes-61-65-evidence-review-v1.md`; recipes 61–65
+  were not written. It records exact raw bases, independent culinary evidence where
+  available, original POTOK steps, component/full/serving kcal/P/F/C/fiber,
+  accessibility, test-cooking uncertainties and Meal Composition v1.1 proposals.
+  Its 31 proposed ingredient rows remain `UNRESOLVED`.
+- Owner decisions before any 61–65 write: accept the exact formulations; confirm
+  recipes 61–64 as PARTIAL anchors requiring a carb side; retain trout as optional
+  expensive variety; decide whether cod is optional expensive variety or should be
+  replaced later by a distinct cheaper fish recipe. No species or product may be
+  silently substituted.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Canonical food and recipe metadata blockers remain PARKED.
+
+## Curated recipes 61–70 and recipe 52 bounded evidence pass — 2026-09-25
+
+- Owner-approved recipes 61–65 were appended to the authoritative workbook as
+  `READY_FOR_REVIEW`. Pre-write and byte-identical backup SHA-256:
+  `a9c4ddb68a327f90288c21a01275a559f54e875202c5c2e167d18e51303fbda9`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes61-65-and52-2026-09-25.xlsx`.
+- Exact writes: `01_Рецепты!A75:G79,H75:H79,I75:J79,K75:K79,L75:X79`;
+  `02_Ингредиенты!A459:M489`; `03_Шаги!A350:G374`;
+  `04_Теги!A148:D157`. Current authoritative SHA-256:
+  `435327691393fdb2eaec6647a8aa18689b4fc12ff54de878ff8da2a342f2663d`.
+- Workbook verification passed: seven sheets, all prior owner values/formulas
+  unchanged, five recipes, 31 ingredient rows, 25 steps, ten tags, H/K formulas,
+  zero formula errors, ZIP integrity, byte-identical installed copy and rendered
+  changed ranges. All new identities remain `UNRESOLVED`; yield fields remain NULL.
+- Owner-fixed composition stays outside the workbook: recipes 61–65 are
+  `MAIN_COMPONENT / COMPLETE` with no required carb companion. Recipes 64–65 are
+  `EXPENSIVE_OPTIONAL` and never required for successful generation. Recipe 63
+  retains `AFFORDABLE_BEEF_CUT_REVIEW_REQUIRED`.
+- Recipe 52 bounded evidence pass found an official complete dry profile: MEXT item
+  01129 `Buckwheat/dried noodles, uncooked` = 344 kcal / P 14.0 / F 2.3 /
+  total C 66.7 / fiber 3.7 g per 100 g. Kikkoman independently describes common
+  soba as 35% buckwheat / 65% wheat. Recipe 52 is now
+  `ACCESSIBLE_EVIDENCE_READY`: full recipe 1064.0 kcal / P 73.5 / F 39.9 /
+  C 113.8 / fiber 16.3; per serving 532.0 / 36.8 / 20.0 / 56.9 / 8.1.
+  It was **not written**; an exact separate owner checkpoint is required before the
+  append. Canonical/product identity remains unresolved.
+- Added `docs/premium/curated-recipes-66-70-evidence-review-v1.md`. Recipes 66–70
+  remain review-only and unwritten. Accessibility proposals: 66 and 68
+  `COMMON_RU_RETAIL`; 67 and 69 `EXPENSIVE_OPTIONAL`; 70
+  `COMMON_RU_RETAIL` pending exact product/price/glaze confirmation. All five are
+  proposed `MAIN_COMPONENT / COMPLETE` with no mandatory carb side; these composition
+  fields remain outside the workbook and are not publication-approved.
+- Next owner decisions: explicitly authorize or decline the evidence-backed recipe
+  52 append; review exact formulations/classifications 66–70; confirm recipe 70
+  accessibility and recipe 67 `BALANCED` energy class. Test-cooking, exact products,
+  canonical identity and publication review remain blockers.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Git index remains empty and the 229-file owner baseline remains preserved.
+
+## Curated recipe 52 and recipes 66–75 — authorized write and review — 2026-09-25
+
+- Owner separately authorized recipe 52 and approved recipes 66–70 for authoring.
+  The authoritative pre-write SHA-256 was
+  `435327691393fdb2eaec6647a8aa18689b4fc12ff54de878ff8da2a342f2663d`;
+  a byte-identical backup is preserved as
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipe52-and-recipes66-70-2026-09-25.xlsx`.
+- Recipe 52 was appended after existing recipe 65; no prior recipe row was inserted,
+  moved or reordered. Recipes 66–70 follow it. Exact write ranges:
+  `01_Рецепты!A80:G85,H80:H85,I80:J85,K80:K85,L80:X85`;
+  `02_Ингредиенты!A490:M523`; `03_Шаги!A375:G404`;
+  `04_Теги!A158:D169`. Final authoritative SHA-256:
+  `a01c7d682965ddce1c5c10a9648e101441bdafbf1e5da6a6506d6b86e89437e0`.
+- Workbook checks passed: exact seven sheets; all pre-existing values/formulas
+  unchanged; six recipe rows, 34 ingredient rows, 30 steps and 12 tags; H/K
+  formulas; zero formula errors; ZIP integrity and visual recipe/ingredient/step/
+  tag/check review. All added ingredient rows remain `UNRESOLVED`; yield fields are
+  NULL; composition/accessibility metadata remains outside workbook fields.
+- Recipe 52 and recipes 66, 68 and 70 are `COMMON_RU_RETAIL`; recipes 67 and 69 are
+  `EXPENSIVE_OPTIONAL` and must never be required for generator coverage. Every
+  written row is `READY_FOR_REVIEW`, not approved, not test-cooked and not
+  canonical-ready.
+- Added `docs/premium/curated-recipes-71-75-evidence-review-v1.md`; recipes 71–75
+  were **not written**. The review fixes raw/dry bases, exact component/full/serving
+  nutrition arithmetic, original POTOK steps, explicit minced-meat/patty mixture and
+  piece counts, no hidden oil, test-cooking measurements, goal candidates and Meal
+  Composition v1.1 proposals. All 35 proposed ingredient rows are unresolved.
+- Material owner decisions before writing 71–75: accept the egg-free chicken
+  meatball binder; confirm rice as a separate side for recipe 72; accept the
+  potato/carrot/egg pollock-patty binder; confirm 90/10 ground-beef basis and
+  COMPLETE versus PARTIAL for recipe 74; accept seasonal pumpkin and no-added-water
+  recipe 75. Finished yields and canonical/product matches remain blockers.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. PARKED blockers remain open.
+
+## Curated recipes 71–80 — authorized workbook write and evidence review — 2026-09-25
+
+- Owner-authorized recipes 71–75 were appended to the authoritative workbook as
+  `READY_FOR_REVIEW`, not approved, not test-cooked and not canonical-ready. The
+  pre-write SHA-256 and byte-identical backup SHA-256 are
+  `a01c7d682965ddce1c5c10a9648e101441bdafbf1e5da6a6506d6b86e89437e0`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes71-75-2026-09-25.xlsx`.
+- Exact writes: `01_Рецепты!A86:G90,H86:H90,I86:J90,K86:K90,L86:X90`;
+  `02_Ингредиенты!A524:M558`; `03_Шаги!A405:G429`;
+  `04_Теги!A170:D179`. Current authoritative SHA-256:
+  `81ccc11ecac14f147001da147e3d8e30d3ec52ecef1d4836f32ed9edda3a066e`.
+- Workbook verification passed: exact seven-sheet structure; all prior owner
+  values/formulas unchanged; recipe 52 remains in row 80; five recipes, 35
+  ingredients, 25 steps and ten tags added; H/K formulas preserved; zero formula
+  errors; composition metadata excluded; ZIP integrity and visual range review
+  passed. All 35 added identities remain `UNRESOLVED`; cooked and serving yields
+  remain NULL. The installed workbook is byte-identical to the verified artifact.
+- Updated `docs/premium/curated-recipes-71-75-evidence-review-v1.md` to record the
+  factual authoring write. Added
+  `docs/premium/curated-recipes-76-80-evidence-review-v1.md`; recipes 76–80 remain
+  review-only and were not written. It records independent culinary evidence,
+  explicit raw/frozen/drained/product bases, original POTOK preparation, exact
+  component/full/serving kcal/P/F/C/fiber arithmetic, accessibility, test-cooking
+  plans, goal candidates and Meal Composition v1.1 proposals. Static review passed
+  for all five nutrition vectors and 11 evidence URLs. Its 29 proposed ingredient
+  rows remain `UNRESOLVED`.
+- Owner decisions before any 76–80 write: accept recipe 76 seasonal label and exact
+  turkey/eggplant/tomato ratios; accept recipe 77 four-egg milk-free batch; accept
+  recipe 78 frozen broccoli, 100 ml milk and no cheese/flour; accept recipe 79
+  provisional 5% tvorog basis, unsalted zucchini squeezing and three servings;
+  accept recipe 80 frozen cauliflower and sauce-free tofu formulation. Proposed
+  COMPLETE/energy classifications remain content-review metadata outside the
+  workbook.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Git index remains empty. The stored tracked owner-baseline diff remains
+  byte-identical to its recorded baseline and this package touched no baseline path;
+  **229/229 owner baseline files remain preserved**. Canonical/product identity and
+  measured-yield blockers remain open.
+
+## Curated recipes 76–85 — authorized workbook write and evidence review — 2026-09-26
+
+- Owner-authorized recipes 76–80 were appended to the authoritative workbook as
+  `READY_FOR_REVIEW`, not approved, not test-cooked and not canonical-ready. The
+  pre-write and byte-identical backup SHA-256 are
+  `81ccc11ecac14f147001da147e3d8e30d3ec52ecef1d4836f32ed9edda3a066e`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes76-80-2026-09-26.xlsx`.
+- Exact writes: `01_Рецепты!A91:G95,H91:H95,I91:J95,K91:K95,L91:X95`;
+  `02_Ингредиенты!A559:M587`; `03_Шаги!A430:G454`;
+  `04_Теги!A180:D189`. Current authoritative SHA-256:
+  `efdca8ebb1b076c0069fe2b067e0a2e575ac967a1158bd13681826816736faec`.
+- Workbook verification passed: exact seven-sheet structure, all prior owner
+  values/formulas unchanged, five recipe rows, 29 ingredient rows, 25 steps and ten
+  tags, H/K formulas, zero formula errors, ZIP integrity and rendered range review.
+  All 29 new identities remain `UNRESOLVED`; yield fields remain NULL. Recipe 79
+  retains `EXACT_TVOROG_PRODUCT_AND_NUTRITION_REVIEW_REQUIRED`; its 121/17/5/1.8/0
+  profile remains a provisional reviewed reference. Eggs in recipes 77–79 remain
+  whole-piece `DISCRETE` inputs and recipes 77–79 retain whole-batch semantics.
+- Updated `docs/premium/curated-recipes-76-80-evidence-review-v1.md` to record the
+  factual write. Added `docs/premium/curated-recipes-81-85-evidence-review-v1.md`;
+  recipes 81–85 remain review-only and were not written. It records 13 culinary
+  evidence URLs, explicit dry/frozen/rinsed-drained bases, original POTOK steps,
+  component/full/serving kcal/P/F/C/fiber arithmetic, accessibility, test-cooking
+  plans, goal candidates and Meal Composition v1.1 proposals. Static recalculation
+  passed for all five nutrition vectors. Its 36 proposed ingredient rows remain
+  `UNRESOLVED`.
+- Owner decisions before any 81–85 write: accept recipe 81 generic tofu/champignon
+  sauce-free formulation; recipe 82 200 g dry whole green lentils and exact
+  four-serving vegetable tray; recipe 83 480 g rinsed/drained canned chickpeas with
+  frozen spinach and canned tomatoes; recipe 84 red kidney beans as the fixed type
+  at 480 g rinsed/drained solids; recipe 85 160 g dry buckwheat plus carrot, frozen
+  peas, onion and four whole `DISCRETE` eggs for four servings. Composition/energy
+  proposals remain content-review metadata outside the workbook.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Git index remains empty. The stored tracked owner-baseline diff remains
+  byte-identical to its recorded baseline and this package touched no baseline path;
+  **229/229 owner baseline files remain preserved**. Canonical/product identity and
+  measured-yield blockers remain open.
+
+## Curated recipes 81–95 — authorized workbook write and evidence review — 2026-09-26
+
+- Owner-authorized recipes 81–85 are now appended to the authoritative workbook as
+  `READY_FOR_REVIEW`, not approved, not test-cooked and not canonical-ready. The
+  pre-write SHA-256 and byte-identical backup SHA-256 are
+  `efdca8ebb1b076c0069fe2b067e0a2e575ac967a1158bd13681826816736faec`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes81-85-2026-09-26.xlsx`.
+- Exact writes: `01_Рецепты!A96:G100,H96:H100,I96:J100,K96:K100,L96:X100`;
+  `02_Ингредиенты!A588:M623`; `03_Шаги!A455:G479`;
+  `04_Теги!A190:D199`. Current authoritative SHA-256:
+  `b924460b4bb11888a3d5e0851b31e4784b8ab7716e0d16517ad1585fee9ed05c`.
+- Installed-workbook verification passed: exact seven-sheet structure; all previous
+  owner values/formulas unchanged; five recipe rows, 36 ingredient rows, 25 steps
+  and ten tags; H/K formulas; zero formula errors; ZIP integrity; byte-identical
+  candidate/authoritative copies; rendered recipe, ingredient, step, tag and check
+  ranges reviewed. All 36 added identities remain `UNRESOLVED`; yields remain NULL.
+  Whole-green-lentil and rinsed/drained legume bases and one whole `DISCRETE` cooked
+  egg per recipe-85 serving are preserved.
+- Owner-authorized recipes 86–90 are now appended as `READY_FOR_REVIEW`, not
+  approved, not test-cooked and not canonical-ready. Pre-write and byte-identical
+  backup SHA-256:
+  `b924460b4bb11888a3d5e0851b31e4784b8ab7716e0d16517ad1585fee9ed05c`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes86-90-2026-09-26.xlsx`.
+- Exact writes: `01_Рецепты!A101:G105,H101:H105,I101:J105,K101:K105,L101:X105`;
+  `02_Ингредиенты!A624:M659`; `03_Шаги!A480:G504`;
+  `04_Теги!A200:D209`. Final authoritative SHA-256:
+  `00c1fc169f451dd44da563b58f035c9b53d5779c310c2ab7d6d9b4e83d907f8e`.
+- Installed-workbook verification passed: exact seven-sheet structure, every prior
+  owner cell/formula unchanged, five recipes, 36 ingredients, 25 steps and ten
+  tags, H/K formulas, zero formula errors, ZIP integrity, rendered range review and
+  byte identity with the verified candidate. All 36 identities remain `UNRESOLVED`;
+  yield fields remain NULL. Recipes 86 and 89 are `EXPENSIVE_OPTIONAL`; 87, 88 and
+  90 are `COMMON_RU_RETAIL`. Recipe 87 retains the exact-tvorog blocker and recipe
+  89 retains one whole `DISCRETE` egg per serving. Dinner recipes 61–90 are now
+  authoring-complete in the master, subject to review/test-cooking/publication gates.
+- Updated `docs/premium/curated-recipes-86-90-evidence-review-v1.md` with the factual
+  write record. Added `docs/premium/curated-recipes-91-95-evidence-review-v1.md`;
+  recipes 91–95 remain review-only and were not written. It explicitly expands the
+  shorthand owner names for confirmation, fixes a proposed one-serving basis,
+  provides independent culinary references, exact fruit states/grams, component and
+  full/serving kcal/P/F/C/fiber arithmetic, preparation, assembly checks, goal
+  candidates and Meal Composition v1.1 proposals. The review proposes generic plain
+  natural yogurt 2% for 91–93 and generic plain Greek-style yogurt 2% for 94–95,
+  both as `REVIEWED_REFERENCE`, never as branded or canonical identity.
+- Exact next owner decisions: confirm/correct the five inferred display names;
+  approve or replace recipe 91's proposed 50 g frozen strawberry + 50 g frozen
+  blackcurrant basis; confirm the two 2%-fat dairy classes, one-serving model and
+  exact edible fruit weights; review the composition proposals. All 11 proposed
+  ingredient identities remain `UNRESOLVED`. Exact dairy/product matching,
+  canonical identity and measured assembly yield remain publication blockers.
+- Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`. No Supabase,
+  SQL, Graph integration, generator activation, commit, push or deploy occurred.
+  Git index remains empty; no stored owner-baseline path was touched and the
+  **229/229 owner baseline remains preserved**.
+
+## Curated snacks 91–100 — authorized workbook write and evidence review — 2026-09-26
+
+- Owner-authorized recipes 91–95 were appended to the authoritative workbook as
+  `READY_FOR_REVIEW`, not approved, not assembly-tested and not canonical-ready.
+  Pre-write and byte-identical backup SHA-256:
+  `00c1fc169f451dd44da563b58f035c9b53d5779c310c2ab7d6d9b4e83d907f8e`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes91-95-2026-09-26.xlsx`.
+- Exact writes: `01_Рецепты!A106:G110,H106:H110,I106:J110,K106:K110,L106:X110`;
+  `02_Ингредиенты!A660:M670`; `03_Шаги!A505:G524`;
+  `04_Теги!A210:D219`. Final authoritative SHA-256:
+  `52d5a161d7799ff8b8695f3c04de5ab6ee822083c219d80055e17781ea4846a5`.
+- Installed-workbook verification passed: exact seven-sheet structure; all prior
+  owner cells/formulas unchanged; five recipes, 11 ingredients, 20 steps and ten
+  tags; H/K formulas; zero formula errors; ZIP integrity; byte-identical installed
+  and verified candidate artifacts; rendered recipe/ingredient/step/tag/check ranges
+  reviewed. All 11 identities remain `UNRESOLVED`; yield fields remain NULL;
+  composition/accessibility metadata remains outside the workbook. Owner correction
+  for recipe 92 is preserved as `SEASONAL_BUT_COMMON`; 91 and 93–95 are
+  `COMMON_RU_RETAIL`. Every dairy row retains
+  `EXACT_DAIRY_CLASS_OR_PRODUCT_MAPPING_REQUIRED`.
+- Updated `docs/premium/curated-recipes-91-95-evidence-review-v1.md` with the factual
+  write record and owner-approved names/berry basis. Added
+  `docs/premium/curated-recipes-96-100-evidence-review-v1.md`; recipes 96–100 remain
+  review-only and unwritten. It explicitly resolves the shorthand names for review,
+  proposes one-serving formulations, exact raw/frozen states and grams, independent
+  culinary evidence, component/full/serving kcal/P/F/C/fiber arithmetic, original
+  POTOK assembly instructions, accessibility, assembly checks, goal candidates and
+  Meal Composition v1.1 proposals.
+- Proposed 96–99 basis: ordinary dry-style tvorog 5%, 200 g, using the existing
+  provisional 121/17/5/1.8/0 reviewed vector only. Recipe 96 adds 100 g frozen
+  blueberry; 97 adds 100 g frozen raspberry; 98 adds 150 g fresh edible apricot and
+  is `SEASONAL_BUT_COMMON`; 99 adds 150 g cucumber, 10 g dill and 1 g salt. Recipe
+  100 proposes 250 g generic plain kefir 2.5% plus 50 g frozen strawberry and 50 g
+  frozen blackcurrant, fork-mashed and stirred without a blender; its provisional
+  vector is 50/2.8/2.5/3.9/0 per 100 g. It is proposed as
+  `BEVERAGE / COMPLETE / CALORIC` under Meal Composition v1.1.
+- Exact next owner decisions: confirm/correct names 96–100; approve 200 g tvorog,
+  exact fruit/berry/cucumber/dill/salt quantities; approve the generic 2.5% kefir
+  vector, repeated 50/50 berry mix and no-blender method; review accessibility and
+  composition proposals. All 13 proposed ingredient identities remain `UNRESOLVED`.
+  Exact dairy/product mapping, canonical identities and measured assembly weights
+  remain publication blockers.
+- Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`. No Supabase,
+  SQL, Graph integration, generator activation, commit, push or deploy occurred.
+  Git index remains empty; no stored owner-baseline path was touched and the
+  **229/229 owner baseline remains preserved**.
+
+## Curated snacks 96–105 — authorized write and next review — 2026-09-26
+
+- This section supersedes the earlier 96–100 review-only handoff. After explicit
+  owner approval, recipes 96–100 were written to the authoritative workbook as
+  `READY_FOR_REVIEW`, not approved, not assembly-tested and not canonical-ready.
+  Pre-write/backup SHA-256:
+  `52d5a161d7799ff8b8695f3c04de5ab6ee822083c219d80055e17781ea4846a5`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes96-100-2026-09-26.xlsx`.
+  Final authoritative SHA-256:
+  `aafbc39e0884ac351b6577bd100706008c092bf59ade8f4befa6352ef12877aa`.
+- Exact writes: `01_Рецепты!A111:G115,H111:H115,I111:J115,K111:K115,L111:X115`;
+  `02_Ингредиенты!A671:M683`; `03_Шаги!A525:G544`;
+  `04_Теги!A220:D229`. Verification passed for the exact seven-sheet structure,
+  every earlier value/formula, H/K formulas, zero formula errors, ZIP integrity,
+  byte-identical candidate/install and rendered ranges. Counts: five recipes,
+  13 ingredients, 20 steps, ten tags and 13 `UNRESOLVED` identities. Yield fields
+  remain NULL. The four tvorog and one kefir publication blockers are preserved.
+- `docs/premium/curated-recipes-96-100-evidence-review-v1.md` now records the
+  completed write and only remaining publication/assembly blockers. Added
+  `docs/premium/curated-recipes-101-105-evidence-review-v1.md` with review-only
+  evidence, exact formulations, ingredient-basis arithmetic, preparation,
+  accessibility/allergen notes, assembly uncertainties, goal candidates and Meal
+  Composition v1.1 proposals for 101–104 plus both 105 paths.
+- Proposed 101–104 bases: ryazhenka 2.5% 200 g + pear 180 g; apple 180 g + smooth
+  unsalted peanut butter 20 g; pear 180 g + raw unsalted almonds 20 g; natural
+  yogurt 2% 200 g + banana 120 g + unsweetened cocoa 5 g. All are review-only.
+- Recipe 105 remains `RECIPE_105_HUMMUS_PATH_REVIEW`: A is 60 g commercial plain
+  hummus proxy + 150 g carrot, accessibility-first but exact-product blocked; B is
+  a two-serving house candidate using 120 g drained chickpeas, 20 g tahini, 15 g
+  lemon juice, 5 g oil, 20 g water, 1 g salt and 300 g carrot, reproducible but
+  requiring tahini, equipment and test-cooking. Nothing from 101–105 was written.
+- Exact next owner decisions: approve/correct formulations 101–104 and their
+  provisional product-class vectors; select 105 path A or B; review composition
+  proposals. Canonical/product mappings and measured assembly yields remain open.
+- Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`. No Supabase,
+  SQL, Graph integration, generator activation, commit, push or deploy occurred.
+- Targeted workbook and review-document checks passed; `git diff --check` passed;
+  the stored owner tracked-baseline diff remains byte-identical, no baseline path
+  was written, the **229/229 owner baseline remains preserved**, and the Git index
+  remains empty.
+
+## Curated snacks 101–110 — authorized write and next review — 2026-09-26
+
+- This section supersedes the earlier 101–105 review-only handoff. Owner-authorized
+  recipes 101–105 were appended to the authoritative workbook as `READY_FOR_REVIEW`,
+  not approved, not assembly-tested and not canonical-ready. Recipe 105 uses the
+  owner-selected `COMMERCIAL_GENERIC_PROXY`; the rejected house-hummus path was not
+  written.
+- Pre-write authoritative and byte-identical backup SHA-256:
+  `aafbc39e0884ac351b6577bd100706008c092bf59ade8f4befa6352ef12877aa`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes101-105-2026-09-26.xlsx`.
+  Current authoritative SHA-256:
+  `91ecb6a54ed496b28cc708d02c22739e539492a58d34c422cb3a5dfbf50e9e4a`.
+- Exact writes: `01_Рецепты!A116:G120,H116:H120,I116:J120,K116:K120,L116:X120`;
+  `02_Ингредиенты!A684:M694`; `03_Шаги!A545:G564`;
+  `04_Теги!A230:D239`. Installed-file verification passed for the exact seven-sheet
+  structure, every prior owner value/formula, H/K formulas, zero formula errors,
+  ZIP integrity, candidate/install byte identity and rendered ranges. Counts are five
+  recipes, 11 ingredients, 20 steps and ten tags; all 11 identities are
+  `UNRESOLVED`; yield fields remain NULL. The ryazhenka, peanut-butter, yogurt and
+  commercial-hummus exact-product publication blockers are preserved.
+- `docs/premium/curated-recipes-101-105-evidence-review-v1.md` now records the factual
+  write and selected recipe-105 path. Added
+  `docs/premium/curated-recipes-106-110-evidence-review-v1.md`; recipes 106–110 remain
+  review-only and were not written. It provides independent culinary evidence,
+  exact grams and state bases, component/full/serving kcal/P/F/C/fiber arithmetic,
+  assembly methods, allergens, accessibility, testing requirements, goal candidates
+  and Meal Composition v1.1 proposals.
+- Proposed 106–110 bases: commercial plain hummus 60 g + red pepper 150 g; whole-grain
+  rye crispbread 26 g + plain cream-style tvorozhny cheese 50 g; the same reviewed
+  crispbread class 26 g + light tuna in water 100 g fully drained solids; whole-grain
+  bread 80 g + raw turkey breast 120 g + cucumber 60 g; two whole `DISCRETE` eggs +
+  cucumber 150 g. Crispbread/cheese vectors are exact authoring proxies, never generic
+  truth; product variability is explicit and blocks publication. Tuna is
+  `EXPENSIVE_OPTIONAL`; the other four are `COMMON_RU_RETAIL` candidates.
+- Exact next owner decisions: accept/correct each formulation; accept reuse of the
+  recipe-105 hummus class for 106; accept both explicit proxy blockers for 107;
+  accept tuna accessibility and drained basis for 108; accept raw-basis home-cooked
+  turkey rather than deli meat for 109; accept two eggs for 110; review composition
+  proposals; separately authorize any future exact-range workbook write. All 11
+  proposed ingredient identities remain `UNRESOLVED`.
+- Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`. No Supabase,
+  SQL, Graph integration, generator activation, commit, push or deploy occurred.
+
+## Curated snacks 106–115 — authorized write and next review — 2026-09-26
+
+- This section supersedes the 106–110 review-only handoff. Recipes 106–110 were
+  appended to the authoritative workbook after explicit owner approval as
+  `READY_FOR_REVIEW`; none is approved, assembly-tested or canonical-ready.
+- Pre-write authoritative and byte-identical backup SHA-256:
+  `91ecb6a54ed496b28cc708d02c22739e539492a58d34c422cb3a5dfbf50e9e4a`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes106-110-2026-09-26.xlsx`.
+  Post-write authoritative SHA-256:
+  `f1c65c343922dae07b83c24ae6aad066cc577c08a7066ebc89d82fee80c12b5d`.
+- Exact writes: `01_Рецепты!A121:G125,H121:H125,I121:J125,K121:K125,L121:X125`;
+  `02_Ингредиенты!A695:M705`; `03_Шаги!A565:G584`;
+  `04_Теги!A240:D249`. Installed-file verification passed: seven sheets, all prior
+  owner cells/formulas unchanged, five recipes, 11 ingredients, 20 steps, ten tags,
+  H/K formulas, zero formula errors, ZIP integrity, candidate/install byte identity
+  and rendered review. All 11 identities remain `UNRESOLVED`; yield fields remain
+  NULL. Hummus, crispbread, cream-style cheese, tuna, bread and turkey product/class
+  blockers and whole-egg `DISCRETE` semantics remain explicit.
+- `docs/premium/curated-recipes-106-110-evidence-review-v1.md` records the factual
+  write. Added `docs/premium/curated-recipes-111-115-evidence-review-v1.md`; recipes
+  111–115 remain review-only and were not written. Proposed bases: two whole eggs +
+  150 g cherry tomatoes; 200 g baked edible apple + 100 g 5% tvorog + 1 g cinnamon;
+  150 g tvorog + 50 g natural yogurt + 50 g each frozen strawberry/blackcurrant;
+  40 g dry rolled oats + 200 g natural yogurt overnight; 75 g each apple/banana/pear
+  + 100 g natural yogurt. The review includes sources, exact component arithmetic,
+  assembly methods, accessibility, equipment, tests and composition v1.1 proposals.
+- Owner review is required before any 111–115 write. Decisive content checkpoints:
+  fork-only recipe 113 must actually merit “cream” or return for an explicit blender/
+  naming decision; recipe 114 must prove yogurt-only overnight pudding texture or
+  return with an exact measured liquid correction. Canonical/product mappings and
+  measured yields remain blocked. The 15 proposed ingredient rows remain
+  `UNRESOLVED`.
+- No Supabase, SQL, Graph integration, generator activation, commit, push or deploy
+  occurred. Git index remains empty; the **229/229 owner baseline remains preserved**.
+
+## Curated snacks 111–120 — authorized write and final-name review — 2026-09-26
+
+- This section supersedes the 111–115 review-only handoff. Recipes 111–115 were
+  appended to the authoritative workbook after explicit owner authorization as
+  `READY_FOR_REVIEW`; none is approved, assembly-tested or canonical-ready.
+- Pre-write authoritative and byte-identical backup SHA-256:
+  `f1c65c343922dae07b83c24ae6aad066cc577c08a7066ebc89d82fee80c12b5d`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes111-115-2026-09-26.xlsx`.
+  Post-write authoritative SHA-256:
+  `1bc6889018bc1a07fcb7b87ad3586ac66dc1303fbf614b639c0e06326ff28b26`.
+- Exact writes: `01_Рецепты!A126:G130,H126:H130,I126:J130,K126:K130,L126:X130`;
+  `02_Ингредиенты!A706:M720`; `03_Шаги!A585:G604`;
+  `04_Теги!A250:D259`. Installed-file verification passed for seven sheets, every
+  prior owner cell/formula, H/K formulas, zero formula errors, ZIP integrity,
+  candidate/install byte identity and rendered ranges. Counts: five recipes,
+  15 ingredients, 20 steps and ten tags; all 15 identities are `UNRESOLVED`.
+  Recipe 113 retains `CREAM_TEXTURE_VALIDATION_REQUIRED`; recipe 114 retains
+  `PUDDING_TEXTURE_VALIDATION_REQUIRED`; yield fields remain NULL.
+- `docs/premium/curated-recipes-111-115-evidence-review-v1.md` now records the
+  factual authorized write. Added
+  `docs/premium/curated-recipes-116-120-evidence-review-v1.md`; recipes 116–120
+  remain review-only and were not written.
+- Name resolution proposes `Соевый йогурт с грушей` for the incomplete source
+  fragment `с грушей`; owner confirmation is required. Plain unsweetened soy yogurt
+  and frozen shelled edamame are classified `SPECIALTY_PRODUCT_REQUIRED` because
+  broad ordinary-supermarket availability was not established. Recipes 119 and 120
+  remain `COMMON_RU_RETAIL` candidates.
+- Proposed bases: 200 g plain unsweetened soy-yogurt proxy + 50 g each frozen
+  strawberry/blackcurrant; the same yogurt 200 g + pear 180 g; prepared shelled
+  edamame 150 g + lemon juice 10 g; drained canned cannellini 120 g + lemon 10 g +
+  oil 5 g + water 15 g + salt 0.5 g + rye crispbread 26 g; drained firm tofu 150 g
+  + cucumber 120 g + dill/parsley 5 g each + salt 1 g. All 18 proposed ingredient
+  identities remain `UNRESOLVED`; exact soy-yogurt, edamame, bean, crispbread and
+  tofu product/class mapping and measured yields remain publication gates.
+- Recipe 119 retains an explicit owner decision: fork-only is evidence-backed for
+  a rustic bean spread and likely requires renaming; blender use better supports
+  the current `паштет` name. Recipe 120 deliberately has no sauce/oil and requires
+  assembly validation; any acid/oil correction must return with exact grams.
+- Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`. No Supabase,
+  SQL, Graph integration, generator activation, commit, push or deploy occurred.
+
+## Original 120 authoring complete — 2026-09-26
+
+- This section supersedes the 116–120 review-only state above. The owner-approved
+  recipes 116–120 were appended to the authoritative workbook as
+  `READY_FOR_REVIEW`; none is approved, test-cooked/assembly-tested,
+  canonical-ready, publication-ready or generator-ready.
+- Authoritative pre-write and byte-identical backup SHA-256:
+  `1bc6889018bc1a07fcb7b87ad3586ac66dc1303fbf614b639c0e06326ff28b26`.
+  Backup:
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_master_v1_007.backup-before-recipes116-120-2026-09-26.xlsx`.
+  Installed authoritative SHA-256:
+  `9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5`.
+- Exact final writes: `01_Рецепты!A131:G135,H131:H135,I131:J135,K131:K135,L131:X135`;
+  `02_Ингредиенты!A721:M738`; `03_Шаги!A605:G624`;
+  `04_Теги!A260:D269`. Counts: five recipes, 18 ingredients, 20 steps, ten tags;
+  all 18 new ingredient identities remain `UNRESOLVED`.
+- Verification passed: seven sheets, every earlier value/formula unchanged, recipe
+  52 still at row 80, H/K formulas, zero formula errors, ZIP integrity, rendered
+  review and candidate/install byte identity. The original source catalog maps to
+  120/120 unique authoring identities: 30 Breakfast, 30 Lunch, 30 Dinner, 30 Snack.
+  All 120 statuses are `READY_FOR_REVIEW`, zero are `APPROVED`, measured yield count
+  is zero, and all 606 ingredient rows across the 120 remain `UNRESOLVED`.
+- Recipes 116–118 retain `SPECIALTY_PRODUCT_REQUIRED` and optional-variety-only
+  generator notes. Recipe 119 uses the owner-selected blender-required smooth pâté
+  path without rename. Recipe 120 retains the exact sauce-free assembly gate.
+- Final integrity and next-gates inventory:
+  `docs/premium/curated-recipes-120-authoring-integrity-and-next-gates-v1.md`.
+  It records 91 test-cooking items, 29 no-cook assembly items, 43 explicit
+  product/class blockers, six texture blockers, three specialty items, eight
+  `EXPENSIVE_OPTIONAL` items and 24 recipes with `DISCRETE` ingredients.
+- The source 30×4 grouping is intact. Historical operational workbook meal tags
+  remain 35 BREAKFAST / 56 LUNCH / 29 SNACK / 0 DINNER and require later publication
+  metadata reconciliation. Five display-title variants are recorded; #22 remains a
+  title-fidelity review because its workbook label is shorter than its batch doc.
+- `TEST_COOKING_NOT_COMPLETE`; `CANONICAL_MAPPING_NOT_COMPLETE`;
+  `PUBLICATION_NOT_COMPLETE`; `GENERATOR_NOT_READY`. No Supabase, SQL, Graph/Meal
+  Composer/Balance Validator integration, generator activation, commit, push or
+  deploy occurred. Git index remains empty and the **229/229 owner baseline remains
+  preserved**.
+
+## Test Cooking + Assembly Validation Protocol v1 ready — 2026-09-26
+
+- Added read-only design package:
+  `docs/premium/curated-recipe-test-cooking-assembly-protocol-v1.md`.
+- Authoritative workbook was rechecked at SHA-256
+  `9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5`
+  and was not modified. The evidence-based split remains exactly 91
+  `TEST_COOKING` / 29 `ASSEMBLY_VALIDATION`; no discrepancy was found.
+- Protocol defines immutable authoring-hash lineage, ingredient/session/process/
+  yield/quality/result fields, special state handling, whole-piece rules, factual
+  yield authority, nutrition-versus-water/yield semantics and owner-controlled
+  correction workflow. It introduces no unreviewed acceptance thresholds.
+- Full plan covers all 120 unique recipe numbers once in 17 batches of 5–9 recipes.
+  Proposed first pilot `TCV1-B01-PILOT` is #17, #18, #102, #103 and #110 (one test
+  cooking, four assembly); it was not executed. It avoids specialty, expensive and
+  named texture blockers while testing fruit trim, dairy drainage, product-label
+  evidence, whole-piece mass, boiling and final serving measurement.
+- Preserved blocker inventory: texture #6/#16/#104/#113/#114/#119; separate #120
+  sauce-free cohesion; specialty #116–118; expensive optional #58/#64/#65/#67/#69/
+  #86/#89/#108; 24 `DISCRETE`; 43 explicit product/class; 606 unresolved ingredient
+  rows across all 120 recipes.
+- `MEAL_TAG_RECONCILIATION_REQUIRED`: operational meal tags come from
+  `01_Рецепты.meal_type` and `04_Теги` MEAL rows and remain 35 BREAKFAST / 56 LUNCH /
+  29 SNACK / 0 DINNER versus the original 30×4 groups. Evidence does not prove why;
+  later publication review must preserve source group separately and approve v1.1
+  `allowedMealTypes` rather than guessing.
+- `RECIPE_22_TITLE_REVIEW_REQUIRED`: owner list says `Цельнозерновой тост с яйцом и
+  авокадо`; workbook says `Тост с яйцом и авокадо`; stable ID remains
+  `wholegrain_toast_egg_avocado` and the ingredient still uses whole-grain toast.
+  Owner later chooses full versus shorter display title; no workbook change now.
+- `WORKBOOK_UNCHANGED`; `TEST_RESULTS_NOT_WRITTEN`;
+  `CANONICAL_MAPPING_NOT_STARTED`; `GENERATOR_NOT_STARTED`. No Supabase, SQL,
+  canonical work, Graph/Meal Composer/Balance Validator implementation, commit,
+  push or deploy. Git index remains empty; 229/229 owner baseline preserved.
+
+## TCV1-B01-PILOT measurement package ready — 2026-09-26
+
+- Owner approved the working protocol as
+  `TEST_COOKING_ASSEMBLY_PROTOCOL_V1_APPROVED`. The protocol document now records
+  that approval and the bounded pilot package; no physical validation was executed.
+- Created the separate measurement workbook
+  `/Users/urijurij/Desktop/ПОТОК база рецептов /POTOK_recipe_validation_TCV1-B01-PILOT_v1.xlsx`
+  with SHA-256
+  `fecf6079afe393b8de1b9031fa38b06713179caaa453efad7106b52a7e6fcab8`.
+  Its eight sheets are `00_Инструкция`, `01_Свод`, `02_R017`, `03_R018`,
+  `04_R102`, `05_R103`, `06_R110` and `07_Справочник_результатов`.
+- The five recipe sheets contain exact master identities for #17/#18/#102/#103/#110,
+  11 authored ingredient rows and 20 authored steps. All owner measurement,
+  observation and result fields remain blank. Product evidence, tare/gross food-only
+  mass, discrete counts, allergen notes, result vocabulary and non-decisional
+  spreadsheet checks are present; no macro or external connection is present.
+- Structural import, formula/error scan, ZIP integrity and rendered review passed.
+  Candidate and installed files are byte-identical. The authoritative master remains
+  unchanged at SHA-256
+  `9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5`.
+- Recipe #22 owner decision is recorded only: later restore display title
+  `Цельнозерновой тост с яйцом и авокадо`, retaining
+  `wholegrain_toast_egg_avocado`. No master cell or meal tag was changed.
+- `TCV1_B01_PILOT_MEASUREMENT_PACKAGE_READY`;
+  `PHYSICAL_TESTS_NOT_EXECUTED`; `TEST_RESULTS_NOT_WRITTEN_TO_MASTER`;
+  `RECIPE_22_TITLE_DECISION_RECORDED_NOT_APPLIED`;
+  `MEAL_TAG_RECONCILIATION_REQUIRED`; `CANONICAL_MAPPING_NOT_STARTED`;
+  `GENERATOR_NOT_STARTED`. No Supabase, SQL, Graph/Meal Composer/Balance Validator
+  implementation, commit, push or deploy occurred.
+
+## Meal Composer + Balance Validator v1 design — 2026-09-27
+
+- Added the architecture-only package
+  `docs/premium/adaptive-nutrition-meal-composer-balance-validator-v1.md`. It extends
+  Meal Composition v1.1 without changing its roles, anchor model, Graph v1, runtime,
+  database or curated content.
+- The hybrid contract has two deterministic paths: one reviewed `COMPLETE` recipe,
+  or one reviewed `PARTIAL` anchor plus policy-authorized `NONE` companions. Exactly
+  one anchor remains mandatory; grain/starch is never universally required.
+- Candidate gates cover immutable publication/canonical/nutrition evidence,
+  allergens/dietary restrictions, user exclusions, accessibility, meal type,
+  portions, `repeatFamily` and optional-only specialty/expensive content. The design
+  recommends normal immutable recipe revisions with component metadata as the one
+  component-library authority.
+- Meal/day/week validators, stable statuses/reason codes, repetition layers,
+  `allowedMealTypes[]` reconciliation, unified PLAN meal-snapshot proposal,
+  deterministic generation pipeline and an 18-case synthetic test matrix are
+  specified. Validation is fail closed and remains separate from optimization.
+- Product decisions remain open for component count, optional-side patterns,
+  repetition limits, shopping reuse versus diversity, lunch/dinner semantics,
+  warning policy, convenience weights and optional specialty/expensive frequency.
+- `MEAL_COMPOSER_BALANCE_VALIDATOR_V1_DESIGN_READY`;
+  `HYBRID_MEAL_GENERATION_CONTRACT_READY`;
+  `MEAL_BALANCE_VALIDATOR_CONTRACT_READY`;
+  `DAY_BALANCE_VALIDATOR_CONTRACT_READY`;
+  `WEEK_BALANCE_VALIDATOR_CONTRACT_READY`; `IMPLEMENTATION_NOT_STARTED`;
+  `GENERATOR_NOT_ACTIVATED`. No Supabase, SQL, workbook, Graph integration, runtime,
+  FACT/diary writer, commit, push or deploy action occurred.
+
+## Meal Composer + Balance Validator pure contract v1 — 2026-09-27
+
+- Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`; the Git index is
+  empty. Added the bounded pure implementation
+  `src/utils/adaptiveNutritionMealBalanceV1.ts` and synthetic tests
+  `src/utils/__tests__/adaptiveNutritionMealBalanceV1.test.ts`; updated
+  `docs/premium/adaptive-nutrition-meal-composer-balance-validator-v1.md` with the
+  owner-approved v1 policy and actual implementation state.
+- Strict DTOs now cover immutable component evidence, user constraints, balance and
+  optimization policies, meal/day/week validator inputs, fallback proof, stable
+  validator results and deterministic optimization results. Unknown fields/enums,
+  duplicate identities, stale revisions, contradictory validation status, invalid
+  scale-3 decimals and noncanonical ordered sets fail closed.
+- Meal/day/week validation preserves Meal Composition v1.1 and Graph v1 contracts.
+  It applies `maxComponents=5`, exact recipe 1/day and 2/week, repeat family 3/week,
+  dominant ingredient family 4/week, specialty 1/week and expensive optional
+  2/week. Ordinary fallback proof is mandatory; safety/evidence/structure/portion/
+  revision failures cannot be warnings.
+- Optimization uses only validated candidates and exact scale-3 BigInt arithmetic:
+  target fit 0.400, diversity 0.250, convenience 0.200 and shopping reuse 0.150.
+  Equal valid scores use complete recipe, policy pattern and canonical component
+  identity tie-breaks; input order does not affect the result digest.
+- Focused tests: **43/43 PASS** (22 existing Meal Composition v1.1 cases, owner cases
+  21–40, and strict reason-code decoding). Strict TypeScript `npx tsc --noEmit`
+  **PASS**; targeted ESLint for the two implementation/test files **PASS**;
+  `git diff --check` **PASS**. No broad build was required for this isolated pure
+  module.
+- No real recipe was classified, published or made generator-eligible. There is no
+  import from runtime/UI/service code and no database, network, Graph binding, PLAN
+  or FACT writer. Generator activation remains off. Supabase, SQL, the authoritative
+  workbook, production, commits, pushes and deploys were untouched.
+- The recorded owner baseline diff remains byte-identical at SHA-256
+  `b095d79bac22f6e2c784870e25b4d8af29dc256e152964072e05762cdb0a8936`;
+  **229/229 owner baseline paths remain preserved**. Next checkpoint is owner review
+  of this pure contract and synthetic evidence before any separate Graph-binding or
+  trusted-generator integration design.
+
+## Goal target/bounds pure contract v1 — 2026-09-27
+
+- Extended `src/utils/adaptiveNutritionMealBalanceV1.ts` with strict
+  `GoalNutritionTargetV1`, target-fit input/result DTOs and canonical result digest.
+  Calories require exact scale-3 `target/min/max`; protein, fat, carbs and fiber use
+  the same structure only when supplied. Every axis enforces
+  `min <= target <= max`; missing calorie bounds, malformed decimals, stale target
+  policy and contradictory Goal bindings fail closed.
+- Day validation now binds `goalRevision` and `targetPolicyRevision` to the supplied
+  Goal target. The calorie corridor and any supplied macro/fiber corridors are hard,
+  inclusive validation bounds. Exact equality with the target is not required.
+  Missing complete Goal evidence remains `BLOCKED_MISSING_EVIDENCE`; no target or
+  range is inferred.
+- Added deterministic calorie target-fit evidence using scale-3 BigInt arithmetic.
+  The target scores `1.000`; distance is normalized against the applicable side of
+  the approved corridor. The example 1650 target with 1600–1700 bounds gives 1648 a
+  score of `0.960` and 1675 `0.500`. This is optimization evidence only; there is no
+  universal ±50 rule.
+- No-filler remains a hard composition/portion boundary: exact calorie equality
+  cannot authorize an optional component, arbitrary oil/sauce/snack fragment or a
+  fractional DISCRETE quantity. Meal distribution remains separately supplied
+  policy evidence and is never derived as an implicit percentage of daily calories.
+- Added owner cases 44–57. Focused Meal Composition + Balance/Goal tests are now
+  **57/57 PASS**. Strict TypeScript `npx tsc --noEmit` **PASS**; targeted ESLint
+  **PASS**; `git diff --check` and cached checks **PASS**. No Graph binding, database,
+  network, runtime/UI, real recipe, catalog publication, PLAN/FACT write or generator
+  activation was added.
+- Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`; no commit,
+  push, deploy, SQL, Supabase or workbook action occurred. The Git index remains
+  empty. The owner baseline diff remains byte-identical at SHA-256
+  `b095d79bac22f6e2c784870e25b4d8af29dc256e152964072e05762cdb0a8936`;
+  **229/229 owner baseline paths are preserved**. Next checkpoint remains owner
+  review of the expanded pure contract before any separate Graph-binding design.
+
+## Graph binding + trusted generator integration audit — 2026-09-27
+
+- Added
+  `docs/premium/adaptive-nutrition-graph-binding-trusted-generator-v1.md` and updated
+  the Meal Composer design with a factual cross-contract blocker. No TypeScript,
+  Graph, activation, database or runtime contract was changed.
+- Current Graph v1 is a strict one-recipe-per-slot structure: one recipe revision,
+  one portion revision and an assigned ingredient list that must exactly scale that
+  recipe. Current activation also authorizes each slot through one published
+  recipe/revision/portion tuple. `MealSnapshotV1` for `COMPOSED_MEAL` instead contains
+  multiple independent recipe, portion and eligibility revisions.
+- A complete recipe can bind one-to-one. A composed meal cannot bind losslessly
+  without changing the Graph contract/encoding, adding a sibling persisted snapshot,
+  or restricting generation to complete recipes. Anchor-only projection, slot
+  splitting and invented composite recipe identities were rejected as unsafe.
+- The design note specifies proposed immutable generation input, protected eligible
+  manifest, generated-week evidence, trusted sequence, CAS vector, idempotency,
+  deterministic digest rules, failure statuses/reasons, real-content gate and the
+  25-case synthetic matrix. Cases 2, 3 and 23 cannot honestly pass against Graph v1,
+  so no false `SYNTHETIC_GRAPH_BINDING_PASS` is claimed and no partial DTO was added.
+- Owner checkpoint: approve a separately versioned lossless slot representation
+  embedding existing `MealSnapshotV1` (recommended), a sibling atomic composition
+  snapshot, or an explicitly complete-recipe-only first generator. Until then:
+  `GRAPH_BINDING_TRUSTED_GENERATOR_V1_DESIGN_BLOCKED`;
+  `GENERATED_WEEK_PLAN_SNAPSHOT_V1_BLOCKED`; `GENERATOR_NOT_ACTIVATED`.
+- Focused cross-contract regression (Graph, activation, composition and balance/Goal)
+  is **86/86 PASS**; strict TypeScript and targeted ESLint are **PASS**. These checks
+  confirm each existing contract independently and do not claim the missing composed
+  Graph binding or the requested 25-case integration matrix.
+- No Supabase, SQL, migration, real recipe, catalog publication, PLAN/FACT write,
+  runtime/UI, commit, push or deploy action occurred. Current HEAD remains
+  `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`; the Git index remains empty and the
+  229-file owner baseline remains preserved.
+
+## Adaptive Nutrition Graph v2 pure contract — 2026-09-27
+
+- Owner approved a separately versioned Graph v2 that embeds the existing immutable
+  `MealSnapshotV1` per slot. Added `src/utils/adaptiveNutritionGraphV2.ts` and
+  `src/utils/__tests__/adaptiveNutritionGraphV2.test.ts`; updated the Graph-binding
+  and Meal Composer design notes to record the implemented pure boundary. Graph v1
+  source, decoder, digest and activation semantics were not edited or widened.
+- `AdaptiveNutritionGraphV2` explicitly binds selection/plan/week/timezone,
+  Goal target and hard bounds, all policy revisions, catalog revision/manifest
+  digest, seven ordered days and ordered meal slots. Each slot retains the exact
+  `MealSnapshotV1`, validation/decision evidence and ordered per-component immutable
+  evidence. `COMPLETE_RECIPE` requires one `COMPLETE` component;
+  `COMPOSED_MEAL` requires one `PARTIAL` anchor plus only `NONE` companions, with a
+  maximum of five components. No synthetic wrapper recipe, anchor-only projection
+  or component-to-slot split exists.
+- Added a separate v2 canonical JSON domain and SHA-256 helper, strict decoder,
+  graph sealer, strict `TrustedGenerationInputV1`, lossless `GeneratedWeekPlanV1`
+  binding, full authority CAS recheck and idempotency/recovery resolver. The CAS
+  vector includes account, selection, week/timezone, pending/null plan head,
+  entitlement evidence, Goal/target, preference/safety, manifest and all policy
+  revisions. Unknown outcome retains the original key and digest; key/payload
+  mismatch fails closed.
+- New Graph v2 synthetic suite: **30/30 PASS**. It covers the requested 26 Graph and
+  binding cases plus strict generation input, entitlement revoke/expiry, account/
+  selection/week CAS and idempotency/unknown/exact replay. Combined Graph v1,
+  activation, Meal Composition, Balance/Goal and Graph v2 regression: **116/116
+  PASS**. Strict TypeScript and targeted ESLint **PASS**; `git diff --check` and
+  cached diff checks **PASS**.
+- Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`; no commit,
+  push or deploy occurred and the index remains empty. No Supabase, SQL, migration,
+  persistence, endpoint, runtime/UI, real candidate manifest, real recipe, PLAN DB
+  write or FACT write was added. Generator remains OFF. The owner baseline diff is
+  byte-identical at SHA-256
+  `b095d79bac22f6e2c784870e25b4d8af29dc256e152964072e05762cdb0a8936`;
+  **229/229 owner baseline paths remain preserved**.
+- Next checkpoint: owner review of the pure Graph v2/GeneratedWeekPlan/CAS contract.
+  A later separately approved package may design persistence and activation for the
+  new graph version; real generation remains blocked by the existing publication,
+  canonical evidence and protected candidate-manifest gates.
+
+## Graph v2 persistence + atomic activation design v1 — 2026-09-27
+
+- Added the documentation-only review package
+  `docs/premium/adaptive-nutrition-graph-v2-persistence-activation-design-v1.md`.
+  It recommends canonical Graph v2 bytes plus an immutable verified JSON snapshot
+  and indexed evidence columns on the existing graph-revision authority. Fully
+  normalized day/slot/component tables are rejected as a second source of truth;
+  future projections may only be derived and non-authoritative.
+- The proposal reuses `user_premium_plan_selections`,
+  `adaptive_nutrition_graph_revisions`, `adaptive_nutrition_operations`, Goal
+  revisions, active-head FK and immutable history guards. Meal snapshots remain
+  embedded once in Graph v2. Additive conceptual bindings cover graph contract/
+  version, canonical bytes, Graph/GeneratedWeekPlan/input digests, complete policy/
+  manifest revisions, generation and activation receipts, and same-selection
+  predecessor history.
+- Refined the weekly state model: `pending_generation` is the persisted pre-plan
+  state; `generated` belongs to a durable generation receipt, so no weekly row can
+  claim a generated plan without an atomic committed graph/head. `superseded` is a
+  graph-revision relation. Initial activation atomically inserts one immutable Graph
+  v2 row, moves the same selection head and settles one receipt; it emits no event,
+  diary row or FACT.
+- Defined the full CAS vector, account-scoped idempotency/exact replay/UNKNOWN
+  behavior, version-dispatched reads, immutable successor history, PLAN/FACT
+  separation, fixed lock order, least-privilege boundary and stable activation
+  statuses/reasons. The synthetic transaction matrix contains **25/25 specified
+  scenarios** as review cases; these are not claimed as live database evidence.
+- Static document check confirms all eight required status markers, exactly 25
+  transaction scenarios and no executable DDL/DML/transaction statements. Focused
+  Graph v2 regression remains **30/30 PASS** and strict TypeScript **PASS**.
+- No SQL/migration/RPC/Edge Function/runtime code was created or applied. No
+  Supabase connection, candidate manifest, real recipe eligibility, PLAN/FACT write,
+  commit, push or deploy occurred. Current HEAD remains
+  `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`; the Git index remains empty.
+- Before a runnable draft, owner review and fresh deployed evidence are required for
+  additive schema compatibility, Graph-v2 manifest storage, preference/safety
+  revision authority, the shared entitlement/PLAN account lock and the protected
+  canonical-validator execution role/channel. Generator activation remains OFF.
+
+## Graph v2 persistence STAGING metadata preflight v1 — 2026-09-27
+
+- Prepared the owner-run SELECT-only artifact
+  `docs/premium/drafts/20260927_adaptive_nutrition_graph_v2_persistence_metadata_preflight_v1.sql`
+  for the explicitly labelled STAGING project `ozidryfvhkcbtpnulakq`. SHA-256:
+  `3851027f73548815571969f9ee059d49f26a3f63a7c10af31f2701b3e827db92`.
+  It was **not executed** and PostgreSQL parser/runtime compatibility is not claimed.
+- The export has one deterministic result shape (`section_id`, `section_name`,
+  `object_name`, `record_kind`, `payload_json`) and 18 numbered sections. It covers
+  exact weekly-selection/graph/receipt/event/Goal metadata; preference and safety
+  candidates; entitlement function definitions and advisory-lock evidence;
+  manifest candidates; Graph-v1 read/activation definitions; RLS/policies; table,
+  column and function ACLs; triggers; catalog dependencies and visible writer bodies.
+  Every empty section emits an explicit `NOT_FOUND_IN_SCOPED_METADATA` row.
+- Added
+  `scripts/contracts/adaptive-nutrition-graph-v2-persistence-metadata-preflight-v1.test.ts`.
+  Static checks are **5/5 PASS**: exactly one SELECT-only statement, no executable
+  mutation/DDL/transaction/role statements, no direct application-table query or
+  application-RPC call, exact STAGING label/output shape, all 18 sections and
+  balanced delimiters. Strict TypeScript and targeted ESLint are **PASS**;
+  `git diff --check` and cached diff check are **PASS**.
+- The preflight reads no application row values and invokes no discovered business
+  function. It returns function/trigger definitions only as catalog text. Matching
+  preference/safety/manifest names remain candidates until post-export semantic
+  review; absence is never upgraded beyond `NOT_FOUND_IN_SCOPED_METADATA`.
+- No Supabase connection, SQL execution, migration/RPC draft, DB/RLS/grant change,
+  runtime wiring, candidate publication, recipe eligibility, PLAN/FACT write,
+  commit, push or deploy occurred. Graph v2 runnable schema work has not started.
+  Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef` and the index
+  remains empty. The 229-file owner baseline remains byte-identical.
+- Next checkpoint: owner may manually run only the exact preflight SQL in the
+  Supabase Dashboard SQL Editor after verifying STAGING project ref
+  `ozidryfvhkcbtpnulakq`, export all rows without truncation and return the result
+  without credentials. That authorization does not include any mutation or draft apply.
+
+## Graph v2 missing server authorities design v1 — 2026-09-27
+
+- Owner-supplied STAGING metadata results confirm that weekly selections, immutable
+  graph revisions and the operations ledger are reusable; Graph v1 deployed
+  functions remain unchanged. No versioned preference authority, user safety
+  authority or protected Graph-v2 candidate-manifest authority was found. The
+  entitlement and Adaptive PLAN writers use different advisory-lock namespaces.
+- Added the pure-contract/design package
+  `docs/premium/adaptive-nutrition-graph-v2-missing-authorities-design-v1.md` and
+  `src/utils/adaptiveNutritionAuthoritiesV1.ts`. It defines immutable, digest-bound
+  `NutritionPreferenceSnapshotV1`, `NutritionSafetySnapshotV1`, a protected
+  `AdaptiveNutritionCandidateManifestV2`, strict hard-safety versus soft-preference
+  behavior, canonical ordering/bytes, exact component membership and current-head/
+  historical-read concepts. A dedicated manifest authority is recommended; the
+  replacement-offer table is explicitly rejected as publication authority.
+- Refined `TrustedGenerationInputV1` and its final CAS recheck to pin
+  `potok-shared-account-gate-v1`, exact preference/safety revisions and the candidate
+  manifest revision/digest. Graph v2's existing `catalogManifestRevision` field is
+  retained as the wire-compatible graph binding. No Graph v1 function or Graph v2
+  structure changed.
+- The shared-lock repair design requires entitlement grant/revoke, provisioning,
+  activation and future adaptation/replacement to acquire the same account-scoped
+  gate first. Capability locks are secondary and lexically ordered. A future reviewed
+  migration may replace existing function bodies atomically while preserving
+  signatures, grants and audit semantics; no executable repair was created.
+- Added 22 exact synthetic authority cases. Focused authorities + Graph v2 tests are
+  **52/52 PASS**. The broader Graph v1/activation/composition/balance/Graph v2/
+  authority set plus the existing metadata-preflight static suite is **143/143
+  PASS**. Strict TypeScript and targeted ESLint are **PASS**. These local tests do not
+  prove PostgreSQL locks, RLS, rollback or deployed grants.
+- No Supabase connection, SQL execution, runnable migration, schema/RPC/runtime
+  change, real snapshot/manifest/publication, recipe eligibility, PLAN/FACT write,
+  commit, push or deploy occurred. The current 120 authoring recipes remain
+  ineligible and the generator remains OFF. Current HEAD is
+  `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`; the Git index remains empty.
+- Next checkpoint: owner review of the authority and shared-lock design. Only after
+  explicit authorization may a bounded runnable-but-not-applied schema/lock-repair
+  draft, SELECT-only preflight, rollback-only acceptance and postcheck be prepared.
+  Any STAGING apply would require another separate approval.
+
+## Graph v2 runnable authority/activation review package — 2026-09-27
+
+- Prepared, but did not apply, the bounded Graph v2 server package:
+  `docs/premium/drafts/20260927_adaptive_nutrition_graph_v2_authorities_activation_v1.sql`
+  (`372b47e424336d9e5d31361d436855f06c0e4efe2df5d3c2fccce5d9c0764483`),
+  its SELECT-only preflight
+  (`9a52995543ab37000481c32c94d486df047397cda2f39cc2a3283ead4261fe8f`),
+  rollback-only acceptance
+  (`e1710370a594e8e54824bd1abb7e3507b8ecf0f6a9da82b9ae8f5a4776ca27be`)
+  and SELECT-only postcheck
+  (`adc6e0abef58f60b58098ecce86702e0556d1e4c31335124c4e15b35e57b3804`).
+- The migration is one transaction and adds immutable preference/safety authorities,
+  protected manifest v2 storage, Graph v2/receipt fields, version-aware constraints,
+  own-account exact reads and protected generation/activation writers. Entitlement,
+  provisioning and v1 transition writers retain their signatures/business semantics
+  while acquiring the shared account gate first. Protected writers remain unavailable
+  to `PUBLIC`, `anon`, `authenticated` and `service_role`; the execution channel is
+  explicitly `PROTECTED_EXECUTION_CHANNEL_NOT_YET_BOUND`.
+- Server digest checks now match the pure TypeScript boundaries: trusted input wrapper,
+  Graph v2 canonical envelope and GeneratedWeekPlan deterministic content are all
+  recomputed. Generation receipt creation and activation both recheck entitlement
+  evidence, weekly selection/Goal/calendar CAS, preference/safety heads, manifest
+  revision/digest and exact manifest component membership. Initial activation writes
+  PLAN graph/head/receipt only and emits no event, FACT, diary or replacement effect.
+- Added
+  `scripts/contracts/adaptive-nutrition-graph-v2-authorities-activation-v1.test.ts`.
+  Focused SQL static tests are **11/11 PASS**; authorities, Graph v2 and both SQL
+  contract suites are **68/68 PASS**. Strict TypeScript, targeted ESLint and diff
+  checks pass. No local PostgreSQL parser is available, so parser/runtime PASS is not
+  claimed and none of the SQL artifacts was executed.
+- Acceptance uses only rollback-scoped synthetic recipe evidence and the two previously
+  verified empty STAGING Auth test accounts. It covers the requested 25 scenarios;
+  actual cross-session lock blocking still requires a future explicit two-session
+  STAGING acceptance because one rollback transaction can prove common lock-resource
+  use and ordering, but cannot create real concurrent sessions.
+- No Supabase connection, SQL apply/acceptance, real authority snapshot/manifest,
+  recipe eligibility, PLAN/FACT write, runtime wiring, commit, push or deploy occurred.
+  Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`; generator and
+  protected execution channel remain OFF. Next owner checkpoint is review of the four
+  exact hashes, then separate authorization to run only the SELECT-only preflight on
+  STAGING `ozidryfvhkcbtpnulakq`. Migration apply requires a later distinct approval.
+
+## Protected execution channel and trusted generation binding design — 2026-09-30
+
+- Owner confirms the Graph v2 authorities/activation package is accepted on STAGING:
+  behavioral acceptance PASS, repaired postcheck 41/41, rollback residue zero, Graph
+  v1 preserved, shared account gate and FORCE RLS checks PASS. Production remains
+  untouched and the generator remains OFF.
+- Repository discovery found no `supabase/functions` deployment, backend route,
+  worker, queue or scheduler. The product runtime is a Vite SPA/Capacitor client plus
+  static GitHub Pages. `src/api/generateAdvice.ts` is a browser stub, not a protected
+  backend. Earlier owner evidence found no deployed Edge Function; unknown external
+  consumers remain OPEN.
+- No product runtime currently invokes the protected Graph v2 mutations. The six
+  protected authority/generation functions are postgres-owned, fixed-search-path
+  `SECURITY DEFINER` functions with no `PUBLIC`, `anon`, `authenticated` or
+  `service_role` EXECUTE path. Both Graph writers additionally require
+  `SESSION_USER = CURRENT_USER = postgres`, so a direct service-role grant is neither
+  sufficient nor acceptable.
+- Added `docs/premium/adaptive-nutrition-protected-execution-channel-v1.md`. The
+  recommended minimal architecture is one user-authenticated Supabase Edge Function
+  orchestrator, a durable generation request in the existing operations ledger,
+  server-derived authority bindings, an unprivileged deterministic generator, trusted
+  validation, separate durable record and atomic activation transactions, and an
+  exact receipt-bound read after activation.
+- Record and activation remain separate because the settled generation receipt is the
+  crash-recovery checkpoint. Retry preserves the original request/phase keys; stale
+  entitlement, Goal, preference, safety, manifest, policy, selection or plan-head
+  evidence fails closed. A background task may improve latency but is not treated as
+  durable authority.
+- Runtime binding needs a separately reviewed local contract package: authenticated
+  request/status RPCs deriving `auth.uid()`, narrow server-only authority-load/record/
+  activate gateways, and a safe replacement for the postgres-session sentinel. The
+  internal writers keep no direct application-role or service-role grants. Proposed
+  reuse of the operations ledger must first pass a deployed constraint preflight.
+- Existing writer validation, shared gate, authority rechecks, graph insert, selection
+  CAS and receipt settlement do not need redesign. Real generation remains blocked by
+  the absence of the orchestrator/channel and by the lack of a proven real published
+  candidate manifest containing canonical generator-eligible recipes. Synthetic
+  acceptance content is not product content.
+- No SQL/Supabase call, DB/Edge/runtime activation, production change, commit, push or
+  deploy occurred. The next bounded package is local DTO/lifecycle/gateway SQL design
+  plus synthetic tests. Any STAGING apply or Edge deployment requires a later,
+  separate owner checkpoint.
+
+## Protected execution binding local review package — 2026-09-30
+
+- Current HEAD remains `4a0e47a8f41cb13aa01218139e5193ade0ae32ef`. Prepared the
+  local-only Edge request/status DTO and recovery orchestrator under
+  `supabase/functions/adaptive-nutrition-generate-v2/`; the real generator and trusted
+  validator are explicitly `null`, so no record or activation call is reachable.
+- Prepared the runnable-but-not-applied protected binding migration
+  `docs/premium/drafts/20260930_adaptive_nutrition_protected_execution_binding_v1.sql`
+  (`dabee8eee73060ce04ab02ba78168c26c739c2c4c944440aad66631088cd232d`),
+  SELECT-only preflight
+  (`4b5693accf35d9e3695fc3d8a4ff1808bfe1b15e281bb2f8e604e8f91cf4c887`),
+  rollback-only acceptance
+  (`291ce5670cdc79d4bf08e803c71adb7a4b005e613f1c752abe1bd335369c440a`)
+  and SELECT-only postcheck
+  (`390e375201d34b81992ea9027f91983351aab9f6cb5d0f7a4e207982368a5feb`).
+  None was executed and no PostgreSQL parser/runtime PASS is claimed.
+- The package adds authenticated request/status boundaries, a protected durable
+  lifecycle projection and exactly three `service_role` gateways. The six internal
+  authority/Graph functions retain no application or direct `service_role` EXECUTE.
+  The two Graph writers become fixed-search-path `SECURITY INVOKER` functions with a
+  `CURRENT_USER=postgres` sentinel, so only an owner session or reviewed postgres-owned
+  definer gateway can cross the internal boundary.
+- Goal nutrition corridors are not inferred from `user_goals`. An immutable reviewed
+  `GoalNutritionTargetV1` authority binds exact account, Goal revision and target-policy
+  revision; the migration publishes neither target nor policy rows. Real requests
+  therefore remain fail closed until separate evidence publication. The acceptance
+  uses only rollback-scoped synthetic target/policy/manifest data.
+- Owner-run preflight exposed invalid schema qualification of SQL-special-form
+  `COALESCE` (`ERROR 42883`). Local repair removed only `pg_catalog.` from five
+  preflight, six postcheck and two migration expressions; acceptance had no
+  same-class occurrence. Query and migration semantics are otherwise unchanged.
+- Focused protected-channel plus existing Graph-v2 SQL regression: **79/79 PASS**.
+  Broader Graph v1, activation, Meal Composition, Balance/Goal, authorities and Graph
+  v2 regression: **164/164 PASS**. Full project TypeScript, strict standalone Edge/test
+  TypeScript and targeted ESLint pass. Preflight/postcheck are one SELECT-only statement;
+  acceptance has one `BEGIN`, no `COMMIT` and final `ROLLBACK`. Diff and secret scans pass.
+- No Supabase call, SQL apply, Edge deploy, generator activation, manifest/policy/target
+  publication, PLAN/FACT/diary/replacement write, commit, push or production change
+  occurred. The Git index remains empty. The 229-file owner baseline is byte-identical
+  at SHA-256 `b095d79bac22f6e2c784870e25b4d8af29dc256e152964072e05762cdb0a8936`.
+- OPEN blockers: deployed ledger preflight evidence, reviewed real policy/Goal-target
+  publication, real canonical generator-eligible manifest, real generator implementation,
+  trusted-validator binding and live PostgreSQL/Edge acceptance. Next owner checkpoint is
+  authorization to run only the exact SELECT-only preflight on STAGING
+  `ozidryfvhkcbtpnulakq`; migration apply and Edge deployment remain separate approvals.
+
+## Protected execution binding accepted on STAGING — 2026-10-03
+
+- Owner-run STAGING evidence for project `ozidryfvhkcbtpnulakq` closes the protected
+  execution server checkpoint: migration applied, auth-contract repair applied,
+  schema-USAGE repair applied, rollback-only behavioral acceptance reached its final
+  `ROLLBACK`, and the final SELECT-only postcheck passed **15/15** with zero fixture
+  residue. Graph v2 exact receipt-bound read passed, Graph v1 remained preserved,
+  `service_role` retained exactly three narrow gateway EXECUTE paths, and direct
+  EXECUTE on the internal six functions remained denied.
+- Final local artifacts matching that accepted checkpoint are: protected binding
+  migration SHA-256
+  `dabee8eee73060ce04ab02ba78168c26c739c2c4c944440aad66631088cd232d`,
+  preflight `4b5693accf35d9e3695fc3d8a4ff1808bfe1b15e281bb2f8e604e8f91cf4c887`,
+  behavioral acceptance
+  `c3d64119cba5cfdb821d6c0d81ee90d42bbd852196270371305b97cecf985069`,
+  postcheck `525af330cb018600928d1a9c3ab38def3d090c96e9f8bac529d2181152018050`,
+  auth-contract repair
+  `0cf5bb96c64fcf5da8be978b0017b28e08d1241b5c1b5d2eb4021c825b160a53`,
+  and schema-USAGE repair
+  `f15ce100b65a8c61e00ff6ed2c3f206d5bb30803df2369e85cbae805ca7b0463`.
+- The accepted Graph v2 persistence/authority foundation remains represented by the
+  migration SHA-256
+  `372b47e424336d9e5d31361d436855f06c0e4efe2df5d3c2fccce5d9c0764483`;
+  its latest repaired SELECT-only postcheck is
+  `198048a1a4e7abc012442ae8ab4c28bb32cf50f8e21913c29187ec2f75a9bc5d`.
+- Edge remains **NOT DEPLOYED**, the real generator and trusted validator remain
+  **NOT ACTIVATED**, no real candidate manifest/policy/Goal-target publication was
+  performed, and production remains untouched. The local Edge skeleton keeps both
+  generator and validator bindings disabled and is not runtime evidence.
+- Current Git checkpoint preparation is read-only apart from this resume update:
+  no staging, commit, push, Supabase call, Edge deploy or production change. The Git
+  index remains empty and the recorded 229-file owner baseline remains byte-identical
+  at SHA-256 `b095d79bac22f6e2c784870e25b4d8af29dc256e152964072e05762cdb0a8936`.
+- Remaining product blockers are real generator implementation, reviewed trusted
+  validator binding, and publication of real policy/Goal-target/canonical recipe
+  manifest evidence. They are future work and are not part of this accepted server
+  checkpoint.
