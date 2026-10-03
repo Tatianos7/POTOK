@@ -14,3 +14,4 @@ Checkpoint date: 2026-10-03
 - Production database: **untouched**.
 - Existing local future work: **72 paths remain uncommitted**; owner baseline paths remain separate and preserved.
 - Next phase: prepare Codex Cloud on separate branches and pull requests, without direct work on `master`.
+Cloud workflow test: verified via branch/PR.
