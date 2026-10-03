@@ -330,10 +330,10 @@ test('request/status are authenticated and gateways derive account from durable 
 
 test('Edge source keeps secrets in environment and real generator disabled', () => {
   assert.match(edgeIndex, /Deno\.env\.get/);
-  assert.match(edgeIndex, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.doesNotMatch(edgeIndex, /SUPABASE_SERVICE_ROLE_KEY|continueGenerationV2|gatewayClient/);
   assert.match(edgeIndex, /const generator: GenerationProposalProviderV2 \| null = null/);
   assert.match(edgeIndex, /const validator: TrustedGenerationValidatorV2 \| null = null/);
-  assert.match(edgeIndex, /return json\(202, requested\)/);
+  assert.match(edgeIndex, /Deno\.serve\(createRequestStatusHandlerV2\(/);
   assert.doesNotMatch(edgeIndex, /generatorActivated/);
   assert.doesNotMatch(edgeIndex, /(?:eyJ[a-zA-Z0-9_-]{20,}\.|sb_secret_[a-zA-Z0-9_-]{8,}|service_role\s*[:=]\s*['"][^'"]+)/);
 });
