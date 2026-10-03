@@ -42,6 +42,17 @@ ios/.DS_Store
 *.orig.*
 web
 
+# Local secrets and generated Supabase state
+.env
+.env.*
+!.env.example
+secret/
+secrets/
+credentials/
+credentials*.json
+*.pem
+supabase/.temp/
+
 # Smoke test artifacts
 scripts/smoke-*.png
 scripts/smoke-results.json
