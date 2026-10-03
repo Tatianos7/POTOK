@@ -119,8 +119,14 @@ Server/data layer. STAGING используется для проверок и �
 
 ## 5. Нормальный путь задачи
 
-Идея → решение → Codex Cloud → branch → tests → PR → review → merge → deploy при
-необходимости.
+Идея → решение → Codex Cloud → branch → tests → PR → review → проверка workflow
+impact → owner approval → merge → post-merge verification.
+
+Если merge в `master` автоматически запускает deployment, этот ожидаемый deploy
+является частью эффекта merge и должен быть явно разрешён owner approval до
+merge. Нельзя описывать такой deploy как отдельное решение, принимаемое после
+merge. Отдельный deploy после merge возможен только тогда, когда он не запускается
+автоматически и для него получено необходимое разрешение.
 
 После завершения существенного блока нужно обновлять `CURRENT_STATE.md`.
 
@@ -142,7 +148,8 @@ Server/data layer. STAGING используется для проверок и �
 
 Всегда требуется отдельное разрешение перед:
 
-- merge в `master`;
+- merge в `master`, включая каждый ожидаемый deployment, который автоматически
+  запускается этим merge;
 - Supabase schema/data/RLS/RPC mutation;
 - изменениями production DB;
 - Edge deploy;
@@ -152,6 +159,11 @@ Server/data layer. STAGING используется для проверок и �
 - destructive migration;
 - backfill;
 - удалением данных.
+
+Если merge запускает GitHub Pages deploy, владелец должен узнать об этом эффекте
+до approval, а разрешение на merge должно одновременно явно разрешать этот web
+deploy. Такое разрешение не включает Supabase, Edge или production DB: они
+остаются отдельными approval checkpoints.
 
 Для Codex Cloud прямой commit или push в `master`, force push и history rewrite
 запрещены правилами `AGENTS.md`; вместо них всегда используется отдельная branch
@@ -207,12 +219,23 @@ production decision
 - тесты прошли;
 - секретов нет;
 - случайных изменений нет;
-- hidden production effect отсутствует;
+- проверен workflow impact merge;
+- все автоматические deployment effects выявлены;
+- если merge запускает GitHub Pages deploy, владелец уведомлён об этом до
+  approval;
+- owner approval явно охватывает merge и ожидаемый автоматический web deploy;
+- Supabase, Edge и production DB не считаются разрешёнными вместе с web deploy;
+- скрытые production effects отсутствуют;
 - `master` напрямую не менялся;
 - статус задачи соответствует факту.
 
+Если merge автоматически запускает GitHub Pages deploy, решение о таком deploy
+принимается до merge вместе с owner approval. После merge проверяется результат
+уже ожидаемого deployment, а не принимается новое решение о его запуске.
+
 После merge:
 
+- проверить статус ожидаемого автоматического deployment;
 - обновить `CURRENT_STATE.md`;
 - зафиксировать новый `master` SHA;
 - отметить следующий шаг.
