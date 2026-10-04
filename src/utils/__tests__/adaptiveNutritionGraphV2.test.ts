@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import {
   adaptiveMealCompositionEligibilityV1_1,
   composeAdaptiveMealV1,
@@ -24,6 +25,9 @@ import {
   bindGeneratedWeekPlanV1,
   decodeAdaptiveNutritionGraphV2,
   decodeTrustedGenerationInputV1,
+  decodeTrustedGenerationInputRawV1,
+  decodeGeneratedWeekPlanV1,
+  decodeGeneratedWeekPlanRawV1,
   encodeAdaptiveNutritionGraphCanonicalV2,
   finalizeGeneratedWeekPlanV1,
   generatedWeekPlanContractV1,
@@ -34,6 +38,7 @@ import {
   trustedGenerationInputDigestV1,
   type AdaptiveNutritionGraphDraftV2,
   type AdaptiveNutritionGraphV2,
+  type GeneratedWeekPlanV1,
   type GenerationAuthorityRecheckV1,
   type GraphV2ComponentEvidenceBinding,
   type TrustedGenerationInputV1,
@@ -58,6 +63,139 @@ const id = (): string => uuid(nextId++);
 const policyRevision = uuid(600);
 const goalRevision = uuid(601);
 const targetPolicyRevision = uuid(602);
+
+// Independent content checksum for malicious outputs that re-sign their own content.
+function contentJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(contentJson).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    const row = value as Record<string, unknown>;
+    return `{${Object.keys(row).sort().map((key) => `${JSON.stringify(key)}:${contentJson(row[key])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function resignContent(plan: GeneratedWeekPlanV1): void {
+  const content: Record<string, unknown> = { ...plan };
+  delete content.deterministicContentDigest;
+  plan.deterministicContentDigest = createHash('sha256').update(contentJson(content), 'utf8').digest('hex');
+}
+
+test('strict input and generated plan decode through duplicate-aware raw boundaries', async () => {
+  const graph = await graphFixture(3);
+  const input = generationInput(graph);
+  const before = structuredClone(input);
+  assert.deepEqual(decodeTrustedGenerationInputRawV1(JSON.stringify(input)), input);
+  const plan = await bindGeneratedWeekPlanV1(input, graph);
+  assert.deepEqual(await decodeGeneratedWeekPlanV1(plan, input), plan);
+  assert.deepEqual(await decodeGeneratedWeekPlanRawV1(JSON.stringify(plan), input), plan);
+  const reordered = Object.fromEntries(Object.entries(plan).reverse());
+  assert.deepEqual(await decodeGeneratedWeekPlanRawV1(JSON.stringify(reordered), input), plan);
+  assert.deepEqual(input, before);
+});
+
+test('strict generated plan rejects unknown fields, wrong types and PLAN/FACT contamination', async () => {
+  const graph = await graphFixture();
+  const input = generationInput(graph);
+  const plan = await bindGeneratedWeekPlanV1(input, graph);
+  for (const alter of [
+    (row: Record<string, unknown>) => { row.injectedInput = input; },
+    (row: Record<string, unknown>) => { row.contract = 'other'; },
+    (row: Record<string, unknown>) => { row.accountId = 1; },
+    (row: Record<string, unknown>) => { row.weekStartLocal = 20260928; },
+    (row: Record<string, unknown>) => { row.graphDigest = null; },
+    (row: Record<string, unknown>) => { row.graph = []; },
+    (row: Record<string, unknown>) => { row.facts = {}; },
+    (row: Record<string, unknown>) => { row.facts = [{ consumed: true }]; },
+    (row: Record<string, unknown>) => { row.generatedAt = '2026-09-28T00:00:00.000Z'; },
+  ]) {
+    const bad = structuredClone(plan) as unknown as Record<string, unknown>;
+    alter(bad);
+    await assert.rejects(decodeGeneratedWeekPlanV1(bad, input));
+  }
+  assert.throws(() => decodeTrustedGenerationInputRawV1(JSON.stringify({ ...input, authority: 'generator' })));
+  assert.throws(() => decodeTrustedGenerationInputRawV1(JSON.stringify({ ...input, accountId: 1 })));
+  await assert.rejects(decodeGeneratedWeekPlanV1(plan, { ...input, accountId: 1 }));
+});
+
+test('raw input/output rejects nested and escaped duplicate keys before JSON.parse', async () => {
+  const graph = await graphFixture();
+  const input = generationInput(graph);
+  const plan = await bindGeneratedWeekPlanV1(input, graph);
+  const rawInput = JSON.stringify(input);
+  const rawPlan = JSON.stringify(plan);
+  assert.throws(() => decodeTrustedGenerationInputRawV1(rawInput.replace('"accountId":', '"accountId":"ignored","accountId":')));
+  assert.throws(() => decodeTrustedGenerationInputRawV1(rawInput.replace('"target":"1400.000"', '"target":"9000.000","ta\\u0072get":"1400.000"')));
+  await assert.rejects(decodeGeneratedWeekPlanRawV1(rawPlan.replace('"graphDigest":', '"graphDigest":"ignored","graphDigest":'), input));
+  await assert.rejects(decodeGeneratedWeekPlanRawV1(rawPlan.replace('"dayIndex":0', '"dayIndex":1,"dayIndex":0'), input));
+  assert.throws(() => decodeTrustedGenerationInputRawV1('{'));
+  await assert.rejects(decodeGeneratedWeekPlanRawV1('{', input));
+});
+
+test('input and embedded Graph reject noncanonical decimal forms without float conversion', async () => {
+  const graph = await graphFixture();
+  const input = generationInput(graph);
+  const plan = await bindGeneratedWeekPlanV1(input, graph);
+  for (const value of ['1400', '1400.0', '01400.000', '1.4e3', '+1400.000', '-0.000', '1400.0000', 1400]) {
+    const badInput = structuredClone(input);
+    (badInput.goalNutritionTarget.calories as unknown as Record<string, unknown>).target = value;
+    assert.throws(() => decodeTrustedGenerationInputRawV1(JSON.stringify(badInput)));
+    const badPlan = structuredClone(plan);
+    (badPlan.graph.goalNutritionTarget.calories as unknown as Record<string, unknown>).target = value;
+    await assert.rejects(decodeGeneratedWeekPlanRawV1(JSON.stringify(badPlan), input));
+  }
+});
+
+for (const field of ['accountId', 'selectionId', 'planSelectionRevision', 'weekStartLocal', 'timezone',
+  'generationPolicyRevision', 'goalRevision', 'targetPolicyRevision', 'proposedPlanRevision',
+  'candidateManifestDigest', 'generationInputDigest', 'graphDigest'] as const) {
+  test(`self-checksummed generated ${field} cannot replace pinned authority`, async () => {
+    const graph = await graphFixture();
+    const input = generationInput(graph);
+    const plan = await bindGeneratedWeekPlanV1(input, graph);
+    plan[field] = field === 'weekStartLocal' ? '2026-10-05' : field === 'timezone' ? 'UTC'
+      : field.endsWith('Digest') ? hash('f') : uuid(999);
+    resignContent(plan);
+    await assert.rejects(decodeGeneratedWeekPlanV1(plan, input), new RegExp(`generated_week_${field}_mismatch`));
+  });
+}
+
+for (const field of ['preferenceRevision', 'safetyRevision', 'candidateManifestRevision',
+  'candidateManifestDigest', 'compositionPolicyRevision', 'validationPolicyRevision',
+  'optimizationPolicyRevision', 'generationPolicyRevision'] as const) {
+  test(`internally consistent generated ${field} cannot replace pinned input`, async () => {
+    const graph = await graphFixture();
+    // Empty slots isolate authority checks from slot evidence bindings.
+    for (const day of graph.days) { day.slots = []; day.nutritionTotal = zero; }
+    const input = structuredClone(generationInput(graph));
+    const changedInput = structuredClone(input);
+    changedInput[field] = field.endsWith('Digest') ? hash('f') : uuid(999);
+    if (field === 'candidateManifestRevision') graph.catalogManifestRevision = changedInput[field];
+    else graph[field] = changedInput[field];
+    const plan = await bindGeneratedWeekPlanV1(changedInput, graph);
+    await assert.rejects(decodeGeneratedWeekPlanV1(plan, input), /STALE/);
+  });
+}
+
+test('generated Graph cannot alter full Goal target with identical authoritative revisions', async () => {
+  const graph = await graphFixture();
+  const input = structuredClone(generationInput(graph));
+  const changedInput = structuredClone(input);
+  changedInput.goalNutritionTarget.calories = { target: '9000.000', min: '8000.000', max: '10000.000' };
+  graph.goalNutritionTarget = changedInput.goalNutritionTarget;
+  const plan = await bindGeneratedWeekPlanV1(changedInput, graph);
+  await assert.rejects(decodeGeneratedWeekPlanV1(plan, input), /GOAL_TARGET_MISMATCH/);
+});
+
+test('deterministic content digest is independently verified, not trusted from output', async () => {
+  const graph = await graphFixture();
+  const input = generationInput(graph);
+  const plan = await bindGeneratedWeekPlanV1(input, graph);
+  const independentlyHashed = structuredClone(plan);
+  resignContent(independentlyHashed);
+  assert.equal(independentlyHashed.deterministicContentDigest, plan.deterministicContentDigest);
+  plan.deterministicContentDigest = hash('f');
+  await assert.rejects(decodeGeneratedWeekPlanV1(plan, input), /content_digest_mismatch/);
+});
 
 test('full authoritative Goal target rejects altered calories and optional macros with identical revisions', async () => {
   const graph = await graphFixture();
