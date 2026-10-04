@@ -9,6 +9,7 @@ import {
   type GoalNutritionTargetV1,
 } from './adaptiveNutritionMealBalanceV1';
 import type { GraphMealTypeV1, GraphNutritionV1 } from './adaptiveNutritionGraphV1';
+import { assertRawJsonWithoutDuplicateKeysV1 } from './adaptiveNutritionWireV1';
 
 export const adaptiveNutritionGraphContractV2 = 'adaptive_nutrition_graph_v2' as const;
 export const adaptiveNutritionGraphEncodingV2 = 'potok-adaptive-nutrition-graph-v2-canonical-json-v1' as const;
@@ -336,6 +337,12 @@ export function trustedGenerationInputDigestV1(value: unknown): Promise<string> 
   return sha256({ contract: trustedGenerationInputContractV1, input: decodeTrustedGenerationInputV1(value) });
 }
 
+/** Apply to original JSON before parsing; provenance must come from the trusted caller. */
+export function decodeTrustedGenerationInputRawV1(raw: string): TrustedGenerationInputV1 {
+  assertRawJsonWithoutDuplicateKeysV1(raw);
+  return decodeTrustedGenerationInputV1(JSON.parse(raw));
+}
+
 function decodeComponentEvidence(value: unknown): GraphV2ComponentEvidenceBinding {
   const row = record(value, ['mealComponentId', 'eligibilityRevisionId', 'publicationRevision',
     'canonicalEvidenceRevision', 'nutritionEvidenceRevision', 'allergenEvidenceRevision',
@@ -568,6 +575,50 @@ export async function bindGeneratedWeekPlanV1(inputValue: unknown, graphValue: u
     facts: [] as [],
   };
   return { ...content, deterministicContentDigest: await sha256(content) };
+}
+
+/**
+ * Decode untrusted output against a separately supplied, server-pinned input.
+ * The output cannot provide its own input or establish authority provenance.
+ * Object callers must already have enforced a duplicate-aware raw boundary.
+ */
+export async function decodeGeneratedWeekPlanV1(value: unknown,
+  pinnedInputValue: unknown): Promise<GeneratedWeekPlanV1> {
+  const input = decodeTrustedGenerationInputV1(pinnedInputValue);
+  const row = record(value, ['contract', 'accountId', 'selectionId', 'planSelectionRevision',
+    'weekStartLocal', 'timezone', 'generationInputDigest', 'generationPolicyRevision',
+    'candidateManifestDigest', 'goalRevision', 'targetPolicyRevision', 'proposedPlanRevision',
+    'graph', 'graphDigest', 'generatedAt', 'facts', 'deterministicContentDigest'], 'generated_week_plan');
+  if (row.contract !== generatedWeekPlanContractV1) throw new Error('unsupported_generated_week_plan');
+  for (const key of ['accountId', 'selectionId', 'planSelectionRevision', 'generationPolicyRevision',
+    'goalRevision', 'targetPolicyRevision', 'proposedPlanRevision']) uuid(row[key], key);
+  date(row.weekStartLocal, 'generated_week_start');
+  timezone(row.timezone);
+  for (const key of ['generationInputDigest', 'candidateManifestDigest', 'graphDigest',
+    'deterministicContentDigest']) digestHex(row[key], key);
+  if (row.generatedAt !== null || !Array.isArray(row.facts) || row.facts.length !== 0) {
+    throw new Error('generated_week_requires_null_timestamp_and_no_facts');
+  }
+  const graph = await decodeAdaptiveNutritionGraphV2(row.graph);
+  const content: Record<string, unknown> = { ...row, graph };
+  delete content.deterministicContentDigest;
+  // Verify the received content independently, before comparing to pinned authority.
+  if (row.deterministicContentDigest !== await sha256(content)) {
+    throw new Error('generated_week_content_digest_mismatch');
+  }
+  const expected = await bindGeneratedWeekPlanV1(input, graph);
+  for (const key of Object.keys(expected) as Array<keyof GeneratedWeekPlanV1>) {
+    if (canonicalJson(row[key]) !== canonicalJson(expected[key])) {
+      throw new Error(`generated_week_${key}_mismatch`);
+    }
+  }
+  return expected;
+}
+
+export async function decodeGeneratedWeekPlanRawV1(raw: string,
+  pinnedInputValue: unknown): Promise<GeneratedWeekPlanV1> {
+  assertRawJsonWithoutDuplicateKeysV1(raw);
+  return decodeGeneratedWeekPlanV1(JSON.parse(raw), pinnedInputValue);
 }
 
 export async function finalizeGeneratedWeekPlanV1(inputValue: unknown, graphValue: unknown,
