@@ -59,6 +59,23 @@ const policyRevision = uuid(600);
 const goalRevision = uuid(601);
 const targetPolicyRevision = uuid(602);
 
+test('full authoritative Goal target rejects altered calories and optional macros with identical revisions', async () => {
+  const graph = await graphFixture();
+  const input = structuredClone(generationInput(graph));
+  assert.equal(input.goalNutritionTarget.calories.target, '1400.000');
+  for (const alter of [
+    (target: GoalNutritionTargetV1) => { target.calories = { target: '9000.000', min: '8000.000', max: '10000.000' }; },
+    (target: GoalNutritionTargetV1) => { target.protein = { target: '100.000', min: '80.000', max: '120.000' }; },
+    (target: GoalNutritionTargetV1) => { target.calories.max = '3000.000'; },
+  ]) {
+    const changed = structuredClone(graph);
+    alter(changed.goalNutritionTarget);
+    await assert.rejects(bindGeneratedWeekPlanV1(input, changed), /GOAL_TARGET_MISMATCH/);
+    await assert.rejects(finalizeGeneratedWeekPlanV1(input, changed, authority(input)), /GOAL_TARGET_MISMATCH/);
+  }
+  await bindGeneratedWeekPlanV1(input, graph);
+});
+
 function candidate(role: MealComponentRoleV1, anchorKind: MealAnchorKindV1,
   requiredCompanionRoleSets: MealComponentRoleV1[][] = []): MealComponentCandidateV1 {
   const recipeId = id();

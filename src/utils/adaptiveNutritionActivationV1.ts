@@ -433,6 +433,10 @@ export function validateActivateGeneratedWeekV1(
         || canonicalJson(candidate.recipeSnapshot) !== canonicalJson(recipe)) {
       throw new Error('activation_graph_content_not_in_manifest');
     }
+    const servings = BigInt(canonicalDecimal(slot.snapshot.assignedPortion.assignedServings,
+      'assigned_servings', true).replace('.', ''));
+    const increment = BigInt(candidate.portionRules.assignedServingsIncrement.replace('.', ''));
+    if (servings % increment !== 0n) throw new Error('activation_assigned_servings_increment_mismatch');
   }
   return {
     contract: activateGeneratedWeekContractV1,

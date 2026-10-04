@@ -20,7 +20,7 @@ import {
   type AdaptiveCatalogManifestV1,
   type PlanActivatedReceiptV1,
 } from '../adaptiveNutritionActivationV1';
-import { encodeAdaptiveNutritionGraphCanonicalV1 } from '../adaptiveNutritionGraphV1';
+import { encodeAdaptiveNutritionGraphCanonicalV1, scalePremiumRecipeCollectionV1 } from '../adaptiveNutritionGraphV1';
 import type {
   AdaptiveNutritionGraphV1,
   GraphComponentV1,
@@ -127,6 +127,34 @@ function manifest(): AdaptiveCatalogManifestV1 {
     }],
   };
 }
+
+test('activation enforces reviewed servings increments even for continuous components', () => {
+  const c = command();
+  const m = manifest();
+  m.recipes[0].portionRules.assignedServingsIncrement = '2.000';
+  assert.equal(c.graph.days[0].slots[0].snapshot.assignedPortion.assignedServings, '1.000');
+  assert.throws(() => validateActivateGeneratedWeekV1(c, m), /activation_assigned_servings_increment_mismatch/);
+  m.recipes[0].portionRules.assignedServingsIncrement = '0.500';
+  assert.doesNotThrow(() => validateActivateGeneratedWeekV1(c, m));
+  const multiple = structuredClone(c);
+  const snapshot = multiple.graph.days[0].slots[0].snapshot;
+  const scaled = scalePremiumRecipeCollectionV1(snapshot.recipe, '2.000');
+  snapshot.assignedPortion = { ...snapshot.assignedPortion, assignedServings: '2.000',
+    servingMultiplier: scaled.scaleFactor, assignedGrams: '100.000' };
+  snapshot.ingredients = scaled.ingredients;
+  snapshot.nutrition = scaled.nutrition;
+  m.recipes[0].portionRules.assignedServingsIncrement = '2.000';
+  assert.doesNotThrow(() => validateActivateGeneratedWeekV1(multiple, m));
+  const slot = c.graph.days[0].slots[0];
+  slot.snapshot.recipe.ingredients[0].scaling = { mode: 'continuous' };
+  slot.snapshot.ingredients[0].scaling = { mode: 'continuous' };
+  m.recipes[0].recipeSnapshot = structuredClone(slot.snapshot.recipe);
+  m.recipes[0].portionRules.componentIncrements = [];
+  m.recipes[0].portionRules.assignedServingsIncrement = '2.000';
+  assert.throws(() => validateActivateGeneratedWeekV1(c, m), /activation_assigned_servings_increment_mismatch/);
+  m.recipes[0].portionRules.assignedServingsIncrement = '0.500';
+  assert.doesNotThrow(() => validateActivateGeneratedWeekV1(c, m));
+});
 
 function command(): ActivateGeneratedWeekV1 {
   return {

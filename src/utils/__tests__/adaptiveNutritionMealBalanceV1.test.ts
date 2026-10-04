@@ -335,6 +335,27 @@ async function sevenDays(options: { sharedRecipes?: Map<number, MealComponentCan
   return days;
 }
 
+for (const corruption of ['digest', 'nutrition', 'composition', 'evidence'] as const) {
+  test(`day/week preserve structured meal ${corruption} failure without throwing`, async () => {
+    const days = await sevenDays();
+    const input = days[0].meals[0].validationInput;
+    if (corruption === 'digest') input.meal.digest = '0'.repeat(64);
+    if (corruption === 'nutrition') input.meal.nutrition.calories = '999.000';
+    if (corruption === 'composition') input.meal.components[0].eligibility.anchorKind = 'NONE';
+    if (corruption === 'evidence') input.componentEvidence[0].canonicalEvidenceRevision = null;
+    const mealResult = await validateMealSnapshotV1(input);
+    assert.ok(['INVALID', 'BLOCKED_MISSING_EVIDENCE'].includes(mealResult.status));
+    const dayResult = await validateDaySnapshotV1(days[0]);
+    const weekResult = await validateWeekSnapshotV1(weekInput(days));
+    assert.equal(dayResult.status, mealResult.status);
+    assert.equal(weekResult.status, mealResult.status);
+    for (const child of mealResult.reasons) {
+      assert.ok(dayResult.reasons.some((reason) => reason.code === child.code && reason.severity === child.severity));
+      assert.ok(weekResult.reasons.some((reason) => reason.code === child.code && reason.severity === child.severity));
+    }
+  });
+}
+
 function validResult(status: ValidatorResultV1['status'] = 'VALID'): ValidatorResultV1 {
   const reasons: ValidatorResultV1['reasons'] = status === 'INVALID' ? [{
     code: 'MEAL_TARGET_MISMATCH', severity: 'ERROR', path: 'nutritionBounds', evidenceRevision: null,

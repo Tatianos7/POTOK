@@ -306,6 +306,7 @@ function auditCanonicalIngredient(
   }
   if (ingredient.canonicalStatus === 'UNRESOLVED') pushBlocker(blockers, 'CANONICAL_UNRESOLVED', path);
   if (ingredient.canonicalStatus === 'AMBIGUOUS') pushBlocker(blockers, 'CANONICAL_AMBIGUOUS', path);
+  if (ingredient.canonicalStatus !== 'RESOLVED') pushBlocker(blockers, 'CANONICAL_POINTER_INVALID', path);
   if (!ingredient.foodStableId || !ingredient.canonical?.canonicalFoodId) {
     pushBlocker(blockers, 'CANONICAL_FOOD_ID_MISSING', path);
     if (!ingredient.canonical?.evidenceRevision || !ingredient.canonical?.evidenceDigest) {
@@ -313,7 +314,6 @@ function auditCanonicalIngredient(
     }
     return;
   }
-  if (ingredient.canonicalStatus !== 'RESOLVED') return;
   const pointer = ingredient.canonical;
   if (!uuidPattern.test(pointer.canonicalFoodId) || pointer.foodStableId !== ingredient.foodStableId
       || !stableKeyPattern.test(pointer.foodStableId) || !['core', 'brand'].includes(pointer.source)) {

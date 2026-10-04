@@ -34,6 +34,27 @@ const ids = {
 };
 
 const digest = 'a'.repeat(64);
+
+test('food NOT_APPLICABLE cannot bypass private pointer and missing canonical evidence', () => {
+  const authoring = validAuthoring();
+  const food = authoring.ingredients[0];
+  food.canonicalStatus = 'NOT_APPLICABLE';
+  assert.ok(food.canonical);
+  food.canonical.source = 'private';
+  food.canonical.sharedCatalogAccessible = false;
+  food.canonical.evidenceRevision = '';
+  food.canonical.evidenceDigest = '';
+  const readiness = auditCuratedRecipePublicationV1(authoring);
+  assert.notEqual(readiness.status, 'READY_FOR_PUBLICATION');
+  for (const code of ['CANONICAL_POINTER_INVALID', 'CANONICAL_FOOD_INACCESSIBLE', 'CANONICAL_EVIDENCE_MISSING']) {
+    assert.ok(readiness.blockers.some((blocker) => blocker.code === code));
+  }
+  const nonFood = validAuthoring();
+  nonFood.ingredients[0].componentKind = 'approved_non_food';
+  nonFood.ingredients[0].canonicalStatus = 'NOT_APPLICABLE';
+  nonFood.ingredients[0].approvedNonFoodEvidenceRef = 'owner-reviewed:non-food';
+  assert.ok(!auditCuratedRecipePublicationV1(nonFood).blockers.some((blocker) => blocker.code.startsWith('CANONICAL_')));
+});
 const nutrition = (calories: string, protein: string, fat: string, carbs: string, fiber: string) => ({
   calories, protein, fat, carbs, fiber,
   basis: 'full_recipe' as const,

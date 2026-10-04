@@ -529,6 +529,7 @@ function inputGraphMismatch(input: TrustedGenerationInputV1, graph: AdaptiveNutr
     [input.weekStartLocal !== graph.weekStartLocal || input.timezone !== graph.timezone, 'WEEK_IDENTITY_STALE'],
     [input.goalNutritionTarget.goalRevision !== graph.goalRevision, 'GOAL_REVISION_STALE'],
     [input.goalNutritionTarget.targetPolicyRevision !== graph.targetPolicyRevision, 'TARGET_POLICY_STALE'],
+    [canonicalJson(input.goalNutritionTarget) !== canonicalJson(graph.goalNutritionTarget), 'GOAL_TARGET_MISMATCH'],
     [input.preferenceRevision !== graph.preferenceRevision, 'PREFERENCE_REVISION_STALE'],
     [input.safetyRevision !== graph.safetyRevision, 'SAFETY_REVISION_STALE'],
     [input.candidateManifestRevision !== graph.catalogManifestRevision

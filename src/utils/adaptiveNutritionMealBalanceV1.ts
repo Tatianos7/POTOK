@@ -1005,6 +1005,7 @@ export async function validateDaySnapshotV1(value: unknown): Promise<ValidatorRe
   const reasons: ValidatorReasonV1[] = [];
   const required = new Map(input.requiredSlots.map((slot) => [slot.slotId, slot]));
   const actual = new Map(input.meals.map((meal) => [meal.slotId, meal]));
+  let failedChild = false;
   for (const slot of input.requiredSlots) if (!actual.has(slot.slotId)) {
     reasons.push(reason('REQUIRED_SLOT_MISSING', 'ERROR', `requiredSlots.${slot.slotId}`));
   }
@@ -1021,8 +1022,12 @@ export async function validateDaySnapshotV1(value: unknown): Promise<ValidatorRe
       reasons.push(reason('STALE_POLICY_REVISION', 'BLOCKER', `meals.${meal.slotId}`));
     }
     const mealResult = await validateMealSnapshotV1(mealInput);
+    failedChild ||= mealResult.status === 'INVALID' || mealResult.status === 'BLOCKED_MISSING_EVIDENCE';
     for (const child of mealResult.reasons) reasons.push({ ...child, path: `meals.${meal.slotId}.${child.path}` });
   }
+  // Invalid child content is not authoritative nutrition or repeat evidence.
+  // Preserve its structured reasons before attempting aggregate computations.
+  if (failedChild) return result('DAY', input.balancePolicy.policyRevision, input, reasons);
   const decodedMeals = await Promise.all(input.meals.map((meal) => decodeMealSnapshotV1(meal.validationInput.meal)));
   const dayNutrition = addNutrition(decodedMeals.map((meal) => meal.nutrition));
   if (input.goalTarget === null) reasons.push(reason('GOAL_EVIDENCE_MISSING', 'BLOCKER', 'goalTarget'));
@@ -1100,6 +1105,7 @@ function decodeWeekInput(value: unknown): WeekValidationInputV1 {
 export async function validateWeekSnapshotV1(value: unknown): Promise<ValidatorResultV1> {
   const input = decodeWeekInput(value);
   const reasons: ValidatorReasonV1[] = [];
+  let failedChild = false;
   const monday = new Date(`${input.weekAnchor}T00:00:00.000Z`).getUTCDay() === 1;
   if (!monday || input.days.length !== 7
       || input.days.some((day, index) => day.date !== addDays(input.weekAnchor, index))) {
@@ -1117,8 +1123,11 @@ export async function validateWeekSnapshotV1(value: unknown): Promise<ValidatorR
       reasons.push(reason('WEEK_POLICY_MISMATCH', 'BLOCKER', `days.${day.date}`));
     }
     const dayResult = await validateDaySnapshotV1(day);
+    failedChild ||= dayResult.status === 'INVALID' || dayResult.status === 'BLOCKED_MISSING_EVIDENCE';
     for (const child of dayResult.reasons) reasons.push({ ...child, path: `days.${day.date}.${child.path}` });
   }
+
+  if (failedChild) return result('WEEK', input.balancePolicy.policyRevision, input, reasons);
 
   const recipeCounts = new Map<string, number>();
   const familyCounts = new Map<string, number>();
