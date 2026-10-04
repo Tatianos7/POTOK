@@ -60,7 +60,7 @@ function exactKeys(value: object, keys: string[]): boolean {
 }
 
 /** Scans the original text so escaped duplicate keys cannot disappear through JSON.parse/jsonb. */
-function scanRawJsonWithoutDuplicateKeys(raw: string): void {
+export function assertRawJsonWithoutDuplicateKeysV1(raw: string): void {
   if (typeof raw !== 'string') throw new Error('Raw JSON text required');
   let offset = 0;
   const fail = (message: string): never => { throw new Error(`${message} at ${offset}`); };
@@ -264,7 +264,7 @@ export function encodeAdaptiveNutritionCanonicalEnvelopeV1(request: AdaptiveNutr
 }
 
 export function decodeAdaptiveNutritionWireEnvelopeV1(raw: string): DecodedAdaptiveNutritionWireEnvelopeV1 {
-  scanRawJsonWithoutDuplicateKeys(raw);
+  assertRawJsonWithoutDuplicateKeysV1(raw);
   const parsed: unknown = JSON.parse(raw);
   const row = requireRecord(parsed, ['contract', 'expected', 'idempotencyKey', 'explicitConfirmation', 'action'], 'request');
   if (row.contract !== adaptiveNutritionProtocolV1) throw new Error('Invalid protocol');
