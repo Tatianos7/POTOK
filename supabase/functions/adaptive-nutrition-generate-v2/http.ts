@@ -4,7 +4,14 @@ import {
 } from './contracts.ts';
 
 export interface RequestStatusDependenciesV2 {
-  createUserClient(authorization: string): GenerationRpcClientV2;
+  createUserClient(authorization: string): RequestStatusRpcClientV2;
+}
+
+/** Preserve HTTP auth status locally without changing the accepted generation contract. */
+export interface RequestStatusRpcClientV2 extends GenerationRpcClientV2 {
+  rpc<T>(name: string, args: Record<string, unknown>): Promise<{
+    data: T | null; error: unknown | null; status?: number;
+  }>;
 }
 
 const corsHeaders = {
@@ -29,6 +36,14 @@ function json(status: number, value: unknown): Response {
   return new Response(JSON.stringify(value), {
     status, headers: { ...corsHeaders, 'content-type': 'application/json; charset=utf-8' },
   });
+}
+
+/** PostgREST JWT codes, or an explicit unauthorized HTTP status; never message matching. */
+function isAuthRejection(error: unknown, status?: number): boolean {
+  if (status === 401) return true;
+  if (typeof error !== 'object' || error === null) return false;
+  if ('status' in error && error.status === 401) return true;
+  return 'code' in error && (error.code === 'PGRST301' || error.code === 'PGRST303');
 }
 
 /** No retries, replacement keys, identity decoding, or privileged capability. */
@@ -58,11 +73,17 @@ export function createRequestStatusHandlerV2(deps: RequestStatusDependenciesV2) 
               && name !== 'adaptive_nutrition_generation_status_v2') {
             throw new GenerationEdgeErrorV2('RPC_FAILED', 502);
           }
-          let result: { data: T | null; error: unknown | null };
+          let result: { data: T | null; error: unknown | null; status?: number };
           try { result = await userClient.rpc<T>(name, args); }
-          catch { throw new GenerationEdgeErrorV2('RPC_FAILED', 502); }
+          catch (error) {
+            if (isAuthRejection(error)) throw new GenerationEdgeErrorV2('AUTH_REQUIRED', 401);
+            throw new GenerationEdgeErrorV2('RPC_FAILED', 502);
+          }
           if (result.error) {
             const error = result.error;
+            if (isAuthRejection(error, result.status)) {
+              throw new GenerationEdgeErrorV2('AUTH_REQUIRED', 401);
+            }
             const code = typeof error === 'object' && error !== null && 'message' in error
               && typeof error.message === 'string' ? error.message : '';
             const status = Object.prototype.hasOwnProperty.call(rpcErrors, code) ? rpcErrors[code] : undefined;

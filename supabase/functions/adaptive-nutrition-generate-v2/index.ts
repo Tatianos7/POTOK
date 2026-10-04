@@ -26,8 +26,8 @@ Deno.serve(createRequestStatusHandlerV2({
     });
     return {
       async rpc<T>(name: string, args: Record<string, unknown>) {
-        const { data, error } = await client.rpc(name, args);
-        return { data: data as T | null, error };
+        const { data, error, status } = await client.rpc(name, args);
+        return { data: data as T | null, error, status };
       },
     };
   },

@@ -18,14 +18,14 @@ function request(body: string = JSON.stringify(dto), method = 'POST', query = ''
     ...(method === 'POST' ? { body } : {}),
   });
 }
-function fixture(result: unknown = status, error: unknown = null) {
+function fixture(result: unknown = status, error: unknown = null, httpStatus?: number) {
   const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
   const bearers: string[] = [];
   const client: GenerationRpcClientV2 = {
     async rpc<T>(name: string, args: Record<string, unknown>) {
       calls.push({ name, args });
       assert.ok(['adaptive_nutrition_request_generation_v2', 'adaptive_nutrition_generation_status_v2'].includes(name));
-      return { data: result as T, error };
+      return { data: result as T, error, status: httpStatus };
     },
   };
   const handler = createRequestStatusHandlerV2({
@@ -161,6 +161,46 @@ test('transport failure retry uses original key; no internal retry', async () =>
   assert.equal(attempts, 1);
   assert.equal((await handler(request())).status, 202);
   assert.deepEqual(keys, [key, key]);
+});
+
+test('expired/invalid JWT rejection uses stable status/code without leaking auth details', async () => {
+  const authErrors = [
+    { error: { code: 'PGRST301', message: 'JWT expired: private auth detail', details: 'private auth detail' } },
+    { error: { code: 'PGRST303', message: 'invalid JWT: private auth detail' } },
+    { error: { code: 'other', message: 'private auth detail' }, httpStatus: 401 },
+    { error: { status: 401, message: 'private auth detail' } },
+  ];
+  for (const item of authErrors) {
+    for (const method of ['POST', 'GET']) {
+      const f = fixture(null, item.error, item.httpStatus);
+      const response = await f.handler(request(JSON.stringify(dto), method,
+        method === 'GET' ? '?requestOperationId=' + requestId : ''));
+      assert.equal(response.status, 401);
+      assert.deepEqual(await response.json(), { error: 'AUTH_REQUIRED', retryable: false });
+      assert.equal(f.calls.length, 1);
+    }
+  }
+  // Missing signing configuration, permissions, and unknown RPC errors are not JWT rejections.
+  for (const code of ['PGRST300', '42501', 'unknown']) {
+    const response = await fixture(null, { code, message: 'private auth detail' }, 500).handler(request());
+    assert.equal(response.status, 502);
+    assert.deepEqual(await response.json(), { error: 'RPC_FAILED', retryable: true });
+  }
+});
+
+test('thrown structured auth rejection is non-retryable; ordinary throw stays retryable', async () => {
+  for (const error of [{ status: 401, details: 'private auth detail' }, new Error('private transport detail')]) {
+    const handler = createRequestStatusHandlerV2({ createUserClient() {
+      return { async rpc<T>() {
+        void (null as T | null);
+        throw error;
+      } };
+    } });
+    const response = await handler(request());
+    const auth = !(error instanceof Error);
+    assert.equal(response.status, auth ? 401 : 502);
+    assert.deepEqual(await response.json(), { error: auth ? 'AUTH_REQUIRED' : 'RPC_FAILED', retryable: !auth });
+  }
 });
 
 test('unknown errors and malformed upstream DTO map safely', async () => {

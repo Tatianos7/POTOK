@@ -19,7 +19,7 @@ from the repository cannot exist. No Supabase query or mutation was run for this
 | Local operator scripts | `scripts/`; some unrelated food tools accept a local service-role environment value | Operator environment, not an end-user JWT | Graph v2 writers are revoked from `service_role` and hard-reject a non-postgres session | Tool-specific only | Not deployed runtime; must never be bundled into client code |
 | Owner SQL Editor/migration session | Supabase Dashboard/Postgres owner session | Owner-controlled database session | Yes, as `postgres` owner | Manual only | This is how protected acceptance was possible; not a product channel |
 | Postgres internal function chain | `potok_nutrition.*`, owner `postgres` | Function parameters plus server rechecks | Internal writers can call each other as owner | Durable generation/activation receipts after invocation | Strong DB boundary, but no external execution identity is bound |
-| Edge Function/backend/worker/queue | Local disabled skeleton now exists at `supabase/functions/adaptive-nutrition-generate-v2`; no deployment, worker, queue config or server CI is proven. Earlier owner metadata found no deployed Edge Function | User JWT request/status client plus a separately constructed server-only gateway client; real generator and validator are null | Local calls are limited to three proposed gateways; no deployed access exists | Pure resume orchestration preserves the durable request identity | **Prepared locally, not deployed or activated**. Unknown external consumers remain OPEN |
+| Edge Function/backend/worker/queue | Local request/status-only HTTP adapter at `supabase/functions/adaptive-nutrition-generate-v2`; no deployment, worker, queue config or server CI is proven | Only a user JWT request/status client; no privileged gateway client in the entrypoint; generator and validator remain null | Entrypoint calls only public request/status RPCs. Generation, validation, record and activation are not wired | Original request key is preserved; pure resume orchestration exists separately and is not wired | **Prepared locally, not deployed or activated**. Future `potok_nutrition` gateway transport remains unproven/unbound |
 
 The current exact product answer is therefore: protected Graph v2 mutations have no
 runtime invoker. They have only been exercised through owner-controlled PostgreSQL
@@ -59,7 +59,7 @@ Premium, finds the exact owned current-week `pending_generation` selection, pins
 authorities, and creates/replays `GENERATION_REQUESTED_V2`. The client never sends an
 authoritative account, selection, revision, manifest, Graph or digest.
 
-The same Edge invocation then uses a server-side secret client only against reviewed,
+In the future fully bound architecture, the same Edge invocation would use a server-side secret client only against reviewed,
 narrow gateway RPCs. It must not write application tables directly. The gateway derives
 the account and every identity from the durable request operation, loads the protected
 manifest, and invokes the existing owner-only record/activate logic. Internal Graph v2
@@ -317,6 +317,13 @@ Each gateway accepts the opaque request operation identity. It derives account,
 selection, phase keys and authority vector from protected state. The record gateway
 accepts generated canonical bytes only as untrusted input and delegates defensive
 verification to the existing writer. No gateway accepts account or revision arguments.
+
+These SQL boundaries do not prove that HTTP runtime transport is ready. The current
+entrypoint is request/status-only and constructs no privileged gateway client;
+generation, validator, record and activate are not wired. Future transport to
+`potok_nutrition` remains unproven/unbound and requires separate schema-routing,
+API exposure and gateway-allowlist verification. See the function's `TRANSPORT.md`.
+This inventory clarification does not change the accepted server contract.
 
 ### Writer sentinel repair
 
