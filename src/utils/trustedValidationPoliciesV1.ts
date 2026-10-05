@@ -29,89 +29,65 @@ export interface TrustedValidationPoliciesV1 {
   balance: BalancePolicySnapshotV1;
   digest: string;
 }
-/** Every context field is independently supplied by a trusted caller. Never generator data. */
-export interface TrustedValidationPoliciesContextV1 extends TrustedValidationEvidenceContextV1 {
-  evidence: unknown;
+/** Versioned transport wrapper. Every authority payload is independently parsed raw JSON. */
+export const trustedValidationPoliciesRawBoundaryContractV2 = 'potok-trusted-validation-policies-raw-boundary-v2' as const;
+export interface TrustedValidationPoliciesRawContextV2 {
+  contract: typeof trustedValidationPoliciesRawBoundaryContractV2;
+  trustedGenerationInputRaw: string;
+  candidateManifestRaw: string;
+  preferenceSnapshotRaw: string;
+  safetySnapshotRaw: string;
+  trustedValidationEvidenceRaw: string;
 }
-const digestPattern = /^[0-9a-f]{64}$/;
+interface OwnedContextV2 extends TrustedValidationEvidenceContextV1 { evidence: unknown }
+type OwnedJsonV2 = null | string | boolean | number | OwnedJsonV2[] | { [key: string]: OwnedJsonV2 };
+const hashPattern = /^[0-9a-f]{64}$/;
+/** Only this parser admits external values. No object serialization/coercion bridge exists. */
+function parseRawV2(raw: unknown): OwnedJsonV2 {
+  if (typeof raw !== 'string') throw new Error('RAW_JSON_STRING_REQUIRED');
+  assertRawJsonWithoutDuplicateKeysV1(raw);
+  const owned: OwnedJsonV2 = JSON.parse(raw);
+  assertOwnedNumbersV2(owned);
+  return owned;
+}
+// Private: callers can only reach this walk through JSON.parse-created or normalized data.
+function assertOwnedNumbersV2(value: OwnedJsonV2): void {
+  if (typeof value === 'number' && (!Number.isSafeInteger(value) || Object.is(value, -0))) {
+    throw new Error('INVALID_POLICY_JSON_NUMBER');
+  }
+  if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index += 1) assertOwnedNumbersV2(value[index]);
+  } else if (value && typeof value === 'object') {
+    for (const key of Object.keys(value)) assertOwnedNumbersV2(value[key]);
+  }
+}
+// Private object helpers never receive arbitrary external JS object graphs.
 function record(value: unknown, keys: readonly string[]): Record<string, unknown> {
-  value = cloneExactPlainJsonV1(value);
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype
-    || Reflect.ownKeys(value).length !== keys.length || !keys.every((key) => {
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      return descriptor?.enumerable === true && 'value' in descriptor;
-    })) throw new Error('INVALID_POLICY_FIELDS');
+    || Object.keys(value).length !== keys.length || !keys.every((key) => Object.prototype.hasOwnProperty.call(value,key))) {
+    throw new Error('INVALID_POLICY_FIELDS');
+  }
   return value as Record<string, unknown>;
 }
-type ExactPlainJsonV1 = null | string | boolean | number | ExactPlainJsonV1[]
-  | { [key: string]: ExactPlainJsonV1 };
-/** Never read source values through property access: Proxy get traps are not authority. */
-function cloneExactPlainJsonV1(value: unknown): ExactPlainJsonV1 {
-  const ancestors = new WeakSet<object>();
-  function copy(source: unknown): ExactPlainJsonV1 {
-    if (source === null || typeof source === 'string' || typeof source === 'boolean') return source;
-    if (typeof source === 'number' && Number.isSafeInteger(source) && !Object.is(source, -0)) return source;
-    if (!source || typeof source !== 'object') throw new Error('INVALID_POLICY_JSON');
-    if (ancestors.has(source)) throw new Error('INVALID_POLICY_JSON');
-    ancestors.add(source);
-    try {
-      const keys = Reflect.ownKeys(source);
-      if (Array.isArray(source)) {
-        const lengthDescriptor = Object.getOwnPropertyDescriptor(source, 'length');
-        if (Object.getPrototypeOf(source) !== Array.prototype || !lengthDescriptor
-          || !('value' in lengthDescriptor) || lengthDescriptor.enumerable !== false
-          || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0
-          || keys.length !== lengthDescriptor.value + 1) throw new Error('INVALID_POLICY_ARRAY');
-        const result: ExactPlainJsonV1[] = [];
-        for (let index = 0; index < lengthDescriptor.value; index += 1) {
-          const descriptor = Object.getOwnPropertyDescriptor(source, String(index));
-          if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
-            throw new Error('INVALID_POLICY_ARRAY');
-          }
-          Object.defineProperty(result, String(index), { value: copy(descriptor.value),
-            enumerable: true, configurable: true, writable: true });
-        }
-        return result;
-      }
-      if (Object.getPrototypeOf(source) !== Object.prototype) throw new Error('INVALID_POLICY_JSON');
-      const result: { [key: string]: ExactPlainJsonV1 } = {};
-      for (let index = 0; index < keys.length; index += 1) {
-        const key = keys[index];
-        if (typeof key !== 'string') throw new Error('INVALID_POLICY_KEY');
-        const descriptor = Object.getOwnPropertyDescriptor(source, key);
-        if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
-          throw new Error('INVALID_POLICY_PROPERTY');
-        }
-        // defineProperty preserves an own "__proto__" key without invoking its inherited setter.
-        Object.defineProperty(result, key, { value: copy(descriptor.value),
-          enumerable: true, configurable: true, writable: true });
-      }
-      return result;
-    } finally {
-      ancestors.delete(source);
-    }
-  }
-  return copy(value);
-}
-function canonical(value: ExactPlainJsonV1): string {
+function canonical(value: OwnedJsonV2): string {
   if (Array.isArray(value)) {
     let result = '[';
     for (let index = 0; index < value.length; index += 1) {
-      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
-      if (!descriptor || !('value' in descriptor)) throw new Error('INVALID_POLICY_ARRAY');
       if (index > 0) result += ',';
-      result += canonical(descriptor.value);
+      result += canonical(value[index]);
     }
     return `${result}]`;
   }
   if (value && typeof value === 'object') {
-    const row = value as { [key: string]: ExactPlainJsonV1 };
-    return `{${Object.keys(row).sort().map((key) => `${JSON.stringify(key)}:${canonical(row[key])}`).join(',')}}`;
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`;
   }
   return JSON.stringify(value);
 }
 function bytes(contract: string, encoding: string, content: unknown): Uint8Array {
-  return new TextEncoder().encode(canonical(cloneExactPlainJsonV1({ contract, encoding, policy: content })));
+  // content is exclusively private normalized output, never externally supplied objects.
+  const envelope = { contract, encoding, policy: content } as OwnedJsonV2;
+  assertOwnedNumbersV2(envelope);
+  return new TextEncoder().encode(canonical(envelope));
 }
 function frozen<T>(value: T): T {
   if (value && typeof value === 'object') {
@@ -120,114 +96,102 @@ function frozen<T>(value: T): T {
   }
   return value;
 }
-function digest(value: unknown): string {
-  if (typeof value !== 'string' || !digestPattern.test(value)) throw new Error('INVALID_POLICY_DIGEST');
-  return value;
+function verifyDigest(supplied: unknown, expected: string): void {
+  if (typeof supplied !== 'string' || !hashPattern.test(supplied) || supplied !== expected) {
+    throw new Error('POLICY_DIGEST_MISMATCH');
+  }
 }
 function revision(actual: string, expected: string): void {
   if (actual !== expected) throw new Error('POLICY_REVISION_MISMATCH');
 }
-function compositionContent(value: unknown, input: unknown): Omit<CompositionPolicySnapshotV1, 'digest'> {
-  const row = record(value, ['contract', 'policy']);
+function parseContextV2(raw: unknown): OwnedContextV2 {
+  const row = record(parseRawV2(raw), ['contract','trustedGenerationInputRaw','candidateManifestRaw',
+    'preferenceSnapshotRaw','safetySnapshotRaw','trustedValidationEvidenceRaw']);
+  if (row.contract !== trustedValidationPoliciesRawBoundaryContractV2) throw new Error('INVALID_RAW_BOUNDARY_CONTRACT');
+  // Each nested primitive string gets its own duplicate-aware parser before any decoder.
+  return { input: parseRawV2(row.trustedGenerationInputRaw), manifest: parseRawV2(row.candidateManifestRaw),
+    preference: parseRawV2(row.preferenceSnapshotRaw), safety: parseRawV2(row.safetySnapshotRaw),
+    evidence: parseRawV2(row.trustedValidationEvidenceRaw) };
+}
+async function decodeCompositionOwnedV2(value: unknown, input: unknown): Promise<CompositionPolicySnapshotV1> {
+  const row = record(value,['contract','policy','digest']);
   if (row.contract !== compositionPolicySnapshotContractV1) throw new Error('INVALID_COMPOSITION_POLICY_CONTRACT');
   const policy = decodeMealCompositionPolicyV1(row.policy);
-  revision(policy.policyRevision, decodeTrustedGenerationInputV1(cloneExactPlainJsonV1(input)).compositionPolicyRevision);
-  // Policy pattern order is retained: existing composer tie-breaking uses supplied pattern order.
-  return { contract: compositionPolicySnapshotContractV1, policy };
+  revision(policy.policyRevision,decodeTrustedGenerationInputV1(input).compositionPolicyRevision);
+  const content = { contract: compositionPolicySnapshotContractV1, policy };
+  const digest = await adaptiveNutritionSha256HexV1(bytes(compositionPolicySnapshotContractV1,compositionPolicySnapshotEncodingV1,content));
+  verifyDigest(row.digest,digest);
+  return frozen({ ...content,digest });
 }
-function balanceContent(value: unknown, input: unknown): Omit<BalancePolicySnapshotV1, 'digest'> {
-  const row = record(value, ['contract', 'policy']);
+async function decodeBalanceOwnedV2(value: unknown, input: unknown): Promise<BalancePolicySnapshotV1> {
+  const row = record(value,['contract','policy','digest']);
   if (row.contract !== balancePolicySnapshotContractV1) throw new Error('INVALID_BALANCE_POLICY_CONTRACT');
   const policy = decodeBalancePolicyV1(row.policy);
-  revision(policy.policyRevision, decodeTrustedGenerationInputV1(cloneExactPlainJsonV1(input)).validationPolicyRevision);
-  return { contract: balancePolicySnapshotContractV1, policy };
+  revision(policy.policyRevision,decodeTrustedGenerationInputV1(input).validationPolicyRevision);
+  const content = { contract: balancePolicySnapshotContractV1, policy };
+  const digest = await adaptiveNutritionSha256HexV1(bytes(balancePolicySnapshotContractV1,balancePolicySnapshotEncodingV1,content));
+  verifyDigest(row.digest,digest);
+  return frozen({ ...content,digest });
 }
-export function compositionPolicySnapshotCanonicalBytesV1(value: unknown, input: unknown): Uint8Array {
-  return bytes(compositionPolicySnapshotContractV1, compositionPolicySnapshotEncodingV1, compositionContent(value, input));
-}
-export function balancePolicySnapshotCanonicalBytesV1(value: unknown, input: unknown): Uint8Array {
-  return bytes(balancePolicySnapshotContractV1, balancePolicySnapshotEncodingV1, balanceContent(value, input));
-}
-export async function sealCompositionPolicySnapshotV1(value: Omit<CompositionPolicySnapshotV1, 'digest'>,
-  input: unknown): Promise<CompositionPolicySnapshotV1> {
-  const content = compositionContent(value, input);
-  return frozen({ ...content, digest: await adaptiveNutritionSha256HexV1(bytes(compositionPolicySnapshotContractV1, compositionPolicySnapshotEncodingV1, content)) });
-}
-export async function sealBalancePolicySnapshotV1(value: Omit<BalancePolicySnapshotV1, 'digest'>,
-  input: unknown): Promise<BalancePolicySnapshotV1> {
-  const content = balanceContent(value, input);
-  return frozen({ ...content, digest: await adaptiveNutritionSha256HexV1(bytes(balancePolicySnapshotContractV1, balancePolicySnapshotEncodingV1, content)) });
-}
-export async function decodeCompositionPolicySnapshotV1(value: unknown, input: unknown): Promise<CompositionPolicySnapshotV1> {
-  const row = record(value, ['contract', 'policy', 'digest']);
-  const decoded = await sealCompositionPolicySnapshotV1({ contract: row.contract, policy: row.policy } as Omit<CompositionPolicySnapshotV1, 'digest'>, input);
-  if (digest(row.digest) !== decoded.digest) throw new Error('COMPOSITION_POLICY_DIGEST_MISMATCH');
-  return decoded;
-}
-export async function decodeBalancePolicySnapshotV1(value: unknown, input: unknown): Promise<BalancePolicySnapshotV1> {
-  const row = record(value, ['contract', 'policy', 'digest']);
-  const decoded = await sealBalancePolicySnapshotV1({ contract: row.contract, policy: row.policy } as Omit<BalancePolicySnapshotV1, 'digest'>, input);
-  if (digest(row.digest) !== decoded.digest) throw new Error('BALANCE_POLICY_DIGEST_MISMATCH');
-  return decoded;
-}
-export async function decodeCompositionPolicySnapshotRawV1(raw: string, input: unknown): Promise<CompositionPolicySnapshotV1> {
-  assertRawJsonWithoutDuplicateKeysV1(raw);
-  return decodeCompositionPolicySnapshotV1(JSON.parse(raw), input);
-}
-export async function decodeBalancePolicySnapshotRawV1(raw: string, input: unknown): Promise<BalancePolicySnapshotV1> {
-  assertRawJsonWithoutDuplicateKeysV1(raw);
-  return decodeBalancePolicySnapshotV1(JSON.parse(raw), input);
-}
-async function aggregateContent(value: unknown, context: TrustedValidationPoliciesContextV1): Promise<Omit<TrustedValidationPoliciesV1, 'digest'>> {
-  const row = record(value, ['contract', 'generationInputDigest', 'validationEvidenceDigest', 'composition', 'balance']);
-  const authority = record(context, ['input', 'manifest', 'preference', 'safety', 'evidence']);
-  const input = decodeTrustedGenerationInputV1(authority.input);
-  const evidence = await decodeTrustedValidationEvidenceV1(authority.evidence, {
-    input, manifest: authority.manifest, preference: authority.preference, safety: authority.safety,
-  });
+async function decodeAggregateOwnedV2(value: unknown, context: OwnedContextV2): Promise<TrustedValidationPoliciesV1> {
+  const row = record(value,['contract','generationInputDigest','validationEvidenceDigest','composition','balance','digest']);
+  const input = decodeTrustedGenerationInputV1(context.input);
+  const evidence = await decodeTrustedValidationEvidenceV1(context.evidence,context);
   const inputDigest = await trustedGenerationInputDigestV1(input);
   if (row.contract !== trustedValidationPoliciesContractV1 || row.generationInputDigest !== inputDigest
     || row.validationEvidenceDigest !== evidence.digest) throw new Error('POLICY_AGGREGATE_BINDING_MISMATCH');
-  const composition = await decodeCompositionPolicySnapshotV1(row.composition, input);
-  const balance = await decodeBalancePolicySnapshotV1(row.balance, input);
-  revision(composition.policy.policyRevision, evidence.compositionPolicyRevision);
-  revision(balance.policy.policyRevision, evidence.validationPolicyRevision);
-  return { contract: trustedValidationPoliciesContractV1, generationInputDigest: inputDigest,
-    validationEvidenceDigest: evidence.digest, composition, balance };
+  const composition = await decodeCompositionOwnedV2(row.composition,input);
+  const balance = await decodeBalanceOwnedV2(row.balance,input);
+  revision(composition.policy.policyRevision,evidence.compositionPolicyRevision);
+  revision(balance.policy.policyRevision,evidence.validationPolicyRevision);
+  const content = { contract: trustedValidationPoliciesContractV1,generationInputDigest: inputDigest,
+    validationEvidenceDigest: evidence.digest,composition,balance };
+  const digest = await adaptiveNutritionSha256HexV1(bytes(trustedValidationPoliciesContractV1,trustedValidationPoliciesEncodingV1,content));
+  verifyDigest(row.digest,digest);
+  return frozen({ ...content,digest });
 }
-export async function sealTrustedValidationPoliciesV1(value: Omit<TrustedValidationPoliciesV1, 'digest'>,
-  context: TrustedValidationPoliciesContextV1): Promise<TrustedValidationPoliciesV1> {
-  const content = await aggregateContent(value, context);
-  return frozen({ ...content, digest: await adaptiveNutritionSha256HexV1(bytes(trustedValidationPoliciesContractV1,
-    trustedValidationPoliciesEncodingV1, content)) });
+/** All public runtime arguments are primitive JSON strings; snapshots prove integrity, not provenance. */
+export async function decodeCompositionPolicySnapshotRawV2(raw: string, trustedInputRaw: string): Promise<CompositionPolicySnapshotV1> {
+  const owned = parseRawV2(raw);
+  const input = parseRawV2(trustedInputRaw);
+  return decodeCompositionOwnedV2(owned,input);
 }
-export async function decodeTrustedValidationPoliciesV1(value: unknown,
-  context: TrustedValidationPoliciesContextV1): Promise<TrustedValidationPoliciesV1> {
-  const row = record(value, ['contract', 'generationInputDigest', 'validationEvidenceDigest', 'composition', 'balance', 'digest']);
-  const content = { ...row }; delete content.digest;
-  const decoded = await sealTrustedValidationPoliciesV1(content as unknown as Omit<TrustedValidationPoliciesV1, 'digest'>, context);
-  if (digest(row.digest) !== decoded.digest) throw new Error('POLICY_AGGREGATE_DIGEST_MISMATCH');
-  return decoded;
+export async function decodeBalancePolicySnapshotRawV2(raw: string, trustedInputRaw: string): Promise<BalancePolicySnapshotV1> {
+  const owned = parseRawV2(raw);
+  const input = parseRawV2(trustedInputRaw);
+  return decodeBalanceOwnedV2(owned,input);
 }
-export async function decodeTrustedValidationPoliciesRawV1(raw: string,
-  context: TrustedValidationPoliciesContextV1): Promise<TrustedValidationPoliciesV1> {
-  assertRawJsonWithoutDuplicateKeysV1(raw);
-  return decodeTrustedValidationPoliciesV1(JSON.parse(raw), context);
+export async function decodeTrustedValidationPoliciesRawV2(raw: string, trustedContextRaw: string): Promise<TrustedValidationPoliciesV1> {
+  const owned = parseRawV2(raw);
+  const context = parseContextV2(trustedContextRaw);
+  return decodeAggregateOwnedV2(owned,context);
 }
-export async function trustedValidationPoliciesCanonicalBytesV1(value: unknown,
-  context: TrustedValidationPoliciesContextV1): Promise<Uint8Array> {
-  const decoded = await decodeTrustedValidationPoliciesV1(value, context);
-  const content: Record<string, unknown> = { ...decoded }; delete content.digest;
-  return bytes(trustedValidationPoliciesContractV1, trustedValidationPoliciesEncodingV1, content);
+export async function compositionPolicySnapshotCanonicalBytesRawV2(raw: string, trustedInputRaw: string): Promise<Uint8Array> {
+  const snapshot = await decodeCompositionPolicySnapshotRawV2(raw,trustedInputRaw);
+  const content: Record<string, unknown> = { ...snapshot };
+  delete content.digest;
+  return bytes(compositionPolicySnapshotContractV1,compositionPolicySnapshotEncodingV1,content);
 }
-/** Hashes establish integrity only. The pinned package must originate independently from the trusted caller. */
-export async function assertTrustedValidationPoliciesPinnedV1(proposed: unknown, pinned: unknown,
-  context: TrustedValidationPoliciesContextV1): Promise<TrustedValidationPoliciesV1> {
-  const trusted = cloneExactPlainJsonV1(context) as unknown as TrustedValidationPoliciesContextV1;
-  const pinnedCopy = cloneExactPlainJsonV1(pinned);
-  const proposedCopy = cloneExactPlainJsonV1(proposed);
-  const authority = await decodeTrustedValidationPoliciesV1(pinnedCopy, trusted);
-  const candidate = await decodeTrustedValidationPoliciesV1(proposedCopy, trusted);
+export async function balancePolicySnapshotCanonicalBytesRawV2(raw: string, trustedInputRaw: string): Promise<Uint8Array> {
+  const snapshot = await decodeBalancePolicySnapshotRawV2(raw,trustedInputRaw);
+  const content: Record<string, unknown> = { ...snapshot };
+  delete content.digest;
+  return bytes(balancePolicySnapshotContractV1,balancePolicySnapshotEncodingV1,content);
+}
+export async function trustedValidationPoliciesCanonicalBytesRawV2(raw: string, trustedContextRaw: string): Promise<Uint8Array> {
+  const snapshot = await decodeTrustedValidationPoliciesRawV2(raw,trustedContextRaw);
+  const content: Record<string, unknown> = { ...snapshot };
+  delete content.digest;
+  return bytes(trustedValidationPoliciesContractV1,trustedValidationPoliciesEncodingV1,content);
+}
+/** Both pinned strings and context originate independently from the trusted caller/source. */
+export async function assertTrustedValidationPoliciesPinnedRawV2(proposedRaw: string, pinnedRaw: string,
+  trustedContextRaw: string): Promise<TrustedValidationPoliciesV1> {
+  const proposed = parseRawV2(proposedRaw);
+  const pinned = parseRawV2(pinnedRaw);
+  const context = parseContextV2(trustedContextRaw);
+  const authority = await decodeAggregateOwnedV2(pinned,context);
+  const candidate = await decodeAggregateOwnedV2(proposed,context);
   if (candidate.digest !== authority.digest) throw new Error('TRUSTED_VALIDATION_POLICIES_SUBSTITUTION');
   return authority;
 }
