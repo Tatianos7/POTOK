@@ -6,7 +6,7 @@ validator, generator, DB, Edge, record/activation or deployment path is integrat
 ## Authority and coverage
 
 `MealWarningEvidenceV1` contains exactly `contract`, `slotId`,
-`validationPolicyRevision`, `validationEvidenceDigest`, `signals`,
+`validationPolicyRevision`, `validationEvidenceDigest`, `mealSnapshotDigest`, `signals`,
 `evidenceRevision`, and `digest`. `signals` contains exactly five explicit booleans:
 `softTargetFitDeviation`, `longPreparationBurden`, `shoppingListBurden`,
 `lowerConvenienceScore`, and `repetitionApproachingLimit`.
@@ -18,6 +18,38 @@ manifest, preference/safety and composition/validation/optimization revisions;
 these bindings are not duplicated or inferred in the per-slot record.
 `evidenceRevision` is a supplied immutable contract-level revision, not an invented
 DB record or publishing API.
+
+`mealSnapshotDigest` must equal the independently verified digest of the exact
+evaluated slot's `MealSnapshotV1`. Every public function additionally requires
+`evaluatedPlanRaw`, a primitive JSON string containing the evaluated
+`GeneratedWeekPlanV1`. It is duplicate-checked and parsed, then decoded against the
+separately pinned generation input using `decodeGeneratedWeekPlanV1`. Existing
+decoders recompute meal/slot/Graph/generation-input/content digests; supplied hashes
+are not trusted. Evaluated Graph slots must exactly match the pinned distribution's
+day/date/slot/order/meal-type coverage before warning records can be admitted.
+
+The reused reviewed Meal Composition v1.1 SHA-256 domain is exactly:
+
+```text
+{
+  encoding: "potok-adaptive-meal-composition-canonical-json-v1.1",
+  contract: "potok-adaptive-meal-composition-v1.1",
+  meal: <strict MealSnapshotV1 WITHOUT digest>
+}
+```
+
+Its existing canonical UTF-8 payload includes mealSlotId, mealSnapshotRevision,
+Goal/composition revisions, ordered components, recipe/eligibility/portion
+snapshots, assigned servings/multiplier/grams, ingredient state/quantities and
+nutrition totals. Changed servings, nutrition or component/meal content therefore
+changes the independently recomputed meal digest. An authority/slot-only warning
+record cannot be replayed on that changed state, even if every pinned authority
+and component evidence record stays identical. No new meal digest domain is added.
+This binding does not claim full manifest/nutrition/Balance semantic validation.
+Meal digests intentionally avoid a circular dependency on validation result digests.
+
+This is a required pre-merge correction to PR #149's new contract/API: records
+without `mealSnapshotDigest`, or calls without `evaluatedPlanRaw`, are rejected.
 
 `TrustedMealWarningEvidenceSetV1` contains exactly `contract`,
 `validationEvidenceDigest`, `validationPoliciesDigest`, `entries`, and `digest`.
@@ -34,6 +66,8 @@ Every argument to every runtime function must be a primitive JSON string. For
 each warning/input/context/manifest/preference/safety/evidence payload:
 
 `typeof raw === string → duplicate-aware scan → JSON.parse → owned strict decoder`.
+The evaluated plan follows the same raw-only boundary, including nested duplicate
+key rejection. No caller-supplied JS plan/meal object is accepted.
 
 Objects, arrays, Proxy, String wrappers and coercible values are rejected without
 inspecting traps. Private object helpers consume parser-owned or normalized data
@@ -76,6 +110,9 @@ Aggregate envelope:
 All supplied digests are recomputed and checked. Changing any signal changes both
 the entry and aggregate digest. Canonical-byte APIs require complete digest-verified
 records; they do not seal unsigned proposals.
+`mealSnapshotDigest` is part of each strict entry's canonical content, hence of both
+warning digest layers. Updating the evaluated meal binding changes both warning
+digests. Existing Graph/MealSnapshot digest domains and semantics are unchanged.
 
 ## Integrity, provenance and policy roles
 
@@ -85,6 +122,11 @@ not provenance. A generator must not supply its own warning authority package.
 `assertTrustedMealWarningEvidenceSetPinnedRawV1` compares a proposed set against a
 separately pinned set, rejecting even a self-consistent re-signed substitution.
 Do not obtain both sets from generator output.
+Both sets are also checked against the same explicit evaluated plan. A stale set
+for another meal state fails before pinned comparison can return success. The
+evaluated plan is untrusted candidate data; independently pinned warning evidence,
+policy and context remain trusted-caller responsibilities. Replacing a warning's
+meal digest and re-signing it establishes integrity only, not trusted evaluation.
 
 Signals are trusted evidence, not `allowedWarningCodes` membership. Explicit true
 signals remain true even when their code is absent from the allowed warning list.
@@ -94,11 +136,11 @@ repetition-near-limit rules are defined here; no signal defaults to false.
 
 ## Runtime exports
 
-- `decodeMealWarningEvidenceRawV1(raw, policiesRaw, trustedContextRaw)`
-- `decodeTrustedMealWarningEvidenceSetRawV1(raw, policiesRaw, trustedContextRaw)`
-- `mealWarningEvidenceCanonicalBytesRawV1(raw, policiesRaw, trustedContextRaw)`
-- `trustedMealWarningEvidenceSetCanonicalBytesRawV1(raw, policiesRaw, trustedContextRaw)`
-- `assertTrustedMealWarningEvidenceSetPinnedRawV1(proposedRaw, pinnedRaw, policiesRaw, trustedContextRaw)`
+- `decodeMealWarningEvidenceRawV1(raw, policiesRaw, trustedContextRaw, evaluatedPlanRaw)`
+- `decodeTrustedMealWarningEvidenceSetRawV1(raw, policiesRaw, trustedContextRaw, evaluatedPlanRaw)`
+- `mealWarningEvidenceCanonicalBytesRawV1(raw, policiesRaw, trustedContextRaw, evaluatedPlanRaw)`
+- `trustedMealWarningEvidenceSetCanonicalBytesRawV1(raw, policiesRaw, trustedContextRaw, evaluatedPlanRaw)`
+- `assertTrustedMealWarningEvidenceSetPinnedRawV1(proposedRaw, pinnedRaw, policiesRaw, trustedContextRaw, evaluatedPlanRaw)`
 
 Four contract/encoding constants and three readonly interfaces are also exported.
 Existing Graph, evidence v1, policy v1/RawV2, Composition, Balance limits and warning

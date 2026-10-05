@@ -165,6 +165,72 @@ import {
 } from '../trustedMealWarningEvidenceV1';
 import ts from 'typescript';
 import { readFileSync } from 'node:fs';
+import { composeAdaptiveMealV1, adaptiveMealCompositionEligibilityV1_1, type MealCompositionPolicyV1 } from '../adaptiveNutritionMealCompositionV1';
+import { scalePremiumRecipeCollectionV1 } from '../adaptiveNutritionGraphV1';
+import { sealAdaptiveNutritionGraphV2, bindGeneratedWeekPlanV1, decodeGeneratedWeekPlanV1,
+  adaptiveNutritionGraphContractV2, type AdaptiveNutritionGraphDraftV2 } from '../adaptiveNutritionGraphV2';
+import type { TrustedValidationEvidenceV1 } from '../trustedValidationEvidenceV1';
+import type { AdaptiveNutritionCandidateManifestV2 } from '../adaptiveNutritionAuthoritiesV1';
+
+async function evaluatedPlanFixture(input: TrustedGenerationInputV1, evidence: TrustedValidationEvidenceV1,
+  manifest: AdaptiveNutritionCandidateManifestV2, policy: MealCompositionPolicyV1,
+  options: {assigned?:string; changedNutrition?:boolean; changedContent?:boolean}={}) {
+  const days:AdaptiveNutritionGraphDraftV2['days']=[];
+  for(let dayIndex=0;dayIndex<evidence.distributionPolicy.days.length;dayIndex++) {
+    const distribution=evidence.distributionPolicy.days[dayIndex];
+    const slots:AdaptiveNutritionGraphDraftV2['days'][number]['slots']=[];
+    for(const required of distribution.requiredSlots) {
+      const component=evidence.components.find(c=>c.slotId===required.slotId);assert.ok(component);
+      const entry=manifest.entries.find(c=>c.recipeId===component.recipeId);assert.ok(entry);
+      const recipe=structuredClone(entry.recipeSnapshot);
+      if(options.changedNutrition) {recipe.fullRecipeNutrition.calories='110.000';recipe.ingredients[0].nutrition.calories='110.000';}
+      if(options.changedContent) recipe.displayNameSnapshot='Different evaluated content';
+      const assigned=options.assigned??'1.000';const scaled=scalePremiumRecipeCollectionV1(recipe,assigned);
+      const candidate={mealComponentId:component.mealComponentId,eligibility:{contract:adaptiveMealCompositionEligibilityV1_1,
+        eligibilityRevisionId:entry.eligibilityRevisionId,recipeRevisionId:entry.recipeRevisionId,
+        compositionPolicyRevision:input.compositionPolicyRevision,role:entry.role,anchorKind:entry.anchorKind,
+        allowedMealTypes:entry.allowedMealTypes,requiredCompanionRoleSets:entry.requiredCompanionRoleSets,
+        pairingTags:entry.pairingTags,incompatiblePairingTags:entry.incompatiblePairingTags,repeatFamily:entry.repeatFamily,
+        energyClass:entry.energyClass,beverageClass:entry.beverageClass},recipeRevision:entry.recipeRevisionId,
+        portionRevision:entry.portionRevisionId,recipe,assignedPortion:{source:'potok_generator',portionRevisionId:entry.portionRevisionId,
+          assignedServings:assigned,servingMultiplier:scaled.scaleFactor,assignedGrams:assigned==='1.000'?'100.000':'200.000'},
+        ingredients:scaled.ingredients,nutrition:scaled.nutrition};
+      const high={calories:'9999.000',protein:'9999.000',fat:'9999.000',carbs:'9999.000',fiber:'9999.000'};
+      const result=await composeAdaptiveMealV1({mealSlotId:required.slotId,mealSnapshotRevision:id(80+required.sortOrder),
+        mealType:required.mealType,goalRevision:input.goalNutritionTarget.goalRevision,goalProfile:'MAINTENANCE',policy,
+        slotTarget:scaled.nutrition,slotHardMaximum:high,currentDayNutrition:zero,dayTarget:high,dayHardMaximum:high,
+        excludedRecipeRevisions:[],excludedRepeatFamilies:[],candidates:[candidate]});
+      assert.equal(result.status,'COMPLETE');if(result.status!=='COMPLETE') throw new Error('fixture_meal_incomplete');
+      slots.push({slotId:required.slotId,civilDate:distribution.date,mealType:required.mealType,sortOrder:required.sortOrder,
+        sourceKind:'COMPLETE_RECIPE',mealSnapshotRevision:result.meal.mealSnapshotRevision,mealSnapshot:result.meal,
+        validationResultDigest:h('a'),generatorDecisionEvidence:{decisionPath:'COMPLETE_RECIPE',
+          generationPolicyRevision:input.generationPolicyRevision,candidateManifestDigest:input.candidateManifestDigest,
+          candidateSetDigest:h('b'),selectedCandidateDigest:h('c'),optimizationResultDigest:h('d')},
+        goalRevision:input.goalNutritionTarget.goalRevision,targetPolicyRevision:input.goalNutritionTarget.targetPolicyRevision,
+        compositionPolicyRevision:input.compositionPolicyRevision,validationPolicyRevision:input.validationPolicyRevision,
+        optimizationPolicyRevision:input.optimizationPolicyRevision,catalogManifestRevision:input.candidateManifestRevision,
+        componentEvidence:[{mealComponentId:component.mealComponentId,eligibilityRevisionId:component.eligibilityRevisionId,
+          publicationRevision:component.publicationRevision,canonicalEvidenceRevision:component.canonicalEvidenceRevision,
+          nutritionEvidenceRevision:component.nutritionEvidenceRevision,allergenEvidenceRevision:component.allergenEvidenceRevision,
+          dietaryEvidenceRevision:component.dietaryEvidenceRevision,evidenceDigest:component.digest}]});
+    }
+    const nutritionTotal=Object.fromEntries(Object.keys(zero).map(key=>{
+      const total=slots.reduce((sum,slot)=>sum+BigInt(slot.mealSnapshot.nutrition[key as keyof GraphNutritionV1].replace('.','')),0n);
+      return [key,`${total/1000n}.${String(total%1000n).padStart(3,'0')}`];
+    })) as unknown as GraphNutritionV1;
+    days.push({date:distribution.date,dayIndex,slots,nutritionTotal,validationResultDigest:h('e')});
+  }
+  const graph=await sealAdaptiveNutritionGraphV2({contract:adaptiveNutritionGraphContractV2,contractVersion:2,
+    selectionId:input.selection.selectionId,planSelectionRevision:input.selection.planSelectionRevision,
+    planRevision:input.selection.proposedPlanRevision,weekStartLocal:input.weekStartLocal,timezone:input.timezone,
+    goalRevision:input.goalNutritionTarget.goalRevision,targetPolicyRevision:input.goalNutritionTarget.targetPolicyRevision,
+    goalNutritionTarget:input.goalNutritionTarget,preferenceRevision:input.preferenceRevision,safetyRevision:input.safetyRevision,
+    catalogManifestRevision:input.candidateManifestRevision,candidateManifestDigest:input.candidateManifestDigest,
+    compositionPolicyRevision:input.compositionPolicyRevision,validationPolicyRevision:input.validationPolicyRevision,
+    optimizationPolicyRevision:input.optimizationPolicyRevision,generationPolicyRevision:input.generationPolicyRevision,
+    days,weekValidationResultDigest:h('f'),weekOptimizationResultDigest:h('a')});
+  return bindGeneratedWeekPlanV1(input,graph);
+}
 
 const explicitSignals: MealWarningSignalsV1 = { softTargetFitDeviation:false, longPreparationBurden:false,
   shoppingListBurden:false, lowerConvenienceScore:false, repetitionApproachingLimit:false };
@@ -201,19 +267,21 @@ async function warningFixture(twoSlots=false) {
       trustedValidationPoliciesContractV1,trustedValidationPoliciesEncodingV1));
     f.aggregate=await decodeTrustedValidationPoliciesRawV2(f.aggregateRaw,f.contextRaw);
   }
+  const plan=await evaluatedPlanFixture(JSON.parse(f.inputRaw),evidence,JSON.parse(f.rawContext.candidateManifestRaw),f.composition.policy);
+  const mealDigests=new Map(plan.graph.days.flatMap(day=>day.slots.map(slot=>[slot.slotId,slot.mealSnapshot.digest] as const)));
   const entries: MealWarningEvidenceV1[]=evidence.distributionPolicy.days.flatMap((day: {requiredSlots: Array<{slotId:string}>})=>
     day.requiredSlots.map((slot)=>sealEntry({contract:mealWarningEvidenceContractV1,slotId:slot.slotId,
       validationPolicyRevision:JSON.parse(f.inputRaw).validationPolicyRevision,validationEvidenceDigest:evidence.digest,
-      signals:{...explicitSignals},evidenceRevision:id(70)})));
+      mealSnapshotDigest:mealDigests.get(slot.slotId)!,signals:{...explicitSignals},evidenceRevision:id(70)})));
   entries.sort((a,b)=>a.slotId<b.slotId?-1:a.slotId>b.slotId?1:0);
   const set=sealSet({contract:trustedMealWarningEvidenceSetContractV1,validationEvidenceDigest:evidence.digest,
     validationPoliciesDigest:f.aggregate.digest,entries});
-  return {...f,entry:entries[0],set,setRaw:JSON.stringify(set),entryRaw:JSON.stringify(entries[0])};
+  return {...f,plan,planRaw:JSON.stringify(plan),entry:entries[0],set,setRaw:JSON.stringify(set),entryRaw:JSON.stringify(entries[0])};
 }
 
 test('complete raw warning evidence set, all false explicit, immutable owned output',async()=>{
   const f=await warningFixture(true);
-  const decoded=await decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,f.contextRaw);
+  const decoded=await decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,f.contextRaw,f.planRaw);
   assert.deepEqual(decoded,f.set);assert.equal(decoded.entries.length,2);
   assert.ok(Object.isFrozen(decoded));assert.ok(Object.isFrozen(decoded.entries));
   assert.ok(Object.isFrozen(decoded.entries[0]));assert.ok(Object.isFrozen(decoded.entries[0].signals));
@@ -222,9 +290,9 @@ test('complete raw warning evidence set, all false explicit, immutable owned out
 test('entry and aggregate canonical envelopes independently verify SHA-256',async()=>{
   const f=await warningFixture();
   for(const [bytes,digest,contract,encoding] of [
-    [await mealWarningEvidenceCanonicalBytesRawV1(f.entryRaw,f.aggregateRaw,f.contextRaw),f.entry.digest,
+    [await mealWarningEvidenceCanonicalBytesRawV1(f.entryRaw,f.aggregateRaw,f.contextRaw,f.planRaw),f.entry.digest,
       mealWarningEvidenceContractV1,mealWarningEvidenceEncodingV1],
-    [await trustedMealWarningEvidenceSetCanonicalBytesRawV1(f.setRaw,f.aggregateRaw,f.contextRaw),f.set.digest,
+    [await trustedMealWarningEvidenceSetCanonicalBytesRawV1(f.setRaw,f.aggregateRaw,f.contextRaw,f.planRaw),f.set.digest,
       trustedMealWarningEvidenceSetContractV1,trustedMealWarningEvidenceSetEncodingV1],
   ] as const) {
     assert.equal(createHash('sha256').update(bytes).digest('hex'),digest);
@@ -236,31 +304,31 @@ test('object key order does not change canonical bytes or digest',async()=>{
   const f=await warningFixture();
   const reverse=(v:unknown):unknown=>Array.isArray(v)?v.map(reverse):v&&typeof v==='object'
     ?Object.fromEntries(Object.entries(v).reverse().map(([k,x])=>[k,reverse(x)])):v;
-  assert.deepEqual(await trustedMealWarningEvidenceSetCanonicalBytesRawV1(JSON.stringify(reverse(f.set)),f.aggregateRaw,f.contextRaw),
-    await trustedMealWarningEvidenceSetCanonicalBytesRawV1(f.setRaw,f.aggregateRaw,f.contextRaw));
+  assert.deepEqual(await trustedMealWarningEvidenceSetCanonicalBytesRawV1(JSON.stringify(reverse(f.set)),f.aggregateRaw,f.contextRaw,f.planRaw),
+    await trustedMealWarningEvidenceSetCanonicalBytesRawV1(f.setRaw,f.aggregateRaw,f.contextRaw,f.planRaw));
 });
 for(const signal of signalNames) {
   test(`${signal}: explicit true admitted, entry/set digests change independently`,async()=>{
     const f=await warningFixture();const entry=resignEntry({...f.entry,signals:{...explicitSignals,[signal]:true}});
     const changed=sealSet({...withoutDigest(f.set),entries:[entry]});
     assert.notEqual(entry.digest,f.entry.digest);assert.notEqual(changed.digest,f.set.digest);
-    assert.deepEqual(await decodeTrustedMealWarningEvidenceSetRawV1(JSON.stringify(changed),f.aggregateRaw,f.contextRaw),changed);
+    assert.deepEqual(await decodeTrustedMealWarningEvidenceSetRawV1(JSON.stringify(changed),f.aggregateRaw,f.contextRaw,f.planRaw),changed);
     // The fixture's allowedWarningCodes excludes this signal's warning; evidence must still preserve true.
     assert.equal(changed.entries[0].signals[signal],true);
   });
   test(`${signal}: missing boolean rejects without default`,async()=>{
     const f=await warningFixture();const signals:Record<string,unknown>={...explicitSignals};delete signals[signal];
-    await assert.rejects(decodeMealWarningEvidenceRawV1(JSON.stringify({...f.entry,signals}),f.aggregateRaw,f.contextRaw),/INVALID_WARNING_EVIDENCE_FIELDS/);
+    await assert.rejects(decodeMealWarningEvidenceRawV1(JSON.stringify({...f.entry,signals}),f.aggregateRaw,f.contextRaw,f.planRaw),/INVALID_WARNING_EVIDENCE_FIELDS/);
   });
   test(`${signal}: boolean coercion rejected`,async()=>{
     const f=await warningFixture();
     for(const value of ['false',0,null]) await assert.rejects(decodeMealWarningEvidenceRawV1(
-      JSON.stringify({...f.entry,signals:{...explicitSignals,[signal]:value}}),f.aggregateRaw,f.contextRaw),/INVALID_WARNING_SIGNAL_TYPE/);
+      JSON.stringify({...f.entry,signals:{...explicitSignals,[signal]:value}}),f.aggregateRaw,f.contextRaw,f.planRaw),/INVALID_WARNING_SIGNAL_TYPE/);
   });
 }
 test('multiple true signals preserved with no computed defaults',async()=>{
   const f=await warningFixture();const entry=resignEntry({...f.entry,signals:Object.fromEntries(signalNames.map(k=>[k,true])) as unknown as MealWarningSignalsV1});
-  assert.deepEqual(await decodeMealWarningEvidenceRawV1(JSON.stringify(entry),f.aggregateRaw,f.contextRaw),entry);
+  assert.deepEqual(await decodeMealWarningEvidenceRawV1(JSON.stringify(entry),f.aggregateRaw,f.contextRaw,f.planRaw),entry);
 });
 for(const [name,mutate,error] of [
   ['unknown slot',(v:Record<string,unknown>)=>{v.slotId=id(999);},'WARNING_SLOT_UNKNOWN'],
@@ -273,13 +341,13 @@ for(const [name,mutate,error] of [
   ['wrong contract',(v:Record<string,unknown>)=>{v.contract='other';},'INVALID_WARNING_EVIDENCE_CONTRACT'],
 ] as const) test(`entry rejects ${name}`,async()=>{
   const f=await warningFixture();const bad={...f.entry};mutate(bad);await assert.rejects(
-    decodeMealWarningEvidenceRawV1(JSON.stringify(bad),f.aggregateRaw,f.contextRaw),new RegExp(error));
+    decodeMealWarningEvidenceRawV1(JSON.stringify(bad),f.aggregateRaw,f.contextRaw,f.planRaw),new RegExp(error));
 });
 test('unknown or missing signals object rejected',async()=>{
   const f=await warningFixture();
-  await assert.rejects(decodeMealWarningEvidenceRawV1(JSON.stringify({...f.entry,signals:{...explicitSignals,extra:false}}),f.aggregateRaw,f.contextRaw));
+  await assert.rejects(decodeMealWarningEvidenceRawV1(JSON.stringify({...f.entry,signals:{...explicitSignals,extra:false}}),f.aggregateRaw,f.contextRaw,f.planRaw));
   const bad:Record<string,unknown>={...f.entry};delete bad.signals;
-  await assert.rejects(decodeMealWarningEvidenceRawV1(JSON.stringify(bad),f.aggregateRaw,f.contextRaw));
+  await assert.rejects(decodeMealWarningEvidenceRawV1(JSON.stringify(bad),f.aggregateRaw,f.contextRaw,f.planRaw));
 });
 for(const [name,mutate,error] of [
  ['duplicate slot',(v: {entries:MealWarningEvidenceV1[]})=>{v.entries=[v.entries[0],v.entries[0]];},'WARNING_SLOT_DUPLICATE'],
@@ -288,7 +356,7 @@ for(const [name,mutate,error] of [
  ['extra slot',(v: {entries:MealWarningEvidenceV1[]})=>{v.entries.push(resignEntry({...v.entries[0],slotId:id(999)}));},'WARNING_SLOT_UNKNOWN'],
 ] as const) test(`set rejects ${name}`,async()=>{
  const f=await warningFixture(true);const bad={...f.set,entries:f.set.entries.map(entry=>structuredClone(entry))};mutate(bad);
- await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(resignSet(bad),f.aggregateRaw,f.contextRaw),new RegExp(error));
+ await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(resignSet(bad),f.aggregateRaw,f.contextRaw,f.planRaw),new RegExp(error));
 });
 for(const [field,value,error] of [
  ['validationEvidenceDigest',h('e'),'WARNING_VALIDATION_EVIDENCE_MISMATCH'],
@@ -298,43 +366,43 @@ for(const [field,value,error] of [
  ['entries',{},'INVALID_WARNING_ENTRIES'],
 ] as const) test(`set rejects altered ${field}`,async()=>{
  const f=await warningFixture();await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(
-  JSON.stringify({...f.set,[field]:value}),f.aggregateRaw,f.contextRaw),new RegExp(error));
+  JSON.stringify({...f.set,[field]:value}),f.aggregateRaw,f.contextRaw,f.planRaw),new RegExp(error));
 });
 test('set missing/unknown fields rejected',async()=>{
  const f=await warningFixture();
  for(const key of Object.keys(f.set)) {const bad:Record<string,unknown>={...f.set};delete bad[key];
-   await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(JSON.stringify(bad),f.aggregateRaw,f.contextRaw),/INVALID_WARNING_EVIDENCE_FIELDS/);}
- await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(JSON.stringify({...f.set,extra:true}),f.aggregateRaw,f.contextRaw));
+   await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(JSON.stringify(bad),f.aggregateRaw,f.contextRaw,f.planRaw),/INVALID_WARNING_EVIDENCE_FIELDS/);}
+ await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(JSON.stringify({...f.set,extra:true}),f.aggregateRaw,f.contextRaw,f.planRaw));
 });
 test('re-signed proposed warning substitution rejected against separately pinned set',async()=>{
  const f=await warningFixture();const changed=resignSet({...f.set,entries:[resignEntry({...f.entry,signals:{...explicitSignals,longPreparationBurden:true}})]});
- await assert.rejects(assertTrustedMealWarningEvidenceSetPinnedRawV1(changed,f.setRaw,f.aggregateRaw,f.contextRaw),/WARNING_EVIDENCE_SUBSTITUTION/);
- assert.deepEqual(await assertTrustedMealWarningEvidenceSetPinnedRawV1(f.setRaw,f.setRaw,f.aggregateRaw,f.contextRaw),f.set);
+ await assert.rejects(assertTrustedMealWarningEvidenceSetPinnedRawV1(changed,f.setRaw,f.aggregateRaw,f.contextRaw,f.planRaw),/WARNING_EVIDENCE_SUBSTITUTION/);
+ assert.deepEqual(await assertTrustedMealWarningEvidenceSetPinnedRawV1(f.setRaw,f.setRaw,f.aggregateRaw,f.contextRaw,f.planRaw),f.set);
 });
 test('duplicate raw keys, escaped equivalents and nested signals fail before digest checks',async()=>{
  const f=await warningFixture();
  for(const raw of [f.entryRaw.replace('{','{"contract":null,'),f.entryRaw.replace('{','{"\\u0063ontract":null,'),
    f.entryRaw.replace('"softTargetFitDeviation":false','"softTargetFitDeviation":false,"softTargetFitDeviation":true')]) {
-  await assert.rejects(decodeMealWarningEvidenceRawV1(raw,f.aggregateRaw,f.contextRaw),/Duplicate JSON key/);
+  await assert.rejects(decodeMealWarningEvidenceRawV1(raw,f.aggregateRaw,f.contextRaw,f.planRaw),/Duplicate JSON key/);
  }
- await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw.replace('{','{"contract":null,'),f.aggregateRaw,f.contextRaw),/Duplicate JSON key/);
+ await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw.replace('{','{"contract":null,'),f.aggregateRaw,f.contextRaw,f.planRaw),/Duplicate JSON key/);
 });
 for(const field of ['trustedGenerationInputRaw','candidateManifestRaw','preferenceSnapshotRaw','safetySnapshotRaw','trustedValidationEvidenceRaw'] as const)
  test(`nested authority ${field} retains duplicate-aware primitive-string boundary`,async()=>{
   const f=await warningFixture();
   const duplicate={...f.rawContext,[field]:f.rawContext[field].replace('{','{"contract":null,')};
-  await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,JSON.stringify(duplicate)),/Duplicate JSON key/);
+  await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,JSON.stringify(duplicate),f.planRaw),/Duplicate JSON key/);
   const object={...f.rawContext,[field]:JSON.parse(f.rawContext[field])};
-  await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,JSON.stringify(object)),/RAW_JSON_STRING_REQUIRED/);
+  await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,JSON.stringify(object),f.planRaw),/RAW_JSON_STRING_REQUIRED/);
  });
 test('policy/context raw boundaries remain exact and reject policy substitution/digest tamper',async()=>{
  const f=await warningFixture();
- await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw.replace('{','{"contract":null,'),f.contextRaw),/Duplicate JSON key/);
- await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,f.contextRaw.replace('{','{"contract":null,')),/Duplicate JSON key/);
+ await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw.replace('{','{"contract":null,'),f.contextRaw,f.planRaw),/Duplicate JSON key/);
+ await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,f.contextRaw.replace('{','{"contract":null,'),f.planRaw),/Duplicate JSON key/);
  const changed=fixtureSeal({...withoutDigest(f.aggregate),balance:fixtureSeal({...withoutDigest(f.balance),
    policy:{...f.balance.policy,allowedWarningCodes:[]}},balancePolicySnapshotContractV1,balancePolicySnapshotEncodingV1)},
    trustedValidationPoliciesContractV1,trustedValidationPoliciesEncodingV1);
- await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,JSON.stringify(changed),f.contextRaw),/WARNING_VALIDATION_POLICIES_MISMATCH/);
+ await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,JSON.stringify(changed),f.contextRaw,f.planRaw),/WARNING_VALIDATION_POLICIES_MISMATCH/);
 });
 test('every public argument rejects object/Proxy/wrapper/coercion without touching traps',async()=>{
  const f=await warningFixture();let traps=0;const hit=()=>{traps++;throw new Error('TRAP_CALLED');};
@@ -344,11 +412,11 @@ test('every public argument rejects object/Proxy/wrapper/coercion without touchi
  const revoked=Proxy.revocable({},{});revoked.revoke();
  const coercion={toJSON:hit,toString:hit,valueOf:hit};
  const apis:Array<[ (...args:string[])=>Promise<unknown>,string[]]>=[
-  [decodeMealWarningEvidenceRawV1,[f.entryRaw,f.aggregateRaw,f.contextRaw]],
-  [decodeTrustedMealWarningEvidenceSetRawV1,[f.setRaw,f.aggregateRaw,f.contextRaw]],
-  [mealWarningEvidenceCanonicalBytesRawV1,[f.entryRaw,f.aggregateRaw,f.contextRaw]],
-  [trustedMealWarningEvidenceSetCanonicalBytesRawV1,[f.setRaw,f.aggregateRaw,f.contextRaw]],
-  [assertTrustedMealWarningEvidenceSetPinnedRawV1,[f.setRaw,f.setRaw,f.aggregateRaw,f.contextRaw]],
+  [decodeMealWarningEvidenceRawV1,[f.entryRaw,f.aggregateRaw,f.contextRaw,f.planRaw]],
+  [decodeTrustedMealWarningEvidenceSetRawV1,[f.setRaw,f.aggregateRaw,f.contextRaw,f.planRaw]],
+  [mealWarningEvidenceCanonicalBytesRawV1,[f.entryRaw,f.aggregateRaw,f.contextRaw,f.planRaw]],
+  [trustedMealWarningEvidenceSetCanonicalBytesRawV1,[f.setRaw,f.aggregateRaw,f.contextRaw,f.planRaw]],
+  [assertTrustedMealWarningEvidenceSetPinnedRawV1,[f.setRaw,f.setRaw,f.aggregateRaw,f.contextRaw,f.planRaw]],
  ];
  for(const [api,args] of apis) for(let index=0;index<args.length;index++) {
   for(const hostile of [{},[],proxy,arrayProxy,callableProxy,revoked.proxy,coercion,new String(f.entryRaw),0,true,null,undefined,()=>undefined]) {
@@ -367,8 +435,9 @@ test('empty required-slot package admits an explicit empty set, no synthesized s
  const empty=await sealTrustedValidationEvidenceV1(withoutDigest(evidence) as Parameters<typeof sealTrustedValidationEvidenceV1>[0],context);
  const rawContext=JSON.stringify({...f.rawContext,trustedValidationEvidenceRaw:JSON.stringify(empty)});
  const policies=fixtureSeal({...withoutDigest(f.aggregate),validationEvidenceDigest:empty.digest},trustedValidationPoliciesContractV1,trustedValidationPoliciesEncodingV1);
+ const emptyPlanRaw=JSON.stringify(await evaluatedPlanFixture(context.input,empty,context.manifest,f.composition.policy));
  const set=sealSet({contract:trustedMealWarningEvidenceSetContractV1,validationEvidenceDigest:empty.digest,validationPoliciesDigest:policies.digest,entries:[]});
- assert.deepEqual(await decodeTrustedMealWarningEvidenceSetRawV1(JSON.stringify(set),JSON.stringify(policies),rawContext),set);
+ assert.deepEqual(await decodeTrustedMealWarningEvidenceSetRawV1(JSON.stringify(set),JSON.stringify(policies),rawContext,emptyPlanRaw),set);
 });
 test('runtime/AST export audit: five raw-only functions, four constants; policy integration uses RawV2 only',()=>{
  const functions=Object.entries(warningModule).filter(([,v])=>typeof v==='function').map(([k])=>k).sort();
@@ -383,4 +452,60 @@ test('runtime/AST export audit: five raw-only functions, four constants; policy 
  const policyImport=ast.statements.filter(ts.isImportDeclaration).find(n=>n.moduleSpecifier.getText().includes('trustedValidationPoliciesV1'));
  assert.match(policyImport?.getText()??'',/decodeTrustedValidationPoliciesRawV2/);
  assert.doesNotMatch(source,/decode(?:Composition|Balance|Aggregate)Owned|sealTrustedValidationPolicies|node:/);
+});
+
+test('same evaluated slot/meal and independently pinned authorities admit the same warning package',async()=>{
+  const f=await warningFixture();
+  const again=await evaluatedPlanFixture(JSON.parse(f.inputRaw),JSON.parse(f.rawContext.trustedValidationEvidenceRaw),
+    JSON.parse(f.rawContext.candidateManifestRaw),f.composition.policy);
+  assert.equal(again.graph.days[0].slots[0].mealSnapshot.digest,f.entry.mealSnapshotDigest);
+  assert.deepEqual(await decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,f.contextRaw,JSON.stringify(again)),f.set);
+});
+for(const [name,options] of [
+  ['assigned servings',{assigned:'2.000'}],
+  ['meal nutrition',{changedNutrition:true}],
+  ['component/meal content',{changedContent:true}],
+] as const) test(`warning evidence from graph A cannot replay on self-consistent graph B: ${name}`,async()=>{
+  const f=await warningFixture();const input=JSON.parse(f.inputRaw);
+  const changed=await evaluatedPlanFixture(input,JSON.parse(f.rawContext.trustedValidationEvidenceRaw),
+    JSON.parse(f.rawContext.candidateManifestRaw),f.composition.policy,options);
+  // Every changed candidate passes the existing strict Graph/meal/input/digest boundary.
+  assert.deepEqual(await decodeGeneratedWeekPlanV1(changed,input),changed);
+  const meal=changed.graph.days[0].slots[0].mealSnapshot;
+  assert.notEqual(meal.digest,f.entry.mealSnapshotDigest);
+  assert.equal(changed.generationInputDigest,f.plan.generationInputDigest);
+  assert.equal(changed.graph.days[0].slots[0].slotId,f.entry.slotId);
+  assert.deepEqual(changed.graph.days[0].slots[0].componentEvidence,f.plan.graph.days[0].slots[0].componentEvidence);
+  const raw=JSON.stringify(changed);
+  await assert.rejects(decodeMealWarningEvidenceRawV1(f.entryRaw,f.aggregateRaw,f.contextRaw,raw),/WARNING_MEAL_STATE_MISMATCH/);
+  await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,f.contextRaw,raw),/WARNING_MEAL_STATE_MISMATCH/);
+  await assert.rejects(trustedMealWarningEvidenceSetCanonicalBytesRawV1(f.setRaw,f.aggregateRaw,f.contextRaw,raw),/WARNING_MEAL_STATE_MISMATCH/);
+  const boundEntry=resignEntry({...f.entry,mealSnapshotDigest:meal.digest});
+  const boundSet=resignSet({...f.set,entries:[boundEntry]});
+  assert.notEqual(boundEntry.digest,f.entry.digest);
+  assert.notEqual(JSON.parse(boundSet).digest,f.set.digest);
+  assert.deepEqual(await decodeTrustedMealWarningEvidenceSetRawV1(boundSet,f.aggregateRaw,f.contextRaw,raw),JSON.parse(boundSet));
+  await assert.rejects(assertTrustedMealWarningEvidenceSetPinnedRawV1(f.setRaw,boundSet,f.aggregateRaw,f.contextRaw,raw),/WARNING_MEAL_STATE_MISMATCH/);
+  await assert.rejects(assertTrustedMealWarningEvidenceSetPinnedRawV1(f.setRaw,f.setRaw,f.aggregateRaw,f.contextRaw,raw),/WARNING_MEAL_STATE_MISMATCH/);
+});
+test('evaluated meal digest must be explicit, correct type and recomputed from evaluated plan',async()=>{
+  const f=await warningFixture();
+  const missing:Record<string,unknown>={...f.entry};delete missing.mealSnapshotDigest;
+  await assert.rejects(decodeMealWarningEvidenceRawV1(JSON.stringify(missing),f.aggregateRaw,f.contextRaw,f.planRaw),/INVALID_WARNING_EVIDENCE_FIELDS/);
+  for(const mealSnapshotDigest of [null,0,'invalid',h('b')]) await assert.rejects(decodeMealWarningEvidenceRawV1(
+    JSON.stringify({...f.entry,mealSnapshotDigest}),f.aggregateRaw,f.contextRaw,f.planRaw),/WARNING_MEAL_STATE_MISMATCH/);
+});
+test('evaluated plan is duplicate-aware raw JSON, never an arbitrary object',async()=>{
+ const f=await warningFixture();
+ await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,f.contextRaw,
+  f.planRaw.replace('{','{"contract":null,')),/Duplicate JSON key/);
+ await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,f.contextRaw,
+  f.planRaw.replace('"assignedServings":"1.000"','"assignedServings":"1.000","assignedServings":"2.000"')),/Duplicate JSON key/);
+ const bad=structuredClone(f.plan);bad.graph.days[0].slots[0].mealSnapshot.digest=h('a');
+ await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,f.contextRaw,JSON.stringify(bad)),/meal_digest_mismatch/);
+});
+test('evaluated Graph must contain exactly the required slot/date/order/type coverage',async()=>{
+ const f=await warningFixture();const graph=structuredClone(f.plan.graph);graph.days[0].slots=[];graph.days[0].nutritionTotal=zero;
+ const changed=await bindGeneratedWeekPlanV1(JSON.parse(f.inputRaw),graph);
+ await assert.rejects(decodeTrustedMealWarningEvidenceSetRawV1(f.setRaw,f.aggregateRaw,f.contextRaw,JSON.stringify(changed)),/WARNING_EVALUATED_SLOT_COVERAGE_MISMATCH/);
 });

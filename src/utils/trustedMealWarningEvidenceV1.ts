@@ -2,6 +2,7 @@ import {
   decodeTrustedValidationPoliciesRawV2, trustedValidationPoliciesRawBoundaryContractV2,
 } from './trustedValidationPoliciesV1';
 import { decodeTrustedValidationEvidenceV1 } from './trustedValidationEvidenceV1';
+import { decodeGeneratedWeekPlanV1 } from './adaptiveNutritionGraphV2';
 import { assertRawJsonWithoutDuplicateKeysV1, adaptiveNutritionSha256HexV1 } from './adaptiveNutritionWireV1';
 
 export const mealWarningEvidenceContractV1 = 'potok-meal-warning-evidence-v1' as const;
@@ -21,6 +22,7 @@ export interface MealWarningEvidenceV1 {
   readonly slotId: string;
   readonly validationPolicyRevision: string;
   readonly validationEvidenceDigest: string;
+  readonly mealSnapshotDigest: string;
   readonly signals: MealWarningSignalsV1;
   readonly evidenceRevision: string;
   readonly digest: string;
@@ -36,7 +38,7 @@ export interface TrustedMealWarningEvidenceSetV1 {
 const signalKeys = ['softTargetFitDeviation', 'longPreparationBurden', 'shoppingListBurden',
   'lowerConvenienceScore', 'repetitionApproachingLimit'] as const;
 const entryKeys = ['contract', 'slotId', 'validationPolicyRevision', 'validationEvidenceDigest',
-  'signals', 'evidenceRevision', 'digest'] as const;
+  'mealSnapshotDigest', 'signals', 'evidenceRevision', 'digest'] as const;
 const contextKeys = ['contract', 'trustedGenerationInputRaw', 'candidateManifestRaw',
   'preferenceSnapshotRaw', 'safetySnapshotRaw', 'trustedValidationEvidenceRaw'] as const;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -84,9 +86,12 @@ function verifyDigest(actual: unknown, expected: string): void {
     throw new Error('WARNING_EVIDENCE_DIGEST_MISMATCH');
   }
 }
-async function authoritiesOwned(policies: unknown, context: unknown) {
+async function authoritiesOwned(policies: unknown, context: unknown, evaluatedPlanRaw: unknown) {
   // Reject non-primitive arguments before passing anything to another public boundary.
-  if (typeof policies !== 'string' || typeof context !== 'string') throw new Error('RAW_JSON_STRING_REQUIRED');
+  if (typeof policies !== 'string' || typeof context !== 'string' || typeof evaluatedPlanRaw !== 'string') {
+    throw new Error('RAW_JSON_STRING_REQUIRED');
+  }
+  const evaluatedPlanOwned = parseRaw(evaluatedPlanRaw);
   const row = record(parseRaw(context), contextKeys);
   if (row.contract !== trustedValidationPoliciesRawBoundaryContractV2) throw new Error('INVALID_RAW_BOUNDARY_CONTRACT');
   const owned = { input: parseRaw(row.trustedGenerationInputRaw), manifest: parseRaw(row.candidateManifestRaw),
@@ -96,8 +101,23 @@ async function authoritiesOwned(policies: unknown, context: unknown) {
   const pinnedPolicies = await decodeTrustedValidationPoliciesRawV2(policies, context);
   const evidence = await decodeTrustedValidationEvidenceV1(evidenceOwned, owned);
   if (pinnedPolicies.validationEvidenceDigest !== evidence.digest) throw new Error('WARNING_AUTHORITY_BINDING_MISMATCH');
+  // Existing decoders independently recompute meal, slot, Graph and plan digests.
+  // No externally supplied digest alone can establish the evaluated meal state.
+  const plan = await decodeGeneratedWeekPlanV1(evaluatedPlanOwned, owned.input);
+  const meals = new Map<string, string>();
+  for (let dayIndex = 0; dayIndex < evidence.distributionPolicy.days.length; dayIndex += 1) {
+    const required = evidence.distributionPolicy.days[dayIndex];
+    const actual = plan.graph.days[dayIndex];
+    if (actual.date !== required.date || actual.slots.length !== required.requiredSlots.length
+      || actual.slots.some((slot, index) => slot.slotId !== required.requiredSlots[index].slotId
+        || slot.sortOrder !== required.requiredSlots[index].sortOrder
+        || slot.mealType !== required.requiredSlots[index].mealType)) {
+      throw new Error('WARNING_EVALUATED_SLOT_COVERAGE_MISMATCH');
+    }
+    for (const slot of actual.slots) meals.set(slot.slotId, slot.mealSnapshot.digest);
+  }
   return { evidence, policies: pinnedPolicies,
-    slots: new Set(evidence.distributionPolicy.days.flatMap((day) => day.requiredSlots.map((slot) => slot.slotId))) };
+    slots: new Set(evidence.distributionPolicy.days.flatMap((day) => day.requiredSlots.map((slot) => slot.slotId))), meals };
 }
 type Authorities = Awaited<ReturnType<typeof authoritiesOwned>>;
 async function entryOwned(value: unknown, authority: Authorities): Promise<MealWarningEvidenceV1> {
@@ -111,13 +131,16 @@ async function entryOwned(value: unknown, authority: Authorities): Promise<MealW
     throw new Error('WARNING_VALIDATION_POLICY_MISMATCH');
   }
   if (row.validationEvidenceDigest !== authority.evidence.digest) throw new Error('WARNING_VALIDATION_EVIDENCE_MISMATCH');
+  if (typeof row.mealSnapshotDigest !== 'string' || !digestPattern.test(row.mealSnapshotDigest)
+    || row.mealSnapshotDigest !== authority.meals.get(slotId)) throw new Error('WARNING_MEAL_STATE_MISMATCH');
   const values = record(row.signals, signalKeys);
   for (const key of signalKeys) if (typeof values[key] !== 'boolean') throw new Error('INVALID_WARNING_SIGNAL_TYPE');
   const signals: MealWarningSignalsV1 = Object.freeze({ softTargetFitDeviation: values.softTargetFitDeviation as boolean,
     longPreparationBurden: values.longPreparationBurden as boolean, shoppingListBurden: values.shoppingListBurden as boolean,
     lowerConvenienceScore: values.lowerConvenienceScore as boolean, repetitionApproachingLimit: values.repetitionApproachingLimit as boolean });
   const content = { contract: mealWarningEvidenceContractV1, slotId, validationPolicyRevision,
-    validationEvidenceDigest: authority.evidence.digest, signals, evidenceRevision: uuid(row.evidenceRevision) };
+    validationEvidenceDigest: authority.evidence.digest, mealSnapshotDigest: row.mealSnapshotDigest,
+    signals, evidenceRevision: uuid(row.evidenceRevision) };
   const digest = await adaptiveNutritionSha256HexV1(bytes(mealWarningEvidenceContractV1, mealWarningEvidenceEncodingV1, content));
   verifyDigest(row.digest, digest);
   return Object.freeze({ ...content, digest });
@@ -147,34 +170,36 @@ async function setOwned(value: unknown, authority: Authorities): Promise<Trusted
 }
 
 /** Raw strings come from an independently trusted source. Digests prove integrity, not provenance. */
-export async function decodeMealWarningEvidenceRawV1(raw: string, policiesRaw: string, trustedContextRaw: string): Promise<MealWarningEvidenceV1> {
+export async function decodeMealWarningEvidenceRawV1(raw: string, policiesRaw: string, trustedContextRaw: string,
+  evaluatedPlanRaw: string): Promise<MealWarningEvidenceV1> {
   const owned = parseRaw(raw);
-  const authority = await authoritiesOwned(policiesRaw, trustedContextRaw);
+  const authority = await authoritiesOwned(policiesRaw, trustedContextRaw, evaluatedPlanRaw);
   return entryOwned(owned, authority);
 }
 export async function decodeTrustedMealWarningEvidenceSetRawV1(raw: string, policiesRaw: string,
-  trustedContextRaw: string): Promise<TrustedMealWarningEvidenceSetV1> {
+  trustedContextRaw: string, evaluatedPlanRaw: string): Promise<TrustedMealWarningEvidenceSetV1> {
   const owned = parseRaw(raw);
-  const authority = await authoritiesOwned(policiesRaw, trustedContextRaw);
+  const authority = await authoritiesOwned(policiesRaw, trustedContextRaw, evaluatedPlanRaw);
   return setOwned(owned, authority);
 }
-export async function mealWarningEvidenceCanonicalBytesRawV1(raw: string, policiesRaw: string, trustedContextRaw: string): Promise<Uint8Array> {
-  const content: Record<string, unknown> = { ...await decodeMealWarningEvidenceRawV1(raw, policiesRaw, trustedContextRaw) };
+export async function mealWarningEvidenceCanonicalBytesRawV1(raw: string, policiesRaw: string, trustedContextRaw: string,
+  evaluatedPlanRaw: string): Promise<Uint8Array> {
+  const content: Record<string, unknown> = { ...await decodeMealWarningEvidenceRawV1(raw, policiesRaw, trustedContextRaw, evaluatedPlanRaw) };
   delete content.digest;
   return bytes(mealWarningEvidenceContractV1, mealWarningEvidenceEncodingV1, content);
 }
 export async function trustedMealWarningEvidenceSetCanonicalBytesRawV1(raw: string, policiesRaw: string,
-  trustedContextRaw: string): Promise<Uint8Array> {
-  const content: Record<string, unknown> = { ...await decodeTrustedMealWarningEvidenceSetRawV1(raw, policiesRaw, trustedContextRaw) };
+  trustedContextRaw: string, evaluatedPlanRaw: string): Promise<Uint8Array> {
+  const content: Record<string, unknown> = { ...await decodeTrustedMealWarningEvidenceSetRawV1(raw, policiesRaw, trustedContextRaw, evaluatedPlanRaw) };
   delete content.digest;
   return bytes(trustedMealWarningEvidenceSetContractV1, trustedMealWarningEvidenceSetEncodingV1, content);
 }
 /** Neither pinnedRaw nor policies/context may originate from the generator's proposed authority package. */
 export async function assertTrustedMealWarningEvidenceSetPinnedRawV1(proposedRaw: string, pinnedRaw: string,
-  policiesRaw: string, trustedContextRaw: string): Promise<TrustedMealWarningEvidenceSetV1> {
+  policiesRaw: string, trustedContextRaw: string, evaluatedPlanRaw: string): Promise<TrustedMealWarningEvidenceSetV1> {
   const proposed = parseRaw(proposedRaw);
   const pinned = parseRaw(pinnedRaw);
-  const authority = await authoritiesOwned(policiesRaw, trustedContextRaw);
+  const authority = await authoritiesOwned(policiesRaw, trustedContextRaw, evaluatedPlanRaw);
   const decodedPinned = await setOwned(pinned, authority);
   const decodedProposed = await setOwned(proposed, authority);
   if (decodedPinned.digest !== decodedProposed.digest) throw new Error('WARNING_EVIDENCE_SUBSTITUTION');
