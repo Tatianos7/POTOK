@@ -109,6 +109,7 @@ function withoutDigest<T extends { digest: string }>(value: T): Omit<T, 'digest'
 
 import {
   compositionPolicySnapshotContractV1, balancePolicySnapshotContractV1, trustedValidationPoliciesContractV1,
+  type CompositionPolicySnapshotV1,
   sealCompositionPolicySnapshotV1, sealBalancePolicySnapshotV1, sealTrustedValidationPoliciesV1,
   decodeCompositionPolicySnapshotV1, decodeCompositionPolicySnapshotRawV1,
   decodeBalancePolicySnapshotV1, decodeBalancePolicySnapshotRawV1,
@@ -251,4 +252,54 @@ test('missing entire policies and unsupported envelope fields reject without def
   const bad = structuredClone(withoutDigest(aggregate));
   (bad as unknown as Record<string,unknown>).composition = null;
   await assert.rejects(sealTrustedValidationPoliciesV1(bad, context));
+});
+
+class HostileRolesArray extends Array<string> {
+  override map<U>(): U[] { return ['MAIN_COMPONENT'] as U[]; }
+}
+class PolicyArraySubclass<T> extends Array<T> {}
+
+for (const [name, mutate] of [
+  ['roles subclass with overridden map', (p: CompositionPolicySnapshotV1['policy']) => {
+    p.patterns[0].roles = new HostileRolesArray('UNKNOWN_ROLE') as typeof p.patterns[0]['roles'];
+  }],
+  ['patterns subclass', (p: CompositionPolicySnapshotV1['policy']) => {
+    p.patterns = new PolicyArraySubclass(...p.patterns);
+  }],
+  ['non-enumerable pattern', (p: CompositionPolicySnapshotV1['policy']) => {
+    Object.defineProperty(p.patterns, '0', { enumerable: false });
+  }],
+  ['non-enumerable role', (p: CompositionPolicySnapshotV1['policy']) => {
+    Object.defineProperty(p.patterns[0].roles, '0', { enumerable: false });
+  }],
+  ['sparse patterns', (p: CompositionPolicySnapshotV1['policy']) => { delete p.patterns[0]; }],
+  ['extra string property', (p: CompositionPolicySnapshotV1['policy']) => {
+    Object.defineProperty(p.patterns, 'extra', { value: true });
+  }],
+  ['extra symbol property', (p: CompositionPolicySnapshotV1['policy']) => {
+    Object.defineProperty(p.patterns, Symbol('extra'), { value: true });
+  }],
+  ['modified prototype', (p: CompositionPolicySnapshotV1['policy']) => {
+    Object.setPrototypeOf(p.patterns[0].roles, Object.create(Array.prototype));
+  }],
+  ['accessor index', (p: CompositionPolicySnapshotV1['policy']) => {
+    Object.defineProperty(p.patterns, '0', { enumerable: true, get() { throw new Error('GETTER_MUST_NOT_RUN'); } });
+  }],
+  ['own overridden map', (p: CompositionPolicySnapshotV1['policy']) => {
+    Object.defineProperty(p.patterns, 'map', { value() { throw new Error('MAP_MUST_NOT_RUN'); } });
+  }],
+] as const) test(`array boundary rejects ${name}`, async () => {
+  const { context, composition } = await fixture();
+  const candidate = structuredClone(withoutDigest(composition));
+  mutate(candidate.policy);
+  await assert.rejects(sealCompositionPolicySnapshotV1(candidate, context.input), /INVALID_POLICY_ARRAY/);
+});
+
+test('plain arrays retain canonical digest, order and raw decode behavior', async () => {
+  const { context, composition, balance, aggregate } = await fixture();
+  assert.equal(Object.getPrototypeOf(composition.policy.patterns), Array.prototype);
+  assert.deepEqual(await sealCompositionPolicySnapshotV1(structuredClone(withoutDigest(composition)), context.input), composition);
+  assert.deepEqual(await decodeCompositionPolicySnapshotRawV1(JSON.stringify(composition), context.input), composition);
+  assert.deepEqual(await decodeBalancePolicySnapshotRawV1(JSON.stringify(balance), context.input), balance);
+  assert.deepEqual(await decodeTrustedValidationPoliciesRawV1(JSON.stringify(aggregate), context), aggregate);
 });

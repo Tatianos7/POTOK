@@ -46,10 +46,13 @@ function exactJson(value: unknown): void {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
   if (typeof value === 'number' && Number.isSafeInteger(value) && !Object.is(value, -0)) return;
   if (Array.isArray(value)) {
-    if (Reflect.ownKeys(value).length !== value.length + 1) throw new Error('INVALID_POLICY_ARRAY');
+    if (Object.getPrototypeOf(value) !== Array.prototype
+      || Reflect.ownKeys(value).length !== value.length + 1) throw new Error('INVALID_POLICY_ARRAY');
     for (let index = 0; index < value.length; index += 1) {
       const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
-      if (!descriptor || !('value' in descriptor)) throw new Error('INVALID_POLICY_ARRAY');
+      if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+        throw new Error('INVALID_POLICY_ARRAY');
+      }
       exactJson(descriptor.value);
     }
     return;
@@ -67,7 +70,16 @@ function exactJson(value: unknown): void {
 }
 function canonical(value: unknown): string {
   exactJson(value);
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
+  if (Array.isArray(value)) {
+    let result = '[';
+    for (let index = 0; index < value.length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (!descriptor || !('value' in descriptor)) throw new Error('INVALID_POLICY_ARRAY');
+      if (index > 0) result += ',';
+      result += canonical(descriptor.value);
+    }
+    return `${result}]`;
+  }
   if (value && typeof value === 'object') {
     const row = value as Record<string, unknown>;
     return `{${Object.keys(row).sort().map((key) => `${JSON.stringify(key)}:${canonical(row[key])}`).join(',')}}`;
