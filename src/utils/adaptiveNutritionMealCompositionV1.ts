@@ -322,7 +322,7 @@ function normalizeCandidate(value: unknown): MealComponentCandidateV1 {
   };
 }
 
-function normalizePolicy(value: unknown): MealCompositionPolicyV1 {
+export function decodeMealCompositionPolicyV1(value: unknown): MealCompositionPolicyV1 {
   const row = requireRecord(value, ['policyRevision', 'maxComponents', 'patterns', 'nutritionWeights'],
     'meal_composition_policy');
   if (!Number.isSafeInteger(row.maxComponents) || (row.maxComponents as number) < 1
@@ -446,7 +446,7 @@ export async function composeAdaptiveMealV1(rawInput: unknown): Promise<MealComp
   const row = requireRecord(rawInput, ['mealSlotId', 'mealSnapshotRevision', 'mealType', 'goalRevision', 'goalProfile',
     'policy', 'slotTarget', 'slotHardMaximum', 'currentDayNutrition', 'dayTarget', 'dayHardMaximum',
     'excludedRecipeRevisions', 'excludedRepeatFamilies', 'candidates'], 'meal_composer_input');
-  const policy = normalizePolicy(row.policy);
+  const policy = decodeMealCompositionPolicyV1(row.policy);
   const mealType = requireEnum(row.mealType, mealTypes, 'meal_type');
   const goalProfile = requireEnum(row.goalProfile,
     ['WEIGHT_LOSS', 'CUT', 'MAINTENANCE', 'MASS_GAIN'] as const, 'goal_profile');
