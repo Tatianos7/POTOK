@@ -35,6 +35,7 @@ export interface TrustedValidationPoliciesContextV1 extends TrustedValidationEvi
 }
 const digestPattern = /^[0-9a-f]{64}$/;
 function record(value: unknown, keys: readonly string[]): Record<string, unknown> {
+  value = cloneExactPlainJsonV1(value);
   if (!value || typeof value !== 'object' || Array.isArray(value) || Object.getPrototypeOf(value) !== Object.prototype
     || Reflect.ownKeys(value).length !== keys.length || !keys.every((key) => {
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
@@ -42,34 +43,57 @@ function record(value: unknown, keys: readonly string[]): Record<string, unknown
     })) throw new Error('INVALID_POLICY_FIELDS');
   return value as Record<string, unknown>;
 }
-function exactJson(value: unknown): void {
-  if (value === null || typeof value === 'string' || typeof value === 'boolean') return;
-  if (typeof value === 'number' && Number.isSafeInteger(value) && !Object.is(value, -0)) return;
-  if (Array.isArray(value)) {
-    if (Object.getPrototypeOf(value) !== Array.prototype
-      || Reflect.ownKeys(value).length !== value.length + 1) throw new Error('INVALID_POLICY_ARRAY');
-    for (let index = 0; index < value.length; index += 1) {
-      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
-      if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
-        throw new Error('INVALID_POLICY_ARRAY');
+type ExactPlainJsonV1 = null | string | boolean | number | ExactPlainJsonV1[]
+  | { [key: string]: ExactPlainJsonV1 };
+/** Never read source values through property access: Proxy get traps are not authority. */
+function cloneExactPlainJsonV1(value: unknown): ExactPlainJsonV1 {
+  const ancestors = new WeakSet<object>();
+  function copy(source: unknown): ExactPlainJsonV1 {
+    if (source === null || typeof source === 'string' || typeof source === 'boolean') return source;
+    if (typeof source === 'number' && Number.isSafeInteger(source) && !Object.is(source, -0)) return source;
+    if (!source || typeof source !== 'object') throw new Error('INVALID_POLICY_JSON');
+    if (ancestors.has(source)) throw new Error('INVALID_POLICY_JSON');
+    ancestors.add(source);
+    try {
+      const keys = Reflect.ownKeys(source);
+      if (Array.isArray(source)) {
+        const lengthDescriptor = Object.getOwnPropertyDescriptor(source, 'length');
+        if (Object.getPrototypeOf(source) !== Array.prototype || !lengthDescriptor
+          || !('value' in lengthDescriptor) || lengthDescriptor.enumerable !== false
+          || !Number.isSafeInteger(lengthDescriptor.value) || lengthDescriptor.value < 0
+          || keys.length !== lengthDescriptor.value + 1) throw new Error('INVALID_POLICY_ARRAY');
+        const result: ExactPlainJsonV1[] = [];
+        for (let index = 0; index < lengthDescriptor.value; index += 1) {
+          const descriptor = Object.getOwnPropertyDescriptor(source, String(index));
+          if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+            throw new Error('INVALID_POLICY_ARRAY');
+          }
+          Object.defineProperty(result, String(index), { value: copy(descriptor.value),
+            enumerable: true, configurable: true, writable: true });
+        }
+        return result;
       }
-      exactJson(descriptor.value);
+      if (Object.getPrototypeOf(source) !== Object.prototype) throw new Error('INVALID_POLICY_JSON');
+      const result: { [key: string]: ExactPlainJsonV1 } = {};
+      for (let index = 0; index < keys.length; index += 1) {
+        const key = keys[index];
+        if (typeof key !== 'string') throw new Error('INVALID_POLICY_KEY');
+        const descriptor = Object.getOwnPropertyDescriptor(source, key);
+        if (!descriptor || descriptor.enumerable !== true || !('value' in descriptor)) {
+          throw new Error('INVALID_POLICY_PROPERTY');
+        }
+        // defineProperty preserves an own "__proto__" key without invoking its inherited setter.
+        Object.defineProperty(result, key, { value: copy(descriptor.value),
+          enumerable: true, configurable: true, writable: true });
+      }
+      return result;
+    } finally {
+      ancestors.delete(source);
     }
-    return;
   }
-  if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
-    for (const key of Reflect.ownKeys(value)) {
-      if (typeof key !== 'string') throw new Error('INVALID_POLICY_KEY');
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      if (!descriptor?.enumerable || !('value' in descriptor)) throw new Error('INVALID_POLICY_PROPERTY');
-      exactJson(descriptor.value);
-    }
-    return;
-  }
-  throw new Error('INVALID_POLICY_JSON');
+  return copy(value);
 }
-function canonical(value: unknown): string {
-  exactJson(value);
+function canonical(value: ExactPlainJsonV1): string {
   if (Array.isArray(value)) {
     let result = '[';
     for (let index = 0; index < value.length; index += 1) {
@@ -81,13 +105,13 @@ function canonical(value: unknown): string {
     return `${result}]`;
   }
   if (value && typeof value === 'object') {
-    const row = value as Record<string, unknown>;
+    const row = value as { [key: string]: ExactPlainJsonV1 };
     return `{${Object.keys(row).sort().map((key) => `${JSON.stringify(key)}:${canonical(row[key])}`).join(',')}}`;
   }
   return JSON.stringify(value);
 }
 function bytes(contract: string, encoding: string, content: unknown): Uint8Array {
-  return new TextEncoder().encode(canonical({ contract, encoding, policy: content }));
+  return new TextEncoder().encode(canonical(cloneExactPlainJsonV1({ contract, encoding, policy: content })));
 }
 function frozen<T>(value: T): T {
   if (value && typeof value === 'object') {
@@ -104,20 +128,18 @@ function revision(actual: string, expected: string): void {
   if (actual !== expected) throw new Error('POLICY_REVISION_MISMATCH');
 }
 function compositionContent(value: unknown, input: unknown): Omit<CompositionPolicySnapshotV1, 'digest'> {
-  exactJson(value);
   const row = record(value, ['contract', 'policy']);
   if (row.contract !== compositionPolicySnapshotContractV1) throw new Error('INVALID_COMPOSITION_POLICY_CONTRACT');
   const policy = decodeMealCompositionPolicyV1(row.policy);
-  revision(policy.policyRevision, decodeTrustedGenerationInputV1(input).compositionPolicyRevision);
+  revision(policy.policyRevision, decodeTrustedGenerationInputV1(cloneExactPlainJsonV1(input)).compositionPolicyRevision);
   // Policy pattern order is retained: existing composer tie-breaking uses supplied pattern order.
   return { contract: compositionPolicySnapshotContractV1, policy };
 }
 function balanceContent(value: unknown, input: unknown): Omit<BalancePolicySnapshotV1, 'digest'> {
-  exactJson(value);
   const row = record(value, ['contract', 'policy']);
   if (row.contract !== balancePolicySnapshotContractV1) throw new Error('INVALID_BALANCE_POLICY_CONTRACT');
   const policy = decodeBalancePolicyV1(row.policy);
-  revision(policy.policyRevision, decodeTrustedGenerationInputV1(input).validationPolicyRevision);
+  revision(policy.policyRevision, decodeTrustedGenerationInputV1(cloneExactPlainJsonV1(input)).validationPolicyRevision);
   return { contract: balancePolicySnapshotContractV1, policy };
 }
 export function compositionPolicySnapshotCanonicalBytesV1(value: unknown, input: unknown): Uint8Array {
@@ -129,12 +151,12 @@ export function balancePolicySnapshotCanonicalBytesV1(value: unknown, input: unk
 export async function sealCompositionPolicySnapshotV1(value: Omit<CompositionPolicySnapshotV1, 'digest'>,
   input: unknown): Promise<CompositionPolicySnapshotV1> {
   const content = compositionContent(value, input);
-  return frozen({ ...content, digest: await adaptiveNutritionSha256HexV1(compositionPolicySnapshotCanonicalBytesV1(content, input)) });
+  return frozen({ ...content, digest: await adaptiveNutritionSha256HexV1(bytes(compositionPolicySnapshotContractV1, compositionPolicySnapshotEncodingV1, content)) });
 }
 export async function sealBalancePolicySnapshotV1(value: Omit<BalancePolicySnapshotV1, 'digest'>,
   input: unknown): Promise<BalancePolicySnapshotV1> {
   const content = balanceContent(value, input);
-  return frozen({ ...content, digest: await adaptiveNutritionSha256HexV1(balancePolicySnapshotCanonicalBytesV1(content, input)) });
+  return frozen({ ...content, digest: await adaptiveNutritionSha256HexV1(bytes(balancePolicySnapshotContractV1, balancePolicySnapshotEncodingV1, content)) });
 }
 export async function decodeCompositionPolicySnapshotV1(value: unknown, input: unknown): Promise<CompositionPolicySnapshotV1> {
   const row = record(value, ['contract', 'policy', 'digest']);
@@ -158,8 +180,11 @@ export async function decodeBalancePolicySnapshotRawV1(raw: string, input: unkno
 }
 async function aggregateContent(value: unknown, context: TrustedValidationPoliciesContextV1): Promise<Omit<TrustedValidationPoliciesV1, 'digest'>> {
   const row = record(value, ['contract', 'generationInputDigest', 'validationEvidenceDigest', 'composition', 'balance']);
-  const input = decodeTrustedGenerationInputV1(context.input);
-  const evidence = await decodeTrustedValidationEvidenceV1(context.evidence, context);
+  const authority = record(context, ['input', 'manifest', 'preference', 'safety', 'evidence']);
+  const input = decodeTrustedGenerationInputV1(authority.input);
+  const evidence = await decodeTrustedValidationEvidenceV1(authority.evidence, {
+    input, manifest: authority.manifest, preference: authority.preference, safety: authority.safety,
+  });
   const inputDigest = await trustedGenerationInputDigestV1(input);
   if (row.contract !== trustedValidationPoliciesContractV1 || row.generationInputDigest !== inputDigest
     || row.validationEvidenceDigest !== evidence.digest) throw new Error('POLICY_AGGREGATE_BINDING_MISMATCH');
@@ -198,8 +223,11 @@ export async function trustedValidationPoliciesCanonicalBytesV1(value: unknown,
 /** Hashes establish integrity only. The pinned package must originate independently from the trusted caller. */
 export async function assertTrustedValidationPoliciesPinnedV1(proposed: unknown, pinned: unknown,
   context: TrustedValidationPoliciesContextV1): Promise<TrustedValidationPoliciesV1> {
-  const authority = await decodeTrustedValidationPoliciesV1(pinned, context);
-  const candidate = await decodeTrustedValidationPoliciesV1(proposed, context);
+  const trusted = cloneExactPlainJsonV1(context) as unknown as TrustedValidationPoliciesContextV1;
+  const pinnedCopy = cloneExactPlainJsonV1(pinned);
+  const proposedCopy = cloneExactPlainJsonV1(proposed);
+  const authority = await decodeTrustedValidationPoliciesV1(pinnedCopy, trusted);
+  const candidate = await decodeTrustedValidationPoliciesV1(proposedCopy, trusted);
   if (candidate.digest !== authority.digest) throw new Error('TRUSTED_VALIDATION_POLICIES_SUBSTITUTION');
   return authority;
 }

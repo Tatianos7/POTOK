@@ -303,3 +303,82 @@ test('plain arrays retain canonical digest, order and raw decode behavior', asyn
   assert.deepEqual(await decodeBalancePolicySnapshotRawV1(JSON.stringify(balance), context.input), balance);
   assert.deepEqual(await decodeTrustedValidationPoliciesRawV1(JSON.stringify(aggregate), context), aggregate);
 });
+
+function proxyWithoutMethodTrust<T extends object>(target: T, replacement: unknown, calls: { count: number }): T {
+  return new Proxy(target, { get(object, key, receiver) {
+    if (key === 'map') return () => { calls.count += 1; return replacement; };
+    return Reflect.get(object, key, receiver);
+  } });
+}
+test('Proxy UNKNOWN_ROLE cannot substitute valid roles via map', async () => {
+  const { context, composition } = await fixture();
+  const candidate = structuredClone(withoutDigest(composition));
+  const calls = { count: 0 };
+  candidate.policy.patterns[0].roles = proxyWithoutMethodTrust(['UNKNOWN_ROLE'] as unknown as typeof candidate.policy.patterns[0]['roles'], ['MAIN_COMPONENT'], calls);
+  await assert.rejects(sealCompositionPolicySnapshotV1(candidate, context.input));
+  assert.equal(calls.count, 0);
+});
+test('Proxy patterns uses underlying invalid descriptor content, never map substitution', async () => {
+  const { context, composition } = await fixture();
+  const candidate = structuredClone(withoutDigest(composition));
+  const replacement = structuredClone(candidate.policy.patterns);
+  candidate.policy.patterns[0].patternId = 'INVALID TOKEN';
+  const calls = { count: 0 };
+  candidate.policy.patterns = proxyWithoutMethodTrust(candidate.policy.patterns, replacement, calls);
+  await assert.rejects(sealCompositionPolicySnapshotV1(candidate, context.input));
+  assert.equal(calls.count, 0);
+});
+test('Proxy pattern get cannot repair invalid underlying roles', async () => {
+  const { context, composition } = await fixture();
+  const candidate = structuredClone(withoutDigest(composition));
+  candidate.policy.patterns[0].roles = ['UNKNOWN_ROLE'] as unknown as typeof candidate.policy.patterns[0]['roles'];
+  let reads = 0;
+  candidate.policy.patterns[0] = new Proxy(candidate.policy.patterns[0], { get(target,key,receiver) {
+    reads += 1;
+    if (key === 'roles') return ['MAIN_COMPONENT'];
+    return Reflect.get(target,key,receiver);
+  } });
+  await assert.rejects(sealCompositionPolicySnapshotV1(candidate, context.input));
+  assert.equal(reads, 0);
+});
+test('Proxy pattern and policy get cannot alter accepted values or canonical digest', async () => {
+  const { context, composition } = await fixture();
+  const candidate = structuredClone(withoutDigest(composition));
+  let reads = 0;
+  candidate.policy.patterns[0] = new Proxy(candidate.policy.patterns[0], { get() { reads += 1; return 'SUBSTITUTED'; } });
+  candidate.policy = new Proxy(candidate.policy, { get() { reads += 1; return 'SUBSTITUTED'; } });
+  assert.deepEqual(await sealCompositionPolicySnapshotV1(candidate,context.input),composition);
+  assert.equal(reads,0);
+});
+test('Proxy warning map cannot repair UNKNOWN warning code', async () => {
+  const { context, balance } = await fixture();
+  const candidate = structuredClone(withoutDigest(balance));
+  const calls = { count: 0 };
+  candidate.policy.allowedWarningCodes = proxyWithoutMethodTrust(['UNKNOWN'] as unknown as typeof candidate.policy.allowedWarningCodes, ['OPTIONAL_SPECIALTY_USED'],calls);
+  await assert.rejects(sealBalancePolicySnapshotV1(candidate,context.input));
+  assert.equal(calls.count,0);
+});
+test('Proxy snapshot envelope and pinned input get never override descriptor values', async () => {
+  const { context, composition } = await fixture();
+  let reads = 0;
+  const proposed = new Proxy(structuredClone(composition),{get(){reads += 1;return 'SUBSTITUTED';}});
+  const input = new Proxy(context.input,{get(){reads += 1;return 'SUBSTITUTED';}});
+  assert.deepEqual(await decodeCompositionPolicySnapshotV1(proposed,input),composition);
+  assert.equal(reads,0);
+});
+test('Proxy aggregate, context and evidence are detached before downstream decoding', async () => {
+  const { context, aggregate } = await fixture();
+  let reads = 0;
+  const hostile = <T extends object>(v:T):T => new Proxy(v,{get(){reads += 1;return 'SUBSTITUTED';}});
+  const pinnedContext = hostile({ ...context, evidence: hostile(structuredClone(context.evidence)) });
+  assert.deepEqual(await decodeTrustedValidationPoliciesV1(hostile(structuredClone(aggregate)),pinnedContext),aggregate);
+  assert.deepEqual(await trustedValidationPoliciesCanonicalBytesV1(hostile(structuredClone(aggregate)),pinnedContext),
+    await trustedValidationPoliciesCanonicalBytesV1(aggregate,context));
+  assert.equal(reads,0);
+});
+test('normal plain policy digests remain byte-identical to pre-fix snapshots', async () => {
+  const { composition, balance, aggregate } = await fixture();
+  assert.equal(composition.digest,'89b5e7c38c61bdb2dd05e5a9412a4b91aade28f169a9cf5d3dd77df176786ffa');
+  assert.equal(balance.digest,'c055c8df77fb39d34f519205e3fd33a5cadf2edc28bf3340e2f2f4937fdae2ba');
+  assert.equal(aggregate.digest,'f2ba00fbc9cbf2e038067625e246864f61c93e74953b0d440cce2af6f7999bc0');
+});
