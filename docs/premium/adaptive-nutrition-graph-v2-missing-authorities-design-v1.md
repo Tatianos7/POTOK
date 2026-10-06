@@ -145,6 +145,14 @@ authorize content if their header bytes/digest do not verify. A protected single
 head points to the current published manifest. This is one source of truth rather than
 a second mutable catalog.
 
+Owner-reviewed typed coverage: `ingredientIds` is exactly the sorted unique set of
+`canonicalFoodId` values from `canonical_food` recipe snapshot ingredients.
+`approved_non_food.componentDefinitionId` has separate typed evidence and never
+supplies a food ID or implicitly extends food preference/exclusion semantics.
+The pure review-to-runtime bridge is specified in
+`reviewed-runtime-recipe-publication-evidence-v1.md`; it binds existing authorities
+and source references without establishing provenance or performing publication.
+
 ## 7. Content pipeline gate
 
 Only this chain may add an entry:

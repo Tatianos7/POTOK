@@ -11,6 +11,7 @@ import {
   type GraphRecipeSnapshotV1,
 } from './adaptiveNutritionGraphV1';
 import { sharedAccountGateContractV1 } from './adaptiveNutritionGraphV2';
+import { assertRawJsonWithoutDuplicateKeysV1 } from './adaptiveNutritionWireV1';
 
 export const nutritionPreferenceSnapshotContractV1 = 'potok-nutrition-preference-snapshot-v1' as const;
 export const nutritionSafetySnapshotContractV1 = 'potok-nutrition-safety-snapshot-v1' as const;
@@ -486,6 +487,13 @@ async function decodeManifestEntry(value: unknown): Promise<AdaptiveNutritionCan
     },
     recipeSnapshot, recipeSnapshotDigest,
   };
+}
+
+/** Entry admission without inventing a manifest header/publication event. */
+export async function decodeAdaptiveNutritionCandidateManifestEntryRawV2(raw: string): Promise<AdaptiveNutritionCandidateManifestEntryV2> {
+  if (typeof raw !== 'string') throw new Error('manifest_entry_raw_string_required');
+  assertRawJsonWithoutDuplicateKeysV1(raw);
+  return decodeManifestEntry(JSON.parse(raw));
 }
 
 function manifestIdentity(entry: AdaptiveNutritionCandidateManifestEntryV2): string {

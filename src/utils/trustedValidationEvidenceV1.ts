@@ -191,6 +191,12 @@ async function eligibility(value: unknown): Promise<PlanEligibilityEvidenceV1> {
   if (hash(row.digest) !== expected.digest) throw new Error('PLAN_ELIGIBILITY_DIGEST_MISMATCH');
   return expected;
 }
+/** Reuses the existing eligibility content/digest authority; no new seal or domain. */
+export async function decodePlanEligibilityEvidenceRawV1(raw: string): Promise<PlanEligibilityEvidenceV1> {
+  if (typeof raw !== 'string') throw new Error('PLAN_ELIGIBILITY_RAW_STRING_REQUIRED');
+  assertRawJsonWithoutDuplicateKeysV1(raw);
+  return eligibility(JSON.parse(raw));
+}
 export async function sealPlanEligibilityEvidenceV1(value: Omit<PlanEligibilityEvidenceV1, 'digest'>): Promise<PlanEligibilityEvidenceV1> {
   const row = record(value, eligibilityKeys, 'PLAN_ELIGIBILITY');
   if (row.contract !== planEligibilityEvidenceContractV1 || row.planEligible !== true) throw new Error('PLAN_ELIGIBILITY_REQUIRED');
