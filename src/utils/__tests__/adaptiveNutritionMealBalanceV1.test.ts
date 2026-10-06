@@ -977,3 +977,22 @@ test('57: identical Goal target bytes and revisions produce byte-identical targe
   const value = targetFitInput('1648.000');
   assert.deepEqual(await calculateGoalTargetFitV1(value), await calculateGoalTargetFitV1(structuredClone(value)));
 });
+
+test('RawV2 admits the existing Graph V2 canonical UTC timezone', async () => {
+  const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+  fixture.value.timezone = 'UTC';
+  for (const day of fixture.value.days) day.timezone = 'UTC';
+  assert.equal((await fixture.check()).status, 'VALID');
+});
+test('legacy V1 retains slash-only timezone admission', async () => {
+  const days = await sevenDays();
+  for (const day of days) day.timezone = 'UTC';
+  await assert.rejects(validateDaySnapshotV1(days[0]), /invalid_timezone/);
+  await assert.rejects(validateWeekSnapshotV1({ ...weekInput(days), timezone: 'UTC' }), /invalid_timezone/);
+});
+test('RawV2 rejects timezone aliases instead of normalizing them', async () => {
+  const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+  fixture.value.timezone = 'Etc/UTC';
+  for (const day of fixture.value.days) day.timezone = 'Etc/UTC';
+  await assert.rejects(fixture.check(), /invalid_timezone/);
+});
