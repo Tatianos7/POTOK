@@ -13,7 +13,7 @@ import {
 import { decodeTrustedMealWarningEvidenceSetRawV1 } from './trustedMealWarningEvidenceV1';
 import {
   dayValidatorInputContractV1, mealValidatorInputContractV1, mealCandidateEvidenceContractV2,
-  weekValidatorInputContractV2, validateWeekSnapshotRawV2,
+  weekValidatorInputContractV2, validateWeekSnapshotWithChildResultsRawV2,
   type MealComponentEvidenceV2, type ValidatorReasonV1,
 } from './adaptiveNutritionMealBalanceV1';
 import { assertRawJsonWithoutDuplicateKeysV1 } from './adaptiveNutritionWireV1';
@@ -253,17 +253,34 @@ export async function validateGeneratedWeekPlanTrustedV1(generatedPlanRaw: strin
     planRevision: plan.proposedPlanRevision, compositionPolicyRevision: authority.input.compositionPolicyRevision,
     balancePolicy: balance, days, ordinaryFallbackProof: { candidatePoolDigest: fallback.candidatePoolDigest,
       status: fallback.status, ordinaryWeekDigest: fallback.ordinaryWeekDigest } };
-  let checked;
+  let recomputed;
   try {
     // Only independently decoded/constructed owned data is serialized; this is never an arbitrary-object trust bridge.
-    checked = await validateWeekSnapshotRawV2(JSON.stringify(week), authority.manifestRaw);
+    recomputed = await validateWeekSnapshotWithChildResultsRawV2(JSON.stringify(week), authority.manifestRaw);
   } catch (error) {
     if (error instanceof Error && /^component_axes_/.test(error.message)) {
       return failure('REJECTED', [{ code: 'MANIFEST_MISMATCH', scope: 'plan', path: 'plan.graph', sourceCode: error.message }]);
     }
     throw error;
   }
-  const failures = checked.reasons.filter((reason) => reason.severity !== 'WARNING').map((reason) => balanceReason(reason, plan));
+  const checked = recomputed.week;
+  for (const [dayIndex, day] of plan.graph.days.entries()) {
+    const trustedDay = recomputed.days[dayIndex];
+    if (!trustedDay || trustedDay.date !== day.date) throw new Error('TRUSTED_VALIDATOR_IMPOSSIBLE_DAY_RECEIPT');
+    for (const slot of day.slots) {
+      const trustedMeal = trustedDay.meals.find((entry) => entry.slotId === slot.slotId);
+      if (!trustedMeal) throw new Error('TRUSTED_VALIDATOR_IMPOSSIBLE_MEAL_RECEIPT');
+      if (slot.validationResultDigest !== trustedMeal.validation.subjectDigest) reasons.push({
+        code: 'VALIDATION_DIGEST_MISMATCH', scope: 'meal', dayIndex, slotId: slot.slotId,
+        path: `plan.graph.days[${dayIndex}].slots[${slot.sortOrder}].validationResultDigest` });
+    }
+    if (day.validationResultDigest !== trustedDay.validation.subjectDigest) reasons.push({
+      code: 'VALIDATION_DIGEST_MISMATCH', scope: 'day', dayIndex,
+      path: `plan.graph.days[${dayIndex}].validationResultDigest` });
+  }
+  if (plan.graph.weekValidationResultDigest !== checked.subjectDigest) reasons.push({
+    code: 'VALIDATION_DIGEST_MISMATCH', scope: 'week', path: 'plan.graph.weekValidationResultDigest' });
+  const failures = [...reasons, ...checked.reasons.filter((reason) => reason.severity !== 'WARNING').map((reason) => balanceReason(reason, plan))];
   if (failures.length) return failure('REJECTED', failures);
   const emitted = checked.reasons.filter((reason) => reason.severity === 'WARNING');
   if (emitted.some((reason) => !balance.allowedWarningCodes.includes(reason.code))) throw new Error('UNPINNED_WARNING_EMITTED');

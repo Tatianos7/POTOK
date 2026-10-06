@@ -1022,7 +1022,8 @@ export async function validateDaySnapshotV1(value: unknown): Promise<ValidatorRe
   return validateDayOwned(decodeDayInput(value));
 }
 
-async function validateDayOwned(input: DayValidationInputV1): Promise<ValidatorResultV1> {
+async function validateDayOwned(input: DayValidationInputV1,
+  onMeal?: (slotId: string, validation: ValidatorResultV1) => void): Promise<ValidatorResultV1> {
   const reasons: ValidatorReasonV1[] = [];
   const required = new Map(input.requiredSlots.map((slot) => [slot.slotId, slot]));
   const actual = new Map(input.meals.map((meal) => [meal.slotId, meal]));
@@ -1043,6 +1044,7 @@ async function validateDayOwned(input: DayValidationInputV1): Promise<ValidatorR
       reasons.push(reason('STALE_POLICY_REVISION', 'BLOCKER', `meals.${meal.slotId}`));
     }
     const mealResult = await validateMealSnapshotV1(mealInput);
+    onMeal?.(meal.slotId, mealResult);
     failedChild ||= mealResult.status === 'INVALID' || mealResult.status === 'BLOCKED_MISSING_EVIDENCE';
     for (const child of mealResult.reasons) reasons.push({ ...child, path: `meals.${meal.slotId}.${child.path}` });
   }
@@ -1130,7 +1132,8 @@ export async function validateWeekSnapshotV1(value: unknown): Promise<ValidatorR
 // V1 keeps its legacy enum-based behavior. V2 passes manifest-bound independent axes.
 async function validateWeekOwned(input: WeekValidationInputV1,
   axes?: ReadonlyMap<string, Pick<MealComponentEvidenceV2, 'specialty' | 'expensive'>>,
-  versionedSubject?: unknown): Promise<ValidatorResultV1> {
+  versionedSubject?: unknown,
+  onDay?: (day: WeekValidationChildResultsV2) => void): Promise<ValidatorResultV1> {
   const reasons: ValidatorReasonV1[] = [];
   let failedChild = false;
   const monday = new Date(`${input.weekAnchor}T00:00:00.000Z`).getUTCDay() === 1;
@@ -1149,7 +1152,10 @@ async function validateWeekOwned(input: WeekValidationInputV1,
         || day.balancePolicy.policyRevision !== input.balancePolicy.policyRevision) {
       reasons.push(reason('WEEK_POLICY_MISMATCH', 'BLOCKER', `days.${day.date}`));
     }
-    const dayResult = axes ? await validateDayOwned(day) : await validateDaySnapshotV1(day);
+    const meals: WeekValidationChildResultsV2['meals'] = [];
+    const dayResult = axes ? await validateDayOwned(day, onDay
+      ? (slotId, validation) => { meals.push({ slotId, validation }); } : undefined) : await validateDaySnapshotV1(day);
+    onDay?.({ date: day.date, validation: dayResult, meals });
     failedChild ||= dayResult.status === 'INVALID' || dayResult.status === 'BLOCKED_MISSING_EVIDENCE';
     for (const child of dayResult.reasons) reasons.push({ ...child, path: `days.${day.date}.${child.path}` });
   }
@@ -1315,6 +1321,25 @@ export async function decodeMealComponentEvidenceRawV2(evidenceRaw: string, pinn
 
 /** V2 weekly counters use only independent manifest-bound boolean axes, never the enum. */
 export async function validateWeekSnapshotRawV2(weekRaw: string, pinnedManifestRaw: string): Promise<ValidatorResultV1> {
+  return validateWeekRawOwnedBoundaryV2(weekRaw, pinnedManifestRaw);
+}
+
+export interface WeekValidationChildResultsV2 {
+  date: string;
+  validation: ValidatorResultV1;
+  meals: Array<{ slotId: string; validation: ValidatorResultV1 }>;
+}
+
+/** Same admission/domain as RawV2; exposes the actual child results from that single validation traversal. */
+export async function validateWeekSnapshotWithChildResultsRawV2(weekRaw: string, pinnedManifestRaw: string):
+Promise<{ week: ValidatorResultV1; days: WeekValidationChildResultsV2[] }> {
+  const days: WeekValidationChildResultsV2[] = [];
+  const week = await validateWeekRawOwnedBoundaryV2(weekRaw, pinnedManifestRaw, (day) => { days.push(day); });
+  return freezeOwned({ week, days });
+}
+
+async function validateWeekRawOwnedBoundaryV2(weekRaw: string, pinnedManifestRaw: string,
+  onDay?: (day: WeekValidationChildResultsV2) => void): Promise<ValidatorResultV1> {
   if (typeof weekRaw !== 'string' || typeof pinnedManifestRaw !== 'string') {
     throw new Error('accessibility_axes_raw_string_required');
   }
@@ -1356,7 +1381,7 @@ export async function validateWeekSnapshotRawV2(weekRaw: string, pinnedManifestR
     days.push({ ...day, meals });
   }
   const input = decodeWeekInput({ ...row, contract: weekValidatorInputContractV1, days }, canonicalTimezoneV2);
-  return freezeOwned(await validateWeekOwned(input, axes, weekValue));
+  return freezeOwned(await validateWeekOwned(input, axes, weekValue, onDay));
 }
 
 function decodeOptimizationCandidate(value: unknown, policyRevision: string): OptimizationCandidateV1 {

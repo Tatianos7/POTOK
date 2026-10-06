@@ -11,7 +11,9 @@ import {
   trustedGenerationInputContractV1, sharedAccountGateContractV1, trustedGenerationInputDigestV1,
   type TrustedGenerationInputV1,
 } from '../adaptiveNutritionGraphV2';
-import { goalNutritionTargetContractV1 } from '../adaptiveNutritionMealBalanceV1';
+import { goalNutritionTargetContractV1, dayValidatorInputContractV1, mealValidatorInputContractV1,
+  mealCandidateEvidenceContractV2, weekValidatorInputContractV2, validateWeekSnapshotWithChildResultsRawV2,
+} from '../adaptiveNutritionMealBalanceV1';
 import type { GraphNutritionV1, GraphRecipeSnapshotV1 } from '../adaptiveNutritionGraphV1';
 import {
   trustedValidationEvidenceContractV1, componentValidationEvidenceContractV1,
@@ -377,8 +379,10 @@ async function fullFixture(change: (state:FixtureState)=>void=()=>{},slotsPerDay
   await decodeTrustedValidationPoliciesRawV2(policiesRaw,contextRaw);
   const plan=await evaluatedPlanFixture(context.input,pinnedEvidence,context.manifest,seed.composition.policy);
   const set=warningSetFor(plan,pinnedEvidence,aggregate.digest);
-  return {context,evidence:pinnedEvidence,policies:aggregate,plan,set,rawContext,contextRaw,policiesRaw,
+  const full = {context,evidence:pinnedEvidence,policies:aggregate,plan,set,rawContext,contextRaw,policiesRaw,
     planRaw:JSON.stringify(plan),warningRaw:JSON.stringify(set)};
+  await bindFixtureValidationDigests(full);
+  return full;
 }
 type FullFixture=Awaited<ReturnType<typeof fullFixture>>;
 function check(f:FullFixture) {return validateGeneratedWeekPlanTrustedV1(f.planRaw,f.policiesRaw,f.contextRaw,f.warningRaw);}
@@ -562,7 +566,8 @@ test('missing warning evidence returns BLOCKED, never false signals',async()=>{
 test('warning emission uses explicit pinned signals and only allowed codes',async()=>{
   const f=await fullFixture(s=>{s.balance.policy.allowedWarningCodes=['SOFT_TARGET_FIT_DEVIATION'];});
   const entries=[...f.set.entries];entries[0]=resignEntry({...entries[0],signals:{...entries[0].signals,
-    softTargetFitDeviation:true,longPreparationBurden:true}});f.warningRaw=resignSet({...f.set,entries});
+    softTargetFitDeviation:true,longPreparationBurden:true}});f.set={...f.set,entries};f.warningRaw=resignSet(f.set);
+  await bindFixtureValidationDigests(f);
   const result=await check(f);assert.equal(result.status,'ACCEPTED');if(result.status!=='ACCEPTED') throw new Error('expected_accept');
   assert.deepEqual(result.warnings.map(r=>r.code),['SOFT_TARGET_FIT_DEVIATION']);
 });
@@ -597,7 +602,7 @@ test('validator invokes public RawV2 policy/week APIs only and exports no object
   assert.deepEqual(funcs.map(n=>n.name?.text),['validateGeneratedWeekPlanTrustedV1']);
   assert.ok(funcs[0].parameters.every(p=>p.type?.kind===ts.SyntaxKind.StringKeyword));
   assert.ok(source.includes('decodeTrustedValidationPoliciesRawV2(policiesRaw, contextRaw)'));
-  assert.ok(source.includes('validateWeekSnapshotRawV2(JSON.stringify(week), authority.manifestRaw)'));
+  assert.ok(source.includes('validateWeekSnapshotWithChildResultsRawV2(JSON.stringify(week), authority.manifestRaw)'));
   assert.ok(!/decode.*OwnedV2|seal.*Policy|node:/.test(source));
 });
 test('failure ordering/paths/codes deterministic and frozen across repeated evaluation',async()=>{
@@ -685,4 +690,94 @@ test('stale manifest accessibility classification cannot replace pinned recipe t
   manifest.entries[0].specialty = true;
   f.rawContext.candidateManifestRaw = JSON.stringify(manifest); f.contextRaw = JSON.stringify(f.rawContext);
   await rejected(f, 'AUTHORITY_BINDING_MISMATCH');
+});
+
+// Test-only explicit DTO projection: receipts are the existing validators' actual results,
+// not copied output fields or hashes invented by a synthetic generator.
+async function fixtureValidationResults(f: FullFixture) {
+  const { input, manifest, preference, safety } = f.context;
+  const balance = f.policies.balance.policy;
+  const composition = f.policies.composition.policy;
+  const days = f.plan.graph.days.map((day, index) => {
+    const distribution = f.evidence.distributionPolicy.days[index];
+    const meals = day.slots.map(slot => ({ slotId:slot.slotId,sortOrder:slot.sortOrder,mealType:slot.mealType,date:slot.civilDate,
+      validationInput:{contract:mealValidatorInputContractV1,sourceKind:slot.sourceKind,meal:slot.mealSnapshot,
+        compositionPolicy:{...composition,maxComponents:balance.maxComponents,
+          patterns:composition.patterns.filter(p=>p.roles.length<=balance.maxComponents)},balancePolicy:balance,
+        expected:{goalRevision:input.goalNutritionTarget.goalRevision,compositionPolicyRevision:input.compositionPolicyRevision},
+        userConstraints:{revisionId:preference.revisionId,excludedAllergens:safety.declaredAllergenCodes,
+          excludedIngredientFamilies:[],requiredDietaryTags:preference.hard.dietaryPattern==='UNSPECIFIED'?[]:[preference.hard.dietaryPattern.toLowerCase()],
+          forbiddenDietaryTags:safety.dietaryHardExclusionCodes},
+        componentEvidence:slot.mealSnapshot.components.map(component=>{
+          const entry=manifest.entries.find(e=>e.recipeId===component.recipe.recipeId)!;
+          const evidence=f.evidence.components.find(e=>e.slotId===slot.slotId&&e.mealComponentId===component.mealComponentId)!;
+          return {contract:mealCandidateEvidenceContractV2,mealComponentId:component.mealComponentId,recipeRevision:entry.recipeRevisionId,
+            recipeId:entry.recipeId,portionRevision:entry.portionRevisionId,eligibilityRevision:entry.eligibilityRevisionId,
+            manifestRevision:manifest.manifestRevision,manifestDigest:manifest.digest,specialty:entry.specialty,expensive:entry.expensive,
+            publicationStatus:entry.publicationStatus,publicationRevision:entry.publicationRevision,
+            canonicalStatus:'READY',canonicalEvidenceRevision:evidence.canonicalEvidenceRevision,
+            nutritionStatus:'COMPLETE',nutritionEvidenceRevision:evidence.nutritionEvidenceRevision,
+            allergenStatus:'REVIEWED',allergenEvidenceRevision:evidence.allergenEvidenceRevision,
+            dietaryStatus:'REVIEWED',dietaryEvidenceRevision:evidence.dietaryEvidenceRevision,
+            portionPolicyRevision:evidence.portionPolicyRevision,accessibility:entry.accessibility,
+            allergens:entry.allergenCodes,dietaryTags:entry.dietaryCodes,ingredientFamilies:evidence.ingredientFamilies,
+            dominantIngredientFamily:entry.dominantIngredientFamily,repeatFamily:entry.repeatFamily,
+            assignedServingsMinimum:entry.portionRules.assignedServingsMinimum,assignedServingsMaximum:entry.portionRules.assignedServingsMaximum,
+            proteinSource:evidence.proteinSource,produceSource:evidence.produceSource};}),
+        nutritionBounds:distribution.nutritionBounds.find(e=>e.slotId===slot.slotId)!.bounds,
+        requirements:{proteinSourceRequired:distribution.requirements.find(e=>e.slotId===slot.slotId)!.proteinSourceRequired,
+          produceRequired:distribution.requirements.find(e=>e.slotId===slot.slotId)!.produceRequired},
+        warningSignals:f.set.entries.find(e=>e.slotId===slot.slotId)!.signals}}));
+    return {contract:dayValidatorInputContractV1,date:day.date,timezone:f.plan.timezone,goalRevision:input.goalNutritionTarget.goalRevision,
+      targetPolicyRevision:input.goalNutritionTarget.targetPolicyRevision,planRevision:f.plan.proposedPlanRevision,
+      compositionPolicyRevision:input.compositionPolicyRevision,balancePolicy:balance,requiredSlots:distribution.requiredSlots,
+      meals,goalTarget:input.goalNutritionTarget,distributionBounds:distribution.distributionBounds};
+  });
+  const fallback=f.evidence.ordinaryFallback;
+  return validateWeekSnapshotWithChildResultsRawV2(JSON.stringify({contract:weekValidatorInputContractV2,
+    weekAnchor:f.plan.weekStartLocal,timezone:f.plan.timezone,goalRevision:input.goalNutritionTarget.goalRevision,
+    targetPolicyRevision:input.goalNutritionTarget.targetPolicyRevision,planRevision:f.plan.proposedPlanRevision,
+    compositionPolicyRevision:input.compositionPolicyRevision,balancePolicy:balance,days,
+    ordinaryFallbackProof:{candidatePoolDigest:fallback.candidatePoolDigest,status:fallback.status,ordinaryWeekDigest:fallback.ordinaryWeekDigest}}),
+  f.rawContext.candidateManifestRaw);
+}
+async function bindFixtureValidationDigests(f: FullFixture) {
+  const results=await fixtureValidationResults(f);
+  for(let i=0;i<f.plan.graph.days.length;i++) {
+    const day=f.plan.graph.days[i];day.validationResultDigest=results.days[i].validation.subjectDigest;
+    for(const slot of day.slots) slot.validationResultDigest=results.days[i].meals.find(e=>e.slotId===slot.slotId)!.validation.subjectDigest;
+  }
+  f.plan.graph.weekValidationResultDigest=results.week.subjectDigest;
+  resignPlan(f, false);
+}
+
+for(const level of ['slot','day','week','all'] as const) {
+  test(`forged ${level} validation digest rejected despite independently re-signed outer hashes`,async()=>{
+    const f=await fullFixture();
+    if(level==='slot'||level==='all') f.plan.graph.days[0].slots[0].validationResultDigest=h('f');
+    if(level==='day'||level==='all') f.plan.graph.days[0].validationResultDigest=h('f');
+    if(level==='week'||level==='all') f.plan.graph.weekValidationResultDigest=h('f');
+    resignPlan(f);
+    // Strict output and warning boundaries still accept these fully self-consistent outer layers.
+    await decodeGeneratedWeekPlanV1(JSON.parse(f.planRaw),f.context.input);
+    const first=await rejected(f,'VALIDATION_DIGEST_MISMATCH');const second=await check(f);
+    assert.deepEqual(first,second);
+    const scopes=first.reasons.filter(r=>r.code==='VALIDATION_DIGEST_MISMATCH').map(r=>r.scope);
+    assert.deepEqual(scopes,level==='all'?['day','meal','week']:[level==='slot'?'meal':level]);
+    assert.ok(first.reasons.every(r=>r.path.endsWith('validationResultDigest')||r.path.endsWith('weekValidationResultDigest')));
+  });
+}
+test('unchanged independently recomputed meal/day/week digests accepted',async()=>{
+  const f=await fullFixture();const actual=await fixtureValidationResults(f);
+  assert.equal(f.plan.graph.days[0].slots[0].validationResultDigest,actual.days[0].meals[0].validation.subjectDigest);
+  assert.equal(f.plan.graph.days[0].validationResultDigest,actual.days[0].validation.subjectDigest);
+  assert.equal(f.plan.graph.weekValidationResultDigest,actual.week.subjectDigest);
+  assert.equal((await check(f)).status,'ACCEPTED');
+});
+test('changed servings and refreshed plan/warning hashes cannot replay old validation receipts',async()=>{
+  const f=await fullFixture();const slot=f.plan.graph.days[0].slots[0];const c=slot.mealSnapshot.components[0];
+  const scaled=scalePremiumRecipeCollectionV1(c.recipe,'2.000');
+  c.assignedPortion={...c.assignedPortion,assignedServings:'2.000',assignedGrams:'200.000',servingMultiplier:scaled.scaleFactor};
+  c.ingredients=scaled.ingredients;c.nutrition=scaled.nutrition;slot.mealSnapshot.nutrition=scaled.nutrition;
+  resignPlan(f);await rejected(f,'VALIDATION_DIGEST_MISMATCH');
 });

@@ -27,6 +27,7 @@ import {
   validateMealSnapshotV1,
   validateWeekSnapshotV1,
   validateWeekSnapshotRawV2,
+  validateWeekSnapshotWithChildResultsRawV2,
   validatorResultContractV1,
   weekValidatorInputContractV1,
   weekValidatorInputContractV2,
@@ -995,4 +996,32 @@ test('RawV2 rejects timezone aliases instead of normalizing them', async () => {
   fixture.value.timezone = 'Etc/UTC';
   for (const day of fixture.value.days) day.timezone = 'Etc/UTC';
   await assert.rejects(fixture.check(), /invalid_timezone/);
+});
+
+test('RawV2 child receipts preserve the existing week result and validation digest domain', async () => {
+  const fixture = await axesWeek(() => ({ specialty:false, expensive:false }));
+  const results = await validateWeekSnapshotWithChildResultsRawV2(JSON.stringify(fixture.value),fixture.manifestRaw);
+  assert.deepEqual(results.week, await fixture.check());
+  assert.equal(results.days.length,7);
+  for (let i=0;i<7;i++) {
+    const day=fixture.value.days[i];
+    assert.equal(results.days[i].date,day.date);
+    assert.equal(results.days[i].meals[0].slotId,day.meals[0].slotId);
+    const legacyDay = { ...day, meals:day.meals.map(meal => ({ ...meal, validationInput:{ ...meal.validationInput,
+      componentEvidence:meal.validationInput.componentEvidence.map(({contract,recipeId,portionRevision,eligibilityRevision,
+        manifestRevision,manifestDigest,specialty,expensive,...evidence}) => {
+        assert.ok(contract && recipeId && portionRevision && eligibilityRevision && manifestRevision && manifestDigest);
+        assert.equal(specialty,false);assert.equal(expensive,false);
+        return {...evidence,contract:mealCandidateEvidenceContractV1};
+      }) } })) };
+    assert.deepEqual(results.days[i].validation,await validateDaySnapshotV1(legacyDay));
+    assert.deepEqual(results.days[i].meals[0].validation,await validateMealSnapshotV1(legacyDay.meals[0].validationInput));
+  }
+  assert.ok(Object.isFrozen(results.days[0].meals[0].validation));
+});
+test('RawV2 child receipt API rejects arbitrary objects before reflection', async () => {
+  let calls=0;const value=new Proxy({}, {get(){calls++;throw new Error('trap');},ownKeys(){calls++;throw new Error('trap');}});
+  await assert.rejects(validateWeekSnapshotWithChildResultsRawV2(value as string,'{}'),/raw_string_required/);
+  await assert.rejects(validateWeekSnapshotWithChildResultsRawV2('{}',value as string),/raw_string_required/);
+  assert.equal(calls,0);
 });

@@ -73,6 +73,12 @@ GENERATED_PLAN_INVALID, AUTHORITY_BINDING_MISMATCH, MANIFEST_MISMATCH,
 PLAN_ELIGIBILITY_FAILURE, VALIDATION_EVIDENCE_MISMATCH, PORTION_FAILURE,
 PREFERENCE_SAFETY_FAILURE and COMPOSITION_FAILURE. Existing Balance reason codes
 are preserved directly. Component locations include day/slot/component identifiers.
+Before ACCEPTED, each embedded slot/day/week validation digest must exactly match
+the corresponding recomputed ValidatorResultV1.subjectDigest. The raw-only
+validateWeekSnapshotWithChildResultsRawV2 API exposes actual child results from the
+same traversal and uses the existing Balance validation digest domain unchanged.
+Re-signing slot/Graph/plan hashes cannot repair stale or forged validation receipts;
+these fail with VALIDATION_DIGEST_MISMATCH and deterministic field locations.
 Reasons are deduplicated and lexically ordered by scope/path/code/source/location.
 
 Missing required component, plan eligibility or slot-warning authority returns
