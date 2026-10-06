@@ -510,6 +510,35 @@ test('V2 missing explicit axes has no enum-based default', async () => {
   await assert.rejects(fixture.check(), /invalid_component_evidence_v2_fields/);
 });
 
+test('V2 wrapper snapshot binding: dinner wrapper and dinner snapshot pass', async () => {
+  const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+  const wrapped = fixture.value.days[0].meals[0];
+  assert.equal(wrapped.mealType, 'dinner');
+  assert.equal(wrapped.validationInput.meal.mealType, 'dinner');
+  assert.equal((await fixture.check()).status, 'VALID');
+});
+
+for (const scenario of ['breakfast wrapper and dinner snapshot', 'required slot matches wrapper',
+  'manifest permits both meal types', 'correct slotId but wrong mealType'] as const) {
+  test(`V2 wrapper snapshot binding: ${scenario} rejects`, async () => {
+    const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+    const day = fixture.value.days[0];
+    const wrapped = day.meals[0];
+    assert.equal(wrapped.validationInput.meal.mealType, 'dinner');
+    wrapped.mealType = 'breakfast';
+    if (scenario !== 'breakfast wrapper and dinner snapshot') day.requiredSlots[0].mealType = 'breakfast';
+    if (scenario === 'required slot matches wrapper') assert.equal(day.requiredSlots[0].mealType, wrapped.mealType);
+    if (scenario === 'manifest permits both meal types') {
+      const entry = fixture.manifest.entries.find((candidate) =>
+        candidate.recipeId === wrapped.validationInput.meal.components[0].recipe.recipeId)!;
+      assert.ok(entry.allowedMealTypes.includes('breakfast'));
+      assert.ok(entry.allowedMealTypes.includes('dinner'));
+    }
+    assert.equal(wrapped.slotId, wrapped.validationInput.meal.mealSlotId);
+    await assert.rejects(fixture.check(), { message: 'axes_meal_type_binding_mismatch' });
+  });
+}
+
 test('V2 root cannot select the legacy V1 enum counter path', async () => {
   const fixture = await axesWeek(() => ({ specialty: true, expensive: true }));
   await assert.rejects(validateWeekSnapshotRawV2(JSON.stringify({ ...fixture.value, contract: weekValidatorInputContractV1 }),

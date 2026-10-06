@@ -1323,6 +1323,7 @@ export async function validateWeekSnapshotRawV2(weekRaw: string, pinnedManifestR
       const validation = record(dayMeal.validationInput, ['contract', 'sourceKind', 'meal', 'compositionPolicy', 'balancePolicy',
         'expected', 'userConstraints', 'componentEvidence', 'nutritionBounds', 'requirements', 'warningSignals'], 'axes_meal_input');
       const meal = await decodeMealSnapshotV1(validation.meal);
+      if (dayMeal.mealType !== meal.mealType) throw new Error('axes_meal_type_binding_mismatch');
       if (dayMeal.slotId !== meal.mealSlotId || slots.has(meal.mealSlotId)) throw new Error('ambiguous_axes_slot');
       slots.add(meal.mealSlotId);
       if (!Array.isArray(validation.componentEvidence) || validation.componentEvidence.length !== meal.components.length) {
