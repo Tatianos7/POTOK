@@ -5,15 +5,19 @@ import {
   type MealSnapshotV1,
 } from './adaptiveNutritionMealCompositionV1';
 import type { GraphMealTypeV1, GraphNutritionV1 } from './adaptiveNutritionGraphV1';
+import type { AdaptiveNutritionCandidateManifestV2 } from './adaptiveNutritionAuthoritiesV1';
+import { assertRawJsonWithoutDuplicateKeysV1 } from './adaptiveNutritionWireV1';
 
 export const mealBalanceContractV1 = 'potok-adaptive-meal-balance-v1' as const;
 export const goalNutritionTargetContractV1 = 'potok-adaptive-goal-nutrition-target-v1' as const;
 export const goalTargetFitInputContractV1 = 'potok-adaptive-goal-target-fit-input-v1' as const;
 export const goalTargetFitResultContractV1 = 'potok-adaptive-goal-target-fit-result-v1' as const;
 export const mealCandidateEvidenceContractV1 = 'potok-adaptive-meal-candidate-evidence-v1' as const;
+export const mealCandidateEvidenceContractV2 = 'potok-adaptive-meal-candidate-evidence-v2' as const;
 export const mealValidatorInputContractV1 = 'potok-adaptive-meal-validator-input-v1' as const;
 export const dayValidatorInputContractV1 = 'potok-adaptive-day-validator-input-v1' as const;
 export const weekValidatorInputContractV1 = 'potok-adaptive-week-validator-input-v1' as const;
+export const weekValidatorInputContractV2 = 'potok-adaptive-week-validator-input-v2' as const;
 export const balancePolicyContractV1 = 'potok-adaptive-balance-policy-v1' as const;
 export const optimizationPolicyContractV1 = 'potok-adaptive-optimization-policy-v1' as const;
 export const optimizationInputContractV1 = 'potok-adaptive-optimization-input-v1' as const;
@@ -197,6 +201,18 @@ export interface MealComponentEvidenceV1 {
   assignedServingsMaximum: string;
   proteinSource: boolean;
   produceSource: boolean;
+}
+
+/** Independent classification axes, admitted only against a separately pinned manifest. */
+export interface MealComponentEvidenceV2 extends Omit<MealComponentEvidenceV1, 'contract'> {
+  contract: typeof mealCandidateEvidenceContractV2;
+  recipeId: string;
+  portionRevision: string;
+  eligibilityRevision: string;
+  manifestRevision: string;
+  manifestDigest: string;
+  specialty: boolean;
+  expensive: boolean;
 }
 
 export interface UserFoodConstraintsV1 {
@@ -691,13 +707,15 @@ function decodeCompositionPolicy(value: unknown): MealCompositionPolicyV1 {
   };
 }
 
-function decodeEvidence(value: unknown): MealComponentEvidenceV1 {
-  const row = record(value, ['contract', 'mealComponentId', 'recipeRevision', 'publicationStatus',
+const componentEvidenceKeysV1 = ['contract', 'mealComponentId', 'recipeRevision', 'publicationStatus',
     'publicationRevision', 'canonicalStatus', 'canonicalEvidenceRevision', 'nutritionStatus',
     'nutritionEvidenceRevision', 'allergenStatus', 'allergenEvidenceRevision', 'dietaryStatus',
     'dietaryEvidenceRevision', 'portionPolicyRevision', 'accessibility', 'allergens', 'dietaryTags',
     'ingredientFamilies', 'dominantIngredientFamily', 'repeatFamily', 'assignedServingsMinimum',
-    'assignedServingsMaximum', 'proteinSource', 'produceSource'], 'component_evidence');
+    'assignedServingsMaximum', 'proteinSource', 'produceSource'] as const;
+
+function decodeEvidence(value: unknown): MealComponentEvidenceV1 {
+  const row = record(value, componentEvidenceKeysV1, 'component_evidence');
   if (row.contract !== mealCandidateEvidenceContractV1) throw new Error('unsupported_component_evidence');
   const minimum = decimalFromMinor(decimalMinor(row.assignedServingsMinimum, 'assigned_servings_minimum'));
   const maximum = decimalFromMinor(decimalMinor(row.assignedServingsMaximum, 'assigned_servings_maximum'));
@@ -1103,7 +1121,13 @@ function decodeWeekInput(value: unknown): WeekValidationInputV1 {
 }
 
 export async function validateWeekSnapshotV1(value: unknown): Promise<ValidatorResultV1> {
-  const input = decodeWeekInput(value);
+  return validateWeekOwned(decodeWeekInput(value));
+}
+
+// V1 keeps its legacy enum-based behavior. V2 passes manifest-bound independent axes.
+async function validateWeekOwned(input: WeekValidationInputV1,
+  axes?: ReadonlyMap<string, Pick<MealComponentEvidenceV2, 'specialty' | 'expensive'>>,
+  versionedSubject?: unknown): Promise<ValidatorResultV1> {
   const reasons: ValidatorReasonV1[] = [];
   let failedChild = false;
   const monday = new Date(`${input.weekAnchor}T00:00:00.000Z`).getUTCDay() === 1;
@@ -1127,7 +1151,7 @@ export async function validateWeekSnapshotV1(value: unknown): Promise<ValidatorR
     for (const child of dayResult.reasons) reasons.push({ ...child, path: `days.${day.date}.${child.path}` });
   }
 
-  if (failedChild) return result('WEEK', input.balancePolicy.policyRevision, input, reasons);
+  if (failedChild) return result('WEEK', input.balancePolicy.policyRevision, versionedSubject ?? input, reasons);
 
   const recipeCounts = new Map<string, number>();
   const familyCounts = new Map<string, number>();
@@ -1146,8 +1170,15 @@ export async function validateWeekSnapshotV1(value: unknown): Promise<ValidatorR
       familyCounts.set(item.repeatFamily, (familyCounts.get(item.repeatFamily) ?? 0) + 1);
       ingredientCounts.set(item.dominantIngredientFamily,
         (ingredientCounts.get(item.dominantIngredientFamily) ?? 0) + 1);
-      specialty ||= item.accessibility === 'SPECIALTY_PRODUCT_REQUIRED';
-      expensive ||= item.accessibility === 'EXPENSIVE_OPTIONAL';
+      if (axes) {
+        const classification = axes.get(`${meal.mealSlotId}:${component.mealComponentId}`);
+        if (!classification) throw new Error('missing_bound_component_axes');
+        specialty ||= classification.specialty;
+        expensive ||= classification.expensive;
+      } else {
+        specialty ||= item.accessibility === 'SPECIALTY_PRODUCT_REQUIRED';
+        expensive ||= item.accessibility === 'EXPENSIVE_OPTIONAL';
+      }
     }
     if (specialty) specialtyMeals += 1;
     if (expensive) expensiveMeals += 1;
@@ -1175,7 +1206,140 @@ export async function validateWeekSnapshotV1(value: unknown): Promise<ValidatorR
       || input.ordinaryFallbackProof.status === 'UNAVAILABLE_BOTH') {
     reasons.push(reason('EXPENSIVE_DEPENDENCY_REQUIRED', 'ERROR', 'ordinaryFallbackProof'));
   }
-  return result('WEEK', input.balancePolicy.policyRevision, input, reasons);
+  return result('WEEK', input.balancePolicy.policyRevision, versionedSubject ?? input, reasons);
+}
+
+function parseAxesRaw(raw: string): unknown {
+  if (typeof raw !== 'string') throw new Error('accessibility_axes_raw_string_required');
+  assertRawJsonWithoutDuplicateKeysV1(raw);
+  return JSON.parse(raw) as unknown;
+}
+
+function freezeOwned<T>(value: T): T {
+  if (value !== null && typeof value === 'object') {
+    for (const child of Object.values(value)) freezeOwned(child);
+    Object.freeze(value);
+  }
+  return value;
+}
+
+function legacyEvidence(evidence: MealComponentEvidenceV2): MealComponentEvidenceV1 {
+  return Object.fromEntries(componentEvidenceKeysV1.map((key) => [key,
+    key === 'contract' ? mealCandidateEvidenceContractV1 : evidence[key]])) as unknown as MealComponentEvidenceV1;
+}
+
+function decodeEvidenceV2Owned(value: unknown, manifest: AdaptiveNutritionCandidateManifestV2,
+  meal: MealSnapshotV1): MealComponentEvidenceV2 {
+  const row = record(value, [...componentEvidenceKeysV1, 'recipeId', 'portionRevision', 'eligibilityRevision',
+    'manifestRevision', 'manifestDigest', 'specialty', 'expensive'], 'component_evidence_v2');
+  if (row.contract !== mealCandidateEvidenceContractV2) throw new Error('unsupported_component_evidence_v2');
+  const base = decodeEvidence(Object.fromEntries(componentEvidenceKeysV1.map((key) => [key,
+    key === 'contract' ? mealCandidateEvidenceContractV1 : row[key]])));
+  const recipeId = uuid(row.recipeId, 'axes_recipe');
+  const portionRevision = uuid(row.portionRevision, 'axes_portion');
+  const eligibilityRevision = uuid(row.eligibilityRevision, 'axes_eligibility');
+  const specialty = bool(row.specialty, 'axes_specialty');
+  const expensive = bool(row.expensive, 'axes_expensive');
+  if (row.manifestRevision !== manifest.manifestRevision || row.manifestDigest !== manifest.digest) {
+    throw new Error('component_axes_manifest_binding_mismatch');
+  }
+  const candidate = manifest.entries.find((entry) => entry.recipeId === recipeId
+    && entry.recipeRevisionId === base.recipeRevision && entry.portionRevisionId === portionRevision
+    && entry.eligibilityRevisionId === eligibilityRevision);
+  const component = meal.components.find((entry) => entry.mealComponentId === base.mealComponentId);
+  if (!candidate || !component || component.recipe.recipeId !== recipeId
+      || component.recipeRevision !== base.recipeRevision || component.portionRevision !== portionRevision
+      || component.eligibility.eligibilityRevisionId !== eligibilityRevision
+      || !candidate.allowedMealTypes.includes(meal.mealType)
+      || canonicalJson(component.recipe) !== canonicalJson(candidate.recipeSnapshot)) {
+    throw new Error('component_axes_candidate_binding_mismatch');
+  }
+  for (const key of ['role', 'anchorKind', 'allowedMealTypes', 'requiredCompanionRoleSets', 'pairingTags',
+    'incompatiblePairingTags', 'repeatFamily', 'energyClass', 'beverageClass'] as const) {
+    if (canonicalJson(component.eligibility[key]) !== canonicalJson(candidate[key])) {
+      throw new Error('component_axes_eligibility_binding_mismatch');
+    }
+  }
+  const bindings = {
+    publicationStatus: candidate.publicationStatus, publicationRevision: candidate.publicationRevision,
+    canonicalEvidenceRevision: candidate.canonicalEvidenceRevision,
+    nutritionEvidenceRevision: candidate.nutritionEvidenceRevision,
+    allergenEvidenceRevision: candidate.allergenEvidenceRevision,
+    dietaryEvidenceRevision: candidate.dietaryEvidenceRevision,
+    accessibility: candidate.accessibility, allergens: candidate.allergenCodes, dietaryTags: candidate.dietaryCodes,
+    dominantIngredientFamily: candidate.dominantIngredientFamily, repeatFamily: candidate.repeatFamily,
+    assignedServingsMinimum: candidate.portionRules.assignedServingsMinimum,
+    assignedServingsMaximum: candidate.portionRules.assignedServingsMaximum,
+  };
+  for (const key of Object.keys(bindings) as Array<keyof typeof bindings>) {
+    if (canonicalJson(base[key]) !== canonicalJson(bindings[key])) throw new Error('component_axes_metadata_mismatch');
+  }
+  if (specialty !== candidate.specialty || expensive !== candidate.expensive) {
+    throw new Error('component_axes_classification_mismatch');
+  }
+  return freezeOwned({ ...base, contract: mealCandidateEvidenceContractV2, recipeId, portionRevision,
+    eligibilityRevision, manifestRevision: manifest.manifestRevision, manifestDigest: manifest.digest, specialty, expensive });
+}
+
+/** Raw-only boundary. The manifest must come from an independently trusted caller/source. */
+export async function decodeMealComponentEvidenceRawV2(evidenceRaw: string, pinnedManifestRaw: string,
+  mealSnapshotRaw: string): Promise<Readonly<MealComponentEvidenceV2>> {
+  // Check every public argument before parsing or touching any object/Proxy.
+  if ([evidenceRaw, pinnedManifestRaw, mealSnapshotRaw].some((raw) => typeof raw !== 'string')) {
+    throw new Error('accessibility_axes_raw_string_required');
+  }
+  const evidence = parseAxesRaw(evidenceRaw);
+  const manifestValue = parseAxesRaw(pinnedManifestRaw);
+  const mealValue = parseAxesRaw(mealSnapshotRaw);
+  const { decodeAdaptiveNutritionCandidateManifestV2 } = await import('./adaptiveNutritionAuthoritiesV1');
+  const manifest = await decodeAdaptiveNutritionCandidateManifestV2(manifestValue);
+  return decodeEvidenceV2Owned(evidence, manifest, await decodeMealSnapshotV1(mealValue));
+}
+
+/** V2 weekly counters use only independent manifest-bound boolean axes, never the enum. */
+export async function validateWeekSnapshotRawV2(weekRaw: string, pinnedManifestRaw: string): Promise<ValidatorResultV1> {
+  if (typeof weekRaw !== 'string' || typeof pinnedManifestRaw !== 'string') {
+    throw new Error('accessibility_axes_raw_string_required');
+  }
+  const weekValue = parseAxesRaw(weekRaw);
+  const manifestValue = parseAxesRaw(pinnedManifestRaw);
+  const { decodeAdaptiveNutritionCandidateManifestV2 } = await import('./adaptiveNutritionAuthoritiesV1');
+  const manifest = await decodeAdaptiveNutritionCandidateManifestV2(manifestValue);
+  const row = record(weekValue, ['contract', 'weekAnchor', 'timezone', 'goalRevision', 'targetPolicyRevision', 'planRevision',
+    'compositionPolicyRevision', 'balancePolicy', 'days', 'ordinaryFallbackProof'], 'week_validation_input_v2');
+  if (row.contract !== weekValidatorInputContractV2 || !Array.isArray(row.days)) {
+    throw new Error('unsupported_week_validation_input_v2');
+  }
+  const axes = new Map<string, MealComponentEvidenceV2>();
+  const slots = new Set<string>();
+  const days = [];
+  for (const value of row.days) {
+    const day = record(value, ['contract', 'date', 'timezone', 'goalRevision', 'targetPolicyRevision', 'planRevision',
+      'compositionPolicyRevision', 'balancePolicy', 'requiredSlots', 'meals', 'goalTarget', 'distributionBounds'], 'axes_day');
+    if (!Array.isArray(day.meals)) throw new Error('invalid_axes_meals');
+    const meals = [];
+    for (const dayMealValue of day.meals) {
+      const dayMeal = record(dayMealValue, ['sortOrder', 'slotId', 'mealType', 'date', 'validationInput'], 'axes_day_meal');
+      const validation = record(dayMeal.validationInput, ['contract', 'sourceKind', 'meal', 'compositionPolicy', 'balancePolicy',
+        'expected', 'userConstraints', 'componentEvidence', 'nutritionBounds', 'requirements', 'warningSignals'], 'axes_meal_input');
+      const meal = await decodeMealSnapshotV1(validation.meal);
+      if (dayMeal.mealType !== meal.mealType) throw new Error('axes_meal_type_binding_mismatch');
+      if (dayMeal.slotId !== meal.mealSlotId || slots.has(meal.mealSlotId)) throw new Error('ambiguous_axes_slot');
+      slots.add(meal.mealSlotId);
+      if (!Array.isArray(validation.componentEvidence) || validation.componentEvidence.length !== meal.components.length) {
+        throw new Error('component_axes_coverage_mismatch');
+      }
+      const bound = validation.componentEvidence.map((entry) => decodeEvidenceV2Owned(entry, manifest, meal));
+      if (bound.some((entry, index) => entry.mealComponentId !== meal.components[index].mealComponentId)) {
+        throw new Error('component_axes_coverage_mismatch');
+      }
+      for (const entry of bound) axes.set(`${meal.mealSlotId}:${entry.mealComponentId}`, entry);
+      meals.push({ ...dayMeal, validationInput: { ...validation, componentEvidence: bound.map(legacyEvidence) } });
+    }
+    days.push({ ...day, meals });
+  }
+  const input = decodeWeekInput({ ...row, contract: weekValidatorInputContractV1, days });
+  return freezeOwned(await validateWeekOwned(input, axes, weekValue));
 }
 
 function decodeOptimizationCandidate(value: unknown, policyRevision: string): OptimizationCandidateV1 {

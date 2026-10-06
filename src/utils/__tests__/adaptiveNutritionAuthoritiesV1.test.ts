@@ -33,6 +33,34 @@ const accountA = uuid(1);
 const accountB = uuid(2);
 const ingredientId = uuid(20);
 
+for (const [accessibility, specialty, expensive, accepted] of [
+  ['SPECIALTY_PRODUCT_REQUIRED', true, false, true],
+  ['SPECIALTY_PRODUCT_REQUIRED', false, false, false],
+  ['EXPENSIVE_OPTIONAL', false, true, true],
+  ['EXPENSIVE_OPTIONAL', false, false, false],
+  ['COMMON_RU_RETAIL', true, false, true],
+  ['COMMON_RU_RETAIL', false, true, true],
+  ['COMMON_RU_RETAIL', true, true, true],
+  ['SPECIALTY_PRODUCT_REQUIRED', true, true, true],
+  ['EXPENSIVE_OPTIONAL', true, true, true],
+  ['SEASONAL_BUT_COMMON', true, true, true],
+  ['ACCESSIBILITY_BLOCKED', true, true, true],
+] as const) {
+  test(`manifest axes ${accessibility}/${specialty}/${expensive}: ${accepted ? 'accept' : 'reject'}`, async () => {
+    const entry = { ...await manifestEntry(), accessibility, specialty, expensive };
+    if (accepted) {
+      const decoded = await decodeAdaptiveNutritionCandidateManifestV2(await manifest([entry]));
+      assert.equal(decoded.entries[0].specialty, specialty);
+      assert.equal(decoded.entries[0].expensive, expensive);
+    } else {
+      await assert.rejects(manifest([entry]), /manifest_accessibility_axes_inconsistent/);
+      const existing = await manifest();
+      Object.assign(existing.entries[0], { accessibility, specialty, expensive });
+      await assert.rejects(decodeAdaptiveNutritionCandidateManifestV2(existing), /manifest_accessibility_axes_inconsistent/);
+    }
+  });
+}
+
 function recipeSnapshot(seed = 10): GraphRecipeSnapshotV1 {
   const recipeRevisionId = uuid(seed + 1);
   const nutrition = { calories: '100.000', protein: '10.000', fat: '5.000', carbs: '12.000', fiber: '3.000' };

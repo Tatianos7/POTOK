@@ -11,12 +11,14 @@ import {
 } from '../adaptiveNutritionMealCompositionV1';
 import {
   balancePolicyContractV1,
+  decodeMealComponentEvidenceRawV2,
   calculateGoalTargetFitV1,
   dayValidatorInputContractV1,
   decodeGoalNutritionTargetV1,
   goalNutritionTargetContractV1,
   goalTargetFitInputContractV1,
   mealCandidateEvidenceContractV1,
+  mealCandidateEvidenceContractV2,
   mealValidatorInputContractV1,
   optimizationInputContractV1,
   optimizationPolicyContractV1,
@@ -24,13 +26,16 @@ import {
   validateDaySnapshotV1,
   validateMealSnapshotV1,
   validateWeekSnapshotV1,
+  validateWeekSnapshotRawV2,
   validatorResultContractV1,
   weekValidatorInputContractV1,
+  weekValidatorInputContractV2,
   type AccessibilityClassV1,
   type BalancePolicyV1,
   type DayValidationInputV1,
   type GoalNutritionTargetV1,
   type MealComponentEvidenceV1,
+  type MealComponentEvidenceV2,
   type MealSourceKindV1,
   type MealValidationInputV1,
   type OptimizationCandidateV1,
@@ -39,6 +44,13 @@ import {
   type ValidatorResultV1,
   type WeekValidationInputV1,
 } from '../adaptiveNutritionMealBalanceV1';
+import {
+  adaptiveNutritionCandidateManifestContractV2,
+  adaptiveNutritionCandidateManifestEncodingV2,
+  candidateRecipeSnapshotDigestV2,
+  sealAdaptiveNutritionCandidateManifestV2,
+  type AdaptiveNutritionCandidateManifestEntryV2,
+} from '../adaptiveNutritionAuthoritiesV1';
 import {
   scalePremiumRecipeCollectionV1,
   type GraphMealTypeV1,
@@ -334,6 +346,289 @@ async function sevenDays(options: { sharedRecipes?: Map<number, MealComponentCan
   }
   return days;
 }
+
+interface AxesFixtureClassification {
+  specialty: boolean;
+  expensive: boolean;
+  accessibility?: AccessibilityClassV1;
+}
+
+async function axesWeek(classify: (day: number, component: number) => AxesFixtureClassification,
+  suppliedDays?: DayValidationInputV1[]) {
+  const days = suppliedDays ?? await sevenDays();
+  const entries: AdaptiveNutritionCandidateManifestEntryV2[] = [];
+  const week = weekInput(days);
+  for (let dayIndex = 0; dayIndex < days.length; dayIndex += 1) {
+    for (const dayMeal of days[dayIndex].meals) {
+      const input = dayMeal.validationInput;
+      for (let index = 0; index < input.meal.components.length; index += 1) {
+        const component = input.meal.components[index];
+        const item = input.componentEvidence[index];
+        const classification = classify(dayIndex, index);
+        const eligibility = component.eligibility;
+        item.accessibility = classification.accessibility ?? 'COMMON_RU_RETAIL';
+        entries.push({
+          recipeId: component.recipe.recipeId, recipeRevisionId: component.recipeRevision,
+          portionRevisionId: component.portionRevision, eligibilityRevisionId: eligibility.eligibilityRevisionId,
+          publicationRevision: item.publicationRevision!, publicationStatus: 'PUBLISHED',
+          canonicalEvidenceRevision: item.canonicalEvidenceRevision!, canonicalEvidenceDigest: hash('a'),
+          nutritionEvidenceRevision: item.nutritionEvidenceRevision!, nutritionEvidenceDigest: hash('b'),
+          allergenEvidenceRevision: item.allergenEvidenceRevision!, dietaryEvidenceRevision: item.dietaryEvidenceRevision!,
+          ingredientIds: component.recipe.ingredients.map((ingredient) => {
+            if (ingredient.identity.kind !== 'canonical_food') throw new Error('fixture_noncanonical_ingredient');
+            return ingredient.identity.canonicalFoodId;
+          }).sort(),
+          allergenCodes: item.allergens, intoleranceCodes: [], dietaryCodes: item.dietaryTags,
+          allowedMealTypes: eligibility.allowedMealTypes, role: eligibility.role, anchorKind: eligibility.anchorKind,
+          requiredCompanionRoleSets: eligibility.requiredCompanionRoleSets, pairingTags: eligibility.pairingTags,
+          incompatiblePairingTags: eligibility.incompatiblePairingTags, repeatFamily: eligibility.repeatFamily,
+          energyClass: eligibility.energyClass, beverageClass: eligibility.beverageClass,
+          dominantIngredientFamily: item.dominantIngredientFamily, accessibility: item.accessibility,
+          specialty: classification.specialty, expensive: classification.expensive,
+          portionRules: { mode: 'HYBRID', assignedServingsMinimum: item.assignedServingsMinimum,
+            assignedServingsMaximum: item.assignedServingsMaximum, assignedServingsIncrement: '1.000', componentIncrements: [] },
+          recipeSnapshot: component.recipe, recipeSnapshotDigest: await candidateRecipeSnapshotDigestV2(component.recipe),
+        });
+      }
+    }
+  }
+  const manifest = await sealAdaptiveNutritionCandidateManifestV2({
+    contract: adaptiveNutritionCandidateManifestContractV2, encoding: adaptiveNutritionCandidateManifestEncodingV2,
+    manifestRevision: uuid(90_000), supersedesManifestRevision: null, publicationState: 'PUBLISHED',
+    publishedAt: '2026-09-28T00:00:00.000Z', entries: entries.sort((left, right) => {
+      const key = (entry: AdaptiveNutritionCandidateManifestEntryV2) =>
+        `${entry.recipeId}:${entry.recipeRevisionId}:${entry.portionRevisionId}:${entry.eligibilityRevisionId}`;
+      return key(left) < key(right) ? -1 : key(left) > key(right) ? 1 : 0;
+    }),
+  });
+  const value = { ...week, contract: weekValidatorInputContractV2, days: days.map((day, dayIndex) => ({
+    ...day, meals: day.meals.map((dayMeal) => ({ ...dayMeal, validationInput: {
+      ...dayMeal.validationInput,
+      componentEvidence: dayMeal.validationInput.componentEvidence.map((item, index): MealComponentEvidenceV2 => {
+        const component = dayMeal.validationInput.meal.components[index];
+        const classification = classify(dayIndex, index);
+        return { ...item, contract: mealCandidateEvidenceContractV2, recipeId: component.recipe.recipeId,
+          portionRevision: component.portionRevision, eligibilityRevision: component.eligibility.eligibilityRevisionId,
+          manifestRevision: manifest.manifestRevision, manifestDigest: manifest.digest,
+          specialty: classification.specialty, expensive: classification.expensive };
+      }),
+    } })),
+  })) };
+  return { value, manifest, manifestRaw: JSON.stringify(manifest), check: () =>
+    validateWeekSnapshotRawV2(JSON.stringify(value), JSON.stringify(manifest)) };
+}
+
+for (const [name, specialtyDays, expensiveDays, expected] of [
+  ['ordinary', 0, 0, []],
+  ['one specialty', 1, 0, []],
+  ['two specialty', 2, 0, ['SPECIALTY_LIMIT_EXCEEDED']],
+  ['two expensive', 0, 2, []],
+  ['three expensive', 0, 3, ['EXPENSIVE_LIMIT_EXCEEDED']],
+  ['both axes within limits', 1, 1, []],
+  ['both: specialty alone exceeds', 2, 2, ['SPECIALTY_LIMIT_EXCEEDED']],
+  ['both independently exceed', 3, 3, ['SPECIALTY_LIMIT_EXCEEDED', 'EXPENSIVE_LIMIT_EXCEEDED']],
+] as const) {
+  test(`V2 independent boolean counters: ${name}`, async () => {
+    const fixture = await axesWeek((day) => ({ specialty: day < specialtyDays, expensive: day < expensiveDays }));
+    const checked = await fixture.check();
+    assert.deepEqual(checked.reasons.filter((reason) => reason.code.endsWith('_LIMIT_EXCEEDED'))
+      .map((reason) => reason.code).sort(), [...expected].sort());
+    assert.equal(checked.status, expected.length ? 'INVALID' : 'VALID');
+    assert.ok(Object.isFrozen(checked));
+  });
+}
+
+test('V2 specialty classification does not hide the expensive axis', async () => {
+  const fixture = await axesWeek((day) => ({ specialty: day < 3, expensive: day < 3,
+    accessibility: day < 3 ? 'SPECIALTY_PRODUCT_REQUIRED' : 'COMMON_RU_RETAIL' }));
+  const checked = await fixture.check();
+  assert.ok(checked.reasons.some((reason) => reason.code === 'SPECIALTY_LIMIT_EXCEEDED'));
+  assert.ok(checked.reasons.some((reason) => reason.code === 'EXPENSIVE_LIMIT_EXCEEDED'));
+});
+
+test('V2 accessibility blocked is a blocker regardless of false axes', async () => {
+  const fixture = await axesWeek((day) => ({ specialty: false, expensive: false,
+    accessibility: day === 0 ? 'ACCESSIBILITY_BLOCKED' : 'COMMON_RU_RETAIL' }));
+  const checked = await fixture.check();
+  assert.equal(checked.status, 'INVALID');
+  assert.ok(checked.reasons.some((reason) => reason.code === 'ACCESSIBILITY_BLOCKED'));
+});
+
+for (const status of ['VALID', 'UNAVAILABLE_SPECIALTY', 'UNAVAILABLE_EXPENSIVE', 'UNAVAILABLE_BOTH'] as const) {
+  test(`V2 both axes preserve fallback semantics: ${status}`, async () => {
+    const fixture = await axesWeek((day) => ({ specialty: day === 0, expensive: day === 0 }));
+    fixture.value.ordinaryFallbackProof.status = status;
+    fixture.value.ordinaryFallbackProof.ordinaryWeekDigest = status === 'VALID' ? hash('b') : null;
+    const checked = await fixture.check();
+    assert.equal(checked.reasons.some((reason) => reason.code === 'SPECIALTY_DEPENDENCY_REQUIRED'),
+      status === 'UNAVAILABLE_SPECIALTY' || status === 'UNAVAILABLE_BOTH');
+    assert.equal(checked.reasons.some((reason) => reason.code === 'EXPENSIVE_DEPENDENCY_REQUIRED'),
+      status === 'UNAVAILABLE_EXPENSIVE' || status === 'UNAVAILABLE_BOTH');
+  });
+}
+
+for (const field of ['specialty', 'expensive', 'manifestDigest', 'manifestRevision', 'recipeId', 'portionRevision',
+  'eligibilityRevision', 'accessibility', 'publicationRevision'] as const) {
+  test(`V2 supplied ${field} cannot replace separately pinned manifest classification/binding`, async () => {
+    const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+    const evidence = fixture.value.days[0].meals[0].validationInput.componentEvidence[0];
+    if (field === 'specialty' || field === 'expensive') evidence[field] = true;
+    else if (field === 'manifestDigest') evidence[field] = hash('f');
+    else if (field === 'accessibility') evidence[field] = 'SEASONAL_BUT_COMMON';
+    else evidence[field] = uuid(99_999);
+    await assert.rejects(fixture.check(), /component_axes_/);
+  });
+}
+
+test('V2 two classified components in one meal increment each counter only once', async () => {
+  const days = await sevenDays();
+  const components = [candidate({ anchorKind: 'PARTIAL', required: [['CARB_SIDE']] }),
+    candidate({ role: 'CARB_SIDE', anchorKind: 'NONE' })];
+  const roles: MealComponentRoleV1[] = ['MAIN_COMPONENT', 'CARB_SIDE'];
+  const meal = await mealFrom(components, roles);
+  const input = mealInput(meal, components, roles, 'COMPOSED_MEAL', components.map((_, index) => ({
+    ingredientFamilies: [`ingredient_${index}`], dominantIngredientFamily: `ingredient_${index}`,
+  })));
+  days[0] = dayInput(days[0].date, [input]);
+  const fixture = await axesWeek((day) => ({ specialty: day === 0, expensive: day === 0 }), days);
+  assert.equal((await fixture.check()).status, 'VALID');
+});
+
+for (const [field, replacement] of [['specialty', null], ['expensive', 'true'], ['extra', true]] as const) {
+  test(`V2 evidence rejects wrong/unknown ${field}`, async () => {
+    const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+    const evidence = fixture.value.days[0].meals[0].validationInput.componentEvidence[0];
+    Object.assign(evidence, { [field]: replacement });
+    await assert.rejects(fixture.check(), /invalid_/);
+  });
+}
+
+test('V2 missing explicit axes has no enum-based default', async () => {
+  const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+  const evidence = fixture.value.days[0].meals[0].validationInput.componentEvidence[0];
+  Reflect.deleteProperty(evidence, 'specialty');
+  await assert.rejects(fixture.check(), /invalid_component_evidence_v2_fields/);
+});
+
+test('V2 wrapper snapshot binding: dinner wrapper and dinner snapshot pass', async () => {
+  const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+  const wrapped = fixture.value.days[0].meals[0];
+  assert.equal(wrapped.mealType, 'dinner');
+  assert.equal(wrapped.validationInput.meal.mealType, 'dinner');
+  assert.equal((await fixture.check()).status, 'VALID');
+});
+
+for (const scenario of ['breakfast wrapper and dinner snapshot', 'required slot matches wrapper',
+  'manifest permits both meal types', 'correct slotId but wrong mealType'] as const) {
+  test(`V2 wrapper snapshot binding: ${scenario} rejects`, async () => {
+    const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+    const day = fixture.value.days[0];
+    const wrapped = day.meals[0];
+    assert.equal(wrapped.validationInput.meal.mealType, 'dinner');
+    wrapped.mealType = 'breakfast';
+    if (scenario !== 'breakfast wrapper and dinner snapshot') day.requiredSlots[0].mealType = 'breakfast';
+    if (scenario === 'required slot matches wrapper') assert.equal(day.requiredSlots[0].mealType, wrapped.mealType);
+    if (scenario === 'manifest permits both meal types') {
+      const entry = fixture.manifest.entries.find((candidate) =>
+        candidate.recipeId === wrapped.validationInput.meal.components[0].recipe.recipeId)!;
+      assert.ok(entry.allowedMealTypes.includes('breakfast'));
+      assert.ok(entry.allowedMealTypes.includes('dinner'));
+    }
+    assert.equal(wrapped.slotId, wrapped.validationInput.meal.mealSlotId);
+    await assert.rejects(fixture.check(), { message: 'axes_meal_type_binding_mismatch' });
+  });
+}
+
+test('V2 root cannot select the legacy V1 enum counter path', async () => {
+  const fixture = await axesWeek(() => ({ specialty: true, expensive: true }));
+  await assert.rejects(validateWeekSnapshotRawV2(JSON.stringify({ ...fixture.value, contract: weekValidatorInputContractV1 }),
+    fixture.manifestRaw), /unsupported_week_validation_input_v2/);
+});
+
+for (const duplicate of ['"specialty":false,"specialty":false',
+  '"specialty":false,"special\\u0074y":false']) {
+  test(`V2 duplicate-aware evidence/manifest/week parsing: ${duplicate}`, async () => {
+    const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+    const meal = fixture.value.days[0].meals[0].validationInput;
+    const evidenceRaw = JSON.stringify(meal.componentEvidence[0]).replace('"specialty":false', duplicate);
+    await assert.rejects(decodeMealComponentEvidenceRawV2(evidenceRaw, fixture.manifestRaw,
+      JSON.stringify(meal.meal)), /duplicate/i);
+    const manifestRaw = fixture.manifestRaw.replace('"specialty":false', duplicate);
+    await assert.rejects(validateWeekSnapshotRawV2(JSON.stringify(fixture.value), manifestRaw), /duplicate/i);
+    const weekRaw = JSON.stringify(fixture.value).replace('"specialty":false', duplicate);
+    await assert.rejects(validateWeekSnapshotRawV2(weekRaw, fixture.manifestRaw), /duplicate/i);
+    const mealRaw = JSON.stringify(meal.meal).replace('"contractVersion":1', '"contractVersion":1,"contractVersion":1');
+    await assert.rejects(decodeMealComponentEvidenceRawV2(JSON.stringify(meal.componentEvidence[0]),
+      fixture.manifestRaw, mealRaw), /duplicate/i);
+  });
+}
+
+test('V2 component evidence requires exact coverage and identity order', async () => {
+  const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+  const input = fixture.value.days[0].meals[0].validationInput;
+  input.componentEvidence.push(input.componentEvidence[0]);
+  await assert.rejects(fixture.check(), /component_axes_coverage_mismatch/);
+});
+
+test('V2 absent recipe in pinned manifest is rejected', async () => {
+  const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+  const content = { ...fixture.manifest };
+  Reflect.deleteProperty(content, 'digest');
+  const absent = await sealAdaptiveNutritionCandidateManifestV2({ ...content, entries: fixture.manifest.entries.slice(1) });
+  for (const day of fixture.value.days) for (const dayMeal of day.meals) {
+    for (const evidence of dayMeal.validationInput.componentEvidence) evidence.manifestDigest = absent.digest;
+  }
+  await assert.rejects(validateWeekSnapshotRawV2(JSON.stringify(fixture.value), JSON.stringify(absent)),
+    /component_axes_candidate_binding_mismatch/);
+});
+
+test('V2 self-consistent class substitution still fails against the pinned manifest', async () => {
+  const fixture = await axesWeek(() => ({ specialty: true, expensive: true }));
+  const content = { ...fixture.manifest };
+  Reflect.deleteProperty(content, 'digest');
+  const substitute = await sealAdaptiveNutritionCandidateManifestV2({ ...content,
+    entries: fixture.manifest.entries.map((entry) => ({ ...entry, specialty: false, expensive: false })) });
+  for (const day of fixture.value.days) for (const dayMeal of day.meals) for (const evidence of dayMeal.validationInput.componentEvidence) {
+    evidence.manifestDigest = substitute.digest; evidence.specialty = false; evidence.expensive = false;
+  }
+  await assert.rejects(fixture.check(), /component_axes_manifest_binding_mismatch/);
+});
+
+test('V2 ordinary fallback never defaults a missing VALID proof', async () => {
+  const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+  fixture.value.ordinaryFallbackProof.ordinaryWeekDigest = null;
+  await assert.rejects(fixture.check(), /invalid_ordinary_week_digest/);
+});
+
+test('V2 evidence is immutable and independently manifest-bound', async () => {
+  const fixture = await axesWeek(() => ({ specialty: true, expensive: true }));
+  const meal = fixture.value.days[0].meals[0].validationInput;
+  const decoded = await decodeMealComponentEvidenceRawV2(JSON.stringify(meal.componentEvidence[0]),
+    fixture.manifestRaw, JSON.stringify(meal.meal));
+  assert.equal(decoded.specialty, true);
+  assert.equal(decoded.expensive, true);
+  assert.ok(Object.isFrozen(decoded));
+  assert.ok(Object.isFrozen(decoded.ingredientFamilies));
+});
+
+test('V2 raw boundary rejects objects/Proxy without calling traps', async () => {
+  const fixture = await axesWeek(() => ({ specialty: false, expensive: false }));
+  let traps = 0;
+  const proxy = new Proxy({}, { get() { traps += 1; throw new Error('trap'); },
+    ownKeys() { traps += 1; throw new Error('trap'); },
+    getOwnPropertyDescriptor() { traps += 1; throw new Error('trap'); } });
+  for (const value of [proxy, {}, [], new String('{}'), null, true, 4, () => '{}']) {
+    await assert.rejects(validateWeekSnapshotRawV2(value as string, fixture.manifestRaw), /raw_string_required/);
+    await assert.rejects(validateWeekSnapshotRawV2(JSON.stringify(fixture.value), value as string), /raw_string_required/);
+    const input = fixture.value.days[0].meals[0].validationInput;
+    for (const index of [0, 1, 2]) {
+      const args = [JSON.stringify(input.componentEvidence[0]), fixture.manifestRaw, JSON.stringify(input.meal)];
+      args[index] = value as string;
+      await assert.rejects(decodeMealComponentEvidenceRawV2(args[0], args[1], args[2]), /raw_string_required/);
+    }
+  }
+  assert.equal(traps, 0);
+});
 
 for (const corruption of ['digest', 'nutrition', 'composition', 'evidence'] as const) {
   test(`day/week preserve structured meal ${corruption} failure without throwing`, async () => {
