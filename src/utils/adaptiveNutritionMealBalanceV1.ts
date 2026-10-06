@@ -969,7 +969,7 @@ function validateSlotOrder(values: DaySlotV1[], label: string): void {
   if (new Set(values.map((item) => item.slotId)).size !== values.length) throw new Error(`duplicate_${label}_slot`);
 }
 
-function decodeDayInput(value: unknown): DayValidationInputV1 {
+function decodeDayInput(value: unknown, timezoneDecoder = canonicalTimezone): DayValidationInputV1 {
   const row = record(value, ['contract', 'date', 'timezone', 'goalRevision', 'targetPolicyRevision', 'planRevision',
     'compositionPolicyRevision', 'balancePolicy', 'requiredSlots', 'meals', 'goalTarget',
     'distributionBounds'], 'day_validation_input');
@@ -1005,7 +1005,7 @@ function decodeDayInput(value: unknown): DayValidationInputV1 {
   return {
     contract: dayValidatorInputContractV1,
     date: validDate(row.date, 'day_date'),
-    timezone: canonicalTimezone(row.timezone),
+    timezone: timezoneDecoder(row.timezone),
     goalRevision: uuid(row.goalRevision, 'day_goal_revision'),
     targetPolicyRevision: uuid(row.targetPolicyRevision, 'day_target_policy_revision'),
     planRevision: uuid(row.planRevision, 'day_plan_revision'),
@@ -1019,7 +1019,11 @@ function decodeDayInput(value: unknown): DayValidationInputV1 {
 }
 
 export async function validateDaySnapshotV1(value: unknown): Promise<ValidatorResultV1> {
-  const input = decodeDayInput(value);
+  return validateDayOwned(decodeDayInput(value));
+}
+
+async function validateDayOwned(input: DayValidationInputV1,
+  onMeal?: (slotId: string, validation: ValidatorResultV1) => void): Promise<ValidatorResultV1> {
   const reasons: ValidatorReasonV1[] = [];
   const required = new Map(input.requiredSlots.map((slot) => [slot.slotId, slot]));
   const actual = new Map(input.meals.map((meal) => [meal.slotId, meal]));
@@ -1040,6 +1044,7 @@ export async function validateDaySnapshotV1(value: unknown): Promise<ValidatorRe
       reasons.push(reason('STALE_POLICY_REVISION', 'BLOCKER', `meals.${meal.slotId}`));
     }
     const mealResult = await validateMealSnapshotV1(mealInput);
+    onMeal?.(meal.slotId, mealResult);
     failedChild ||= mealResult.status === 'INVALID' || mealResult.status === 'BLOCKED_MISSING_EVIDENCE';
     for (const child of mealResult.reasons) reasons.push({ ...child, path: `meals.${meal.slotId}.${child.path}` });
   }
@@ -1101,7 +1106,7 @@ function decodeFallbackProof(value: unknown): OrdinaryFallbackProofV1 {
   return { candidatePoolDigest: row.candidatePoolDigest, status, ordinaryWeekDigest: row.ordinaryWeekDigest as string | null };
 }
 
-function decodeWeekInput(value: unknown): WeekValidationInputV1 {
+function decodeWeekInput(value: unknown, timezoneDecoder = canonicalTimezone): WeekValidationInputV1 {
   const row = record(value, ['contract', 'weekAnchor', 'timezone', 'goalRevision', 'targetPolicyRevision', 'planRevision',
     'compositionPolicyRevision', 'balancePolicy', 'days', 'ordinaryFallbackProof'], 'week_validation_input');
   if (row.contract !== weekValidatorInputContractV1) throw new Error('unsupported_week_validation_input');
@@ -1109,13 +1114,13 @@ function decodeWeekInput(value: unknown): WeekValidationInputV1 {
   return {
     contract: weekValidatorInputContractV1,
     weekAnchor: validDate(row.weekAnchor, 'week_anchor'),
-    timezone: canonicalTimezone(row.timezone),
+    timezone: timezoneDecoder(row.timezone),
     goalRevision: uuid(row.goalRevision, 'week_goal_revision'),
     targetPolicyRevision: uuid(row.targetPolicyRevision, 'week_target_policy_revision'),
     planRevision: uuid(row.planRevision, 'week_plan_revision'),
     compositionPolicyRevision: uuid(row.compositionPolicyRevision, 'week_composition_policy_revision'),
     balancePolicy: decodeBalancePolicyV1(row.balancePolicy),
-    days: row.days.map(decodeDayInput),
+    days: row.days.map((day) => decodeDayInput(day, timezoneDecoder)),
     ordinaryFallbackProof: decodeFallbackProof(row.ordinaryFallbackProof),
   };
 }
@@ -1127,7 +1132,8 @@ export async function validateWeekSnapshotV1(value: unknown): Promise<ValidatorR
 // V1 keeps its legacy enum-based behavior. V2 passes manifest-bound independent axes.
 async function validateWeekOwned(input: WeekValidationInputV1,
   axes?: ReadonlyMap<string, Pick<MealComponentEvidenceV2, 'specialty' | 'expensive'>>,
-  versionedSubject?: unknown): Promise<ValidatorResultV1> {
+  versionedSubject?: unknown,
+  onDay?: (day: WeekValidationChildResultsV2) => void): Promise<ValidatorResultV1> {
   const reasons: ValidatorReasonV1[] = [];
   let failedChild = false;
   const monday = new Date(`${input.weekAnchor}T00:00:00.000Z`).getUTCDay() === 1;
@@ -1146,7 +1152,10 @@ async function validateWeekOwned(input: WeekValidationInputV1,
         || day.balancePolicy.policyRevision !== input.balancePolicy.policyRevision) {
       reasons.push(reason('WEEK_POLICY_MISMATCH', 'BLOCKER', `days.${day.date}`));
     }
-    const dayResult = await validateDaySnapshotV1(day);
+    const meals: WeekValidationChildResultsV2['meals'] = [];
+    const dayResult = axes ? await validateDayOwned(day, onDay
+      ? (slotId, validation) => { meals.push({ slotId, validation }); } : undefined) : await validateDaySnapshotV1(day);
+    onDay?.({ date: day.date, validation: dayResult, meals });
     failedChild ||= dayResult.status === 'INVALID' || dayResult.status === 'BLOCKED_MISSING_EVIDENCE';
     for (const child of dayResult.reasons) reasons.push({ ...child, path: `days.${day.date}.${child.path}` });
   }
@@ -1207,6 +1216,20 @@ async function validateWeekOwned(input: WeekValidationInputV1,
     reasons.push(reason('EXPENSIVE_DEPENDENCY_REQUIRED', 'ERROR', 'ordinaryFallbackProof'));
   }
   return result('WEEK', input.balancePolicy.policyRevision, versionedSubject ?? input, reasons);
+}
+
+// RawV2 uses the already reviewed Graph V2 canonical timezone domain, including UTC.
+// V1's slash-only timezone admission remains unchanged.
+function canonicalTimezoneV2(value: unknown): string {
+  if (typeof value !== 'string' || value.trim() !== value || value.length === 0 || value.length > 64) {
+    throw new Error('invalid_timezone');
+  }
+  try {
+    if (new Intl.DateTimeFormat('en-US', { timeZone: value }).resolvedOptions().timeZone !== value) {
+      throw new Error('invalid_timezone');
+    }
+  } catch { throw new Error('invalid_timezone'); }
+  return value;
 }
 
 function parseAxesRaw(raw: string): unknown {
@@ -1298,6 +1321,25 @@ export async function decodeMealComponentEvidenceRawV2(evidenceRaw: string, pinn
 
 /** V2 weekly counters use only independent manifest-bound boolean axes, never the enum. */
 export async function validateWeekSnapshotRawV2(weekRaw: string, pinnedManifestRaw: string): Promise<ValidatorResultV1> {
+  return validateWeekRawOwnedBoundaryV2(weekRaw, pinnedManifestRaw);
+}
+
+export interface WeekValidationChildResultsV2 {
+  date: string;
+  validation: ValidatorResultV1;
+  meals: Array<{ slotId: string; validation: ValidatorResultV1 }>;
+}
+
+/** Same admission/domain as RawV2; exposes the actual child results from that single validation traversal. */
+export async function validateWeekSnapshotWithChildResultsRawV2(weekRaw: string, pinnedManifestRaw: string):
+Promise<{ week: ValidatorResultV1; days: WeekValidationChildResultsV2[] }> {
+  const days: WeekValidationChildResultsV2[] = [];
+  const week = await validateWeekRawOwnedBoundaryV2(weekRaw, pinnedManifestRaw, (day) => { days.push(day); });
+  return freezeOwned({ week, days });
+}
+
+async function validateWeekRawOwnedBoundaryV2(weekRaw: string, pinnedManifestRaw: string,
+  onDay?: (day: WeekValidationChildResultsV2) => void): Promise<ValidatorResultV1> {
   if (typeof weekRaw !== 'string' || typeof pinnedManifestRaw !== 'string') {
     throw new Error('accessibility_axes_raw_string_required');
   }
@@ -1338,8 +1380,8 @@ export async function validateWeekSnapshotRawV2(weekRaw: string, pinnedManifestR
     }
     days.push({ ...day, meals });
   }
-  const input = decodeWeekInput({ ...row, contract: weekValidatorInputContractV1, days });
-  return freezeOwned(await validateWeekOwned(input, axes, weekValue));
+  const input = decodeWeekInput({ ...row, contract: weekValidatorInputContractV1, days }, canonicalTimezoneV2);
+  return freezeOwned(await validateWeekOwned(input, axes, weekValue, onDay));
 }
 
 function decodeOptimizationCandidate(value: unknown, policyRevision: string): OptimizationCandidateV1 {
