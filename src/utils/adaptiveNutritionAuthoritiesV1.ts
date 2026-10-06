@@ -450,6 +450,10 @@ async function decodeManifestEntry(value: unknown): Promise<AdaptiveNutritionCan
   if (typeof row.specialty !== 'boolean' || typeof row.expensive !== 'boolean') {
     throw new Error('invalid_manifest_accessibility_flags');
   }
+  if ((row.accessibility === 'SPECIALTY_PRODUCT_REQUIRED' && !row.specialty)
+      || (row.accessibility === 'EXPENSIVE_OPTIONAL' && !row.expensive)) {
+    throw new Error('manifest_accessibility_axes_inconsistent');
+  }
   return {
     recipeId, recipeRevisionId,
     portionRevisionId: uuid(row.portionRevisionId, 'manifest_portion_revision'),
