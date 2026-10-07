@@ -245,8 +245,10 @@ function decodeAction(value: unknown): AdaptiveNutritionWireActionV1 {
   return { type, targetEventId: requireUuid(row.targetEventId, 'target event') };
 }
 
-function canonicalJsonV1(value: unknown): string {
+/** Sorted-key canonical JSON for validated primitive graphs; no float serialization. */
+export function canonicalJsonV1(value: unknown): string {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+  if (typeof value === 'number' && Number.isSafeInteger(value) && !Object.is(value, -0)) return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalJsonV1).join(',')}]`;
   if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
     const row = value as Record<string, unknown>;
