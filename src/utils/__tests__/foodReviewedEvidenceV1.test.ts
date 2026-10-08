@@ -22,6 +22,7 @@ import {
   type NutritionReviewedRevisionV1 as Nutrition,
   type FoodEvidenceReviewEventV1 as Event,
 } from '../foodReviewedEvidenceV1';
+import { canonicalJsonV1, encodeAdaptiveNutritionCanonicalEnvelopeV1, adaptiveNutritionCanonicalEncodingV1, adaptiveNutritionProtocolV1 } from '../adaptiveNutritionWireV1';
 const id = (n: number) => `${String(n).padStart(8, '0')}-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const zero = '0'.repeat(64);
 const raw = (value: unknown) => JSON.stringify(value);
@@ -43,12 +44,14 @@ async function nutrition(c: Canonical): Promise<Nutrition> {
     foodState: 'as-sold', applicability: app(), reviewEventId: id(5), digest: zero };
   result.digest = await nutritionDigest(raw(result)); return result;
 }
-async function event(target: Canonical | Nutrition, kind: Event['kind'] = 'REVIEW_APPROVED', binary = false): Promise<Event> {
+async function event(target: Canonical | Nutrition, kind: Event['kind'] = 'REVIEW_APPROVED', binary = false): Promise<Event & { retainedSource: NonNullable<Event['retainedSource']> }> {
   const text = 'Источник 🥕\n17.200';
   const nutritionTarget = target.contract === nutritionContract;
   const fields = nutritionTarget ? ['calories', 'protein', 'fat', 'carbs', 'fiber'] as const : ['identitySnapshot'] as const;
   const common = { contract: eventContract, encoding, eventId: kind === 'INVALIDATION' ? id(9) : target.reviewEventId,
-    occurredAt: '2026-10-07T12:00:00.000Z', reviewerId: id(6),
+    occurredAt: '2026-10-07T12:00:00.000Z', timestampOrigin: 'SERVER' as const,
+    authorityContext: { boundary: 'OWNER_ADMIN_REVIEW' as const, actorId: id(6), role: 'ADMIN' as const, authorityReference: 'synthetic-owner-admin-review' },
+    idempotencyReference: id(10), requestDigest: hash('synthetic exact request'),
     target: { kind: nutritionTarget ? 'NUTRITION_REVIEWED_REVISION' as const : 'CANONICAL_REVIEWED_REVISION' as const,
       revisionId: target.revisionId, digest: target.digest, canonicalFoodId: target.canonicalFoodId },
     retainedSource: { sourceArtifactId: id(7), providerIdentity: 'Synthetic provider', documentIdentity: 'Synthetic document', sourceRevision: null,
@@ -56,8 +59,8 @@ async function event(target: Canonical | Nutrition, kind: Event['kind'] = 'REVIE
       byteLength: new TextEncoder().encode(text).length, sourceBytesSha256: hash(text),
       mappings: fields.map(field => ({ field, sourceField: `synthetic.${field}`, applicability: app() })),
       ...(binary ? { bytesBase64: Buffer.from(text).toString('base64') } : { text }) }, digest: zero };
-  const result: Event = kind === 'REVIEW_APPROVED' ? { ...common, kind } : kind === 'REVIEW_REJECTED'
-    ? { ...common, kind, reason: 'Synthetic rejection' } : { ...common, kind, severity: 'SAFETY_CRITICAL', reason: 'Synthetic invalidation' };
+  const result: Event & { retainedSource: NonNullable<Event['retainedSource']> } = kind === 'REVIEW_APPROVED' ? { ...common, kind } : kind === 'REVIEW_REJECTED'
+    ? { ...common, kind, target: { kind: nutritionTarget ? 'NUTRITION_PROPOSAL' : 'CANONICAL_PROPOSAL', canonicalFoodId: target.canonicalFoodId, proposalDigest: hash('synthetic exact proposal'), applicability: app() }, reason: 'Synthetic rejection' } : { ...common, kind, severity: 'SAFETY_CRITICAL', reason: 'Synthetic invalidation' };
   result.digest = await eventDigest(raw(result)); return result;
 }
 function mutate(value: unknown, path: string, replacement: unknown, remove = false): unknown {
@@ -74,10 +77,10 @@ test('valid canonical/nutrition and all strict event variants are immutable, inc
   assert.deepEqual(await decodeNutrition(raw(n), raw(c)), n);
   for (const target of [c, n]) for (const kind of ['REVIEW_APPROVED', 'REVIEW_REJECTED', 'INVALIDATION'] as const) {
     for (const binary of [false, true]) {
-      const e = await event(target, kind, binary), result = await decodeEvent(raw(e), raw(target), raw(c));
+      const e = await event(target, kind, binary), result = await decodeEvent(raw(e), raw(kind === 'REVIEW_REJECTED' ? e.target : target), raw(c));
       assert.deepEqual(result, e); assert.ok(Object.isFrozen(result));
-      assert.ok(Object.isFrozen(result.retainedSource)); assert.ok(Object.isFrozen(result.retainedSource.mappings[0].applicability));
-      assert.throws(() => { result.retainedSource.mappings[0].sourceField = 'tampered'; }, TypeError);
+      assert.ok(Object.isFrozen(result.retainedSource!)); assert.ok(Object.isFrozen(result.retainedSource!.mappings[0].applicability));
+      assert.throws(() => { result.retainedSource!.mappings[0].sourceField = 'tampered'; }, TypeError);
     }
   }
   assert.ok(Object.isFrozen(decoded.identitySnapshot.aliases));
@@ -93,7 +96,7 @@ test('exact shapes reject unknown, missing, malformed UUIDs, enums, defaults and
   for (const key of Object.keys(n)) await assert.rejects(decodeNutrition(raw(mutate(n, key, null, true)), raw(c)));
   for (const key of Object.keys(e)) await assert.rejects(decodeEvent(raw(mutate(e, key, null, true)), raw(c)));
   for (const value of [mutate(e, 'kind', 'APPROVED'), mutate(e, 'reason', 'unexpected'), mutate(e, 'severity', 'CORRECTION'),
-    mutate(e, 'reviewerId', 'bad'), mutate(e, 'target.kind', 'FOOD'), mutate(e, 'retainedSource.extra', true)]) {
+    mutate(e, 'authorityContext.actorId', 'bad'), mutate(e, 'target.kind', 'FOOD'), mutate(e, 'retainedSource.extra', true)]) {
     await assert.rejects(decodeEvent(raw(value), raw(c)));
   }
   await assert.rejects(decodeCanonical(raw(c).replace('"foodId":', `"foodId":"${c.foodId}","foodId":`)));
@@ -242,4 +245,75 @@ test('retained UTF-8/base64 validates exact bytes, XOR, canonical base64, source
   const bytes = new Uint8Array([0, 255, 128]);
   const arbitrary = { ...binary, retainedSource: { ...binary.retainedSource, bytesBase64: Buffer.from(bytes).toString('base64'), byteLength: 3, sourceBytesSha256: hash(bytes), mediaType: 'application/octet-stream' } };
   arbitrary.digest = await eventDigest(raw(arbitrary)); assert.deepEqual(await decodeEvent(raw(arbitrary), raw(c)), arbitrary);
+});
+
+
+test('rejection binds a pinned proposal without a reviewed revision; every new binding is mandatory and digested', async () => {
+  const c = await canonical(), e = await event(c, 'REVIEW_REJECTED');
+  assert.equal(e.target.kind, 'CANONICAL_PROPOSAL');
+  const proposalRaw = raw(e.target);
+  const withoutSource = { ...e, retainedSource: null }; withoutSource.digest = await eventDigest(raw(withoutSource));
+  assert.deepEqual(await decodeEvent(raw(withoutSource), proposalRaw), withoutSource);
+  await assert.rejects(decodeEvent(raw(e), raw(c)));
+  const n = await nutrition(c), en = await event(n, 'REVIEW_REJECTED');
+  assert.equal(en.target.kind, 'NUTRITION_PROPOSAL');
+  assert.deepEqual(await decodeEvent(raw(en), raw(en.target)), en);
+  for (const path of ['target.proposalDigest', 'target.canonicalFoodId', 'target.applicability.foodState']) {
+    const changed = mutate(e, path, path.endsWith('foodState') ? 'raw' : path.endsWith('canonicalFoodId') ? id(99) : zero) as Event;
+    changed.retainedSource = null; changed.digest = await eventDigest(raw(changed));
+    await assert.rejects(decodeEvent(raw(changed), proposalRaw), /PROPOSAL_BINDING_MISMATCH/);
+  }
+  for (const [path, value] of [['authorityContext.actorId', id(99)], ['authorityContext.role', 'OWNER'],
+    ['authorityContext.authorityReference', 'other-owner-review'], ['idempotencyReference', id(99)],
+    ['requestDigest', zero], ['occurredAt', '2026-10-08T12:00:00.000Z']] as const) {
+    assert.notEqual(await eventDigest(raw(mutate(e, path, value))), e.digest);
+  }
+  for (const path of ['authorityContext', 'authorityContext.actorId', 'authorityContext.role', 'authorityContext.boundary',
+    'authorityContext.authorityReference', 'idempotencyReference', 'requestDigest', 'timestampOrigin', 'occurredAt']) {
+    await assert.rejects(decodeEvent(raw(mutate(e, path, null, true)), proposalRaw));
+  }
+  for (const [path, value] of [['authorityContext.role', 'IMPORTER'], ['authorityContext.boundary', 'PUBLIC'],
+    ['authorityContext.extra', true], ['timestampOrigin', 'CLIENT'], ['idempotencyReference', ''], ['requestDigest', 'bad'],
+    ['target.revisionId', id(99)], ['target.digest', zero]] as const) {
+    await assert.rejects(decodeEvent(raw(mutate(e, path, value)), proposalRaw));
+  }
+  await assert.rejects(decodeEvent(raw(e).replace('"actorId":', `"actorId":"${id(6)}","actorId":`), proposalRaw));
+  await assert.rejects(decodeEvent(raw(e), proposalRaw.replace('"proposalDigest":', `"proposalDigest":"${zero}","proposalDigest":`)));
+  const approved = await event(c);
+  await assert.rejects(decodeEvent(raw(approved), proposalRaw));
+});
+
+test('literal raw negative zero byteLength rejects independently of otherwise valid empty payload', async () => {
+  const c = await canonical(), e = await event(c);
+  const empty = { ...e, retainedSource: { ...e.retainedSource, text: '', byteLength: 0, sourceBytesSha256: hash('') } };
+  empty.digest = await eventDigest(raw(empty));
+  assert.deepEqual(await decodeEvent(raw(empty), raw(c)), empty);
+  const negativeZeroRaw = raw(empty).replace('"byteLength":0', '"byteLength":-0');
+  assert.notEqual(negativeZeroRaw, raw(empty));
+  await assert.rejects(decodeEvent(negativeZeroRaw, raw(c)), /SOURCE_BYTE_LENGTH_MISMATCH/);
+});
+
+test('Adaptive Nutrition encoder preserves previous bytes and rejects numeric values by default', () => {
+  const request = { contract: adaptiveNutritionProtocolV1, expected: { accountId: id(1), planId: id(2), planRevision: id(3),
+    goalRevision: id(4), historyRevision: id(5), diaryRevision: id(6), weekAnchor: '2026-09-14', timeZone: 'Europe/Moscow' },
+    idempotencyKey: id(7), explicitConfirmation: true as const, action: { type: 'UNDO_ANNOTATION' as const, targetEventId: id(8) } };
+  // Independent pre-Phase-1 sorted-key serializer: numbers have never been part of this wire domain.
+  const oldSerialize = (value: unknown): string => {
+    if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
+    if (Array.isArray(value)) return `[${value.map(oldSerialize).join(',')}]`;
+    if (value && typeof value === 'object') {
+      const row = value as Record<string, unknown>;
+      return `{${Object.keys(row).sort().map(key => `${JSON.stringify(key)}:${oldSerialize(row[key])}`).join(',')}}`;
+    }
+    throw new Error('Unsupported canonical wire value');
+  };
+  assert.deepEqual(encodeAdaptiveNutritionCanonicalEnvelopeV1(request), new TextEncoder().encode(oldSerialize({
+    encoding: adaptiveNutritionCanonicalEncodingV1, protocol: request.contract, payload: request })));
+  const numeric = mutate(request, 'expected.planRevision', 1) as typeof request;
+  assert.throws(() => encodeAdaptiveNutritionCanonicalEnvelopeV1(numeric), /Unsupported canonical wire value/);
+  assert.throws(() => canonicalJsonV1(1), /Unsupported canonical wire value/);
+  assert.equal(canonicalJsonV1({ byteLength: 0 }, 'SAFE_INTEGER'), '{"byteLength":0}');
+  for (const value of [-0, 1.2, Number.MAX_SAFE_INTEGER + 1, NaN, Infinity]) {
+    assert.throws(() => canonicalJsonV1(value, 'SAFE_INTEGER'));
+  }
 });

@@ -245,14 +245,14 @@ function decodeAction(value: unknown): AdaptiveNutritionWireActionV1 {
   return { type, targetEventId: requireUuid(row.targetEventId, 'target event') };
 }
 
-/** Sorted-key canonical JSON for validated primitive graphs; no float serialization. */
-export function canonicalJsonV1(value: unknown): string {
+/** Sorted-key canonical JSON; numbers denied unless a validated domain explicitly opts in. */
+export function canonicalJsonV1(value: unknown, numberPolicy: 'DENY' | 'SAFE_INTEGER' = 'DENY'): string {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
-  if (typeof value === 'number' && Number.isSafeInteger(value) && !Object.is(value, -0)) return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalJsonV1).join(',')}]`;
+  if (numberPolicy === 'SAFE_INTEGER' && typeof value === 'number' && Number.isSafeInteger(value) && !Object.is(value, -0)) return JSON.stringify(value);
+  if (Array.isArray(value)) return `[${value.map(child => canonicalJsonV1(child, numberPolicy)).join(',')}]`;
   if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
     const row = value as Record<string, unknown>;
-    return `{${Object.keys(row).sort().map((key) => `${JSON.stringify(key)}:${canonicalJsonV1(row[key])}`).join(',')}}`;
+    return `{${Object.keys(row).sort().map((key) => `${JSON.stringify(key)}:${canonicalJsonV1(row[key], numberPolicy)}`).join(',')}}`;
   }
   throw new Error('Unsupported canonical wire value');
 }

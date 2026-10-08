@@ -49,15 +49,24 @@ interface RetainedFoodSourceCommonV1 {
 }
 export type RetainedFoodSourceSnapshotV1 = RetainedFoodSourceCommonV1 &
   ({ text: string; bytesBase64?: never } | { bytesBase64: string; text?: never });
+export interface FoodReviewAuthorityContextV1 {
+  boundary: 'OWNER_ADMIN_REVIEW'; actorId: string; role: 'OWNER' | 'ADMIN'; authorityReference: string;
+}
+/** Pinned proposal context, not a reviewed revision or a new food identity. */
+export interface FoodEvidenceProposalTargetV1 {
+  kind: 'CANONICAL_PROPOSAL' | 'NUTRITION_PROPOSAL';
+  canonicalFoodId: string; proposalDigest: string; applicability: FoodApplicabilityV1;
+}
 interface FoodEvidenceEventCommonV1 {
   contract: typeof foodEvidenceReviewEventContractV1; encoding: typeof foodReviewedEvidenceEncodingV1;
-  eventId: string; occurredAt: string; reviewerId: string; target: FoodEvidenceTargetV1;
-  retainedSource: RetainedFoodSourceSnapshotV1; digest: string;
+  eventId: string; occurredAt: string; timestampOrigin: 'SERVER';
+  authorityContext: FoodReviewAuthorityContextV1; idempotencyReference: string; requestDigest: string; digest: string;
 }
 export type FoodEvidenceReviewEventV1 = FoodEvidenceEventCommonV1 & (
-  { kind: 'REVIEW_APPROVED' } |
-  { kind: 'REVIEW_REJECTED'; reason: string } |
-  { kind: 'INVALIDATION'; severity: 'CORRECTION' | 'SAFETY_CRITICAL'; reason: string }
+  { kind: 'REVIEW_APPROVED'; target: FoodEvidenceTargetV1; retainedSource: RetainedFoodSourceSnapshotV1 } |
+  { kind: 'REVIEW_REJECTED'; target: FoodEvidenceProposalTargetV1; retainedSource: RetainedFoodSourceSnapshotV1 | null; reason: string } |
+  { kind: 'INVALIDATION'; target: FoodEvidenceTargetV1; retainedSource: RetainedFoodSourceSnapshotV1;
+    severity: 'CORRECTION' | 'SAFETY_CRITICAL'; reason: string }
 );
 type Artifact = CanonicalFoodReviewedRevisionV1 | NutritionReviewedRevisionV1 | FoodEvidenceReviewEventV1;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -195,31 +204,53 @@ async function retainedSource(value: unknown): Promise<RetainedFoodSourceSnapsho
     sourceRevision: nullableText(row.sourceRevision), locator: text(row.locator), capturedAt: timestamp(row.capturedAt), mediaType: text(row.mediaType),
     byteLength: row.byteLength, sourceBytesSha256, mappings, ...payload };
 }
+function proposalTarget(value: unknown): FoodEvidenceProposalTargetV1 {
+  const row = record(value, ['kind', 'canonicalFoodId', 'proposalDigest', 'applicability']);
+  if (row.kind !== 'CANONICAL_PROPOSAL' && row.kind !== 'NUTRITION_PROPOSAL') fail('PROPOSAL_KIND_INVALID');
+  return { kind: row.kind, canonicalFoodId: uuid(row.canonicalFoodId), proposalDigest: hash(row.proposalDigest),
+    applicability: applicability(row.applicability) };
+}
 async function eventOwned(value: unknown): Promise<FoodEvidenceReviewEventV1> {
   if (!value || typeof value !== 'object') fail('EVENT_REQUIRED');
   const kind = (value as Record<string, unknown>).kind;
   if (kind !== 'REVIEW_APPROVED' && kind !== 'REVIEW_REJECTED' && kind !== 'INVALIDATION') fail('EVENT_VARIANT_INVALID');
-  const row = record(value, ['contract', 'encoding', 'eventId', 'occurredAt', 'reviewerId', 'target', 'retainedSource', 'digest', 'kind',
+  const row = record(value, ['contract', 'encoding', 'eventId', 'occurredAt', 'timestampOrigin', 'authorityContext',
+    'idempotencyReference', 'requestDigest', 'target', 'retainedSource', 'digest', 'kind',
     ...(kind === 'REVIEW_APPROVED' ? [] : ['reason']), ...(kind === 'INVALIDATION' ? ['severity'] : [])]);
   if (row.contract !== foodEvidenceReviewEventContractV1 || row.encoding !== foodReviewedEvidenceEncodingV1) fail('EVENT_CONTRACT_INVALID');
-  const target = record(row.target, ['kind', 'revisionId', 'digest', 'canonicalFoodId']);
-  if (target.kind !== 'CANONICAL_REVIEWED_REVISION' && target.kind !== 'NUTRITION_REVIEWED_REVISION') fail('TARGET_KIND_INVALID');
-  const retained = await retainedSource(row.retainedSource);
-  const expectedFields = target.kind === 'CANONICAL_REVIEWED_REVISION' ? ['identitySnapshot'] : ['calories', 'protein', 'fat', 'carbs', 'fiber'];
-  if (retained.mappings.length !== expectedFields.length || expectedFields.some(field => !retained.mappings.some(mapping => mapping.field === field))) fail('SOURCE_MAPPING_COVERAGE');
+  if (row.timestampOrigin !== 'SERVER') fail('SERVER_TIMESTAMP_REQUIRED');
+  const authority = record(row.authorityContext, ['boundary', 'actorId', 'role', 'authorityReference']);
+  if (authority.boundary !== 'OWNER_ADMIN_REVIEW' || (authority.role !== 'OWNER' && authority.role !== 'ADMIN')) fail('AUTHORITY_CONTEXT_INVALID');
   const common: FoodEvidenceEventCommonV1 = { contract: foodEvidenceReviewEventContractV1, encoding: foodReviewedEvidenceEncodingV1,
-    eventId: uuid(row.eventId), occurredAt: timestamp(row.occurredAt), reviewerId: uuid(row.reviewerId),
-    target: { kind: target.kind, revisionId: uuid(target.revisionId), digest: hash(target.digest), canonicalFoodId: uuid(target.canonicalFoodId) },
-    retainedSource: retained, digest: hash(row.digest) };
-  if (kind === 'REVIEW_APPROVED') return { ...common, kind };
-  if (kind === 'REVIEW_REJECTED') return { ...common, kind, reason: text(row.reason) };
+    eventId: uuid(row.eventId), occurredAt: timestamp(row.occurredAt), timestampOrigin: 'SERVER',
+    authorityContext: { boundary: 'OWNER_ADMIN_REVIEW', actorId: uuid(authority.actorId), role: authority.role,
+      authorityReference: text(authority.authorityReference) },
+    idempotencyReference: uuid(row.idempotencyReference), requestDigest: hash(row.requestDigest), digest: hash(row.digest) };
+  const retained = kind === 'REVIEW_REJECTED' && row.retainedSource === null ? null : await retainedSource(row.retainedSource);
+  const isCanonical = kind === 'REVIEW_REJECTED'
+    ? proposalTarget(row.target).kind === 'CANONICAL_PROPOSAL'
+    : (row.target as Record<string, unknown> | null)?.kind === 'CANONICAL_REVIEWED_REVISION';
+  const expectedFields = isCanonical ? ['identitySnapshot'] : ['calories', 'protein', 'fat', 'carbs', 'fiber'];
+  if (retained && (retained.mappings.length !== expectedFields.length
+    || expectedFields.some(field => !retained.mappings.some(mapping => mapping.field === field)))) fail('SOURCE_MAPPING_COVERAGE');
+  if (kind === 'REVIEW_REJECTED') {
+    const target = proposalTarget(row.target);
+    if (retained?.mappings.some(mapping => canonicalJsonV1(mapping.applicability) !== canonicalJsonV1(target.applicability))) fail('EVENT_TARGET_BINDING_MISMATCH');
+    return { ...common, kind, target, retainedSource: retained, reason: text(row.reason) };
+  }
+  const targetRow = record(row.target, ['kind', 'revisionId', 'digest', 'canonicalFoodId']);
+  if (targetRow.kind !== 'CANONICAL_REVIEWED_REVISION' && targetRow.kind !== 'NUTRITION_REVIEWED_REVISION') fail('TARGET_KIND_INVALID');
+  const target: FoodEvidenceTargetV1 = { kind: targetRow.kind, revisionId: uuid(targetRow.revisionId),
+    digest: hash(targetRow.digest), canonicalFoodId: uuid(targetRow.canonicalFoodId) };
+  if (!retained) fail('SOURCE_REQUIRED');
+  if (kind === 'REVIEW_APPROVED') return { ...common, kind, target, retainedSource: retained };
   if (row.severity !== 'CORRECTION' && row.severity !== 'SAFETY_CRITICAL') fail('INVALIDATION_SEVERITY_INVALID');
-  return { ...common, kind, severity: row.severity, reason: text(row.reason) };
+  return { ...common, kind, target, retainedSource: retained, severity: row.severity, reason: text(row.reason) };
 }
 function bytes(artifact: Artifact, domain: string): Uint8Array {
   const { digest, ...payload } = artifact;
   if (!hashPattern.test(digest)) fail('INTERNAL_DIGEST_INVALID');
-  return new TextEncoder().encode(canonicalJsonV1({ domain, payload }));
+  return new TextEncoder().encode(canonicalJsonV1({ domain, payload }, 'SAFE_INTEGER'));
 }
 async function verified<T extends Artifact>(artifact: T, domain: string): Promise<T> {
   if (artifact.digest !== await adaptiveNutritionSha256HexV1(bytes(artifact, domain))) fail('SELF_DIGEST_MISMATCH');
@@ -256,9 +287,14 @@ export async function decodeNutritionReviewedRevisionRawV1(raw: string, canonica
     || canonicalJsonV1(nutrition.applicability) !== canonicalJsonV1(canonical.applicability)) fail('CANONICAL_BINDING_MISMATCH');
   return nutrition;
 }
-/** Exact target binding, including source applicability. INVALIDATION never implies supersession. */
+/** Exact revision or independently pinned rejected-proposal binding. No authority or live-status claim. */
 export async function decodeFoodEvidenceReviewEventRawV1(raw: string, targetRaw: string, canonicalRaw?: string): Promise<FoodEvidenceReviewEventV1> {
   const event = await verified(await eventOwned(parse(raw)), foodReviewedEvidenceDigestDomainsV1.event);
+  if (event.kind === 'REVIEW_REJECTED') {
+    const pinnedProposal = proposalTarget(parse(targetRaw));
+    if (canonicalJsonV1(event.target) !== canonicalJsonV1(pinnedProposal)) fail('PROPOSAL_BINDING_MISMATCH');
+    return event;
+  }
   let target: CanonicalFoodReviewedRevisionV1 | NutritionReviewedRevisionV1;
   if (event.target.kind === 'CANONICAL_REVIEWED_REVISION') target = await decodeCanonicalFoodReviewedRevisionRawV1(targetRaw);
   else {
@@ -267,6 +303,6 @@ export async function decodeFoodEvidenceReviewEventRawV1(raw: string, targetRaw:
   }
   if (event.target.revisionId !== target.revisionId || event.target.digest !== target.digest || event.target.canonicalFoodId !== target.canonicalFoodId
     || event.retainedSource.mappings.some(mapping => canonicalJsonV1(mapping.applicability) !== canonicalJsonV1(target.applicability))) fail('EVENT_TARGET_BINDING_MISMATCH');
-  if (event.kind !== 'INVALIDATION' && event.eventId !== target.reviewEventId) fail('REVIEW_EVENT_BINDING_MISMATCH');
+  if (event.kind === 'REVIEW_APPROVED' && event.eventId !== target.reviewEventId) fail('REVIEW_EVENT_BINDING_MISMATCH');
   return event;
 }
