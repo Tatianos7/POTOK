@@ -186,9 +186,10 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
       basis:'PER_100_G_EDIBLE',units:{ calories:'kcal',protein:'g',fat:'g',carbs:'g',fiber:'g' },nutrition:{ calories:'17.200',protein:'1.230',fat:'0.000',carbs:'2.000',fiber:'0.100' } };
     await t.test('nutrition binds exact live canonical revision and all five exact decimals',async () => {
       const input = { ...await approved(1006), proposal:n,proposalDigest:await foodReviewProposalDigestV1(n),retainedSource:source(1106,'synthetic nutrition',false,true) };
-      await review(input); assert.equal((await projection()).nutritionUsable,true);
+      const nutritionReceipt = await review(input); assert.equal((await projection()).nutritionUsable,true);
       const wrong = { ...n, canonicalRevisionDigest:'a'.repeat(64) };
-      await assert.rejects(review({ ...input,idempotencyReference:id(1007),proposal:wrong,proposalDigest:await foodReviewProposalDigestV1(wrong) }),/EXACT_TARGET_REQUIRED/);
+      await assert.rejects(review({ ...input,idempotencyReference:id(1007),proposal:wrong,proposalDigest:await foodReviewProposalDigestV1(wrong),
+        expectedHead:{ revisionId:nutritionReceipt.revision.revisionId,digest:nutritionReceipt.revision.digest } }),/EXACT_TARGET_REQUIRED/);
     });
     await t.test('historical invalidation does not replace the current head or invalidate newer nutrition',async () => {
       const input: FoodEvidenceReviewRequestV1 = { contract:'potok-food-evidence-review-request-v1',kind:'INVALIDATION',idempotencyReference:id(1022),
