@@ -531,7 +531,7 @@ BEGIN
   IF source IS NOT NULL THEN
     INSERT INTO potok_food_evidence.retained_sources_v1 VALUES((source->>'sourceArtifactId')::uuid,source,source_bytes) ON CONFLICT DO NOTHING;
     IF NOT EXISTS (SELECT 1 FROM potok_food_evidence.retained_sources_v1
-      WHERE source_artifact_id=(source->>'sourceArtifactId')::uuid AND snapshot=source AND retained_sources_v1.source_bytes=food_evidence_review_v1.source_bytes) THEN
+      WHERE source_artifact_id=(source->>'sourceArtifactId')::uuid AND snapshot=source AND retained_sources_v1.source_bytes=food_review_scope.source_bytes) THEN
       RAISE EXCEPTION 'SOURCE_ARTIFACT_ID_CONFLICT' USING ERRCODE='40001'; END IF;
   END IF;
   IF request->>'kind'='REVIEW_APPROVED' THEN
