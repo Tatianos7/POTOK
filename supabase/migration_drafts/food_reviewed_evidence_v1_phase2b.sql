@@ -438,7 +438,7 @@ LANGUAGE sql STABLE SET search_path=pg_catalog AS $$
 $$;
 
 CREATE FUNCTION public.food_evidence_review_v1(p_request_text text) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 <<food_review_scope>>
 DECLARE actor uuid:=auth.uid(); attestation uuid; raw json; request jsonb; canonical_request bytea; request_digest text;
   proposal jsonb; target jsonb; target_kind text; food_id uuid; food jsonb; state text; source jsonb; source_bytes bytea;
