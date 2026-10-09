@@ -206,7 +206,7 @@ BEGIN
     IF v->>'basis' IS DISTINCT FROM 'PER_100_G_EDIBLE' THEN RAISE EXCEPTION 'BASIS_INVALID' USING ERRCODE='22023'; END IF;
     FOREACH field IN ARRAY ARRAY['calories','protein','fat','carbs','fiber'] LOOP
       IF potok_food_evidence.text_v1(v->'nutrition'->field) !~ '^(0|[1-9][0-9]{0,8})\.[0-9]{3}$'
-        OR v->'units'->>field IS DISTINCT FROM CASE WHEN field='calories' THEN 'kcal' ELSE 'g' END THEN
+        OR (v->'units'->>field) IS DISTINCT FROM (CASE WHEN field='calories' THEN 'kcal' ELSE 'g' END) THEN
         RAISE EXCEPTION 'DECIMAL_OR_UNITS_INVALID' USING ERRCODE='22023'; END IF;
     END LOOP;
     result:='NUTRITION_REVIEWED_REVISION';
