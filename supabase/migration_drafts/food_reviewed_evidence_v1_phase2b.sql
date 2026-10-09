@@ -149,7 +149,7 @@ BEGIN
       IF (v#>>'{}')::numeric<0 OR (v#>>'{}')::numeric>9007199254740991
         OR trunc((v#>>'{}')::numeric)<>(v#>>'{}')::numeric THEN
         RAISE EXCEPTION 'SAFE_INTEGER_REQUIRED' USING ERRCODE='22023'; END IF;
-      RETURN to_jsonb((v#>>'{}')::bigint);
+      RETURN to_jsonb(((v#>>'{}')::numeric)::bigint);
     WHEN 'object' THEN
       SELECT coalesce(jsonb_object_agg(key,potok_food_evidence.integer_values_v1(value)),'{}'::jsonb) INTO result FROM jsonb_each(v);
     WHEN 'array' THEN
@@ -387,7 +387,8 @@ LANGUAGE sql IMMUTABLE SET search_path=pg_catalog AS $$
 $$;
 
 CREATE FUNCTION potok_food_evidence.revision_v1(target jsonb) RETURNS jsonb
-LANGUAGE plpgsql STABLE SET search_path=pg_catalog AS $$
+LANGUAGE plpgsql STABLE SET search_path=pg_catalog AS $
+<<revision_scope>>
 DECLARE result jsonb; revision_id uuid; stored_bytes bytea; stored_state text; domain text; expected_contract text; proposal jsonb;
 BEGIN
   PERFORM potok_food_evidence.exact_keys_v1(target,ARRAY['kind','revisionId','digest','canonicalFoodId']);
@@ -395,11 +396,11 @@ BEGIN
   PERFORM potok_food_evidence.uuid_v1(target->'canonicalFoodId'); PERFORM potok_food_evidence.hash_v1(target->'digest');
   IF target->>'kind'='CANONICAL_REVIEWED_REVISION' THEN
     SELECT snapshot,canonical_bytes,food_state INTO result,stored_bytes,stored_state
-      FROM potok_food_evidence.canonical_revisions_v1 WHERE canonical_revisions_v1.revision_id=revision_v1.revision_id;
+      FROM potok_food_evidence.canonical_revisions_v1 WHERE canonical_revisions_v1.revision_id=revision_scope.revision_id;
     domain:='potok-canonical-food-reviewed-revision-sha256-v1'; expected_contract:='potok-canonical-food-reviewed-revision-v1';
   ELSIF target->>'kind'='NUTRITION_REVIEWED_REVISION' THEN
     SELECT snapshot,canonical_bytes,food_state INTO result,stored_bytes,stored_state
-      FROM potok_food_evidence.nutrition_revisions_v1 WHERE nutrition_revisions_v1.revision_id=revision_v1.revision_id;
+      FROM potok_food_evidence.nutrition_revisions_v1 WHERE nutrition_revisions_v1.revision_id=revision_scope.revision_id;
     domain:='potok-nutrition-reviewed-revision-sha256-v1'; expected_contract:='potok-nutrition-reviewed-revision-v1';
   ELSE RAISE EXCEPTION 'TARGET_KIND_INVALID' USING ERRCODE='22023'; END IF;
   IF result IS NULL OR result->'revisionId' IS DISTINCT FROM target->'revisionId'
