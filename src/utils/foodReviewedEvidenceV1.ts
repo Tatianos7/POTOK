@@ -278,6 +278,10 @@ export async function foodEvidenceReviewEventDigestRawV1(raw: string): Promise<s
 export async function decodeCanonicalFoodReviewedRevisionRawV1(raw: string): Promise<CanonicalFoodReviewedRevisionV1> {
   return verified(canonicalOwned(parse(raw)), foodReviewedEvidenceDigestDomainsV1.canonical);
 }
+/** Reuses the Phase 1 source boundary for server requests; establishes no provenance. */
+export async function decodeRetainedFoodSourceSnapshotRawV1(raw: string): Promise<RetainedFoodSourceSnapshotV1> {
+  return freeze(await retainedSource(parse(raw)));
+}
 /** Caller must supply the exact retained canonical revision; no catalog lookup or current-status claim. */
 export async function decodeNutritionReviewedRevisionRawV1(raw: string, canonicalRaw: string): Promise<NutritionReviewedRevisionV1> {
   const nutrition = await verified(nutritionOwned(parse(raw)), foodReviewedEvidenceDigestDomainsV1.nutrition);
