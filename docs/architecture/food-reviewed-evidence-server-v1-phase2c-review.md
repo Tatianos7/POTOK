@@ -138,3 +138,14 @@ function definitions and client-role grants without data mutation. Obtain the
 owner's shared-root deletion and account-retention decision, and agree resource/
 timeout/rate limits and synthetic-test cleanup before a separate rollout apply
 approval. Do not activate users or apply this draft as part of this review.
+
+
+## PostgreSQL acceptance update — 2026-10-09 (Draft PR #154)
+
+**Authoritative later result (supersedes the earlier cloud-environment NOT VERIFIED statement for the disposable PostgreSQL suite only):** GitHub Actions run [#9](https://github.com/Tatianos7/POTOK/actions/runs/37973469179) completed successfully on PR head `50390548a48367a86ed862564a1a90dd7910c813`. Workflow: `Food Evidence disposable PostgreSQL acceptance`; PostgreSQL 17 container, Node 24, required disposable DB mode. TAP result: **22 tests, 22 pass, 0 fail, 0 skipped**. The top-level real database test executed (not skipped).
+
+Confirmed tested areas include SQL migration/preflight compilation, role/ACL/FORCE RLS restrictions, synthetic JWT/session/admin denial, canonical bytes/digests, idempotent replay and conflicting requests, multi-session same-key and cross-reviewer CAS races, nutrition exact-target binding, atomic rollback, immutable history, invalidation semantics, FK retention blockers, and post-lock JWT expiry recheck. This is evidence of the tested disposable database scenarios, **not** a claim that all deployed integrations have passed.
+
+**Still BLOCKED / NOT VERIFIED:** real Supabase Auth JWT signature verification and PostgREST boundary; deployed Staging metadata drift and real gateway integration; complete account closure/erasure and archive lifecycle (Phase 2C B/C); storage/backups/offline deletion, resource/rate budgets and operational rollback; owner-approved retention/erasure policy and separate Staging apply authorization. Existing synthetic JWT claims are not cryptographic JWT verification. Do not merge, activate runtime, apply migrations to Staging/Main or claim production readiness based on this CI result alone.
+
+The PR head now contains follow-up SQL/test repairs not present in the earlier original worktree. Preserve the exact tested commit SHA in any later rollout review; rerun acceptance if implementation changes. Historical earlier verification notes above remain as a record of the original cloud environment, not the current acceptance verdict.
