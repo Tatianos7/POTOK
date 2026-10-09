@@ -387,7 +387,7 @@ LANGUAGE sql IMMUTABLE SET search_path=pg_catalog AS $$
 $$;
 
 CREATE FUNCTION potok_food_evidence.revision_v1(target jsonb) RETURNS jsonb
-LANGUAGE plpgsql STABLE SET search_path=pg_catalog AS $
+LANGUAGE plpgsql STABLE SET search_path=pg_catalog AS $$
 <<revision_scope>>
 DECLARE result jsonb; revision_id uuid; stored_bytes bytea; stored_state text; domain text; expected_contract text; proposal jsonb;
 BEGIN
