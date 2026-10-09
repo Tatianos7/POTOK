@@ -438,7 +438,8 @@ LANGUAGE sql STABLE SET search_path=pg_catalog AS $$
 $$;
 
 CREATE FUNCTION public.food_evidence_review_v1(p_request_text text) RETURNS jsonb
-LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $
+<<food_review_scope>>
 DECLARE actor uuid:=auth.uid(); attestation uuid; raw json; request jsonb; canonical_request bytea; request_digest text;
   proposal jsonb; target jsonb; target_kind text; food_id uuid; food jsonb; state text; source jsonb; source_bytes bytea;
   app jsonb; head potok_food_evidence.current_heads_v1%ROWTYPE; previous uuid; event_id uuid; revision_id uuid;
@@ -497,7 +498,7 @@ BEGIN
   IF request->>'kind'<>'REVIEW_APPROVED' THEN PERFORM potok_food_evidence.text_v1(request->'reason'); END IF;
   IF request->>'kind'='REVIEW_APPROVED' THEN
     SELECT * INTO head FROM potok_food_evidence.current_heads_v1
-      WHERE current_heads_v1.target_kind=food_evidence_review_v1.target_kind AND canonical_food_id=food_id AND food_state=state FOR UPDATE;
+      WHERE current_heads_v1.target_kind=food_review_scope.target_kind AND canonical_food_id=food_id AND food_state=state FOR UPDATE;
     IF FOUND THEN
       PERFORM potok_food_evidence.exact_keys_v1(request->'expectedHead',ARRAY['revisionId','digest']);
       IF potok_food_evidence.uuid_v1(request->'expectedHead'->'revisionId')<>head.revision_id
@@ -571,7 +572,7 @@ BEGIN
   ELSIF request->>'kind'='INVALIDATION' THEN
     -- No head rollback and no implicit invalidation of superseded history. Severity is derived from ALL invalidations.
     UPDATE potok_food_evidence.current_heads_v1 SET last_event_id=event_id
-      WHERE current_heads_v1.target_kind=food_evidence_review_v1.target_kind AND canonical_food_id=food_id AND food_state=state
+      WHERE current_heads_v1.target_kind=food_review_scope.target_kind AND canonical_food_id=food_id AND food_state=state
         AND current_heads_v1.revision_id=(target->>'revisionId')::uuid;
   END IF;
   receipt:=jsonb_build_object('contract','potok-food-evidence-review-receipt-v1','event',event,'revision',revision,'canonicalRevision',canonical,'proposalTarget',
