@@ -7,8 +7,8 @@ receipt table, retention/archive changes or performance claims.
 
 ## Audit and exact mapping
 
-Repository-wide source/SQL/fixture/server search found 18 explicit application
-RAISE40001 sites, ALL in these three drafts: 17 category A, one category B.
+The full inventory finds18 explicit application RAISE40001 sites in the requested
+Food Evidence/Eligibility/Stage C scope, all in three drafts:17 A, one B.
 Locations below are exact BASE159 line numbers (repair preserves SQL line numbers).
 Existing Adaptive Nutrition persistence interprets its own RPC40001 as recovery
 conflict; it does not consume these catalog/evidence RPCs and is not changed.
@@ -50,7 +50,26 @@ parse arbitrary message text. PT500 is a server failure, never a user409 outcome
 Both are non-retryable for native and HTTP clients. PT500 emits only fixed identifiers,
 not corrupt payloads, SQL, actor IDs, keys or credentials. No blanket remapping of
 other validation/auth/internal errors occurs. 22023/42501 remain non-retryable.
-App code never RAISEs40001; actual PostgreSQL errors retain their native SQLSTATE.
+Food Evidence/Eligibility/Stage C app code never RAISEs40001; actual PostgreSQL errors retain their native SQLSTATE.
+
+## Out-of-scope legacy SQL inventory (not a repository-wide repair)
+
+Full repository SQL search additionally identifies66 explicit40001 sites in older
+Adaptive Nutrition drafts. They are NOT migrated in this narrow Food Evidence PR:
+
+| File under docs/premium/drafts | Explicit40001 count |
+|---|---|
+|20260921_adaptive_nutrition_persistence_v1.sql|5|
+|20260921_adaptive_nutrition_runtime_activation_v1.sql|6|
+|20260927_adaptive_nutrition_graph_v2_authorities_activation_v1.sql|25|
+|20260930_adaptive_nutrition_protected_execution_binding_v1.sql|25|
+|20261002_adaptive_nutrition_protected_execution_auth_contract_v1.repair.sql|5|
+
+These legacy writers/contracts/classifiers need a separately approved audit/repair;
+no repository-wide40001 elimination or all-writer safety is claimed. Own DB fixture
+extracts ONLY json_has_duplicate_keys_v1/canonical_jsonb_text_v1 from the older
+runtime draft, not its40001-bearing mutation RPCs. New catalog/evidence entrypoints
+do not call those legacy RPCs. This exclusion is not permission to deploy them.
 
 ## Retry boundary
 
@@ -86,7 +105,7 @@ establishes the deployed Supabase version or linked-library build identity.
 - Registry/evidence authorization, CAS/idempotency, stable claim, epoch/ABA,
   immutable history and full rollback suites remain required. No SKIP/TODO accepted.
 - Static executable audit protects every mapped application raise and forbids new
-  hand-raised40001 across repository SQL and related server/test scripts.
+  hand-raised40001 across supabase SQL drafts and related server/test scripts (not unrelated legacy Adaptive SQL).
 - Pinned official release SHA256, own Unix cluster, loopback proxy, Node24 and PG17+;
   no external database options or credential logging. Exact CI counts belong in PR.
 

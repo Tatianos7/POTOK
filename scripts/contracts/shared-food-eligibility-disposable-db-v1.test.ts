@@ -215,7 +215,7 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
         BEGIN PERFORM potok_food_evidence.revision_v1(${quote(raw(value))}::jsonb);
           RAISE EXCEPTION 'EXPECTED_ERROR_NOT_RAISED';
         EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS c=RETURNED_SQLSTATE,d=PG_EXCEPTION_DETAIL;
-          IF c<>${quote(code)} OR d<>${quote(detail)} THEN RAISE EXCEPTION 'ERROR_CONTRACT_MISMATCH: % / %',c,d;END IF;
+          IF c IS DISTINCT FROM ${quote(code)} OR d IS DISTINCT FROM ${quote(detail)} THEN RAISE EXCEPTION 'ERROR_CONTRACT_MISMATCH: % / %',c,d;END IF;
         END; END $probe$;`;
       await sql(probe({...target,digest:'0'.repeat(64)},'PT409','POTOK_BUSINESS_CONFLICT_V1'));
       // Owner-only corruption injection, rolled back including trigger disable. No
