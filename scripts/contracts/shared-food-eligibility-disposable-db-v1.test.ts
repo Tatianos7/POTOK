@@ -649,6 +649,10 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
       } finally { await competing; }
     });
     await stageCCatalogAcceptance(t,{sql,asUser,session});
+    if(process.env.POTOK_STAGE_C_REQUIRE_TRANSPORT==='1') {
+      const {stageCPostgrestAcceptance}=await import('./stage-c-postgrest-acceptance');
+      await stageCPostgrestAcceptance(t,{root,socket,port,sql,session});
+    }
   } finally {
     if (started) await run('pg_ctl',['-D',data,'-m','immediate','-w','stop'],{ env, timeout:30_000 });
     await rm(root,{ recursive:true,force:true });
