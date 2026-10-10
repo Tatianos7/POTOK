@@ -3,6 +3,7 @@
  * Auth fixtures simulate verified PostgREST claims: signature verification remains NOT VERIFIED here.
  */
 import test from 'node:test';
+import { stageCCatalogAcceptance } from './stage-c-catalog-acceptance';
 import { retryCatalogTransactionV1, retryableCatalogFailureV1 } from './catalogTransactionRetryV1';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync, execFile } from 'node:child_process';
@@ -647,6 +648,7 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
           { exp:Math.floor(Date.now()/1000)+1 }),/JWT_EXPIRED/);
       } finally { await competing; }
     });
+    await stageCCatalogAcceptance(t,{sql,asUser,session});
   } finally {
     if (started) await run('pg_ctl',['-D',data,'-m','immediate','-w','stop'],{ env, timeout:30_000 });
     await rm(root,{ recursive:true,force:true });
