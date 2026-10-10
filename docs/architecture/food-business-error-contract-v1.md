@@ -96,8 +96,8 @@ establishes the deployed Supabase version or linked-library build identity.
 - Actual stored-revision corruption in owner-only disposable transaction: PT500 +
   invariant detail; rollback restores bytes AND immutable trigger. A mismatched
   target produces PT409 + business detail. No transport-accessible corruption RPC.
-- Fixed typed TEST-ONLY invariant mapping probe: real PostgREST HTTP500/PT500,
-  native error exactly once. This proves transport mapping, not live corruption.
+- Fixed TEST-ONLY trigger on synthetic create name (no additional public RPC): real PostgREST HTTP500/PT500,
+  native error exactly once and no inserted row. This proves transport mapping, not live corruption.
 - Real stale catalog CAS via HTTP: HTTP409/PT409/FOOD_CONFLICT + business detail,
   exactly ONE native error/exec_stmt_raise and zero engine errors/repeated executions.
   Native observer runs below PostgREST; no client request retry or backend termination

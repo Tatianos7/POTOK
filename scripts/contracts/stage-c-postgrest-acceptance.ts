@@ -55,15 +55,10 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    END $probe$;
   REVOKE ALL ON FUNCTION public.stage_c_serialization_probe_v1(integer) FROM PUBLIC,anon,service_role;
   GRANT EXECUTE ON FUNCTION public.stage_c_serialization_probe_v1(integer) TO authenticated;
-  -- Fixed error mapping probe only; real stored-corruption branch is exercised
-  -- independently inside the disposable SQL suite. No arbitrary SQL or GUC RPC.
-  CREATE FUNCTION public.stage_c_invariant_probe_v1() RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $invariant$
-  BEGIN RAISE EXCEPTION 'STORED_REVISION_INTEGRITY_FAILURE' USING ERRCODE='PT500',DETAIL='POTOK_INVARIANT_FAILURE_V1';END $invariant$;
-  REVOKE ALL ON FUNCTION public.stage_c_invariant_probe_v1() FROM PUBLIC,anon,service_role;
-  GRANT EXECUTE ON FUNCTION public.stage_c_invariant_probe_v1() TO authenticated;
   -- Fixed test trigger only. No request-driven set_config/arbitrary SQL RPC.
   CREATE FUNCTION stage_c_transport_test.observe_v1() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $observe$
   BEGIN
+   IF NEW.name='transport invariant probe' THEN RAISE EXCEPTION 'STORED_REVISION_INTEGRITY_FAILURE' USING ERRCODE='PT500',DETAIL='POTOK_INVARIANT_FAILURE_V1';END IF;
    IF NEW.name='transport timeout probe' THEN PERFORM pg_sleep(10);END IF;
    IF NEW.name='transport rollback poison' THEN RAISE EXCEPTION 'TEST_LATE_ROLLBACK' USING ERRCODE='22023';END IF;
    IF NEW.name='transport deadlock probe' THEN
@@ -294,7 +289,7 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
   });
   await t.test('transport invariant PT500 is HTTP500, executes once and never retries',async()=>{
    const baseline=proxy.nativeErrors().at(-1)?.sequence??0;
-   const r=await request('/rpc/stage_c_invariant_probe_v1',jwt(),{});assert.equal(r.status,500);
+   const r=await rpc(create('transport invariant probe'));assert.equal(r.status,500);assert.equal(await count('transport invariant probe'),0);
    const error=pgError(r,'PT500');assert.equal(error.details,'POTOK_INVARIANT_FAILURE_V1');assert.equal(error.message,'STORED_REVISION_INTEGRITY_FAILURE');
    const observed=proxy.nativeErrors().filter(e=>e.sequence>baseline);assert.equal(observed.length,1);assert.equal(observed[0].code,'PT500');assert.equal(observed[0].business,false);
    assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
