@@ -42,14 +42,14 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
   GRANT SELECT,UPDATE ON stage_c_transport_test.serialization_rows TO authenticated;
   CREATE POLICY only_owner_a ON stage_c_transport_test.serialization_rows TO authenticated USING(auth.uid()=${q(actor)}) WITH CHECK(auth.uid()=${q(actor)});
   -- Fixed typed TEST probe, not arbitrary SQL, and not catalog/evidence authority.
-  CREATE FUNCTION public.stage_c_serialization_probe_v1(p_id integer) RETURNS integer LANGUAGE plpgsql SECURITY INVOKER
+  CREATE FUNCTION public.stage_c_serialization_probe_v1(p_id integer) RETURNS jsonb LANGUAGE plpgsql SECURITY INVOKER
    SET search_path=pg_catalog SET default_transaction_isolation='serializable' AS $probe$
    DECLARE total integer;BEGIN
     IF p_id NOT IN (1,2) OR p_id IS NULL THEN RAISE EXCEPTION 'TEST_ID_INVALID' USING ERRCODE='22023';END IF;
     SELECT sum(value) INTO total FROM stage_c_transport_test.serialization_rows;
     PERFORM pg_advisory_xact_lock_shared(71243);
     UPDATE stage_c_transport_test.serialization_rows SET value=0 WHERE id=p_id AND total>0;
-    RETURN total;
+    RETURN jsonb_build_object('total',total,'isolation',current_setting('transaction_isolation'));
    END $probe$;
   REVOKE ALL ON FUNCTION public.stage_c_serialization_probe_v1(integer) FROM PUBLIC,anon,service_role;
   GRANT EXECUTE ON FUNCTION public.stage_c_serialization_probe_v1(integer) TO authenticated;
@@ -57,6 +57,7 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
   CREATE FUNCTION stage_c_transport_test.observe_v1() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $observe$
   BEGIN
    IF NEW.name='transport timeout probe' THEN PERFORM pg_sleep(10);END IF;
+   IF NEW.name='transport rollback poison' THEN RAISE EXCEPTION 'TEST_LATE_ROLLBACK' USING ERRCODE='22023';END IF;
    IF NEW.name='transport deadlock probe' THEN
     PERFORM set_config('application_name','stage_c_deadlock_probe',true);
     PERFORM pg_advisory_xact_lock(71242);PERFORM pg_advisory_xact_lock(71241);
@@ -154,13 +155,21 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    const headerSpoof=await request(`/foods?id=eq.${privateA.food.id}&select=id`,jwt(id(3)),undefined,'GET',origin,undefined,{'request.jwt.claims':JSON.stringify({sub:actor,role:'authenticated'}),'Role':'postgres'});assert.deepEqual(headerSpoof.body,[]);
    const funcs=await sql("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname LIKE 'stage_c_%'");assert.equal(funcs,'1','only fixed serialization probe, never arbitrary SQL RPC');
   });
-  await t.test('transport business conflict preserves code/details, full RPC batch rollback, never retry by text',async()=>{
-   const r=await rpc({contract:'potok-private-food-request-v1',kind:'UPDATE',foodId:privateA.food.id,expectedDigest:'0'.repeat(64),payload:payload('stale conflict')});
-   const error=pgError(r,'40001');assert.equal(error.details,'POTOK_BUSINESS_CONFLICT_V1');assert.equal('routine' in error,false);
-   assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
-   assert.equal(transportOutcomeV1({kind:'HTTP_ERROR',error,rollbackConfirmed:true}).status,'ABORTED');
-   const rows=[...importer(9703,'transport rollback first').rows,{...importer(9704,'transport owner a').rows[0],foodStableId:null}];
-   pgError(await importRPC({...importer(9703,'unused'),rows}),'40001');assert.equal(await count('transport rollback first'),0);
+  await t.test('transport business40001 MUST reach HTTP without internal retry (fail on unbounded retry)',async()=>{
+   const baseline=proxy.nativeErrors().at(-1)?.sequence??0;
+   const response=rpc({contract:'potok-private-food-request-v1',kind:'UPDATE',foodId:privateA.food.id,expectedDigest:'0'.repeat(64),payload:payload('stale conflict')}).then(r=>r,()=>null);
+   let pid:number|null=null;
+   try{
+    await wait(async()=>{const errors=proxy.nativeErrors().filter(e=>e.sequence>baseline&&e.code==='40001'&&e.business);pid=errors.at(-1)?.pid??null;return errors.length>=3;},'business40001 retries',2000).catch(()=>{});
+    const repeated=proxy.nativeErrors().filter(e=>e.sequence>baseline&&e.code==='40001'&&e.business);
+    if(repeated.length>=3){t.diagnostic(`CONFIRMED: business40001 repeated ${repeated.length} times before HTTP acknowledgement; observer terminates own test backend`);assert.fail('POSTGREST_INTERNAL_RETRY_OF_BUSINESS_40001');}
+    const r=await response;assert.ok(r);const error=pgError(r,'40001');assert.equal(error.details,'POTOK_BUSINESS_CONFLICT_V1');assert.equal('routine' in error,false);
+    assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
+   }finally{if(pid!==null)await sql(`SELECT pg_terminate_backend(${pid})`);await response;}
+  });
+  await t.test('transport fixed late SQL exception fully rolls back earlier batch row',async()=>{
+   const rows=[...importer(9703,'transport rollback first').rows,...importer(9704,'transport rollback poison').rows];
+   pgError(await importRPC({...importer(9703,'unused'),rows}),'22023');assert.equal(await count('transport rollback first'),0);assert.equal(await count('transport rollback poison'),0);
   });
   await t.test('transport native engine deadlock exposes SQLSTATE but omits routine; HTTP adapter cannot safely retry',async()=>{
    const holder=session();try{
@@ -175,9 +184,15 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
   await t.test('transport genuine SERIALIZABLE engine 40001 differs from business marker, but routine is unavailable',async()=>{
    const holder=session();try{
     await holder.send('BEGIN; SELECT pg_advisory_xact_lock(71243)');
+    const beforeErrors=proxy.nativeErrors().at(-1)?.sequence??0;
     const responses=[request('/rpc/stage_c_serialization_probe_v1',jwt(),{p_id:1}),request('/rpc/stage_c_serialization_probe_v1',jwt(),{p_id:2})];
     await wait(async()=>Number(await sql("SELECT count(*) FROM pg_stat_activity WHERE usename='stage_c_authenticator' AND wait_event='advisory'"))===2,'two SSI snapshots');
-    await holder.send('COMMIT');const rs=await Promise.all(responses);assert.equal(rs.filter(r=>r.status===200).length,1);
+    await holder.send('COMMIT');const rs=await Promise.all(responses);
+    const engineErrors=proxy.nativeErrors().filter(e=>e.sequence>beforeErrors&&e.code==='40001'&&!e.business);
+    t.diagnostic(`native engine40001 count=${engineErrors.length}; HTTP successful responses=${rs.filter(r=>r.status===200).length}`);
+    for(const r of rs.filter(r=>r.status===200))assert.equal((r.body as {isolation:string}).isolation,'serializable');
+    assert.ok(engineErrors.length>=1,'real SSI engine failure must be observed, not assumed');
+    assert.equal(rs.filter(r=>r.status===200).length,1);
     const failed=rs.find(r=>r.status>=400);assert.ok(failed);const error=pgError(failed,'40001');assert.notEqual(error.details,'POTOK_BUSINESS_CONFLICT_V1');assert.equal('routine' in error,false);
     assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
    }finally{await holder.close();}
@@ -196,14 +211,14 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    }finally{await holder.close();}
   });
   await t.test('transport SQL result before COMMIT is invisible and is never a commit acknowledgement',async()=>{
-   const fault=proxy.arm('HOLD_COMMIT');let complete=false;
+   const fault=proxy.arm('HOLD_COMMIT','transport held commit');let complete=false;
    const response=rpc(create('transport held commit')).then(r=>{complete=true;return r;});
    await Promise.race([fault.reached,new Promise((_,reject)=>setTimeout(()=>reject(new Error('COMMIT barrier missing')),5000))]);
    assert.ok(fault.events.includes('sql_result'));assert.ok(fault.events.includes('commit_held'));assert.equal(complete,false);assert.equal(await count('transport held commit'),0);
    fault.release();const r=await response;assert.equal(r.status,200);assert.equal(await count('transport held commit'),1);assert.ok(fault.events.includes('commit_completed'));
   });
   for(const mode of ['BEFORE_COMMIT','COMMIT_IN_FLIGHT','AFTER_SQL_RESULT'] as FaultMode[])await t.test(`transport protocol fault ${mode}: client UNKNOWN, no retry, independently observed final state`,async()=>{
-   const name=`transport fault ${mode.toLowerCase()}`,fault=proxy.arm(mode);
+   const name=`transport fault ${mode.toLowerCase()}`,fault=proxy.arm(mode,name);
    const response=rpc(create(name)).then(r=>r,()=>null);
    await Promise.race([fault.reached,new Promise((_,reject)=>setTimeout(()=>reject(new Error('fault barrier missing')),5000))]);
    const r=await response;assert.ok(r===null||r.status>=400);assert.deepEqual(transportOutcomeV1({kind:'DISCONNECT'}),{status:'UNKNOWN',retryAllowed:false});
