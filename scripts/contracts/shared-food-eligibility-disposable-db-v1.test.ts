@@ -1,6 +1,7 @@
 /** Real PostgreSQL acceptance, never a Supabase test or an in-memory database model.
  * Creates and destroys its OWN Unix-socket-only cluster. No database URL option.
- * Auth fixtures simulate verified PostgREST claims: signature verification remains NOT VERIFIED here.
+ * Default Auth fixtures simulate verified claims. Separate REQUIRED transport mode
+ * verifies real signatures against own local PostgREST, NOT deployed Supabase/JWKS.
  */
 import test from 'node:test';
 import { stageCCatalogAcceptance } from './stage-c-catalog-acceptance';

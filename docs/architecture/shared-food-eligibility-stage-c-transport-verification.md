@@ -99,3 +99,52 @@ and production remain BLOCKED. A green test validates fail-stop semantics, not a
 solution to UNKNOWN. Exact CI HEAD/counts must be taken from real logs; no SKIP/TODO
 allowed in required suite. Next safe action: independent review of evidence and
 separate design for durable operation reconciliation before persistent transport.
+
+
+## Actual transport blocker: internal retry precedes the HTTP adapter
+
+Run38068701813 / HEAD9aab58f21c55cfbb7039fe5da271a93d488cd984 observed
+business40001/POTOK_BUSINESS_CONFLICT_V1 at least THREE times before an HTTP
+acknowledgement. The own native protocol observer terminates that test backend,
+not the client. In the SERIALIZABLE probe, native engine40001 occurred ONCE,
+yet BOTH HTTP requests succeeded. Signed JWT/role/session, direct ACL/SELECT,
+trusted importer, full late-error rollback, timeout and gate checks passed.
+This is NOT a production observation; it is pinned PostgREST13.0.7 disposable proof.
+
+**HIGH / BLOCKED:** client-side retryAllowed=false cannot prevent server-library
+retry based on SQLSTATE40001. A stale authorized CAS can occupy a backend and
+repeatedly contend on the catalog gate; HTTP deadline is not a proven backend
+transaction retry bound. Statement_timeout is per statement, not a whole HTTP
+request bound. Native routine/business detail does not reach the HTTP caller in
+this loop. A native SSI conflict also need not surface as HTTP40001.
+
+Source corroboration: PostgREST13.0.7 src/PostgREST/Query.hs selects
+Hasql.Transaction.Sessions.transaction/unpreparedTransaction. Its cabal dependency
+permits hasql-transaction>=1.0.1,<1.2. Upstream1.1.0.1 Private/Sessions.hs explicitly
+loops on transaction conflicts. Exact linked dependency revision is NOT independently
+identified; do not infer all version-specific retry predicates from that source.
+Actual native packets, not message text, establish the observed40001 retry here.
+
+No assertion is weakened to call hidden native errors faithful HTTP errors.
+PostgREST fault tests remain REQUIRED and report real FAIL for unmet retry/error
+requirements. Connection-fault probes are isolated by RPC payload marker; held
+COMMIT retains the entire extended-protocol Execute/Sync/Flush sequence. Following
+a deliberately broken connection, ONLY read-only SELECT readiness is repeated;
+mutating requests are never blindly repeated. Each independent protocol fault case
+then restarts ONLY its local PostgREST fixture/pool; no failed RPC is resent and
+this is not a proposed production restart/reconciliation policy. The known repeating business-conflict
+probe runs LAST so cleanup cannot invalidate later independent fault observations.
+
+Owner decisions required before transport can be GO:
+1. Separate BUSINESS conflicts from engine SQLSTATEs (e.g. reviewed PT409 + existing
+   typed business detail), including affected Phase2B/Eligibility/C consumers/tests.
+   This proposal is NOT implemented; PR154–158 and their SQL drafts stay untouched.
+2. Choose/verify a transport implementation/version with controlled native retry,
+   and prove actual max4 attempts/15s whole-transaction bounds after rollback.
+   Do not assume disabling prepared statements disables Hasql conflict retry.
+3. Define reliable error discrimination and operation reconciliation before any
+   persistent client cutover. Receipt design remains a separate privacy/retention
+   decision, not an automatic table addition.
+
+Until those decisions and acceptance are satisfied: **BLOCKED for transport readiness**,
+regardless of JWT/ACL/fault subtests that individually PASS. No Staging/Main/runtime GO.

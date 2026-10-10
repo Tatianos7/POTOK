@@ -86,8 +86,13 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
  jwt-secret = "${secret}"
  `,{mode:0o600});
  const processEnv={PATH:process.env.PATH??'',LC_ALL:'C.UTF-8'};
- const pgrst=spawn('postgrest',[config],{env:processEnv,stdio:['ignore','ignore','ignore']});
- let exited=false;pgrst.on('exit',()=>{exited=true;});pgrst.on('error',()=>{exited=true;});
+ let exited=false;
+ const startPostgrest=()=>{exited=false;const child=spawn('postgrest',[config],{env:processEnv,stdio:['ignore','ignore','ignore']});child.on('exit',()=>{exited=true;});child.on('error',()=>{exited=true;});return child;};
+ let pgrst=startPostgrest();
+ const stopPostgrest=async()=>{
+  const child=pgrst;const closed=new Promise<void>(r=>{if(exited)r();else child.once('exit',()=>r());});child.kill('SIGTERM');
+  const killTimer=setTimeout(()=>child.kill('SIGKILL'),5000);try{await closed;}finally{clearTimeout(killTimer);}
+ };
  const origin=`http://127.0.0.1:${httpPort}`;
  const request=async(path:string,token:string|null=jwt(),body?:unknown,method=body===undefined?'GET':'POST',base=origin,signal?:AbortSignal,headers:Record<string,string>={}):Promise<Response>=>{
   const r=await fetch(base+path,{method,headers:{...token?{Authorization:`Bearer ${token}`}:{},...body===undefined?{}:{'Content-Type':'application/json'},...headers},body:body===undefined?undefined:JSON.stringify(body),signal:signal??AbortSignal.timeout(10000)});
@@ -95,9 +100,14 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
  };
  const payload=(name:string)=>({name,brand:null,calories:'10.00',protein:'1.00',fat:'2.00',carbs:'3.00',fiber:null});
  const create=(name:string)=>({contract:'potok-private-food-request-v1',kind:'CREATE',payload:payload(name)});
- const rpc=(input:object,token=jwt(),signal?:AbortSignal,base=origin)=>request('/rpc/catalog_private_food_v1',token,{p_request:JSON.stringify(input)},'POST',base,signal);
+ // After deliberately dropped DB connections, recover via READ-ONLY readiness.
+ // This never resends a mutating request or infers its previous outcome.
+ const healthy=()=>wait(async()=>{try{return (await request('/foods?select=id&limit=1',null)).status===200;}catch{return false;}},'read-only PostgREST recovery',10000);
+ // Fresh FIXTURE process/pool between protocol experiments, never retry RPC.
+ const restartFixture=async()=>{await stopPostgrest();pgrst=startPostgrest();await healthy();};
+ const rpc=async(input:object,token=jwt(),signal?:AbortSignal,base=origin)=>{await healthy();return request('/rpc/catalog_private_food_v1',token,{p_request:JSON.stringify(input)},'POST',base,signal);};
  const importer=(n:number,name:string)=>({contract:'potok-catalog-batch-request-v1',mode:'INSERT',rows:[{foodId:id(n),foodStableId:`transport_${n}`,source:'core',payload:payload(name)}]});
- const importRPC=(input:object,token=jwt())=>request('/rpc/catalog_import_batch_v1',token,{p_request:JSON.stringify(input)});
+ const importRPC=async(input:object,token=jwt())=>{await healthy();return request('/rpc/catalog_import_batch_v1',token,{p_request:JSON.stringify(input)});};
  const count=async(name:string)=>Number(await sql(`SELECT count(*) FROM public.foods WHERE name=${q(name)}`));
  const absentBackend=async(pid:number|null)=>pid!==null&&await sql(`SELECT NOT EXISTS(SELECT 1 FROM pg_stat_activity WHERE pid=${pid})`)==='t';
  let privateA:Receipt;
@@ -112,6 +122,8 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    assert.equal((await request('/foods?source=eq.core&select=id',null)).status,200);
    pgError(await request('/rpc/catalog_private_food_v1',null,{p_request:JSON.stringify(create('anon denied'))}),'42501');
    pgError(await rpc(create('signed anon denied'),jwt(actor,{role:'anon'})),'42501');
+   const preference=await request('/rpc/catalog_private_food_v1',jwt(),{p_request:JSON.stringify(create('transport rollback preference'))},'POST',origin,undefined,{Prefer:'tx=rollback'});
+   assert.equal(preference.status,200);assert.equal(await count('transport rollback preference'),1,'fixed db-tx-end=commit denies transaction preference override');
   });
   await t.test('transport signature tampering sub/role, unsigned, expired JWT and invalid role fail closed',async()=>{
    const token=jwt();const pieces=token.split('.');
@@ -155,18 +167,6 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    const headerSpoof=await request(`/foods?id=eq.${privateA.food.id}&select=id`,jwt(id(3)),undefined,'GET',origin,undefined,{'request.jwt.claims':JSON.stringify({sub:actor,role:'authenticated'}),'Role':'postgres'});assert.deepEqual(headerSpoof.body,[]);
    const funcs=await sql("SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname LIKE 'stage_c_%'");assert.equal(funcs,'1','only fixed serialization probe, never arbitrary SQL RPC');
   });
-  await t.test('transport business40001 MUST reach HTTP without internal retry (fail on unbounded retry)',async()=>{
-   const baseline=proxy.nativeErrors().at(-1)?.sequence??0;
-   const response=rpc({contract:'potok-private-food-request-v1',kind:'UPDATE',foodId:privateA.food.id,expectedDigest:'0'.repeat(64),payload:payload('stale conflict')}).then(r=>r,()=>null);
-   let pid:number|null=null;
-   try{
-    await wait(async()=>{const errors=proxy.nativeErrors().filter(e=>e.sequence>baseline&&e.code==='40001'&&e.business);pid=errors.at(-1)?.pid??null;return errors.length>=3;},'business40001 retries',2000).catch(()=>{});
-    const repeated=proxy.nativeErrors().filter(e=>e.sequence>baseline&&e.code==='40001'&&e.business);
-    if(repeated.length>=3){t.diagnostic(`CONFIRMED: business40001 repeated ${repeated.length} times before HTTP acknowledgement; observer terminates own test backend`);assert.fail('POSTGREST_INTERNAL_RETRY_OF_BUSINESS_40001');}
-    const r=await response;assert.ok(r);const error=pgError(r,'40001');assert.equal(error.details,'POTOK_BUSINESS_CONFLICT_V1');assert.equal('routine' in error,false);
-    assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
-   }finally{if(pid!==null)await sql(`SELECT pg_terminate_backend(${pid})`);await response;}
-  });
   await t.test('transport fixed late SQL exception fully rolls back earlier batch row',async()=>{
    const rows=[...importer(9703,'transport rollback first').rows,...importer(9704,'transport rollback poison').rows];
    pgError(await importRPC({...importer(9703,'unused'),rows}),'22023');assert.equal(await count('transport rollback first'),0);assert.equal(await count('transport rollback poison'),0);
@@ -207,24 +207,32 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
     await wait(async()=>await sql("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE usename='stage_c_authenticator' AND wait_event='advisory' AND query LIKE '%catalog_private_food_v1%')")==='t','RPC waiting at gate');
     await sql(`BEGIN; SELECT id FROM public.foods WHERE id=${q(privateA.food.id)} FOR UPDATE NOWAIT; COMMIT`);
     await holder.send('COMMIT');const r=await response;assert.equal(r.status,200);privateA=r.body as Receipt;
+    await holder.send('BEGIN; SELECT potok_food_evidence.catalog_gate_v1()');
+    const expired=rpc(create('transport expires after gate'),jwt(actor,{exp:Math.floor(Date.now()/1000)+2}));
+    await wait(async()=>await sql("SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE usename='stage_c_authenticator' AND wait_event='advisory' AND query LIKE '%catalog_private_food_v1%')")==='t','signed JWT request queued before expiry');
+    await holder.send('SELECT pg_sleep(3); COMMIT');pgError(await expired,'42501');assert.equal(await count('transport expires after gate'),0);
     // Actual RPC passed session_v1 / mutation RC guards. SQL result visibility at COMMIT tested separately.
    }finally{await holder.close();}
   });
   await t.test('transport SQL result before COMMIT is invisible and is never a commit acknowledgement',async()=>{
    const fault=proxy.arm('HOLD_COMMIT','transport held commit');let complete=false;
    const response=rpc(create('transport held commit')).then(r=>{complete=true;return r;});
+   try{
    await Promise.race([fault.reached,new Promise((_,reject)=>setTimeout(()=>reject(new Error('COMMIT barrier missing')),5000))]);
    assert.ok(fault.events.includes('sql_result'));assert.ok(fault.events.includes('commit_held'));assert.equal(complete,false);assert.equal(await count('transport held commit'),0);
    fault.release();const r=await response;assert.equal(r.status,200);assert.equal(await count('transport held commit'),1);assert.ok(fault.events.includes('commit_completed'));
+   }finally{proxy.resetFault(fault);await response.catch(()=>{});await restartFixture();}
   });
   for(const mode of ['BEFORE_COMMIT','COMMIT_IN_FLIGHT','AFTER_SQL_RESULT'] as FaultMode[])await t.test(`transport protocol fault ${mode}: client UNKNOWN, no retry, independently observed final state`,async()=>{
    const name=`transport fault ${mode.toLowerCase()}`,fault=proxy.arm(mode,name);
    const response=rpc(create(name)).then(r=>r,()=>null);
+   try{
    await Promise.race([fault.reached,new Promise((_,reject)=>setTimeout(()=>reject(new Error('fault barrier missing')),5000))]);
    const r=await response;assert.ok(r===null||r.status>=400);assert.deepEqual(transportOutcomeV1({kind:'DISCONNECT'}),{status:'UNKNOWN',retryAllowed:false});
    if(mode==='COMMIT_IN_FLIGHT'){assert.ok(fault.events.includes('commit_forwarded'));assert.ok(fault.events.includes('commit_completed'));await wait(async()=>await count(name)===1,'observed commit');}
    else {await wait(()=>absentBackend(fault.backendPid),'terminated backend / confirmed rollback');assert.equal(await count(name),0);}
    t.diagnostic(`${mode}: client UNKNOWN; independent observer ${mode==='COMMIT_IN_FLIGHT'?'COMMITTED':'ABORTED'}; events=${fault.events.join(',')}`);
+   }finally{proxy.resetFault(fault);await response;await restartFixture();}
   });
   await t.test('transport COMMIT succeeded but HTTP response lost: client UNKNOWN, observer committed',async()=>{
    let acceptedResolve!:()=>void;const accepted=new Promise<void>(r=>{acceptedResolve=r;});
@@ -261,9 +269,20 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    // CREATE ID is generated inside RPC and can be lost with response. No exact-ID
    // lookup/replay possible. Existing state is never promoted to a durable receipt.
   });
+  await t.test('transport business40001 MUST reach HTTP without internal retry (fail on unbounded retry)',async()=>{
+   const baseline=proxy.nativeErrors().at(-1)?.sequence??0;
+   const response=rpc({contract:'potok-private-food-request-v1',kind:'UPDATE',foodId:privateA.food.id,expectedDigest:'0'.repeat(64),payload:payload('stale conflict')}).then(r=>r,()=>null);
+   let pid:number|null=null;
+   try{
+    await wait(async()=>{const errors=proxy.nativeErrors().filter(e=>e.sequence>baseline&&e.code==='40001'&&e.business);pid=errors.at(-1)?.pid??null;return errors.length>=3;},'business40001 retries',2000).catch(()=>{});
+    const repeated=proxy.nativeErrors().filter(e=>e.sequence>baseline&&e.code==='40001'&&e.business);
+    if(repeated.length>=3){t.diagnostic(`CONFIRMED: business40001 repeated ${repeated.length} times before HTTP acknowledgement; observer terminates own test backend`);assert.fail('POSTGREST_INTERNAL_RETRY_OF_BUSINESS_40001');}
+    const r=await response;assert.ok(r);const error=pgError(r,'40001');assert.equal(error.details,'POTOK_BUSINESS_CONFLICT_V1');assert.equal('routine' in error,false);
+    assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
+   }finally{if(pid!==null)await sql(`SELECT pg_terminate_backend(${pid})`);await response;}
+  });
  }finally{
   await proxy.close();
-  const closed=new Promise<void>(r=>{if(exited)r();else pgrst.once('exit',()=>r());});pgrst.kill('SIGTERM');
-  const killTimer=setTimeout(()=>pgrst.kill('SIGKILL'),5000);try{await closed;}finally{clearTimeout(killTimer);}
+  await stopPostgrest();
  }
 }
