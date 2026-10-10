@@ -66,8 +66,8 @@ BEGIN
    VALUES(fid,fid,'user',actor,p->>'name',p->>'brand',(p->>'calories')::numeric,(p->>'protein')::numeric,(p->>'fat')::numeric,(p->>'carbs')::numeric,(p->>'fiber')::numeric);
  ELSE
   SELECT to_jsonb(x) INTO f FROM public.foods x WHERE x.id=fid AND x.source='user' AND x.created_by_user_id=actor FOR UPDATE;
-  IF f IS NULL THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
-  IF potok_catalog_writer.row_digest_v1(f)<>v->>'expectedDigest' THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
+  IF f IS NULL THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='PT409',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
+  IF potok_catalog_writer.row_digest_v1(f)<>v->>'expectedDigest' THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='PT409',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
   IF kind='DELETE' THEN DELETE FROM public.foods WHERE id=fid AND source='user' AND created_by_user_id=actor;
   ELSE UPDATE public.foods SET name=p->>'name',brand=p->>'brand',
    calories=(p->>'calories')::numeric,protein=(p->>'protein')::numeric,fat=(p->>'fat')::numeric,carbs=(p->>'carbs')::numeric,fiber=(p->>'fiber')::numeric
@@ -77,7 +77,7 @@ BEGIN
  IF kind='DELETE' THEN RETURN jsonb_build_object('foodId',fid,'deleted',true);END IF;
  SELECT to_jsonb(x) INTO f FROM public.foods x WHERE x.id=fid AND x.source='user' AND x.created_by_user_id=actor;
  RETURN jsonb_build_object('food',f,'rowDigest',potok_catalog_writer.row_digest_v1(f));
-EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';
+EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='PT409',DETAIL='POTOK_BUSINESS_CONFLICT_V1';
 END $$;
 CREATE FUNCTION public.catalog_import_batch_v1(p_request text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
@@ -106,9 +106,9 @@ BEGIN
   IF existing IS NULL THEN SELECT to_jsonb(x) INTO existing FROM public.foods x WHERE x.id=fid FOR UPDATE;END IF;
   IF existing IS NOT NULL THEN
    IF mode='INSERT' OR existing->>'source' NOT IN ('core','brand') OR existing->'created_by_user_id'<>'null'::jsonb
-      OR existing->>'canonical_food_id' IS DISTINCT FROM fid::text THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
+      OR existing->>'canonical_food_id' IS DISTINCT FROM fid::text THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='PT409',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
    -- Normalized upsert may update content, NEVER substitute a conflicting root's identity/key.
-   IF existing->'stable_food_id' IS DISTINCT FROM r->'foodStableId' OR existing->'source' IS DISTINCT FROM r->'source' THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
+   IF existing->'stable_food_id' IS DISTINCT FROM r->'foodStableId' OR existing->'source' IS DISTINCT FROM r->'source' THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='PT409',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
    UPDATE public.foods SET name=p->>'name',brand=p->>'brand',
     calories=(p->>'calories')::numeric,protein=(p->>'protein')::numeric,fat=(p->>'fat')::numeric,carbs=(p->>'carbs')::numeric,fiber=(p->>'fiber')::numeric WHERE id=fid;
   ELSE
@@ -119,7 +119,7 @@ BEGIN
   n:=n+1;
  END LOOP;
  PERFORM potok_food_evidence.authority_v1();RETURN jsonb_build_object('rowsApplied',n,'targets',targets);
-EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';
+EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='PT409',DETAIL='POTOK_BUSINESS_CONFLICT_V1';
 END $$;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA potok_catalog_writer FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON FUNCTION public.catalog_private_food_v1(text),public.catalog_import_batch_v1(text) FROM PUBLIC,anon,authenticated,service_role;

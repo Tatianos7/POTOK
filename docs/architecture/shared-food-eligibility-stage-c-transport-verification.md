@@ -1,5 +1,10 @@
 # Stage C disposable PostgREST/JWT and COMMIT verification
 
+Historical PR159 baseline report. Its business40001 blocker and proposed retry
+assumptions are superseded ONLY by the stacked repair documented in
+[food-business-error-contract-v1.md](food-business-error-contract-v1.md).
+The old failure observations below remain evidence, not the repaired expectations.
+
 Base: PR158 `682d2c83dacec50f621297ffbac7914ec472637d`, review5479762049.
 Separate branch/stacked Draft PR. NO POTOK runtime wiring, Supabase operations,
 persistent ACL/migration apply, production, merge or changes to PR154–158.

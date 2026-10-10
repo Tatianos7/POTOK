@@ -209,6 +209,23 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
     });
     let current = await review(await approved(1001));
     const historical = current;
+    await t.test('real revision target mismatch is PT409; stored bytes corruption is PT500, never a conflict',async()=>{
+      const target={kind:'CANONICAL_REVIEWED_REVISION',revisionId:current.revision.revisionId,digest:current.revision.digest,canonicalFoodId:foodId};
+      const probe=(value:object,code:string,detail:string)=>`DO $probe$ DECLARE c text;d text; BEGIN
+        BEGIN PERFORM potok_food_evidence.revision_v1(${quote(raw(value))}::jsonb);
+          RAISE EXCEPTION 'EXPECTED_ERROR_NOT_RAISED';
+        EXCEPTION WHEN OTHERS THEN GET STACKED DIAGNOSTICS c=RETURNED_SQLSTATE,d=PG_EXCEPTION_DETAIL;
+          IF c<>${quote(code)} OR d<>${quote(detail)} THEN RAISE EXCEPTION 'ERROR_CONTRACT_MISMATCH: % / %',c,d;END IF;
+        END; END $probe$;`;
+      await sql(probe({...target,digest:'0'.repeat(64)},'PT409','POTOK_BUSINESS_CONFLICT_V1'));
+      // Owner-only corruption injection, rolled back including trigger disable. No
+      // public mutation/bypass RPC, no alteration of actual immutable policy.
+      await sql(`BEGIN; ALTER TABLE potok_food_evidence.canonical_revisions_v1 DISABLE TRIGGER immutable_v1;
+        UPDATE potok_food_evidence.canonical_revisions_v1 SET canonical_bytes=decode('00','hex') WHERE revision_id=${quote(target.revisionId)};
+        ${probe(target,'PT500','POTOK_INVARIANT_FAILURE_V1')} ROLLBACK;`);
+      assert.equal(JSON.parse(await sql(`SELECT potok_food_evidence.revision_v1(${quote(raw(target))}::jsonb)`)).digest,target.digest);
+    });
+
     await t.test('SQL canonical bytes/event/revision digests agree with Phase 1; exact retry and raw retention',async () => {
       const input = await approved(1001), again = await review(input);
       assert.equal(again.replayed,true); assert.equal(again.event.eventId,current.event.eventId);
@@ -616,9 +633,10 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
         await a.send('SELECT pg_sleep(2); COMMIT');await expired;
       } finally { await a.close(); }
     });
-    await t.test('retry fails closed on business 40001, auth, unknown COMMIT; four attempts and deadline',async()=>{
+    await t.test('retry fails closed on PT409/PT500, auth, unknown COMMIT; four attempts and deadline',async()=>{
       for(const error of [
-        {code:'40001',detail:'POTOK_BUSINESS_CONFLICT_V1',routine:'exec_stmt_raise',rollbackConfirmed:true},
+        {code:'PT409',detail:'POTOK_BUSINESS_CONFLICT_V1',routine:'exec_stmt_raise',rollbackConfirmed:true},
+        {code:'PT500',detail:'POTOK_INVARIANT_FAILURE_V1',routine:'exec_stmt_raise',rollbackConfirmed:true},
         {code:'42501',rollbackConfirmed:true},{code:'40P01',routine:'DeadLockReport',rollbackConfirmed:false},
         {code:'40001',rollbackConfirmed:true},
       ]) { assert.equal(retryableCatalogFailureV1(error),false);let count=0;

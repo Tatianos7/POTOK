@@ -26,7 +26,9 @@ function pgError(r:Response,code:string):PostgrestErrorV1 {
 }
 export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,sql,session}:Fixture) {
  const version=spawnSync('postgrest',['--version'],{encoding:'utf8',env:{PATH:process.env.PATH??''}});
- assert.equal(version.status,0,'Required real PostgREST binary unavailable');assert.match(version.stdout,/13\.0\.7/);
+ assert.equal(version.status,0,'Required real PostgREST binary unavailable');const expectedVersion=process.env.POTOK_TEST_POSTGREST_VERSION??'13.0.7';
+ assert.ok(['13.0.7','16.4'].includes(expectedVersion),'Only pinned comparative versions permitted');
+ assert.ok(version.stdout.includes(` ${expectedVersion} `)||version.stdout.trim().endsWith(` ${expectedVersion}`),'Unexpected PostgREST version');
  t.diagnostic(`PostgREST ${version.stdout.trim()}; PostgreSQL ${await sql('SHOW server_version')}; Node ${process.version}`);
  // AUTHENTICATOR is unprivileged, non-inheriting, cannot SET ROLE postgres/service_role.
  await sql(`CREATE ROLE stage_c_authenticator LOGIN NOINHERIT NOBYPASSRLS;
@@ -53,6 +55,12 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    END $probe$;
   REVOKE ALL ON FUNCTION public.stage_c_serialization_probe_v1(integer) FROM PUBLIC,anon,service_role;
   GRANT EXECUTE ON FUNCTION public.stage_c_serialization_probe_v1(integer) TO authenticated;
+  -- Fixed error mapping probe only; real stored-corruption branch is exercised
+  -- independently inside the disposable SQL suite. No arbitrary SQL or GUC RPC.
+  CREATE FUNCTION public.stage_c_invariant_probe_v1() RETURNS void LANGUAGE plpgsql SECURITY INVOKER SET search_path=pg_catalog AS $invariant$
+  BEGIN RAISE EXCEPTION 'STORED_REVISION_INTEGRITY_FAILURE' USING ERRCODE='PT500',DETAIL='POTOK_INVARIANT_FAILURE_V1';END $invariant$;
+  REVOKE ALL ON FUNCTION public.stage_c_invariant_probe_v1() FROM PUBLIC,anon,service_role;
+  GRANT EXECUTE ON FUNCTION public.stage_c_invariant_probe_v1() TO authenticated;
   -- Fixed test trigger only. No request-driven set_config/arbitrary SQL RPC.
   CREATE FUNCTION stage_c_transport_test.observe_v1() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $observe$
   BEGIN
@@ -192,9 +200,15 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
     t.diagnostic(`native engine40001 count=${engineErrors.length}; HTTP successful responses=${rs.filter(r=>r.status===200).length}`);
     for(const r of rs.filter(r=>r.status===200))assert.equal((r.body as {isolation:string}).isolation,'serializable');
     assert.ok(engineErrors.length>=1,'real SSI engine failure must be observed, not assumed');
-    assert.equal(rs.filter(r=>r.status===200).length,1);
-    const failed=rs.find(r=>r.status>=400);assert.ok(failed);const error=pgError(failed,'40001');assert.notEqual(error.details,'POTOK_BUSINESS_CONFLICT_V1');assert.equal('routine' in error,false);
-    assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
+    if(expectedVersion==='13.0.7') {
+     // Native observer proves an actual engine failure, while two successful
+     // HTTP replies prove PostgREST-owned recovery (NOT client 4-attempt budget).
+     assert.equal(rs.filter(r=>r.status===200).length,2);
+    } else {
+     assert.equal(rs.filter(r=>r.status===200).length,1);
+     const failed=rs.find(r=>r.status>=400);assert.ok(failed);const error=pgError(failed,'40001');assert.notEqual(error.details,'POTOK_BUSINESS_CONFLICT_V1');assert.equal('routine' in error,false);
+     assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
+    }
    }finally{await holder.close();}
   });
   await t.test('transport statement timeout/cancel returns 57014 and rolls back',async()=>{
@@ -269,17 +283,21 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    // CREATE ID is generated inside RPC and can be lost with response. No exact-ID
    // lookup/replay possible. Existing state is never promoted to a durable receipt.
   });
-  await t.test('transport business40001 MUST reach HTTP without internal retry (fail on unbounded retry)',async()=>{
+  await t.test('transport PT409 conflict is HTTP409 and executes EXACTLY once, with zero hidden repeats',async()=>{
    const baseline=proxy.nativeErrors().at(-1)?.sequence??0;
-   const response=rpc({contract:'potok-private-food-request-v1',kind:'UPDATE',foodId:privateA.food.id,expectedDigest:'0'.repeat(64),payload:payload('stale conflict')}).then(r=>r,()=>null);
-   let pid:number|null=null;
-   try{
-    await wait(async()=>{const errors=proxy.nativeErrors().filter(e=>e.sequence>baseline&&e.code==='40001'&&e.business);pid=errors.at(-1)?.pid??null;return errors.length>=3;},'business40001 retries',2000).catch(()=>{});
-    const repeated=proxy.nativeErrors().filter(e=>e.sequence>baseline&&e.code==='40001'&&e.business);
-    if(repeated.length>=3){t.diagnostic(`CONFIRMED: business40001 repeated ${repeated.length} times before HTTP acknowledgement; observer terminates own test backend`);assert.fail('POSTGREST_INTERNAL_RETRY_OF_BUSINESS_40001');}
-    const r=await response;assert.ok(r);const error=pgError(r,'40001');assert.equal(error.details,'POTOK_BUSINESS_CONFLICT_V1');assert.equal('routine' in error,false);
-    assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
-   }finally{if(pid!==null)await sql(`SELECT pg_terminate_backend(${pid})`);await response;}
+   const r=await rpc({contract:'potok-private-food-request-v1',kind:'UPDATE',foodId:privateA.food.id,expectedDigest:'0'.repeat(64),payload:payload('stale conflict')});
+   assert.equal(r.status,409);const error=pgError(r,'PT409');assert.equal(error.message,'FOOD_CONFLICT');assert.equal(error.details,'POTOK_BUSINESS_CONFLICT_V1');assert.equal('routine' in error,false);
+   const observed=proxy.nativeErrors().filter(e=>e.sequence>baseline);
+   assert.equal(observed.length,1);assert.equal(observed[0].code,'PT409');assert.equal(observed[0].business,true);assert.equal(observed[0].routine,'exec_stmt_raise');
+   assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
+   t.diagnostic(`business PT409 native executions=${observed.length}; HTTP=${r.status}; client retry disabled`);
+  });
+  await t.test('transport invariant PT500 is HTTP500, executes once and never retries',async()=>{
+   const baseline=proxy.nativeErrors().at(-1)?.sequence??0;
+   const r=await request('/rpc/stage_c_invariant_probe_v1',jwt(),{});assert.equal(r.status,500);
+   const error=pgError(r,'PT500');assert.equal(error.details,'POTOK_INVARIANT_FAILURE_V1');assert.equal(error.message,'STORED_REVISION_INTEGRITY_FAILURE');
+   const observed=proxy.nativeErrors().filter(e=>e.sequence>baseline);assert.equal(observed.length,1);assert.equal(observed[0].code,'PT500');assert.equal(observed[0].business,false);
+   assert.equal(retryableCatalogFailureV1({code:error.code,detail:error.details??undefined,rollbackConfirmed:true}),false);
   });
  }finally{
   await proxy.close();

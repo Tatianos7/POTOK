@@ -107,7 +107,7 @@ BEGIN
     PERFORM pg_advisory_xact_lock(hashtextextended('potok-shared-food-key-v1:'||k,0));
     SELECT r.food_id INTO claimed FROM potok_shared_food_eligibility.roots_v1 r WHERE r.stable_key=k;
     IF claimed IS NOT NULL AND claimed<>NEW.id AND NEW.stable_food_id=k THEN
-      RAISE EXCEPTION 'STABLE_KEY_ALREADY_CLAIMED' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
+      RAISE EXCEPTION 'STABLE_KEY_ALREADY_CLAIMED' USING ERRCODE='PT409', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
   END LOOP;
   IF TG_OP='UPDATE' THEN
     SELECT r.stable_key INTO original_key FROM potok_shared_food_eligibility.roots_v1 r WHERE r.food_id=OLD.id;
@@ -188,7 +188,7 @@ BEGIN
   SELECT r.receipt,r.request_digest INTO receipt,existing_digest FROM potok_shared_food_eligibility.receipts_v1 r
     WHERE r.actor_id=actor AND r.idempotency_reference=request_key;
   IF FOUND THEN
-    IF existing_digest<>request_digest THEN RAISE EXCEPTION 'IDEMPOTENCY_CONTENT_CONFLICT' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
+    IF existing_digest<>request_digest THEN RAISE EXCEPTION 'IDEMPOTENCY_CONTENT_CONFLICT' USING ERRCODE='PT409', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
     PERFORM potok_food_evidence.authority_v1(); RETURN receipt||jsonb_build_object('replayed',true);
   END IF;
   PERFORM potok_food_evidence.catalog_gate_v1();
@@ -210,13 +210,13 @@ BEGIN
   END IF;
   fp:=potok_shared_food_eligibility.fingerprint_v1(f);
   IF epoch<>potok_shared_food_eligibility.counter_v1(v->'catalogIdentityEpoch') OR fp<>v->>'identityFingerprint' THEN
-    RAISE EXCEPTION 'IDENTITY_BINDING_CONFLICT' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
+    RAISE EXCEPTION 'IDENTITY_BINDING_CONFLICT' USING ERRCODE='PT409', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
   SELECT d.* INTO previous FROM potok_shared_food_eligibility.heads_v1 h
     JOIN potok_shared_food_eligibility.decisions_v1 d ON d.decision_id=h.decision_id WHERE h.food_id=decision_scope.food_id FOR UPDATE OF h;
   IF FOUND THEN
     IF v->'expectedHead'='null'::jsonb OR previous.decision_id<>potok_food_evidence.uuid_v1(v->'expectedHead'->'decisionId')
       OR previous.version<>potok_shared_food_eligibility.counter_v1(v->'expectedHead'->'version') THEN
-      RAISE EXCEPTION 'DECISION_HEAD_CONFLICT' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
+      RAISE EXCEPTION 'DECISION_HEAD_CONFLICT' USING ERRCODE='PT409', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
     IF previous.status='BLOCKED' THEN RAISE EXCEPTION 'BLOCKED_CLEARANCE_NOT_APPROVED'; END IF;
     IF NOT ((previous.status='PENDING' AND next_status IN ('ELIGIBLE','HIDDEN','BLOCKED'))
       OR (previous.status='ELIGIBLE' AND next_status IN ('HIDDEN','BLOCKED'))
