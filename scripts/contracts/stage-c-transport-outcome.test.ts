@@ -9,8 +9,12 @@ test('only verified post-COMMIT HTTP acknowledgement proves committed; ambiguity
  assert.equal(transportOutcomeV1({kind:'HTTP_ERROR',rollbackConfirmed:true,error:{code:'42501',message:'denied',details:null,hint:null}}).status,'ABORTED');
 });
 test('PostgREST error text cannot restore missing engine routine or permit retry',()=>{
- for(const code of ['40P01','40001','42501','57014'])assert.equal(retryableCatalogFailureV1({code,rollbackConfirmed:true}),false);
+ for(const code of ['PT409','PT500','40P01','40001','42501','57014','22023'])assert.equal(retryableCatalogFailureV1({code,rollbackConfirmed:true}),false);
  assert.equal(retryableCatalogFailureV1({code:'40001',detail:'POTOK_BUSINESS_CONFLICT_V1',routine:'exec_stmt_raise',rollbackConfirmed:true}),false);
+});
+test('business/invariant codes and discriminators never retry even with engine-shaped metadata',()=>{
+ for(const code of ['PT409','PT500']) assert.equal(retryableCatalogFailureV1({code,routine:'CheckForSerializableConflictOut',rollbackConfirmed:true}),false);
+ for(const detail of ['POTOK_BUSINESS_CONFLICT_V1','POTOK_INVARIANT_FAILURE_V1']) assert.equal(retryableCatalogFailureV1({code:'40001',detail,routine:'CheckForSerializableConflictOut',rollbackConfirmed:true}),false);
 });
 test('read-only state match/absence/difference cannot prove request causality',()=>{
  const expected={foodId:'fixed',stableKey:'key',digest:'digest'};

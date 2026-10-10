@@ -1,8 +1,10 @@
 /** Disposable adapter only; no runtime wiring. Driver must confirm FULL rollback and
- * preserve native error fields. An ambiguous COMMIT is never a retryable failure. */
+ * preserve native error fields. Not a PostgREST RPC retry policy: its internal
+ * engine retries are outside this attempt budget; RPC client retry is disabled. An ambiguous COMMIT is never a retryable failure. */
 export interface CatalogFailureV1 { code?: string; detail?: string; routine?: string; rollbackConfirmed: boolean }
 export function retryableCatalogFailureV1(error: CatalogFailureV1): boolean {
-  if (!error.rollbackConfirmed || error.detail === 'POTOK_BUSINESS_CONFLICT_V1') return false;
+  if (!error.rollbackConfirmed || ['PT409','PT500'].includes(error.code ?? '')
+    || ['POTOK_BUSINESS_CONFLICT_V1','POTOK_INVARIANT_FAILURE_V1'].includes(error.detail ?? '')) return false;
   return error.code === '40P01' && error.routine === 'DeadLockReport'
     || error.code === '40001' && ['CheckForSerializableConflictOut','CheckForSerializableConflictIn',
       'PreCommit_CheckForSerializationFailure','ExecUpdate','ExecDelete'].includes(error.routine ?? '');
