@@ -41,8 +41,8 @@ BEGIN
   SELECT count(*) INTO v_count FROM information_schema.columns
     WHERE table_schema='public' AND table_name='foods'
       AND column_name IN ('id','canonical_food_id','stable_food_id','source','created_by_user_id',
-        'is_searchable','needs_review','name','name_original','normalized_name','brand','normalized_brand','barcode','aliases');
-  IF v_count<>14 THEN RAISE EXCEPTION 'EXISTING_CANONICAL_FOOD_SCHEMA_REQUIRED'; END IF;
+        'name','name_original','normalized_name','brand','normalized_brand','barcode','aliases');
+  IF v_count<>12 THEN RAISE EXCEPTION 'EXISTING_CANONICAL_FOOD_SCHEMA_REQUIRED'; END IF;
   SELECT count(*) INTO v_count FROM information_schema.columns
     WHERE table_schema='auth' AND ((table_name='sessions' AND column_name IN ('id','user_id','not_after'))
       OR (table_name='users' AND column_name IN ('id','is_anonymous')));
@@ -372,12 +372,8 @@ CREATE FUNCTION potok_food_evidence.shared_food_v1(food_id uuid) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SET search_path=pg_catalog AS $$
 DECLARE result jsonb;
 BEGIN
-  SELECT to_jsonb(f) INTO result FROM public.foods f WHERE f.id=food_id FOR SHARE;
-  IF result IS NULL OR result->>'canonical_food_id' IS DISTINCT FROM food_id::text
-    OR result->>'source' IS NULL OR result->>'source' NOT IN ('core','brand') OR result->'created_by_user_id' IS DISTINCT FROM 'null'::jsonb
-    OR result->'is_searchable' IS DISTINCT FROM 'true'::jsonb OR result->'needs_review' IS DISTINCT FROM 'false'::jsonb
-    OR coalesce(result->>'stable_food_id','') !~ '^[a-z0-9][a-z0-9_-]{0,127}$' THEN
-    RAISE EXCEPTION 'SHARED_CANONICAL_ROOT_REQUIRED' USING ERRCODE='42501'; END IF;
+  SELECT to_jsonb(f) INTO result FROM public.foods f WHERE f.id=food_id FOR UPDATE;
+  IF result IS NULL THEN RAISE EXCEPTION 'FOOD_NOT_FOUND' USING ERRCODE='P0002'; END IF;
   RETURN result;
 END $$;
 CREATE FUNCTION potok_food_evidence.identity_v1(food jsonb) RETURNS jsonb
@@ -490,9 +486,15 @@ BEGIN
     -- Retain both exact raw JSON representation and its canonical semantic digest.
     proposal_bytes:=convert_to((raw->'proposal')::text,'UTF8');
   END IF;
-  -- Actor gate alone does not serialize different reviewers of shared catalog data.
-  PERFORM pg_advisory_xact_lock(hashtextextended('potok-food-evidence-v1:'||food_id::text,0));
+  -- Common eligibility lock order: actor gate -> root row -> registry -> evidence head.
   food:=potok_food_evidence.shared_food_v1(food_id);
+  attestation:=potok_food_evidence.authority_v1();
+  IF request->>'kind'='REVIEW_REJECTED' AND (food->>'canonical_food_id' IS DISTINCT FROM food_id::text
+    OR coalesce(food->>'source','') NOT IN ('core','brand') OR food->'created_by_user_id' IS DISTINCT FROM 'null'::jsonb
+    OR coalesce(food->>'stable_food_id','') !~ '^[a-z0-9][a-z0-9_-]{0,127}$') THEN
+    RAISE EXCEPTION 'SHARED_CANONICAL_ROOT_REQUIRED'; END IF;
+  IF request->>'kind'='REVIEW_APPROVED' AND NOT potok_shared_food_eligibility.eligible_v1(food) THEN
+    RAISE EXCEPTION 'EXPLICIT_SHARED_FOOD_ELIGIBILITY_REQUIRED' USING ERRCODE='42501'; END IF;
   source:=request->'retainedSource';
   IF request->>'kind'='REVIEW_REJECTED' AND source='null'::jsonb THEN source:=NULL;
   ELSE source_bytes:=potok_food_evidence.source_v1(source,target_kind,app); END IF;
@@ -514,7 +516,8 @@ BEGIN
       target:=jsonb_build_object('kind','CANONICAL_REVIEWED_REVISION','revisionId',proposal->'canonicalRevisionId',
         'digest',proposal->'canonicalRevisionDigest','canonicalFoodId',food_id);
       canonical:=potok_food_evidence.revision_v1(target);
-      IF canonical->'applicability' IS DISTINCT FROM app
+      IF NOT potok_shared_food_eligibility.evidence_bound_v1('CANONICAL_REVIEWED_REVISION',(canonical->>'revisionId')::uuid,food)
+        OR canonical->'applicability' IS DISTINCT FROM app
         OR potok_food_evidence.invalidated_v1('CANONICAL_REVIEWED_REVISION',(canonical->>'revisionId')::uuid) IS NOT NULL
         OR NOT EXISTS (SELECT 1 FROM potok_food_evidence.current_heads_v1
           WHERE current_heads_v1.target_kind='CANONICAL_REVIEWED_REVISION' AND canonical_food_id=food_id AND food_state=state
@@ -568,6 +571,7 @@ BEGIN
     CASE WHEN request->>'kind'='REVIEW_REJECTED' THEN NULL ELSE (target->>'revisionId')::uuid END,food_id,request->>'kind',request->>'severity',
     event->>'digest',event,convert_to(potok_food_evidence.canonical_json_v1(event),'UTF8'));
   IF request->>'kind'='REVIEW_APPROVED' THEN
+    PERFORM potok_shared_food_eligibility.bind_evidence_v1(event_id,food);
     INSERT INTO potok_food_evidence.current_heads_v1 VALUES(target_kind,food_id,state,revision_id,revision->>'digest',event_id)
       ON CONFLICT ON CONSTRAINT current_heads_v1_pkey DO UPDATE SET revision_id=excluded.revision_id,digest=excluded.digest,last_event_id=excluded.last_event_id;
   ELSIF request->>'kind'='INVALIDATION' THEN
@@ -605,7 +609,6 @@ DECLARE food jsonb; c jsonb; n jsonb; c_severity text; n_severity text; c_usable
 BEGIN
   PERFORM potok_food_evidence.authority_v1();
   PERFORM potok_food_evidence.applicability_v1(jsonb_build_object('kind','EXACT_FOOD_STATE','foodState',p_food_state),p_food_state);
-  PERFORM pg_advisory_xact_lock(hashtextextended('potok-food-evidence-v1:'||p_canonical_food_id::text,0));
   food:=potok_food_evidence.shared_food_v1(p_canonical_food_id);
   -- Read authorization must also remain fresh after food/catalog lock waits.
   PERFORM potok_food_evidence.authority_v1();
@@ -617,14 +620,15 @@ BEGIN
     c:=potok_food_evidence.revision_v1(c);
     IF c->>'foodState' IS DISTINCT FROM p_food_state THEN RAISE EXCEPTION 'CURRENT_HEAD_INTEGRITY_FAILURE'; END IF;
     c_severity:=potok_food_evidence.invalidated_v1('CANONICAL_REVIEWED_REVISION',(c->>'revisionId')::uuid);
-    c_usable:=c_severity IS NULL AND c->'identitySnapshot'=potok_food_evidence.identity_v1(food)
+    c_usable:=potok_shared_food_eligibility.eligible_v1(food)
+      AND potok_shared_food_eligibility.evidence_bound_v1('CANONICAL_REVIEWED_REVISION',(c->>'revisionId')::uuid,food) AND c_severity IS NULL AND c->'identitySnapshot'=potok_food_evidence.identity_v1(food)
       AND c->'foodStableId'=food->'stable_food_id' AND c->'source'=food->'source';
   END IF;
   IF n IS NOT NULL THEN
     n:=potok_food_evidence.revision_v1(n);
     IF n->>'foodState' IS DISTINCT FROM p_food_state THEN RAISE EXCEPTION 'CURRENT_HEAD_INTEGRITY_FAILURE'; END IF;
     n_severity:=potok_food_evidence.invalidated_v1('NUTRITION_REVIEWED_REVISION',(n->>'revisionId')::uuid);
-    n_usable:=c_usable AND n_severity IS NULL AND n->'canonicalRevisionId'=c->'revisionId' AND n->'canonicalRevisionDigest'=c->'digest';
+    n_usable:=c_usable AND potok_shared_food_eligibility.evidence_bound_v1('NUTRITION_REVIEWED_REVISION',(n->>'revisionId')::uuid,food) AND n_severity IS NULL AND n->'canonicalRevisionId'=c->'revisionId' AND n->'canonicalRevisionDigest'=c->'digest';
   END IF;
   RETURN jsonb_build_object('contract','potok-food-evidence-current-state-v1','canonicalRevision',c,'nutritionRevision',n,
     'canonicalInvalidation',c_severity,'nutritionInvalidation',n_severity,'canonicalUsable',c_usable,'nutritionUsable',n_usable);

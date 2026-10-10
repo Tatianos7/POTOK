@@ -1,12 +1,12 @@
-name: Food Evidence disposable PostgreSQL acceptance
+name: Shared Food Eligibility disposable PostgreSQL acceptance
 
 on:
   pull_request:
     paths:
       - 'src/server/**'
       - 'src/utils/foodReviewedEvidenceV1.ts'
-      - 'scripts/contracts/food-evidence-disposable-db-v1.test.ts'
-      - 'supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.sql'
+      - 'scripts/contracts/*disposable-db-v1.test.ts'
+      - 'supabase/migration_drafts/*.sql'
       - '.github/workflows/food-evidence-postgres-acceptance.yml'
 
 permissions:
@@ -39,4 +39,4 @@ jobs:
           command -v initdb
           command -v pg_ctl
           command -v psql
-          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 node --import tsx --test --test-isolation=none scripts/contracts/food-evidence-disposable-db-v1.test.ts
+          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 node --import tsx --test --test-isolation=none scripts/contracts/shared-food-eligibility-disposable-db-v1.test.ts
