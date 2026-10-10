@@ -239,7 +239,7 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    const sockets=new Set<net.Socket>();const lost=http.createServer(async(req,res)=>{
     try{
      const chunks:Buffer[]=[];for await(const c of req)chunks.push(Buffer.from(c));
-     const r=await fetch(origin+(req.url??'/'),{method:req.method,headers:{'Content-Type':'application/json',Authorization:jwt()},body:Buffer.concat(chunks)});
+     const r=await fetch(origin+(req.url??'/'),{method:req.method,headers:{'Content-Type':'application/json',Authorization:`Bearer ${jwt()}`},body:Buffer.concat(chunks)});
      await r.text();assert.equal(r.status,200);acceptedResolve();res.destroy();
     }catch{res.destroy();}
    });lost.on('connection',s=>{sockets.add(s);s.on('close',()=>sockets.delete(s));});
