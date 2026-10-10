@@ -376,6 +376,30 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
       await assert.rejects(sql(`INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name)
         VALUES(${quote(id(3003))},${quote(id(3003))},'synthetic_root','core','Reuse')`),/STABLE_KEY_ALREADY_CLAIMED/);
     });
+    await t.test('cross-package approval/hide and importer/update races share the root lock',async()=>{
+      const fid=id(3060);
+      await sql(`INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name,normalized_name,aliases)
+        VALUES(${quote(fid)},${quote(fid)},'cross_package_root','core','Synthetic food','synthetic food','{}')`);
+      let head=await decide(await eligibilityInput('PENDING',2060,null,fid));
+      head=await decide(await eligibilityInput('ELIGIBLE',2061,head,fid));
+      const initial=await approved(2062);
+      const p={...initial.proposal,canonicalFoodId:fid,foodStableId:'cross_package_root'};
+      const approveInput={...initial,proposal:p,proposalDigest:await foodReviewProposalDigestV1(p)};
+      const hidden=await eligibilityInput('HIDDEN',2063,head,fid);
+      const races=await Promise.allSettled([review(approveInput,actor),decide(hidden,id(2))]);
+      assert.equal(races[1].status,'fulfilled');
+      if(races[0].status==='rejected') assert.match(String(races[0].reason),/EXPLICIT_SHARED_FOOD_ELIGIBILITY_REQUIRED/);
+      assert.ok(races[1].status==='fulfilled');head=races[1].value;
+      assert.equal(JSON.parse(await asUser(`SELECT public.food_evidence_current_v1(${quote(fid)},'raw')`)).canonicalUsable,false);
+      head=await decide(await eligibilityInput('ELIGIBLE',2064,head,fid));
+      const currentHead=JSON.parse(await asUser(`SELECT public.food_evidence_current_v1(${quote(fid)},'raw')`)).canonicalRevision;
+      const next={...approveInput,idempotencyReference:id(2065),expectedHead:currentHead ? {revisionId:currentHead.revisionId,digest:currentHead.digest}:null};
+      const mutationRaces=await Promise.allSettled([review(next,actor),sql(`UPDATE public.foods SET name='Importer changed identity' WHERE id=${quote(fid)}`)]);
+      assert.equal(mutationRaces[1].status,'fulfilled');
+      if(mutationRaces[0].status==='rejected') assert.match(String(mutationRaces[0].reason),/EXPLICIT_SHARED_FOOD_ELIGIBILITY_REQUIRED|CATALOG_SNAPSHOT_CONFLICT/);
+      assert.equal((await binding(fid)).catalogIdentityEpoch,'1');
+      assert.equal(JSON.parse(await asUser(`SELECT public.food_evidence_current_v1(${quote(fid)},'raw')`)).canonicalUsable,false);
+    });
     await t.test('immutable eligibility decisions and receipts, archive/clearance fail closed',async () => {
       for(const table of ['decisions_v1','receipts_v1','evidence_bindings_v1']) {
         await assert.rejects(sql(`DELETE FROM potok_shared_food_eligibility.${table}`),/IMMUTABLE_FOOD_EVIDENCE/);
