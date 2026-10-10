@@ -3,6 +3,7 @@
  * Auth fixtures simulate verified PostgREST claims: signature verification remains NOT VERIFIED here.
  */
 import test from 'node:test';
+import { retryCatalogTransactionV1, retryableCatalogFailureV1 } from './catalogTransactionRetryV1';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -33,9 +34,9 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
   const data = join(root,'data'), socket = join(root,'socket'), port = '54329';
   await mkdir(socket,{ mode:0o700 });
   let started = false;
-  const sql = async (statement: string): Promise<string> => {
+  const sql = async (statement: string, timeoutMs=30_000): Promise<string> => {
     const result = await run('psql',['-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',socket,'-p',port,'-U','postgres','-d','postgres','-c',statement],
-      { env, timeout:30_000, maxBuffer:4_194_304 });
+      { env, timeout:timeoutMs, maxBuffer:4_194_304 });
     return result.stdout.trim();
   };
   // Real independent backend sessions with explicit barriers; no sleeps pretending to prove overlap.
@@ -420,7 +421,7 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
       head=await decide(await eligibilityInput('ELIGIBLE',2064,head,fid));
       const currentHead=JSON.parse(await asUser(`SELECT public.food_evidence_current_v1(${quote(fid)},'raw')`)).canonicalRevision;
       const next={...approveInput,idempotencyReference:id(2065),expectedHead:currentHead ? {revisionId:currentHead.revisionId,digest:currentHead.digest}:null};
-      const mutationRaces=await Promise.allSettled([review(next,actor),sql(`UPDATE public.foods SET name='Importer changed identity' WHERE id=${quote(fid)}`)]);
+      const mutationRaces=await Promise.allSettled([review(next,actor),sql(`BEGIN; SELECT potok_food_evidence.catalog_gate_v1(); UPDATE public.foods SET name='Importer changed identity' WHERE id=${quote(fid)}; COMMIT`)]);
       assert.equal(mutationRaces[1].status,'fulfilled');
       if(mutationRaces[0].status==='rejected') assert.match(String(mutationRaces[0].reason),/EXPLICIT_SHARED_FOOD_ELIGIBILITY_REQUIRED|CATALOG_SNAPSHOT_CONFLICT/);
       assert.equal((await binding(fid)).catalogIdentityEpoch,'1');
@@ -526,9 +527,16 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
         const winner=results[0].status==='fulfilled'?a:b;await winner.send('COMMIT');
         const expected=results[0].status==='fulfilled'?'A':'B';
         for(const fid of ids) { assert.equal(await sql(`SELECT name FROM public.foods WHERE id=${quote(fid)}`),expected);assert.equal((await binding(fid)).catalogIdentityEpoch,'1'); }
-        // Explicit test-only whole transaction retry; no claim existing importer does this.
-        await sql(`BEGIN; SELECT id FROM public.foods WHERE id IN (${ids.map(quote).join(',')}) ORDER BY id FOR UPDATE;
-          UPDATE public.foods SET name='Retried' WHERE id IN (${ids.map(quote).join(',')}); COMMIT;`);
+        // Native deadlock + database rollback verified above; adapter retry is NOT importer wiring.
+        let attempts=0;
+        await retryCatalogTransactionV1(async remainingMs=>{
+          assert.ok(remainingMs>0 && remainingMs<=15000);
+          if(attempts++===0) { const native=String(victim.reason);
+            return {ok:false,error:{code:'40P01',routine:native.match(/LOCATION:\s+(\w+),/)?.[1],rollbackConfirmed:true}}; }
+          await sql(`BEGIN; SELECT potok_food_evidence.catalog_gate_v1(); SELECT id FROM public.foods WHERE id IN (${ids.map(quote).join(',')}) ORDER BY id FOR UPDATE;
+          UPDATE public.foods SET name='Retried' WHERE id IN (${ids.map(quote).join(',')}); COMMIT;`,Math.ceil(remainingMs));
+          return {ok:true,value:true}; });
+        assert.equal(attempts,2);
         for(const fid of ids) assert.equal((await binding(fid)).catalogIdentityEpoch,'2');
       } finally { await Promise.all([a.close(),b.close()]); }
     });
@@ -558,6 +566,66 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
         assert.equal(await sql(`SELECT name FROM public.foods WHERE id=${quote(fid)}`),updated?'Upserted':'Before');
         assert.equal(await sql(`SELECT count(*) FROM potok_shared_food_eligibility.roots_v1 WHERE stable_key=${quote(key)}`),'1');
       } finally { await Promise.all([a.close(),b.close()]); }
+    });
+    await t.test('participating existing-ID upsert and opposite bulk order serialize without deadlock',async()=>{
+      const ids=[id(4050),id(4051)];
+      for(const [i,fid] of ids.entries()) {
+        await sql(`INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name) VALUES(${quote(fid)},${quote(fid)},'gate_root_${i}','core','Before')`);
+        await decide(await eligibilityInput('PENDING',4052+i,null,fid));
+      }
+      const a=session(),b=session();
+      try {
+        await a.send(`BEGIN; SELECT potok_food_evidence.catalog_gate_v1(); SELECT id FROM public.foods WHERE id=${quote(ids[0])} FOR UPDATE`);
+        const pending=b.send(`BEGIN; SELECT potok_food_evidence.catalog_gate_v1();
+          INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name) VALUES(${quote(ids[0])},${quote(ids[0])},'gate_root_0','core','Upserted') ON CONFLICT(id) DO UPDATE SET name=excluded.name;
+          UPDATE public.foods SET name='B' WHERE id=${quote(ids[1])}; UPDATE public.foods SET name='B' WHERE id=${quote(ids[0])}; COMMIT`);
+        await a.send(`UPDATE public.foods SET name='A' WHERE id=${quote(ids[0])}; UPDATE public.foods SET name='A' WHERE id=${quote(ids[1])}; COMMIT`);
+        await pending;
+        for(const fid of ids) assert.equal(await sql(`SELECT name FROM public.foods WHERE id=${quote(fid)}`),'B');
+        assert.equal((await binding(ids[0])).catalogIdentityEpoch,'3');
+        assert.equal((await binding(ids[1])).catalogIdentityEpoch,'2');
+      } finally { await Promise.all([a.close(),b.close()]); }
+    });
+    await t.test('participating normalized-key upserts with different candidate IDs resolve one root',async()=>{
+      await sql('CREATE UNIQUE INDEX disposable_food_normalized_key ON public.foods(normalized_name,normalized_brand)');
+      const a=session(),b=session();
+      try {
+        await a.send('BEGIN; SELECT potok_food_evidence.catalog_gate_v1()');
+        const pending=b.send(`BEGIN; SELECT potok_food_evidence.catalog_gate_v1(); INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name,normalized_name,normalized_brand)
+          VALUES(${quote(id(4061))},${quote(id(4061))},NULL,'core','Second','gate_normalized','') ON CONFLICT(normalized_name,normalized_brand) DO UPDATE SET name=excluded.name; COMMIT`);
+        await a.send(`INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name,normalized_name,normalized_brand)
+          VALUES(${quote(id(4060))},${quote(id(4060))},NULL,'core','First','gate_normalized',''); COMMIT`);
+        await pending;assert.equal(await sql("SELECT count(*) FROM public.foods WHERE normalized_name='gate_normalized'"),'1');
+        assert.equal(await sql("SELECT id::text||':'||name FROM public.foods WHERE normalized_name='gate_normalized'"),id(4060)+':Second');
+      } finally { await Promise.all([a.close(),b.close()]);await sql('DROP INDEX public.disposable_food_normalized_key'); }
+    });
+    await t.test('gate contention measures serialization of disjoint roots and post-wait JWT expiry',async()=>{
+      const a=session();
+      try {
+        await a.send('BEGIN; SELECT potok_food_evidence.catalog_gate_v1()');
+        const begin=performance.now();
+        const waiting=sql(`BEGIN; SELECT potok_food_evidence.catalog_gate_v1(); UPDATE public.foods SET name=name WHERE id=${quote(id(4051))}; COMMIT`);
+        const release=a.send('SELECT pg_sleep(0.2); COMMIT');
+        await Promise.all([waiting,release]);
+        const elapsed=performance.now()-begin;assert.ok(elapsed>=150);t.diagnostic(`catalog gate disjoint-root contention elapsed_ms=${elapsed.toFixed(1)}; not a throughput benchmark`);
+        await a.send('BEGIN; SELECT potok_food_evidence.catalog_gate_v1()');
+        const request=await eligibilityInput('HIDDEN',4070,null);
+        const expired=assert.rejects(asUser(`SELECT public.shared_food_eligibility_decide_v1(${quote(raw(request))})`,actor,{exp:Math.floor(Date.now()/1000)+1}),/JWT_EXPIRED/);
+        await a.send('SELECT pg_sleep(2); COMMIT');await expired;
+      } finally { await a.close(); }
+    });
+    await t.test('retry fails closed on business 40001, auth, unknown COMMIT; four attempts and deadline',async()=>{
+      for(const error of [
+        {code:'40001',detail:'POTOK_BUSINESS_CONFLICT_V1',routine:'exec_stmt_raise',rollbackConfirmed:true},
+        {code:'42501',rollbackConfirmed:true},{code:'40P01',routine:'DeadLockReport',rollbackConfirmed:false},
+        {code:'40001',rollbackConfirmed:true},
+      ]) { assert.equal(retryableCatalogFailureV1(error),false);let count=0;
+        await assert.rejects(retryCatalogTransactionV1(async()=>{count++;return {ok:false,error};}));assert.equal(count,1); }
+      assert.equal(retryableCatalogFailureV1({code:'40001',routine:'CheckForSerializableConflictOut',rollbackConfirmed:true}),true);
+      let count=0;
+      await assert.rejects(retryCatalogTransactionV1(async()=>{count++;return {ok:false,error:{code:'40P01',routine:'DeadLockReport',rollbackConfirmed:true}};},{sleep:async()=>{},random:()=>0}));assert.equal(count,4);
+      let clock=0;count=0;
+      await assert.rejects(retryCatalogTransactionV1(async()=>{count++;clock=15000;return {ok:false,error:{code:'40P01',routine:'DeadLockReport',rollbackConfirmed:true}};},{now:()=>clock,random:()=>0}),/CATALOG_RETRY_DEADLINE/);assert.equal(count,1);
     });
     await t.test('bulk constraint failure rolls back earlier row and epoch changes',async()=>{
       const beforeBinding=await binding();

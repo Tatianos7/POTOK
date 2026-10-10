@@ -121,3 +121,68 @@ BLOCKED: all-writer compatibility, merge, persistent Staging/Main apply and runt
 Remaining gates: resolved upsert/bulk ordering/retry strategy; actual isolation and
 external writer inventory; deployed trigger/ACL/RLS/PostgREST signature boundary;
 real consumer parity; finite retention/account closure; C archive/maintenance policy.
+
+## Catalog gate repair — disposable implementation, comment 6097091074
+
+The earlier deadlock counterexamples above remain enabled for UNSUPPORTED direct
+writers. Participating transactions now acquire the private
+`potok_food_evidence.catalog_gate_v1()` advisory transaction lock AFTER initial
+trusted authority/auth locks and BEFORE the first catalog row lock. Evidence
+review/current and Eligibility decide/current invoke this preamble; receipt-only
+recovery does not lock catalog rows and needs no gate. Authority is rechecked after
+waiting. Gate ACL grants NO new client/service_role access. No runtime wiring.
+
+Supported test catalog entrypoint: a trusted disposable SQL transaction starts
+`BEGIN ISOLATION LEVEL READ COMMITTED; SELECT potok_food_evidence.catalog_gate_v1();`
+BEFORE any catalog row lock/DML, then executes one bounded atomic batch and COMMIT.
+It is a prepared transaction protocol, NOT a deployed generic SQL execution RPC.
+No SECURITY DEFINER arbitrary SQL endpoint or caller-controlled GUC bypass exists.
+All participating operations serialize, including disjoint roots; UUID/key sorted
+prelocks remain the contract for future finer-grained optimization. An existing
+writer that already holds row locks before this preamble is NOT supported. No
+claim the gate is automatically enforced for every direct foods writer.
+
+Retry adapter `scripts/contracts/catalogTransactionRetryV1.ts` is TEST-ONLY. Four
+attempts/15s monotonic deadline, full jitter 0–50/150/450ms, fresh entire transaction.
+The adapter must enforce remaining time on connection/transaction/COMMIT and confirm
+FULL rollback before setting rollbackConfirmed. PostgreSQL engine routine allowlist
+plus SQLSTATE identifies retryable engine errors; business raises carry immutable
+`POTOK_BUSINESS_CONFLICT_V1` DETAIL and never retry. Missing/unknown native metadata,
+authorization, ambiguous COMMIT and business conflicts fail closed. This adapter
+is not attached to REST/Gateway/importer runtime. Payload, actor, idempotency key,
+CAS/epoch/proposal bindings do not change during retry; expected-head refresh is
+not an automatic retry. Existing review/eligibility receipts retain exact replay.
+Catalog operations without receipts retry only confirmed abort, never transport
+uncertainty. Earlier committed batches are reported separately, not rolled back
+or falsely declared an atomic whole import job.
+
+| Path | Repair support | Remaining condition |
+|---|---|---|
+| Evidence review/current, Eligibility decide/current | Participating gate entrypoints | Disposable acceptance; deployed JWT/PostgREST remains unverified |
+| Controlled SQL existing-ID/normalized-key upsert and bulk batch | Prepared private gate preamble, disposable owner role only | No public writer RPC/ACL rollout implemented |
+| Private CRUD through existing direct REST | Legacy RLS regression only, NOT adapted | C protocol + ownership-preserving entrypoint/ACL review |
+| Core importer, ingestion, pipeline, seeds | NOT adapted | Explicit atomic batch wrapper and retry/reconciliation semantics |
+| Owner apply missing-food RPC | NOT adapted | Actual deployed body, authority and entry ordering audit |
+| Macro maintenance/generator SQL and derived triggers | NOT adapted | RC + gate at transaction entry, triggers inventory |
+| External COPY/admin/replication/account deletion | NOT VERIFIED/BLOCKED | Complete deployed inventory + lifecycle decisions |
+| Resolver/search/diary/recipes/favorites reads | No new integration | Existing regressions, separate deployed parity |
+
+C rollout plan (separate owner approval): enumerate deployed roles/RPCs/triggers,
+verify RC/default isolation; adapt each writer to gate-before-first-row protocol;
+use controlled bounded transaction entrypoints preserving ownership/RLS; prohibit
+unsupported direct writes without giving arbitrary SQL capabilities; attest full
+writer coverage; load-test gate contention; separately resolve maintenance and
+retention/account deletion. BEFORE STATEMENT trigger alone is insufficient when a
+transaction already holds root locks. No automatic new table/entitlement system.
+Keep READ COMMITTED, TRUNCATE denial, epoch/claims, immutable evidence and Phase1
+wire/digests unchanged. ARCHIVED and persistent rollout remain BLOCKED.
+
+New acceptance assertions: participating existing-ID upsert/bulk opposite order
+completes without 40P01; normalized-key conflict with different IDs resolves one row;
+actual approval/mutation races use participating catalog preamble; native deadlock
+victim rollback then bounded full retry; fail-closed classification/max-attempts/
+deadline; measured disjoint-root gate contention; JWT expiry after gate wait.
+A diagnostic latency is a contention sample, not a production throughput approval.
+Real engine serialization under SERIALIZABLE is outside supported RC transactions;
+its routine classifier is unit-verified, not asserted as DB acceptance coverage.
+Exact CI results must be recorded in PR after execution, never inferred here.

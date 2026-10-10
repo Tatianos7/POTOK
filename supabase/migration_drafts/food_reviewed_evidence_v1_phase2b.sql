@@ -368,6 +368,17 @@ BEGIN
   RETURN att.attestation_id;
 END $$;
 
+-- Disposable participating-transaction entrypoint. Acquire AFTER authority/auth locks,
+-- BEFORE the first catalog row lock. Not a replacement for C/all-writer ACL rollout.
+CREATE FUNCTION potok_food_evidence.catalog_gate_v1() RETURNS void
+LANGUAGE plpgsql VOLATILE SET search_path=pg_catalog AS $$
+BEGIN
+  IF current_setting('transaction_isolation')<>'read committed' THEN
+    RAISE EXCEPTION 'READ_COMMITTED_CATALOG_WRITER_REQUIRED' USING ERRCODE='25000'; END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended('potok-food-catalog-transaction-v1',0));
+END $$;
+REVOKE ALL ON FUNCTION potok_food_evidence.catalog_gate_v1() FROM PUBLIC,anon,authenticated,service_role;
+
 CREATE FUNCTION potok_food_evidence.shared_food_v1(food_id uuid) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SET search_path=pg_catalog AS $$
 DECLARE result jsonb;
@@ -401,12 +412,12 @@ BEGIN
   ELSE RAISE EXCEPTION 'TARGET_KIND_INVALID' USING ERRCODE='22023'; END IF;
   IF result IS NULL OR result->'revisionId' IS DISTINCT FROM target->'revisionId'
     OR result->'digest' IS DISTINCT FROM target->'digest' OR result->'canonicalFoodId' IS DISTINCT FROM target->'canonicalFoodId' THEN
-    RAISE EXCEPTION 'EXACT_TARGET_REQUIRED' USING ERRCODE='40001'; END IF;
+    RAISE EXCEPTION 'EXACT_TARGET_REQUIRED' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
   IF result->>'contract' IS DISTINCT FROM expected_contract OR result->>'encoding' IS DISTINCT FROM 'potok-food-reviewed-evidence-canonical-json-v1'
     OR result->>'foodState' IS DISTINCT FROM stored_state
     OR stored_bytes IS DISTINCT FROM convert_to(potok_food_evidence.canonical_json_v1(result),'UTF8')
     OR result->>'digest' IS DISTINCT FROM potok_food_evidence.digest_v1(domain,result-'digest') THEN
-    RAISE EXCEPTION 'STORED_REVISION_INTEGRITY_FAILURE' USING ERRCODE='40001'; END IF;
+    RAISE EXCEPTION 'STORED_REVISION_INTEGRITY_FAILURE' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
   PERFORM potok_food_evidence.uuid_v1(result->'reviewEventId');
   IF result->'supersedesRevisionId' IS DISTINCT FROM 'null'::jsonb THEN
     IF potok_food_evidence.uuid_v1(result->'supersedesRevisionId')=revision_id THEN RAISE EXCEPTION 'SELF_SUPERSESSION' USING ERRCODE='22023'; END IF;
@@ -464,7 +475,7 @@ BEGIN
   SELECT * INTO existing FROM potok_food_evidence.review_requests_v1 WHERE actor_id=actor AND idempotency_reference=key;
   IF FOUND THEN
     IF existing.canonical_request<>canonical_request OR existing.request_digest<>request_digest THEN
-      RAISE EXCEPTION 'IDEMPOTENCY_PAYLOAD_CONFLICT' USING ERRCODE='40001'; END IF;
+      RAISE EXCEPTION 'IDEMPOTENCY_PAYLOAD_CONFLICT' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
     RETURN existing.receipt||jsonb_build_object('replayed',true);
   END IF;
   IF request->>'kind'='INVALIDATION' THEN
@@ -486,7 +497,8 @@ BEGIN
     -- Retain both exact raw JSON representation and its canonical semantic digest.
     proposal_bytes:=convert_to((raw->'proposal')::text,'UTF8');
   END IF;
-  -- Common eligibility lock order: actor gate -> root row -> registry -> evidence head.
+  -- Participating order: authority/auth -> catalog gate -> root -> registry -> evidence.
+  PERFORM potok_food_evidence.catalog_gate_v1();
   food:=potok_food_evidence.shared_food_v1(food_id);
   attestation:=potok_food_evidence.authority_v1();
   IF request->>'kind'='REVIEW_REJECTED' AND (food->>'canonical_food_id' IS DISTINCT FROM food_id::text
@@ -505,13 +517,13 @@ BEGIN
     IF FOUND THEN
       PERFORM potok_food_evidence.exact_keys_v1(request->'expectedHead',ARRAY['revisionId','digest']);
       IF potok_food_evidence.uuid_v1(request->'expectedHead'->'revisionId')<>head.revision_id
-        OR potok_food_evidence.hash_v1(request->'expectedHead'->'digest')<>head.digest THEN RAISE EXCEPTION 'CURRENT_HEAD_CONFLICT' USING ERRCODE='40001'; END IF;
+        OR potok_food_evidence.hash_v1(request->'expectedHead'->'digest')<>head.digest THEN RAISE EXCEPTION 'CURRENT_HEAD_CONFLICT' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
       previous:=head.revision_id;
-    ELSIF request->'expectedHead' IS DISTINCT FROM 'null'::jsonb THEN RAISE EXCEPTION 'CURRENT_HEAD_CONFLICT' USING ERRCODE='40001'; END IF;
+    ELSIF request->'expectedHead' IS DISTINCT FROM 'null'::jsonb THEN RAISE EXCEPTION 'CURRENT_HEAD_CONFLICT' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
     IF target_kind='CANONICAL_REVIEWED_REVISION' THEN
       IF proposal->'identitySnapshot' IS DISTINCT FROM potok_food_evidence.identity_v1(food)
         OR proposal->'foodStableId' IS DISTINCT FROM food->'stable_food_id' OR proposal->'source' IS DISTINCT FROM food->'source' THEN
-        RAISE EXCEPTION 'CATALOG_SNAPSHOT_CONFLICT' USING ERRCODE='40001'; END IF;
+        RAISE EXCEPTION 'CATALOG_SNAPSHOT_CONFLICT' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
     ELSE
       target:=jsonb_build_object('kind','CANONICAL_REVIEWED_REVISION','revisionId',proposal->'canonicalRevisionId',
         'digest',proposal->'canonicalRevisionDigest','canonicalFoodId',food_id);
@@ -524,7 +536,7 @@ BEGIN
             AND current_heads_v1.revision_id=(canonical->>'revisionId')::uuid AND digest=canonical->>'digest')
         OR canonical->'identitySnapshot' IS DISTINCT FROM potok_food_evidence.identity_v1(food)
         OR canonical->'foodStableId' IS DISTINCT FROM food->'stable_food_id' OR canonical->'source' IS DISTINCT FROM food->'source' THEN
-        RAISE EXCEPTION 'LIVE_CANONICAL_BINDING_REQUIRED' USING ERRCODE='40001'; END IF;
+        RAISE EXCEPTION 'LIVE_CANONICAL_BINDING_REQUIRED' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
     END IF;
   END IF;
   -- Locks/source checks may have waited. Recheck token/session/expiry at issuance,
@@ -536,7 +548,7 @@ BEGIN
     INSERT INTO potok_food_evidence.retained_sources_v1 VALUES((source->>'sourceArtifactId')::uuid,source,source_bytes) ON CONFLICT DO NOTHING;
     IF NOT EXISTS (SELECT 1 FROM potok_food_evidence.retained_sources_v1
       WHERE source_artifact_id=(source->>'sourceArtifactId')::uuid AND snapshot=source AND retained_sources_v1.source_bytes=food_review_scope.source_bytes) THEN
-      RAISE EXCEPTION 'SOURCE_ARTIFACT_ID_CONFLICT' USING ERRCODE='40001'; END IF;
+      RAISE EXCEPTION 'SOURCE_ARTIFACT_ID_CONFLICT' USING ERRCODE='40001', DETAIL='POTOK_BUSINESS_CONFLICT_V1'; END IF;
   END IF;
   IF request->>'kind'='REVIEW_APPROVED' THEN
     revision_id:=gen_random_uuid();
@@ -609,6 +621,7 @@ DECLARE food jsonb; c jsonb; n jsonb; c_severity text; n_severity text; c_usable
 BEGIN
   PERFORM potok_food_evidence.authority_v1();
   PERFORM potok_food_evidence.applicability_v1(jsonb_build_object('kind','EXACT_FOOD_STATE','foodState',p_food_state),p_food_state);
+  PERFORM potok_food_evidence.catalog_gate_v1();
   food:=potok_food_evidence.shared_food_v1(p_canonical_food_id);
   -- Read authorization must also remain fresh after food/catalog lock waits.
   PERFORM potok_food_evidence.authority_v1();
