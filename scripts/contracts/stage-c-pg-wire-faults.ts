@@ -27,13 +27,19 @@ export async function pgWireFaultProxy(socketPath:string) {
     const size=fb.readInt32BE(startup?0:1)+(startup?0:1);
     if(size<4||size>16*1024*1024){drop();return;}if(fb.length<size)return;
     const frame=fb.subarray(0,size);fb=fb.subarray(size);
-    if(startup){startup=false;back.write(frame);continue;}
+    if(startup){
+     // libpq may negotiate SSL/GSS before StartupMessage. Our OWN loopback
+     // fixture has no encryption; reject negotiation explicitly rather than
+     // misparse PostgreSQL's single-byte N as a framed backend message.
+     if(size===8&&[80877103,80877104].includes(frame.readInt32BE(4))){front.write('N');continue;}
+     startup=false;back.write(frame);continue;
+    }
     const type=String.fromCharCode(frame[0]),body=frame.subarray(5);let query='';
     if(type==='Q')query=cstring(body).text;
     if(type==='P'){const name=cstring(body);const sql=cstring(body,name.next).text;statements.set(name.text,sql);}
     if(type==='B'){const portal=cstring(body),statement=cstring(body,portal.next);portals.set(portal.text,statements.get(statement.text)??'');}
     if(type==='E')query=portals.get(cstring(body).text)??'';
-    if(query){executed=query;if(/catalog_(private_food|import_batch)_v1/.test(query)&&armed&&!active){active=armed;armed=null;sqlResult=false;active.backendPid=pid;active.events.push('rpc_started');}}
+    if(query){executed=query;if(/"?catalog_(private_food|import_batch)_v1"?\s*\(/.test(query)&&armed&&!active){active=armed;armed=null;sqlResult=false;active.backendPid=pid;active.events.push('rpc_started');}}
     if(active&&sqlResult&&/^(COMMIT|END)\s*;?\s*$/i.test(query.trim())){
      active.events.push('commit_requested');
      if(active.mode==='BEFORE_COMMIT'){active.release();drop();return;}
@@ -49,7 +55,7 @@ export async function pgWireFaultProxy(socketPath:string) {
     if(type==='K'){pid=frame.readInt32BE(5);if(active)active.backendPid=pid;}
     if(active&&type==='C'){
      const tag=cstring(frame.subarray(5)).text;
-     if(/catalog_(private_food|import_batch)_v1/.test(executed)&&!sqlResult){sqlResult=true;active.events.push('sql_result');
+     if(/"?catalog_(private_food|import_batch)_v1"?\s*\(/.test(executed)&&!sqlResult){sqlResult=true;active.events.push('sql_result');
       if(active.mode==='AFTER_SQL_RESULT'){(active as WireFault&{signal:()=>void}).signal();drop();return;}}
      if(tag==='COMMIT'){
       active.events.push('commit_completed');

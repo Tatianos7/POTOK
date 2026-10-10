@@ -73,7 +73,7 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
   const text=header+'.'+claims;return text+'.'+createHmac('sha256',secret).update(text).digest('base64url');
  };
  const reserve=net.createServer();await new Promise<void>(r=>reserve.listen(0,'127.0.0.1',r));const address=reserve.address();assert.ok(address&&typeof address==='object');const httpPort=address.port;await new Promise<void>(r=>reserve.close(()=>r()));
- const config=join(root,'postgrest.conf');await writeFile(config,`db-uri = "postgresql://stage_c_authenticator@127.0.0.1:${proxy.port}/postgres?sslmode=disable&application_name=stage_c_postgrest"
+ const config=join(root,'postgrest.conf');await writeFile(config,`db-uri = "postgresql://stage_c_authenticator@127.0.0.1:${proxy.port}/postgres?sslmode=disable&gssencmode=disable&application_name=stage_c_postgrest"
  db-schemas = "public"
  db-anon-role = "anon"
  db-pool = 6
@@ -89,7 +89,7 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
  let exited=false;pgrst.on('exit',()=>{exited=true;});pgrst.on('error',()=>{exited=true;});
  const origin=`http://127.0.0.1:${httpPort}`;
  const request=async(path:string,token:string|null=jwt(),body?:unknown,method=body===undefined?'GET':'POST',base=origin,signal?:AbortSignal,headers:Record<string,string>={}):Promise<Response>=>{
-  const r=await fetch(base+path,{method,headers:{...token?{Authorization:`Bearer ${token}`}:{},...body===undefined?{}:{'Content-Type':'application/json'},...headers},body:body===undefined?undefined:JSON.stringify(body),signal});
+  const r=await fetch(base+path,{method,headers:{...token?{Authorization:`Bearer ${token}`}:{},...body===undefined?{}:{'Content-Type':'application/json'},...headers},body:body===undefined?undefined:JSON.stringify(body),signal:signal??AbortSignal.timeout(10000)});
   return {status:r.status,body:await r.json() as unknown};
  };
  const payload=(name:string)=>({name,brand:null,calories:'10.00',protein:'1.00',fat:'2.00',carbs:'3.00',fiber:null});
@@ -222,7 +222,7 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    });lost.on('connection',s=>{sockets.add(s);s.on('close',()=>sockets.delete(s));});
    await new Promise<void>(r=>lost.listen(0,'127.0.0.1',r));const addr=lost.address();assert.ok(addr&&typeof addr==='object');
    try{
-    await assert.rejects(rpc(create('transport http response lost'),jwt(),undefined,`http://127.0.0.1:${addr.port}`));await accepted;
+    await assert.rejects(rpc(create('transport http response lost'),jwt(),undefined,`http://127.0.0.1:${addr.port}`));await Promise.race([accepted,new Promise((_,reject)=>setTimeout(()=>reject(new Error('Upstream200 acknowledgement not observed')),5000))]);
     assert.equal(await count('transport http response lost'),1);assert.equal(transportOutcomeV1({kind:'DISCONNECT'}).status,'UNKNOWN');
    }finally{for(const s of sockets)s.destroy();await new Promise<void>(r=>lost.close(()=>r()));}
   });
@@ -247,6 +247,8 @@ export async function stageCPostgrestAcceptance(t:TestContext,{root,socket,port,
    // lookup/replay possible. Existing state is never promoted to a durable receipt.
   });
  }finally{
-  const closed=new Promise<void>(r=>{if(exited)r();else pgrst.once('exit',()=>r());});pgrst.kill('SIGTERM');await closed;await proxy.close();
+  await proxy.close();
+  const closed=new Promise<void>(r=>{if(exited)r();else pgrst.once('exit',()=>r());});pgrst.kill('SIGTERM');
+  const killTimer=setTimeout(()=>pgrst.kill('SIGKILL'),5000);try{await closed;}finally{clearTimeout(killTimer);}
  }
 }

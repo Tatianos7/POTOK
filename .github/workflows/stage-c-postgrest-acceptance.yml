@@ -41,4 +41,4 @@ jobs:
           npx eslint scripts/contracts/stage-c-postgrest-acceptance.ts scripts/contracts/stage-c-pg-wire-faults.ts scripts/contracts/stage-c-transport-outcome.ts scripts/contracts/stage-c-transport-outcome.test.ts scripts/contracts/stage-c-transport-disposable-db-v1.test.ts --max-warnings 0
       - name: Real disposable database, JWT, PostgREST and protocol fault tests (no SKIP)
         run: |
-          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 POTOK_STAGE_C_REQUIRE_TRANSPORT=1 node --import tsx --test --test-isolation=none scripts/contracts/stage-c-transport-disposable-db-v1.test.ts scripts/contracts/stage-c-transport-outcome.test.ts
+          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 POTOK_STAGE_C_REQUIRE_TRANSPORT=1 timeout --signal=TERM --kill-after=10s 180s node --import tsx --test --test-isolation=none scripts/contracts/stage-c-transport-disposable-db-v1.test.ts scripts/contracts/stage-c-transport-outcome.test.ts
