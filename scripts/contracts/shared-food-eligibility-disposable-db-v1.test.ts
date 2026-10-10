@@ -1,6 +1,7 @@
 /** Real PostgreSQL acceptance, never a Supabase test or an in-memory database model.
  * Creates and destroys its OWN Unix-socket-only cluster. No database URL option.
- * Auth fixtures simulate verified PostgREST claims: signature verification remains NOT VERIFIED here.
+ * Default Auth fixtures simulate verified claims. Separate REQUIRED transport mode
+ * verifies real signatures against own local PostgREST, NOT deployed Supabase/JWKS.
  */
 import test from 'node:test';
 import { stageCCatalogAcceptance } from './stage-c-catalog-acceptance';
@@ -649,6 +650,10 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
       } finally { await competing; }
     });
     await stageCCatalogAcceptance(t,{sql,asUser,session});
+    if(process.env.POTOK_STAGE_C_REQUIRE_TRANSPORT==='1') {
+      const {stageCPostgrestAcceptance}=await import('./stage-c-postgrest-acceptance');
+      await stageCPostgrestAcceptance(t,{root,socket,port,sql,session});
+    }
   } finally {
     if (started) await run('pg_ctl',['-D',data,'-m','immediate','-w','stop'],{ env, timeout:30_000 });
     await rm(root,{ recursive:true,force:true });
