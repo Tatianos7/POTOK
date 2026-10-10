@@ -36,8 +36,8 @@ BEGIN
   SELECT count(*) INTO v_count FROM information_schema.columns
     WHERE table_schema='public' AND table_name='foods'
       AND column_name IN ('id','canonical_food_id','stable_food_id','source','created_by_user_id',
-        'is_searchable','needs_review','name','name_original','normalized_name','brand','normalized_brand','barcode','aliases');
-  IF v_count<>14 THEN RAISE EXCEPTION 'EXISTING_CANONICAL_FOOD_SCHEMA_REQUIRED'; END IF;
+        'name','name_original','normalized_name','brand','normalized_brand','barcode','aliases');
+  IF v_count<>12 THEN RAISE EXCEPTION 'EXISTING_CANONICAL_FOOD_SCHEMA_REQUIRED'; END IF;
   SELECT count(*) INTO v_count FROM information_schema.columns
     WHERE table_schema='auth' AND ((table_name='sessions' AND column_name IN ('id','user_id','not_after'))
       OR (table_name='users' AND column_name IN ('id','is_anonymous')));
