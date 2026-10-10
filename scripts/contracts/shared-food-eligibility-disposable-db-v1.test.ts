@@ -65,8 +65,8 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
       CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT (auth.jwt()->>'sub')::uuid $$;
       GRANT USAGE ON SCHEMA auth TO anon,authenticated,service_role;
       CREATE TABLE public.user_profiles(id_user uuid PRIMARY KEY,is_admin boolean NOT NULL DEFAULT false);
-      CREATE TABLE public.foods(id uuid PRIMARY KEY,canonical_food_id uuid,stable_food_id text,source text,created_by_user_id uuid,
-        name text,name_original text,normalized_name text,brand text,normalized_brand text,barcode text,aliases text[]);
+      CREATE TABLE public.foods(id uuid PRIMARY KEY,canonical_food_id uuid,stable_food_id text,source text NOT NULL,created_by_user_id uuid,
+        name text NOT NULL,name_original text,normalized_name text,brand text,normalized_brand text,barcode text,aliases text[]);
       CREATE TABLE public.food_aliases(id uuid PRIMARY KEY,canonical_food_id uuid,alias text);
       CREATE TABLE public.food_diary_entries(id uuid PRIMARY KEY,calories numeric,protein numeric,fat numeric,carbs numeric);
       INSERT INTO public.foods VALUES (${quote(foodId)},${quote(foodId)},'synthetic_root','core',NULL,'Synthetic food',NULL,'synthetic food',NULL,NULL,NULL,'{}');
@@ -393,6 +393,45 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
         digest:current.revision.digest,canonicalFoodId:foodId };
       await review({ contract:'potok-food-evidence-review-request-v1',kind:'INVALIDATION',idempotencyReference:id(2045),
         target:oldTarget,retainedSource:source(2046,'blocked historical invalidation'),severity:'SAFETY_CRITICAL',reason:'synthetic safety decision' });
+    });
+    await t.test('fresh concurrent eligibility request creates exactly one immutable decision',async()=>{
+      const fid=id(3050);
+      await sql(`INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name,aliases) VALUES(${quote(fid)},${quote(fid)},'concurrent_new_claim','core','Concurrency fixture','{}')`);
+      const input=await eligibilityInput('PENDING',2052,null,fid);
+      const results=await Promise.all([decide(input),decide(input)]);
+      assert.equal(results.filter(r=>r.replayed).length,1);
+      assert.equal(results[0].decisionId,results[1].decisionId);
+      assert.equal(await sql(`SELECT count(*) FROM potok_shared_food_eligibility.decisions_v1 WHERE food_id=${quote(fid)}`),'1');
+    });
+    await t.test('eligibility writer rechecks JWT expiry after real root-lock wait',async()=>{
+      const input=await eligibilityInput('HIDDEN',2053,eligibilityHead);
+      const competing=sql(`BEGIN; SELECT id FROM public.foods WHERE id=${quote(foodId)} FOR UPDATE; SELECT pg_sleep(3); COMMIT;`);
+      try {
+        const deadline=Date.now()+2000;let held=false;
+        while(Date.now()<deadline) {
+          try { await sql(`BEGIN; SELECT id FROM public.foods WHERE id=${quote(foodId)} FOR UPDATE NOWAIT; COMMIT;`); }
+          catch(error) { if(/could not obtain lock/.test(String(error))) { held=true;break; } throw error; }
+          await new Promise(resolve=>setTimeout(resolve,25));
+        }
+        assert.equal(held,true);
+        await assert.rejects(asUser(`SELECT public.shared_food_eligibility_decide_v1(${quote(raw(input))})`,actor,
+          {exp:Math.floor(Date.now()/1000)+1}),/JWT_EXPIRED/);
+      } finally { await competing; }
+    });
+    await t.test('trusted admin attestation expiry during root wait prevents eligibility write',async()=>{
+      await sql(`SELECT potok_control.grant_entitlement_v2(${quote(id(2))},'admin',clock_timestamp()+interval '2 seconds','synthetic-local-test','synthetic expiring authority')`);
+      const input=await eligibilityInput('HIDDEN',2054,eligibilityHead);
+      const competing=sql(`BEGIN; SELECT id FROM public.foods WHERE id=${quote(foodId)} FOR UPDATE; SELECT pg_sleep(4); COMMIT;`);
+      try {
+        const deadline=Date.now()+2000;let held=false;
+        while(Date.now()<deadline) {
+          try { await sql(`BEGIN; SELECT id FROM public.foods WHERE id=${quote(foodId)} FOR UPDATE NOWAIT; COMMIT;`); }
+          catch(error) { if(/could not obtain lock/.test(String(error))) { held=true;break; } throw error; }
+          await new Promise(resolve=>setTimeout(resolve,25));
+        }
+        assert.equal(held,true);
+        await assert.rejects(decide(input,id(2)),/VERIFIED_ADMIN_REQUIRED|ADMIN_PROVENANCE_MISMATCH/);
+      } finally { await competing; }
     });
     await t.test('current-state read rechecks JWT expiry after a real competing food-lock wait',async () => {
       const competing = sql(`BEGIN; SELECT id FROM public.foods WHERE id=${quote(foodId)} FOR UPDATE; SELECT pg_sleep(3); COMMIT;`);
