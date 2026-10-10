@@ -32,7 +32,7 @@ export async function stageCCatalogAcceptance(t:TestContext,{sql,asUser,session}
  const privateCall=async(v:object,user=actor)=>JSON.parse(await asUser(`SELECT public.catalog_private_food_v1(${q(JSON.stringify(v))})`,user)) as Receipt;
  const batch=(rows:object[],mode='INSERT')=>({contract:'potok-catalog-batch-request-v1',mode,rows});
  const row=(n:number,name:string)=>({foodId:id(n),foodStableId:`stage_c_${n}`,source:'core',payload:payload(name)});
- const importCall=async(v:object,user=actor)=>JSON.parse(await asUser(`SELECT public.catalog_import_batch_v1(${q(JSON.stringify(v))})`,user)) as {rowsApplied:number};
+ const importCall=async(v:object,user=actor)=>JSON.parse(await asUser(`SELECT public.catalog_import_batch_v1(${q(JSON.stringify(v))})`,user)) as {rowsApplied:number;targets:{requestedFoodId:string;foodId:string}[]};
  let a:Receipt;
  await t.test('Stage C private create is atomic self-root; A/B ownership, no promotion or foreign disclosure',async()=>{
   a=await privateCall(create('private-A'));
@@ -82,6 +82,7 @@ export async function stageCCatalogAcceptance(t:TestContext,{sql,asUser,session}
  await t.test('Stage C batch late failure rolls back every row; duplicate/bound validation',async()=>{
   await assert.rejects(importCall(batch([row(9110,'batch-first'),{...row(9111,'private-A-updated'),foodStableId:null}])),/FOOD_CONFLICT/);
   assert.equal(await sql(`SELECT count(*) FROM public.foods WHERE id IN (${q(id(9110))},${q(id(9111))})`),'0');
+  assert.equal(await sql(`SELECT count(*) FROM public.foods WHERE id=${q(id(9100))}`),'1','previous committed batch is NOT rolled back with later batch');
   await assert.rejects(importCall(batch([row(9110,'same'),row(9110,'other')])),/DUPLICATE_BATCH_TARGET/);
   await assert.rejects(importCall(batch(Array(201).fill(row(9110,'same')))),/BATCH_BOUND_INVALID/);
  });
@@ -91,7 +92,8 @@ export async function stageCCatalogAcceptance(t:TestContext,{sql,asUser,session}
    importCall(batch([...rows].reverse().map(r=>({...r,payload:{...r.payload,name:'B'}})),'UPSERT_ID'),id(2))]);
   assert.equal(results[0].rowsApplied,2);assert.equal(results[1].rowsApplied,2);
   assert.equal(await sql(`SELECT count(DISTINCT name) FROM public.foods WHERE id IN (${q(id(9120))},${q(id(9121))})`),'1');
-  const normalized={...row(9122,'bulk-9120'),foodStableId:'stage_c_9120'};await importCall(batch([normalized],'UPSERT_NORMALIZED'));
+  const normalized={...row(9122,'bulk-9120'),foodStableId:'stage_c_9120'};const applied=await importCall(batch([normalized],'UPSERT_NORMALIZED'));
+  assert.deepEqual(applied.targets,[{requestedFoodId:id(9122),foodId:id(9120)}]);
   assert.equal(await sql(`SELECT count(*) FROM public.foods WHERE id=${q(id(9122))}`),'0');
   assert.equal(await sql("SELECT count(*) FROM public.foods WHERE normalized_name='bulk-9120'"),'1');
  });

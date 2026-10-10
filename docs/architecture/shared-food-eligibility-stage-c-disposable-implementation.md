@@ -22,7 +22,7 @@ Unknown fields/duplicate targets reject. Actor/auth locks precede catalog gate;
 gate precedes first catalog row lock; authorization checked after waits and before
 return. Existing root/key/source/owner cannot be substituted on normalized conflict.
 NULL and empty brand use the deployed COALESCE expression, not column-pair ON CONFLICT.
-No automatic ELIGIBLE status/evidence issuance. Complete RPC failure rolls back batch;
+Batch result includes requested→actual food ID mapping for normalized conflicts; candidate IDs are not falsely reported as created roots. This result is NOT a durable commit receipt. No automatic ELIGIBLE status/evidence issuance. Complete RPC failure rolls back batch;
 whole jobs can have prior committed batches. No generic SQL endpoint.
 
 RPCs are narrow SECURITY DEFINER with pg_catalog search_path and explicit tenant/
@@ -62,7 +62,7 @@ receipt table and no exactly-once transport guarantee. catalogBatchOutcomeV1 mod
 COMMITTED only from a trusted commit acknowledgement, ABORTED only from confirmed
 rollback, otherwise UNKNOWN/retryAllowed=false. It does not turn an SQL result before
 COMMIT into a commit acknowledgement. No mounted gateway or retry runtime wiring.
-Unknown batch stops job; inspect/reconcile read-only rather than blindly resend.
+Sequential runCatalogImportJobV1 validates pinned raw batches, preserves committed prefix, stops after ABORTED/UNKNOWN, and treats thrown/inconsistent transport results as UNKNOWN; it never retries or runs later batches. The injected adapter is not wired to live transport. Unknown batch stops job; inspect/reconcile read-only rather than blindly resend.
 Real network COMMIT fault injection/recovery remains NOT VERIFIED.
 
 ## Compatibility matrix

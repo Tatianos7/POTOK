@@ -78,7 +78,7 @@ EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCO
 END $$;
 CREATE FUNCTION public.catalog_import_batch_v1(p_request text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
-DECLARE v jsonb; r jsonb; p jsonb; fid uuid; existing jsonb; mode text; n integer:=0;
+DECLARE v jsonb; r jsonb; p jsonb; fid uuid; existing jsonb; mode text; n integer:=0; targets jsonb:='[]'::jsonb;
 BEGIN
  PERFORM potok_food_evidence.authority_v1();v:=potok_catalog_writer.raw_v1(p_request);
  PERFORM potok_food_evidence.exact_keys_v1(v,ARRAY['contract','mode','rows']);
@@ -112,9 +112,10 @@ BEGIN
    INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,created_by_user_id,name,normalized_name,brand,normalized_brand,calories,protein,fat,carbs,fiber)
     VALUES(fid,fid,r->>'foodStableId',r->>'source',NULL,p->>'name',p->>'normalizedName',p->>'brand',p->>'normalizedBrand',(p->>'calories')::numeric,(p->>'protein')::numeric,(p->>'fat')::numeric,(p->>'carbs')::numeric,(p->>'fiber')::numeric);
   END IF;
+  targets:=targets||jsonb_build_array(jsonb_build_object('requestedFoodId',r->'foodId','foodId',fid));
   n:=n+1;
  END LOOP;
- PERFORM potok_food_evidence.authority_v1();RETURN jsonb_build_object('rowsApplied',n);
+ PERFORM potok_food_evidence.authority_v1();RETURN jsonb_build_object('rowsApplied',n,'targets',targets);
 EXCEPTION WHEN unique_violation THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';
 END $$;
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA potok_catalog_writer FROM PUBLIC,anon,authenticated,service_role;

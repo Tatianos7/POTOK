@@ -68,3 +68,22 @@ export function catalogBatchOutcomeV1(value:
   }
   return value.rollbackConfirmed?{status:'ABORTED',rollbackConfirmed:true}:{status:'UNKNOWN',retryAllowed:false};
 }
+/** Sequential pinned manifest runner, not a transport or durable receipt. Trusted
+ * adapter reports commit acknowledgement / proven rollback; thrown errors are UNKNOWN.
+ * No automatic retry, replacement IDs, partial-job success or next batch after UNKNOWN. */
+export async function runCatalogImportJobV1(
+  rawBatches:readonly string[],
+  execute:(raw:string)=>Promise<CatalogBatchOutcomeV1>,
+):Promise<{status:'COMPLETE'|'STOPPED_ABORTED'|'STOPPED_UNKNOWN';batches:{index:number;outcome:CatalogBatchOutcomeV1}[]}> {
+  const requests=rawBatches.map(decodeCatalogBatchRequestRawV1);
+  const batches:{index:number;outcome:CatalogBatchOutcomeV1}[]=[];
+  for(let index=0;index<rawBatches.length;index++) {
+    let outcome:CatalogBatchOutcomeV1;
+    try {outcome=await execute(rawBatches[index]);}catch{outcome={status:'UNKNOWN',retryAllowed:false};}
+    if(outcome.status==='COMMITTED'&&outcome.rowsApplied!==requests[index].rows.length)outcome={status:'UNKNOWN',retryAllowed:false};
+    batches.push({index,outcome});
+    if(outcome.status==='UNKNOWN')return {status:'STOPPED_UNKNOWN',batches};
+    if(outcome.status==='ABORTED')return {status:'STOPPED_ABORTED',batches};
+  }
+  return {status:'COMPLETE',batches};
+}
