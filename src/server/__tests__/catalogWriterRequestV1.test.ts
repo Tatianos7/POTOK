@@ -1,22 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { decodePrivateFoodRequestRawV1, decodeCatalogBatchRequestRawV1, catalogBatchOutcomeV1, runCatalogImportJobV1 } from '../catalogWriterRequestV1';
-const p={name:'Private',normalizedName:'private',brand:null,normalizedBrand:null,calories:'10.00',protein:'1.00',fat:'2.00',carbs:'3.00',fiber:'0.00'};
+const p={name:'Private',brand:null,calories:'10.00',protein:'1.00',fat:'2.00',carbs:'3.00',fiber:'0.00'};
 const create={contract:'potok-private-food-request-v1',kind:'CREATE',payload:p};
 test('strict private shape and no source/owner/identity promotion',()=>{
  assert.equal(decodePrivateFoodRequestRawV1(JSON.stringify(create)).kind,'CREATE');
- const empty=decodePrivateFoodRequestRawV1(JSON.stringify({...create,payload:{...p,normalizedBrand:''}}));
- assert.ok(empty.kind==='CREATE');assert.equal(empty.payload.normalizedBrand,'');
+ const empty=decodePrivateFoodRequestRawV1(JSON.stringify({...create,payload:{...p,brand:''}}));
+ assert.ok(empty.kind==='CREATE');assert.equal(empty.payload.brand,'');
  for(const field of ['actorId','source','createdByUserId','foodId','canonicalFoodId']) assert.throws(()=>decodePrivateFoodRequestRawV1(JSON.stringify({...create,[field]:'forged'})));
  assert.throws(()=>decodePrivateFoodRequestRawV1(JSON.stringify({...create,payload:{...p,source:'core'}})));
  assert.throws(()=>decodePrivateFoodRequestRawV1(JSON.stringify({...create,payload:{...p,calories:10}})));
  assert.throws(()=>decodePrivateFoodRequestRawV1(JSON.stringify(create).replace('"kind":"CREATE"','"kind":"CREATE","kind":"CREATE"')));
 });
-test('batch uses exact nullable-brand key semantics and cap',()=>{
+test('batch shape leaves normalized uniqueness to DB and enforces IDs/cap',()=>{
  const row={foodId:'00000000-0000-4000-8000-000000009001',foodStableId:null,source:'core',payload:p};
  const b={contract:'potok-catalog-batch-request-v1',mode:'UPSERT_NORMALIZED',rows:[row]};
  assert.equal(decodeCatalogBatchRequestRawV1(JSON.stringify(b)).rows.length,1);
- assert.throws(()=>decodeCatalogBatchRequestRawV1(JSON.stringify({...b,rows:[row,{...row,foodId:'00000000-0000-4000-8000-000000009002',payload:{...p,normalizedBrand:''}}]})));
+ assert.equal(decodeCatalogBatchRequestRawV1(JSON.stringify({...b,rows:[row,{...row,foodId:'00000000-0000-4000-8000-000000009002',payload:{...p,brand:''}}]})).rows.length,2);
+ assert.throws(()=>decodeCatalogBatchRequestRawV1(JSON.stringify({...b,rows:[row,row]})));
  assert.throws(()=>decodeCatalogBatchRequestRawV1(JSON.stringify({...b,rows:Array(201).fill(row)})));
  assert.throws(()=>decodeCatalogBatchRequestRawV1(JSON.stringify({...b,rows:[{...row,source:'user'}]})));
 });
@@ -35,4 +36,13 @@ test('sequential job preserves committed prefix and stops after ABORTED/UNKNOWN 
  }
  let calls=0;const lost=await runCatalogImportJobV1([raw,raw],async()=>{calls++;throw new Error('response lost');});assert.equal(lost.status,'STOPPED_UNKNOWN');assert.equal(calls,1);
  const wrong=await runCatalogImportJobV1([raw],async()=>({status:'COMMITTED',rowsApplied:2}));assert.equal(wrong.status,'STOPPED_UNKNOWN');
+});
+
+test('fiber null is explicit and distinct from zero; normalized spoof fields rejected',()=>{
+ const decoded=decodePrivateFoodRequestRawV1(JSON.stringify({...create,payload:{...p,fiber:null}}));
+ assert.ok(decoded.kind==='CREATE');assert.equal(decoded.payload.fiber,null);
+ const {fiber: _fiber,...missing}=p;void _fiber;
+ for(const payload of [missing,{...p,fiber:0},{...p,normalizedName:'fake'},{...p,normalizedBrand:'fake'}])
+  assert.throws(()=>decodePrivateFoodRequestRawV1(JSON.stringify({...create,payload})));
+ const zero=decodePrivateFoodRequestRawV1(JSON.stringify(create));assert.ok(zero.kind==='CREATE');assert.equal(zero.payload.fiber,'0.00');
 });

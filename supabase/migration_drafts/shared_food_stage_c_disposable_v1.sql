@@ -2,7 +2,9 @@
 BEGIN;
 DO $$ BEGIN
  IF current_setting('potok_shared_food_eligibility.test_target',true) IS DISTINCT FROM 'disposable-postgresql-only'
-    OR to_regprocedure('potok_food_evidence.catalog_gate_v1()') IS NULL THEN
+    OR to_regprocedure('potok_food_evidence.catalog_gate_v1()') IS NULL
+    OR to_regprocedure('public.normalize_food_text(text)') IS NULL
+    OR NOT EXISTS(SELECT 1 FROM pg_trigger WHERE tgrelid='public.foods'::regclass AND tgname='foods_search_vector_update' AND tgenabled IN ('O','A') AND NOT tgisinternal) THEN
   RAISE EXCEPTION 'DISPOSABLE_STAGE_C_PREREQUISITES_REQUIRED'; END IF;
 END $$;
 CREATE SCHEMA potok_catalog_writer;
@@ -24,12 +26,13 @@ CREATE FUNCTION potok_catalog_writer.payload_v1(v jsonb) RETURNS void
 LANGUAGE plpgsql IMMUTABLE SET search_path=pg_catalog AS $$
 DECLARE k text;
 BEGIN
- PERFORM potok_food_evidence.exact_keys_v1(v,ARRAY['name','normalizedName','brand','normalizedBrand','calories','protein','fat','carbs','fiber']);
- PERFORM potok_food_evidence.text_v1(v->'name'); PERFORM potok_food_evidence.text_v1(v->'normalizedName');
- FOREACH k IN ARRAY ARRAY['brand','normalizedBrand'] LOOP
+ PERFORM potok_food_evidence.exact_keys_v1(v,ARRAY['name','brand','calories','protein','fat','carbs','fiber']);
+ PERFORM potok_food_evidence.text_v1(v->'name');
+ FOREACH k IN ARRAY ARRAY['brand'] LOOP
   IF v->k<>'null'::jsonb AND jsonb_typeof(v->k)<>'string' THEN RAISE EXCEPTION 'STRING_REQUIRED' USING ERRCODE='22023'; END IF;
  END LOOP;
  FOREACH k IN ARRAY ARRAY['calories','protein','fat','carbs','fiber'] LOOP
+  IF k='fiber' AND v->k='null'::jsonb THEN CONTINUE; END IF;
   IF jsonb_typeof(v->k)<>'string' OR v->>k !~ '^(0|[1-9][0-9]{0,5})\.[0-9]{2}$' THEN RAISE EXCEPTION 'OPERATIONAL_DECIMAL_INVALID' USING ERRCODE='22023'; END IF;
  END LOOP;
 END $$;
@@ -59,14 +62,14 @@ BEGIN
  PERFORM potok_food_evidence.catalog_gate_v1();PERFORM potok_catalog_writer.session_v1();
  IF kind='CREATE' THEN
   fid:=gen_random_uuid();
-  INSERT INTO public.foods(id,canonical_food_id,source,created_by_user_id,name,normalized_name,brand,normalized_brand,calories,protein,fat,carbs,fiber)
-   VALUES(fid,fid,'user',actor,p->>'name',p->>'normalizedName',p->>'brand',p->>'normalizedBrand',(p->>'calories')::numeric,(p->>'protein')::numeric,(p->>'fat')::numeric,(p->>'carbs')::numeric,(p->>'fiber')::numeric);
+  INSERT INTO public.foods(id,canonical_food_id,source,created_by_user_id,name,brand,calories,protein,fat,carbs,fiber)
+   VALUES(fid,fid,'user',actor,p->>'name',p->>'brand',(p->>'calories')::numeric,(p->>'protein')::numeric,(p->>'fat')::numeric,(p->>'carbs')::numeric,(p->>'fiber')::numeric);
  ELSE
   SELECT to_jsonb(x) INTO f FROM public.foods x WHERE x.id=fid AND x.source='user' AND x.created_by_user_id=actor FOR UPDATE;
   IF f IS NULL THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
   IF potok_catalog_writer.row_digest_v1(f)<>v->>'expectedDigest' THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
   IF kind='DELETE' THEN DELETE FROM public.foods WHERE id=fid AND source='user' AND created_by_user_id=actor;
-  ELSE UPDATE public.foods SET name=p->>'name',normalized_name=p->>'normalizedName',brand=p->>'brand',normalized_brand=p->>'normalizedBrand',
+  ELSE UPDATE public.foods SET name=p->>'name',brand=p->>'brand',
    calories=(p->>'calories')::numeric,protein=(p->>'protein')::numeric,fat=(p->>'fat')::numeric,carbs=(p->>'carbs')::numeric,fiber=(p->>'fiber')::numeric
    WHERE id=fid AND source='user' AND created_by_user_id=actor; END IF;
  END IF;
@@ -92,12 +95,12 @@ BEGIN
   PERFORM potok_catalog_writer.payload_v1(r->'payload');
  END LOOP;
  IF EXISTS(SELECT 1 FROM jsonb_array_elements(v->'rows') x GROUP BY x->>'foodId' HAVING count(*)>1)
- OR EXISTS(SELECT 1 FROM jsonb_array_elements(v->'rows') x GROUP BY x->'payload'->>'normalizedName',coalesce(x->'payload'->>'normalizedBrand','') HAVING count(*)>1) THEN RAISE EXCEPTION 'DUPLICATE_BATCH_TARGET' USING ERRCODE='22023';END IF;
+ OR EXISTS(SELECT 1 FROM jsonb_array_elements(v->'rows') x GROUP BY public.normalize_food_text(x->'payload'->>'name'),public.normalize_food_text(x->'payload'->>'brand') HAVING count(*)>1) THEN RAISE EXCEPTION 'DUPLICATE_BATCH_TARGET' USING ERRCODE='22023';END IF;
  PERFORM potok_food_evidence.catalog_gate_v1();PERFORM potok_food_evidence.authority_v1();
  FOR r IN SELECT value FROM jsonb_array_elements(v->'rows') ORDER BY value->>'foodId' LOOP
   fid:=(r->>'foodId')::uuid;p:=r->'payload';existing:=NULL;
   IF mode='UPSERT_NORMALIZED' THEN
-   SELECT to_jsonb(x) INTO existing FROM public.foods x WHERE x.normalized_name=p->>'normalizedName' AND coalesce(x.normalized_brand,'')=coalesce(p->>'normalizedBrand','') FOR UPDATE;
+   SELECT to_jsonb(x) INTO existing FROM public.foods x WHERE x.normalized_name=public.normalize_food_text(p->>'name') AND coalesce(x.normalized_brand,'')=public.normalize_food_text(p->>'brand') FOR UPDATE;
    IF existing IS NOT NULL THEN fid:=(existing->>'id')::uuid;END IF;
   END IF;
   IF existing IS NULL THEN SELECT to_jsonb(x) INTO existing FROM public.foods x WHERE x.id=fid FOR UPDATE;END IF;
@@ -106,11 +109,11 @@ BEGIN
       OR existing->>'canonical_food_id' IS DISTINCT FROM fid::text THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
    -- Normalized upsert may update content, NEVER substitute a conflicting root's identity/key.
    IF existing->'stable_food_id' IS DISTINCT FROM r->'foodStableId' OR existing->'source' IS DISTINCT FROM r->'source' THEN RAISE EXCEPTION 'FOOD_CONFLICT' USING ERRCODE='40001',DETAIL='POTOK_BUSINESS_CONFLICT_V1';END IF;
-   UPDATE public.foods SET name=p->>'name',normalized_name=p->>'normalizedName',brand=p->>'brand',normalized_brand=p->>'normalizedBrand',
+   UPDATE public.foods SET name=p->>'name',brand=p->>'brand',
     calories=(p->>'calories')::numeric,protein=(p->>'protein')::numeric,fat=(p->>'fat')::numeric,carbs=(p->>'carbs')::numeric,fiber=(p->>'fiber')::numeric WHERE id=fid;
   ELSE
-   INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,created_by_user_id,name,normalized_name,brand,normalized_brand,calories,protein,fat,carbs,fiber)
-    VALUES(fid,fid,r->>'foodStableId',r->>'source',NULL,p->>'name',p->>'normalizedName',p->>'brand',p->>'normalizedBrand',(p->>'calories')::numeric,(p->>'protein')::numeric,(p->>'fat')::numeric,(p->>'carbs')::numeric,(p->>'fiber')::numeric);
+   INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,created_by_user_id,name,brand,calories,protein,fat,carbs,fiber)
+    VALUES(fid,fid,r->>'foodStableId',r->>'source',NULL,p->>'name',p->>'brand',(p->>'calories')::numeric,(p->>'protein')::numeric,(p->>'fat')::numeric,(p->>'carbs')::numeric,(p->>'fiber')::numeric);
   END IF;
   targets:=targets||jsonb_build_array(jsonb_build_object('requestedFoodId',r->'foodId','foodId',fid));
   n:=n+1;

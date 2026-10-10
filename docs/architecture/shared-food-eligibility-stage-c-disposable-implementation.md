@@ -10,8 +10,12 @@ Typed private CREATE/UPDATE/DELETE SQL RPC: server-derived live-session actor,
 source=user/owner fixed, create ID+self-root in ONE INSERT/transaction. UPDATE/DELETE
 require exact opaque operational row CAS digest and ownership; unknown input fields
 including source/owner/actor IDs reject. Payload is deliberately narrow: name,
-normalizedName, nullable brand/normalizedBrand and five operational numeric(8,2)
-strings. No silent rounding or normalization; no Phase1 wire/digest changes.
+nullable brand and four operational numeric(8,2) strings plus mandatory fiber
+(string or explicit null). Unknown fiber stays SQL NULL, never zero; no silent rounding.
+Caller normalizedName/normalizedBrand are rejected. DB normalize_food_text and the
+foods_search_vector_update trigger are the only normalization authority; duplicate
+batch validation and normalized root selection call the same DB helper. No Phase1
+wire/digest changes.
 CAS digest hashes a domain-prefixed PostgreSQL JSONB row text and is server-opaque,
 NOT cross-runtime canonical evidence serialization or provenance. It binds numeric
 operational fields without widening the Phase1 canonical-number policy.
@@ -46,8 +50,11 @@ still source=user/owner or shared core/brand. Index remains
 Confirmed supplied Staging metadata: PG17.6, RC default, foods RLS=true/FORCE=false,
 expression unique index, owner predicate and legacy admin policy. CI uses PG17+,
 not a claimed byte-for-byte Staging17.6 installation. Synthetic Auth/users/sessions,
-IDs/text/macros only. Numeric(8,2) comes from repository schema, NOT the supplied
-live column inventory; actual full column/default/trigger signatures remain unverified.
+IDs/text/macros only. Fiber matches supplied Staging metadata: numeric NULLABLE,
+no default. Other numeric(8,2) columns come from repository schema, NOT a full live
+column inventory. Sanitized normalize_food_text and foods_update_search_vector are
+from supabase/foods_schema.sql; supplied deployed assignments agree. Full deployed
+function bodies/hash, collation and complete trigger/role inventory remain unverified.
 Prior #156 synthetic duplicate names are renamed ONLY within disposable cluster
 before installing the expression index; no cleanup/backfill of real data implied.
 No personal rows copied. Actual deployed trigger/role/PostgREST parity is BLOCKED.
@@ -90,6 +97,10 @@ then row NOWAIT proves no catalog row lock acquired before gate.
 
 Exact real CI HEAD/run/counts are recorded in PR after execution; no guessed PASS
 here. Pure server tests cover strict shape/duplicates/precision and outcome model.
+Parity regressions cover fiber null/zero CAS, private transitions, importer NULL,
+forged normalized fields, DB trigger overwrite, case/punctuation, null/empty brand
+uniqueness and DB-derived normalized upsert/duplicate targets. The pure decoder
+does not try to reproduce DB normalization or certify normalized uniqueness.
 Performance/real JWT/PostgREST/full deployed parity/machine authorization/owner-apply/
 account deletion/archive/retention/external writers remain BLOCKED or NOT VERIFIED.
 Next safe step: independent review and approved expansion of disposable schema/role

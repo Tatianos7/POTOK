@@ -2,8 +2,8 @@ import { assertRawJsonWithoutDuplicateKeysV1 } from '../utils/adaptiveNutritionW
 /** Pure typed request decoder. No mounted endpoint, normalization or authority generation.
  * Operational numeric(8,2) strings are NOT Phase1 evidence decimals. */
 export interface CatalogFoodPayloadV1 {
-  name: string; normalizedName: string; brand: string | null; normalizedBrand: string | null;
-  calories: string; protein: string; fat: string; carbs: string; fiber: string;
+  name: string; brand: string | null;
+  calories: string; protein: string; fat: string; carbs: string; fiber: string | null;
 }
 export type PrivateFoodRequestV1 =
   | { contract: 'potok-private-food-request-v1'; kind: 'CREATE'; payload: CatalogFoodPayloadV1 }
@@ -29,10 +29,10 @@ function match(v:unknown,re:RegExp):string {const s=text(v);if(!re.test(s))fail(
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
 const hash=/^[a-f0-9]{64}$/;
 function payload(v:unknown):CatalogFoodPayloadV1 {
-  const r=object(v,['name','normalizedName','brand','normalizedBrand','calories','protein','fat','carbs','fiber']);
+  const r=object(v,['name','brand','calories','protein','fat','carbs','fiber']);
   const decimal=/^(0|[1-9][0-9]{0,5})\.[0-9]{2}$/;
-  return {name:text(r.name),normalizedName:text(r.normalizedName),brand:nullable(r.brand),normalizedBrand:nullable(r.normalizedBrand),
-    calories:match(r.calories,decimal),protein:match(r.protein,decimal),fat:match(r.fat,decimal),carbs:match(r.carbs,decimal),fiber:match(r.fiber,decimal)};
+  return {name:text(r.name),brand:nullable(r.brand),
+    calories:match(r.calories,decimal),protein:match(r.protein,decimal),fat:match(r.fat,decimal),carbs:match(r.carbs,decimal),fiber:r.fiber===null?null:match(r.fiber,decimal)};
 }
 function raw(v:unknown):Record<string,unknown> {
   if(typeof v!=='string'||new TextEncoder().encode(v).length>1048576)fail();assertRawJsonWithoutDuplicateKeysV1(v);
@@ -47,10 +47,11 @@ export function decodePrivateFoodRequestRawV1(value:unknown):PrivateFoodRequestV
 export function decodeCatalogBatchRequestRawV1(value:unknown):CatalogBatchRequestV1 {
   const r=object(raw(value),['contract','mode','rows']);
   if(r.contract!=='potok-catalog-batch-request-v1'||!['INSERT','UPSERT_ID','UPSERT_NORMALIZED'].includes(text(r.mode))||!Array.isArray(r.rows)||r.rows.length<1||r.rows.length>200)fail();
-  const ids=new Set<string>(),keys=new Set<string>();
+  // Normalized uniqueness is DB-authoritative, never inferred from caller keys.
+  const ids=new Set<string>();
   const rows:CatalogBatchRequestV1['rows']=r.rows.map(v=>{const x=object(v,['foodId','foodStableId','source','payload']);const foodId=match(x.foodId,uuid),p=payload(x.payload);
-    if(x.source!=='core'&&x.source!=='brand')fail();const key=JSON.stringify([p.normalizedName,p.normalizedBrand??'']);
-    if(ids.has(foodId)||keys.has(key))fail();ids.add(foodId);keys.add(key);
+    if(x.source!=='core'&&x.source!=='brand')fail();
+    if(ids.has(foodId))fail();ids.add(foodId);
     return {foodId,foodStableId:x.foodStableId===null?null:match(x.foodStableId,/^[a-z0-9][a-z0-9_-]{0,127}$/),source:x.source,payload:p};});
   return {contract:r.contract,mode:r.mode as CatalogBatchRequestV1['mode'],rows};
 }
