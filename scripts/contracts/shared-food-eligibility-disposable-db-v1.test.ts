@@ -4,7 +4,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync, execFile } from 'node:child_process';
+import { spawn, spawnSync, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -37,6 +37,27 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
     const result = await run('psql',['-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',socket,'-p',port,'-U','postgres','-d','postgres','-c',statement],
       { env, timeout:30_000, maxBuffer:4_194_304 });
     return result.stdout.trim();
+  };
+  // Real independent backend sessions with explicit barriers; no sleeps pretending to prove overlap.
+  let sessionSequence=0;
+  const session=() => {
+    const child=spawn('psql',['-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose',
+      '-h',socket,'-p',port,'-U','postgres','-d','postgres'],{env,timeout:30_000});
+    let output='',errors='',marker='',pending: {resolve:()=>void;reject:(e:Error)=>void}|null=null;
+    child.stdout.setEncoding('utf8');child.stderr.setEncoding('utf8');
+    child.stdout.on('data',(data:string)=>{output+=data;if(pending && output.split('\n').includes(marker)) {
+      const active=pending;pending=null;output='';active.resolve(); }});
+    child.stderr.on('data',(data:string)=>{errors+=data;});
+    const closed=new Promise<void>(resolve=>{child.on('close',()=>{pending?.reject(new Error(errors||'session closed'));pending=null;resolve();});});
+    child.on('error',e=>{pending?.reject(e);pending=null;});
+    return {
+      send:(statement:string)=>new Promise<void>((resolve,reject)=>{
+        assert.equal(pending,null,'one command per backend at a time');
+        marker=`potok_test_marker_${++sessionSequence}`;pending={resolve,reject};
+        child.stdin.write(`${statement}; SELECT ${quote(marker)};\n`);
+      }),
+      close:async()=>{child.stdin.end();await closed;},
+    };
   };
   const claims = (user: string, overrides: Record<string,unknown> = {}): string => raw({ role:'authenticated', sub:user,
     session_id:id(Number(user.slice(-12))+100), exp:Math.floor(Date.now()/1000)+3600, ...overrides });
@@ -136,6 +157,11 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
       const unicode={...identity,identitySnapshot:{...identity.identitySnapshot,name:'Синтетический 😀',aliases:null}};
       const fp=await sql(`SELECT potok_shared_food_eligibility.fingerprint_v1(to_jsonb(f)||jsonb_build_object('name','Синтетический 😀','aliases',NULL)) FROM public.foods f WHERE id=${quote(foodId)}`);
       assert.equal(fp,await sharedFoodIdentityFingerprintV1(unicode));
+    });
+    await t.test('empty registry still prohibits catalog TRUNCATE: explicit compatibility restriction',async()=>{
+      assert.equal(await sql('SELECT count(*) FROM potok_shared_food_eligibility.roots_v1'),'0');
+      await assert.rejects(sql('TRUNCATE public.foods CASCADE'),/REGISTERED_IDENTITY_TRUNCATE_FORBIDDEN/);
+      assert.equal(await sql(`SELECT count(*) FROM public.foods WHERE id=${quote(foodId)}`),'1');
     });
     let eligibilityHead=await decide(await eligibilityInput('PENDING',2001,null));
     await t.test('exact idempotency replay vs content conflict and strict boundary',async () => {
@@ -456,6 +482,88 @@ test('Shared Food Eligibility disposable PostgreSQL: authorization, FORCE RLS, a
         assert.equal(held,true);
         await assert.rejects(decide(input,id(2)),/VERIFIED_ADMIN_REQUIRED|ADMIN_PROVENANCE_MISMATCH/);
       } finally { await competing; }
+    });
+    await t.test('private CRUD under ownership RLS succeeds in RC; non-RC writes fail but reads work',async()=>{
+      const fid=id(4010);
+      await sql(`ALTER TABLE public.foods ENABLE ROW LEVEL SECURITY; GRANT SELECT,INSERT,UPDATE,DELETE ON public.foods TO authenticated;
+        CREATE POLICY compat_private_select ON public.foods FOR SELECT TO authenticated USING(source='user' AND created_by_user_id=auth.uid());
+        CREATE POLICY compat_private_insert ON public.foods FOR INSERT TO authenticated WITH CHECK(source='user' AND created_by_user_id=auth.uid());
+        CREATE POLICY compat_private_update ON public.foods FOR UPDATE TO authenticated USING(source='user' AND created_by_user_id=auth.uid()) WITH CHECK(source='user' AND created_by_user_id=auth.uid());
+        CREATE POLICY compat_private_delete ON public.foods FOR DELETE TO authenticated USING(source='user' AND created_by_user_id=auth.uid());`);
+      try {
+        await asUser(`INSERT INTO public.foods(id,source,created_by_user_id,name) VALUES(${quote(fid)},'user',${quote(actor)},'Private fixture')`);
+        await asUser(`UPDATE public.foods SET canonical_food_id=id,name='Private updated' WHERE id=${quote(fid)}`);
+        assert.equal(await asUser(`SELECT count(*) FROM public.foods WHERE id=${quote(fid)}`,id(3)),'0');
+        await asUser(`DELETE FROM public.foods WHERE id=${quote(fid)}`,id(3));
+        assert.equal(await sql(`SELECT name FROM public.foods WHERE id=${quote(fid)}`),'Private updated');
+        for(const level of ['REPEATABLE READ','SERIALIZABLE']) {
+          await assert.rejects(sql(`BEGIN ISOLATION LEVEL ${level}; UPDATE public.foods SET name='Denied' WHERE id=${quote(fid)}; COMMIT;`),/READ_COMMITTED_CATALOG_WRITER_REQUIRED/);
+          assert.equal(await sql(`BEGIN ISOLATION LEVEL ${level}; SELECT name FROM public.foods WHERE id=${quote(fid)}; COMMIT;`),'Private updated');
+        }
+        assert.equal(await sql(`SELECT count(*) FROM potok_shared_food_eligibility.roots_v1 WHERE food_id=${quote(fid)}`),'0');
+        await asUser(`DELETE FROM public.foods WHERE id=${quote(fid)}`);
+        assert.equal(await sql(`SELECT count(*) FROM public.foods WHERE id=${quote(fid)}`),'0');
+      } finally {
+        await sql(`DROP POLICY compat_private_select ON public.foods; DROP POLICY compat_private_insert ON public.foods;
+          DROP POLICY compat_private_update ON public.foods; DROP POLICY compat_private_delete ON public.foods;
+          REVOKE SELECT,INSERT,UPDATE,DELETE ON public.foods FROM authenticated; ALTER TABLE public.foods DISABLE ROW LEVEL SECURITY;`);
+      }
+    });
+    await t.test('opposite multi-row writer order deadlocks; victim rollback and whole-transaction retry preserve epoch',async()=>{
+      const ids=[id(4020),id(4021)];
+      for(const [i,fid] of ids.entries()) {
+        await sql(`INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name) VALUES(${quote(fid)},${quote(fid)},'multi_root_${i}','core','Before')`);
+        await decide(await eligibilityInput('PENDING',4022+i,null,fid));
+      }
+      const a=session(),b=session();
+      try {
+        await a.send('BEGIN');await b.send('BEGIN');
+        await a.send(`UPDATE public.foods SET name='A' WHERE id=${quote(ids[0])}`);
+        await b.send(`UPDATE public.foods SET name='B' WHERE id=${quote(ids[1])}`);
+        const results=await Promise.allSettled([a.send(`UPDATE public.foods SET name='A' WHERE id=${quote(ids[1])}`),b.send(`UPDATE public.foods SET name='B' WHERE id=${quote(ids[0])}`)]);
+        assert.equal(results.filter(r=>r.status==='rejected').length,1);
+        const victim=results.find(r=>r.status==='rejected');assert.ok(victim && victim.status==='rejected');assert.match(String(victim.reason),/40P01/);
+        const winner=results[0].status==='fulfilled'?a:b;await winner.send('COMMIT');
+        const expected=results[0].status==='fulfilled'?'A':'B';
+        for(const fid of ids) { assert.equal(await sql(`SELECT name FROM public.foods WHERE id=${quote(fid)}`),expected);assert.equal((await binding(fid)).catalogIdentityEpoch,'1'); }
+        // Explicit test-only whole transaction retry; no claim existing importer does this.
+        await sql(`BEGIN; SELECT id FROM public.foods WHERE id IN (${ids.map(quote).join(',')}) ORDER BY id FOR UPDATE;
+          UPDATE public.foods SET name='Retried' WHERE id IN (${ids.map(quote).join(',')}); COMMIT;`);
+        for(const fid of ids) assert.equal((await binding(fid)).catalogIdentityEpoch,'2');
+      } finally { await Promise.all([a.close(),b.close()]); }
+    });
+    await t.test('INSERT ON CONFLICT key-before-row inversion is a confirmed BLOCKER, not compatibility PASS',async()=>{
+      const fid=id(4030),key='upsert_lock_inversion';
+      await sql(`INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name) VALUES(${quote(fid)},${quote(fid)},${quote(key)},'core','Before')`);
+      await decide(await eligibilityInput('PENDING',4031,null,fid));
+      const a=session(),b=session();
+      const keyLock=`hashtextextended('potok-shared-food-key-v1:'||${quote(key)},0)`;
+      try {
+        await a.send(`BEGIN; SELECT id FROM public.foods WHERE id=${quote(fid)} FOR UPDATE`);
+        await b.send('BEGIN');
+        const upsert=b.send(`INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name) VALUES(${quote(fid)},${quote(fid)},${quote(key)},'core','Upserted') ON CONFLICT(id) DO UPDATE SET name=excluded.name`);
+        // Attach rejection handler before starting the other half of the deadlock.
+        const observed=Promise.allSettled([upsert]);
+        let held=false;const deadline=Date.now()+2000;
+        while(Date.now()<deadline) {
+          if(await sql(`SELECT pg_try_advisory_xact_lock(${keyLock})`)==='f') { held=true;break; }
+          await new Promise(resolve=>setTimeout(resolve,25));
+        }
+        assert.equal(held,true,'BEFORE INSERT must really hold the key while the conflicting row is locked');
+        const results=await Promise.allSettled([a.send(`SELECT pg_advisory_xact_lock(${keyLock})`),upsert]);await observed;
+        assert.equal(results.filter(r=>r.status==='rejected').length,1);
+        const victim=results.find(r=>r.status==='rejected');assert.ok(victim && victim.status==='rejected');assert.match(String(victim.reason),/40P01/);
+        const winner=results[0].status==='fulfilled'?a:b;await winner.send('COMMIT');
+        const updated=results[1].status==='fulfilled';assert.equal((await binding(fid)).catalogIdentityEpoch,updated?'1':'0');
+        assert.equal(await sql(`SELECT name FROM public.foods WHERE id=${quote(fid)}`),updated?'Upserted':'Before');
+        assert.equal(await sql(`SELECT count(*) FROM potok_shared_food_eligibility.roots_v1 WHERE stable_key=${quote(key)}`),'1');
+      } finally { await Promise.all([a.close(),b.close()]); }
+    });
+    await t.test('bulk constraint failure rolls back earlier row and epoch changes',async()=>{
+      const beforeBinding=await binding();
+      await assert.rejects(sql(`BEGIN; UPDATE public.foods SET name='Rolled back' WHERE id=${quote(foodId)};
+        INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,name) VALUES(${quote(id(4040))},${quote(id(4040))},'synthetic_root','core','Duplicate'); COMMIT;`),/STABLE_KEY_ALREADY_CLAIMED/);
+      assert.deepEqual(await binding(),beforeBinding);assert.equal(await sql(`SELECT name FROM public.foods WHERE id=${quote(foodId)}`),'Synthetic food');
     });
     await t.test('current-state read rechecks JWT expiry after a real competing food-lock wait',async () => {
       const competing = sql(`BEGIN; SELECT id FROM public.foods WHERE id=${quote(foodId)} FOR UPDATE; SELECT pg_sleep(3); COMMIT;`);
