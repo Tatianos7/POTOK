@@ -69,6 +69,10 @@ test('acceptance separates target repair, native concurrency and synthetic wire 
   assert.match(runner, /--connect-timeout 3 --max-time 10/);
   assert.match(runner, /required_command in docker node curl timeout sed grep seq mktemp/);
   assert.match(runner, /grep -F -- '40001'/);
+  assert.match(runner, /target repair\/security: PASS/);
+  assert.match(runner, /native engine 40001: PASS/);
+  assert.match(runner, /synthetic PostgREST wire: PASS/);
+  assert.match(runner, /wire probe mismatch/);
   assert.doesNotMatch(runner, /\brg\b/);
   assert.match(extractor, /20260921_adaptive_nutrition_runtime_activation_v1\.sql/);
   assert.match(extractor, /20260927_adaptive_nutrition_graph_v2_authorities_activation_v1\.sql/);

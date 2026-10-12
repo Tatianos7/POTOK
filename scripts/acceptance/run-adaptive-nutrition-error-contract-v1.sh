@@ -65,6 +65,7 @@ SELECT p.oid::regprocedure::text, p.proowner, p.prosecdef, p.proconfig, p.proacl
 SQL
 psql_db postgres < "${repair}"
 psql_db postgres < "${effective_postcheck}"
+printf 'P5-02 target repair/security: PASS\n'
 
 # A late source-drift failure must roll back the earlier function replacement.
 docker_limited exec "${pg_container}" createdb --username postgres p5_02_drift
@@ -78,6 +79,7 @@ fi
 drift_counts="$(psql_db p5_02_drift --tuples-only --no-align --command \
   "SELECT regexp_count(pg_get_functiondef('public.adaptive_nutrition_mutate_v1(text)'::regprocedure), 'ERRCODE\\s*=\\s*''40001''')::text || ':' || regexp_count(pg_get_functiondef('potok_nutrition.commit_prevalidated_plan_transition_v1(uuid,uuid,text,text,text,bytea,text,bytea,uuid,uuid,uuid,uuid,uuid,uuid,jsonb,jsonb,text,bytea,jsonb)'::regprocedure), 'ERRCODE\\s*=\\s*''40001''')::text;")"
 test "${drift_counts}" = '6:5'
+printf 'P5-02 atomic source-drift rejection: PASS\n'
 
 # Layer 2: a real native 40001 from two concurrent SERIALIZABLE transactions.
 set +e
@@ -95,6 +97,7 @@ if wait "${engine_pid}"; then
 fi
 grep -F -- '40001' "${engine_output}" >/dev/null
 test "$(psql_db postgres --tuples-only --no-align --command 'SELECT value FROM public.p5_02_serializable_counter WHERE id=1;')" = '1'
+printf 'P5-02 native engine 40001: PASS\n'
 
 # Layer 3: synthetic wire mapping and rollback probe through PostgREST only.
 psql_db postgres < "${wire_fixture}"
@@ -117,28 +120,48 @@ assert_rollback_once() {
   local actual
   actual="$(psql_db postgres --tuples-only --no-align --command \
     "SELECT last_value::text || ':' || is_called::text || ':' || (SELECT count(*) FROM public.p5_02_probe_effects)::text || ':' || (SELECT count(*) FROM public.p5_02_probe_receipts)::text FROM public.p5_02_probe_invocations;")"
-  test "${actual}" = '1:true:0:0'
+  if test "${actual}" != '1:true:0:0'; then
+    echo "wire rollback/count mismatch: ${actual}" >&2
+    exit 1
+  fi
 }
 post_probe() {
   curl --silent --show-error --connect-timeout 3 --max-time 10 \
     --output "${body_file}" --write-out '%{http_code}' \
     --header 'Content-Type: application/json' --data "$1" "${endpoint}"
 }
+assert_probe() {
+  local expected_status="$1"
+  local expected_code="$2"
+  local expected_details="$3"
+  local payload="$4"
+  local actual_status
+  if ! actual_status="$(post_probe "${payload}")"; then
+    echo 'wire probe transport failed' >&2
+    docker_limited logs --tail 50 "${postgrest_container}" >&2 || true
+    exit 1
+  fi
+  if test "${actual_status}" != "${expected_status}" \
+      || ! grep -F -- "\"code\":\"${expected_code}\"" "${body_file}" >/dev/null \
+      || ! grep -F -- "\"details\":\"${expected_details}\"" "${body_file}" >/dev/null; then
+    echo "wire probe mismatch: expected HTTP ${expected_status}, got ${actual_status}" >&2
+    cat "${body_file}" >&2
+    exit 1
+  fi
+}
 
 reset_probe
-test "$(post_probe '{"mode":"business_conflict","operation_id":"00000000-0000-4000-8000-000000000011"}')" = '409'
-grep -F -- '"code":"PT409"' "${body_file}" >/dev/null
-grep -F -- '"details":"POTOK_ADAPTIVE_NUTRITION_CONFLICT_V1"' "${body_file}" >/dev/null
+assert_probe 409 PT409 POTOK_ADAPTIVE_NUTRITION_CONFLICT_V1 \
+  '{"mode":"business_conflict","operation_id":"00000000-0000-4000-8000-000000000011"}'
 assert_rollback_once
 
 reset_probe
-test "$(post_probe '{"mode":"server_integrity","operation_id":"00000000-0000-4000-8000-000000000012"}')" = '500'
-grep -F -- '"code":"PT500"' "${body_file}" >/dev/null
-grep -F -- '"details":"POTOK_ADAPTIVE_NUTRITION_INVARIANT_FAILURE_V1"' "${body_file}" >/dev/null
+assert_probe 500 PT500 POTOK_ADAPTIVE_NUTRITION_INVARIANT_FAILURE_V1 \
+  '{"mode":"server_integrity","operation_id":"00000000-0000-4000-8000-000000000012"}'
 assert_rollback_once
 
 printf 'PostgreSQL: '
 psql_db postgres --tuples-only --no-align --command 'SHOW server_version;'
 printf 'PostgREST: '
 docker_limited exec "${postgrest_container}" postgrest --version
-printf 'P5-02 target repair, native concurrency, and wire acceptance: PASS\n'
+printf 'P5-02 synthetic PostgREST wire: PASS\n'
