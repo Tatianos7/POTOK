@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+for required_command in docker node curl timeout sed grep seq mktemp; do
+  if ! command -v "${required_command}" >/dev/null 2>&1; then
+    echo "required command is unavailable: ${required_command}" >&2
+    exit 127
+  fi
+done
+
 readonly pg_image='postgres:17.11-bookworm'
 readonly postgrest_image='postgrest/postgrest:v13.0.7'
 readonly suffix="$$"
@@ -86,7 +93,7 @@ if wait "${engine_pid}"; then
   echo 'concurrent transaction unexpectedly committed' >&2
   exit 1
 fi
-rg --fixed-strings '40001' "${engine_output}" >/dev/null
+grep -F -- '40001' "${engine_output}" >/dev/null
 test "$(psql_db postgres --tuples-only --no-align --command 'SELECT value FROM public.p5_02_serializable_counter WHERE id=1;')" = '1'
 
 # Layer 3: synthetic wire mapping and rollback probe through PostgREST only.
@@ -120,14 +127,14 @@ post_probe() {
 
 reset_probe
 test "$(post_probe '{"mode":"business_conflict","operation_id":"00000000-0000-4000-8000-000000000011"}')" = '409'
-rg --fixed-strings '"code":"PT409"' "${body_file}" >/dev/null
-rg --fixed-strings '"details":"POTOK_ADAPTIVE_NUTRITION_CONFLICT_V1"' "${body_file}" >/dev/null
+grep -F -- '"code":"PT409"' "${body_file}" >/dev/null
+grep -F -- '"details":"POTOK_ADAPTIVE_NUTRITION_CONFLICT_V1"' "${body_file}" >/dev/null
 assert_rollback_once
 
 reset_probe
 test "$(post_probe '{"mode":"server_integrity","operation_id":"00000000-0000-4000-8000-000000000012"}')" = '500'
-rg --fixed-strings '"code":"PT500"' "${body_file}" >/dev/null
-rg --fixed-strings '"details":"POTOK_ADAPTIVE_NUTRITION_INVARIANT_FAILURE_V1"' "${body_file}" >/dev/null
+grep -F -- '"code":"PT500"' "${body_file}" >/dev/null
+grep -F -- '"details":"POTOK_ADAPTIVE_NUTRITION_INVARIANT_FAILURE_V1"' "${body_file}" >/dev/null
 assert_rollback_once
 
 printf 'PostgreSQL: '
