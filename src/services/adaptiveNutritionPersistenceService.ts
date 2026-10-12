@@ -59,6 +59,18 @@ export interface AdaptiveNutritionReceiptV1 {
   committedAt: string | null;
 }
 
+interface AdaptiveNutritionAcceptedResultV1 extends Record<string, unknown> {
+  contract: 'adaptive-nutrition-receipt-v1';
+  outcome: 'accepted';
+  operation_id: string;
+  selection_id: string;
+  plan_revision: string;
+  goal_revision: string;
+  history_revision: string;
+  diary_revision: string;
+  event_ids: string[];
+}
+
 export interface AdaptiveNutritionReadModelV1 {
   kind: 'ready';
   selectionId: string;
@@ -95,6 +107,18 @@ function nullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
 }
 
+function decodeAcceptedResult(value: unknown, operationId: string): AdaptiveNutritionAcceptedResultV1 | null {
+  const row = record(value);
+  if (!row || row.contract !== 'adaptive-nutrition-receipt-v1' || row.outcome !== 'accepted'
+      || row.operation_id !== operationId || typeof row.selection_id !== 'string'
+      || !uuidPattern.test(row.selection_id)
+      || ![row.plan_revision, row.goal_revision, row.history_revision, row.diary_revision]
+        .every((revision) => typeof revision === 'string' && uuidPattern.test(revision))
+      || !Array.isArray(row.event_ids) || row.event_ids.length !== 1
+      || row.event_ids.some((eventId) => typeof eventId !== 'string' || !uuidPattern.test(eventId))) return null;
+  return row as AdaptiveNutritionAcceptedResultV1;
+}
+
 export function classifyAdaptiveNutritionMutationError(error: unknown): AdaptiveNutritionRuntimeFailure {
   const row = record(error);
   const code = row && typeof row.code === 'string' ? row.code : '';
@@ -107,14 +131,17 @@ export function classifyAdaptiveNutritionMutationError(error: unknown): Adaptive
 
 function decodeReceipt(value: unknown): AdaptiveNutritionReceiptV1 | null {
   const row = record(value);
-  const result = row ? record(row.result) : null;
   if (!row || row.kind !== 'settled' || typeof row.operation_id !== 'string' || !uuidPattern.test(row.operation_id)
       || typeof row.idempotency_key !== 'string' || !uuidPattern.test(row.idempotency_key)
       || typeof row.digest_version !== 'string' || typeof row.request_digest_hex !== 'string'
       || !digestPattern.test(row.request_digest_hex)
       || !['accepted', 'conflict', 'rejected'].includes(String(row.outcome))
       || !nullableString(row.reason) || !nullableString(row.committed_at)
-      || (row.result !== null && !result)) return null;
+      || (row.outcome === 'accepted' && !decodeAcceptedResult(row.result, row.operation_id))
+      || (row.outcome !== 'accepted' && row.result !== null && !record(row.result))) return null;
+  const result = row.outcome === 'accepted'
+    ? decodeAcceptedResult(row.result, row.operation_id)
+    : record(row.result);
   return {
     kind: 'settled',
     operationId: row.operation_id,
@@ -126,6 +153,25 @@ function decodeReceipt(value: unknown): AdaptiveNutritionReceiptV1 | null {
     result,
     committedAt: row.committed_at,
   };
+}
+
+export async function adaptiveNutritionReceiptMatchesRequestV1(
+  receipt: AdaptiveNutritionReceiptV1,
+  rawRequest: string,
+): Promise<boolean> {
+  let decoded: { request: AdaptiveNutritionWireRequestV1; canonicalBytes: Uint8Array };
+  try {
+    decoded = decodeAdaptiveNutritionWireEnvelopeV1(rawRequest);
+    const digest = await adaptiveNutritionSha256HexV1(decoded.canonicalBytes);
+    const accepted = receipt.outcome === 'accepted' ? decodeAcceptedResult(receipt.result, receipt.operationId) : null;
+    return receipt.idempotencyKey === decoded.request.idempotencyKey
+      && receipt.digestVersion === adaptiveNutritionCanonicalEncodingV1
+      && receipt.requestDigestHex === digest
+      && (receipt.outcome !== 'accepted'
+        || Boolean(accepted && accepted.selection_id === decoded.request.expected.planId));
+  } catch {
+    return false;
+  }
 }
 
 export function decodeAdaptiveNutritionReadResultV1(value: unknown): AdaptiveNutritionReadResult | null {
@@ -300,7 +346,9 @@ export class AdaptiveNutritionPersistenceService {
     const receipt = decodeReceipt(data);
     if (!receipt || receipt.idempotencyKey !== decoded.request.idempotencyKey
         || receipt.digestVersion !== adaptiveNutritionCanonicalEncodingV1
-        || receipt.requestDigestHex !== localDigest) {
+        || receipt.requestDigestHex !== localDigest
+        || receipt.outcome === 'accepted'
+          && (receipt.result?.selection_id !== decoded.request.expected.planId)) {
       return this.finish(session, { kind: 'unknown' }, 'mutation');
     }
     return this.finish(session, receipt, 'mutation');

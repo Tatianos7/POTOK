@@ -1,4 +1,5 @@
 import {
+  adaptiveNutritionReceiptMatchesRequestV1,
   adaptiveNutritionPersistenceService,
   type AdaptiveNutritionMutationResult,
   type AdaptiveNutritionPersistenceService,
@@ -211,6 +212,11 @@ export class AdaptiveNutritionTodayRuntimeController {
     const result = await this.transport.lookup(session, pending.idempotencyKey);
     if (!this.current(token)) return;
     if (result.kind === 'settled') {
+      if (!await adaptiveNutritionReceiptMatchesRequestV1(result, pending.rawRequest)
+          || !this.current(token)) {
+        this.preserveUnknown();
+        return;
+      }
       if (result.outcome === 'accepted') await this.reconcileReceipt(token, result);
       else {
         this.clearUnresolved();
@@ -310,7 +316,7 @@ export class AdaptiveNutritionTodayRuntimeController {
         return;
       }
     }
-    this.applyReadResult(read, false);
+    this.preserveUnknown();
   }
 
   private async refreshConflict(token: number): Promise<void> {
@@ -333,5 +339,10 @@ export class AdaptiveNutritionTodayRuntimeController {
         && (this.state.phase === 'submitting' || this.state.phase === 'unknown')) {
       unresolvedByAccount.set(accountId, { ...pending, selectionId, today });
     }
+  }
+
+  private preserveUnknown(): void {
+    this.quarantinePending();
+    this.publish({ ...this.state, phase: 'unknown', notice: null });
   }
 }

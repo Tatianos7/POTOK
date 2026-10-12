@@ -7,9 +7,11 @@ import {
 import type {
   AdaptiveNutritionMutationResult,
   AdaptiveNutritionReadModelV1,
+  AdaptiveNutritionReadResult,
   AdaptiveNutritionReceiptV1,
   AdaptiveNutritionRuntimeSession,
 } from '../adaptiveNutritionPersistenceService';
+import { adaptiveNutritionSha256HexV1, decodeAdaptiveNutritionWireEnvelopeV1 } from '../../utils/adaptiveNutritionWireV1';
 
 const ids = {
   accountA: '10000000-0000-4000-8000-000000000001',
@@ -51,14 +53,15 @@ function model(overrides: Partial<AdaptiveNutritionReadModelV1> = {}): AdaptiveN
   };
 }
 
-function receipt(outcome: AdaptiveNutritionReceiptV1['outcome'] = 'accepted'): AdaptiveNutritionReceiptV1 {
+function receipt(outcome: AdaptiveNutritionReceiptV1['outcome'] = 'accepted', digest = 'a'.repeat(64)): AdaptiveNutritionReceiptV1 {
   return {
     kind: 'settled', operationId: ids.operation, idempotencyKey: ids.key,
-    digestVersion: 'potok-adaptive-nutrition-canonical-json-v1', requestDigestHex: 'a'.repeat(64),
+    digestVersion: 'potok-adaptive-nutrition-canonical-json-v1', requestDigestHex: digest,
     outcome, reason: null, committedAt: '2026-09-22T12:00:00Z',
-    result: outcome === 'accepted' ? { operation_id: ids.operation, selection_id: ids.selectionA,
+    result: outcome === 'accepted' ? { contract: 'adaptive-nutrition-receipt-v1', outcome: 'accepted',
+      operation_id: ids.operation, selection_id: ids.selectionA,
       plan_revision: ids.plan0, goal_revision: ids.goal, history_revision: ids.history1,
-      diary_revision: ids.diary } : null,
+      diary_revision: ids.diary, event_ids: [ids.event] } : null,
   };
 }
 
@@ -72,7 +75,7 @@ function transport(input: {
   current?: () => Promise<ReturnType<typeof model>>;
   mutate?: (raw: string) => Promise<AdaptiveNutritionMutationResult>;
   lookup?: () => Promise<AdaptiveNutritionMutationResult>;
-  exact?: (receiptValue: AdaptiveNutritionReceiptV1) => Promise<ReturnType<typeof model>>;
+  exact?: (receiptValue: AdaptiveNutritionReceiptV1) => Promise<AdaptiveNutritionReadResult>;
 } = {}) {
   let generation = 0;
   const calls = { current: 0, mutate: [] as string[], lookup: [] as string[], exact: 0, end: 0 };
@@ -120,7 +123,10 @@ test('SKIPPED waits for receipt-bound exact read before reporting confirmed', as
 });
 
 test('timeout stays UNKNOWN and lookup settles the original key through exact read', async () => {
-  const mock = transport({ mutate: async () => ({ kind: 'unknown' }), lookup: async () => receipt() });
+  let raw = '';
+  const mock = transport({ mutate: async (value) => { raw = value; return { kind: 'unknown' }; },
+    lookup: async () => receipt('accepted', await adaptiveNutritionSha256HexV1(
+      decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes)) });
   const controller = new AdaptiveNutritionTodayRuntimeController(mock.api, () => ids.key);
   await controller.start(ids.accountA, ids.selectionA, today);
   await controller.skip(ids.slot);
@@ -150,7 +156,10 @@ test('confirmed technical and invariant errors stay distinct and discard retryab
 
 test('account switch quarantines dispatched A intent before a late response and never applies it to B', async () => {
   const lateA = deferred<AdaptiveNutritionMutationResult>();
-  const mock = transport({ mutate: async () => lateA.promise, lookup: async () => receipt() });
+  let raw = '';
+  const mock = transport({ mutate: async (value) => { raw = value; return lateA.promise; },
+    lookup: async () => receipt('accepted', await adaptiveNutritionSha256HexV1(
+      decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes)) });
   const controller = new AdaptiveNutritionTodayRuntimeController(mock.api, () => ids.key);
   await controller.start(ids.accountA, ids.selectionA, today);
   const submitA = controller.skip(ids.slot);
@@ -175,7 +184,10 @@ test('account switch quarantines dispatched A intent before a late response and 
 });
 
 test('UNKNOWN is quarantined across logout and account switch, then reuses the original A key', async () => {
-  const mock = transport({ mutate: async () => ({ kind: 'unknown' }), lookup: async () => receipt() });
+  let raw = '';
+  const mock = transport({ mutate: async (value) => { raw = value; return { kind: 'unknown' }; },
+    lookup: async () => receipt('accepted', await adaptiveNutritionSha256HexV1(
+      decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes)) });
   const controller = new AdaptiveNutritionTodayRuntimeController(mock.api, () => ids.key);
   await controller.start(ids.accountA, ids.selectionA, today);
   await controller.skip(ids.slot);
@@ -192,6 +204,60 @@ test('UNKNOWN is quarantined across logout and account switch, then reuses the o
   await controller.resolveUnknown();
   assert.deepEqual(mock.calls.lookup, [ids.key]);
   assert.equal(controller.snapshot().phase, 'ready');
+});
+
+test('failed exact read preserves the byte-identical intent through stop, A→B→A and strict lookup recovery', async () => {
+  let raw = '';
+  let exactCalls = 0;
+  let lookupCalls = 0;
+  const mock = transport({
+    mutate: async (value) => {
+      raw = value;
+      const digest = await adaptiveNutritionSha256HexV1(
+        decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes);
+      return receipt('accepted', digest);
+    },
+    exact: async (value) => {
+      exactCalls += 1;
+      return exactCalls === 1
+        ? { kind: 'invalid-server-response' }
+        : model({ exactOperationId: value.operationId, historyRevision: ids.history1 });
+    },
+    lookup: async () => {
+      lookupCalls += 1;
+      const digest = await adaptiveNutritionSha256HexV1(
+        decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes);
+      return lookupCalls === 1
+        ? { ...receipt('accepted', digest), idempotencyKey: ids.offer }
+        : receipt('accepted', digest);
+    },
+  });
+  const controller = new AdaptiveNutritionTodayRuntimeController(mock.api, () => ids.key);
+  await controller.start(ids.accountA, ids.selectionA, today);
+  await controller.skip(ids.slot);
+  assert.equal(controller.snapshot().phase, 'unknown');
+  assert.equal(controller.snapshot().pending?.rawRequest, raw);
+  await controller.skip(ids.slot);
+  assert.equal(mock.calls.mutate.length, 1);
+
+  controller.stop();
+  await controller.start(ids.accountB, ids.selectionB, today);
+  assert.notEqual(controller.snapshot().phase, 'unknown');
+  controller.stop();
+  await controller.start(ids.accountA, ids.selectionA, today);
+  assert.equal(controller.snapshot().phase, 'unknown');
+  assert.equal(controller.snapshot().pending?.rawRequest, raw);
+
+  await controller.resolveUnknown();
+  assert.equal(controller.snapshot().phase, 'unknown');
+  assert.equal(controller.snapshot().pending?.rawRequest, raw);
+  assert.equal(exactCalls, 1);
+  await controller.resolveUnknown();
+  assert.equal(controller.snapshot().phase, 'ready');
+  assert.equal(controller.snapshot().pending, null);
+  assert.equal(exactCalls, 2);
+  assert.equal(mock.calls.mutate.length, 1);
+  controller.stop();
 });
 
 test('stale conflict refreshes but never reports optimistic success', async () => {

@@ -58,9 +58,11 @@ function rawRequest(action: TestAction = 'SKIPPED') {
 function settled(digest: string) {
   return { kind: 'settled', operation_id: ids.operation, idempotency_key: ids.key,
     digest_version: adaptiveNutritionCanonicalEncodingV1, request_digest_hex: digest,
-    outcome: 'accepted', reason: null, result: { operation_id: ids.operation,
+    outcome: 'accepted', reason: null, result: { contract: 'adaptive-nutrition-receipt-v1',
+      outcome: 'accepted', operation_id: ids.operation,
       selection_id: ids.selection, plan_revision: ids.plan, goal_revision: ids.goal,
-      history_revision: ids.history, diary_revision: ids.diary },
+      history_revision: ids.history, diary_revision: ids.diary,
+      event_ids: ['00000000-0000-4000-8000-00000000000f'] },
     committed_at: '2026-09-21T12:00:00Z' };
 }
 
@@ -140,6 +142,18 @@ test('forged post-dispatch receipt becomes UNKNOWN; foreign account and explicit
   ] as const) {
     const errors = enabledService(client({ rpc: () => ({ data: null, error: { code, details, message: code } }) }));
     assert.deepEqual(await errors.mutate(errors.beginSession(ids.accountA), raw), { kind });
+  }
+});
+
+test('accepted receipt requires complete operation, selection and revision bindings', async () => {
+  const raw = rawRequest();
+  const digest = await adaptiveNutritionSha256HexV1(decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes);
+  for (const result of [null, {}, { ...settled(digest).result, operation_id: ids.accountB },
+    { ...settled(digest).result, selection_id: ids.accountB },
+    { ...settled(digest).result, history_revision: null }]) {
+    const malformed = { ...settled(digest), result };
+    const service = enabledService(client({ rpc: () => ({ data: malformed, error: null }) }));
+    assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), raw), { kind: 'unknown' });
   }
 });
 
