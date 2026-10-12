@@ -12,6 +12,8 @@ type AdaptiveNutritionRuntimeGate = boolean | (() => boolean);
 
 export const ADAPTIVE_NUTRITION_RUNTIME_FLAG = 'VITE_ADAPTIVE_NUTRITION_RUNTIME_V1' as const;
 export const ADAPTIVE_NUTRITION_READ_FLAG = 'VITE_ADAPTIVE_NUTRITION_READ_V1' as const;
+export const ADAPTIVE_NUTRITION_CONFLICT_DETAILS = 'POTOK_ADAPTIVE_NUTRITION_CONFLICT_V1' as const;
+export const ADAPTIVE_NUTRITION_INVARIANT_DETAILS = 'POTOK_ADAPTIVE_NUTRITION_INVARIANT_FAILURE_V1' as const;
 
 /** Build-time runtime gate. No localStorage override: browser input cannot enable writes. */
 export function isAdaptiveNutritionRuntimeEnabled(): boolean {
@@ -41,7 +43,9 @@ export type AdaptiveNutritionRuntimeFailure =
   | { kind: 'session-stale' }
   | { kind: 'unknown' }
   | { kind: 'denied' }
-  | { kind: 'conflict' };
+  | { kind: 'conflict' }
+  | { kind: 'server-integrity' }
+  | { kind: 'technical-failure' };
 
 export interface AdaptiveNutritionReceiptV1 {
   kind: 'settled';
@@ -89,6 +93,16 @@ function record(value: unknown): Record<string, unknown> | null {
 
 function nullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
+}
+
+export function classifyAdaptiveNutritionMutationError(error: unknown): AdaptiveNutritionRuntimeFailure {
+  const row = record(error);
+  const code = row && typeof row.code === 'string' ? row.code : '';
+  const details = row && typeof row.details === 'string' ? row.details : '';
+  if (code === 'PT409' && details === ADAPTIVE_NUTRITION_CONFLICT_DETAILS) return { kind: 'conflict' };
+  if (code === 'PT500' && details === ADAPTIVE_NUTRITION_INVARIANT_DETAILS) return { kind: 'server-integrity' };
+  if (code === '42501') return { kind: 'denied' };
+  return code ? { kind: 'technical-failure' } : { kind: 'unknown' };
 }
 
 function decodeReceipt(value: unknown): AdaptiveNutritionReceiptV1 | null {
@@ -269,13 +283,15 @@ export class AdaptiveNutritionPersistenceService {
     } catch {
       return { kind: 'unavailable' };
     }
-    const { data, error } = await this.client.rpc('adaptive_nutrition_mutate_v1', { p_request_text: rawRequest });
+    let response: Awaited<ReturnType<AdaptiveNutritionRpcClient['rpc']>>;
+    try {
+      response = await this.client.rpc('adaptive_nutrition_mutate_v1', { p_request_text: rawRequest });
+    } catch {
+      return this.finish(session, { kind: 'unknown' }, 'mutation');
+    }
+    const { data, error } = response;
     if (error) {
-      const code = typeof error.code === 'string' ? error.code : '';
-      const outcome = code === '40001' ? { kind: 'conflict' as const }
-        : code === '42501' ? { kind: 'denied' as const }
-        : { kind: 'unknown' as const };
-      return this.finish(session, outcome, 'mutation');
+      return this.finish(session, classifyAdaptiveNutritionMutationError(error), 'mutation');
     }
     const row = record(data);
     if (row?.kind === 'unknown') return this.finish(session, { kind: 'unknown' }, 'mutation');
@@ -285,7 +301,7 @@ export class AdaptiveNutritionPersistenceService {
     if (!receipt || receipt.idempotencyKey !== decoded.request.idempotencyKey
         || receipt.digestVersion !== adaptiveNutritionCanonicalEncodingV1
         || receipt.requestDigestHex !== localDigest) {
-      return this.finish(session, { kind: 'invalid-server-response' }, 'mutation');
+      return this.finish(session, { kind: 'unknown' }, 'mutation');
     }
     return this.finish(session, receipt, 'mutation');
   }

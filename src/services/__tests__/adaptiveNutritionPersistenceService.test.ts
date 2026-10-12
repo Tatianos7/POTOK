@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { AdaptiveNutritionPersistenceService, isAdaptiveNutritionRuntimeEnabled } from '../adaptiveNutritionPersistenceService';
+import {
+  ADAPTIVE_NUTRITION_CONFLICT_DETAILS,
+  ADAPTIVE_NUTRITION_INVARIANT_DETAILS,
+  AdaptiveNutritionPersistenceService,
+  classifyAdaptiveNutritionMutationError,
+  isAdaptiveNutritionRuntimeEnabled,
+} from '../adaptiveNutritionPersistenceService';
 import { adaptiveNutritionCanonicalEncodingV1, adaptiveNutritionSha256HexV1,
   decodeAdaptiveNutritionWireEnvelopeV1 } from '../../utils/adaptiveNutritionWireV1';
 
@@ -67,7 +73,7 @@ function ready(operationId: string | null) {
     events: [], exact_operation_id: operationId };
 }
 
-type RpcResult = { data: unknown; error: { code?: string; message: string } | null };
+type RpcResult = { data: unknown; error: { code?: string; details?: string; message: string } | null };
 function client(options: {
   account?: () => string | null;
   rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResult> | RpcResult;
@@ -118,20 +124,38 @@ test('successful SKIPPED sends the byte-identical raw envelope and accepts the s
   assert.equal('p_client_digest' in calls[0].args, false);
 });
 
-test('forged server digest, foreign request account and explicit server CAS/entitlement errors fail closed', async () => {
+test('forged post-dispatch receipt becomes UNKNOWN; foreign account and explicit server errors fail closed', async () => {
   const raw = rawRequest();
   const service = enabledService(client({ rpc: () => ({ data: settled('0'.repeat(64)), error: null }) }));
   const session = service.beginSession(ids.accountA);
-  assert.deepEqual(await service.mutate(session, raw), { kind: 'invalid-server-response' });
+  assert.deepEqual(await service.mutate(session, raw), { kind: 'unknown' });
 
   const foreign = JSON.stringify({ ...JSON.parse(raw) as Record<string, unknown>, expected: {
     ...(JSON.parse(raw) as { expected: Record<string, unknown> }).expected, accountId: ids.accountB } });
   assert.deepEqual(await service.mutate(session, foreign), { kind: 'session-stale' });
 
-  for (const [code, kind] of [['40001', 'conflict'], ['42501', 'denied']] as const) {
-    const errors = enabledService(client({ rpc: () => ({ data: null, error: { code, message: code } }) }));
+  for (const [code, details, kind] of [
+    ['PT409', ADAPTIVE_NUTRITION_CONFLICT_DETAILS, 'conflict'],
+    ['42501', '', 'denied'],
+  ] as const) {
+    const errors = enabledService(client({ rpc: () => ({ data: null, error: { code, details, message: code } }) }));
     assert.deepEqual(await errors.mutate(errors.beginSession(ids.accountA), raw), { kind });
   }
+});
+
+test('mutation error classifier separates conflict, invariant, engine and transport outcomes', () => {
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({
+    code: 'PT409', details: ADAPTIVE_NUTRITION_CONFLICT_DETAILS,
+  }), { kind: 'conflict' });
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({
+    code: 'PT500', details: ADAPTIVE_NUTRITION_INVARIANT_DETAILS,
+  }), { kind: 'server-integrity' });
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({ code: '40001' }), { kind: 'technical-failure' });
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({ code: '57014' }), { kind: 'technical-failure' });
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({ message: 'network timeout' }), { kind: 'unknown' });
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({
+    code: 'PT409', details: 'unexpected-contract',
+  }), { kind: 'technical-failure' });
 });
 
 test('lookup and exact read remain available after entitlement loss while current read is denied', async () => {
@@ -253,12 +277,37 @@ test('exact replay after session restart reuses the original raw payload and key
   assert.equal(JSON.parse(sent[1]).idempotencyKey, ids.key);
 });
 
-test('same-key payload mismatch and stale revision errors map to conflict', async () => {
+test('same-key payload mismatch and stale revision PT409 errors map to conflict', async () => {
   for (const message of ['idempotency key payload mismatch', 'stale adaptive plan revision']) {
     const service = enabledService(client({ rpc: () => ({ data: null,
-      error: { code: '40001', message } }) }));
+      error: { code: 'PT409', details: ADAPTIVE_NUTRITION_CONFLICT_DETAILS, message } }) }));
     assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), rawRequest()), { kind: 'conflict' });
   }
+});
+
+test('engine serialization and invariant failures are distinct and never retried', async () => {
+  for (const [code, details, kind] of [
+    ['40001', '', 'technical-failure'],
+    ['PT500', ADAPTIVE_NUTRITION_INVARIANT_DETAILS, 'server-integrity'],
+  ] as const) {
+    let calls = 0;
+    const service = enabledService(client({ rpc: () => {
+      calls += 1;
+      return { data: null, error: { code, details, message: code } };
+    } }));
+    assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), rawRequest()), { kind });
+    assert.equal(calls, 1);
+  }
+});
+
+test('thrown transport loss after dispatch remains UNKNOWN', async () => {
+  let calls = 0;
+  const service = enabledService(client({ rpc: () => {
+    calls += 1;
+    throw new Error('response lost');
+  } }));
+  assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), rawRequest()), { kind: 'unknown' });
+  assert.equal(calls, 1);
 });
 
 test('new paid effect maps entitlement loss to denied', async () => {

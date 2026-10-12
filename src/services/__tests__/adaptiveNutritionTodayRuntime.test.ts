@@ -126,12 +126,52 @@ test('timeout stays UNKNOWN and lookup settles the original key through exact re
   await controller.skip(ids.slot);
   assert.equal(controller.snapshot().phase, 'unknown');
   assert.equal(controller.snapshot().pending?.idempotencyKey, ids.key);
+  assert.equal(mock.calls.mutate[0], controller.snapshot().pending?.rawRequest);
 
   await controller.resolveUnknown();
   assert.deepEqual(mock.calls.lookup, [ids.key]);
   assert.equal(mock.calls.mutate.length, 1);
   assert.equal(controller.snapshot().phase, 'ready');
   assert.equal(controller.snapshot().notice, 'confirmed');
+});
+
+test('confirmed technical and invariant errors stay distinct and discard retryable intent', async () => {
+  for (const kind of ['technical-failure', 'server-integrity'] as const) {
+    const mock = transport({ mutate: async () => ({ kind }) });
+    const controller = new AdaptiveNutritionTodayRuntimeController(mock.api, () => ids.key);
+    await controller.start(ids.accountA, ids.selectionA, today);
+    await controller.skip(ids.slot);
+    assert.equal(controller.snapshot().phase, kind);
+    assert.equal(controller.snapshot().pending, null);
+    assert.equal(mock.calls.mutate.length, 1);
+    assert.deepEqual(mock.calls.lookup, []);
+  }
+});
+
+test('account switch quarantines dispatched A intent before a late response and never applies it to B', async () => {
+  const lateA = deferred<AdaptiveNutritionMutationResult>();
+  const mock = transport({ mutate: async () => lateA.promise, lookup: async () => receipt() });
+  const controller = new AdaptiveNutritionTodayRuntimeController(mock.api, () => ids.key);
+  await controller.start(ids.accountA, ids.selectionA, today);
+  const submitA = controller.skip(ids.slot);
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const originalRaw = mock.calls.mutate[0];
+
+  await controller.start(ids.accountB, ids.selectionB, today);
+  lateA.resolve(receipt());
+  await submitA;
+  assert.equal(controller.snapshot().accountId, ids.accountB);
+  assert.notEqual(controller.snapshot().notice, 'confirmed');
+
+  controller.stop();
+  await controller.start(ids.accountA, ids.selectionA, today);
+  assert.equal(controller.snapshot().phase, 'unknown');
+  assert.equal(controller.snapshot().pending?.idempotencyKey, ids.key);
+  assert.equal(controller.snapshot().pending?.rawRequest, originalRaw);
+  assert.equal(mock.calls.mutate.length, 1);
+  await controller.resolveUnknown();
+  assert.equal(controller.snapshot().phase, 'ready');
+  controller.stop();
 });
 
 test('UNKNOWN is quarantined across logout and account switch, then reuses the original A key', async () => {

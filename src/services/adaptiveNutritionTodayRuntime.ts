@@ -17,6 +17,8 @@ export type AdaptiveNutritionTodayPhase =
   | 'submitting'
   | 'unknown'
   | 'conflict'
+  | 'server-integrity'
+  | 'technical-failure'
   | 'denied'
   | 'unavailable';
 
@@ -150,7 +152,9 @@ export class AdaptiveNutritionTodayRuntimeController {
   }
 
   async start(accountId: string, selectionId: string, today: string): Promise<void> {
+    this.quarantinePending();
     const token = ++this.generation;
+    if (this.session) this.transport.endSession();
     let session: AdaptiveNutritionRuntimeSession;
     try {
       session = this.transport.beginSession(accountId);
@@ -173,6 +177,7 @@ export class AdaptiveNutritionTodayRuntimeController {
   }
 
   stop(): void {
+    this.quarantinePending();
     this.generation += 1;
     this.session = null;
     this.transport.endSession();
@@ -274,18 +279,18 @@ export class AdaptiveNutritionTodayRuntimeController {
       else await this.refreshConflict(token);
       return;
     }
-    if (result.kind === 'unknown' || result.kind === 'unavailable') {
-      const pending = this.state.pending;
-      if (pending && this.state.accountId && this.state.selectionId && this.state.today) {
-        unresolvedByAccount.set(this.state.accountId, { ...pending,
-          selectionId: this.state.selectionId, today: this.state.today });
-      }
+    if (result.kind === 'unknown' || result.kind === 'session-stale') {
+      this.quarantinePending();
       this.publish({ ...this.state, phase: 'unknown' });
     } else if (result.kind === 'conflict') {
       await this.refreshConflict(token);
     } else if (result.kind === 'denied') {
       this.publish({ ...this.state, phase: 'denied', pending: null });
-    } else if (result.kind !== 'session-stale') {
+    } else if (result.kind === 'server-integrity' || result.kind === 'technical-failure') {
+      this.publish({ ...this.state, phase: result.kind, pending: null, model: null, slots: [] });
+    } else if (result.kind === 'unavailable') {
+      this.publish({ ...this.state, phase: 'unavailable', pending: null, model: null, slots: [] });
+    } else {
       this.publish({ ...this.state, phase: 'conflict', pending: null, model: null, slots: [] });
     }
   }
@@ -320,5 +325,13 @@ export class AdaptiveNutritionTodayRuntimeController {
 
   private clearUnresolved(): void {
     if (this.state.accountId) unresolvedByAccount.delete(this.state.accountId);
+  }
+
+  private quarantinePending(): void {
+    const { pending, accountId, selectionId, today } = this.state;
+    if (pending && accountId && selectionId && today
+        && (this.state.phase === 'submitting' || this.state.phase === 'unknown')) {
+      unresolvedByAccount.set(accountId, { ...pending, selectionId, today });
+    }
   }
 }
