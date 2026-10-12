@@ -39,6 +39,14 @@ export function AdaptiveNutritionReadOnlyEntryView({ state, selectedDate, onSele
   selectedDate?: string;
   onSelectDate?: (date: string) => void;
 }) {
+  if (state.phase === 'pending_generation') {
+    return <main className="mx-auto w-full max-w-[560px] px-5 py-10">
+      <h1 className="text-xl font-semibold text-stone-950">Мой Поток</h1>
+      <p className="mt-3 rounded-xl bg-stone-50 p-4 text-sm text-stone-600" role="status">
+        План ожидает подготовки
+      </p>
+    </main>;
+  }
   if (state.phase === 'no_active_plan') {
     return <main className="mx-auto w-full max-w-[560px] px-5 py-10">
       <h1 className="text-xl font-semibold text-stone-950">Активная неделя</h1>

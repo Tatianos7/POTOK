@@ -33,6 +33,8 @@ function state(phase: AdaptiveNutritionReadOnlyEntryState['phase']): AdaptiveNut
     today: dates[1],
     timeZone: 'Europe/Moscow',
     selectionId: ids.selection,
+    weekAnchor: dates[0],
+    goalRevision: ids.goal,
     model: phase === 'ready' ? model : null,
     slots: phase === 'ready' ? [{ date: dates[1], slotId: ids.slot, snapshot: {
       snapshotRevision: ids.snapshot, recipeRevision: null, portionRevision: ids.portion,
@@ -46,6 +48,12 @@ test('ready entry renders seven authoritative days and no mutation surface', () 
   assert.equal((html.match(/aria-label="(?:Пн|Вт|Ср|Чт|Пт|Сб|Вс) \d\d\.\d\d"/g) ?? []).length, 7);
   assert.doesNotMatch(html,
     /Не ел\(а\)|Отменить отметку|Заменить блюдо|Съел\(а\) по плану|Съел\(а\) с изменениями|Было что-то ещё/);
+});
+
+test('pending generation renders only a truthful waiting state', () => {
+  const html = renderToStaticMarkup(<AdaptiveNutritionReadOnlyEntryView state={state('pending_generation')} />);
+  assert.match(html, /План ожидает подготовки/);
+  assert.doesNotMatch(html, /прогресс|готов через|демо|Блюдо подтверждено сервером/i);
 });
 
 test('zero and ambiguous selections render distinct fail-closed states', () => {
@@ -65,5 +73,6 @@ test('read-only entry source cannot import or dispatch the mutation controller',
     assert.doesNotMatch(source, /import\s+\{[^}]*adaptiveNutritionPersistenceService|AdaptiveNutritionTodayRuntimeController/);
     assert.doesNotMatch(source, /\.mutate\(|\.skip\(|\.undoAnnotation\(|\.replace\(/);
     assert.doesNotMatch(source, /CONSUMED_AS_PLANNED|CONSUMED_MODIFIED|EXTRA_FOOD|PLAN_REPLACED/);
+    assert.doesNotMatch(source, /setInterval\(|setTimeout\(/);
   }
 });

@@ -27,6 +27,11 @@ function discovery(selectionId = ids.selectionA): AdaptiveNutritionDiscoveryResu
     status: 'active', contractVersion: 1 };
 }
 
+function pendingDiscovery(selectionId = ids.selectionA): AdaptiveNutritionDiscoveryResult {
+  return { kind: 'pending_generation', selectionId, weekAnchor: dates[0], timeZone: 'Europe/Moscow',
+    status: 'pending_generation', contractVersion: 1, goalRevision: ids.goal };
+}
+
 function model(selectionId = ids.selectionA): AdaptiveNutritionReadModelV1 {
   return {
     kind: 'ready', selectionId, weekAnchor: dates[0], timeZone: 'Europe/Moscow', status: 'active',
@@ -71,8 +76,58 @@ test('one discovered selection becomes an exact authoritative read-only week', a
   await controller.start(ids.accountA, today, 'Europe/Moscow');
   assert.equal(controller.snapshot().phase, 'ready');
   assert.equal(controller.snapshot().selectionId, ids.selectionA);
+  assert.equal(controller.snapshot().weekAnchor, dates[0]);
+  assert.equal(controller.snapshot().goalRevision, ids.goal);
   assert.equal(controller.snapshot().slots.length, 1);
   assert.equal('mutate' in api, false);
+});
+
+test('pending selection binds selection, week and goal without reading a graph', async () => {
+  let reads = 0;
+  const api = transport({
+    discover: () => pendingDiscovery(),
+    read: () => { reads += 1; return model(); },
+  });
+  const controller = new AdaptiveNutritionReadOnlyEntryController(api);
+  await controller.start(ids.accountA, today, 'Europe/Moscow');
+  assert.deepEqual(controller.snapshot(), {
+    phase: 'pending_generation', accountId: ids.accountA, today, timeZone: 'Europe/Moscow',
+    selectionId: ids.selectionA, weekAnchor: dates[0], goalRevision: ids.goal,
+    model: null, slots: [],
+  });
+  assert.equal(reads, 0);
+  assert.equal('mutate' in api, false);
+});
+
+test('pending becomes ready only after a new explicit start and confirmed discovery/read', async () => {
+  let pending = true;
+  let discoveries = 0;
+  let reads = 0;
+  const controller = new AdaptiveNutritionReadOnlyEntryController(transport({
+    discover: () => { discoveries += 1; return pending ? pendingDiscovery() : discovery(); },
+    read: () => { reads += 1; return model(); },
+  }));
+  await controller.start(ids.accountA, today, 'Europe/Moscow');
+  assert.equal(controller.snapshot().phase, 'pending_generation');
+  assert.equal(reads, 0);
+  pending = false;
+  assert.equal(controller.snapshot().phase, 'pending_generation');
+  await controller.start(ids.accountA, today, 'Europe/Moscow');
+  assert.equal(controller.snapshot().phase, 'ready');
+  assert.equal(discoveries, 2);
+  assert.equal(reads, 1);
+});
+
+test('pending clears a previous ready model and slots', async () => {
+  let result: AdaptiveNutritionDiscoveryResult = discovery();
+  const controller = new AdaptiveNutritionReadOnlyEntryController(transport({ discover: () => result }));
+  await controller.start(ids.accountA, today, 'Europe/Moscow');
+  assert.equal(controller.snapshot().phase, 'ready');
+  result = pendingDiscovery();
+  await controller.start(ids.accountA, today, 'Europe/Moscow');
+  assert.equal(controller.snapshot().phase, 'pending_generation');
+  assert.equal(controller.snapshot().model, null);
+  assert.deepEqual(controller.snapshot().slots, []);
 });
 
 test('no active plan and ambiguous discovery do not fall back to a plan', async () => {
@@ -109,4 +164,26 @@ test('A to B switch discards a late A discovery response', async () => {
   await startA;
   assert.equal(controller.snapshot().accountId, ids.accountB);
   assert.equal(controller.snapshot().selectionId, ids.selectionB);
+});
+
+test('A to B switch and stop discard late pending responses', async () => {
+  const lateA = deferred<AdaptiveNutritionDiscoveryResult>();
+  const lateB = deferred<AdaptiveNutritionDiscoveryResult>();
+  const api = transport({
+    discover: (session) => session.accountId === ids.accountA ? lateA.promise : lateB.promise,
+  });
+  const controller = new AdaptiveNutritionReadOnlyEntryController(api);
+  const startA = controller.start(ids.accountA, today, 'Europe/Moscow');
+  const startB = controller.start(ids.accountB, today, 'Europe/Moscow');
+  lateA.resolve(pendingDiscovery(ids.selectionA));
+  await startA;
+  assert.equal(controller.snapshot().accountId, ids.accountB);
+  assert.equal(controller.snapshot().selectionId, null);
+  controller.stop();
+  lateB.resolve(pendingDiscovery(ids.selectionB));
+  await startB;
+  assert.deepEqual(controller.snapshot(), {
+    phase: 'idle', accountId: null, today: null, timeZone: null, selectionId: null,
+    weekAnchor: null, goalRevision: null, model: null, slots: [],
+  });
 });
