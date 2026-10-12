@@ -78,12 +78,14 @@ function ready(operationId: string | null) {
 type RpcResult = { data: unknown; error: { code?: string; details?: string; message: string } | null };
 function client(options: {
   account?: () => string | null;
+  getUser?: () => Promise<{ data: { user: { id: string } | null }; error: null }>;
   rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResult> | RpcResult;
   calls?: string[];
 }) {
   return {
     auth: { async getUser() {
       options.calls?.push('auth');
+      if (options.getUser) return options.getUser();
       const accountId = options.account?.() ?? ids.accountA;
       return { data: { user: accountId ? { id: accountId } : null }, error: null };
     } },
@@ -322,6 +324,50 @@ test('thrown transport loss after dispatch remains UNKNOWN', async () => {
   } }));
   assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), rawRequest()), { kind: 'unknown' });
   assert.equal(calls, 1);
+});
+
+test('post-dispatch auth exception returns UNKNOWN instead of rejecting or trusting the receipt', async () => {
+  const raw = rawRequest();
+  const digest = await adaptiveNutritionSha256HexV1(decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes);
+  let authCalls = 0;
+  let rpcCalls = 0;
+  const service = enabledService(client({
+    async getUser() {
+      authCalls += 1;
+      if (authCalls === 2) throw new Error('auth transport unavailable');
+      return { data: { user: { id: ids.accountA } }, error: null };
+    },
+    rpc: () => {
+      rpcCalls += 1;
+      return { data: settled(digest), error: null };
+    },
+  }));
+  await assert.doesNotReject(async () => {
+    assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), raw), { kind: 'unknown' });
+  });
+  assert.equal(rpcCalls, 1);
+});
+
+test('lookup and exact-read transport exceptions normalize without applying a response', async () => {
+  const raw = rawRequest();
+  const digest = await adaptiveNutritionSha256HexV1(decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes);
+  for (const failingRpc of ['adaptive_nutrition_lookup_v1', 'adaptive_nutrition_read_v1']) {
+    const service = enabledService(client({ rpc(name) {
+      if (name === failingRpc) throw new Error('response lost');
+      return { data: settled(digest), error: null };
+    } }));
+    const session = service.beginSession(ids.accountA);
+    if (failingRpc === 'adaptive_nutrition_lookup_v1') {
+      assert.deepEqual(await service.lookup(session, ids.key), { kind: 'unknown' });
+    } else {
+      const value = settled(digest);
+      assert.deepEqual(await service.readExact(session, ids.selection, {
+        kind: 'settled', operationId: value.operation_id, idempotencyKey: value.idempotency_key,
+        digestVersion: value.digest_version, requestDigestHex: value.request_digest_hex,
+        outcome: 'accepted', reason: null, result: value.result, committedAt: value.committed_at,
+      }), { kind: 'unknown' });
+    }
+  }
 });
 
 test('new paid effect maps entitlement loss to denied', async () => {

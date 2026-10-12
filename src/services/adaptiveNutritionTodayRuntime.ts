@@ -209,7 +209,13 @@ export class AdaptiveNutritionTodayRuntimeController {
     const session = this.session;
     const pending = this.state.pending;
     if (!session || !pending || this.state.phase !== 'unknown') return;
-    const result = await this.transport.lookup(session, pending.idempotencyKey);
+    let result: AdaptiveNutritionMutationResult;
+    try {
+      result = await this.transport.lookup(session, pending.idempotencyKey);
+    } catch {
+      if (this.current(token)) this.preserveUnknown();
+      return;
+    }
     if (!this.current(token)) return;
     if (result.kind === 'settled') {
       if (!await adaptiveNutritionReceiptMatchesRequestV1(result, pending.rawRequest)
@@ -274,7 +280,13 @@ export class AdaptiveNutritionTodayRuntimeController {
       action: wireAction,
     });
     this.publish({ ...this.state, phase: 'submitting', pending: { rawRequest, idempotencyKey: key }, notice: null });
-    const result = await this.transport.mutate(session, rawRequest);
+    let result: AdaptiveNutritionMutationResult;
+    try {
+      result = await this.transport.mutate(session, rawRequest);
+    } catch {
+      if (this.current(token)) this.preserveUnknown();
+      return;
+    }
     if (!this.current(token)) return;
     await this.applyMutationResult(token, result);
   }
@@ -305,7 +317,13 @@ export class AdaptiveNutritionTodayRuntimeController {
     const session = this.session;
     const selectionId = this.state.selectionId;
     if (!session || !selectionId) return;
-    const read = await this.transport.readExact(session, selectionId, receipt);
+    let read: AdaptiveNutritionReadResult;
+    try {
+      read = await this.transport.readExact(session, selectionId, receipt);
+    } catch {
+      if (this.current(token)) this.preserveUnknown();
+      return;
+    }
     if (!this.current(token)) return;
     if (read.kind === 'ready' && this.state.today) {
       const slots = adaptiveNutritionTodaySlots(read, this.state.today);

@@ -260,6 +260,56 @@ test('failed exact read preserves the byte-identical intent through stop, Aâ†’Bâ
   controller.stop();
 });
 
+test('thrown mutation, lookup and exact transports keep the account-scoped operation recoverable', async () => {
+  let raw = '';
+  let mutationAttempts = 0;
+  let lookupAttempts = 0;
+  let exactAttempts = 0;
+  const mock = transport({
+    mutate: async (value) => {
+      raw = value;
+      mutationAttempts += 1;
+      throw new Error('mutation response lost');
+    },
+    lookup: async () => {
+      lookupAttempts += 1;
+      if (lookupAttempts === 1) throw new Error('lookup response lost');
+      const digest = await adaptiveNutritionSha256HexV1(
+        decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes);
+      return receipt('accepted', digest);
+    },
+    exact: async (value) => {
+      exactAttempts += 1;
+      if (exactAttempts === 1) throw new Error('exact read response lost');
+      return model({ exactOperationId: value.operationId, historyRevision: ids.history1 });
+    },
+  });
+  const controller = new AdaptiveNutritionTodayRuntimeController(mock.api, () => ids.key);
+  await controller.start(ids.accountA, ids.selectionA, today);
+  await controller.skip(ids.slot);
+  assert.equal(controller.snapshot().phase, 'unknown');
+  assert.equal(controller.snapshot().pending?.rawRequest, raw);
+  assert.equal(mutationAttempts, 1);
+
+  await controller.resolveUnknown();
+  assert.equal(controller.snapshot().phase, 'unknown');
+  await controller.resolveUnknown();
+  assert.equal(controller.snapshot().phase, 'unknown');
+  assert.equal(controller.snapshot().pending?.rawRequest, raw);
+
+  controller.stop();
+  await controller.start(ids.accountB, ids.selectionB, today);
+  controller.stop();
+  await controller.start(ids.accountA, ids.selectionA, today);
+  assert.equal(controller.snapshot().phase, 'unknown');
+  await controller.resolveUnknown();
+  assert.equal(controller.snapshot().phase, 'ready');
+  assert.equal(mutationAttempts, 1);
+  assert.equal(lookupAttempts, 3);
+  assert.equal(exactAttempts, 2);
+  controller.stop();
+});
+
 test('stale conflict refreshes but never reports optimistic success', async () => {
   let reads = 0;
   const refreshed = model({ planRevision: ids.plan1 });

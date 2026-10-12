@@ -253,16 +253,31 @@ export class AdaptiveNutritionPersistenceService {
     session: AdaptiveNutritionRuntimeSession,
     value: T,
     gate: 'read' | 'mutation',
-  ): Promise<T | { kind: 'session-stale' }> {
-    if (!this.isCurrent(session) || !await this.authenticated(session, gate)) return { kind: 'session-stale' };
-    return value;
+  ): Promise<T | { kind: 'session-stale' } | { kind: 'unknown' }> {
+    if (!this.isCurrent(session)) return { kind: 'session-stale' };
+    try {
+      if (!await this.authenticated(session, gate)) return { kind: 'session-stale' };
+      return value;
+    } catch {
+      return { kind: 'unknown' };
+    }
   }
 
   async lookup(session: AdaptiveNutritionRuntimeSession, idempotencyKey: string): Promise<AdaptiveNutritionLookupResult> {
     if (!this.isReadEnabled() || !this.client) return { kind: 'unavailable' };
     if (!uuidPattern.test(idempotencyKey)) return { kind: 'invalid-request', reason: 'invalid_idempotency_key' };
-    if (!await this.authenticated(session, 'read')) return { kind: 'session-stale' };
-    const { data, error } = await this.client.rpc('adaptive_nutrition_lookup_v1', { p_idempotency_key: idempotencyKey });
+    try {
+      if (!await this.authenticated(session, 'read')) return { kind: 'session-stale' };
+    } catch {
+      return { kind: 'session-stale' };
+    }
+    let response: Awaited<ReturnType<AdaptiveNutritionRpcClient['rpc']>>;
+    try {
+      response = await this.client.rpc('adaptive_nutrition_lookup_v1', { p_idempotency_key: idempotencyKey });
+    } catch {
+      return this.finish(session, { kind: 'unknown' }, 'read');
+    }
+    const { data, error } = response;
     if (error) return this.finish(session, { kind: 'unknown' }, 'read');
     const row = record(data);
     const decoded = row?.kind === 'unknown' ? { kind: 'unknown' as const }
@@ -297,11 +312,21 @@ export class AdaptiveNutritionPersistenceService {
     operationId: string | null): Promise<AdaptiveNutritionReadResult> {
     if (!this.isReadEnabled() || !this.client) return { kind: 'unavailable' };
     if (!uuidPattern.test(selectionId)) return { kind: 'invalid-request', reason: 'invalid_selection_id' };
-    if (!await this.authenticated(session, 'read')) return { kind: 'session-stale' };
-    const { data, error } = await this.client.rpc('adaptive_nutrition_read_v1', {
-      p_selection_id: selectionId,
-      p_operation_id: operationId,
-    });
+    try {
+      if (!await this.authenticated(session, 'read')) return { kind: 'session-stale' };
+    } catch {
+      return { kind: 'session-stale' };
+    }
+    let response: Awaited<ReturnType<AdaptiveNutritionRpcClient['rpc']>>;
+    try {
+      response = await this.client.rpc('adaptive_nutrition_read_v1', {
+        p_selection_id: selectionId,
+        p_operation_id: operationId,
+      });
+    } catch {
+      return this.finish(session, { kind: 'unknown' }, 'read');
+    }
+    const { data, error } = response;
     if (error) return this.finish(session, { kind: 'unknown' }, 'read');
     const decoded = decodeAdaptiveNutritionReadResultV1(data);
     if (decoded?.kind === 'ready' && (decoded.selectionId !== selectionId
@@ -320,7 +345,13 @@ export class AdaptiveNutritionPersistenceService {
     if (!supportedMutationActions.has(decoded.request.action.type)) {
       return { kind: 'invalid-request', reason: 'fact_actions_not_enabled' };
     }
-    if (decoded.request.expected.accountId !== session.accountId || !await this.authenticated(session, 'mutation')) {
+    let authenticated = false;
+    try {
+      authenticated = await this.authenticated(session, 'mutation');
+    } catch {
+      return { kind: 'session-stale' };
+    }
+    if (decoded.request.expected.accountId !== session.accountId || !authenticated) {
       return { kind: 'session-stale' };
     }
     let localDigest: string;
