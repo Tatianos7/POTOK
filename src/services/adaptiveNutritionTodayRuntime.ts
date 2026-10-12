@@ -1,4 +1,5 @@
 import {
+  adaptiveNutritionReceiptMatchesRequestV1,
   adaptiveNutritionPersistenceService,
   type AdaptiveNutritionMutationResult,
   type AdaptiveNutritionPersistenceService,
@@ -17,6 +18,8 @@ export type AdaptiveNutritionTodayPhase =
   | 'submitting'
   | 'unknown'
   | 'conflict'
+  | 'server-integrity'
+  | 'technical-failure'
   | 'denied'
   | 'unavailable';
 
@@ -52,6 +55,7 @@ export interface AdaptiveNutritionTodayState {
 type RuntimeTransport = Pick<AdaptiveNutritionPersistenceService,
   'beginSession' | 'endSession' | 'readCurrent' | 'readExact' | 'lookup' | 'mutate'>;
 type RuntimeListener = (state: AdaptiveNutritionTodayState) => void;
+type ReceiptMatcher = typeof adaptiveNutritionReceiptMatchesRequestV1;
 type RuntimeAction =
   | { type: 'SKIPPED'; slotId: string }
   | { type: 'UNDO_ANNOTATION'; targetEventId: string }
@@ -128,6 +132,7 @@ export class AdaptiveNutritionTodayRuntimeController {
   constructor(
     private readonly transport: RuntimeTransport = adaptiveNutritionPersistenceService,
     private readonly idempotencyKey: () => string = () => globalThis.crypto.randomUUID(),
+    private readonly receiptMatchesRequest: ReceiptMatcher = adaptiveNutritionReceiptMatchesRequestV1,
   ) {}
 
   snapshot(): AdaptiveNutritionTodayState {
@@ -150,7 +155,9 @@ export class AdaptiveNutritionTodayRuntimeController {
   }
 
   async start(accountId: string, selectionId: string, today: string): Promise<void> {
+    this.quarantinePending();
     const token = ++this.generation;
+    if (this.session) this.transport.endSession();
     let session: AdaptiveNutritionRuntimeSession;
     try {
       session = this.transport.beginSession(accountId);
@@ -173,6 +180,7 @@ export class AdaptiveNutritionTodayRuntimeController {
   }
 
   stop(): void {
+    this.quarantinePending();
     this.generation += 1;
     this.session = null;
     this.transport.endSession();
@@ -203,16 +211,28 @@ export class AdaptiveNutritionTodayRuntimeController {
     const session = this.session;
     const pending = this.state.pending;
     if (!session || !pending || this.state.phase !== 'unknown') return;
-    const result = await this.transport.lookup(session, pending.idempotencyKey);
+    let result: AdaptiveNutritionMutationResult;
+    try {
+      result = await this.transport.lookup(session, pending.idempotencyKey);
+    } catch {
+      if (this.current(token)) this.preserveUnknown();
+      return;
+    }
     if (!this.current(token)) return;
     if (result.kind === 'settled') {
+      const matchesRequest = await this.receiptMatchesRequest(result, pending.rawRequest);
+      if (!this.current(token)) return;
+      if (!matchesRequest) {
+        this.preserveUnknown();
+        return;
+      }
       if (result.outcome === 'accepted') await this.reconcileReceipt(token, result);
       else {
         this.clearUnresolved();
         await this.refreshConflict(token);
       }
     }
-    else if (result.kind === 'conflict') await this.refreshConflict(token);
+    else if (result.kind === 'conflict') this.preserveUnknown();
     else if (result.kind === 'denied') this.publish({ ...this.state, phase: 'denied' });
   }
 
@@ -263,7 +283,13 @@ export class AdaptiveNutritionTodayRuntimeController {
       action: wireAction,
     });
     this.publish({ ...this.state, phase: 'submitting', pending: { rawRequest, idempotencyKey: key }, notice: null });
-    const result = await this.transport.mutate(session, rawRequest);
+    let result: AdaptiveNutritionMutationResult;
+    try {
+      result = await this.transport.mutate(session, rawRequest);
+    } catch {
+      if (this.current(token)) this.preserveUnknown();
+      return;
+    }
     if (!this.current(token)) return;
     await this.applyMutationResult(token, result);
   }
@@ -274,18 +300,18 @@ export class AdaptiveNutritionTodayRuntimeController {
       else await this.refreshConflict(token);
       return;
     }
-    if (result.kind === 'unknown' || result.kind === 'unavailable') {
-      const pending = this.state.pending;
-      if (pending && this.state.accountId && this.state.selectionId && this.state.today) {
-        unresolvedByAccount.set(this.state.accountId, { ...pending,
-          selectionId: this.state.selectionId, today: this.state.today });
-      }
+    if (result.kind === 'unknown' || result.kind === 'session-stale') {
+      this.quarantinePending();
       this.publish({ ...this.state, phase: 'unknown' });
     } else if (result.kind === 'conflict') {
       await this.refreshConflict(token);
     } else if (result.kind === 'denied') {
       this.publish({ ...this.state, phase: 'denied', pending: null });
-    } else if (result.kind !== 'session-stale') {
+    } else if (result.kind === 'server-integrity' || result.kind === 'technical-failure') {
+      this.publish({ ...this.state, phase: result.kind, pending: null, model: null, slots: [] });
+    } else if (result.kind === 'unavailable') {
+      this.publish({ ...this.state, phase: 'unavailable', pending: null, model: null, slots: [] });
+    } else {
       this.publish({ ...this.state, phase: 'conflict', pending: null, model: null, slots: [] });
     }
   }
@@ -294,7 +320,13 @@ export class AdaptiveNutritionTodayRuntimeController {
     const session = this.session;
     const selectionId = this.state.selectionId;
     if (!session || !selectionId) return;
-    const read = await this.transport.readExact(session, selectionId, receipt);
+    let read: AdaptiveNutritionReadResult;
+    try {
+      read = await this.transport.readExact(session, selectionId, receipt);
+    } catch {
+      if (this.current(token)) this.preserveUnknown();
+      return;
+    }
     if (!this.current(token)) return;
     if (read.kind === 'ready' && this.state.today) {
       const slots = adaptiveNutritionTodaySlots(read, this.state.today);
@@ -305,7 +337,7 @@ export class AdaptiveNutritionTodayRuntimeController {
         return;
       }
     }
-    this.applyReadResult(read, false);
+    this.preserveUnknown();
   }
 
   private async refreshConflict(token: number): Promise<void> {
@@ -320,5 +352,18 @@ export class AdaptiveNutritionTodayRuntimeController {
 
   private clearUnresolved(): void {
     if (this.state.accountId) unresolvedByAccount.delete(this.state.accountId);
+  }
+
+  private quarantinePending(): void {
+    const { pending, accountId, selectionId, today } = this.state;
+    if (pending && accountId && selectionId && today
+        && (this.state.phase === 'submitting' || this.state.phase === 'unknown')) {
+      unresolvedByAccount.set(accountId, { ...pending, selectionId, today });
+    }
+  }
+
+  private preserveUnknown(): void {
+    this.quarantinePending();
+    this.publish({ ...this.state, phase: 'unknown', notice: null });
   }
 }

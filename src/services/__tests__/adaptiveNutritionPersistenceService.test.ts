@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { AdaptiveNutritionPersistenceService, isAdaptiveNutritionRuntimeEnabled } from '../adaptiveNutritionPersistenceService';
+import {
+  ADAPTIVE_NUTRITION_CONFLICT_DETAILS,
+  ADAPTIVE_NUTRITION_INVARIANT_DETAILS,
+  AdaptiveNutritionPersistenceService,
+  classifyAdaptiveNutritionMutationError,
+  isAdaptiveNutritionRuntimeEnabled,
+} from '../adaptiveNutritionPersistenceService';
 import { adaptiveNutritionCanonicalEncodingV1, adaptiveNutritionSha256HexV1,
   decodeAdaptiveNutritionWireEnvelopeV1 } from '../../utils/adaptiveNutritionWireV1';
 
@@ -52,9 +58,11 @@ function rawRequest(action: TestAction = 'SKIPPED') {
 function settled(digest: string) {
   return { kind: 'settled', operation_id: ids.operation, idempotency_key: ids.key,
     digest_version: adaptiveNutritionCanonicalEncodingV1, request_digest_hex: digest,
-    outcome: 'accepted', reason: null, result: { operation_id: ids.operation,
+    outcome: 'accepted', reason: null, result: { contract: 'adaptive-nutrition-receipt-v1',
+      outcome: 'accepted', operation_id: ids.operation,
       selection_id: ids.selection, plan_revision: ids.plan, goal_revision: ids.goal,
-      history_revision: ids.history, diary_revision: ids.diary },
+      history_revision: ids.history, diary_revision: ids.diary,
+      event_ids: ['00000000-0000-4000-8000-00000000000f'] },
     committed_at: '2026-09-21T12:00:00Z' };
 }
 
@@ -67,15 +75,17 @@ function ready(operationId: string | null) {
     events: [], exact_operation_id: operationId };
 }
 
-type RpcResult = { data: unknown; error: { code?: string; message: string } | null };
+type RpcResult = { data: unknown; error: { code?: string; details?: string; message: string } | null };
 function client(options: {
   account?: () => string | null;
+  getUser?: () => Promise<{ data: { user: { id: string } | null }; error: null }>;
   rpc: (name: string, args: Record<string, unknown>) => Promise<RpcResult> | RpcResult;
   calls?: string[];
 }) {
   return {
     auth: { async getUser() {
       options.calls?.push('auth');
+      if (options.getUser) return options.getUser();
       const accountId = options.account?.() ?? ids.accountA;
       return { data: { user: accountId ? { id: accountId } : null }, error: null };
     } },
@@ -118,20 +128,50 @@ test('successful SKIPPED sends the byte-identical raw envelope and accepts the s
   assert.equal('p_client_digest' in calls[0].args, false);
 });
 
-test('forged server digest, foreign request account and explicit server CAS/entitlement errors fail closed', async () => {
+test('forged post-dispatch receipt becomes UNKNOWN; foreign account and explicit server errors fail closed', async () => {
   const raw = rawRequest();
   const service = enabledService(client({ rpc: () => ({ data: settled('0'.repeat(64)), error: null }) }));
   const session = service.beginSession(ids.accountA);
-  assert.deepEqual(await service.mutate(session, raw), { kind: 'invalid-server-response' });
+  assert.deepEqual(await service.mutate(session, raw), { kind: 'unknown' });
 
   const foreign = JSON.stringify({ ...JSON.parse(raw) as Record<string, unknown>, expected: {
     ...(JSON.parse(raw) as { expected: Record<string, unknown> }).expected, accountId: ids.accountB } });
   assert.deepEqual(await service.mutate(session, foreign), { kind: 'session-stale' });
 
-  for (const [code, kind] of [['40001', 'conflict'], ['42501', 'denied']] as const) {
-    const errors = enabledService(client({ rpc: () => ({ data: null, error: { code, message: code } }) }));
+  for (const [code, details, kind] of [
+    ['PT409', ADAPTIVE_NUTRITION_CONFLICT_DETAILS, 'conflict'],
+    ['42501', '', 'denied'],
+  ] as const) {
+    const errors = enabledService(client({ rpc: () => ({ data: null, error: { code, details, message: code } }) }));
     assert.deepEqual(await errors.mutate(errors.beginSession(ids.accountA), raw), { kind });
   }
+});
+
+test('accepted receipt requires complete operation, selection and revision bindings', async () => {
+  const raw = rawRequest();
+  const digest = await adaptiveNutritionSha256HexV1(decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes);
+  for (const result of [null, {}, { ...settled(digest).result, operation_id: ids.accountB },
+    { ...settled(digest).result, selection_id: ids.accountB },
+    { ...settled(digest).result, history_revision: null }]) {
+    const malformed = { ...settled(digest), result };
+    const service = enabledService(client({ rpc: () => ({ data: malformed, error: null }) }));
+    assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), raw), { kind: 'unknown' });
+  }
+});
+
+test('mutation error classifier separates conflict, invariant, engine and transport outcomes', () => {
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({
+    code: 'PT409', details: ADAPTIVE_NUTRITION_CONFLICT_DETAILS,
+  }), { kind: 'conflict' });
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({
+    code: 'PT500', details: ADAPTIVE_NUTRITION_INVARIANT_DETAILS,
+  }), { kind: 'server-integrity' });
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({ code: '40001' }), { kind: 'technical-failure' });
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({ code: '57014' }), { kind: 'technical-failure' });
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({ message: 'network timeout' }), { kind: 'unknown' });
+  assert.deepEqual(classifyAdaptiveNutritionMutationError({
+    code: 'PT409', details: 'unexpected-contract',
+  }), { kind: 'technical-failure' });
 });
 
 test('lookup and exact read remain available after entitlement loss while current read is denied', async () => {
@@ -253,11 +293,80 @@ test('exact replay after session restart reuses the original raw payload and key
   assert.equal(JSON.parse(sent[1]).idempotencyKey, ids.key);
 });
 
-test('same-key payload mismatch and stale revision errors map to conflict', async () => {
+test('same-key payload mismatch and stale revision PT409 errors map to conflict', async () => {
   for (const message of ['idempotency key payload mismatch', 'stale adaptive plan revision']) {
     const service = enabledService(client({ rpc: () => ({ data: null,
-      error: { code: '40001', message } }) }));
+      error: { code: 'PT409', details: ADAPTIVE_NUTRITION_CONFLICT_DETAILS, message } }) }));
     assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), rawRequest()), { kind: 'conflict' });
+  }
+});
+
+test('engine serialization and invariant failures are distinct and never retried', async () => {
+  for (const [code, details, kind] of [
+    ['40001', '', 'technical-failure'],
+    ['PT500', ADAPTIVE_NUTRITION_INVARIANT_DETAILS, 'server-integrity'],
+  ] as const) {
+    let calls = 0;
+    const service = enabledService(client({ rpc: () => {
+      calls += 1;
+      return { data: null, error: { code, details, message: code } };
+    } }));
+    assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), rawRequest()), { kind });
+    assert.equal(calls, 1);
+  }
+});
+
+test('thrown transport loss after dispatch remains UNKNOWN', async () => {
+  let calls = 0;
+  const service = enabledService(client({ rpc: () => {
+    calls += 1;
+    throw new Error('response lost');
+  } }));
+  assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), rawRequest()), { kind: 'unknown' });
+  assert.equal(calls, 1);
+});
+
+test('post-dispatch auth exception returns UNKNOWN instead of rejecting or trusting the receipt', async () => {
+  const raw = rawRequest();
+  const digest = await adaptiveNutritionSha256HexV1(decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes);
+  let authCalls = 0;
+  let rpcCalls = 0;
+  const service = enabledService(client({
+    async getUser() {
+      authCalls += 1;
+      if (authCalls === 2) throw new Error('auth transport unavailable');
+      return { data: { user: { id: ids.accountA } }, error: null };
+    },
+    rpc: () => {
+      rpcCalls += 1;
+      return { data: settled(digest), error: null };
+    },
+  }));
+  await assert.doesNotReject(async () => {
+    assert.deepEqual(await service.mutate(service.beginSession(ids.accountA), raw), { kind: 'unknown' });
+  });
+  assert.equal(rpcCalls, 1);
+});
+
+test('lookup and exact-read transport exceptions normalize without applying a response', async () => {
+  const raw = rawRequest();
+  const digest = await adaptiveNutritionSha256HexV1(decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes);
+  for (const failingRpc of ['adaptive_nutrition_lookup_v1', 'adaptive_nutrition_read_v1']) {
+    const service = enabledService(client({ rpc(name) {
+      if (name === failingRpc) throw new Error('response lost');
+      return { data: settled(digest), error: null };
+    } }));
+    const session = service.beginSession(ids.accountA);
+    if (failingRpc === 'adaptive_nutrition_lookup_v1') {
+      assert.deepEqual(await service.lookup(session, ids.key), { kind: 'unknown' });
+    } else {
+      const value = settled(digest);
+      assert.deepEqual(await service.readExact(session, ids.selection, {
+        kind: 'settled', operationId: value.operation_id, idempotencyKey: value.idempotency_key,
+        digestVersion: value.digest_version, requestDigestHex: value.request_digest_hex,
+        outcome: 'accepted', reason: null, result: value.result, committedAt: value.committed_at,
+      }), { kind: 'unknown' });
+    }
   }
 });
 
