@@ -10,6 +10,7 @@ import {
   type AdaptiveNutritionTodaySlot,
 } from './adaptiveNutritionTodayRuntime';
 import type { AdaptiveNutritionReadModelV1 } from './adaptiveNutritionPersistenceService';
+import { nutritionWeekDates } from '../utils/nutritionWeek';
 export function shouldUseAdaptiveNutritionReadOnlyEntry(
   verifiedPremium: boolean | undefined,
   readGateEnabled = isAdaptiveNutritionReadEnabled(),
@@ -58,6 +59,14 @@ function terminalPhase(result: Exclude<AdaptiveNutritionDiscoveryResult,
   return 'unavailable';
 }
 
+function currentWeekAnchor(today: string): string | null {
+  try {
+    return nutritionWeekDates(today)[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export class AdaptiveNutritionReadOnlyEntryController {
   private state = initialState();
   private generation = 0;
@@ -100,6 +109,18 @@ export class AdaptiveNutritionReadOnlyEntryController {
     const discovery = await this.transport.discoverCurrent(session, timeZone);
     if (token !== this.generation || this.session !== session) return;
     if (discovery.kind === 'pending_generation') {
+      if (discovery.weekAnchor !== currentWeekAnchor(today)) {
+        this.publish({
+          ...this.state,
+          phase: 'unavailable',
+          selectionId: null,
+          weekAnchor: null,
+          goalRevision: null,
+          model: null,
+          slots: [],
+        });
+        return;
+      }
       this.publish({
         ...this.state,
         phase: 'pending_generation',

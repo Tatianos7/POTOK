@@ -3,7 +3,11 @@ import test from 'node:test';
 import {
   AdaptiveNutritionReadOnlyEntryController,
 } from '../adaptiveNutritionReadOnlyEntry';
-import type { AdaptiveNutritionDiscoveryResult, AdaptiveNutritionReadSession } from '../adaptiveNutritionReadOnlyService';
+import type {
+  AdaptiveNutritionDiscoveryResult,
+  AdaptiveNutritionPendingGenerationDiscoveryV1,
+  AdaptiveNutritionReadSession,
+} from '../adaptiveNutritionReadOnlyService';
 import type { AdaptiveNutritionReadModelV1, AdaptiveNutritionReadResult } from '../adaptiveNutritionPersistenceService';
 
 const ids = {
@@ -27,9 +31,16 @@ function discovery(selectionId = ids.selectionA): AdaptiveNutritionDiscoveryResu
     status: 'active', contractVersion: 1 };
 }
 
-function pendingDiscovery(selectionId = ids.selectionA): AdaptiveNutritionDiscoveryResult {
+function pendingDiscovery(selectionId = ids.selectionA): AdaptiveNutritionPendingGenerationDiscoveryV1 {
   return { kind: 'pending_generation', selectionId, weekAnchor: dates[0], timeZone: 'Europe/Moscow',
     status: 'pending_generation', contractVersion: 1, goalRevision: ids.goal };
+}
+
+function pendingForWeek(
+  weekAnchor: string,
+  selectionId = ids.selectionA,
+): AdaptiveNutritionPendingGenerationDiscoveryV1 {
+  return { ...pendingDiscovery(selectionId), weekAnchor };
 }
 
 function model(selectionId = ids.selectionA): AdaptiveNutritionReadModelV1 {
@@ -97,6 +108,54 @@ test('pending selection binds selection, week and goal without reading a graph',
   });
   assert.equal(reads, 0);
   assert.equal('mutate' in api, false);
+});
+
+test('pending rejects past and future weeks and clears their binding without graph reads', async () => {
+  let result = pendingForWeek('2026-10-12');
+  let reads = 0;
+  const controller = new AdaptiveNutritionReadOnlyEntryController(transport({
+    discover: () => result,
+    read: () => { reads += 1; return model(); },
+  }));
+  await controller.start(ids.accountA, '2026-10-12', 'Europe/Moscow');
+  assert.equal(controller.snapshot().phase, 'pending_generation');
+  for (const weekAnchor of ['2026-10-05', '2026-10-19']) {
+    result = pendingForWeek(weekAnchor);
+    await controller.start(ids.accountA, '2026-10-12', 'Europe/Moscow');
+    assert.deepEqual(controller.snapshot(), {
+      phase: 'unavailable', accountId: ids.accountA, today: '2026-10-12', timeZone: 'Europe/Moscow',
+      selectionId: null, weekAnchor: null, goalRevision: null, model: null, slots: [],
+    });
+  }
+  assert.equal(reads, 0);
+});
+
+test('pending current week follows civil Sunday to Monday and year boundaries', async () => {
+  for (const [currentDay, weekAnchor] of [
+    ['2027-01-03', '2026-12-28'],
+    ['2027-01-04', '2027-01-04'],
+  ] as const) {
+    let reads = 0;
+    const controller = new AdaptiveNutritionReadOnlyEntryController(transport({
+      discover: () => pendingForWeek(weekAnchor),
+      read: () => { reads += 1; return model(); },
+    }));
+    await controller.start(ids.accountA, currentDay, 'Europe/Moscow');
+    assert.equal(controller.snapshot().phase, 'pending_generation');
+    assert.equal(controller.snapshot().weekAnchor, weekAnchor);
+    assert.equal(reads, 0);
+  }
+});
+
+test('invalid today fails pending closed without throwing or retaining metadata', async () => {
+  const controller = new AdaptiveNutritionReadOnlyEntryController(transport({
+    discover: () => pendingDiscovery(),
+  }));
+  await assert.doesNotReject(controller.start(ids.accountA, '2026-02-30', 'Europe/Moscow'));
+  assert.deepEqual(controller.snapshot(), {
+    phase: 'unavailable', accountId: ids.accountA, today: '2026-02-30', timeZone: 'Europe/Moscow',
+    selectionId: null, weekAnchor: null, goalRevision: null, model: null, slots: [],
+  });
 });
 
 test('pending becomes ready only after a new explicit start and confirmed discovery/read', async () => {
