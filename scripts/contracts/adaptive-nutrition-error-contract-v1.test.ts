@@ -7,6 +7,17 @@ const repairPath = new URL(
   import.meta.url,
 );
 const designPath = new URL('../../docs/premium/adaptive-nutrition-error-contract-v1.md', import.meta.url);
+const wirePath = new URL(
+  '../../docs/premium/drafts/20261012_adaptive_nutrition_error_contract_v1.acceptance.sql',
+  import.meta.url,
+);
+const targetPostcheckPath = new URL(
+  '../../docs/premium/drafts/20261012_adaptive_nutrition_error_contract_v1.effective-postcheck.sql',
+  import.meta.url,
+);
+const runnerPath = new URL('../acceptance/run-adaptive-nutrition-error-contract-v1.sh', import.meta.url);
+const extractorPath = new URL('../acceptance/extract-adaptive-nutrition-effective-functions-v1.mjs', import.meta.url);
+const workflowPath = new URL('../../.github/workflows/p5-02-disposable-acceptance.yml', import.meta.url);
 
 const publicMessages = [
   'idempotency key payload mismatch',
@@ -40,5 +51,25 @@ test('design records all 11 classifications and effective-source discrepancy', a
   const rows = design.split('\n').filter((line) => /^\| (?:`2026|same)/.test(line));
   assert.equal(rows.length, 11);
   assert.match(design, /2026-09-21 persistence draft also contains an older definition/);
-  assert.match(design, /PostgreSQL 17\.11 and PostgREST 13\.0\.7/);
+  assert.match(design, /PostgreSQL 17\.11 \/ PostgREST 13\.0\.7/);
+});
+
+test('acceptance separates target repair, native concurrency and synthetic wire mapping', async () => {
+  const [wire, postcheck, runner, extractor, workflow] = await Promise.all([
+    readFile(wirePath, 'utf8'), readFile(targetPostcheckPath, 'utf8'),
+    readFile(runnerPath, 'utf8'), readFile(extractorPath, 'utf8'), readFile(workflowPath, 'utf8'),
+  ]);
+  assert.match(wire, /WIRE PROBE ONLY/);
+  assert.doesNotMatch(wire, /RAISE SQLSTATE '40001'/);
+  assert.match(postcheck, /v_count <> 6/);
+  assert.match(postcheck, /v_count <> 4/);
+  assert.match(postcheck, /proowner, p\.prosecdef, p\.proconfig, p\.proacl/);
+  assert.match(runner, /ISOLATION LEVEL SERIALIZABLE/);
+  assert.match(runner, /drift_counts.*6:5/s);
+  assert.match(runner, /--connect-timeout 3 --max-time 10/);
+  assert.match(extractor, /20260921_adaptive_nutrition_runtime_activation_v1\.sql/);
+  assert.match(extractor, /20260927_adaptive_nutrition_graph_v2_authorities_activation_v1\.sql/);
+  assert.match(workflow, /workflow_dispatch/);
+  assert.match(workflow, /timeout 8m/);
+  assert.doesNotMatch(workflow, /secrets\./);
 });

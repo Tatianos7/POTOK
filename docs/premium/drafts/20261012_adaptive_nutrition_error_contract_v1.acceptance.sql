@@ -1,5 +1,6 @@
--- DRAFT / DISPOSABLE P5-02 ACCEPTANCE FIXTURE ONLY.
--- Run only in a throwaway PostgreSQL database. This does not install POTOK functions.
+-- DRAFT / DISPOSABLE P5-02 WIRE PROBE ONLY.
+-- Run only in a throwaway PostgreSQL database. Target repair and native
+-- serialization are verified by separate acceptance layers.
 
 CREATE ROLE anon NOLOGIN;
 
@@ -29,8 +30,6 @@ BEGIN
     RAISE SQLSTATE 'PT500'
       USING MESSAGE = 'operation result is unresolved',
             DETAIL = 'POTOK_ADAPTIVE_NUTRITION_INVARIANT_FAILURE_V1';
-  ELSIF mode = 'engine_serialization' THEN
-    RAISE SQLSTATE '40001' USING MESSAGE = 'fixture engine serialization failure';
   ELSIF mode <> 'accepted' THEN
     RAISE EXCEPTION 'unsupported fixture mode' USING ERRCODE = '22023';
   END IF;
@@ -98,24 +97,6 @@ BEGIN
       RAISE EXCEPTION 'integrity contract mismatch: state=%, detail=%', v_state, v_detail;
     END IF;
   END;
-
-  TRUNCATE public.p5_02_probe_effects, public.p5_02_probe_receipts;
-  PERFORM setval('public.p5_02_probe_invocations', 1, false);
-  BEGIN
-    PERFORM public.p5_02_error_contract_probe(
-      'engine_serialization', '00000000-0000-4000-8000-000000000003'
-    );
-    RAISE EXCEPTION 'engine serialization did not raise';
-  EXCEPTION WHEN OTHERS THEN
-    GET STACKED DIAGNOSTICS v_state = RETURNED_SQLSTATE;
-    IF v_state <> '40001' THEN
-      RAISE EXCEPTION 'engine SQLSTATE mismatch: %', v_state;
-    END IF;
-  END;
-  IF EXISTS (SELECT FROM public.p5_02_probe_effects)
-      OR EXISTS (SELECT FROM public.p5_02_probe_receipts) THEN
-    RAISE EXCEPTION 'engine error did not roll back effects and receipt';
-  END IF;
 
   PERFORM public.p5_02_error_contract_probe(
     'accepted', '00000000-0000-4000-8000-000000000004'

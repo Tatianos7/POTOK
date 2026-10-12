@@ -70,10 +70,21 @@ unchanged.
 
 ## Disposable acceptance target
 
-The transport harness is intended for PostgreSQL 17.11 and PostgREST 13.0.7.
-It must prove HTTP/code/details, one execution for `PT409`, native `40001`
-behavior, transaction rollback, and receipt absence/preservation. A mocked
-Supabase client is only a client-classifier regression and cannot satisfy this
-transport acceptance. The runner at
-`scripts/acceptance/run-adaptive-nutrition-error-contract-v1.sh` creates only
-throwaway local containers and never connects to Supabase or Staging.
+The PostgreSQL 17.11 / PostgREST 13.0.7 runner has three independent layers:
+
+1. Extract both effective definitions byte-for-byte from the reviewed source
+   files, compile them in a disposable database, apply the repair, verify all
+   11 replacements, and compare owner, `SECURITY DEFINER`, `search_path`, and
+   grants before/after. A second database injects late internal source drift and
+   proves atomic rollback leaves the public function unchanged.
+2. Use two concurrent `SERIALIZABLE` transactions to obtain a native engine
+   `40001`; no fixture raises that SQLSTATE manually.
+3. Use a separately named synthetic wire probe only for PostgREST
+   HTTP/code/details mapping, one business invocation, rollback, and receipt
+   preservation/absence. It is not evidence that the target functions execute.
+
+The manual disposable workflow has no live secrets and performs no deploy. A
+mocked Supabase client or the wire probe cannot replace a completed target
+transport run. Until the exact-version runner completes, transport acceptance
+must be reported as `SKIP`. The runner creates only throwaway local containers
+and never connects to Supabase or Staging.
