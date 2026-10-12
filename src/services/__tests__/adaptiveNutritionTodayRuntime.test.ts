@@ -366,6 +366,64 @@ test('late receipt binding checks cannot overwrite a newer account state or its 
   }
 });
 
+test('bare lookup conflict keeps UNKNOWN locked until a bound receipt settles the original operation', async () => {
+  const annotated = model({ events: [{ event_id: ids.event, kind: 'ANNOTATION', slot_id: ids.slot,
+    local_date: today, supersedes_event_id: null }] });
+  let raw = '';
+  let lookupCalls = 0;
+  let keyCalls = 0;
+  const mock = transport({
+    current: async () => annotated,
+    mutate: async (value) => { raw = value; return { kind: 'unknown' }; },
+    lookup: async () => {
+      lookupCalls += 1;
+      return lookupCalls === 1
+        ? { kind: 'conflict' }
+        : receipt('accepted', await adaptiveNutritionSha256HexV1(
+          decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes));
+    },
+  });
+  const controller = new AdaptiveNutritionTodayRuntimeController(mock.api, () => {
+    keyCalls += 1;
+    return ids.key;
+  });
+  await controller.start(ids.accountA, ids.selectionA, today);
+  await controller.skip(ids.slot);
+  const originalPending = controller.snapshot().pending;
+
+  await controller.resolveUnknown();
+  assert.equal(controller.snapshot().phase, 'unknown');
+  assert.deepEqual(controller.snapshot().pending, originalPending);
+  assert.equal(mock.calls.current, 1);
+
+  controller.acknowledgeConflict();
+  await controller.skip(ids.slot);
+  await controller.replace(ids.slot, ids.offer);
+  await controller.undoAnnotation(ids.event);
+  assert.equal(mock.calls.mutate.length, 1);
+  assert.equal(keyCalls, 1);
+
+  controller.stop();
+  await controller.start(ids.accountA, ids.selectionA, today);
+  assert.equal(controller.snapshot().phase, 'unknown');
+  assert.deepEqual(controller.snapshot().pending, originalPending);
+  controller.acknowledgeConflict();
+  await controller.skip(ids.slot);
+  await controller.replace(ids.slot, ids.offer);
+  await controller.undoAnnotation(ids.event);
+  assert.equal(mock.calls.mutate.length, 1);
+  assert.equal(keyCalls, 1);
+
+  await controller.resolveUnknown();
+  assert.equal(controller.snapshot().phase, 'ready');
+  assert.equal(controller.snapshot().pending, null);
+  assert.equal(controller.snapshot().notice, 'confirmed');
+  assert.equal(mock.calls.mutate.length, 1);
+  assert.equal(keyCalls, 1);
+  assert.deepEqual(mock.calls.lookup, [ids.key, ids.key]);
+  controller.stop();
+});
+
 test('stale conflict refreshes but never reports optimistic success', async () => {
   let reads = 0;
   const refreshed = model({ planRevision: ids.plan1 });

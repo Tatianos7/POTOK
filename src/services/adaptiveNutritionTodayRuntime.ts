@@ -232,7 +232,7 @@ export class AdaptiveNutritionTodayRuntimeController {
         await this.refreshConflict(token);
       }
     }
-    else if (result.kind === 'conflict') await this.refreshConflict(token);
+    else if (result.kind === 'conflict') this.preserveUnknown();
     else if (result.kind === 'denied') this.publish({ ...this.state, phase: 'denied' });
   }
 
