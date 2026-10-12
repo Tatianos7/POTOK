@@ -55,6 +55,7 @@ export interface AdaptiveNutritionTodayState {
 type RuntimeTransport = Pick<AdaptiveNutritionPersistenceService,
   'beginSession' | 'endSession' | 'readCurrent' | 'readExact' | 'lookup' | 'mutate'>;
 type RuntimeListener = (state: AdaptiveNutritionTodayState) => void;
+type ReceiptMatcher = typeof adaptiveNutritionReceiptMatchesRequestV1;
 type RuntimeAction =
   | { type: 'SKIPPED'; slotId: string }
   | { type: 'UNDO_ANNOTATION'; targetEventId: string }
@@ -131,6 +132,7 @@ export class AdaptiveNutritionTodayRuntimeController {
   constructor(
     private readonly transport: RuntimeTransport = adaptiveNutritionPersistenceService,
     private readonly idempotencyKey: () => string = () => globalThis.crypto.randomUUID(),
+    private readonly receiptMatchesRequest: ReceiptMatcher = adaptiveNutritionReceiptMatchesRequestV1,
   ) {}
 
   snapshot(): AdaptiveNutritionTodayState {
@@ -218,8 +220,9 @@ export class AdaptiveNutritionTodayRuntimeController {
     }
     if (!this.current(token)) return;
     if (result.kind === 'settled') {
-      if (!await adaptiveNutritionReceiptMatchesRequestV1(result, pending.rawRequest)
-          || !this.current(token)) {
+      const matchesRequest = await this.receiptMatchesRequest(result, pending.rawRequest);
+      if (!this.current(token)) return;
+      if (!matchesRequest) {
         this.preserveUnknown();
         return;
       }

@@ -11,6 +11,7 @@ import type {
   AdaptiveNutritionReceiptV1,
   AdaptiveNutritionRuntimeSession,
 } from '../adaptiveNutritionPersistenceService';
+import { adaptiveNutritionReceiptMatchesRequestV1 } from '../adaptiveNutritionPersistenceService';
 import { adaptiveNutritionSha256HexV1, decodeAdaptiveNutritionWireEnvelopeV1 } from '../../utils/adaptiveNutritionWireV1';
 
 const ids = {
@@ -72,7 +73,7 @@ function deferred<T>(): Deferred<T> {
 }
 
 function transport(input: {
-  current?: () => Promise<ReturnType<typeof model>>;
+  current?: (session: AdaptiveNutritionRuntimeSession, selectionId: string) => Promise<ReturnType<typeof model>>;
   mutate?: (raw: string) => Promise<AdaptiveNutritionMutationResult>;
   lookup?: () => Promise<AdaptiveNutritionMutationResult>;
   exact?: (receiptValue: AdaptiveNutritionReceiptV1) => Promise<AdaptiveNutritionReadResult>;
@@ -87,7 +88,10 @@ function transport(input: {
         return { accountId, generation };
       },
       endSession() { calls.end += 1; },
-      async readCurrent() { calls.current += 1; return input.current ? input.current() : model(); },
+      async readCurrent(session: AdaptiveNutritionRuntimeSession, selectionId: string) {
+        calls.current += 1;
+        return input.current ? input.current(session, selectionId) : model({ selectionId });
+      },
       async readExact(_session: AdaptiveNutritionRuntimeSession, _selection: string, value: AdaptiveNutritionReceiptV1) {
         calls.exact += 1;
         return input.exact ? input.exact(value) : model({ exactOperationId: value.operationId });
@@ -308,6 +312,58 @@ test('thrown mutation, lookup and exact transports keep the account-scoped opera
   assert.equal(lookupAttempts, 3);
   assert.equal(exactAttempts, 2);
   controller.stop();
+});
+
+test('late receipt binding checks cannot overwrite a newer account state or its quarantined intent', async (t) => {
+  for (const matches of [true, false]) {
+    for (const returnToA of [false, true]) {
+      await t.test(`${matches ? 'valid' : 'invalid'} receipt after A→B${returnToA ? '→A' : ''}`, async () => {
+        let raw = '';
+        let matcherCalls = 0;
+        const bindingCheck = deferred<boolean>();
+        const matcherStarted = deferred<void>();
+        const mock = transport({
+          mutate: async (value) => { raw = value; return { kind: 'unknown' }; },
+          lookup: async () => receipt('accepted', await adaptiveNutritionSha256HexV1(
+            decodeAdaptiveNutritionWireEnvelopeV1(raw).canonicalBytes)),
+        });
+        const matcher: typeof adaptiveNutritionReceiptMatchesRequestV1 = async (value, request) => {
+          matcherCalls += 1;
+          matcherStarted.resolve();
+          return matcherCalls === 1
+            ? bindingCheck.promise
+            : adaptiveNutritionReceiptMatchesRequestV1(value, request);
+        };
+        const controller = new AdaptiveNutritionTodayRuntimeController(mock.api, () => ids.key, matcher);
+        await controller.start(ids.accountA, ids.selectionA, today);
+        await controller.skip(ids.slot);
+        const originalPending = controller.snapshot().pending;
+
+        const recoveryA = controller.resolveUnknown();
+        await matcherStarted.promise;
+        assert.equal(matcherCalls, 1);
+        await controller.start(ids.accountB, ids.selectionB, today);
+        if (returnToA) await controller.start(ids.accountA, ids.selectionA, today);
+        const currentState = controller.snapshot();
+
+        bindingCheck.resolve(matches);
+        await recoveryA;
+        assert.deepEqual(controller.snapshot(), currentState);
+
+        if (!returnToA) {
+          controller.stop();
+          await controller.start(ids.accountA, ids.selectionA, today);
+        }
+        assert.equal(controller.snapshot().phase, 'unknown');
+        assert.deepEqual(controller.snapshot().pending, originalPending);
+        await controller.resolveUnknown();
+        assert.equal(controller.snapshot().phase, 'ready');
+        assert.equal(controller.snapshot().pending, null);
+        assert.equal(mock.calls.mutate.length, 1);
+        controller.stop();
+      });
+    }
+  }
 });
 
 test('stale conflict refreshes but never reports optimistic success', async () => {
