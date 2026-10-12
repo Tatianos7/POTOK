@@ -10,6 +10,7 @@ import {
   type AdaptiveNutritionTodaySlot,
 } from './adaptiveNutritionTodayRuntime';
 import type { AdaptiveNutritionReadModelV1 } from './adaptiveNutritionPersistenceService';
+import { nutritionWeekDates } from '../utils/nutritionWeek';
 export function shouldUseAdaptiveNutritionReadOnlyEntry(
   verifiedPremium: boolean | undefined,
   readGateEnabled = isAdaptiveNutritionReadEnabled(),
@@ -20,6 +21,7 @@ export function shouldUseAdaptiveNutritionReadOnlyEntry(
 export type AdaptiveNutritionReadOnlyEntryPhase =
   | 'idle'
   | 'loading'
+  | 'pending_generation'
   | 'ready'
   | 'no_active_plan'
   | 'ambiguous'
@@ -32,6 +34,8 @@ export interface AdaptiveNutritionReadOnlyEntryState {
   today: string | null;
   timeZone: string | null;
   selectionId: string | null;
+  weekAnchor: string | null;
+  goalRevision: string | null;
   model: AdaptiveNutritionReadModelV1 | null;
   slots: AdaptiveNutritionTodaySlot[];
 }
@@ -43,15 +47,24 @@ type Listener = (state: AdaptiveNutritionReadOnlyEntryState) => void;
 function initialState(): AdaptiveNutritionReadOnlyEntryState {
   return {
     phase: 'idle', accountId: null, today: null, timeZone: null,
-    selectionId: null, model: null, slots: [],
+    selectionId: null, weekAnchor: null, goalRevision: null, model: null, slots: [],
   };
 }
 
-function terminalPhase(result: Exclude<AdaptiveNutritionDiscoveryResult, { kind: 'ready' }>): AdaptiveNutritionReadOnlyEntryPhase {
+function terminalPhase(result: Exclude<AdaptiveNutritionDiscoveryResult,
+{ kind: 'ready' } | { kind: 'pending_generation' }>): AdaptiveNutritionReadOnlyEntryPhase {
   if (result.kind === 'no_active_plan') return 'no_active_plan';
   if (result.kind === 'ambiguous') return 'ambiguous';
   if (result.kind === 'denied') return 'denied';
   return 'unavailable';
+}
+
+function currentWeekAnchor(today: string): string | null {
+  try {
+    return nutritionWeekDates(today)[0] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export class AdaptiveNutritionReadOnlyEntryController {
@@ -95,9 +108,34 @@ export class AdaptiveNutritionReadOnlyEntryController {
 
     const discovery = await this.transport.discoverCurrent(session, timeZone);
     if (token !== this.generation || this.session !== session) return;
+    if (discovery.kind === 'pending_generation') {
+      if (discovery.weekAnchor !== currentWeekAnchor(today)) {
+        this.publish({
+          ...this.state,
+          phase: 'unavailable',
+          selectionId: null,
+          weekAnchor: null,
+          goalRevision: null,
+          model: null,
+          slots: [],
+        });
+        return;
+      }
+      this.publish({
+        ...this.state,
+        phase: 'pending_generation',
+        selectionId: discovery.selectionId,
+        weekAnchor: discovery.weekAnchor,
+        goalRevision: discovery.goalRevision,
+        model: null,
+        slots: [],
+      });
+      return;
+    }
     if (discovery.kind !== 'ready') {
       this.publish({
-        ...this.state, phase: terminalPhase(discovery), selectionId: null, model: null, slots: [],
+        ...this.state, phase: terminalPhase(discovery), selectionId: null, weekAnchor: null,
+        goalRevision: null, model: null, slots: [],
       });
       return;
     }
@@ -106,19 +144,26 @@ export class AdaptiveNutritionReadOnlyEntryController {
     if (token !== this.generation || this.session !== session) return;
     if (read.kind !== 'ready') {
       const phase = read.kind === 'denied' ? 'denied' : 'unavailable';
-      this.publish({ ...this.state, phase, selectionId: discovery.selectionId, model: null, slots: [] });
+      this.publish({
+        ...this.state, phase, selectionId: discovery.selectionId, weekAnchor: discovery.weekAnchor,
+        goalRevision: null, model: null, slots: [],
+      });
       return;
     }
     const slots = adaptiveNutritionTodaySlots(read, today);
     if (!slots || read.selectionId !== discovery.selectionId
         || read.weekAnchor !== discovery.weekAnchor || read.timeZone !== discovery.timeZone
         || read.status !== 'active') {
-      this.publish({ ...this.state, phase: 'unavailable', selectionId: discovery.selectionId, model: null, slots: [] });
+      this.publish({
+        ...this.state, phase: 'unavailable', selectionId: discovery.selectionId,
+        weekAnchor: discovery.weekAnchor, goalRevision: null, model: null, slots: [],
+      });
       return;
     }
     this.publish({
       phase: 'ready', accountId, today, timeZone,
-      selectionId: discovery.selectionId, model: read, slots,
+      selectionId: discovery.selectionId, weekAnchor: discovery.weekAnchor,
+      goalRevision: read.goalRevision, model: read, slots,
     });
   }
 
