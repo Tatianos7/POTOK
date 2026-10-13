@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { auditCuratedRecipePublicationV1, curatedRecipePublicationContractV1,
+import { auditCuratedRecipePublicationV1, compileCuratedRecipePublicationV1, curatedRecipePublicationContractV1,
   type CuratedRecipeAuthoringV1 } from '../../src/utils/curatedRecipePublicationV1';
 
 const path = new URL('../../docs/premium/retained-sources/p5-03b/source-package-v1.json', import.meta.url);
@@ -126,4 +126,82 @@ test('P5-03B real water projection fails closed on nonfood approval and nutritio
   assert.equal(p.statuses.WATER_COMPONENT_READY, false);
   assert.equal(p.statuses.SOURCE_DATA_READY_FOR_ISSUANCE_INPUT, false);
   assert.equal(p.statuses.CAN_ISSUE_REAL_REVIEWED_EVIDENCE, false); assert.equal(p.statuses.CAN_ASSEMBLE, false);
+});
+
+function explicitWaterZero(water: { identity: Record<string, unknown>;
+  sourceCandidate: { recordId: string; version: string; basis: string;
+    sourceFacts: Record<string, unknown>; fieldMappings: Record<string, string>; units: Record<string, string> } }) {
+  const i = water.identity, s = water.sourceCandidate;
+  if (i.referenceIdentity !== 'ordinary plain as-used potable tap drinking water'
+    || i.foodState !== 'as-sold' || i.usageState !== 'as-used potable water before cooking'
+    || ['sugarOrOtherAdditives', 'mineralWater', 'carbonated', 'flavored'].some(k => i[k] !== false)
+    || s.recordId !== 'NDB 14411' || s.version !== 'SR Release 28 (2015)' || s.basis !== 'PER_100_G_EDIBLE') {
+    throw new Error('INAPPLICABLE_WATER_SOURCE');
+  }
+  for (const [target, source] of [['calories', 'calories'], ['protein', 'protein'],
+    ['fat', 'fat'], ['carbs', 'totalCarbohydrate'], ['fiber', 'fiber']]) {
+    const value = s.sourceFacts[source];
+    if (typeof value !== 'string' || !/^0(?:\.0+)?$/.test(value)
+      || !s.fieldMappings[target] || s.units[target] !== (target === 'calories' ? 'kcal' : 'g')) {
+      throw new Error('EXPLICIT_ZERO_PROOF_REQUIRED');
+    }
+  }
+  return { calories: '0.000', protein: '0.000', fat: '0.000', carbs: '0.000', fiber: '0.000' };
+}
+
+test('water candidate binds official SR28 numeric zero record, exact identity and retained bytes', async () => {
+  const p = await loadPackage(); const w = p.water; const s = w.sourceCandidate;
+  assert.deepEqual(explicitWaterZero(w), s.mappedCandidate);
+  assert.equal(s.officialTitle, 'Beverages, water, tap, drinking (1)');
+  assert.equal(s.ndbId, '14411'); assert.equal(s.fdcId, null);
+  assert.equal(s.dataType, 'USDA Standard Reference food-composition record');
+  assert.equal(s.source.hashScope, 'RETAINED_UTF8_EXCERPT_ONLY');
+  const bytes = await readFile(new URL(`../../${s.source.retainedPath}`, import.meta.url));
+  assert.equal(bytes.length, s.source.byteLength); assert.equal(sha(bytes), s.source.sha256);
+  assert.match(bytes.toString('utf8'), /Fiber, total dietary: 0.0 g/);
+  assert.equal(w.massG, '200'); assert.equal(p.recipe.ingredients[1].amount_g, 200);
+  assert.deepEqual(p.foodInputCandidate.sourceCandidateInputTotal, p.foodInputCandidate.foodSubtotal);
+  assert.equal(w.confirmedNutritionContribution, null);
+  assert.equal(w.approvedNonFoodDefinitionBinding, null);
+  assert.equal(w.approvedNonFoodEvidenceRef, null);
+  const compiled = compileCuratedRecipePublicationV1(waterProjection(), {
+    recipeId: '', recipeRevisionId: '', portionRevisionId: '', eligibilityRevisionId: '',
+    assignedServingsIncrement: '', components: { water: { componentId: '',
+      normalizationEvidenceId: null, approvedNonFoodDefinitionId: null } },
+  });
+  assert.equal(compiled.recipeRevision, null); assert.equal(compiled.manifestTuple, null);
+
+  assert.equal(w.definitionMechanism.currentAuthorizedIssuer, null);
+  assert.equal(w.definitionMechanism.serverIssuerFound, false);
+  assert.equal(w.manifestIngredientIdsIncludesWater, false);
+  assert.equal(p.statuses.WATER_SOURCE_CANDIDATE_READY, true);
+  assert.equal(p.statuses.WATER_DEFINITION_CONTRACT_AVAILABLE, false);
+  assert.equal(p.statuses.WATER_COMPONENT_READY, false);
+  assert.equal(p.statuses.SOURCE_DATA_READY_FOR_ISSUANCE_INPUT, false);
+  assert.equal(p.statuses.PHYSICAL_COOKING_REQUIRED, true);
+  assert.equal(p.statuses.CAN_ISSUE_REAL_REVIEWED_EVIDENCE, false);
+  assert.equal(p.statuses.CAN_ASSEMBLE, false);
+  const raw = JSON.stringify(w);
+  assert.equal(/[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}/.test(raw), false);
+  await parentBinding(p);
+});
+
+test('water source rejects blank, missing, implicit zero and incompatible identity/basis/units', async () => {
+  const p = await loadPackage(); const w = p.water;
+  for (const field of ['calories', 'protein', 'fat', 'totalCarbohydrate', 'fiber']) {
+    for (const value of [null, '', '—', 0, '0.1', undefined]) {
+      const candidate = structuredClone(w); candidate.sourceCandidate.sourceFacts[field] = value;
+      assert.throws(() => explicitWaterZero(candidate));
+    }
+  }
+  for (const field of ['sugarOrOtherAdditives', 'mineralWater', 'carbonated', 'flavored']) {
+    const candidate = structuredClone(w); candidate.identity[field] = true;
+    assert.throws(() => explicitWaterZero(candidate));
+  }
+  for (const change of [(c: typeof w) => { c.sourceCandidate.units.fiber = 'mg'; },
+    (c: typeof w) => { c.sourceCandidate.basis = 'PER_SERVING'; },
+    (c: typeof w) => { c.sourceCandidate.recordId = 'OTHER'; },
+    (c: typeof w) => { delete c.sourceCandidate.fieldMappings.fiber; }]) {
+    const candidate = structuredClone(w); change(candidate); assert.throws(() => explicitWaterZero(candidate));
+  }
 });

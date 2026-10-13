@@ -122,8 +122,97 @@
     "approvedNonFoodEvidenceRef": null,
     "reviewedNutritionEvidenceRef": null,
     "confirmedNutritionContribution": null,
-    "status": "BLOCKED_MISSING_APPROVED_NON_FOOD_ZERO_NUTRITION_BINDING",
-    "reason": "Typed path exists; it does not prove water definition or zero. Per-component nutrition proof and explicit definition/evidence binding required."
+    "status": "SOURCE_READY_BINDING_BLOCKED_NO_SERVER_ISSUER",
+    "reason": "Typed path exists; it does not prove water definition or zero. Per-component nutrition proof and explicit definition/evidence binding required.",
+    "identity": {
+      "displayName": "Вода",
+      "referenceIdentity": "ordinary plain as-used potable tap drinking water",
+      "foodState": "as-sold",
+      "usageState": "as-used potable water before cooking",
+      "sugarOrOtherAdditives": false,
+      "mineralWater": false,
+      "carbonated": false,
+      "flavored": false,
+      "scope": "plain potable tap water only; not all bottled waters or arbitrary liquids",
+      "internalTypeMeaning": "approved_non_food is typed recipe coverage, not literal classification as non-food"
+    },
+    "sourceCandidate": {
+      "status": "PREPARED_NOT_ISSUED",
+      "officialTitle": "Beverages, water, tap, drinking (1)",
+      "recordId": "NDB 14411",
+      "ndbId": "14411",
+      "fdcId": null,
+      "fdcLead": {
+        "id": 173647,
+        "status": "SECONDARY_DISCOVERY_ONLY_OFFICIAL_API_UNAVAILABLE_NOT_USED_AS_BINDING"
+      },
+      "dataType": "USDA Standard Reference food-composition record",
+      "version": "SR Release 28 (2015)",
+      "basis": "PER_100_G_EDIBLE",
+      "units": {
+        "calories": "kcal",
+        "protein": "g",
+        "fat": "g",
+        "carbs": "g",
+        "fiber": "g"
+      },
+      "sourceFacts": {
+        "calories": "0",
+        "protein": "0.00",
+        "fat": "0.00",
+        "totalCarbohydrate": "0.00",
+        "fiber": "0.0",
+        "carbohydrateSemantics": "TOTAL_CARBOHYDRATE_BY_DIFFERENCE_INCLUDING_FIBER"
+      },
+      "mappedCandidate": {
+        "calories": "0.000",
+        "protein": "0.000",
+        "fat": "0.000",
+        "carbs": "0.000",
+        "fiber": "0.000"
+      },
+      "mappingPolicyVersion": "potok-source-total-including-fiber-to-available-v1",
+      "source": {
+        "provider": "USDA Agricultural Research Service",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg14.pdf",
+        "locator": "PDF page 752, zero-based751, NDB14411 Mean per100g edible column",
+        "retrievedDate": "2026-10-13",
+        "verification": "Direct official PDF text and page screenshot; all5 means explicitly numeric, not empty fields; NC/BFZN derivations are reported source data, not measured-zero claims",
+        "retainedPath": "docs/premium/retained-sources/p5-03b/water-usda-sr28-14411.txt",
+        "captureKind": "short-retained-excerpt",
+        "byteLength": 434,
+        "sha256": "5a3e857547b56df38ffebf1d0ce882a7eea8b8111bdb4d07b7422c8d79922b26",
+        "hashScope": "RETAINED_UTF8_EXCERPT_ONLY",
+        "upstreamDocumentSha256": null
+      },
+      "fieldMappings": {
+        "calories": "Energy kcal Mean0",
+        "protein": "Protein g Mean0.00",
+        "fat": "Total lipid (fat) g Mean0.00",
+        "carbs": "Carbohydrate by difference g Mean0.00 minus fiber g Mean0.0, parent policy",
+        "fiber": "Fiber total dietary g Mean0.0"
+      },
+      "applicability": "generic potable tap drinking water as used, without additives; mineral/carbonated/flavored alternatives excluded"
+    },
+    "definitionMechanism": {
+      "consumerRepresentationAvailable": true,
+      "serverIssuerFound": false,
+      "approvedDefinitionContractAvailable": false,
+      "currentAuthorizedIssuer": null,
+      "immutableDefinitionStore": null,
+      "reviewHistory": null,
+      "receipts": null,
+      "currentnessReader": null,
+      "retentionPolicy": null,
+      "auditScope": "Entire checked repository tree: src/scripts/docs/supabase/reports; excludes node_modules and git internals. Non-food import rejection is unrelated."
+    },
+    "sourceCandidateContribution": {
+      "calories": "0.000",
+      "protein": "0.000",
+      "fat": "0.000",
+      "carbs": "0.000",
+      "fiber": "0.000"
+    }
   },
   "foodInputCandidate": {
     "status": "REFERENCE_INPUT_SUBTOTAL_NOT_REVIEWED_RECIPE",
@@ -156,7 +245,21 @@
     },
     "waterContribution": null,
     "completeRecipeNutrition": null,
-    "cookingLossesOrRetentionAssumed": false
+    "cookingLossesOrRetentionAssumed": false,
+    "waterSourceCandidateContribution": {
+      "calories": "0.000",
+      "protein": "0.000",
+      "fat": "0.000",
+      "carbs": "0.000",
+      "fiber": "0.000"
+    },
+    "sourceCandidateInputTotal": {
+      "calories": "251.900",
+      "protein": "6.887",
+      "fat": "3.464",
+      "carbs": "42.492",
+      "fiber": "7.930"
+    }
   },
   "physicalProtocol": {
     "status": "FUTURE_NOT_EXECUTED",
@@ -204,7 +307,9 @@
     "SOURCE_DATA_READY_FOR_ISSUANCE_INPUT": false,
     "PHYSICAL_COOKING_REQUIRED": true,
     "CAN_ISSUE_REAL_REVIEWED_EVIDENCE": false,
-    "CAN_ASSEMBLE": false
+    "CAN_ASSEMBLE": false,
+    "WATER_SOURCE_CANDIDATE_READY": true,
+    "WATER_DEFINITION_CONTRACT_AVAILABLE": false
   },
-  "nextAction": "Prepare approved water non-food definition and zero-nutrition evidence/binding through existing review/publication boundary; no fake IDs/approval."
+  "nextAction": "Separate server-contract task for non-food definition/evidence issuer, review/receipt/currentness/retention and atomic approval; do not mint IDs here."
 }

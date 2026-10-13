@@ -16,14 +16,15 @@ requires plain dry oats without added milk, sugar, flavor or filler; it does not
 claim that every commercial oat product matches or is gluten-free. Oat source is
 prepared for issuance INPUT, with no canonical UUID/revision/event/receipt minted.
 
-Preferred water path is existing approved_non_food representation, but no real water
-approval/definition or reviewed zero-nutrition evidence is available. Water component
+Preferred water path is existing approved_non_food representation. USDA SR28
+NDB14411 provides an explicit five-field zero source candidate; no server water
+definition/evidence issuer or approved binding is available. Water component
 is NOT_READY; whole source-input package remains NO-GO. The input food subtotal
 is reference arithmetic, not reviewed recipe nutrition or a complete water-inclusive
 recipe calculation. PHYSICAL_COOKING_REQUIRED=true.
 
-Next action: prepare a real water non-food definition and explicit zero-nutrition
-review evidence/binding through the existing review/publication boundary. Do not
+Next action: separate server-contract task for nonfood definition/evidence issuance,
+review/receipt/currentness/retention, preserving existing consumer representation. Do not
 infer approval from zeros or mint identifiers. The actual approval/issuance is separate.
 
 [Audit and future cooking protocol](p5-03b-oatmeal-apple-evidence-audit.md).

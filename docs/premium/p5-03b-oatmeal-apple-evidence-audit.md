@@ -8,11 +8,11 @@ are unchanged. Owner selection is recorded separately from source review and iss
 | --- | --- | --- | --- | --- |
 | Apple | Parent accepted USDA SR27 NDB09003, raw with skin, core/stem excluded; exact parent package SHA and retained bindings | 52 kcal /0.26 protein /0.17 fat /13.81 total carbs /2.4 fiber → carbs11.41, calories unchanged | 120g after core/stem removal, added after cooking: 62.400 kcal /0.312 protein /0.204 fat /13.692 available carbs /2.880 fiber | APPLE_SOURCE_REUSED; source candidate only |
 | Oat flakes | USDA SR28 (2015), NDB08120, generic plain regular/quick rolled oats, not fortified, dry; 100g edible, refuse0%; direct PDF/screenshot | 379 kcal /13.15 protein /6.52 fat /67.70 total carbs /10.1 fiber → carbs57.60, calories unchanged | 50g dry: 189.500 kcal /6.575 protein /3.260 fat /28.800 available carbs /5.050 fiber | OAT_SOURCE_READY_FOR_ISSUANCE_INPUT=true; no server evidence |
-| Water | 200g cooking input; proposed existing approved_non_food path; real definition/evidence missing | No asserted zero nutrient values | confirmed nutrition contribution=null; mass input200g; retention unknown | WATER_COMPONENT_READY=false |
+| Water | USDA SR28 NDB14411 plain tap drinking, 100g edible; exact as-used potable identity below | Explicit source calories/protein/fat/total carbs/fiber all zero; mapped available carbs0 | 200g source-candidate zero contribution; approved contribution remains null; retention unknown | WATER_SOURCE_CANDIDATE_READY=true; WATER_COMPONENT_READY=false |
 
 Food subtotal: **251.900 kcal, protein6.887g, fat3.464g, available carbs42.492g,
-fiber7.930g**. This sums declared edible food inputs only. Water contribution and
-complete recipe nutrition remain null; cooking losses or water retention are not
+fiber7.930g**. This sums declared edible food inputs only. Approved water contribution and
+reviewed recipe nutrition remain null; source-candidate water contribution is now explicitly zero; cooking losses or water retention are not
 assumed. Input mass sum370g is not finished yield.
 
 ## Sources and mappings
@@ -79,13 +79,96 @@ Two client reads are not a batch export; exporter is not implemented here.
 | PILOT_SELECTED | true |
 | APPLE_SOURCE_REUSED | true |
 | OAT_SOURCE_READY_FOR_ISSUANCE_INPUT | true (source candidate scope) |
+| WATER_SOURCE_CANDIDATE_READY | true |
+| WATER_DEFINITION_CONTRACT_AVAILABLE | false (issuer contract absent; consumer representation exists) |
 | WATER_COMPONENT_READY | false |
 | SOURCE_DATA_READY_FOR_ISSUANCE_INPUT | false |
 | PHYSICAL_COOKING_REQUIRED | true |
 | CAN_ISSUE_REAL_REVIEWED_EVIDENCE | false |
 | CAN_ASSEMBLE | false |
 
-Nearest blocker and one next action: prepare approved water non-food definition and
-zero-nutrition evidence/binding through existing review/publication boundary. Do not
+Nearest blocker and one next action: separate server-contract task implementing
+non-food definition/evidence issuance, review/receipt/currentness/retention. There is
+no existing non-food issuer to dispatch to. Do not
 invent approvals/IDs. No Supabase operations, cooking, runtime, generator or publish.
 PLAN != FACT.
+
+## Water evidence follow-up
+
+Exact working identity: ordinary as-used potable tap drinking water, without sugar
+or additives, non-mineral, non-carbonated and unflavored. User label stays «Вода».
+The internal approved_non_food type is a typed recipe representation; it does not
+claim that water literally is not food. Source scope does not cover arbitrary bottled,
+mineral, sparkling or flavored water, nor certify local water microbiological safety.
+
+Official [USDA SR28 beverage report](https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg14.pdf),
+Release28(2015), PDF p752/zero-based751, NDB14411: **Beverages, water, tap, drinking (1)**.
+Direct text and screenshot confirm Mean per100g edible: energy0kcal, protein0.00g,
+fat0.00g, carbohydrate by difference0.00g, total dietary fiber0.0g. These are explicit
+reported numeric values, not blank fields or Number of Data Points zeros. Report
+codes are NC for energy/carbohydrate and BFZN for protein/fat/fiber; no claim of
+new laboratory measurements is made. USDA's reported zeros are retained as given.
+Parent carbs policy applies0−0=0, calories unchanged. Water at200g adds zero only
+in the source-candidate calculation; published/approved contribution remains null.
+
+FDC173647 was located as a secondary discovery lead, but official API access failed.
+It is NOT the accepted identifier/publication context. The primary binding is NDB14411
+in verified SR28, an allowed alternate official primary source. No unverified FDC
+publication date/data type is invented. Retained UTF8 excerpt length/hash/URL/date
+are in JSON; hash covers only excerpt. Full upstream PDF hash SKIP (not retained).
+
+## Complete repository approved_non_food mechanism inventory
+
+Search: rg of approved_non_food, approvedNonFoodEvidenceRef,
+approvedNonFoodDefinitionId, nonFoodBindings plus case-insensitive nonfood/non-nutritive/
+component-definition across all tracked project directories. Node_modules/git excluded.
+
+| Location/use | What exists | What it does not establish |
+| --- | --- | --- |
+| src/utils/adaptiveNutritionGraphV1.ts:24,211 | Typed definition UUID in Graph ingredient, strict shape/UUID decode | No identity lookup, issuer, review, authority or currentness |
+| src/utils/curatedRecipePublicationV1.ts:87,91,161,301,496,540 | Authoring nonfood variant, approval-ref requirement, assigned definition ID boundary and compiler projection | Does not mint/approve IDs or verify who issued a reference |
+| src/utils/reviewedRuntimeRecipePublicationEvidenceV1.ts:21,85,101–115 | Required sorted unique nonFoodBindings, exact component/definition matching and food-only ingredientIds; pinned publication digest/source validation | A text ref is not auth or append-only history; no live definition reader |
+| src/utils/__tests__/curatedRecipePublicationV1.test.ts and reviewedRuntimeRecipePublicationEvidenceV1.test.ts | Synthetic acceptance/rejection/missing/wrong-definition/food-namespace/mixed coverage tests | Fixtures cannot issue real water approval |
+| docs/premium/reviewed-runtime-recipe-publication-evidence-v1.md:41–57; graph-v2-missing-authorities-design-v1.md:150 | Consumer design/typed evidence documentation | No approved issuance/storage/lifecycle implementation |
+| scripts/contracts/P5-03/P5-03B and source/audit docs | Honest unresolved candidates/reference projections | No server artifacts |
+| scripts/open-food-facts and catalog reports | non_food_category import rejection | Unrelated to recipe approved_non_food; not an issuer |
+| supabase SQL and docs/premium/drafts | No matching nonfood definition issuer/table/event/receipt/current reader found | Cannot claim approval mechanism or authorize a caller |
+
+**Only consumer representation/validators exist.** No dedicated server issuer,
+trusted nonfood authority decision, immutable definition/evidence store, append-only
+review history, receipt recovery/current reader, invalidation head or retention policy
+was found. Current right to issue cannot be established. General FOOD issuer work
+in parent Draft dependencies is not a nonfood definition issuer: food canonical
+revisions cannot silently become nonfood definitions. Parent publication digests bind
+supplied references but do not establish their provenance or live usability.
+
+## Minimal separate server contract — design proposal, not implementation
+
+- Input: strict duplicate-aware raw request; original idempotency key/canonical digest;
+  exact water identity/exclusions/state/basis/units; all5 explicit values; retained
+  source bytes/hash/mappings; policy version; expected definition head/revision/digest
+  and review action. No caller-supplied approved status/actor/time.
+- Authority: independently approve who may review/issue. Proposed reuse of existing
+  verified owner/admin attestation/session boundary, without is_admin/client literals
+  or new authority ledger. This permission design is not approved/implemented here;
+  recheck expiry/revocation after locks and immediately before issuance.
+- Immutable output: server-owned definition identity and separate evidence revision,
+  canonical bytes/digest, exact source/policy binding, append-only approval/rejection/
+  invalidation event, server timestamp and authority provenance. IDs minted only by
+  authorized transaction; immutable historical revisions survive head changes.
+- Receipt: atomic actor-scoped key+digest receipt bound to exact event/revision; same
+  key+different payload conflicts. Lost response stays UNKNOWN; recover original
+  receipt, never invent a replacement key or blind retry.
+- Currentness: authenticated exact reader verifies current head, identity/state,
+  source/revision bindings and invalidation/usability; publication must pin and
+  recheck this authority in the same transaction as typed ingredient coverage.
+- Atomicity: one deterministic lock order; CAS head; definition/evidence/event/receipt
+  and head update commit or roll back together. Reject source drift, stale head,
+  revoked authority, missing proof and mismatched namespace; no partial approval.
+- Retention: owner-reviewed retention/erasure/access policy for retained sources,
+  authority subjects, receipts and immutable history; no unreviewed cascade or
+  permanent personal audit subject. Apply/auth/concurrency/rollback/UNKNOWN acceptance
+  and owner approval remain separate prerequisites.
+
+No parallel approval system or server implementation added. Physical cooking,
+recipe/portion/safety/eligibility and batch exporter are not advanced. PLAN != FACT.
