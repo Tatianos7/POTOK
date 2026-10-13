@@ -107,7 +107,7 @@ function waterProjection(): CuratedRecipeAuthoringV1 {
     status: 'NEEDS_REVIEW', baseYield: { servings: '1.000', servingLabel: 'порция', totalWeightG: null, servingWeightG: null },
     nutrition, ingredients: [{ ingredientRowId: 'water', sortOrder: 0, nameRu: 'Вода', nameEn: null,
       amount: '200.000', unit: 'g', weightG: '200.000', optional: false, preparationNote: null,
-      state: 'unknown', componentKind: 'approved_non_food', foodStableId: null, canonicalStatus: 'NOT_APPLICABLE',
+      state: 'as-sold', componentKind: 'approved_non_food', foodStableId: null, canonicalStatus: 'NOT_APPLICABLE',
       canonical: null, approvedNonFoodEvidenceRef: null, normalizationEvidenceRef: null, nutrition,
       scalingMode: null, discreteIncrement: null }], steps: [], tags: [],
     eligibility: { collectionVisible: false, planEligible: false, allowedMealTypes: ['breakfast'] },
