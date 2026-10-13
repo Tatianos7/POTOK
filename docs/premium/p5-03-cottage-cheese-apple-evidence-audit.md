@@ -169,8 +169,8 @@ identity/state/units/basis, retained source SHA bindings and nonnegative exact d
 result. Unknown inclusion semantics rejects mapping. Historical diary/Graph v1 wire
 and consumers are unchanged.
 
-Official sources: [EEC TR TS 022/2011, Appendix 2](https://eec.eaeunion.org/upload/medialibrary/9db/TrTsPishevkaMarkirovka.pdf)
-separates available carbohydrates and dietary fiber; [USDA FAQ](https://fdc.nal.usda.gov/faq/)
+Official sources: [EEC TR TS 022/2011, article 4 / 4.9 / 15](https://eec.eaeunion.org/upload/medialibrary/9db/TrTsPishevkaMarkirovka.pdf)
+explicitly excludes dietary fiber from carbohydrate determination; [USDA FAQ](https://fdc.nal.usda.gov/faq/)
 defines carbohydrate by difference without subtracting fiber. Retained short excerpts/
 factual summary, versions, dates and exact SHA-256 are in the source JSON. This policy
 is a local source-candidate policy, not a runtime evidence layer or activated converter.
@@ -203,8 +203,7 @@ nutrition fields are null; branded facts stay under `brandedExample`.
 | Recipe review | NOT_REVIEWED | NOT_REVIEWED | false |
 | Assembly eligibility | BLOCKED | BLOCKED | false |
 
-One next step: obtain authorized Skurikhin/Tutelyan 2002 exact generic curd row,
-column headings and symbol/method legend for independent source review. No owner
+Previous acquisition recommendation superseded by the final official resolution pass below. No owner
 export fabrication or repeated semantics/identity decision is requested; no pilot
 replacement is automatic. CAN_ISSUE_REAL_REVIEWED_EVIDENCE=false, CAN_ASSEMBLE=false.
 
@@ -229,3 +228,51 @@ later publication must revalidate currentness or pin an approved freshness contr
 a capture is not perpetually current. Two sequential client reads cannot prove this
 coherent export. Implementation, transport/auth/concurrency acceptance and apply/issuance
 approvals remain separate gates; no new exporter contract is activated here.
+
+## Final official source-resolution pass — 2026-10-13
+
+**NO-GO; generic-curd search stopped.** Official web.ion.ru direct HTTPS request
+returned timeout; HTTP/directory fallbacks were inaccessible; bounded curl failed to
+connect to the configured proxy. No database payload was obtained. Publisher
+attribution to ФГБУН «ФИЦ питания и биотехнологии» is supported by its official
+ion.ru site; database version, row/code, headings, basis, nutrient values, fiber type,
+legend and carbs semantics remain unverified/null. The requested «Крестьянский» row
+is a user-provided lead, not a directly read row. Its generic applicability is NOT_ESTABLISHED:
+fat percentage alone cannot establish technology/composition equivalence to any-brand curd.
+
+[RSL catalogue](https://search.rsl.ru/ru/record/01001844793) directly confirms title,
+Institute of Nutrition RAMN, editors, publisher/year, ISBN and book-level 100 g edible
+basis. The catalogue provides reading-room/fragment-order links, not an open page
+viewer. Conventional viewer endpoint was inaccessible. Exact curd row, columns,
+legend and carbohydrate definitions remain unavailable. Only minimal bibliographic
+facts were retained; no protected full book was saved. No purchase/order/contact sent.
+
+The official [EEC adopted PDF](https://eec.eaeunion.org/upload/medialibrary/9db/TrTsPishevkaMarkirovka.pdf)
+article 4, part 4.9, paragraph 15, PDF p17, directly excludes dietary fiber.
+Matching paragraph checked in identified consolidated edition dated 22.04.2024
+(ConsultantPlus); the official PDF is labelled adopted base 09.12.2011, not a current
+consolidated PDF or a draft amendment. The retained excerpt now pins that exact
+paragraph. Full upstream PDF SHA: SKIP (proxy unavailable). Source arithmetic
+13.81 − 2.4 = 11.41 is a separate approved mapping policy, not a regulatory formula
+or change to source calories. Exact retained hashes are in the JSON manifest.
+
+## Existing fallback candidates — recommendations, not replacements
+
+All rows below come from unchanged `data/recipes/recipe-candidates-v1.json`.
+Sources listed are evidence leads, not completed reviewed food packages.
+
+| Candidate | Authored ingredients / masses | Sources and fiber coverage | Portions / yield | Remaining blockers |
+| --- | --- | --- | --- | --- |
+| **oatmeal_with_apple (recommended)** | oat_flakes 50 g; water 200 g; apple 120 g | Accepted apple SR27 source covers fiber 2.4. USDA SR28 NDB08120 plain rolled oats is a primary exact-state lead; complete retained oat fields/fiber not yet reviewed. Water needs approved non-food or food binding, not invented zero | 1 authored serving; measured cooked yield/portion mass absent; 370 g inputs is not yield | Dry oat identity/mapping/full field capture; water evidence; cooking losses/retention; gluten/safety/portion/eligibility/culinary review |
+| buckwheat_with_carrot | whole_buckwheat_groats 120 g; water 300 g; carrot 160 g; bulb_onion 80 g; sunflower_oil 10 g | USDA SR28 NDB20009 roasted dry buckwheat lead reports fiber 10.3; roasted state versus workbook groats unresolved. USDA vegetable reports can cover carrot/onion; exact retained rows absent. Oil fiber zero and water require direct evidence/binding | 2 authored servings; measured output absent; 670 g inputs is not yield | Five ingredient bindings, roasting/state, oil zero provenance, cooking/yield, recipe/portion/safety/eligibility |
+| tomato_omelet | egg_chicken 120 g; tomato 150 g; sunflower_oil 5 g | USDA primary tomato dietary-fiber analysis available; not a complete five-field food source. Egg/oil zero require direct applicable authoritative rows, not inference | 1 authored serving; measured cooked yield absent; 275 g inputs is not yield | Egg shell/edible mass, cooked losses/state, oil/egg full source coverage, allergen/recipe/portion/eligibility |
+
+Primary fallback leads: [USDA SR28 cereals NDB08120](https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg08.pdf),
+[USDA SR28 grains NDB20009](https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf),
+[USDA-hosted tomato fiber analysis](https://www.ars.usda.gov/ARSUserFiles/80400525/Articles/jfca15_715-723.pdf).
+
+One next action: owner decides whether to select existing `oatmeal_with_apple` as the
+next pilot. It reuses accepted apple and adds one main food identity; evidence and
+recipe gates still need work. Original pilot remains unchanged; no new package begins.
+SOURCE_DATA_READY_FOR_ISSUANCE_INPUT=false; CAN_ISSUE_REAL_REVIEWED_EVIDENCE=false;
+CAN_ASSEMBLE=false. Batch exporter remains separate. PLAN != FACT.

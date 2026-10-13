@@ -223,3 +223,29 @@ test('recorded mapping policy binds apple facts and rejects unknown/incompatible
   assert.equal(pkg.readiness.CAN_ISSUE_REAL_REVIEWED_EVIDENCE, false);
   assert.equal(pkg.readiness.CAN_ASSEMBLE, false);
 });
+
+
+test('official-source access failure cannot turn the peasant curd lead into generic evidence', async () => {
+  const pkg = JSON.parse(await readFile(sourcePackagePath, 'utf8'));
+  const pass = pkg.officialResolutionPass;
+  assert.equal(pass.status, 'NO_GO_SEARCH_STOPPED');
+  assert.equal(pass.instituteDatabase.directResponseRetained, false);
+  for (const field of ['datasetVersion', 'rowCode', 'basis', 'columnNames', 'fiberValue',
+    'fiberType', 'symbolLegend', 'carbsSemantics', 'nutrition']) {
+    assert.equal(pass.instituteDatabase[field], null, field);
+  }
+  assert.equal(pass.rsl.isbn, '5-94343-028-8');
+  for (const field of ['foodRow', 'headings', 'legend', 'carbsSemantics']) {
+    assert.equal(pass.rsl[field], null, field);
+  }
+  assert.equal(pass.peasantApplicability.status, 'NOT_ESTABLISHED');
+  assert.ok(Object.values(pkg.products[1].proposedNutritionPer100GEdible).every(v => v === null));
+  const normative = pkg.additionalRetainedSources.find((v: { locator?: string }) =>
+    v.locator === 'Article 4 / 4.9 / 15; official PDF page 17');
+  assert.ok(normative);
+  const text = await readFile(new URL(`../../${normative.retainedPath}`, import.meta.url), 'utf8');
+  assert.match(text, /за исключением пищевых волокон/);
+  assert.equal(normative.consolidatedEditionDate, '2024-04-22');
+  assert.equal(pkg.products[0].proposedNutritionPer100GEdible.carbsG, '11.41');
+  assert.equal(pkg.readiness.CAN_ASSEMBLE, false);
+});

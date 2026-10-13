@@ -33,11 +33,44 @@ semantics are unspecified. It is not adopted or pooled with Food Core. The 2002
 Skurikhin/Tutelyan mirror and secondary generic entry do not establish a verified
 primary row. Search stopped; exact checks/reasons are in the source JSON.
 
-One next step: obtain the authorized Skurikhin/Tutelyan 2002 edition, ISBN
-5-94343-028-8, exact generic 5% curd row with column headings and symbol/method
-legend for independent source review. Do not replace the pilot automatically.
+Previous acquisition recommendation is superseded by the final resolution pass below.
 
 [Source JSON and retained bindings](retained-sources/p5-03/source-review-package-v1.json).
 Recipe composition/edible masses, measured yield/serving, portion, safety and eligibility
 remain separate gates. 250 g is input mass sum, not measured yield. Batch exporter
 remains a separate server task. CAN_ISSUE/CAN_ASSEMBLE=false. PLAN != FACT.
+
+## Final official source-resolution pass — 2026-10-13
+
+**NO-GO; generic-curd search stopped.** Official web.ion.ru direct HTTPS request
+returned timeout; HTTP/directory fallbacks were inaccessible; bounded curl failed to
+connect to the configured proxy. No database payload was obtained. Publisher
+attribution to ФГБУН «ФИЦ питания и биотехнологии» is supported by its official
+ion.ru site; database version, row/code, headings, basis, nutrient values, fiber type,
+legend and carbs semantics remain unverified/null. The requested «Крестьянский» row
+is a user-provided lead, not a directly read row. Its generic applicability is NOT_ESTABLISHED:
+fat percentage alone cannot establish technology/composition equivalence to any-brand curd.
+
+[RSL catalogue](https://search.rsl.ru/ru/record/01001844793) directly confirms title,
+Institute of Nutrition RAMN, editors, publisher/year, ISBN and book-level 100 g edible
+basis. The catalogue provides reading-room/fragment-order links, not an open page
+viewer. Conventional viewer endpoint was inaccessible. Exact curd row, columns,
+legend and carbohydrate definitions remain unavailable. Only minimal bibliographic
+facts were retained; no protected full book was saved. No purchase/order/contact sent.
+
+The official [EEC adopted PDF](https://eec.eaeunion.org/upload/medialibrary/9db/TrTsPishevkaMarkirovka.pdf)
+article 4, part 4.9, paragraph 15, PDF p17, directly excludes dietary fiber.
+Matching paragraph checked in identified consolidated edition dated 22.04.2024
+(ConsultantPlus); the official PDF is labelled adopted base 09.12.2011, not a current
+consolidated PDF or a draft amendment. The retained excerpt now pins that exact
+paragraph. Full upstream PDF SHA: SKIP (proxy unavailable). Source arithmetic
+13.81 − 2.4 = 11.41 is a separate approved mapping policy, not a regulatory formula
+or change to source calories. Exact retained hashes are in the JSON manifest.
+
+## Recommended next action
+
+Select existing `oatmeal_with_apple` as the next pilot only by owner decision.
+[Audit fallback table](p5-03-cottage-cheese-apple-evidence-audit.md) compares it with
+buckwheat_with_carrot and tomato_omelet, including source/fiber/yield blockers.
+No recipe was replaced. SOURCE_DATA_READY_FOR_ISSUANCE_INPUT=false;
+CAN_ISSUE_REAL_REVIEWED_EVIDENCE=false; CAN_ASSEMBLE=false. PLAN != FACT.

@@ -65,7 +65,7 @@
         "retainedSourceBindings": [
           "89d79388d19e3013fb7975d67c6a6cf5b4e42cad58fe6fb8fb08c2d81befaaca",
           "2df54b8797988ca8436df4c76735115ec117c8b955c93c3b3e05a7b60ba17a47",
-          "dd783258d3b93f1d1195e2cdcfcfa1d5590083136f2ca7f164fabb69f8f3c2fe"
+          "41d86b1563b1948198500fd2e5c2a3ab077e02983eb60dfe4ab4528214fb502a"
         ],
         "caloriesPolicy": "Keep USDA 52 kcal; no 4/9/4 recalculation"
       },
@@ -232,11 +232,15 @@
       "retainedPath": "docs/premium/retained-sources/p5-03/eaeu-carbohydrate-fiber-excerpt.txt",
       "url": "https://eec.eaeunion.org/upload/medialibrary/9db/TrTsPishevkaMarkirovka.pdf",
       "retrievedDate": "2026-10-13",
-      "byteLength": 117,
-      "sha256": "dd783258d3b93f1d1195e2cdcfcfa1d5590083136f2ca7f164fabb69f8f3c2fe",
-      "captureKind": "short-excerpt",
+      "byteLength": 349,
+      "sha256": "41d86b1563b1948198500fd2e5c2a3ab077e02983eb60dfe4ab4528214fb502a",
+      "captureKind": "short-verbatim-excerpt",
       "upstreamDocumentSha256": null,
-      "sourceRevision": "TR TS 022/2011 adopted Decision 881 of 2011-12-09; official EEC base PDF Appendix 2; not a consolidated current legal edition"
+      "sourceRevision": "Official EEC adopted TR TS 022/2011, Decision 881 of 2011-12-09, article 4 part 4.9 paragraph 15, PDF p17; matching consolidated edition dated 2024-04-22 checked",
+      "locator": "Article 4 / 4.9 / 15; official PDF page 17",
+      "consolidatedEditionUrl": "https://www.consultant.ru/document/cons_doc_LAW_124614/7d4115a5a5ba970bb7bec036de6b97ca7f2a810c/",
+      "consolidatedEditionDate": "2024-04-22",
+      "fullUpstreamHashStatus": "SKIP_PROXY_UNREACHABLE"
     },
     {
       "retainedPath": "docs/premium/retained-sources/p5-03/generic-curd-research-table-excerpt.txt",
@@ -247,6 +251,16 @@
       "captureKind": "short-excerpt",
       "upstreamDocumentSha256": null,
       "sourceRevision": "University-hosted article table 1, PDF p2; issue/year unresolved; NOT ACCEPTED"
+    },
+    {
+      "retainedPath": "docs/premium/retained-sources/p5-03/rsl-01001844793-catalog-facts.txt",
+      "url": "https://search.rsl.ru/ru/record/01001844793",
+      "retrievedDate": "2026-10-13",
+      "byteLength": 590,
+      "sha256": "d9aef5a23d726c567264bc1e94318ead969f56cd5b8cd6cc9b067175425ec1e2",
+      "captureKind": "retained-bibliographic-factual-summary",
+      "sourceRevision": "RSL record 01001844793, book 2002 ISBN 5-94343-028-8",
+      "upstreamDocumentSha256": null
     }
   ],
   "carbsMappingPolicy": {
@@ -264,7 +278,7 @@
     "calories": "PRESERVE_SOURCE_NO_4_9_4",
     "definitionSourceBindings": [
       "2df54b8797988ca8436df4c76735115ec117c8b955c93c3b3e05a7b60ba17a47",
-      "dd783258d3b93f1d1195e2cdcfcfa1d5590083136f2ca7f164fabb69f8f3c2fe"
+      "41d86b1563b1948198500fd2e5c2a3ab077e02983eb60dfe4ab4528214fb502a"
     ],
     "scope": "SOURCE_CANDIDATE_ONLY_NO_RUNTIME_ACTIVATION"
   },
@@ -293,7 +307,7 @@
       }
     ],
     "missingFact": "Versioned authoritative generic plain 5% row with available-carbohydrate semantics and directly applicable numeric dietary fiber; research zero remains unverified provenance, not evidence.",
-    "nextStep": "Obtain authorized Skurikhin/Tutelyan 2002 ISBN 5-94343-028-8 exact curd row, headings and symbol/method legend for independent source review; no automatic pilot replacement."
+    "nextStep": "Owner selects whether oatmeal_with_apple should be the next pilot; recommendation only, original pilot unchanged."
   },
   "readiness": {
     "SOURCE_DATA_READY_FOR_ISSUANCE_INPUT": false,
@@ -301,5 +315,58 @@
     "CAN_ASSEMBLE": false,
     "recipeReview": "NOT_REVIEWED",
     "assemblyEligibility": "BLOCKED"
+  },
+  "officialResolutionPass": {
+    "date": "2026-10-13",
+    "status": "NO_GO_SEARCH_STOPPED",
+    "instituteDatabase": {
+      "url": "https://web.ion.ru/food/FD_tree_grid.aspx",
+      "publisher": "ФГБУН ФИЦ питания и биотехнологии (institution attribution confirmed by official ion.ru page; database response unavailable)",
+      "attributionUrl": "https://ion.ru/news/chto-takoe-superfudy-i-kakimi-produktami-ikh-zamenit/",
+      "datasetTitle": "База данных по химическому составу пищевых продуктов, используемых в Российской Федерации",
+      "datasetVersion": null,
+      "requestedIdentity": "Творог \"Крестьянский\" 5,0 % жирности",
+      "identityOrigin": "USER_PROVIDED_SEARCH_LEAD_NOT_DIRECTLY_VERIFIED",
+      "rowCode": null,
+      "basis": null,
+      "columnNames": null,
+      "fiberValue": null,
+      "fiberType": null,
+      "symbolLegend": null,
+      "carbsSemantics": null,
+      "nutrition": null,
+      "readMethod": "GET canonical HTTPS endpoint via web open, bounded HTTP fallback and bounded curl; no response fields inferred",
+      "result": "HTTPS web fetch timeout; HTTP/directory fallback inaccessible; curl proxy connection failed",
+      "directResponseRetained": false
+    },
+    "rsl": {
+      "url": "https://search.rsl.ru/ru/record/01001844793",
+      "recordId": "01001844793",
+      "marc001": "001844793",
+      "title": "Химический состав российских пищевых продуктов",
+      "institution": "Институт питания РАМН",
+      "editors": [
+        "И. М. Скурихин",
+        "В. А. Тутельян"
+      ],
+      "publisher": "ДеЛи принт",
+      "year": "2002",
+      "isbn": "5-94343-028-8",
+      "catalogPages": "235",
+      "catalogBasis": "100 g edible portion and conditional one-time serving",
+      "catalogMethod": "direct official catalogue open; metadata lines 205-264",
+      "publicViewer": "not linked in catalogue; conventional viewer endpoint inaccessible",
+      "foodRow": null,
+      "headings": null,
+      "legend": null,
+      "carbsSemantics": null,
+      "result": "BIBLIOGRAPHY_AND_BOOK_BASIS_CONFIRMED_ROW_NOT_ACCESSIBLE"
+    },
+    "peasantApplicability": {
+      "status": "NOT_ESTABLISHED",
+      "reason": "Name may be a reference technological category; cannot infer any-brand equivalence from fat percentage or name. No direct row/composition/technology evidence retrieved; do not treat as brand or generic equivalence automatically."
+    },
+    "missingEvidence": "Direct authoritative row/version/code/headings/legend confirming plain generic 5% applicability and all five fields, including numeric fiber and available carbs.",
+    "nextAction": "Owner selects whether oatmeal_with_apple should be the next pilot; recommendation only, original pilot unchanged."
   }
 }
