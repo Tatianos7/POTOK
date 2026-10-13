@@ -17,7 +17,7 @@
         "caloriesKcal": "52",
         "proteinG": "0.26",
         "fatG": "0.17",
-        "carbsG": "13.81",
+        "carbsG": null,
         "fiberG": "2.4"
       },
       "source": {
@@ -41,8 +41,29 @@
         "caloriesKcal": "Energy",
         "proteinG": "Protein (N x 6.25)",
         "fatG": "Total lipid (fat)",
-        "carbsG": "Carbohydrate, by difference",
+        "carbsG": null,
         "fiberG": "Fiber, total dietary"
+      },
+      "sourceFactsPer100GEdible": {
+        "caloriesKcal": "52",
+        "proteinG": "0.26",
+        "fatG": "0.17",
+        "carbsG": "13.81",
+        "fiberG": "2.4",
+        "carbsDefinition": "TOTAL_CARBOHYDRATE_BY_DIFFERENCE_INCLUDING_FIBER"
+      },
+      "carbsMappingDecision": {
+        "status": "PENDING",
+        "potokApprovedSemantics": null,
+        "sourceTotalCarbohydrateG": "13.81",
+        "sourceFiberG": "2.4",
+        "options": [
+          "Approve total carbohydrate including fiber: map 13.81 unchanged",
+          "Approve available-carbohydrate policy: independently review derivation and source applicability before mapping"
+        ],
+        "derivedCandidateG": "11.41",
+        "derivedCandidateStatus": "ARITHMETIC_ONLY_NOT_APPROVED",
+        "caloriesPolicy": "Keep USDA 52 kcal; no 4/9/4 recalculation"
       }
     },
     {
@@ -53,7 +74,7 @@
         "standard": "ГОСТ 31453-2013",
         "foodState": "as-sold",
         "fatMassFractionPercent": "5.0",
-        "ediblePart": null
+        "ediblePart": "entire as-sold curd contents excluding packaging"
       },
       "proposedNutritionPer100GEdible": {
         "caloriesKcal": "121",
@@ -77,13 +98,71 @@
       "fieldMappings": {
         "identity": "Творог 5%; normalized pasteurized milk and starter cultures",
         "state": "proposed as-sold; source does not name the evidence-contract state",
-        "ediblePart": null,
+        "ediblePart": "100 g product: entire edible as-sold curd contents; applicability assessment, not a source quote",
         "caloriesKcal": "Энергетическая ценность; 100 г продукта",
         "proteinG": "Белки; 100 г продукта",
         "fatG": "Жиры; 100 г продукта and product name 5%",
         "carbsG": "Углеводы; 100 г продукта",
         "fiberG": null
+      },
+      "sourceFactsPer100GProduct": {
+        "caloriesKcal": "121",
+        "proteinG": "16.0",
+        "fatG": "5.0",
+        "carbsG": "3.0",
+        "fiberG": null
+      },
+      "basisAssessment": {
+        "status": "PROPOSED_APPLICABLE_PENDING_REVIEW",
+        "basis": "PER_100_G_EDIBLE",
+        "rationale": "Plain curd made from milk and cultures is consumed as sold; packaging excluded. No bone, peel, core or other inedible fraction is identified. Per 100 g product applies to those edible contents; literal edible-portion wording is not required."
+      },
+      "separateBrandedIdentity": {
+        "provider": "Угличский сыродельно-молочный завод",
+        "product": "Творог 5%",
+        "genericCoreEquivalence": "PENDING_NOT_ASSUMED"
       }
     }
-  ]
+  ],
+  "continuedSourceSearch": {
+    "checkedDate": "2026-10-13",
+    "result": "NO_COMPLETE_COMPATIBLE_PRIMARY_SOURCE_FOUND",
+    "missingEvidence": "Direct numeric dietary fiber with unit/basis and provenance for the same plain Russian 5% curd identity/state; absence, dash and ingredient inference do not establish zero.",
+    "checkedSources": [
+      {
+        "url": "https://www.usmz.ru/products/iz-uglicha/tvorog-5-iz-uglicha/",
+        "result": "Opened manufacturer page: 121/16/5/3; fiber absent"
+      },
+      {
+        "url": "https://rossmol.ru/tvorog",
+        "result": "Opened manufacturer plain 5% 350 g section: 121/16/5/3; fiber absent; separate identity"
+      },
+      {
+        "url": "https://www.ustyugmoloko.ru/product/tvorog-5",
+        "result": "Opened manufacturer page: 105/12/5/3; fiber absent; separate identity"
+      },
+      {
+        "url": "https://www.ekoniva-moloko.com/catalog/tvorog/165",
+        "result": "Search located manufacturer page; direct open failed; not retained evidence"
+      },
+      {
+        "url": "https://sfsca.ru/upload/iblock/13c/2h9sy2sv3v6uhebns6e31hrzwdr33dew/%D0%9F%D0%AD%D0%9A%202021_12%20%281%29.pdf",
+        "result": "Search excerpt has fiber dash for 5% curd; PDF open failed; dash is not numeric zero"
+      },
+      {
+        "url": "https://ru.nutrola.app/produkty/vkusvill/tvorog-5/",
+        "result": "Search result claims fiber zero but is secondary, not manufacturer/lab evidence; excluded"
+      },
+      {
+        "url": "https://milky-kit.ru/catalog/",
+        "result": "Search found flavored/soft variants; incompatible products excluded"
+      }
+    ]
+  },
+  "carbohydrateDefinitionSource": {
+    "url": "https://fdc.nal.usda.gov/faq/",
+    "retrievedDate": "2026-10-13",
+    "fact": "Carbohydrate by difference subtracts water, protein, fat, ash and alcohol from 100; dietary fiber is not subtracted.",
+    "upstreamDocumentSha256": null
+  }
 }

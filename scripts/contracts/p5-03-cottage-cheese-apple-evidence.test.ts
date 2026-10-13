@@ -59,19 +59,25 @@ test('P5-03 source-review package pins exactly two retained excerpts without fab
     foodState: 'raw', ediblePart: 'with skin; core and stem excluded', sourceRefusePercent: '10',
   });
   assert.deepEqual(apple.proposedNutritionPer100GEdible, {
-    caloriesKcal: '52', proteinG: '0.26', fatG: '0.17', carbsG: '13.81', fiberG: '2.4',
+    caloriesKcal: '52', proteinG: '0.26', fatG: '0.17', carbsG: null, fiberG: '2.4',
   });
   assert.match(apple.fieldMappings.ediblePart ?? '', /edible portion/);
+  assert.equal(apple.fieldMappings.carbsG, null);
+  const appleSource = apple as SourceReviewProduct & { sourceFactsPer100GEdible: Record<string, string>; carbsMappingDecision: { status: string; caloriesPolicy: string } };
+  assert.equal(appleSource.sourceFactsPer100GEdible.carbsG, '13.81');
+  assert.equal(appleSource.sourceFactsPer100GEdible.fiberG, '2.4');
+  assert.equal(appleSource.carbsMappingDecision.status, 'PENDING');
+  assert.match(appleSource.carbsMappingDecision.caloriesPolicy, /52 kcal/);
 
   const cottage = sourcePackage.products[1];
   assert.equal(cottage.proposedIdentity.fatMassFractionPercent, '5.0');
   assert.equal(cottage.proposedIdentity.foodState, 'as-sold');
-  assert.equal(cottage.proposedIdentity.ediblePart, null);
+  assert.equal(cottage.proposedIdentity.ediblePart, 'entire as-sold curd contents excluding packaging');
   assert.deepEqual(cottage.proposedNutritionPer100GEdible, {
     caloriesKcal: '121', proteinG: '16.0', fatG: '5.0', carbsG: '3.0', fiberG: null,
   });
   assert.equal(cottage.fieldMappings.fiberG, null);
-  assert.equal(cottage.fieldMappings.ediblePart, null);
+  assert.match(cottage.fieldMappings.ediblePart ?? '', /edible as-sold/);
 
   const raw = packageBytes.toString('utf8');
   for (const serverOwnedField of ['revisionId', 'reviewEventId', 'eventId', 'occurredAt',
