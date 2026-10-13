@@ -41,7 +41,7 @@ test('P5-03 source-review package pins exactly two retained excerpts without fab
     contract: string; status: string; retrievedDate: string; products: SourceReviewProduct[];
   };
   assert.equal(sourcePackage.contract, 'potok-p5-03-source-review-package-v1');
-  assert.equal(sourcePackage.status, 'PENDING_REVIEW');
+  assert.equal(sourcePackage.status, 'SOURCE_DECISIONS_RECORDED_DATA_INCOMPLETE');
   assert.equal(sourcePackage.retrievedDate, '2026-10-13');
   assert.deepEqual(sourcePackage.products.map(({ stableFoodId }) => stableFoodId),
     ['apple', 'cottage_cheese_5_percent']);
@@ -59,14 +59,14 @@ test('P5-03 source-review package pins exactly two retained excerpts without fab
     foodState: 'raw', ediblePart: 'with skin; core and stem excluded', sourceRefusePercent: '10',
   });
   assert.deepEqual(apple.proposedNutritionPer100GEdible, {
-    caloriesKcal: '52', proteinG: '0.26', fatG: '0.17', carbsG: null, fiberG: '2.4',
+    caloriesKcal: '52', proteinG: '0.26', fatG: '0.17', carbsG: '11.41', fiberG: '2.4',
   });
   assert.match(apple.fieldMappings.ediblePart ?? '', /edible portion/);
-  assert.equal(apple.fieldMappings.carbsG, null);
+  assert.match(apple.fieldMappings.carbsG ?? '', /13.81.*2.4/);
   const appleSource = apple as SourceReviewProduct & { sourceFactsPer100GEdible: Record<string, string>; carbsMappingDecision: { status: string; caloriesPolicy: string } };
   assert.equal(appleSource.sourceFactsPer100GEdible.carbsG, '13.81');
   assert.equal(appleSource.sourceFactsPer100GEdible.fiberG, '2.4');
-  assert.equal(appleSource.carbsMappingDecision.status, 'PENDING');
+  assert.equal(appleSource.carbsMappingDecision.status, 'OWNER_DECISION_RECORDED');
   assert.match(appleSource.carbsMappingDecision.caloriesPolicy, /52 kcal/);
 
   const cottage = sourcePackage.products[1];
@@ -74,10 +74,10 @@ test('P5-03 source-review package pins exactly two retained excerpts without fab
   assert.equal(cottage.proposedIdentity.foodState, 'as-sold');
   assert.equal(cottage.proposedIdentity.ediblePart, 'entire as-sold curd contents excluding packaging');
   assert.deepEqual(cottage.proposedNutritionPer100GEdible, {
-    caloriesKcal: '121', proteinG: '16.0', fatG: '5.0', carbsG: '3.0', fiberG: null,
+    caloriesKcal: null, proteinG: null, fatG: null, carbsG: null, fiberG: null,
   });
   assert.equal(cottage.fieldMappings.fiberG, null);
-  assert.match(cottage.fieldMappings.ediblePart ?? '', /edible as-sold/);
+  assert.equal(cottage.fieldMappings.ediblePart, null);
 
   const raw = packageBytes.toString('utf8');
   for (const serverOwnedField of ['revisionId', 'reviewEventId', 'eventId', 'occurredAt',
@@ -172,4 +172,54 @@ test('P5-03 pilot remains bound to the real candidate and fails closed on missin
   assert.equal(compiled.portionRevision, null);
   assert.equal(compiled.eligibilityRevision, null);
   assert.equal(compiled.manifestTuple, null);
+});
+
+// Local reference evaluator for the retained policy; not a production converter.
+function mapAvailable(input: { total: string; fiber: string; includesFiber: boolean | null;
+  sourceBinding: string; expectedBinding: string; basis: string; state: string; units: string }) {
+  if (input.includesFiber !== true || input.sourceBinding !== input.expectedBinding
+    || input.basis !== 'PER_100_G_EDIBLE' || input.state !== 'raw' || input.units !== 'g') {
+    throw new Error('MAPPING_APPLICABILITY_REJECTED');
+  }
+  const minor = (v: string) => {
+    if (!/^(0|[1-9][0-9]*)(\.[0-9]{1,3})?$/.test(v)) throw new Error('DECIMAL_REJECTED');
+    const [whole, fraction = ''] = v.split('.');
+    return BigInt(whole) * 1000n + BigInt(fraction.padEnd(3, '0'));
+  };
+  const result = minor(input.total) - minor(input.fiber);
+  if (result < 0n) throw new Error('NEGATIVE_RESULT');
+  return `${result / 1000n}.${String(result % 1000n).padStart(3, '0')}`;
+}
+
+test('recorded mapping policy binds apple facts and rejects unknown/incompatible subtraction', async () => {
+  const pkg = JSON.parse(await readFile(sourcePackagePath, 'utf8'));
+  assert.equal(pkg.carbsMappingPolicy.version, 'potok-source-total-including-fiber-to-available-v1');
+  assert.equal(pkg.carbsMappingPolicy.targetSemantics, 'AVAILABLE_CARBOHYDRATES_EXCLUDING_FIBER');
+  assert.equal(pkg.carbsMappingPolicy.requireExplicitIncludesFiber, true);
+  assert.equal(pkg.carbsMappingPolicy.requireSameIdentityStateBasisUnits, true);
+  assert.equal(pkg.carbsMappingPolicy.requireNonnegativeResult, true);
+  assert.equal(pkg.carbsMappingPolicy.unknownSemantics, 'REJECT_MAPPING');
+  const apple = pkg.products[0];
+  const input = { total: apple.sourceFactsPer100GEdible.carbsG,
+    fiber: apple.sourceFactsPer100GEdible.fiberG, includesFiber: true,
+    sourceBinding: apple.source.retainedBytesSha256,
+    expectedBinding: apple.carbsMappingDecision.retainedSourceBindings[0],
+    basis: apple.carbsMappingDecision.basis, state: apple.carbsMappingDecision.foodState,
+    units: apple.carbsMappingDecision.units };
+  assert.equal(mapAvailable(input), '11.410');
+  assert.equal(apple.proposedNutritionPer100GEdible.caloriesKcal, '52');
+  for (const patch of [{ includesFiber: null }, { includesFiber: false },
+    { sourceBinding: 'foreign' }, { basis: 'PER_SERVING' }, { state: 'cooked' },
+    { units: 'mg' }, { total: '1' }, { fiber: '-1' }, { total: '13.8101' }]) {
+    assert.throws(() => mapAvailable({ ...input, ...patch }));
+  }
+  for (const source of pkg.additionalRetainedSources) {
+    const bytes = await readFile(new URL(`../../${source.retainedPath}`, import.meta.url));
+    assert.equal(bytes.length, source.byteLength);
+    assert.equal(createHash('sha256').update(bytes).digest('hex'), source.sha256);
+  }
+  assert.equal(pkg.products[1].separateBrandedIdentity.genericCoreEquivalence, 'FORBIDDEN_BY_OWNER_DECISION');
+  assert.equal(pkg.readiness.SOURCE_DATA_READY_FOR_ISSUANCE_INPUT, false);
+  assert.equal(pkg.readiness.CAN_ISSUE_REAL_REVIEWED_EVIDENCE, false);
+  assert.equal(pkg.readiness.CAN_ASSEMBLE, false);
 });

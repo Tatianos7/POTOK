@@ -1,0 +1,2 @@
+USDA FoodData Central FAQ; carbohydrate-by-difference definition.
+Retained factual summary: 100 minus percentages of water, protein, total lipid, ash and alcohol when present. Fiber is not subtracted.

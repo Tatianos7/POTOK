@@ -17,7 +17,7 @@ is inferred from a name, workbook flag or test fixture.
 | --- | --- | --- | --- |
 | `data/recipes/recipe-candidates-v1.json` | Git blob `b5c9216b73bf7b0ac2f9ccdcd83ade41238ff3a9`; SHA-256 `9045469af6af882d10c42ad8bb6dbb3fc8efb24e83f2aa833626ea8211d2d96c`; `stable_recipe_id=cottage_cheese_with_apple` | Authored candidate title, preparation, one serving, two semantic ingredient keys and gram amounts | Culinary review, reviewed recipe revision, output yield, portion mass, publication identity or eligibility |
 | `data/food-core/Food_Core_v02_with_aliases.xlsx`, `foods_import` | Git blob `e157f83c2098adbcd2e06457d8fc1219b5818f87`; SHA-256 `d6f271958c41582f5e1c97d64befa4af28307379d364a20bdd99b228ba2f66a8`; metadata `Food Core Version=v02`, validator `PASS_WITH_WARNINGS` | Local source rows for `cottage_cheese_5_percent` and `apple`; four macros per 100 g | Runtime UUID identities, reviewed canonical/nutrition revisions, independently reviewed fiber, current catalog visibility or issuance |
-| `docs/premium/retained-sources/p5-03/source-review-package-v1.json` | Status `PENDING_REVIEW`; exactly two products; retrieval date `2026-10-13` | Pinned primary-source locators, versions, field mappings, retained excerpt byte lengths and SHA-256 | Owner approval, server authority, runtime identities/revisions/events or a complete cottage-cheese nutrition source |
+| `docs/premium/retained-sources/p5-03/source-review-package-v1.json` | Status `SOURCE_DECISIONS_RECORDED_DATA_INCOMPLETE`; exactly two products; retrieval date `2026-10-13` | Pinned primary-source locators, versions, field mappings, retained excerpt byte lengths and SHA-256 | Owner approval, server authority, runtime identities/revisions/events or a complete cottage-cheese nutrition source |
 | `reports/recipe-local-availability-2026-09-19.json` | Git blob `a6dd37a84d6b0f05bdb70cf11def5097fc5e9ff4`; SHA-256 `71bb7e6444717b7ccca30c5abd3b8b757755a5bfd96e705e5d6ccf1b587fc017` | Reproducible local arithmetic preview and prior strict rejection for invalid canonical identity | Reviewed evidence or publication; it explicitly records `publishable=false` and fiber `null` |
 | `src/utils/foodReviewedEvidenceV1.ts` and its architecture document | Contracts `potok-canonical-food-reviewed-revision-v1`, `potok-nutrition-reviewed-revision-v1`, `potok-food-evidence-review-event-v1` | Strict canonical/nutrition revision and event shapes, retained-source coverage, digests and bindings | Issuance, reviewer authentication, persistence, current validity or real data. Phase 1 has no history reader |
 | `src/utils/curatedRecipePublicationV1.ts` | `potok-curated-recipe-publication-v1` | Existing fail-closed authoring audit and candidate compiler | Persistent IDs, evidence, review or publication authority |
@@ -35,13 +35,15 @@ cannot be claimed from this implementation or from the candidate/workbook files.
 
 The owner-review card is
 [`p5-03-cottage-cheese-apple-owner-review.md`](p5-03-cottage-cheese-apple-owner-review.md).
-Its status is `PENDING_REVIEW`; it contains no runtime UUID, artificial event,
+Its source decisions are recorded; issuance remains incomplete; it contains no runtime UUID, artificial event,
 authority claim or server timestamp.
 
 | Product | Primary source and retained bytes | Proposed exact state/basis | Source facts kcal / protein / fat / total carbs / fiber | Difference from Food Core v02 | Result |
 | --- | --- | --- | --- | --- | --- |
-| `apple` | USDA National Nutrient Database SR Release 27, NDB 09003; [official report](https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR27/reports/sr27fg09.pdf); retained excerpt 318 bytes, SHA-256 `89d79388d19e3013fb7975d67c6a6cf5b4e42cad58fe6fb8fb08c2d81befaaca` | `raw`, with skin; core and stem excluded; explicitly 100 g edible portion | 52 kcal / 0.26 g / 0.17 g / 13.81 g / 2.4 g | +5 kcal / −0.14 g protein / −0.23 g fat / +4.01 g carbs / source supplies 2.4 g where workbook is `null` | Complete source facts; POTOK carbs mapping PENDING and exact identity review required |
-| `cottage_cheese_5_percent` | Угличский сыродельно-молочный завод, [product page](https://www.usmz.ru/products/iz-uglicha/tvorog-5-iz-uglicha/); retained excerpt 416 bytes, SHA-256 `6c7d87dc89ab8e1eae9be9ff5e105e467069724c66887ce4d60ac8afb2f1dae7` | proposed `as-sold`; exact 5% fat; 100 g product applies to the entire edible as-sold curd contents, excluding packaging; proposed applicability pending review | 121 kcal / 16.0 g / 5.0 g / 3.0 g / `null` | same kcal and fat / −1.2 g protein / +1.2 g carbs / fiber remains `null` | Incomplete and identity-disputed: branded product cannot silently replace generic core identity; fiber and generic identity remain blockers |
+| `apple` | USDA National Nutrient Database SR Release 27, NDB 09003; [official report](https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR27/reports/sr27fg09.pdf); retained excerpt 318 bytes, SHA-256 `89d79388d19e3013fb7975d67c6a6cf5b4e42cad58fe6fb8fb08c2d81befaaca` | `raw`, with skin; core and stem excluded; explicitly 100 g edible portion | 52 kcal / 0.26 g / 0.17 g / 13.81 g / 2.4 g | +5 kcal / −0.14 g protein / −0.23 g fat / +4.01 g carbs / source supplies 2.4 g where workbook is `null` | Accepted source; mapped available carbs 11.41 g; not issued |
+| Separate branded example, excluded from generic `cottage_cheese_5_percent` | Угличский сыродельно-молочный завод, [product page](https://www.usmz.ru/products/iz-uglicha/tvorog-5-iz-uglicha/); retained excerpt 416 bytes, SHA-256 `6c7d87dc89ab8e1eae9be9ff5e105e467069724c66887ce4d60ac8afb2f1dae7` | proposed `as-sold`; exact 5% fat; 100 g product applies to the entire edible as-sold curd contents, excluding packaging; proposed applicability pending review | 121 kcal / 16.0 g / 5.0 g / 3.0 g / `null` | same kcal and fat / −1.2 g protein / +1.2 g carbs / fiber remains `null` | Incomplete and identity-disputed: branded product cannot silently replace generic core identity; branded example only, not generic evidence |
+
+Generic proposed nutrition remains entirely null. Manufacturer numbers above are branded source facts only.
 
 The SHA-256 values bind the exact retained UTF-8 excerpts in this branch. They are
 not represented as hashes of the upstream HTML/PDF. Full upstream-document download
@@ -59,8 +61,8 @@ is limited to the short product identity and label facts needed for review.
 | Total yield and serving mass | No fields in the authoritative candidate | Missing | 250 g is only the arithmetic sum of input masses. It is not claimed as finished yield or portion mass |
 | Cottage cheese canonical identity | Workbook `id=canonical_food_id=cottage_cheese_5_percent` (semantic string), source row recorded as 679 | Blocked | Existing contracts require a current shared catalog UUID plus canonical reviewed revision/digest |
 | Apple canonical identity | Workbook `id=canonical_food_id=apple` (semantic string), source row recorded as 1543 | Blocked | Existing contracts require a current shared catalog UUID plus canonical reviewed revision/digest |
-| Cottage cheese nutrition per 100 g | Food Core: 121/17.2/5.0/1.8/`null`; manufacturer: 121/16.0/5.0/3.0/`null` | Source conflict, incomplete | Fiber is absent; the per-100-g-product basis is applicable to edible as-sold contents, pending review; branded/generic identity decision is unresolved. `v1` is not a reviewed revision |
-| Apple nutrition per 100 g edible | Food Core: 47/0.4/0.4/9.8/`null`; USDA SR27 NDB 09003: 52/0.26/0.17/13.81/2.4 | Complete source facts; carbs mapping pending | Owner must select the exact raw-with-skin/core-excluded source row; no reviewed revision/event exists yet |
+| Cottage cheese nutrition per 100 g | Food Core: 121/17.2/5.0/1.8/`null`; manufacturer: 121/16.0/5.0/3.0/`null` | Branded example excluded from generic mapping | Generic nutrition is null; fiber/basis provenance for a complete generic row is missing. `v1` is not a reviewed revision |
+| Apple nutrition per 100 g edible | Food Core: 47/0.4/0.4/9.8/`null`; USDA SR27 NDB 09003: 52/0.26/0.17/13.81/2.4 | Mapped source candidate prepared | Owner accepted exact raw-with-skin/core-excluded source row; no reviewed revision/event exists yet |
 | Canonical revisions | None for either product | Missing | Blocks canonical pointers, food bindings and manifest coverage |
 | Nutrition revisions | None for either product | Missing | All five fields, including non-null independently sourced fiber, are required by `PER_100_G_EDIBLE` evidence |
 | Review events | No real `REVIEW_APPROVED` event for either canonical or nutrition revision | Missing | No server-issued timestamp, retained source, event/revision binding, request digest or invalidation history |
@@ -140,7 +142,7 @@ and must not mint review artifacts on the client.
 4. After canonical current is usable, send the nutrition approval pinned to its
    canonical revision/digest. Each proposal must contain all five fields from one
    compatible product/state and an exact retained mapping. Cottage cheese cannot enter
-   this step while fiber/identity/carbs mapping remain unresolved.
+   this step while generic nutrition provenance/fiber remain unresolved.
 5. Read `food_evidence_current_v1(foodId,state)` for both products and capture the
    exact usable canonical/nutrition revisions plus linked server events/receipts using
    the missing strict batch exporter. This produces the food-evidence input for recipe
@@ -153,62 +155,58 @@ and must not mint review artifacts on the client.
 Confirmation of two food sources does not make 250 g a measured finished yield and
 does not close any recipe-level gate.
 
-## Decision and next action
+## Recorded source decisions and versioned mapping
 
-No reviewed evidence can be issued and no manifest/plan content can be assembled
-from current master data. This says nothing about readiness of the full plan or
-Premium, and the candidate remains PLAN content rather than a FACT.
+Owner instruction 2026-10-13 fixes POTOK carbs as available carbohydrates excluding
+fiber. Apple identity USDA SR27 NDB 09003 raw/with skin/core-stem excluded is accepted.
+Generic plain unsweetened 5% curd means any brand; branded product evidence cannot
+be transferred to it. These are source decisions, not server events.
 
-**One next action:** perform the two decisions in the prepared `PENDING_REVIEW` card:
-approve carbs semantics and accept/reject USDA NDB 09003 for exact `apple` state;
-select generic versus branded cottage-cheese identity. The implementer then obtains
-the missing primary fiber specification for that selected product. Record those decisions as source review only. Once both rows are
-complete, use the established Draft dependency route #154 → #156 → #158 → #159 →
-#160 for a separate apply/acceptance decision; its trusted issuer, rather than the
-owner by hand, must create revisions/events/receipts and the strict batch exporter
-must capture the resulting current states.
+Policy `potok-source-total-including-fiber-to-available-v1` maps apple 13.81 − 2.4
+= 11.41 g available carbs per 100 g edible. Source total and fiber remain separate;
+calories remain 52. Preconditions: explicit source inclusion of fiber, matching
+identity/state/units/basis, retained source SHA bindings and nonnegative exact decimal
+result. Unknown inclusion semantics rejects mapping. Historical diary/Graph v1 wire
+and consumers are unchanged.
 
-## Follow-up: carbohydrate mapping decision
+Official sources: [EEC TR TS 022/2011, Appendix 2](https://eec.eaeunion.org/upload/medialibrary/9db/TrTsPishevkaMarkirovka.pdf)
+separates available carbohydrates and dietary fiber; [USDA FAQ](https://fdc.nal.usda.gov/faq/)
+defines carbohydrate by difference without subtracting fiber. Retained short excerpts/
+factual summary, versions, dates and exact SHA-256 are in the source JSON. This policy
+is a local source-candidate policy, not a runtime evidence layer or activated converter.
 
-USDA source facts remain 13.81 g **total carbohydrate by difference, including
-2.4 g fiber**, and 52 kcal. The [USDA definition](https://fdc.nal.usda.gov/faq/)
-subtracts water, protein, fat, ash and alcohol from 100, not fiber.
-`sourceFactsPer100GEdible` retains those facts. Proposed POTOK `carbsG` and its
-mapping are now `null` / **PENDING**. 11.41 g is only the arithmetic difference,
-not an approved available-carbohydrate value. Calories remain the source 52 kcal.
+## Bounded generic-curd search result
 
-The checked implementation does not establish approved inclusion/exclusion semantics:
+Three generic leads were checked, then search stopped. University-hosted article
+[table 1](https://opusmgau.ru/index.php/see/article/download/2030/2028/) has 145 kcal,
+21% protein, 5% fat, 3% carbohydrate and numeric fiber 0% for plain input curd before
+phyto-additive preparation. Retained as a lead only: table provenance/method is not
+explicitly bound, issue/version unresolved, carbohydrate semantics unspecified.
+Do not dismiss the number as absent, but do not certify it as authoritative evidence.
 
-| Layer | Checked source | Observed contract/behavior |
-| --- | --- | --- |
-| Food Core | workbook `foods_import`; `scripts/validate-food-core.ts` | `carbs_100g`, separate fiber; numeric validation, no total/available definition |
-| Evidence | `docs/architecture/food-reviewed-evidence-contracts-v1.md`; `src/utils/foodReviewedEvidenceV1.ts` | Separate nonnegative carbs/fiber decimals in g, no inclusion rule |
-| Graph | `src/utils/adaptiveNutritionGraphV1.ts` | Independent sum/scaling of carbs/fiber, no semantic conversion |
-| Publication | `src/utils/curatedRecipePublicationV1.ts` | Independent field sums; no source normalization policy |
-| Consumers | `src/services/recipeAnalyzerReal.ts`; `src/services/diaryCreateService.ts`; `src/services/mealService.ts` | Copy, scale and sum carbs; cannot resolve meaning from this behavior |
+Skurikhin/Tutelyan 2002 ISBN 5-94343-028-8 was located on a third-party OCR mirror;
+exact 5% row/column alignment and fiber value were not verified against authorized
+edition. The Health-diet generic row is secondary without an exact primary-row
+binding. Manufacturer examples remain separate branded identities; no zero is inferred
+from their missing fields. Full checked sources/rejection reasons are in JSON.
 
-Concrete decision: approve one repository-wide definition (total including fiber
-or available excluding fiber) and its versioned source mapping policy. Before this
-is approved, no apple carbs value enters a reviewed nutrition proposal. An available
-policy also needs reviewed derivation/applicability; subtraction alone is not approval.
-Do not alter historical diary values, Graph v1 wire or calories to settle this card.
+Exact blocker: a verified, versioned authoritative generic plain 5% row, including
+available-carbohydrate semantics and applicable numeric fiber. All proposed generic
+nutrition fields are null; branded facts stay under `brandedExample`.
 
-## Follow-up: cottage-cheese search and next evidence
+| Stage | Apple | Generic curd | Package |
+| --- | --- | --- | --- |
+| Source decision | ACCEPTED_BY_OWNER | GENERIC_IDENTITY_FIXED | RECORDED |
+| Mapped candidate | PREPARED 52/0.26/0.17/11.41/2.4 | BLOCKED | INCOMPLETE |
+| Source data ready for issuance input | source-data-only ready | false | false |
+| Server-issued reviewed evidence | NOT_ISSUED | NOT_ISSUED | false |
+| Recipe review | NOT_REVIEWED | NOT_REVIEWED | false |
+| Assembly eligibility | BLOCKED | BLOCKED | false |
 
-The checked URLs and outcomes are recorded in `continuedSourceSearch` in the source
-JSON. USMZ, ROSMOL and Ustyugmoloko manufacturer pages provide plain 5% product
-identity and four nutrients but omit fiber. They are separate products with different
-protein/carbs; their values are not pooled. EkoNiva/PЭК PDF direct opens failed;
-a search excerpt containing a dash is not zero. Secondary nutrition sites reporting
-zero and flavored/fiber-enriched curd variants were excluded.
-
-No complete compatible primary source was found. The exact remaining evidence is a
-manufacturer specification or analytical report explicitly giving dietary fiber
-(including a documented applicable zero, if measured/declared) for the selected plain
-Russian 5% curd, with method/provenance, units and matching as-sold identity. Technical
-follow-up is to obtain that specific specification/report from the selected producer;
-the owner is asked only to decide generic versus branded identity and carbs semantics,
-not to manufacture an export or research alternative products. No contact was sent.
+One next step: obtain authorized Skurikhin/Tutelyan 2002 exact generic curd row,
+column headings and symbol/method legend for independent source review. No owner
+export fabrication or repeated semantics/identity decision is requested; no pilot
+replacement is automatic. CAN_ISSUE_REAL_REVIEWED_EVIDENCE=false, CAN_ASSEMBLE=false.
 
 ## Batch exporter: separate implementation requirement
 

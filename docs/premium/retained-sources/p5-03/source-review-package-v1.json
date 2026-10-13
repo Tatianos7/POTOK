@@ -1,6 +1,6 @@
 {
   "contract": "potok-p5-03-source-review-package-v1",
-  "status": "PENDING_REVIEW",
+  "status": "SOURCE_DECISIONS_RECORDED_DATA_INCOMPLETE",
   "retrievedDate": "2026-10-13",
   "products": [
     {
@@ -17,7 +17,7 @@
         "caloriesKcal": "52",
         "proteinG": "0.26",
         "fatG": "0.17",
-        "carbsG": null,
+        "carbsG": "11.41",
         "fiberG": "2.4"
       },
       "source": {
@@ -41,7 +41,7 @@
         "caloriesKcal": "Energy",
         "proteinG": "Protein (N x 6.25)",
         "fatG": "Total lipid (fat)",
-        "carbsG": null,
+        "carbsG": "carbsMappingPolicy v1: 13.81 total including fiber minus 2.4 dietary fiber; same USDA SR27 NDB 09003 raw/100 g edible source",
         "fiberG": "Fiber, total dietary"
       },
       "sourceFactsPer100GEdible": {
@@ -53,34 +53,43 @@
         "carbsDefinition": "TOTAL_CARBOHYDRATE_BY_DIFFERENCE_INCLUDING_FIBER"
       },
       "carbsMappingDecision": {
-        "status": "PENDING",
-        "potokApprovedSemantics": null,
+        "status": "OWNER_DECISION_RECORDED",
+        "potokApprovedSemantics": "AVAILABLE_CARBOHYDRATES_EXCLUDING_FIBER",
         "sourceTotalCarbohydrateG": "13.81",
         "sourceFiberG": "2.4",
-        "options": [
-          "Approve total carbohydrate including fiber: map 13.81 unchanged",
-          "Approve available-carbohydrate policy: independently review derivation and source applicability before mapping"
+        "mappedCarbsG": "11.41",
+        "policyVersion": "potok-source-total-including-fiber-to-available-v1",
+        "basis": "PER_100_G_EDIBLE",
+        "units": "g",
+        "foodState": "raw",
+        "retainedSourceBindings": [
+          "89d79388d19e3013fb7975d67c6a6cf5b4e42cad58fe6fb8fb08c2d81befaaca",
+          "2df54b8797988ca8436df4c76735115ec117c8b955c93c3b3e05a7b60ba17a47",
+          "dd783258d3b93f1d1195e2cdcfcfa1d5590083136f2ca7f164fabb69f8f3c2fe"
         ],
-        "derivedCandidateG": "11.41",
-        "derivedCandidateStatus": "ARITHMETIC_ONLY_NOT_APPROVED",
         "caloriesPolicy": "Keep USDA 52 kcal; no 4/9/4 recalculation"
+      },
+      "statuses": {
+        "sourceDecision": "ACCEPTED_BY_OWNER",
+        "mappedNutritionCandidate": "PREPARED",
+        "readyForIssuanceInput": "SOURCE_DATA_ONLY_READY",
+        "serverIssuedReviewedEvidence": "NOT_ISSUED"
       }
     },
     {
       "stableFoodId": "cottage_cheese_5_percent",
       "proposedIdentity": {
         "name": "Творог 5%",
-        "sourceIdentity": "Творог 5% — Угличский сыродельно-молочный завод",
-        "standard": "ГОСТ 31453-2013",
+        "sourceIdentity": "generic plain unsweetened curd 5% any brand",
         "foodState": "as-sold",
         "fatMassFractionPercent": "5.0",
         "ediblePart": "entire as-sold curd contents excluding packaging"
       },
       "proposedNutritionPer100GEdible": {
-        "caloriesKcal": "121",
-        "proteinG": "16.0",
-        "fatG": "5.0",
-        "carbsG": "3.0",
+        "caloriesKcal": null,
+        "proteinG": null,
+        "fatG": null,
+        "carbsG": null,
         "fiberG": null
       },
       "source": {
@@ -96,13 +105,13 @@
         "upstreamDocumentSha256": null
       },
       "fieldMappings": {
-        "identity": "Творог 5%; normalized pasteurized milk and starter cultures",
-        "state": "proposed as-sold; source does not name the evidence-contract state",
-        "ediblePart": "100 g product: entire edible as-sold curd contents; applicability assessment, not a source quote",
-        "caloriesKcal": "Энергетическая ценность; 100 г продукта",
-        "proteinG": "Белки; 100 г продукта",
-        "fatG": "Жиры; 100 г продукта and product name 5%",
-        "carbsG": "Углеводы; 100 г продукта",
+        "identity": null,
+        "state": null,
+        "ediblePart": null,
+        "caloriesKcal": null,
+        "proteinG": null,
+        "fatG": null,
+        "carbsG": null,
         "fiberG": null
       },
       "sourceFactsPer100GProduct": {
@@ -120,7 +129,42 @@
       "separateBrandedIdentity": {
         "provider": "Угличский сыродельно-молочный завод",
         "product": "Творог 5%",
-        "genericCoreEquivalence": "PENDING_NOT_ASSUMED"
+        "genericCoreEquivalence": "FORBIDDEN_BY_OWNER_DECISION"
+      },
+      "brandedExample": {
+        "identity": {
+          "name": "Творог 5%",
+          "sourceIdentity": "Творог 5% — Угличский сыродельно-молочный завод",
+          "standard": "ГОСТ 31453-2013",
+          "foodState": "as-sold",
+          "fatMassFractionPercent": "5.0",
+          "ediblePart": "entire as-sold curd contents excluding packaging"
+        },
+        "nutritionPer100GProduct": {
+          "caloriesKcal": "121",
+          "proteinG": "16.0",
+          "fatG": "5.0",
+          "carbsG": "3.0",
+          "fiberG": null
+        },
+        "source": {
+          "provider": "Угличский сыродельно-молочный завод",
+          "documentIdentity": "Product page: Творог 5%",
+          "sourceRevision": null,
+          "url": "https://www.usmz.ru/products/iz-uglicha/tvorog-5-iz-uglicha/",
+          "retrievedDate": "2026-10-13",
+          "captureKind": "transcribed-short-excerpt",
+          "retainedPath": "docs/premium/retained-sources/p5-03/cottage-cheese-usmz-5-percent.txt",
+          "retainedByteLength": 416,
+          "retainedBytesSha256": "6c7d87dc89ab8e1eae9be9ff5e105e467069724c66887ce4d60ac8afb2f1dae7",
+          "upstreamDocumentSha256": null
+        }
+      },
+      "statuses": {
+        "sourceDecision": "GENERIC_IDENTITY_FIXED",
+        "mappedNutritionCandidate": "BLOCKED",
+        "readyForIssuanceInput": "NOT_READY",
+        "serverIssuedReviewedEvidence": "NOT_ISSUED"
       }
     }
   ],
@@ -164,5 +208,98 @@
     "retrievedDate": "2026-10-13",
     "fact": "Carbohydrate by difference subtracts water, protein, fat, ash and alcohol from 100; dietary fiber is not subtracted.",
     "upstreamDocumentSha256": null
+  },
+  "ownerDecisions": {
+    "origin": "OWNER_INSTRUCTION_2026-10-13",
+    "serverEvent": false,
+    "carbsSemantics": "AVAILABLE_CARBOHYDRATES_EXCLUDING_FIBER",
+    "appleIdentity": "ACCEPTED_USDA_SR27_NDB_09003_RAW_WITH_SKIN_CORE_STEM_EXCLUDED",
+    "cottageIdentity": "GENERIC_UNSWEETENED_PLAIN_5_PERCENT_ANY_BRAND",
+    "brandedEquivalence": "FORBIDDEN"
+  },
+  "additionalRetainedSources": [
+    {
+      "retainedPath": "docs/premium/retained-sources/p5-03/usda-carbohydrate-definition.txt",
+      "url": "https://fdc.nal.usda.gov/faq/",
+      "retrievedDate": "2026-10-13",
+      "byteLength": 201,
+      "sha256": "2df54b8797988ca8436df4c76735115ec117c8b955c93c3b3e05a7b60ba17a47",
+      "captureKind": "retained-factual-summary",
+      "upstreamDocumentSha256": null,
+      "sourceRevision": "USDA FoodData Central FAQ, unversioned page captured 2026-10-13"
+    },
+    {
+      "retainedPath": "docs/premium/retained-sources/p5-03/eaeu-carbohydrate-fiber-excerpt.txt",
+      "url": "https://eec.eaeunion.org/upload/medialibrary/9db/TrTsPishevkaMarkirovka.pdf",
+      "retrievedDate": "2026-10-13",
+      "byteLength": 117,
+      "sha256": "dd783258d3b93f1d1195e2cdcfcfa1d5590083136f2ca7f164fabb69f8f3c2fe",
+      "captureKind": "short-excerpt",
+      "upstreamDocumentSha256": null,
+      "sourceRevision": "TR TS 022/2011 adopted Decision 881 of 2011-12-09; official EEC base PDF Appendix 2; not a consolidated current legal edition"
+    },
+    {
+      "retainedPath": "docs/premium/retained-sources/p5-03/generic-curd-research-table-excerpt.txt",
+      "url": "https://opusmgau.ru/index.php/see/article/download/2030/2028/",
+      "retrievedDate": "2026-10-13",
+      "byteLength": 223,
+      "sha256": "ffccf4ea9f64268cef88ff44c186bbb91eaa968a91316e4969f7a15b244a9c4d",
+      "captureKind": "short-excerpt",
+      "upstreamDocumentSha256": null,
+      "sourceRevision": "University-hosted article table 1, PDF p2; issue/year unresolved; NOT ACCEPTED"
+    }
+  ],
+  "carbsMappingPolicy": {
+    "version": "potok-source-total-including-fiber-to-available-v1",
+    "targetSemantics": "AVAILABLE_CARBOHYDRATES_EXCLUDING_FIBER",
+    "formula": "sourceTotalCarbohydrateG - sourceDietaryFiberG",
+    "basis": "PER_100_G_EDIBLE",
+    "units": "g",
+    "scale": 3,
+    "arithmetic": "EXACT_DECIMAL_NO_FLOAT",
+    "requireExplicitIncludesFiber": true,
+    "requireSameIdentityStateBasisUnits": true,
+    "requireNonnegativeResult": true,
+    "unknownSemantics": "REJECT_MAPPING",
+    "calories": "PRESERVE_SOURCE_NO_4_9_4",
+    "definitionSourceBindings": [
+      "2df54b8797988ca8436df4c76735115ec117c8b955c93c3b3e05a7b60ba17a47",
+      "dd783258d3b93f1d1195e2cdcfcfa1d5590083136f2ca7f164fabb69f8f3c2fe"
+    ],
+    "scope": "SOURCE_CANDIDATE_ONLY_NO_RUNTIME_ACTIVATION"
+  },
+  "genericSourceSearch": {
+    "limit": "Three generic leads inspected; search stopped after source/provenance checks",
+    "status": "NO_GO",
+    "checkedDate": "2026-10-13",
+    "sources": [
+      {
+        "url": "https://opusmgau.ru/index.php/see/article/download/2030/2028/",
+        "identity": "Scientific article by Zotkina/Krasnoshchekova/Miloserdova/Sukhareva, university-hosted PDF, table 1 p2",
+        "facts": "plain 5% curd input: 145 kcal, protein 21%, fat 5%, carbohydrate 3%, fiber 0%",
+        "decision": "RETAINED_LEAD_NOT_ACCEPTED",
+        "reason": "Direct numeric zero found, but table has no explicit source/method binding, issue/year version not established, and carbohydrate inclusion semantics not specified. Cannot attest this as authoritative generic nutrition revision."
+      },
+      {
+        "url": "https://djvu.online/file/ljproamN2jMGs",
+        "identity": "Skurikhin/Tutelyan 2002; ISBN 5-94343-028-8",
+        "decision": "NOT_ACCEPTED",
+        "reason": "Third-party OCR mirror; exact 5% row and column alignment/fiber numeric value not independently verified against authorized edition. No whole copyrighted book retained."
+      },
+      {
+        "url": "https://health-diet.ru/base_of_food/sostav/23887.php",
+        "decision": "NOT_ACCEPTED",
+        "reason": "Secondary generic entry cites Skurikhin without exact primary row/edition binding; cannot certify its zero."
+      }
+    ],
+    "missingFact": "Versioned authoritative generic plain 5% row with available-carbohydrate semantics and directly applicable numeric dietary fiber; research zero remains unverified provenance, not evidence.",
+    "nextStep": "Obtain authorized Skurikhin/Tutelyan 2002 ISBN 5-94343-028-8 exact curd row, headings and symbol/method legend for independent source review; no automatic pilot replacement."
+  },
+  "readiness": {
+    "SOURCE_DATA_READY_FOR_ISSUANCE_INPUT": false,
+    "CAN_ISSUE_REAL_REVIEWED_EVIDENCE": false,
+    "CAN_ASSEMBLE": false,
+    "recipeReview": "NOT_REVIEWED",
+    "assemblyEligibility": "BLOCKED"
   }
 }
