@@ -1,0 +1,12 @@
+USDA National Nutrient Database for Standard Reference, Release 28 (2015)
+NDB No. 14411
+Beverages, water, tap, drinking (1)
+Amount in 100 grams of edible portion
+Refuse: 0%
+Energy: 0 kcal
+Protein: 0.00 g
+Total lipid (fat): 0.00 g
+Carbohydrate, by difference: 0.00 g
+Fiber, total dietary: 0.0 g
+Mean column: explicit numeric values, not blanks or analysis counts.
+Energy derivation: NC; protein, fat and fiber: BFZN; carbohydrate: NC.

@@ -1,0 +1,14 @@
+USDA National Nutrient Database for Standard Reference, Release 28 (2015)
+NDB No. 08120
+Cereals, oats, regular and quick, not fortified, dry
+oatmeal, old-fashioned oats, rolled oats
+Refuse: 0%
+Amount in 100 grams of edible portion
+Energy: 379 kcal
+Protein (N x 5.83): 13.15 g
+Total lipid (fat): 6.52 g
+Carbohydrate, by difference: 67.70 g
+Fiber, total dietary: 10.1 g
+Protein, fat and fiber derivation code: A
+Carbohydrate and energy derivation code: NC
+Blanks in the Mean column indicate lack of reliable data.
