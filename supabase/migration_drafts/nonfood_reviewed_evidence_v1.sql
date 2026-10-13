@@ -82,7 +82,7 @@ BEGIN
   FOREACH f IN ARRAY ARRAY['calories','protein','fat','carbs','fiber'] LOOP
    IF potok_food_evidence.text_v1(s->f) !~ '^(0|[1-9][0-9]{0,8})\.[0-9]{3}$'
     OR potok_food_evidence.text_v1(n->f) !~ '^(0|[1-9][0-9]{0,8})\.[0-9]{3}$'
-    OR p->'units'->>f IS DISTINCT FROM CASE WHEN f='calories' THEN 'kcal' ELSE 'g' END THEN RAISE EXCEPTION 'EXPLICIT_NUMERIC_OR_UNIT_REQUIRED'; END IF;
+    OR p->'units'->>f IS DISTINCT FROM (CASE WHEN f='calories' THEN 'kcal' ELSE 'g' END) THEN RAISE EXCEPTION 'EXPLICIT_NUMERIC_OR_UNIT_REQUIRED'; END IF;
    IF (n->>f)::numeric<>0 OR (f<>'carbs' AND s->f IS DISTINCT FROM n->f) THEN RAISE EXCEPTION 'NON_NUTRITIVE_BINDING_REQUIRED'; END IF;
   END LOOP;
   IF p->>'carbohydrateSemantics'='TOTAL_INCLUDING_FIBER' AND p->>'mappingPolicyVersion'='potok-source-total-including-fiber-to-available-v1' THEN expected:=(s->>'carbs')::numeric-(s->>'fiber')::numeric;
