@@ -1,0 +1,34 @@
+name: Nonfood Evidence disposable PostgreSQL acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/server/nonFoodEvidence*.ts'
+      - 'src/server/__tests__/nonFoodEvidence*.ts'
+      - 'scripts/contracts/nonfood-evidence*.ts'
+      - 'supabase/migration_drafts/nonfood_reviewed_evidence_v1*.sql'
+      - '.github/workflows/nonfood-evidence-postgres-acceptance.yml'
+permissions:
+  contents: read
+jobs:
+  disposable:
+    if: github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: postgres:17
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Unit and own Unix-only PostgreSQL acceptance
+        run: |
+          command -v initdb
+          command -v pg_ctl
+          command -v psql
+          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 node --import tsx --test --test-isolation=none src/server/__tests__/nonFoodEvidenceV1.test.ts scripts/contracts/nonfood-evidence-disposable-db-v1.test.ts
