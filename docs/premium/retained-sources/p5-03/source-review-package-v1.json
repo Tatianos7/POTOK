@@ -1,0 +1,89 @@
+{
+  "contract": "potok-p5-03-source-review-package-v1",
+  "status": "PENDING_REVIEW",
+  "retrievedDate": "2026-10-13",
+  "products": [
+    {
+      "stableFoodId": "apple",
+      "proposedIdentity": {
+        "name": "Яблоко",
+        "sourceIdentity": "Apples, raw, with skin",
+        "scientificName": "Malus domestica",
+        "foodState": "raw",
+        "ediblePart": "with skin; core and stem excluded",
+        "sourceRefusePercent": "10"
+      },
+      "proposedNutritionPer100GEdible": {
+        "caloriesKcal": "52",
+        "proteinG": "0.26",
+        "fatG": "0.17",
+        "carbsG": "13.81",
+        "fiberG": "2.4"
+      },
+      "source": {
+        "provider": "U.S. Department of Agriculture, Agricultural Research Service",
+        "documentIdentity": "USDA National Nutrient Database for Standard Reference, Release 27; NDB 09003",
+        "sourceRevision": "SR Release 27",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR27/reports/sr27fg09.pdf",
+        "relatedCurrentRecordUrl": "https://api.nal.usda.gov/fdc/v1/food/171688?api_key=DEMO_KEY",
+        "relatedCurrentRecordIdentity": "FoodData Central SR Legacy FDC 171688",
+        "retrievedDate": "2026-10-13",
+        "captureKind": "transcribed-short-excerpt",
+        "retainedPath": "docs/premium/retained-sources/p5-03/apple-usda-sr27-ndb-09003.txt",
+        "retainedByteLength": 318,
+        "retainedBytesSha256": "89d79388d19e3013fb7975d67c6a6cf5b4e42cad58fe6fb8fb08c2d81befaaca",
+        "upstreamDocumentSha256": null
+      },
+      "fieldMappings": {
+        "identity": "NDB No. 09003; Apples, raw, with skin; Malus domestica",
+        "state": "raw; with skin",
+        "ediblePart": "Amount in 100 grams of edible portion; Refuse: 10% Core and stem",
+        "caloriesKcal": "Energy",
+        "proteinG": "Protein (N x 6.25)",
+        "fatG": "Total lipid (fat)",
+        "carbsG": "Carbohydrate, by difference",
+        "fiberG": "Fiber, total dietary"
+      }
+    },
+    {
+      "stableFoodId": "cottage_cheese_5_percent",
+      "proposedIdentity": {
+        "name": "Творог 5%",
+        "sourceIdentity": "Творог 5% — Угличский сыродельно-молочный завод",
+        "standard": "ГОСТ 31453-2013",
+        "foodState": "as-sold",
+        "fatMassFractionPercent": "5.0",
+        "ediblePart": null
+      },
+      "proposedNutritionPer100GEdible": {
+        "caloriesKcal": "121",
+        "proteinG": "16.0",
+        "fatG": "5.0",
+        "carbsG": "3.0",
+        "fiberG": null
+      },
+      "source": {
+        "provider": "Угличский сыродельно-молочный завод",
+        "documentIdentity": "Product page: Творог 5%",
+        "sourceRevision": null,
+        "url": "https://www.usmz.ru/products/iz-uglicha/tvorog-5-iz-uglicha/",
+        "retrievedDate": "2026-10-13",
+        "captureKind": "transcribed-short-excerpt",
+        "retainedPath": "docs/premium/retained-sources/p5-03/cottage-cheese-usmz-5-percent.txt",
+        "retainedByteLength": 416,
+        "retainedBytesSha256": "6c7d87dc89ab8e1eae9be9ff5e105e467069724c66887ce4d60ac8afb2f1dae7",
+        "upstreamDocumentSha256": null
+      },
+      "fieldMappings": {
+        "identity": "Творог 5%; normalized pasteurized milk and starter cultures",
+        "state": "proposed as-sold; source does not name the evidence-contract state",
+        "ediblePart": null,
+        "caloriesKcal": "Энергетическая ценность; 100 г продукта",
+        "proteinG": "Белки; 100 г продукта",
+        "fatG": "Жиры; 100 г продукта and product name 5%",
+        "carbsG": "Углеводы; 100 г продукта",
+        "fiberG": null
+      }
+    }
+  ]
+}

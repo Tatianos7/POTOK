@@ -13,8 +13,18 @@ import type { RecipeCandidate } from '../recipes/validateRecipeCandidates';
 
 const recipesPath = new URL('../../data/recipes/recipe-candidates-v1.json', import.meta.url);
 const workbookPath = new URL('../../data/food-core/Food_Core_v02_with_aliases.xlsx', import.meta.url);
+const sourcePackagePath = new URL('../../docs/premium/retained-sources/p5-03/source-review-package-v1.json', import.meta.url);
 
 type SourceFood = Record<string, string>;
+
+type SourceReviewProduct = {
+  stableFoodId: string;
+  proposedIdentity: Record<string, string | null>;
+  proposedNutritionPer100GEdible: Record<string, string | null>;
+  source: { retainedPath: string; retainedByteLength: number; retainedBytesSha256: string;
+    upstreamDocumentSha256: string | null };
+  fieldMappings: Record<string, string | null>;
+};
 
 function contribution(food: SourceFood, grams: number) {
   const scaled = (field: string) => (Number(food[field]) * grams / 100).toFixed(3);
@@ -24,6 +34,51 @@ function contribution(food: SourceFood, grams: number) {
     authority: 'reference_only' as const, evidenceRef: null, evidenceDigest: null,
   };
 }
+
+test('P5-03 source-review package pins exactly two retained excerpts without fabricating issuance', async () => {
+  const packageBytes = await readFile(sourcePackagePath);
+  const sourcePackage = JSON.parse(packageBytes.toString('utf8')) as {
+    contract: string; status: string; retrievedDate: string; products: SourceReviewProduct[];
+  };
+  assert.equal(sourcePackage.contract, 'potok-p5-03-source-review-package-v1');
+  assert.equal(sourcePackage.status, 'PENDING_REVIEW');
+  assert.equal(sourcePackage.retrievedDate, '2026-10-13');
+  assert.deepEqual(sourcePackage.products.map(({ stableFoodId }) => stableFoodId),
+    ['apple', 'cottage_cheese_5_percent']);
+
+  for (const product of sourcePackage.products) {
+    const retained = await readFile(new URL(`../../${product.source.retainedPath}`, import.meta.url));
+    assert.equal(retained.byteLength, product.source.retainedByteLength);
+    assert.equal(createHash('sha256').update(retained).digest('hex'), product.source.retainedBytesSha256);
+    assert.equal(product.source.upstreamDocumentSha256, null);
+  }
+
+  const apple = sourcePackage.products[0];
+  assert.deepEqual(apple.proposedIdentity, {
+    name: 'Яблоко', sourceIdentity: 'Apples, raw, with skin', scientificName: 'Malus domestica',
+    foodState: 'raw', ediblePart: 'with skin; core and stem excluded', sourceRefusePercent: '10',
+  });
+  assert.deepEqual(apple.proposedNutritionPer100GEdible, {
+    caloriesKcal: '52', proteinG: '0.26', fatG: '0.17', carbsG: '13.81', fiberG: '2.4',
+  });
+  assert.match(apple.fieldMappings.ediblePart ?? '', /edible portion/);
+
+  const cottage = sourcePackage.products[1];
+  assert.equal(cottage.proposedIdentity.fatMassFractionPercent, '5.0');
+  assert.equal(cottage.proposedIdentity.foodState, 'as-sold');
+  assert.equal(cottage.proposedIdentity.ediblePart, null);
+  assert.deepEqual(cottage.proposedNutritionPer100GEdible, {
+    caloriesKcal: '121', proteinG: '16.0', fatG: '5.0', carbsG: '3.0', fiberG: null,
+  });
+  assert.equal(cottage.fieldMappings.fiberG, null);
+  assert.equal(cottage.fieldMappings.ediblePart, null);
+
+  const raw = packageBytes.toString('utf8');
+  for (const serverOwnedField of ['revisionId', 'reviewEventId', 'eventId', 'occurredAt',
+    'authorityReference', 'sourceArtifactId', 'idempotencyReference']) {
+    assert.equal(raw.includes(`"${serverOwnedField}"`), false, serverOwnedField);
+  }
+});
 
 test('P5-03 pilot remains bound to the real candidate and fails closed on missing reviewed evidence', async () => {
   const [recipesBytes, workbookBytes] = await Promise.all([
