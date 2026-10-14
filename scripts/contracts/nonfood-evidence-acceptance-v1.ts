@@ -53,6 +53,17 @@ export async function runNonFoodAcceptanceV1(t:TestContext,db:DB) {
   await review(n);assert.equal((await current(d.revision.definitionId)).nutritionUsable,true);
   const mismatch=nutritionRequest(d.revision.definitionId,id(999),'f'.repeat(64),20101);await assert.rejects(review(mismatch),/EXACT_TARGET_REQUIRED/);
  });
+ await t.test('nonfood definition and nutrition tables reject self-supersession',async()=>{
+  for(const [table,columns,values,constraint,offset] of [
+   ['definitions_v1','','','definitions_no_self_supersession_v1',20600],
+   ['nutrition_v1','definition_revision,definition_digest,','definition_revision,definition_digest,','nutrition_no_self_supersession_v1',20602],
+  ] as const){
+   const revision=id(offset),event=id(offset+1);
+   await assert.rejects(sql(`INSERT INTO potok_nonfood.${table}(revision_id,definition_id,${columns}digest,supersedes,event_id,snapshot,bytes)
+    SELECT ${quote(revision)}::uuid,definition_id,${values}digest,${quote(revision)}::uuid,${quote(event)}::uuid,snapshot,bytes
+    FROM potok_nonfood.${table} LIMIT 1`),new RegExp(constraint));
+  }
+ });
  await t.test('nonfood rejected review has terminal receipt but no new revision/head; nutrition invalidation is exact',async()=>{
   const rejected:NonFoodRequestV1={...definitionRequest(20150),kind:'REVIEW_REJECTED',reason:'Synthetic review rejected'};if(rejected.proposal.kind==='DEFINITION')rejected.proposal.definitionId=d.revision.definitionId;
   rejected.expectedHead={revisionId:d.revision.revisionId,digest:d.revision.digest};const r=await review(rejected);assert.equal(r.revision,null);

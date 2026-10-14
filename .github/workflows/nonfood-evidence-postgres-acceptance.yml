@@ -4,9 +4,21 @@ on:
     paths:
       - 'src/server/nonFoodEvidence*.ts'
       - 'src/server/__tests__/nonFoodEvidence*.ts'
+      - 'src/server/__tests__/foodEvidenceFixturesV1.ts'
+      - 'src/server/foodEvidenceReviewRequestV1.ts'
+      - 'src/server/foodEvidenceReviewGatewayV1.ts'
+      - 'src/utils/adaptiveNutritionWireV1.ts'
+      - 'src/utils/foodReviewedEvidenceV1.ts'
       - 'scripts/contracts/nonfood-evidence*.ts'
       - 'scripts/contracts/food-evidence-disposable-db-v1.test.ts'
       - 'supabase/migration_drafts/nonfood_reviewed_evidence_v1*.sql'
+      - 'supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.sql'
+      - 'docs/premium/drafts/20260921_trusted_entitlement_v2.sql'
+      - 'docs/premium/drafts/20260921_trusted_entitlement_v2_1_repair.sql'
+      - 'docs/premium/drafts/20260921_trusted_entitlement_v2_2_repair.sql'
+      - 'docs/premium/drafts/20260921_adaptive_nutrition_runtime_activation_v1.sql'
+      - 'package.json'
+      - 'package-lock.json'
       - '.github/workflows/nonfood-evidence-postgres-acceptance.yml'
 permissions:
   contents: read

@@ -118,6 +118,16 @@ export async function nonFoodRequestDigestV1(raw: string): Promise<string> {
   return nonFoodDigestV1('potok-nonfood-request-sha256-v1', await decodeNonFoodRequestV1(raw));
 }
 
+async function revisionSourceV1(value: unknown, p: NonFoodProposalV1): Promise<void> {
+  const source = await decodeRetainedFoodSourceSnapshotRawV1(JSON.stringify(value));
+  JSON.stringify(source, (_k, v: unknown) => { if (typeof v === 'string') text(v); return v; });
+  if (Object.is((value as { byteLength: number }).byteLength, -0)) fail();
+  const expected = p.kind === 'DEFINITION' ? ['identitySnapshot'] : [...fields];
+  if (source.mappings.length !== expected.length || expected.some(f => !source.mappings.some(m => m.field === f))
+    || source.mappings.some(m => canonicalNonFoodV1(m.applicability) !== canonicalNonFoodV1(p.applicability))
+    || canonicalNonFoodV1(source) !== canonicalNonFoodV1(value)) fail();
+}
+
 async function linkedDefinitionRevisionV1(value: unknown, nutrition: NutritionProposalV1): Promise<HeadV1> {
   const d = row(value, ['contract','definitionId','revisionId','supersedesRevisionId','reviewEventId','proposal','retainedSource','digest']);
   const definitionId = match(d.definitionId, uuid), revisionId = match(d.revisionId, uuid);
@@ -130,11 +140,7 @@ async function linkedDefinitionRevisionV1(value: unknown, nutrition: NutritionPr
   const p = proposal(d.proposal);
   if (p.kind !== 'DEFINITION' || p.definitionId !== definitionId
     || canonicalNonFoodV1(p.applicability) !== canonicalNonFoodV1(nutrition.applicability)) fail();
-  const source = await decodeRetainedFoodSourceSnapshotRawV1(JSON.stringify(d.retainedSource));
-  JSON.stringify(source, (_k, v: unknown) => { if (typeof v === 'string') text(v); return v; });
-  if (source.mappings.length !== 1 || source.mappings[0].field !== 'identitySnapshot'
-    || canonicalNonFoodV1(source.mappings[0].applicability) !== canonicalNonFoodV1(p.applicability)
-    || canonicalNonFoodV1(source) !== canonicalNonFoodV1(d.retainedSource)) fail();
+  await revisionSourceV1(d.retainedSource, p);
   const payload = { ...d }; delete payload.digest;
   if (digest !== await nonFoodDigestV1('potok-nonfood-revision-sha256-v1', payload)) fail();
   return { revisionId, digest };
@@ -176,6 +182,7 @@ export async function verifyNonFoodReceiptV1(raw: string, actor: string, value: 
   if (vd !== await nonFoodDigestV1('potok-nonfood-revision-sha256-v1', vp)) fail();
   const p = proposal(v.proposal);
   if (v.contract !== (p.kind === 'DEFINITION' ? 'potok-nonfood-definition-revision-v1' : 'potok-nonfood-nutrition-revision-v1') || p.definitionId !== v.definitionId) fail();
+  await revisionSourceV1(v.retainedSource, p);
   match(v.definitionId, uuid); match(v.revisionId, uuid); match(v.reviewEventId, uuid);
   if (v.supersedesRevisionId !== null && match(v.supersedesRevisionId, uuid) === v.revisionId) fail();
   const target = row(e.target, ['kind','definitionId','revisionId','digest']);

@@ -46,6 +46,23 @@ async function nutritionReceipt(rejected = false) {
   }
   return { raw, receipt };
 }
+async function definitionInvalidationReceipt() {
+  const receipt = await syntheticReceipt(JSON.stringify(definitionRequest())) as MutableReceipt;
+  const revision = receipt.revision!;
+  const request: Extract<NonFoodRequestV1, { kind: 'INVALIDATION' }> = {
+    contract: 'potok-nonfood-review-request-v1', kind: 'INVALIDATION', idempotencyReference: id(9100),
+    target: { kind: 'DEFINITION', definitionId: revision.definitionId, revisionId: revision.revisionId, digest: revision.digest },
+    severity: 'CORRECTION', reason: 'Synthetic invalidation', retainedSource: definitionRequest().retainedSource,
+  };
+  const raw = JSON.stringify(request);
+  receipt.idempotencyReference = request.idempotencyReference;
+  receipt.requestDigest = await nonFoodRequestDigestV1(raw);
+  receipt.rawRequestSha256 = await adaptiveNutritionSha256HexV1(new TextEncoder().encode(raw));
+  receipt.event.kind = 'INVALIDATION'; receipt.event.requestDigest = receipt.requestDigest;
+  receipt.event.reason = request.reason; receipt.event.severity = request.severity;
+  receipt.event.digest = await eventDigest(receipt.event);
+  return { request, raw, receipt };
+}
 
 test('strict nonfood definition and explicit zero nutrition requests decode without food identity', async () => {
   const d = definitionRequest();assert.equal((await decodeNonFoodRequestV1(JSON.stringify(d))).kind,'REVIEW_APPROVED');
@@ -136,24 +153,38 @@ test('definition-only approval and rejection reject an extra linked definition r
   await assert.rejects(verifyNonFoodReceiptV1(rejectedRaw, actor, receipt));
 });
 test('definition invalidation rejects an unrelated linked definition revision', async () => {
-  const approvalRaw = JSON.stringify(definitionRequest());
-  const receipt = await syntheticReceipt(approvalRaw) as MutableReceipt;
-  const revision = receipt.revision!;
-  const request: NonFoodRequestV1 = {
-    contract: 'potok-nonfood-review-request-v1', kind: 'INVALIDATION', idempotencyReference: id(9100),
-    target: { kind: 'DEFINITION', definitionId: revision.definitionId, revisionId: revision.revisionId, digest: revision.digest },
-    severity: 'CORRECTION', reason: 'Synthetic invalidation', retainedSource: definitionRequest().retainedSource,
-  };
-  const raw = JSON.stringify(request);
-  receipt.idempotencyReference = request.idempotencyReference;
-  receipt.requestDigest = await nonFoodRequestDigestV1(raw);
-  receipt.rawRequestSha256 = await adaptiveNutritionSha256HexV1(new TextEncoder().encode(raw));
-  receipt.event.kind = 'INVALIDATION'; receipt.event.requestDigest = receipt.requestDigest;
-  receipt.event.reason = request.reason; receipt.event.severity = request.severity;
-  receipt.event.digest = await eventDigest(receipt.event);
+  const { raw, receipt } = await definitionInvalidationReceipt();
   await verifyNonFoodReceiptV1(raw, actor, receipt);
   receipt.definitionRevision = (await nutritionReceipt()).receipt.definitionRevision;
   await assert.rejects(verifyNonFoodReceiptV1(raw, actor, receipt));
+});
+test('invalidation rejects resealed historical source bytes, metadata, mapping and applicability drift', async () => {
+  const baseline = await definitionInvalidationReceipt();
+  await verifyNonFoodReceiptV1(baseline.raw, actor, baseline.receipt);
+  for (const mutate of [
+    (r: MutableReceipt) => { r.revision!.retainedSource.byteLength++; },
+    (r: MutableReceipt) => { r.revision!.retainedSource.sourceBytesSha256 = '0'.repeat(64); },
+    (r: MutableReceipt) => { r.revision!.retainedSource.mappings = []; },
+    (r: MutableReceipt) => { r.revision!.retainedSource.mappings[0].field = 'calories'; },
+    (r: MutableReceipt) => { r.revision!.retainedSource.mappings[0].applicability.foodState = 'raw'; },
+    (r: MutableReceipt) => { r.revision!.proposal.applicability.foodState = 'raw'; },
+    (r: MutableReceipt) => { (r.revision!.retainedSource as unknown as Record<string, unknown>).unexpected = 'metadata'; },
+  ]) {
+    const { receipt, request } = await definitionInvalidationReceipt();
+    receipt.revision!.retainedSource = structuredClone(receipt.revision!.retainedSource);
+    mutate(receipt);
+    const payload: Record<string, unknown> = { ...receipt.revision! }; delete payload.digest;
+    receipt.revision!.digest = await nonFoodDigestV1('potok-nonfood-revision-sha256-v1', payload);
+    request.target.digest = receipt.revision!.digest;
+    receipt.event.target = { ...request.target };
+    receipt.heads.definition = { revisionId: receipt.revision!.revisionId, digest: receipt.revision!.digest };
+    const raw = JSON.stringify(request);
+    receipt.requestDigest = await nonFoodRequestDigestV1(raw);
+    receipt.rawRequestSha256 = await adaptiveNutritionSha256HexV1(new TextEncoder().encode(raw));
+    receipt.event.requestDigest = receipt.requestDigest;
+    receipt.event.digest = await eventDigest(receipt.event);
+    await assert.rejects(verifyNonFoodReceiptV1(raw, actor, receipt));
+  }
 });
 test('response loss/postdispatch auth exceptions quarantine exact operation; read-only recovery never redispatches', async () => {
   const raw=JSON.stringify(definitionRequest());let dispatches=0;let lookups=0;

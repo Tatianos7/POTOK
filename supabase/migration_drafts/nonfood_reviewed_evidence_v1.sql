@@ -26,12 +26,14 @@ CREATE INDEX events_definition_chronology_v1 ON potok_nonfood.events_v1(definiti
 CREATE TABLE potok_nonfood.definitions_v1(revision_id uuid PRIMARY KEY,definition_id uuid NOT NULL REFERENCES potok_nonfood.roots_v1 ON DELETE RESTRICT,
  digest text NOT NULL,supersedes uuid REFERENCES potok_nonfood.definitions_v1 ON DELETE RESTRICT,
  event_id uuid NOT NULL UNIQUE REFERENCES potok_nonfood.events_v1 ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED,
- snapshot jsonb NOT NULL,bytes bytea NOT NULL,UNIQUE(definition_id,revision_id,digest));
+ snapshot jsonb NOT NULL,bytes bytea NOT NULL,UNIQUE(definition_id,revision_id,digest),
+ CONSTRAINT definitions_no_self_supersession_v1 CHECK (revision_id IS DISTINCT FROM supersedes));
 CREATE TABLE potok_nonfood.nutrition_v1(revision_id uuid PRIMARY KEY,definition_id uuid NOT NULL REFERENCES potok_nonfood.roots_v1 ON DELETE RESTRICT,
  definition_revision uuid NOT NULL,definition_digest text NOT NULL,digest text NOT NULL,
  supersedes uuid REFERENCES potok_nonfood.nutrition_v1 ON DELETE RESTRICT,
  event_id uuid NOT NULL UNIQUE REFERENCES potok_nonfood.events_v1 ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED,
  snapshot jsonb NOT NULL,bytes bytea NOT NULL,UNIQUE(definition_id,revision_id,digest),
+ CONSTRAINT nutrition_no_self_supersession_v1 CHECK (revision_id IS DISTINCT FROM supersedes),
  FOREIGN KEY(definition_id,definition_revision,definition_digest) REFERENCES potok_nonfood.definitions_v1(definition_id,revision_id,digest) ON DELETE RESTRICT);
 CREATE TABLE potok_nonfood.heads_v1(definition_id uuid NOT NULL REFERENCES potok_nonfood.roots_v1 ON DELETE RESTRICT,
  kind text NOT NULL CHECK(kind IN ('DEFINITION','NUTRITION')),revision_id uuid NOT NULL,digest text NOT NULL,
