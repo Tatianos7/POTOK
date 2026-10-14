@@ -76,6 +76,26 @@ export async function runNonFoodAcceptanceV1(t:TestContext,db:DB) {
   const receipt=JSON.parse(await asUser(`SELECT public.nonfood_evidence_receipt_v1(${quote(req.idempotencyReference)})`));
   assert.equal(receipt.revision.revisionId,d.revision.revisionId,'receipt is historical, never currentness proof');
  });
+ await t.test('nonfood audit events follow UTC occurrence through review, supersession and invalidation',async()=>{
+  const first=definitionRequest(20350);if(first.proposal.kind==='DEFINITION')first.proposal.stableKey='synthetic_audit_chronology';
+  const opening=await review(first);
+  await sql('SELECT pg_sleep(0.01)');
+  const next=definitionRequest(20351);
+  if(next.proposal.kind==='DEFINITION') {next.proposal.definitionId=opening.revision.definitionId;next.proposal.stableKey='synthetic_audit_chronology';}
+  next.expectedHead={revisionId:opening.revision.revisionId,digest:opening.revision.digest};
+  const supersession=await review(next);
+  await sql('SELECT pg_sleep(0.01)');
+  const invalidation:NonFoodRequestV1={contract:first.contract,kind:'INVALIDATION',idempotencyReference:id(20352),
+   target:{kind:'DEFINITION',definitionId:opening.revision.definitionId,revisionId:supersession.revision.revisionId,digest:supersession.revision.digest},
+   severity:'CORRECTION',reason:'Synthetic audit invalidation',retainedSource:next.retainedSource};
+  const invalidated=await review(invalidation);
+  const audit=(await current(opening.revision.definitionId)).events as Array<{eventId:string;occurredAt:string;kind:string}>;
+  assert.deepEqual(audit.map(e=>e.eventId),[opening.event.eventId,supersession.event.eventId,invalidated.event.eventId]);
+  assert.deepEqual(audit.map(e=>e.kind),['REVIEW_APPROVED','REVIEW_APPROVED','INVALIDATION']);
+  assert.ok(audit.every((e,i)=>i===0 || audit[i-1].occurredAt<e.occurredAt));
+  const typed=JSON.parse(await sql(`SELECT jsonb_agg(jsonb_build_object('eventId',event_id,'occurredAt',to_char(occurred_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')) ORDER BY occurred_at,event_id) FROM potok_nonfood.events_v1 WHERE definition_id=${quote(opening.revision.definitionId)}`));
+  assert.deepEqual(typed,audit.map(e=>({eventId:e.eventId,occurredAt:e.occurredAt})));
+ });
  await t.test('nonfood direct writes/service-role RPC/immutability/FORCE RLS and food namespace denied',async()=>{
   for(const table of ['roots_v1','sources_v1','events_v1','definitions_v1','nutrition_v1','heads_v1','receipts_v1']){
    for(const command of [`SELECT * FROM potok_nonfood.${table}`,`DELETE FROM potok_nonfood.${table}`,`TRUNCATE potok_nonfood.${table}`]) await assert.rejects(asUser(command),/permission denied/);

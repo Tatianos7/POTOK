@@ -1,8 +1,51 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decodeNonFoodRequestV1, verifyNonFoodReceiptV1, nonFoodRequestDigestV1, nonFoodMaxBytesV1 } from '../nonFoodEvidenceV1';
+import { decodeNonFoodRequestV1, verifyNonFoodReceiptV1, nonFoodRequestDigestV1, nonFoodDigestV1, nonFoodMaxBytesV1,
+  type NonFoodRequestV1 } from '../nonFoodEvidenceV1';
 import { dispatchNonFoodV1, createNonFoodReviewHandlerV1 } from '../nonFoodEvidenceGatewayV1';
 import { definitionRequest, nutritionRequest, syntheticReceipt, actor, id } from './nonFoodEvidenceFixturesV1';
+import { adaptiveNutritionSha256HexV1 } from '../../utils/adaptiveNutritionWireV1';
+
+type BaseReceipt = Awaited<ReturnType<typeof syntheticReceipt>>;
+type Revision = BaseReceipt['revision'];
+type Head = { revisionId: string; digest: string };
+type MutableReceipt = Omit<BaseReceipt, 'revision' | 'definitionRevision' | 'heads' | 'event'> & {
+  revision: Revision | null;
+  definitionRevision: Revision | null;
+  heads: { definition: Head | null; nutrition: Head | null };
+  event: Omit<BaseReceipt['event'], 'kind' | 'reason' | 'severity' | 'target'> & {
+    kind: 'REVIEW_APPROVED' | 'REVIEW_REJECTED' | 'INVALIDATION'; reason: string | null;
+    severity: 'CORRECTION' | 'SAFETY_CRITICAL' | null; target: unknown;
+  };
+};
+async function eventDigest(event: MutableReceipt['event']): Promise<string> {
+  const content: Record<string, unknown> = { ...event }; delete content.digest;
+  return nonFoodDigestV1('potok-nonfood-event-sha256-v1', content);
+}
+async function nutritionReceipt(rejected = false) {
+  const definition = (await syntheticReceipt(JSON.stringify(definitionRequest()))).revision;
+  const request: Extract<NonFoodRequestV1, { kind: 'REVIEW_APPROVED' | 'REVIEW_REJECTED' }> = {
+    ...nutritionRequest(definition.definitionId, definition.revisionId, definition.digest),
+    kind: rejected ? 'REVIEW_REJECTED' : 'REVIEW_APPROVED', reason: rejected ? 'Synthetic rejection' : null,
+  };
+  const raw = JSON.stringify(request);
+  const receipt = await syntheticReceipt(JSON.stringify(nutritionRequest(definition.definitionId, definition.revisionId, definition.digest))) as MutableReceipt;
+  receipt.definitionRevision = definition;
+  receipt.heads.definition = { revisionId: definition.revisionId, digest: definition.digest };
+  receipt.heads.nutrition = { revisionId: receipt.revision!.revisionId, digest: receipt.revision!.digest };
+  if (rejected) {
+    receipt.requestDigest = await nonFoodRequestDigestV1(raw);
+    receipt.rawRequestSha256 = await adaptiveNutritionSha256HexV1(new TextEncoder().encode(raw));
+    receipt.event.kind = 'REVIEW_REJECTED';
+    receipt.event.requestDigest = receipt.requestDigest;
+    receipt.event.reason = request.reason;
+    receipt.event.target = { kind: 'NUTRITION', proposal: request.proposal };
+    receipt.event.digest = await eventDigest(receipt.event);
+    receipt.revision = null;
+    receipt.heads.nutrition = null;
+  }
+  return { raw, receipt };
+}
 
 test('strict nonfood definition and explicit zero nutrition requests decode without food identity', async () => {
   const d = definitionRequest();assert.equal((await decodeNonFoodRequestV1(JSON.stringify(d))).kind,'REVIEW_APPROVED');
@@ -45,6 +88,72 @@ test('receipt verifies actor/key/raw bytes/events/revisions/heads; reshaped cano
   }
   const formatted=JSON.stringify(JSON.parse(raw),null,2);assert.equal(await nonFoodRequestDigestV1(raw),await nonFoodRequestDigestV1(formatted));
   await assert.rejects(verifyNonFoodReceiptV1(formatted,actor,r));
+});
+test('linked definition revision is checked in nutrition approval and rejection receipts', async () => {
+  for (const rejected of [false, true]) {
+    const { raw, receipt } = await nutritionReceipt(rejected);
+    await verifyNonFoodReceiptV1(raw, actor, receipt);
+    for (const mutate of [
+      (r: typeof receipt) => { r.definitionRevision = null; },
+      (r: typeof receipt) => { r.definitionRevision!.contract = 'potok-nonfood-nutrition-revision-v1'; },
+      (r: typeof receipt) => { r.definitionRevision!.proposal.kind = 'NUTRITION'; },
+      (r: typeof receipt) => { r.definitionRevision!.definitionId = id(9010); },
+      (r: typeof receipt) => { r.definitionRevision!.revisionId = id(9011); },
+      (r: typeof receipt) => { r.definitionRevision!.reviewEventId = 'invalid'; },
+      (r: typeof receipt) => { r.definitionRevision!.reviewEventId = null as unknown as string; },
+      (r: typeof receipt) => { r.definitionRevision!.supersedesRevisionId = 'invalid'; },
+      (r: typeof receipt) => { r.definitionRevision!.supersedesRevisionId = r.definitionRevision!.revisionId; },
+      (r: typeof receipt) => { r.definitionRevision!.digest = 'f'.repeat(64); },
+      (r: typeof receipt) => { r.definitionRevision!.proposal.applicability.foodState = 'raw'; },
+      (r: typeof receipt) => { r.definitionRevision!.proposal.definitionId = id(9012); },
+      (r: typeof receipt) => { r.definitionRevision!.retainedSource.byteLength++; },
+      (r: typeof receipt) => { r.definitionRevision!.retainedSource.mappings[0].applicability.foodState = 'raw'; },
+      (r: typeof receipt) => { r.heads.definition = { revisionId: id(9013), digest: r.definitionRevision!.digest }; },
+    ]) {
+      const changed = structuredClone(receipt); mutate(changed);
+      await assert.rejects(verifyNonFoodReceiptV1(raw, actor, changed));
+    }
+  }
+});
+test('definition-only approval and rejection reject an extra linked definition revision', async () => {
+  const linked = (await nutritionReceipt()).receipt.definitionRevision;
+  const raw = JSON.stringify(definitionRequest());
+  const approval = await syntheticReceipt(raw) as MutableReceipt;
+  approval.definitionRevision = linked;
+  await assert.rejects(verifyNonFoodReceiptV1(raw, actor, approval));
+  const rejected = await nutritionReceipt(true);
+  const request = definitionRequest();
+  const rejectedRequest = { ...request, kind: 'REVIEW_REJECTED' as const, reason: 'Synthetic rejection' };
+  const rejectedRaw = JSON.stringify(rejectedRequest);
+  const receipt = structuredClone(rejected.receipt);
+  receipt.idempotencyReference = rejectedRequest.idempotencyReference;
+  receipt.requestDigest = await nonFoodRequestDigestV1(rejectedRaw);
+  receipt.rawRequestSha256 = await adaptiveNutritionSha256HexV1(new TextEncoder().encode(rejectedRaw));
+  receipt.event.kind = 'REVIEW_REJECTED'; receipt.event.requestDigest = receipt.requestDigest;
+  receipt.event.reason = rejectedRequest.reason; receipt.event.retainedSource = rejectedRequest.retainedSource;
+  receipt.event.target = { kind: 'DEFINITION', proposal: rejectedRequest.proposal };
+  receipt.event.digest = await eventDigest(receipt.event);
+  await assert.rejects(verifyNonFoodReceiptV1(rejectedRaw, actor, receipt));
+});
+test('definition invalidation rejects an unrelated linked definition revision', async () => {
+  const approvalRaw = JSON.stringify(definitionRequest());
+  const receipt = await syntheticReceipt(approvalRaw) as MutableReceipt;
+  const revision = receipt.revision!;
+  const request: NonFoodRequestV1 = {
+    contract: 'potok-nonfood-review-request-v1', kind: 'INVALIDATION', idempotencyReference: id(9100),
+    target: { kind: 'DEFINITION', definitionId: revision.definitionId, revisionId: revision.revisionId, digest: revision.digest },
+    severity: 'CORRECTION', reason: 'Synthetic invalidation', retainedSource: definitionRequest().retainedSource,
+  };
+  const raw = JSON.stringify(request);
+  receipt.idempotencyReference = request.idempotencyReference;
+  receipt.requestDigest = await nonFoodRequestDigestV1(raw);
+  receipt.rawRequestSha256 = await adaptiveNutritionSha256HexV1(new TextEncoder().encode(raw));
+  receipt.event.kind = 'INVALIDATION'; receipt.event.requestDigest = receipt.requestDigest;
+  receipt.event.reason = request.reason; receipt.event.severity = request.severity;
+  receipt.event.digest = await eventDigest(receipt.event);
+  await verifyNonFoodReceiptV1(raw, actor, receipt);
+  receipt.definitionRevision = (await nutritionReceipt()).receipt.definitionRevision;
+  await assert.rejects(verifyNonFoodReceiptV1(raw, actor, receipt));
 });
 test('response loss/postdispatch auth exceptions quarantine exact operation; read-only recovery never redispatches', async () => {
   const raw=JSON.stringify(definitionRequest());let dispatches=0;let lookups=0;

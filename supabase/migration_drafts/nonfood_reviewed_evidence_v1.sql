@@ -18,8 +18,11 @@ CREATE TABLE potok_nonfood.sources_v1(source_id uuid PRIMARY KEY,snapshot jsonb 
 CREATE TABLE potok_nonfood.events_v1(event_id uuid PRIMARY KEY,actor_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
  authority_id uuid NOT NULL,request_key uuid NOT NULL,definition_id uuid REFERENCES potok_nonfood.roots_v1 ON DELETE RESTRICT,
  source_id uuid NOT NULL REFERENCES potok_nonfood.sources_v1 ON DELETE RESTRICT,
- snapshot jsonb NOT NULL,bytes bytea NOT NULL,UNIQUE(actor_id,request_key),
+ occurred_at timestamptz NOT NULL,snapshot jsonb NOT NULL,bytes bytea NOT NULL,UNIQUE(actor_id,request_key),
+ CONSTRAINT events_occurrence_snapshot_v1 CHECK(jsonb_typeof(snapshot->'occurredAt') IS NOT DISTINCT FROM 'string'
+  AND snapshot->>'occurredAt'=to_char(occurred_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')),
  FOREIGN KEY(actor_id,authority_id) REFERENCES potok_control.access_attestations(account_id,attestation_id) ON DELETE RESTRICT);
+CREATE INDEX events_definition_chronology_v1 ON potok_nonfood.events_v1(definition_id,occurred_at,event_id);
 CREATE TABLE potok_nonfood.definitions_v1(revision_id uuid PRIMARY KEY,definition_id uuid NOT NULL REFERENCES potok_nonfood.roots_v1 ON DELETE RESTRICT,
  digest text NOT NULL,supersedes uuid REFERENCES potok_nonfood.definitions_v1 ON DELETE RESTRICT,
  event_id uuid NOT NULL UNIQUE REFERENCES potok_nonfood.events_v1 ON DELETE RESTRICT DEFERRABLE INITIALLY DEFERRED,
@@ -112,7 +115,7 @@ CREATE FUNCTION potok_nonfood.invalidated_v1(k text,r uuid) RETURNS boolean LANG
 $$;
 CREATE FUNCTION public.nonfood_evidence_review_v1(p_request_text text) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE actor uuid:=auth.uid();att uuid;v jsonb;p jsonb;s jsonb;source_bytes bytea;key uuid;rd text;old potok_nonfood.receipts_v1%ROWTYPE;
- k text;d uuid;rev jsonb;def jsonb;head jsonb;prev uuid;rid uuid;eid uuid;ev jsonb;receipt jsonb;target jsonb;action text;
+ k text;d uuid;rev jsonb;def jsonb;head jsonb;prev uuid;rid uuid;eid uuid;event_at timestamptz;ev jsonb;receipt jsonb;target jsonb;action text;
 BEGIN
  att:=potok_food_evidence.authority_v1();
  IF p_request_text IS NULL OR octet_length(p_request_text)>1048576 THEN RAISE EXCEPTION 'REQUEST_SIZE_INVALID'; END IF;
@@ -172,10 +175,11 @@ BEGIN
   ELSE INSERT INTO potok_nonfood.nutrition_v1 VALUES(rid,d,(p->>'definitionRevisionId')::uuid,p->>'definitionRevisionDigest',rev->>'digest',prev,eid,rev,convert_to(potok_food_evidence.canonical_json_v1(rev),'UTF8')); END IF;
   target:=jsonb_build_object('kind',k,'definitionId',d,'revisionId',rid,'digest',rev->>'digest');
  ELSIF action='REVIEW_REJECTED' THEN target:=jsonb_build_object('kind',k,'proposal',p);rev:=NULL; END IF;
+ event_at:=date_trunc('milliseconds',clock_timestamp());
  ev:=potok_food_evidence.artifact_v1('potok-nonfood-event-sha256-v1',jsonb_build_object('contract','potok-nonfood-review-event-v1','eventId',eid,'actorId',actor,
-  'authorityReference','potok-control-admin-attestation-v2:'||att::text,'occurredAt',to_char(clock_timestamp() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+  'authorityReference','potok-control-admin-attestation-v2:'||att::text,'occurredAt',to_char(event_at AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
   'kind',action,'requestDigest',rd,'target',target,'retainedSource',s,'reason',v->'reason','severity',CASE WHEN action='INVALIDATION' THEN v->'severity' ELSE 'null'::jsonb END));
- INSERT INTO potok_nonfood.events_v1 VALUES(eid,actor,att,key,d,(s->>'sourceArtifactId')::uuid,ev,convert_to(potok_food_evidence.canonical_json_v1(ev),'UTF8'));
+ INSERT INTO potok_nonfood.events_v1 VALUES(eid,actor,att,key,d,(s->>'sourceArtifactId')::uuid,event_at,ev,convert_to(potok_food_evidence.canonical_json_v1(ev),'UTF8'));
  IF action='REVIEW_APPROVED' THEN INSERT INTO potok_nonfood.heads_v1 VALUES(d,k,rid,rev->>'digest') ON CONFLICT(definition_id,kind) DO UPDATE SET revision_id=excluded.revision_id,digest=excluded.digest; END IF;
  IF action='INVALIDATION' AND k='NUTRITION' THEN def:=potok_nonfood.revision_v1('DEFINITION',d,(p->>'definitionRevisionId')::uuid,p->>'definitionRevisionDigest'); END IF;
  receipt:=jsonb_build_object('contract','potok-nonfood-receipt-v1','actorId',actor,'idempotencyReference',key,'requestDigest',rd,
@@ -197,7 +201,7 @@ DECLARE h record;d jsonb;n jsonb;du boolean:=false;nu boolean:=false;events json
  END LOOP;
  nu:=du AND nu AND n->'proposal'->>'definitionRevisionId'=d->>'revisionId' AND n->'proposal'->>'definitionRevisionDigest'=d->>'digest'
   AND n->'proposal'->'applicability'=d->'proposal'->'applicability';
- SELECT coalesce(jsonb_agg(snapshot ORDER BY event_id),'[]'::jsonb) INTO events FROM potok_nonfood.events_v1 WHERE definition_id=p_definition_id;
+ SELECT coalesce(jsonb_agg(snapshot ORDER BY occurred_at,event_id),'[]'::jsonb) INTO events FROM potok_nonfood.events_v1 WHERE definition_id=p_definition_id;
  PERFORM potok_food_evidence.authority_v1();
  RETURN jsonb_build_object('contract','potok-nonfood-current-v1','definitionRevision',d,'nutritionRevision',n,'heads',potok_nonfood.heads_json_v1(p_definition_id),
  'definitionUsable',du,'nutritionUsable',coalesce(nu,false),'events',events);

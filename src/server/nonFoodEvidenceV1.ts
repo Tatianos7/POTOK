@@ -118,6 +118,28 @@ export async function nonFoodRequestDigestV1(raw: string): Promise<string> {
   return nonFoodDigestV1('potok-nonfood-request-sha256-v1', await decodeNonFoodRequestV1(raw));
 }
 
+async function linkedDefinitionRevisionV1(value: unknown, nutrition: NutritionProposalV1): Promise<HeadV1> {
+  const d = row(value, ['contract','definitionId','revisionId','supersedesRevisionId','reviewEventId','proposal','retainedSource','digest']);
+  const definitionId = match(d.definitionId, uuid), revisionId = match(d.revisionId, uuid);
+  match(d.reviewEventId, uuid);
+  const supersedes = d.supersedesRevisionId === null ? null : match(d.supersedesRevisionId, uuid);
+  const digest = match(d.digest, hash);
+  if (d.contract !== 'potok-nonfood-definition-revision-v1' || supersedes === revisionId
+    || definitionId !== nutrition.definitionId || revisionId !== nutrition.definitionRevisionId
+    || digest !== nutrition.definitionRevisionDigest) fail();
+  const p = proposal(d.proposal);
+  if (p.kind !== 'DEFINITION' || p.definitionId !== definitionId
+    || canonicalNonFoodV1(p.applicability) !== canonicalNonFoodV1(nutrition.applicability)) fail();
+  const source = await decodeRetainedFoodSourceSnapshotRawV1(JSON.stringify(d.retainedSource));
+  JSON.stringify(source, (_k, v: unknown) => { if (typeof v === 'string') text(v); return v; });
+  if (source.mappings.length !== 1 || source.mappings[0].field !== 'identitySnapshot'
+    || canonicalNonFoodV1(source.mappings[0].applicability) !== canonicalNonFoodV1(p.applicability)
+    || canonicalNonFoodV1(source) !== canonicalNonFoodV1(d.retainedSource)) fail();
+  const payload = { ...d }; delete payload.digest;
+  if (digest !== await nonFoodDigestV1('potok-nonfood-revision-sha256-v1', payload)) fail();
+  return { revisionId, digest };
+}
+
 export async function verifyNonFoodReceiptV1(raw: string, actor: string, value: unknown): Promise<void> {
   const request = await decodeNonFoodRequestV1(raw);
   const r = row(value, ['contract','actorId','idempotencyReference','requestDigest','rawRequestSha256','event','revision','definitionRevision','heads','replayed']);
@@ -136,14 +158,26 @@ export async function verifyNonFoodReceiptV1(raw: string, actor: string, value: 
   if (request.kind !== 'INVALIDATION' && e.severity !== null) fail();
   if (request.kind === 'REVIEW_APPROVED' && e.reason !== null) fail();
   const at = text(e.occurredAt); if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(at) || new Date(at).toISOString() !== at) fail();
-  if (request.kind === 'REVIEW_REJECTED') { if (r.revision !== null || e.reason !== request.reason || canonicalNonFoodV1(e.target) !== canonicalNonFoodV1({ kind: request.proposal.kind, proposal: request.proposal })) fail(); return; }
+  const receiptKind = request.kind === 'INVALIDATION' ? request.target.kind : request.proposal.kind;
+  if (receiptKind === 'NUTRITION') {
+    const nutrition = request.kind === 'INVALIDATION' ? null : request.proposal;
+    if (nutrition?.kind === 'NUTRITION' && request.kind === 'REVIEW_REJECTED') {
+      const linked = await linkedDefinitionRevisionV1(r.definitionRevision, nutrition);
+      if (canonicalNonFoodV1(h.definition) !== canonicalNonFoodV1(linked)) fail();
+    }
+  } else if (r.definitionRevision !== null) fail();
+  if (request.kind === 'REVIEW_REJECTED') {
+    if (r.revision !== null || e.reason !== request.reason
+      || canonicalNonFoodV1(e.target) !== canonicalNonFoodV1({ kind: request.proposal.kind, proposal: request.proposal })) fail();
+    return;
+  }
   const v = row(r.revision, ['contract','definitionId','revisionId','supersedesRevisionId','reviewEventId','proposal','retainedSource','digest']);
   const { digest: vd, ...vp } = v;
   if (vd !== await nonFoodDigestV1('potok-nonfood-revision-sha256-v1', vp)) fail();
   const p = proposal(v.proposal);
   if (v.contract !== (p.kind === 'DEFINITION' ? 'potok-nonfood-definition-revision-v1' : 'potok-nonfood-nutrition-revision-v1') || p.definitionId !== v.definitionId) fail();
   match(v.definitionId, uuid); match(v.revisionId, uuid); match(v.reviewEventId, uuid);
-  if (v.supersedesRevisionId !== null) match(v.supersedesRevisionId, uuid);
+  if (v.supersedesRevisionId !== null && match(v.supersedesRevisionId, uuid) === v.revisionId) fail();
   const target = row(e.target, ['kind','definitionId','revisionId','digest']);
   if (target.definitionId !== v.definitionId || target.revisionId !== v.revisionId || target.digest !== vd || target.kind !== p.kind) fail();
   if (request.kind === 'INVALIDATION') {
@@ -158,10 +192,7 @@ export async function verifyNonFoodReceiptV1(raw: string, actor: string, value: 
   if (request.kind === 'REVIEW_APPROVED' && canonicalNonFoodV1(h[p.kind === 'DEFINITION' ? 'definition' : 'nutrition'])
     !== canonicalNonFoodV1({ revisionId: v.revisionId, digest: vd })) fail();
   if (p.kind === 'NUTRITION') {
-    const d = row(r.definitionRevision, ['contract','definitionId','revisionId','supersedesRevisionId','reviewEventId','proposal','retainedSource','digest']);
-    const { digest: dd, ...dp } = d;
-    if (dd !== await nonFoodDigestV1('potok-nonfood-revision-sha256-v1', dp) || d.definitionId !== p.definitionId
-      || d.revisionId !== p.definitionRevisionId || dd !== p.definitionRevisionDigest
-      || canonicalNonFoodV1((d.proposal as DefinitionProposalV1).applicability) !== canonicalNonFoodV1(p.applicability)) fail();
+    const linked = await linkedDefinitionRevisionV1(r.definitionRevision, p);
+    if (request.kind === 'REVIEW_APPROVED' && canonicalNonFoodV1(h.definition) !== canonicalNonFoodV1(linked)) fail();
   } else if (r.definitionRevision !== null) fail();
 }

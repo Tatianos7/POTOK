@@ -60,6 +60,8 @@ Public SQL entrypoints (only authenticated EXECUTE, still requiring verified aut
 - `nonfood_evidence_current_v1(uuid)`: under same catalog gate returns definition and
   nutrition revisions, exact heads, events and usable flags. Superseded definition leaves
   old nutrition historically retained but unusable; invalidation does not rewrite history.
+  Events are ordered by stored UTC millisecond timestamp, then event UUID for equal
+  timestamps; a table constraint binds that timestamp to immutable event JSON.
 
 Receipts bind actor, key, canonical request digest, raw-byte SHA, event, revision,
 linked definition and heads at the operation. Same key with different bytes conflicts,
@@ -81,7 +83,7 @@ administrative boundary; immutability does not claim to defeat the DB owner.
 | --- | --- | --- | --- |
 | roots_v1 | minted definition ID, stable key | none | events, definitions, nutrition, heads |
 | sources_v1 | complete source snapshot and exact original bytes | none | events.source_id |
-| events_v1 | actor, authority attestation, request key, source, event JSON/canonical bytes | auth.users; composite access_attestations(account_id,attestation_id); roots (nullable for rejected new proposal); sources; composite receipts(actor_id,request_key), deferred | definitions/nutrition/receipts.event_id, deferred |
+| events_v1 | actor, authority attestation, request key, source, typed UTC event timestamp, event JSON/canonical bytes | auth.users; composite access_attestations(account_id,attestation_id); roots (nullable for rejected new proposal); sources; composite receipts(actor_id,request_key), deferred | definitions/nutrition/receipts.event_id, deferred |
 | definitions_v1 | exact identity/state/exclusions, source snapshot, revision JSON/canonical bytes/digest | roots; same-table supersedes; event (deferred) | nutrition exact composite(definition_id,revision_id,digest); next definition supersedes |
 | nutrition_v1 | five source/mapped values, exact definition and source, revision JSON/canonical bytes/digest | roots; exact composite definition revision; same-table supersedes; event (deferred) | next nutrition supersedes |
 | heads_v1 | definition/kind/revision/digest current projection | roots | none; polymorphic revisions validated by issuer and exact reader |

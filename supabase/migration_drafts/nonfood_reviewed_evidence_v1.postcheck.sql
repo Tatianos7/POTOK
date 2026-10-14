@@ -1,6 +1,7 @@
 -- Disposable ACL/FK/currentness boundary audit. No live data export.
 DO $$ DECLARE r text;f text;t record;BEGIN
  IF (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='potok_nonfood' AND c.relkind='r')<>7 THEN RAISE EXCEPTION 'NONFOOD_TABLE_INVENTORY_DRIFT'; END IF;
+ IF NOT EXISTS(SELECT 1 FROM pg_constraint WHERE conrelid='potok_nonfood.events_v1'::regclass AND conname='events_occurrence_snapshot_v1' AND contype='c') THEN RAISE EXCEPTION 'EVENT_CHRONOLOGY_CONSTRAINT_REQUIRED'; END IF;
  FOR t IN SELECT c.oid,c.relrowsecurity,c.relforcerowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='potok_nonfood' AND c.relkind='r' LOOP
   IF NOT t.relrowsecurity OR NOT t.relforcerowsecurity THEN RAISE EXCEPTION 'FORCE_RLS_REQUIRED';END IF;
   FOREACH r IN ARRAY ARRAY['anon','authenticated','service_role'] LOOP

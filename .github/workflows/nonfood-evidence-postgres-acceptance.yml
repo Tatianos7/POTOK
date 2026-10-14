@@ -5,6 +5,7 @@ on:
       - 'src/server/nonFoodEvidence*.ts'
       - 'src/server/__tests__/nonFoodEvidence*.ts'
       - 'scripts/contracts/nonfood-evidence*.ts'
+      - 'scripts/contracts/food-evidence-disposable-db-v1.test.ts'
       - 'supabase/migration_drafts/nonfood_reviewed_evidence_v1*.sql'
       - '.github/workflows/nonfood-evidence-postgres-acceptance.yml'
 permissions:
