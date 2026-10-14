@@ -111,6 +111,11 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
     }
     for (const n of [1,2]) await sql(`SELECT potok_control.grant_entitlement_v2(${quote(id(n))},'admin',NULL,'synthetic-local-test','synthetic authorization fixture')`);
     await sql(`UPDATE public.user_profiles SET is_admin=true WHERE user_id=${quote(id(3))}`);
+    // Optional additive acceptance on the same isolated trusted dependency fixture.
+    if (process.env.POTOK_NONFOOD_ACCEPTANCE === '1') {
+      const { runNonFoodAcceptanceV1 } = await import('./nonfood-evidence-acceptance-v1');
+      await runNonFoodAcceptanceV1(t, { sql, asUser });
+    }
     await t.test('JWT/session/anonymous/admin and client authority forgery fail closed',async () => {
       const input = await approved(1000);
       await assert.rejects(sql(`BEGIN ISOLATION LEVEL REPEATABLE READ; SET LOCAL ROLE authenticated;
