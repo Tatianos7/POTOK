@@ -6,6 +6,9 @@ authorize reviewers, determine historical/current validity, or change catalog,
 resolver, importer or Premium behavior. A valid hash is not provenance. Test
 fixtures are synthetic and are not production evidence.
 
+The [owner-approved nutrition data principles for 2026-10-15](nutrition-data-semantics-owner-decisions-2026-10-15.md)
+do not change this v1 contract.
+
 ## Identity and revisions
 
 The existing `foods.id`, `canonical_food_id`, and `stable_food_id` remain the only
