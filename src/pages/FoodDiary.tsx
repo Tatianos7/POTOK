@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { X, Calendar, Plus, ScanLine, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check, Heart, Copy, Trash2, StickyNote, TrendingUp } from 'lucide-react';
+import { X, Calendar, Plus, Coffee, UtensilsCrossed, Utensils, Apple, ChevronUp, ChevronDown, MoreVertical, Check, Heart, Copy, Trash2, StickyNote } from 'lucide-react';
 import { DailyMeals, MealEntry, Food, UserCustomFood } from '../types';
 import { mealService, type MealSyncStatus } from '../services/mealService';
 import { foodService, isSuspiciousAllZeroCatalogFood } from '../services/foodService';
@@ -13,6 +13,8 @@ import AddFoodToMealModal from '../components/AddFoodToMealModal';
 import CreateCustomFoodModal from '../components/CreateCustomFoodModal';
 import ScanConfirmBottomSheet from '../components/ScanConfirmBottomSheet';
 import AddProductModal from '../components/AddProductModal';
+import { BottomDockActions } from '../components/AppBottomDock';
+import { FoodDiaryBottomActions } from '../components/NutritionBottomActions';
 import RecipeAnalyzePicker from '../components/RecipeAnalyzePicker';
 import RecipeAnalyzeResultSheet from '../components/RecipeAnalyzeResultSheet';
 import EditMealEntryModal from '../components/EditMealEntryModal';
@@ -1606,33 +1608,16 @@ const FoodDiary = () => {
           </div>
           )}
           
-          {/* Spacer for bottom bar */}
-          <div className="h-24"></div>
         </StateContainer>
       </ScreenContainer>
 
-      {/* Bottom Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50" style={{ backgroundColor: colors.surface, borderTop: `1px solid ${colors.border}`, padding: spacing.sm }}>
-        <div className="mx-auto" style={{ maxWidth: 560, minWidth: 320, padding: `0 ${spacing.lg}px` }}>
-          <div className="flex items-center justify-between" style={{ gap: spacing.sm }}>
-            <Button variant="ghost" size="sm" onClick={() => setIsBarcodeModalOpen(true)}>
-              <ScanLine className="w-6 h-6" style={{ color: colors.text.secondary }} />
-            </Button>
-            <Button variant="primary" size="lg" onClick={() => setShowAddProductModal(true)} style={{ flex: 1 }}>
-              ДОБАВИТЬ ПРОДУКТ
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate('/progress/nutrition')}
-              title="Прогресс питания"
-              aria-label="Открыть прогресс питания"
-            >
-              <TrendingUp className="w-6 h-6" style={{ color: colors.text.secondary }} />
-            </Button>
-          </div>
-        </div>
-      </div>
+      <BottomDockActions>
+        <FoodDiaryBottomActions
+          onBarcode={() => setIsBarcodeModalOpen(true)}
+          onAdd={() => setShowAddProductModal(true)}
+          onProgress={() => navigate('/progress/nutrition')}
+        />
+      </BottomDockActions>
 
       {/* Modals */}
       {isSearchModalOpen && (

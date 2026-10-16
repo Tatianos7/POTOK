@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mic, ScanLine, ArrowRight, Trash2, Check, Circle, Plus } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Trash2, Check, Circle, Plus } from 'lucide-react';
 import ProductSearch from '../components/ProductSearch';
 import BarcodeScanner from '../components/BarcodeScanner';
 import AddFoodToMealModal from '../components/AddFoodToMealModal';
-import FoodMultiAddCartButton from '../components/FoodMultiAddCartButton';
+import { BottomDockActions } from '../components/AppBottomDock';
+import { FoodSearchBottomActions } from '../components/NutritionBottomActions';
 import FoodMultiAddCartSheet from '../components/FoodMultiAddCartSheet';
 import { Food, MealEntry, UserCustomFood } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -614,7 +615,7 @@ const FoodSearch = () => {
       </header>
 
         {/* Search results with custom bar + recent */}
-        <main className="py-4 space-y-4 pb-24">
+        <main className="py-4 space-y-4">
         <div ref={searchOverlayRef} className="relative z-30">
           <div
             className="flex items-center bg-white dark:bg-gray-900 pl-3 pr-0 w-full"
@@ -805,30 +806,15 @@ const FoodSearch = () => {
       </div>
 
       {/* Bottom bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 py-3">
-        <div className="container-responsive">
-          <div className="flex items-center justify-between gap-3">
-            <button
-              onClick={() => setIsBarcodeModalOpen(true)}
-              className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <ScanLine className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            </button>
-            <FoodMultiAddCartButton
-              count={multiAddDrafts.length}
-              totals={multiAddTotals}
-              onClick={() => setIsCartSheetOpen(true)}
-            />
-            <button
-              onClick={handleVoice}
-              className="p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
-            >
-              <Mic className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="h-16" />
+      <BottomDockActions>
+        <FoodSearchBottomActions
+          onBarcode={() => setIsBarcodeModalOpen(true)}
+          onCart={() => setIsCartSheetOpen(true)}
+          onVoice={handleVoice}
+          count={multiAddDrafts.length}
+          totals={multiAddTotals}
+        />
+      </BottomDockActions>
 
       <FoodMultiAddCartSheet
         isOpen={isCartSheetOpen}

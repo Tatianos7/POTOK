@@ -9,6 +9,8 @@ import { MealEntry, Food } from '../types';
 import { getFoodDisplayName } from '../utils/foodDisplayName';
 import { getInvalidFoodMacroMessage, getInvalidFoodMacroReason } from '../utils/foodNormalizer';
 import { buildDiaryReturnNavigationState } from '../utils/manualFoodFlow';
+import { BottomDockActions } from '../components/AppBottomDock';
+import { ProductEditorBottomActions } from '../components/NutritionBottomActions';
 
 export const buildCustomProductCreateData = ({
   name,
@@ -408,31 +410,16 @@ const CreateCustomProductPage = () => {
       </main>
 
       {/* Footer Buttons */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-2 sm:px-4 md:px-6 lg:px-8 py-4 space-y-3">
-        {/* Чекбокс "Добавить в избранное" */}
-        <label className="flex items-center gap-3 cursor-pointer py-2">
-          <input
-            type="checkbox"
-            checked={addToFavorites}
-            onChange={(e) => setAddToFavorites(e.target.checked)}
-            className="w-5 h-5 text-green-600 focus:ring-green-500 rounded border-gray-300 dark:border-gray-700 accent-green-600"
-          />
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
-            Добавить в избранное
-          </span>
-        </label>
-        
-        <button
-          onClick={handleSave}
-          disabled={isSaving || !name.trim()}
-          className="w-full py-3 px-4 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold text-sm uppercase hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors disabled:opacity-50"
-        >
-          {isSaving ? 'СОХРАНЕНИЕ...' : 'СОХРАНИТЬ'}
-        </button>
-      </footer>
-
-      {/* Spacer для footer */}
-      <div className="h-32" />
+      <BottomDockActions>
+        <ProductEditorBottomActions
+          variant="custom"
+          addToFavorites={addToFavorites}
+          onFavoritesChange={setAddToFavorites}
+          onSave={handleSave}
+          isSaving={isSaving}
+          canSave={Boolean(name.trim())}
+        />
+      </BottomDockActions>
     </div>
   );
 };
