@@ -113,8 +113,10 @@ const AppBottomNavigation = ({ hasPremiumAccess = false }: AppBottomNavigationPr
       ) : null}
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-[768px] border-t border-gray-200 bg-white/95 px-2 pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur"
-        style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
+        className="relative z-50 mx-auto w-full max-w-[768px] border-t border-gray-200 bg-white/95 px-2 pt-2 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur"
+        style={{
+          paddingBottom: 'calc(0.5rem + var(--app-bottom-safe-area))',
+        }}
         aria-label="Основная навигация"
       >
         {isMoreOpen ? (
@@ -129,7 +131,7 @@ const AppBottomNavigation = ({ hasPremiumAccess = false }: AppBottomNavigationPr
                     className="flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-lg border border-gray-100 bg-gray-50 px-1.5 py-1.5 text-center text-[10px] font-semibold leading-3 text-gray-800 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
                   >
                     <Icon className="h-4 w-4" aria-hidden="true" />
-                    <span className="line-clamp-2">{item.label}</span>
+                    <span className="text-center [overflow-wrap:anywhere]">{item.label}</span>
                   </Link>
                 );
               })}
@@ -149,7 +151,7 @@ const AppBottomNavigation = ({ hasPremiumAccess = false }: AppBottomNavigationPr
                 aria-current={isActive ? 'page' : undefined}
               >
                 <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-                <span className="truncate">{item.label}</span>
+                <span className="text-center leading-tight [overflow-wrap:anywhere]">{item.label}</span>
               </Link>
             );
           })}
@@ -162,7 +164,7 @@ const AppBottomNavigation = ({ hasPremiumAccess = false }: AppBottomNavigationPr
             onClick={() => setIsMoreOpen((current) => !current)}
           >
             <MoreHorizontal className="h-5 w-5 shrink-0" aria-hidden="true" />
-            <span className="truncate">Ещё</span>
+            <span className="text-center leading-tight [overflow-wrap:anywhere]">Ещё</span>
           </button>
         </div>
       </nav>

@@ -43,7 +43,8 @@ import PinSetup from './pages/PinSetup';
 import PinUnlock from './pages/PinUnlock';
 import PinOffer from './pages/PinOffer';
 import MuscleMapDemo from './pages/MuscleMapDemo';
-import AppBottomNavigation, { shouldShowBottomNavigation } from './components/AppBottomNavigation';
+import { shouldShowBottomNavigation } from './components/AppBottomNavigation';
+import AppBottomDock from './components/AppBottomDock';
 import { hasEffectivePremiumAccess } from './utils/premiumAccess';
 import { getPostLoginRoute, isPinLockEnabled, isPinOfferSkipped, isPinSessionUnlocked } from './services/pinLockService';
 
@@ -423,13 +424,9 @@ function AppShell() {
   const hasPremiumAccess = hasEffectivePremiumAccess(user);
 
   return (
-    <div
-      className="min-h-screen"
-      style={showBottomNavigation ? { paddingBottom: 'calc(5.75rem + env(safe-area-inset-bottom))' } : undefined}
-    >
+    <AppBottomDock showNavigation={showBottomNavigation} hasPremiumAccess={hasPremiumAccess}>
       <AppRoutes />
-      {showBottomNavigation ? <AppBottomNavigation hasPremiumAccess={hasPremiumAccess} /> : null}
-    </div>
+    </AppBottomDock>
   );
 }
 

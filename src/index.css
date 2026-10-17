@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  --app-bottom-safe-area: env(safe-area-inset-bottom, 0px);
   --color-bg: #ffffff;
   --color-text: #0f172a;
   --color-card: #ffffff;

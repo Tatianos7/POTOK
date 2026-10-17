@@ -8,11 +8,14 @@ const currentDir = dirname(fileURLToPath(import.meta.url));
 
 test('food diary exposes nutrition progress entry point', () => {
   const source = readFileSync(resolve(currentDir, '../FoodDiary.tsx'), 'utf8');
+  const actions = readFileSync(resolve(currentDir, '../../components/NutritionBottomActions.tsx'), 'utf8');
 
-  assert.match(source, /TrendingUp/);
+  assert.match(source, /<FoodDiaryBottomActions/);
+  assert.match(source, /onProgress=\{\(\) => navigate\('\/progress\/nutrition'\)\}/);
+  assert.match(actions, /TrendingUp/);
   assert.match(source, /navigate\('\/progress\/nutrition'\)/);
-  assert.match(source, /Открыть прогресс питания/);
-  assert.match(source, /Прогресс питания/);
+  assert.match(actions, /Открыть прогресс питания/);
+  assert.match(actions, /Прогресс питания/);
   assert.doesNotMatch(source, /Анализ продукта по фото/);
   assert.doesNotMatch(source, /PhotoFoodAnalyzerModal/);
 });
