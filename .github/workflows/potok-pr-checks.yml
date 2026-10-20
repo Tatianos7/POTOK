@@ -78,3 +78,9 @@ jobs:
           npx --no-install tsx --test \
             scripts/contracts/p5-03-cottage-cheese-apple-evidence.test.ts \
             scripts/contracts/p5-03b-oatmeal-apple-evidence.test.ts
+
+      - name: P5-03C Food and Nonfood evidence security regressions
+        run: |
+          npx --no-install tsx --test \
+            src/server/__tests__/foodEvidenceReviewServerV1.test.ts \
+            src/server/__tests__/nonFoodEvidenceV1.test.ts
