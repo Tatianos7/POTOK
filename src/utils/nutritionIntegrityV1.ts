@@ -50,6 +50,9 @@ export type PortionAssessmentV1 =
       legacyGramWriterCompatible: boolean };
 
 const decimalPattern = /^(?:0|[1-9][0-9]{0,8})(?:\.([0-9]{1,3}))?$/;
+const validUnits: readonly PortionUnitV1[] = ['g', 'ml', 'l', 'tbsp', 'tsp', 'piece', 'portion'];
+const validConversionKinds: readonly FoodConversionV1['kind'][] = ['GRAMS_PER_ML', 'GRAMS_PER_UNIT', 'ML_PER_UNIT'];
+const validConversionSources: readonly FoodConversionV1['source'][] = ['REVIEWED_EVIDENCE', 'USER_DECLARED'];
 const thousand = 1000n;
 const hundred = 100000n;
 
@@ -94,8 +97,13 @@ function findConversion(
   conversions: readonly FoodConversionV1[], foodId: string, unit: PortionUnitV1, kind: FoodConversionV1['kind']
 ): FoodConversionV1 | null {
   const matches = conversions.filter((row) => row.foodId === foodId && row.unit === unit && row.kind === kind);
-  if (matches.length !== 1 || !matches[0].evidenceRef || minor(matches[0].value) === null || minor(matches[0].value) === 0n) return null;
-  return matches[0];
+  if (matches.length !== 1) return null;
+  const match = matches[0];
+  if (!validUnits.includes(match.unit) || !validConversionKinds.includes(match.kind) ||
+      !validConversionSources.includes(match.source) ||
+      typeof match.evidenceRef !== 'string' || !match.evidenceRef.trim() ||
+      minor(match.value) === null || minor(match.value) === 0n) return null;
+  return match;
 }
 
 /** Pure arithmetic and classification. Only a trusted server resolver may supply REVIEWED_REVISION/evidence. */
@@ -103,7 +111,8 @@ export function assessPortionV1(
   request: PortionRequestV1, profile: FoodNutritionProfileV1, conversions: readonly FoodConversionV1[] = []
 ): PortionAssessmentV1 {
   const amount = minor(request.amount);
-  if (!request.foodId || request.foodId !== profile.foodId || amount === null || amount <= 0n ||
+  if (!request.foodId || request.foodId !== profile.foodId ||
+      !validUnits.includes(request.unit) || amount === null || amount <= 0n ||
       !validProvenance(profile)) {
     return { status: 'UNKNOWN', reason: 'INVALID_INPUT', totals: null, normalizedGrams: null };
   }
