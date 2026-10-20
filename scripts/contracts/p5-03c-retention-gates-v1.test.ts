@@ -30,7 +30,7 @@ test('retention gate: account-linked event and receipt identities are explicitly
 test('retention gate: proposal bytes and receipts cannot be mistaken for erasable data', () => {
   assert.match(food, /original_proposal_bytes\s+bytea/i);
   assert.match(food, /receipt\s+jsonb\s+NOT\s+NULL/i);
-  assert.match(nonfood, /raw_bytes\\s+bytea\\s+NOT\\s+NULL/i);
+  assert.match(nonfood, /raw_bytes\s+bytea\s+NOT\s+NULL/i);
   assert.match(nonfood, /receipt\s+jsonb\s+NOT\s+NULL/i);
 });
 
