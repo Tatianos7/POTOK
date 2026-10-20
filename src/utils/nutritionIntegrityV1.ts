@@ -47,7 +47,9 @@ export type PortionAssessmentV1 =
   | { status: 'UNKNOWN'; reason: 'INVALID_INPUT' | 'BASIS_UNKNOWN' | 'CONVERSION_UNAVAILABLE'; totals: null; normalizedGrams: null }
   | { status: 'ESTIMATE' | 'CONFIRMED'; reason: null; totals: NutritionValuesV1; normalizedGrams: DecimalV1 | null;
       basis: Exclude<NutritionBasisV1, 'UNKNOWN'>; provenance: BasisProvenanceV1; conversionRef: string | null;
-      legacyGramWriterCompatible: boolean };
+      legacyGramWriterCompatible: boolean;
+      /** Whether both mass AND all present nutrients fit legacy numeric(8,2) without rounding. Not a write authorization. */
+      legacyDiaryWriterCompatible: boolean };
 
 const decimalPattern = /^(?:0|[1-9][0-9]{0,8})(?:\.([0-9]{1,3}))?$/;
 const validUnits: readonly PortionUnitV1[] = ['g', 'ml', 'l', 'tbsp', 'tsp', 'piece', 'portion'];
@@ -183,6 +185,12 @@ export function assessPortionV1(
       (grams !== null && grams > currentColumnMaxMinor)) {
     return { status: 'UNKNOWN', reason: 'INVALID_INPUT', totals: null, normalizedGrams: null };
   }
+  // Legacy numeric(8,2) loses thousandths in BOTH weight and nutrient fields.
+  // Keep exact three-decimal results and explicitly flag any lossy legacy persistence.
+  const legacyGramWriterCompatible = profile.basis === 'PER_100_G_EDIBLE' &&
+    grams !== null && grams % 10n === 0n;
+  const legacyDiaryWriterCompatible = legacyGramWriterCompatible &&
+    scaled.every((value) => value === null || value % 10n === 0n);
   const confirmed = profile.provenance.kind === 'REVIEWED_REVISION' && (!used || used.source === 'REVIEWED_EVIDENCE');
   return {
     status: confirmed ? 'CONFIRMED' : 'ESTIMATE',
@@ -195,9 +203,8 @@ export function assessPortionV1(
     basis: profile.basis,
     provenance: profile.provenance,
     conversionRef: used?.evidenceRef ?? null,
-    // Legacy diary weight is numeric(8,2); thousandth-gram values cannot be represented unchanged.
-    legacyGramWriterCompatible: profile.basis === 'PER_100_G_EDIBLE' &&
-      grams !== null && grams % 10n === 0n,
+    legacyGramWriterCompatible,
+    legacyDiaryWriterCompatible,
   };
 }
 
