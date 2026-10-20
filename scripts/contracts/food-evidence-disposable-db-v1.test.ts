@@ -323,7 +323,7 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
         await patch('public.food_evidence_review_v1(text)','attestation:=potok_food_evidence.authority_v1();');
         await patch('public.nonfood_evidence_review_v1(text)','att:=potok_food_evidence.authority_v1();');
         const { definitionRequest } = await import('../../src/server/__tests__/nonFoodEvidenceFixturesV1');
-        const foodInput=await approved(900001);
+        const foodInput=await rejected(900001);
         const nonfoodInput=definitionRequest(900001);
         await asUser(`SELECT public.food_evidence_review_v1(${quote(raw(foodInput))})`);
         await asUser(`SELECT public.nonfood_evidence_review_v1(${quote(raw(nonfoodInput))})`);
@@ -331,7 +331,7 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
         const before=await sql(`SELECT jsonb_build_array(
            (SELECT count(*) FROM potok_food_evidence.review_requests_v1),
            (SELECT count(*) FROM potok_nonfood.receipts_v1))`);
-        await assert.rejects(asUser(`SELECT public.food_evidence_review_v1(${quote(raw(await approved(900002)))})`),
+        await assert.rejects(asUser(`SELECT public.food_evidence_review_v1(${quote(raw(await rejected(900002)))})`),
           /ACCOUNT_NOT_ACTIVE/);
         await assert.rejects(asUser(`SELECT public.nonfood_evidence_review_v1(${quote(raw(definitionRequest(900002)))})`),
           /ACCOUNT_NOT_ACTIVE/);
