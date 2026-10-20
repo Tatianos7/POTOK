@@ -278,6 +278,26 @@ test('server resolver confirms only a current reviewed source', async () => {
   assert.equal((await assessServerPortionV1(request('100', 'g'), 'actor', trustedStub(stale))).status, 'UNKNOWN');
 });
 
+test('reviewed currentness requires every predicate and nonblank evidence identifiers', async () => {
+  for (const incomplete of [
+    {},
+    { approved: true },
+    { approved: true, canonicalBindingCurrent: true, nutritionBindingCurrent: true,
+      foodStateApplicable: true },
+    null,
+  ]) {
+    const candidate = {
+      ...reviewedServer,
+      current: incomplete,
+    } as unknown as ServerFoodEvidenceV1;
+    assert.equal((await assessServerPortionV1(request('100', 'g'), 'actor', trustedStub(candidate))).status, 'UNKNOWN');
+  }
+  for (const name of ['nutritionRevisionId', 'nutritionDigest', 'approvalEventId'] as const) {
+    const invalid = { ...reviewedServer, [name]: '   ' } as ServerFoodEvidenceV1;
+    assert.equal((await assessServerPortionV1(request('100', 'g'), 'actor', trustedStub(invalid))).status, 'UNKNOWN');
+  }
+});
+
 test('server resolver cannot promote foreign or uncurated evidence', async () => {
   const privateFood: ServerFoodEvidenceV1 = {
     kind: 'USER_DECLARED', foodId, ownerId: 'another-user', basis: 'PER_100_G_EDIBLE', nutrition,
