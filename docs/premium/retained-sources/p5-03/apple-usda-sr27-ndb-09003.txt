@@ -1,0 +1,11 @@
+USDA National Nutrient Database for Standard Reference, Release 27
+NDB No. 09003
+Apples, raw, with skin
+Malus domestica
+Refuse: 10% Core and stem
+Amount in 100 grams of edible portion
+Energy: 52 kcal
+Protein (N x 6.25): 0.26 g
+Total lipid (fat): 0.17 g
+Carbohydrate, by difference: 13.81 g
+Fiber, total dietary: 2.4 g

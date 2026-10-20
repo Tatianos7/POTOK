@@ -1,0 +1,315 @@
+{
+  "contract": "potok-p5-03b-source-candidate-v1",
+  "parent": {
+    "branch": "codex/p5-03-cottage-cheese-apple-evidence",
+    "head": "dc3ed6e8bb4f0cfb0534b5d632dee0018856040c",
+    "packagePath": "docs/premium/retained-sources/p5-03/source-review-package-v1.json",
+    "packageSha256": "cc0451eaf137d4cd85bd2457fe72dd7584bd0bcf6a2405d13a4e75bc7280926b",
+    "policyVersion": "potok-source-total-including-fiber-to-available-v1",
+    "policyDefinitionBindings": [
+      "2df54b8797988ca8436df4c76735115ec117c8b955c93c3b3e05a7b60ba17a47",
+      "41d86b1563b1948198500fd2e5c2a3ab077e02983eb60dfe4ab4528214fb502a"
+    ]
+  },
+  "ownerDecision": {
+    "origin": "OWNER_TASK_P5-03B",
+    "selectedRecipe": "oatmeal_with_apple",
+    "previousRecipe": "cottage_cheese_with_apple",
+    "previousSearch": "STOPPED_NO_GO",
+    "reason": "Accepted apple source reused; one main new food dry plain oats",
+    "serverApproval": false
+  },
+  "recipe": {
+    "id": "oatmeal_with_apple",
+    "title": "Овсяная каша с яблоком",
+    "sourcePath": "data/recipes/recipe-candidates-v1.json",
+    "sourceSha256": "9045469af6af882d10c42ad8bb6dbb3fc8efb24e83f2aa833626ea8211d2d96c",
+    "servings": 1,
+    "ingredients": [
+      {
+        "stable_food_id": "oat_flakes",
+        "amount_g": 50,
+        "state": "dry"
+      },
+      {
+        "stable_food_id": "water",
+        "amount_g": 200,
+        "state": "added_during_cooking"
+      },
+      {
+        "stable_food_id": "apple",
+        "amount_g": 120,
+        "state": "raw_with_skin_core_stem_excluded",
+        "added": "after_cooking"
+      }
+    ],
+    "inputMassSumG": 370,
+    "measuredFinishedYieldG": null,
+    "measuredServingMassG": null,
+    "retainedWaterG": null
+  },
+  "appleReuse": {
+    "parentProductIndex": 0,
+    "sourceIdentity": "USDA SR27 NDB09003 raw with skin core/stem excluded",
+    "retainedSourceSha256": "89d79388d19e3013fb7975d67c6a6cf5b4e42cad58fe6fb8fb08c2d81befaaca",
+    "policyVersion": "potok-source-total-including-fiber-to-available-v1",
+    "sourceTotalCarbohydrateG": "13.81",
+    "sourceFiberG": "2.4",
+    "portionG": "120",
+    "independentAppleRevisionCreated": false
+  },
+  "oats": {
+    "stableFoodId": "oat_flakes",
+    "sourceIdentity": "Cereals, oats, regular and quick, not fortified, dry",
+    "referenceKind": "GENERIC",
+    "brand": null,
+    "sourceCode": "NDB 08120",
+    "foodState": "dry",
+    "applicability": "Plain regular/quick rolled oats, unfortified, unsweetened; exclude flavored/added milk/sugar and cooked variants",
+    "basis": "PER_100_G_EDIBLE",
+    "units": {
+      "calories": "kcal",
+      "protein": "g",
+      "fat": "g",
+      "carbs": "g",
+      "fiber": "g"
+    },
+    "sourceFacts": {
+      "calories": "379",
+      "protein": "13.15",
+      "fat": "6.52",
+      "totalCarbohydrate": "67.70",
+      "fiber": "10.1",
+      "carbohydrateSemantics": "TOTAL_CARBOHYDRATE_BY_DIFFERENCE_INCLUDING_FIBER"
+    },
+    "mappedCandidate": {
+      "calories": "379.000",
+      "protein": "13.150",
+      "fat": "6.520",
+      "carbs": "57.600",
+      "fiber": "10.100"
+    },
+    "mappingPolicyVersion": "potok-source-total-including-fiber-to-available-v1",
+    "source": {
+      "provider": "USDA Agricultural Research Service",
+      "version": "SR Release 28 (2015)",
+      "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg08.pdf",
+      "locator": "PDF page 764 (zero-based 763), Mean/100g edible column NDB08120",
+      "retrievedDate": "2026-10-13",
+      "verification": "Direct official PDF text and screenshot. Generic title and rolled-oats synonym; no QUAKER manufacturer in this row; other brand rows excluded.",
+      "retainedPath": "docs/premium/retained-sources/p5-03b/oats-usda-sr28-08120.txt",
+      "captureKind": "short-source-excerpt",
+      "byteLength": 512,
+      "sha256": "fdc50e9d62a9dfea53287577fdcad1e6ac757120eda79142b05d493af2ef7c4c",
+      "upstreamDocumentSha256": null
+    },
+    "fieldMappings": {
+      "identity": "NDB08120 title and rolled oats synonym",
+      "calories": "Energy kcal Mean",
+      "protein": "Protein (N x 5.83) g Mean",
+      "fat": "Total lipid (fat) g Mean",
+      "carbs": "Mean total67.70 minus Mean dietary fiber10.1 under parent policy",
+      "fiber": "Fiber, total dietary g Mean10.1, numeric nonblank; derivation A"
+    },
+    "approval": "SOURCE_CANDIDATE_ONLY"
+  },
+  "water": {
+    "preferredExistingPath": "approved_non_food",
+    "massG": "200",
+    "canonicalFoodCreated": false,
+    "manifestIngredientIdsIncludesWater": false,
+    "approvedNonFoodDefinitionBinding": null,
+    "approvedNonFoodEvidenceRef": null,
+    "reviewedNutritionEvidenceRef": null,
+    "confirmedNutritionContribution": null,
+    "status": "SOURCE_READY_BINDING_BLOCKED_NO_SERVER_ISSUER",
+    "reason": "Typed path exists; it does not prove water definition or zero. Per-component nutrition proof and explicit definition/evidence binding required.",
+    "identity": {
+      "displayName": "Вода",
+      "referenceIdentity": "ordinary plain as-used potable tap drinking water",
+      "foodState": "as-sold",
+      "usageState": "as-used potable water before cooking",
+      "sugarOrOtherAdditives": false,
+      "mineralWater": false,
+      "carbonated": false,
+      "flavored": false,
+      "scope": "plain potable tap water only; not all bottled waters or arbitrary liquids",
+      "internalTypeMeaning": "approved_non_food is typed recipe coverage, not literal classification as non-food"
+    },
+    "sourceCandidate": {
+      "status": "PREPARED_NOT_ISSUED",
+      "officialTitle": "Beverages, water, tap, drinking (1)",
+      "recordId": "NDB 14411",
+      "ndbId": "14411",
+      "fdcId": null,
+      "fdcLead": {
+        "id": 173647,
+        "status": "SECONDARY_DISCOVERY_ONLY_OFFICIAL_API_UNAVAILABLE_NOT_USED_AS_BINDING"
+      },
+      "dataType": "USDA Standard Reference food-composition record",
+      "version": "SR Release 28 (2015)",
+      "basis": "PER_100_G_EDIBLE",
+      "units": {
+        "calories": "kcal",
+        "protein": "g",
+        "fat": "g",
+        "carbs": "g",
+        "fiber": "g"
+      },
+      "sourceFacts": {
+        "calories": "0",
+        "protein": "0.00",
+        "fat": "0.00",
+        "totalCarbohydrate": "0.00",
+        "fiber": "0.0",
+        "carbohydrateSemantics": "TOTAL_CARBOHYDRATE_BY_DIFFERENCE_INCLUDING_FIBER"
+      },
+      "mappedCandidate": {
+        "calories": "0.000",
+        "protein": "0.000",
+        "fat": "0.000",
+        "carbs": "0.000",
+        "fiber": "0.000"
+      },
+      "mappingPolicyVersion": "potok-source-total-including-fiber-to-available-v1",
+      "source": {
+        "provider": "USDA Agricultural Research Service",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg14.pdf",
+        "locator": "PDF page 752, zero-based751, NDB14411 Mean per100g edible column",
+        "retrievedDate": "2026-10-13",
+        "verification": "Direct official PDF text and page screenshot; all5 means explicitly numeric, not empty fields; NC/BFZN derivations are reported source data, not measured-zero claims",
+        "retainedPath": "docs/premium/retained-sources/p5-03b/water-usda-sr28-14411.txt",
+        "captureKind": "short-retained-excerpt",
+        "byteLength": 434,
+        "sha256": "5a3e857547b56df38ffebf1d0ce882a7eea8b8111bdb4d07b7422c8d79922b26",
+        "hashScope": "RETAINED_UTF8_EXCERPT_ONLY",
+        "upstreamDocumentSha256": null
+      },
+      "fieldMappings": {
+        "calories": "Energy kcal Mean0",
+        "protein": "Protein g Mean0.00",
+        "fat": "Total lipid (fat) g Mean0.00",
+        "carbs": "Carbohydrate by difference g Mean0.00 minus fiber g Mean0.0, parent policy",
+        "fiber": "Fiber total dietary g Mean0.0"
+      },
+      "applicability": "generic potable tap drinking water as used, without additives; mineral/carbonated/flavored alternatives excluded"
+    },
+    "definitionMechanism": {
+      "consumerRepresentationAvailable": true,
+      "serverIssuerFound": false,
+      "approvedDefinitionContractAvailable": false,
+      "currentAuthorizedIssuer": null,
+      "immutableDefinitionStore": null,
+      "reviewHistory": null,
+      "receipts": null,
+      "currentnessReader": null,
+      "retentionPolicy": null,
+      "auditScope": "Entire checked repository tree: src/scripts/docs/supabase/reports; excludes node_modules and git internals. Non-food import rejection is unrelated."
+    },
+    "sourceCandidateContribution": {
+      "calories": "0.000",
+      "protein": "0.000",
+      "fat": "0.000",
+      "carbs": "0.000",
+      "fiber": "0.000"
+    }
+  },
+  "foodInputCandidate": {
+    "status": "REFERENCE_INPUT_SUBTOTAL_NOT_REVIEWED_RECIPE",
+    "contributions": [
+      {
+        "stableFoodId": "oat_flakes",
+        "grams": "50",
+        "calories": "189.500",
+        "protein": "6.575",
+        "fat": "3.260",
+        "carbs": "28.800",
+        "fiber": "5.050"
+      },
+      {
+        "stableFoodId": "apple",
+        "grams": "120",
+        "calories": "62.400",
+        "protein": "0.312",
+        "fat": "0.204",
+        "carbs": "13.692",
+        "fiber": "2.880"
+      }
+    ],
+    "foodSubtotal": {
+      "calories": "251.900",
+      "protein": "6.887",
+      "fat": "3.464",
+      "carbs": "42.492",
+      "fiber": "7.930"
+    },
+    "waterContribution": null,
+    "completeRecipeNutrition": null,
+    "cookingLossesOrRetentionAssumed": false,
+    "waterSourceCandidateContribution": {
+      "calories": "0.000",
+      "protein": "0.000",
+      "fat": "0.000",
+      "carbs": "0.000",
+      "fiber": "0.000"
+    },
+    "sourceCandidateInputTotal": {
+      "calories": "251.900",
+      "protein": "6.887",
+      "fat": "3.464",
+      "carbs": "42.492",
+      "fiber": "7.930"
+    }
+  },
+  "physicalProtocol": {
+    "status": "FUTURE_NOT_EXECUTED",
+    "oatType": "Record actual plain regular/quick dry rolled oats package and instructions",
+    "initialMassesG": {
+      "dryOats": 50,
+      "water": 200,
+      "edibleApple": 120
+    },
+    "cookTimeMinutes": null,
+    "authoredTimeRangeMinutes": "5–10 unverified; record actual time and package-specific range",
+    "measurements": [
+      "tare vessel",
+      "dry oats",
+      "added water",
+      "apple with skin after core/stem removal",
+      "finished cooked oats without vessel",
+      "after apple addition",
+      "one served portion",
+      "unserved residue"
+    ],
+    "servings": 1,
+    "proposedScaleResolutionG": 1,
+    "proposedToleranceG": 1,
+    "toleranceStatus": "PROTOCOL_PROPOSAL_PENDING_REVIEW; use 1g or finer calibrated scale, record combined uncertainty",
+    "measuredResults": null
+  },
+  "gates": {
+    "canonicalUuidRevisions": "MISSING",
+    "serverReviewEventsAuthority": "MISSING",
+    "allergen": "OAT_GLUTEN_CROSS_CONTACT_REVIEW_REQUIRED_NO_GLUTEN_FREE_CLAIM",
+    "dietaryEligibility": "MISSING",
+    "culinaryReview": "MISSING",
+    "portionPolicy": "MISSING",
+    "measuredYield": "MISSING",
+    "planEligibility": "MISSING",
+    "manifestCoverage": "NOT_FORMED_SORTED_UNIQUE_FOOD_UUIDS_WITH_SEPARATE_NONFOOD_BINDINGS_REQUIRED",
+    "batchExporter": "SEPARATE_MISSING_SERVER_IMPLEMENTATION"
+  },
+  "statuses": {
+    "PILOT_SELECTED": true,
+    "APPLE_SOURCE_REUSED": true,
+    "OAT_SOURCE_READY_FOR_ISSUANCE_INPUT": true,
+    "WATER_COMPONENT_READY": false,
+    "SOURCE_DATA_READY_FOR_ISSUANCE_INPUT": false,
+    "PHYSICAL_COOKING_REQUIRED": true,
+    "CAN_ISSUE_REAL_REVIEWED_EVIDENCE": false,
+    "CAN_ASSEMBLE": false,
+    "WATER_SOURCE_CANDIDATE_READY": true,
+    "WATER_DEFINITION_CONTRACT_AVAILABLE": false
+  },
+  "nextAction": "Separate server-contract task for non-food definition/evidence issuer, review/receipt/currentness/retention and atomic approval; do not mint IDs here."
+}
