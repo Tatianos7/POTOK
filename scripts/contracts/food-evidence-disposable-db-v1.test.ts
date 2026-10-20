@@ -303,6 +303,48 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
           { exp:Math.floor(Date.now()/1000)+1 }),/JWT_EXPIRED/);
       } finally { await competing; }
     });
+    // Opt-in disposable-only integration. The *original* SQL migrations are untouched.
+    // Patch deployed fixture function definitions in this fresh Unix-only test cluster,
+    // then invoke the real Food/Nonfood issuers through the existing JWT fixture.
+    if (process.env.POTOK_CLOSURE_REAL_ISSUER_ACCEPTANCE === '1') {
+      await t.test('real Food/Nonfood issuer functions reject CLOSED admissions after serialized closure', async () => {
+        assert.equal(process.env.POTOK_NONFOOD_ACCEPTANCE,'1','both actual issuers required');
+        const closure = await readFile('scripts/contracts/p5-03c-closure-fence-disposable-prototype.sql','utf8');
+        await sql("SET potok_closure.test_target='disposable-postgresql-only'; "+closure);
+        await sql(`INSERT INTO potok_closure_disposable.accounts(account_id,state)
+          VALUES (${quote(actor)},'ACTIVE')`);
+        const patch = async (name:string,marker:string) => {
+          const original=await sql(`SELECT pg_get_functiondef(${quote(name)}::regprocedure)`);
+          assert.ok(original.includes(marker),name+' authority gate must exist');
+          const altered=original.replace(marker,marker+" PERFORM potok_closure_disposable.assert_active(actor);");
+          assert.notEqual(altered,original);
+          await sql(altered);
+        };
+        await patch('public.food_evidence_review_v1(text)','attestation:=potok_food_evidence.authority_v1();');
+        await patch('public.nonfood_evidence_review_v1(text)','att:=potok_food_evidence.authority_v1();');
+        const { definitionRequest } = await import('../../src/server/__tests__/nonFoodEvidenceFixturesV1');
+        const foodInput=await approved(900001);
+        const nonfoodInput=definitionRequest(900001);
+        await asUser(`SELECT public.food_evidence_review_v1(${quote(raw(foodInput))})`);
+        await asUser(`SELECT public.nonfood_evidence_review_v1(${quote(raw(nonfoodInput))})`);
+        await sql(`SELECT potok_closure_disposable.begin_closure(${quote(actor)},${quote(id(990001))})`);
+        const before=await sql(`SELECT jsonb_build_array(
+           (SELECT count(*) FROM potok_food_evidence.review_requests_v1),
+           (SELECT count(*) FROM potok_nonfood.receipts_v1))`);
+        await assert.rejects(asUser(`SELECT public.food_evidence_review_v1(${quote(raw(await approved(900002)))})`),
+          /ACCOUNT_NOT_ACTIVE/);
+        await assert.rejects(asUser(`SELECT public.nonfood_evidence_review_v1(${quote(raw(definitionRequest(900002)))})`),
+          /ACCOUNT_NOT_ACTIVE/);
+        // Even old-key replays cannot bypass the closure admission.
+        await assert.rejects(asUser(`SELECT public.food_evidence_review_v1(${quote(raw(foodInput))})`),
+          /ACCOUNT_NOT_ACTIVE/);
+        await assert.rejects(asUser(`SELECT public.nonfood_evidence_review_v1(${quote(raw(nonfoodInput))})`),
+          /ACCOUNT_NOT_ACTIVE/);
+        assert.equal(await sql(`SELECT jsonb_build_array(
+           (SELECT count(*) FROM potok_food_evidence.review_requests_v1),
+           (SELECT count(*) FROM potok_nonfood.receipts_v1))`),before);
+      });
+    }
   } finally {
     if (started) await run('pg_ctl',['-D',data,'-m','immediate','-w','stop'],{ env, timeout:30_000 });
     await rm(root,{ recursive:true,force:true });
