@@ -93,6 +93,31 @@ test('invalidations and incomplete or conflicting event histories fail closed', 
   }
 });
 
+test('canonical invalidation and substituted approval evidence reject', async () => {
+  const { snapshot, c, event } = await fixture();
+  const invalidatedCanonical = await event(c, 'INVALIDATION');
+  assert.equal((await resolveReviewedEvidenceSnapshotV1({
+    ...snapshot, relevantEventRaws: [...snapshot.relevantEventRaws, raw(invalidatedCanonical)],
+  }, authorized)).kind, 'UNRESOLVED');
+  assert.equal((await resolveReviewedEvidenceSnapshotV1({
+    ...snapshot, canonicalApprovalRaw: snapshot.nutritionApprovalRaw,
+  }, authorized)).kind, 'UNRESOLVED');
+  assert.equal((await resolveReviewedEvidenceSnapshotV1({
+    ...snapshot, nutritionApprovalRaw: snapshot.canonicalApprovalRaw,
+  }, authorized)).kind, 'UNRESOLVED');
+});
+
+test('unauthorized historical event and absent history reject', async () => {
+  const { snapshot } = await fixture();
+  const onlyOneEventAuthorized: ReviewedEvidenceAuthorityV1 = {
+    isAuthorizedEvent: async event => event.target.kind === 'CANONICAL_REVIEWED_REVISION',
+  };
+  assert.equal((await resolveReviewedEvidenceSnapshotV1(snapshot, onlyOneEventAuthorized)).kind, 'UNRESOLVED');
+  assert.equal((await resolveReviewedEvidenceSnapshotV1({
+    ...snapshot, relevantEventRaws: null as unknown as string[],
+  }, authorized)).kind, 'UNRESOLVED');
+});
+
 test('mismatched roots, current head, food state, authority and tampering reject', async () => {
   const { snapshot } = await fixture();
   const variants: ReviewedEvidenceSnapshotV1[] = [
