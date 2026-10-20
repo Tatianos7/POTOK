@@ -91,6 +91,18 @@ test('spoons and pieces require a food-specific measure', () => {
   if (result.status === 'CONFIRMED') assert.equal(result.totals.calories, '27.000');
 });
 
+test('a positive tiny volume must not silently round to zero grams', () => {
+  const tinyDensity = conversion('ml', 'GRAMS_PER_ML', '0.001');
+  const assessed = assessPortionV1(request('0.001', 'ml'), reviewed, [tinyDensity]);
+  assert.equal(assessed.status, 'UNKNOWN');
+  assert.equal(assessed.reason, 'INVALID_INPUT');
+  assert.equal(assessed.totals, null);
+  assert.equal(assessed.normalizedGrams, null);
+  const normal = assessPortionV1(request('1', 'ml'), reviewed, [tinyDensity]);
+  assert.equal(normal.status, 'CONFIRMED');
+  if (normal.status === 'CONFIRMED') assert.equal(normal.normalizedGrams, '0.001');
+});
+
 test('declared per-100ml nutrition scales by volume without pretending grams are known', () => {
   const profile: FoodNutritionProfileV1 = {
     foodId, basis: 'PER_100_ML', perBasis: nutrition, provenance: { kind: 'USER_DECLARED', ownerId: 'synthetic-owner' },
