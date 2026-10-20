@@ -70,8 +70,12 @@ function divideRounded(numerator: bigint, denominator: bigint): bigint {
 }
 
 function validNutrition(values: NutritionValuesV1 | null): values is NutritionValuesV1 {
-  return values !== null && typeof values === 'object' && [values.calories, values.protein, values.fat, values.carbs, values.fiber]
-    .every((value) => value === null || minor(value) !== null);
+  if (values === null || typeof values !== 'object') return false;
+  // Calories, protein, fat and carbs are required. Only fiber may be unknown.
+  // Missing required nutrition must never flow into arithmetic as zero or null.
+  const required = [values.calories, values.protein, values.fat, values.carbs];
+  return required.every((value) => minor(value) !== null) &&
+    (values.fiber === null || minor(values.fiber) !== null);
 }
 
 function validProvenance(profile: FoodNutritionProfileV1): boolean {
