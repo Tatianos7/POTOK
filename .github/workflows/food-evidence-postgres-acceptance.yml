@@ -1,0 +1,42 @@
+name: Food Evidence disposable PostgreSQL acceptance
+
+on:
+  pull_request:
+    paths:
+      - 'src/server/**'
+      - 'src/utils/foodReviewedEvidenceV1.ts'
+      - 'scripts/contracts/food-evidence-disposable-db-v1.test.ts'
+      - 'supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.sql'
+      - '.github/workflows/food-evidence-postgres-acceptance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  disposable-postgresql:
+    if: github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: postgres:17
+    steps:
+      - name: Checkout pull request head
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Setup Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Run isolated database acceptance as non-root postgres
+        env:
+          POTOK_FOOD_EVIDENCE_REQUIRE_DB: '1'
+        run: |
+          test "$(id -u)" -eq 0
+          command -v initdb
+          command -v pg_ctl
+          command -v psql
+          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 node --import tsx --test --test-isolation=none scripts/contracts/food-evidence-disposable-db-v1.test.ts

@@ -1,0 +1,31 @@
+name: P5-03C closure prototype disposable PostgreSQL acceptance
+on:
+  pull_request:
+    paths:
+      - 'scripts/contracts/p5-03c-closure*'
+      - '.github/workflows/p5-03c-closure-postgres-acceptance.yml'
+permissions:
+  contents: read
+jobs:
+  disposable:
+    if: github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: postgres:17
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Real PostgreSQL serial admission versus closure prototype
+        run: |
+          command -v initdb
+          command -v pg_ctl
+          command -v psql
+          runuser -u postgres -- env PATH="$PATH" POTOK_CLOSURE_REQUIRE_DB=1 node --import tsx --test --test-isolation=none scripts/contracts/p5-03c-closure-disposable-db-v1.test.ts

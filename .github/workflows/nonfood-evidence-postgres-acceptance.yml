@@ -1,0 +1,47 @@
+name: Nonfood Evidence disposable PostgreSQL acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/server/nonFoodEvidence*.ts'
+      - 'src/server/__tests__/nonFoodEvidence*.ts'
+      - 'src/server/__tests__/foodEvidenceFixturesV1.ts'
+      - 'src/server/foodEvidenceReviewRequestV1.ts'
+      - 'src/server/foodEvidenceReviewGatewayV1.ts'
+      - 'src/utils/adaptiveNutritionWireV1.ts'
+      - 'src/utils/foodReviewedEvidenceV1.ts'
+      - 'scripts/contracts/nonfood-evidence*.ts'
+      - 'scripts/contracts/food-evidence-disposable-db-v1.test.ts'
+      - 'supabase/migration_drafts/nonfood_reviewed_evidence_v1*.sql'
+      - 'supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.sql'
+      - 'docs/premium/drafts/20260921_trusted_entitlement_v2.sql'
+      - 'docs/premium/drafts/20260921_trusted_entitlement_v2_1_repair.sql'
+      - 'docs/premium/drafts/20260921_trusted_entitlement_v2_2_repair.sql'
+      - 'docs/premium/drafts/20260921_adaptive_nutrition_runtime_activation_v1.sql'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/nonfood-evidence-postgres-acceptance.yml'
+permissions:
+  contents: read
+jobs:
+  disposable:
+    if: github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: postgres:17
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Unit and own Unix-only PostgreSQL acceptance
+        run: |
+          command -v initdb
+          command -v pg_ctl
+          command -v psql
+          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 POTOK_CLOSURE_REAL_ISSUER_ACCEPTANCE=1 node --import tsx --test --test-isolation=none src/server/__tests__/nonFoodEvidenceV1.test.ts scripts/contracts/nonfood-evidence-disposable-db-v1.test.ts

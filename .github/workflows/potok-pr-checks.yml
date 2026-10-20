@@ -78,3 +78,27 @@ jobs:
           npx --no-install tsx --test \
             scripts/contracts/p5-03-cottage-cheese-apple-evidence.test.ts \
             scripts/contracts/p5-03b-oatmeal-apple-evidence.test.ts
+
+      - name: P5-03C Food and Nonfood evidence security regressions
+        run: |
+          npx --no-install tsx --test \
+            src/server/__tests__/foodEvidenceReviewServerV1.test.ts \
+            src/server/__tests__/nonFoodEvidenceV1.test.ts
+
+      - name: P5-03C retention and account-erasure blockers regression
+        run: npx --no-install tsx --test scripts/contracts/p5-03c-retention-gates-v1.test.ts
+
+      - name: P5-03C account closure fail-closed contract
+        run: npx --no-install tsx --test src/server/__tests__/accountClosureFenceV1.test.ts
+
+      - name: P5-03C disposable closure SQL prototype guards
+        run: npx --no-install tsx --test scripts/contracts/p5-03c-closure-fence-prototype.test.ts
+
+      - name: P5-03C issuer activation vs global account erasure scope guards
+        run: npx --no-install tsx --test scripts/contracts/p5-03c-scope-split-v1.test.ts
+
+      - name: P5-03C issuer closure lock-order review guard
+        run: npx --no-install tsx --test scripts/contracts/p5-03c-issuer-lock-order-v1.test.ts
+
+      - name: P5-03C owner-only closure request and UNKNOWN boundary
+        run: npx --no-install tsx --test src/server/__tests__/accountClosureOwnerRequestV1.test.ts
