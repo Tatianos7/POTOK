@@ -171,6 +171,27 @@ test('unknown runtime units and malformed conversion authority fail closed', () 
   }
 });
 
+test('legacy gram writer rejects precision it cannot store without rounding', () => {
+  const exact = assessPortionV1(request('1.23', 'g'), reviewed);
+  assert.equal(exact.status, 'CONFIRMED');
+  if (exact.status === 'CONFIRMED') assert.equal(exact.legacyGramWriterCompatible, true);
+
+  const finer = assessPortionV1(request('1.234', 'g'), reviewed);
+  assert.equal(finer.status, 'CONFIRMED');
+  if (finer.status === 'CONFIRMED') {
+    assert.equal(finer.normalizedGrams, '1.234');
+    assert.equal(finer.legacyGramWriterCompatible, false);
+  }
+
+  const density = conversion('ml', 'GRAMS_PER_ML', '0.001');
+  const tiny = assessPortionV1(request('1', 'ml'), reviewed, [density]);
+  assert.equal(tiny.status, 'CONFIRMED');
+  if (tiny.status === 'CONFIRMED') {
+    assert.equal(tiny.normalizedGrams, '0.001');
+    assert.equal(tiny.legacyGramWriterCompatible, false);
+  }
+});
+
 test('missing required macros are UNKNOWN; missing fiber remains allowed', () => {
   for (const missingKey of ['calories', 'protein', 'fat', 'carbs'] as const) {
     const missing = { ...nutrition, [missingKey]: null } as unknown as typeof nutrition;
