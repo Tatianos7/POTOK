@@ -154,6 +154,11 @@ export function assessPortionV1(
   if (basisAmount === null || basisAmount <= 0n) {
     return { status: 'UNKNOWN', reason: 'CONVERSION_UNAVAILABLE', totals: null, normalizedGrams: null };
   }
+  // A strictly positive requested quantity must not round down to zero mass.
+  // Such a conversion would produce a valid-looking zero-nutrition diary entry.
+  if (grams === 0n) {
+    return { status: 'UNKNOWN', reason: 'INVALID_INPUT', totals: null, normalizedGrams: null };
+  }
 
   const denominator = profile.basis === 'PER_PORTION' ? thousand : hundred;
   const nutrition = profile.perBasis;
