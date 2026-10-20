@@ -194,7 +194,9 @@ export function assessPortionV1(
     basis: profile.basis,
     provenance: profile.provenance,
     conversionRef: used?.evidenceRef ?? null,
-    legacyGramWriterCompatible: profile.basis === 'PER_100_G_EDIBLE' && grams !== null,
+    // Legacy diary weight is numeric(8,2); thousandth-gram values cannot be represented unchanged.
+    legacyGramWriterCompatible: profile.basis === 'PER_100_G_EDIBLE' &&
+      grams !== null && grams % 10n === 0n,
   };
 }
 
