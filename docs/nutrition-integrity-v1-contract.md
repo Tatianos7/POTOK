@@ -12,7 +12,7 @@ Base: `b86ca3ec4ddf0f18a38cf2e46b5f39b5525b503f`. This package is not wired into
 
 `src/utils/nutritionIntegrityV1.ts` is a deterministic reference calculator and discriminated result type. Its `REVIEWED_REVISION` input is **not** a client attestation: only a future server resolver may construct that input after validating the current evidence chain. SQL `numeric` must be the authoritative arithmetic on writes. The pure calculator uses decimal strings, three fractional places, and half-up rounding to demonstrate outcomes; a server implementation must match or reject precision/overflow outside its chosen limits.
 
-The result's `legacyGramWriterCompatible` is true only for per-100-g nutrition with actual normalized grams. It does not authorize a write by itself. An `ESTIMATE` remains an estimate after reload; `UNKNOWN` does not produce a new numeric diary row. A pre-V1 row has NULL integrity fields: return its saved historical values unchanged and display certainty `UNKNOWN`.
+The result's `legacyGramWriterCompatible` checks only mass basis and exact weight precision; `legacyDiaryWriterCompatible` additionally requires each present nutrient total to fit `numeric(8,2)` without rounding. Neither compatibility flag authorizes a write or verifies evidence. Both remain false for native-volume/portion bases even when a mass is known. An `ESTIMATE` remains an estimate after reload; `UNKNOWN` does not produce a new numeric diary row. A pre-V1 row has NULL integrity fields: return its saved historical values unchanged and display certainty `UNKNOWN`.
 
 ## Existing food compatibility
 
@@ -53,9 +53,9 @@ Current `Progress` aggregates stored diary totals without a confidence field. Fu
 
 The pure contract now requires all four principal nutrients (calories, protein, fat and carbs); only fiber may be null. Unknown runtime unit values, invalid conversion source/kind and whitespace-only evidence references fail closed. For per-100-g nutrition a positive volume that converts to zero grams at the contract's 0.001 g precision is UNKNOWN rather than generating a zero-nutrition result. For per-100-ml nutrition an optional zero-rounded gram estimate is omitted while valid native-volume totals remain available.
 
-The `legacyGramWriterCompatible` field additionally rejects gram masses with greater than two decimal places, since the current diary `weight numeric(8,2)` would round them. **This compatibility flag is not a write permission or trust attestation.**
+The `legacyGramWriterCompatible` field rejects gram masses with greater than two decimal places, since the current diary `weight numeric(8,2)` would round them. The new `legacyDiaryWriterCompatible` additionally rejects results where any non-null nutrient would lose thousandths in the legacy `numeric(8,2)` columns. The pure calculator preserves the original three-decimal result; it does **not** silently round. **Neither compatibility flag is a write permission or trust attestation.**
 
-These isolated protections are covered by synthetic tests in the Draft PR. **The added tests need a fresh CI run; earlier verification of 14 original cases does not establish the outcome of the newly added tests.** No live writer, Supabase schema, historical diary row, or runtime binding is changed.
+CI previously passed 19/19 isolated Nutrition Integrity tests and 27/27 diary tests at commit `f3256822321fd4e6d6ac30d21c2b4c8d0de00c0a`. The additional diary-precision test and contract change require a **new CI run**; the earlier pass does not cover them. No live writer, Supabase schema, historical diary row, or runtime binding is changed.
 
 ## Acceptance tests for the implementation phase
 
