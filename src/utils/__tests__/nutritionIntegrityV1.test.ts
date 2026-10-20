@@ -254,3 +254,63 @@ test('evaluation is deterministic and does not mutate the supplied evidence', ()
   const first = JSON.stringify(assessPortionV1(request('37.5', 'ml'), reviewed, [density]));
   assert.equal(JSON.stringify(assessPortionV1(request('37.5', 'ml'), reviewed, [density])), first);
 });
+
+import {
+  assessServerPortionV1, type ServerFoodEvidenceV1, type TrustedNutritionStorageV1,
+} from '../../server/nutritionIntegrityServerResolverV1';
+
+const reviewedServer: ServerFoodEvidenceV1 = {
+  kind: 'REVIEWED', foodId, basis: 'PER_100_G_EDIBLE', nutrition,
+  nutritionRevisionId: 'rev', nutritionDigest: 'digest', approvalEventId: 'approval',
+  current: { approved: true, canonicalBindingCurrent: true, nutritionBindingCurrent: true,
+    foodStateApplicable: true, notInvalidated: true },
+};
+function trustedStub(food: ServerFoodEvidenceV1 | null, conversions: Awaited<ReturnType<TrustedNutritionStorageV1['resolveConversions']>> = []): TrustedNutritionStorageV1 {
+  return { resolveFood: async () => food, resolveConversions: async () => conversions };
+}
+
+test('server resolver confirms only a current reviewed source', async () => {
+  const result = await assessServerPortionV1(request('100', 'g'), 'actor', trustedStub(reviewedServer));
+  assert.equal(result.status, 'CONFIRMED');
+  const stale: ServerFoodEvidenceV1 = {
+    ...reviewedServer, current: { ...reviewedServer.current, notInvalidated: false },
+  };
+  assert.equal((await assessServerPortionV1(request('100', 'g'), 'actor', trustedStub(stale))).status, 'UNKNOWN');
+});
+
+test('server resolver cannot promote foreign or uncurated evidence', async () => {
+  const privateFood: ServerFoodEvidenceV1 = {
+    kind: 'USER_DECLARED', foodId, ownerId: 'another-user', basis: 'PER_100_G_EDIBLE', nutrition,
+  };
+  assert.equal((await assessServerPortionV1(request('100', 'g'), 'actor', trustedStub(privateFood))).status, 'UNKNOWN');
+  const mine: ServerFoodEvidenceV1 = { ...privateFood, ownerId: 'actor' };
+  assert.equal((await assessServerPortionV1(request('100', 'g'), 'actor', trustedStub(mine))).status, 'ESTIMATE');
+  const uncurated: ServerFoodEvidenceV1 = {
+    kind: 'LEGACY_CONTRACT', foodId, contractRef: 'catalog-v1', curated100g: false, nutrition,
+  };
+  assert.equal((await assessServerPortionV1(request('100', 'g'), 'actor', trustedStub(uncurated))).status, 'UNKNOWN');
+});
+
+test('server resolver rejects invalid, foreign or stale conversion evidence', async () => {
+  const valid = { ...conversion('ml', 'GRAMS_PER_ML', '0.800'), applicable: true, current: true, ownerId: null };
+  const good = await assessServerPortionV1(request('100', 'ml'), 'actor', trustedStub(reviewedServer, [valid]));
+  assert.equal(good.status, 'CONFIRMED');
+  for (const bad of [{ ...valid, current: false }, { ...valid, foodId: 'other' },
+    { ...valid, source: 'USER_DECLARED' as const, ownerId: 'another-user' }]) {
+    const failed = await assessServerPortionV1(request('100', 'ml'), 'actor', trustedStub(reviewedServer, [bad]));
+    assert.equal(failed.status, 'UNKNOWN');
+    assert.equal(failed.totals, null);
+  }
+  const declared = { ...valid, source: 'USER_DECLARED' as const, ownerId: 'actor' };
+  assert.equal((await assessServerPortionV1(request('100', 'ml'), 'actor', trustedStub(reviewedServer, [declared]))).status, 'ESTIMATE');
+});
+
+test('server resolver fails closed on storage errors and mismatched identity', async () => {
+  const offline: TrustedNutritionStorageV1 = {
+    resolveFood: async () => { throw new Error('outage'); },
+    resolveConversions: async () => [],
+  };
+  assert.equal((await assessServerPortionV1(request('100', 'g'), 'actor', offline)).status, 'UNKNOWN');
+  assert.equal((await assessServerPortionV1(request('100', 'g'), 'actor',
+    trustedStub({ ...reviewedServer, foodId: 'other' }))).status, 'UNKNOWN');
+});
