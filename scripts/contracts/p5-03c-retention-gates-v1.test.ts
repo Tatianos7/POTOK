@@ -40,3 +40,11 @@ test('retention gate: no claim that unapproved policy or real Auth testing is co
   assert.match(remediation, /Real Supabase JWT\/PostgREST\s*\|\s*NOT VERIFIED/i);
   assert.match(remediation, /Database-level erasure\/closure implementation\s*\|\s*NOT IMPLEMENTED/i);
 });
+
+test('owner-approved separation is explicit and does not authorize retention bypass', () => {
+  assert.match(remediation, /Owner decision — approved 2026-10-20/);
+  assert.match(remediation, /A separately reviewed and published \*shared catalog product\* may remain/);
+  assert.match(remediation, /\*\*FAIL CLOSED:\*\*/);
+  assert.match(remediation, /\*\*NOT APPROVED BY THIS DECISION:\*\*/);
+  assert.match(remediation, /no user-identifying\/re-linkable data/i);
+});
