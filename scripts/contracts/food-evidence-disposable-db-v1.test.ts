@@ -325,6 +325,8 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
         const { definitionRequest } = await import('../../src/server/__tests__/nonFoodEvidenceFixturesV1');
         const foodInput=await rejected(900001);
         const nonfoodInput=definitionRequest(900001);
+        if (nonfoodInput.proposal.kind !== 'DEFINITION') throw new Error('EXPECTED_DEFINITION_FIXTURE');
+        nonfoodInput.proposal.stableKey='synthetic_closure_probe_900001';
         await asUser(`SELECT public.food_evidence_review_v1(${quote(raw(foodInput))})`);
         await asUser(`SELECT public.nonfood_evidence_review_v1(${quote(raw(nonfoodInput))})`);
         await sql(`SELECT potok_closure_disposable.begin_closure(${quote(actor)},${quote(id(990001))})`);
