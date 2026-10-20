@@ -57,6 +57,12 @@ The following implementation and policy details **remain unapproved** despite th
 
 `scripts/contracts/p5-03c-closure-fence-prototype.test.ts` checks the file's guards and ordering as **source-level regressions only**. It does not execute PostgreSQL transactions or test two-session races. The actual Food/Nonfood SQL issuers remain unmodified and **DO NOT use this gate**; the new `CLOSING` state is not persisted anywhere in Supabase. Exact actor authority, lifecycle design, lock-order integration, COMMIT rechecks, crash recovery and account erasure must be independently implemented/tested before activating issuance. `CLOSED` transition is deliberately absent because no complete erasure proof exists.
 
+## Executable disposable PostgreSQL race acceptance
+
+`scripts/contracts/p5-03c-closure-disposable-db-v1.test.ts` creates a new Unix-socket-only PostgreSQL 17+ cluster on a temporary random directory, with no external DB URL or stored credentials. The script checks that the SQL refuses an unmarked target and that both serial orders are protected by the same account transaction lock: closure-first denies a competing admission; admission-first finishes before closure can commit, with later admissions denied. Exact-key replay and conflicting-key checks are included. This is a **real PostgreSQL test of the isolated prototype**, not a test of the application Food/Nonfood issuers, full account deletion or genuine Supabase Auth JWTs.
+
+The dedicated `.github/workflows/p5-03c-closure-postgres-acceptance.yml` requires actual database execution: `POTOK_CLOSURE_REQUIRE_DB=1` fails if PostgreSQL is unavailable. Workflow success must be confirmed from an actual run before claiming acceptance. No SQL draft in this area is authorized for Staging/Main.
+
 ## Immediate automated review guard
 
 `scripts/contracts/p5-03c-retention-gates-v1.test.ts` performs source-level regression checks that known identity-linked FKs, immutable retained copies and explicit nonapproval remain visible. It rejects accidental CASCADE or an unsupported claim of completed erasure/retention, but **does not prove** data deletion, satisfy legal policy, or authorize deployment.
