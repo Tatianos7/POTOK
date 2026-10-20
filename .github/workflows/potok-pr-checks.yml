@@ -90,3 +90,6 @@ jobs:
 
       - name: P5-03C account closure fail-closed contract
         run: npx --no-install tsx --test src/server/__tests__/accountClosureFenceV1.test.ts
+
+      - name: P5-03C disposable closure SQL prototype guards
+        run: npx --no-install tsx --test scripts/contracts/p5-03c-closure-fence-prototype.test.ts
