@@ -51,6 +51,12 @@ The following implementation and policy details **remain unapproved** despite th
 
 **Security scope:** the read port MUST be backed by trusted server storage and Auth authority; an arbitrary client-generated observation is not a trusted state. Even trusted `ACTIVE` does **not** grant permission to issue an evidence mutation: issuance and the `CLOSING` transition still require a single serialized, commit-checked database write-side fence and a recoverable closure journal. No database tables, endpoints, account deletion worker or runtime imports were added. Hence **ACCOUNT_CLOSURE_IMPLEMENTED=false**, **LIVE_ERASURE_VERIFIED=false**. The owner-approved preservation principle does not authorize retention dates, wiping evidence, changes to FKs or live rollout.
 
+## Disposable transaction serialization prototype — NOT a migration
+
+`scripts/contracts/p5-03c-closure-fence-disposable-prototype.sql` documents an executable **isolated test-only** `ACTIVE → CLOSING` protocol: a shared account-level advisory transaction lock is acquired before its row lock; repeated calls with the original closure key are idempotent, but a different key and any issuance after `CLOSING` are rejected. A compulsory session marker `potok_closure.test_target=disposable-postgresql-only` prevents unmarked execution. It has no authenticated grants, live schema modifications or real deletion effects.
+
+`scripts/contracts/p5-03c-closure-fence-prototype.test.ts` checks the file's guards and ordering as **source-level regressions only**. It does not execute PostgreSQL transactions or test two-session races. The actual Food/Nonfood SQL issuers remain unmodified and **DO NOT use this gate**; the new `CLOSING` state is not persisted anywhere in Supabase. Exact actor authority, lifecycle design, lock-order integration, COMMIT rechecks, crash recovery and account erasure must be independently implemented/tested before activating issuance. `CLOSED` transition is deliberately absent because no complete erasure proof exists.
+
 ## Immediate automated review guard
 
 `scripts/contracts/p5-03c-retention-gates-v1.test.ts` performs source-level regression checks that known identity-linked FKs, immutable retained copies and explicit nonapproval remain visible. It rejects accidental CASCADE or an unsupported claim of completed erasure/retention, but **does not prove** data deletion, satisfy legal policy, or authorize deployment.
