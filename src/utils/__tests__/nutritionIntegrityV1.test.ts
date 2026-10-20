@@ -123,6 +123,20 @@ test('declared per-100ml nutrition scales by volume without pretending grams are
   }
 });
 
+test('valid per-100ml nutrition does not require rounded optional mass', () => {
+  const profile: FoodNutritionProfileV1 = {
+    foodId, basis: 'PER_100_ML', perBasis: nutrition,
+    provenance: { kind: 'USER_DECLARED', ownerId: 'synthetic-owner' },
+  };
+  const tinyDensity = conversion('ml', 'GRAMS_PER_ML', '0.001');
+  const result = assessPortionV1(request('0.001', 'ml'), profile, [tinyDensity]);
+  assert.equal(result.status, 'ESTIMATE');
+  if (result.status === 'ESTIMATE') {
+    assert.equal(result.normalizedGrams, null);
+    assert.equal(result.legacyGramWriterCompatible, false);
+  }
+});
+
 test('declared per-portion nutrition uses portions but never invents portion mass', () => {
   const profile: FoodNutritionProfileV1 = {
     foodId, basis: 'PER_PORTION', perBasis: nutrition, provenance: { kind: 'USER_DECLARED', ownerId: 'synthetic-owner' },
