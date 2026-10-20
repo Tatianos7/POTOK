@@ -10,11 +10,26 @@ Status: **REMEDIATION PREPARATION ONLY / NOT APPROVED / NOT DEPLOYED**. Suppleme
 4. **Unverified external copies**: Auth/profile/Adaptive Graph and diary refs, Storage buckets, local/offline queues, CDN, backups, support logs and account closure orchestration must be inventoried before a live retention policy can be judged complete.
 5. **Catalog lifecycle**: archived/shared food roots have existing consumer/importer/write-path risks. A Food-only FK change is not global account closure or archive protection.
 
+## Owner decision — approved 2026-10-20 (principle only)
+
+**APPROVED:** Personal account data (including private diary, private/unpublished foods and recipes, personal inputs, and identifiable reviewer/upload attribution) must be erased as part of an authorized account-deletion lifecycle. A separately reviewed and published *shared catalog product* may remain available to other users **only if** its remaining record and all reachable retained source/evidence/receipt/event/history/backup copies no longer permit identifying or reasonably re-linking the former account holder. Product nutrition must remain supported by independently verifiable product/source/version evidence, not merely orphaned macro numbers. No automatic promotion of user submissions.
+
+**FAIL CLOSED:** If safe separation, third-party source rights or verifiable independent provenance cannot be demonstrated, the shared record cannot be retained on the strength of this approval alone. Evaluate withdrawal/re-review and dependent diary snapshot integrity separately; never silently alter historical FACT.
+
+**NOT APPROVED BY THIS DECISION:** any numeric retention window, legal basis or legal hold, blanket deletion of immutable evidence, severing existing FKs, keeping original user UUID in hidden audit, anonymization technique, data-processing migration, running deletion/erasure jobs, live Auth/PostgREST tests, staging/production apply, activation, publication of candidate products, or merge. All remain gated on a reviewable end-to-end design and explicit permission.
+
+Acceptance criteria for follow-up implementation:
+1. After deletion, no user-identifying/re-linkable data in surviving catalog root, aliases, source snapshots, revisions, event payloads, exact raw receipts, entitlement references, backup/Storage/offline mirrors, or external operational logs under the approved threat model.
+2. Shared products retained only when an independent nonpersonal source of truth can reproduce identity, nutritional values and source/version mappings; no user-provided brand claim automatically becomes public.
+3. A single account-closure fence blocks new writes and serializes closure against concurrent approval/replay; retries do not resurrect personal data or create duplicate evidence.
+4. The system distinguishes **personal erasure**, **shared catalog preservation**, and **diary FACT snapshot preservation** with explicit evidence and tests; never equate sign-out with account deletion.
+5. Deletion failure is recoverable and visible as pending/blocked, not falsely marked complete. Real Supabase/Auth, RLS, Storage and backup lifecycle acceptance must be separately executed.
+
 ## Approved direction vs awaiting owner decision
 
 The POTOK master goals require secure privacy, account deletion and export, and staged, independently authorized migrations. Earlier Phase 2C retention design prefers **physical deletion of accounts with a minimized privacy-safe audit**, explicitly **rejects indefinitely keeping the original account UUID as an unquestioned anchor**, and does **not** choose numerical retention periods.
 
-The following decisions **remain unapproved** (no invented default):
+The following implementation and policy details **remain unapproved** despite the approved separation principle (no invented default):
 - Retention duration and lawful grounds for raw source bytes, user-origin metadata, immutable personal events, exact receipts/idempotency, trust attestations, backups and support logs; each needs a finite purpose, access scope, exceptions/legal-hold and review cadence.
 - Nonpersonal verifiable checkpoint and linkability threat model after erasure; whether/which evidence may survive without retaining direct or indirectly linkable personal identifiers.
 - Supported account closure and rollback/recovery procedure across Auth, profiles, Premium plans/FACT, Food/Nonfood, Storage, logs, backup restore and offline clients.
