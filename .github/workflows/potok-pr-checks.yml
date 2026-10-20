@@ -87,3 +87,6 @@ jobs:
 
       - name: P5-03C retention and account-erasure blockers regression
         run: npx --no-install tsx --test scripts/contracts/p5-03c-retention-gates-v1.test.ts
+
+      - name: P5-03C account closure fail-closed contract
+        run: npx --no-install tsx --test src/server/__tests__/accountClosureFenceV1.test.ts
