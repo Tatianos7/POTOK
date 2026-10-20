@@ -93,3 +93,6 @@ jobs:
 
       - name: P5-03C disposable closure SQL prototype guards
         run: npx --no-install tsx --test scripts/contracts/p5-03c-closure-fence-prototype.test.ts
+
+      - name: P5-03C issuer activation vs global account erasure scope guards
+        run: npx --no-install tsx --test scripts/contracts/p5-03c-scope-split-v1.test.ts
