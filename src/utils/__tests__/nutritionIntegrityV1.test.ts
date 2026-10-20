@@ -193,7 +193,9 @@ test('legacy gram writer rejects precision it cannot store without rounding', ()
 });
 
 test('legacy diary compatibility includes nutrient precision as well as mass', () => {
-  const exactWeight = assessPortionV1(request('1.23', 'g'), reviewed);
+  // 100 g produces hundredth-compatible nutrient totals for this reviewed fixture.
+  // A 1.23 g portion does not: protein would be 0.123 g.
+  const exactWeight = assessPortionV1(request('100', 'g'), reviewed);
   assert.equal(exactWeight.status, 'CONFIRMED');
   if (exactWeight.status === 'CONFIRMED') {
     assert.equal(exactWeight.legacyGramWriterCompatible, true);
