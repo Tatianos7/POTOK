@@ -135,6 +135,20 @@ test('invalid numbers, missing macros and forged reviewed non-gram basis fail cl
   assert.equal(assessPortionV1(request(100 as unknown as string, 'g'), reviewed).status, 'UNKNOWN');
 });
 
+test('missing required macros are UNKNOWN; missing fiber remains allowed', () => {
+  for (const missingKey of ['calories', 'protein', 'fat', 'carbs'] as const) {
+    const missing = { ...nutrition, [missingKey]: null } as unknown as typeof nutrition;
+    const result = assessPortionV1(request('100', 'g'), { ...reviewed, perBasis: missing });
+    assert.equal(result.status, 'UNKNOWN', missingKey);
+    assert.equal(result.totals, null, missingKey);
+  }
+  const malformed = { ...nutrition, carbs: undefined } as unknown as typeof nutrition;
+  assert.equal(assessPortionV1(request('100', 'g'), { ...reviewed, perBasis: malformed }).status, 'UNKNOWN');
+  const valid = assessPortionV1(request('100', 'g'), reviewed);
+  assert.equal(valid.status, 'CONFIRMED');
+  if (valid.status === 'CONFIRMED') assert.equal(valid.totals.fiber, null);
+});
+
 test('historical rows read as UNKNOWN without changing stored nutrition', () => {
   assert.equal(readStoredIntegrityStatusV1(null, null), 'UNKNOWN');
   assert.equal(readStoredIntegrityStatusV1(1, null), 'UNKNOWN');
