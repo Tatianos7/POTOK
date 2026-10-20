@@ -1,0 +1,53 @@
+name: POTOK PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+# Read-only validation. No deployment, Supabase access or app secrets.
+permissions:
+  contents: read
+
+concurrency:
+  group: potok-pr-checks-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: TypeScript, build and nutrition tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout proposed code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: TypeScript and production build (no deployment)
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ''
+          VITE_SUPABASE_ANON_KEY: ''
+
+      - name: Diary contract tests
+        run: npm run test:diary
+
+      # Nutrition Integrity V1 lives in an unmerged Draft PR.
+      # Once included in a checked-out PR, run its isolated pure tests too.
+      - name: Nutrition Integrity V1 contract tests when present
+        shell: bash
+        run: |
+          if [ -f src/utils/__tests__/nutritionIntegrityV1.test.ts ]; then
+            npx --no-install tsx --test src/utils/__tests__/nutritionIntegrityV1.test.ts
+          else
+            echo "Nutrition Integrity V1 tests are not present in this PR; skipping."
+          fi
