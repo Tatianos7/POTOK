@@ -160,16 +160,17 @@ export function assessPortionV1(
     if (portionWeight) grams = divideRounded(amount * minor(portionWeight.value)!, thousand);
   }
 
-  if (basisAmount === null || basisAmount <= 0n) {
-    return { status: 'UNKNOWN', reason: 'CONVERSION_UNAVAILABLE', totals: null, normalizedGrams: null };
-  }
-  // A required gram conversion must not turn a positive quantity into zero mass.
-  // For volume-/portion-based nutrition, normalized grams are only optional metadata.
+  // When a supplied conversion resolves a positive quantity to zero mass,
+  // report invalid precision rather than misreporting missing conversion evidence.
+  // For volume-/portion-based nutrition, normalized grams are optional metadata.
   if (grams === 0n) {
     if (profile.basis === 'PER_100_G_EDIBLE') {
       return { status: 'UNKNOWN', reason: 'INVALID_INPUT', totals: null, normalizedGrams: null };
     }
     grams = null;
+  }
+  if (basisAmount === null || basisAmount <= 0n) {
+    return { status: 'UNKNOWN', reason: 'CONVERSION_UNAVAILABLE', totals: null, normalizedGrams: null };
   }
 
   const denominator = profile.basis === 'PER_PORTION' ? thousand : hundred;
