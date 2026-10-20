@@ -27,7 +27,7 @@ test('reviewed 100g + grams yields confirmed nutrition and exact mass', () => {
     status: 'CONFIRMED', reason: null, totals: {
       calories: '300.000', protein: '15.000', fat: '12.000', carbs: '30.000', fiber: null,
     }, normalizedGrams: '150.000', basis: 'PER_100_G_EDIBLE', provenance: reviewed.provenance,
-    conversionRef: null, legacyGramWriterCompatible: true,
+    conversionRef: null, legacyGramWriterCompatible: true, legacyDiaryWriterCompatible: true,
   });
 });
 
@@ -189,6 +189,34 @@ test('legacy gram writer rejects precision it cannot store without rounding', ()
   if (tiny.status === 'CONFIRMED') {
     assert.equal(tiny.normalizedGrams, '0.001');
     assert.equal(tiny.legacyGramWriterCompatible, false);
+  }
+});
+
+test('legacy diary compatibility includes nutrient precision as well as mass', () => {
+  const exactWeight = assessPortionV1(request('1.23', 'g'), reviewed);
+  assert.equal(exactWeight.status, 'CONFIRMED');
+  if (exactWeight.status === 'CONFIRMED') {
+    assert.equal(exactWeight.legacyGramWriterCompatible, true);
+    assert.equal(exactWeight.legacyDiaryWriterCompatible, true);
+  }
+
+  const precisionProfile: FoodNutritionProfileV1 = {
+    ...reviewed,
+    perBasis: { calories: '100.125', protein: '1.001', fat: '0.000', carbs: '0.000', fiber: null },
+  };
+  const nonRepresentable = assessPortionV1(request('100', 'g'), precisionProfile);
+  assert.equal(nonRepresentable.status, 'CONFIRMED');
+  if (nonRepresentable.status === 'CONFIRMED') {
+    assert.equal(nonRepresentable.totals.calories, '100.125');
+    assert.equal(nonRepresentable.legacyGramWriterCompatible, true);
+    assert.equal(nonRepresentable.legacyDiaryWriterCompatible, false);
+  }
+
+  const fineMass = assessPortionV1(request('1.234', 'g'), reviewed);
+  assert.equal(fineMass.status, 'CONFIRMED');
+  if (fineMass.status === 'CONFIRMED') {
+    assert.equal(fineMass.legacyGramWriterCompatible, false);
+    assert.equal(fineMass.legacyDiaryWriterCompatible, false);
   }
 });
 
