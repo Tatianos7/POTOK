@@ -161,6 +161,16 @@ test('invalid numbers, missing macros and forged reviewed non-gram basis fail cl
   assert.equal(assessPortionV1(request(100 as unknown as string, 'g'), reviewed).status, 'UNKNOWN');
 });
 
+test('unknown runtime units and malformed conversion authority fail closed', () => {
+  assert.equal(assessPortionV1(request('100', 'cups' as PortionRequestV1['unit']), reviewed).status, 'UNKNOWN');
+  const malformedSource = { ...conversion('ml', 'GRAMS_PER_ML', '0.800'), source: 'UNTRUSTED' } as unknown as FoodConversionV1;
+  const malformedRef = { ...conversion('ml', 'GRAMS_PER_ML', '0.800'), evidenceRef: '   ' };
+  const malformedKind = { ...conversion('ml', 'GRAMS_PER_ML', '0.800'), kind: 'OTHER' } as unknown as FoodConversionV1;
+  for (const invalid of [malformedSource, malformedRef, malformedKind]) {
+    assert.equal(assessPortionV1(request('100', 'ml'), reviewed, [invalid]).status, 'UNKNOWN');
+  }
+});
+
 test('missing required macros are UNKNOWN; missing fiber remains allowed', () => {
   for (const missingKey of ['calories', 'protein', 'fat', 'carbs'] as const) {
     const missing = { ...nutrition, [missingKey]: null } as unknown as typeof nutrition;
