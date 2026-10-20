@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   AdaptiveNutritionReadOnlyService,
+  decodeAdaptiveNutritionPendingGenerationDiscoveryV1,
   isAdaptiveNutritionReadEnabled,
 } from '../adaptiveNutritionReadOnlyService';
 
@@ -41,6 +42,12 @@ function client(input: {
 const discovery = () => ({
   kind: 'ready', selection_id: ids.selection, week_anchor: '2026-09-21', timezone: 'Europe/Moscow',
   status: 'active', contract_version: 1,
+});
+
+const pendingDiscovery = () => ({
+  kind: 'pending_generation', selection_id: ids.selection, week_anchor: '2026-09-21',
+  timezone: 'Europe/Moscow', status: 'pending_generation', contract_version: 1,
+  goal_revision: ids.goal,
 });
 
 const read = () => ({
@@ -83,6 +90,49 @@ test('discovery and current read use only account-bound read RPCs', async () => 
   assert.equal(calls.some((call) => /mutate/i.test(call.name)), false);
 });
 
+test('strict pending discovery preserves selection, week and goal without changing ready contract', async () => {
+  assert.deepEqual(decodeAdaptiveNutritionPendingGenerationDiscoveryV1(pendingDiscovery()), {
+    kind: 'pending_generation', selectionId: ids.selection, weekAnchor: '2026-09-21',
+    timeZone: 'Europe/Moscow', status: 'pending_generation', contractVersion: 1,
+    goalRevision: ids.goal,
+  });
+  const service = new AdaptiveNutritionReadOnlyService(client({
+    rpc: () => ({ data: pendingDiscovery(), error: null }),
+  }), true);
+  assert.equal((await service.discoverCurrent(service.beginSession(ids.accountA), 'Europe/Moscow')).kind,
+    'pending_generation');
+  assert.deepEqual(Object.keys(discovery()).sort(), [
+    'contract_version', 'kind', 'selection_id', 'status', 'timezone', 'week_anchor',
+  ]);
+});
+
+test('pending discovery rejects malformed, missing and extra contract fields', () => {
+  const missingGoal = { ...pendingDiscovery() } as Record<string, unknown>;
+  delete missingGoal.goal_revision;
+  const invalid: unknown[] = [
+    { ...pendingDiscovery(), extra: true },
+    missingGoal,
+    { ...pendingDiscovery(), selection_id: 'not-a-uuid' },
+    { ...pendingDiscovery(), goal_revision: 'not-a-uuid' },
+    { ...pendingDiscovery(), status: 'active' },
+    { ...pendingDiscovery(), contract_version: 2 },
+    { ...pendingDiscovery(), week_anchor: '2026-09-22' },
+    { ...pendingDiscovery(), week_anchor: '2026-02-30' },
+    { ...pendingDiscovery(), timezone: 'Invalid/Timezone' },
+  ];
+  for (const value of invalid) {
+    assert.equal(decodeAdaptiveNutritionPendingGenerationDiscoveryV1(value), null);
+  }
+});
+
+test('pending discovery must match the requested timezone', async () => {
+  const service = new AdaptiveNutritionReadOnlyService(client({
+    rpc: () => ({ data: { ...pendingDiscovery(), timezone: 'UTC' }, error: null }),
+  }), true);
+  assert.deepEqual(await service.discoverCurrent(service.beginSession(ids.accountA), 'Europe/Moscow'),
+    { kind: 'invalid-server-response' });
+});
+
 test('zero and multiple selection outcomes remain explicit and fail closed', async () => {
   for (const kind of ['no_active_plan', 'ambiguous'] as const) {
     const service = new AdaptiveNutritionReadOnlyService(client({
@@ -121,6 +171,7 @@ test('read-only client source has no selection override, smoke identity, storage
   const source = readFileSync(resolve(currentDir, '../adaptiveNutritionReadOnlyService.ts'), 'utf8');
   assert.doesNotMatch(source, /localStorage|sessionStorage|VITE_ADAPTIVE_NUTRITION_SMOKE|7e710000-/);
   assert.doesNotMatch(source, /adaptive_nutrition_mutate_v1|\.from\(|\.insert\(|\.update\(|\.upsert\(|\.delete\(/);
+  assert.doesNotMatch(source, /adaptive_nutrition_generate_v\d|setInterval\(/);
   assert.match(source, /adaptive_nutrition_discover_current_v1/);
   assert.match(source, /adaptive_nutrition_read_v1/);
   assert.doesNotMatch(source, /p_account|account_id:/);
