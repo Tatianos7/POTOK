@@ -96,3 +96,6 @@ jobs:
 
       - name: P5-03C issuer activation vs global account erasure scope guards
         run: npx --no-install tsx --test scripts/contracts/p5-03c-scope-split-v1.test.ts
+
+      - name: P5-03C issuer closure lock-order review guard
+        run: npx --no-install tsx --test scripts/contracts/p5-03c-issuer-lock-order-v1.test.ts
