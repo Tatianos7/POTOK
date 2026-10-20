@@ -72,8 +72,17 @@ const unknown = (reason: 'INVALID_INPUT' | 'BASIS_UNKNOWN' | 'CONVERSION_UNAVAIL
   ({ status: 'UNKNOWN', reason, totals: null, normalizedGrams: null });
 
 function reviewedCurrent(evidence: Extract<ServerFoodEvidenceV1, {kind: 'REVIEWED'}>): boolean {
-  return Object.values(evidence.current).every(value => value === true) &&
-    Boolean(evidence.nutritionRevisionId && evidence.nutritionDigest && evidence.approvalEventId);
+  const current = evidence.current;
+  // Never use Object.values().every(): an empty or incomplete object passes vacuously.
+  return current !== null && typeof current === 'object' &&
+    current.approved === true &&
+    current.canonicalBindingCurrent === true &&
+    current.nutritionBindingCurrent === true &&
+    current.foodStateApplicable === true &&
+    current.notInvalidated === true &&
+    typeof evidence.nutritionRevisionId === 'string' && evidence.nutritionRevisionId.trim().length > 0 &&
+    typeof evidence.nutritionDigest === 'string' && evidence.nutritionDigest.trim().length > 0 &&
+    typeof evidence.approvalEventId === 'string' && evidence.approvalEventId.trim().length > 0;
 }
 
 function profileFor(evidence: ServerFoodEvidenceV1, actorId: string): FoodNutritionProfileV1 | null {
