@@ -49,6 +49,14 @@ Current `Progress` aggregates stored diary totals without a confidence field. Fu
 4. Update product forms, portion UI and read models. Keep legacy gram estimates usable, explain unknown conversions, and preserve input on rejection. Enable client traffic only after server gate and rollback plan are verified.
 5. Exclude estimates/unknowns from confirmed Premium FACT and adaptation. Review any proposed native-amount extension separately. Leave historical diary values untouched.
 
+## Isolated contract hardening (2026-10-20)
+
+The pure contract now requires all four principal nutrients (calories, protein, fat and carbs); only fiber may be null. Unknown runtime unit values, invalid conversion source/kind and whitespace-only evidence references fail closed. For per-100-g nutrition a positive volume that converts to zero grams at the contract's 0.001 g precision is UNKNOWN rather than generating a zero-nutrition result. For per-100-ml nutrition an optional zero-rounded gram estimate is omitted while valid native-volume totals remain available.
+
+The `legacyGramWriterCompatible` field additionally rejects gram masses with greater than two decimal places, since the current diary `weight numeric(8,2)` would round them. **This compatibility flag is not a write permission or trust attestation.**
+
+These isolated protections are covered by synthetic tests in the Draft PR. **The added tests need a fresh CI run; earlier verification of 14 original cases does not establish the outcome of the newly added tests.** No live writer, Supabase schema, historical diary row, or runtime binding is changed.
+
 ## Acceptance tests for the implementation phase
 
 - Unit matrix: g, ml, l, tablespoon, teaspoon, piece, portion; direct matching basis, density/measure evidence, absent or conflicting evidence, cross-food evidence, precision and overflow.
