@@ -1,0 +1,25 @@
+name: P5-02 disposable acceptance
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - '.github/workflows/p5-02-disposable-acceptance.yml'
+      - 'docs/premium/drafts/20261012_adaptive_nutrition_error_contract_v1.*.sql'
+      - 'docs/premium/drafts/20261012_adaptive_nutrition_error_contract_v1.repair.sql'
+      - 'docs/premium/drafts/20260921_adaptive_nutrition_runtime_activation_v1.sql'
+      - 'docs/premium/drafts/20260927_adaptive_nutrition_graph_v2_authorities_activation_v1.sql'
+      - 'scripts/acceptance/*adaptive-nutrition*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-postgrest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run isolated acceptance
+        run: timeout 8m scripts/acceptance/run-adaptive-nutrition-error-contract-v1.sh

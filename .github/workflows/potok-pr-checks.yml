@@ -65,3 +65,10 @@ jobs:
             src/services/__tests__/adaptiveNutritionReadOnlyService.test.ts \
             src/services/__tests__/adaptiveNutritionReadOnlyEntry.test.ts \
             src/components/__tests__/AdaptiveNutritionReadOnlyEntry.test.tsx
+
+      - name: P5-02 adaptive persistence and UNKNOWN recovery regressions
+        run: |
+          npx --no-install tsx --test \
+            src/services/__tests__/adaptiveNutritionPersistenceService.test.ts \
+            src/services/__tests__/adaptiveNutritionTodayRuntime.test.ts \
+            scripts/contracts/adaptive-nutrition-error-contract-v1.test.ts
