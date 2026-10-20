@@ -17,6 +17,16 @@ export interface AdaptiveNutritionReadSession {
   generation: number;
 }
 
+export interface AdaptiveNutritionPendingGenerationDiscoveryV1 {
+  kind: 'pending_generation';
+  selectionId: string;
+  weekAnchor: string;
+  timeZone: string;
+  status: 'pending_generation';
+  contractVersion: 1;
+  goalRevision: string;
+}
+
 export type AdaptiveNutritionDiscoveryResult =
   | {
     kind: 'ready';
@@ -26,6 +36,7 @@ export type AdaptiveNutritionDiscoveryResult =
     status: 'active';
     contractVersion: 1;
   }
+  | AdaptiveNutritionPendingGenerationDiscoveryV1
   | { kind: 'no_active_plan' }
   | { kind: 'ambiguous' }
   | { kind: 'denied' }
@@ -49,6 +60,19 @@ function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): 
   return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
 }
 
+function isValidCalendarDate(value: string): boolean {
+  if (!datePattern.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year
+    && parsed.getUTCMonth() === month - 1
+    && parsed.getUTCDate() === day;
+}
+
+function isMonday(value: string): boolean {
+  return isValidCalendarDate(value) && new Date(`${value}T00:00:00.000Z`).getUTCDay() === 1;
+}
+
 export function isValidAdaptiveNutritionTimeZone(value: string): boolean {
   if (!value || value !== value.trim()) return false;
   try {
@@ -68,12 +92,38 @@ export function getAdaptiveNutritionLocalTimeZone(): string | null {
   }
 }
 
+export function decodeAdaptiveNutritionPendingGenerationDiscoveryV1(
+  value: unknown,
+): AdaptiveNutritionPendingGenerationDiscoveryV1 | null {
+  const row = record(value);
+  if (!row
+      || !hasExactKeys(row, [
+        'kind', 'selection_id', 'week_anchor', 'timezone', 'status', 'contract_version', 'goal_revision',
+      ])
+      || row.kind !== 'pending_generation'
+      || typeof row.selection_id !== 'string' || !uuidPattern.test(row.selection_id)
+      || typeof row.week_anchor !== 'string' || !isMonday(row.week_anchor)
+      || typeof row.timezone !== 'string' || !isValidAdaptiveNutritionTimeZone(row.timezone)
+      || row.status !== 'pending_generation' || row.contract_version !== 1
+      || typeof row.goal_revision !== 'string' || !uuidPattern.test(row.goal_revision)) return null;
+  return {
+    kind: 'pending_generation',
+    selectionId: row.selection_id,
+    weekAnchor: row.week_anchor,
+    timeZone: row.timezone,
+    status: 'pending_generation',
+    contractVersion: 1,
+    goalRevision: row.goal_revision,
+  };
+}
+
 function decodeDiscovery(value: unknown): AdaptiveNutritionDiscoveryResult | null {
   const row = record(value);
   if (!row || typeof row.kind !== 'string') return null;
   if (row.kind === 'no_active_plan' && hasExactKeys(row, ['kind'])) return { kind: 'no_active_plan' };
   if (row.kind === 'ambiguous' && hasExactKeys(row, ['kind'])) return { kind: 'ambiguous' };
   if (row.kind === 'denied' && hasExactKeys(row, ['kind'])) return { kind: 'denied' };
+  if (row.kind === 'pending_generation') return decodeAdaptiveNutritionPendingGenerationDiscoveryV1(row);
   if (row.kind !== 'ready'
       || !hasExactKeys(row, ['kind', 'selection_id', 'week_anchor', 'timezone', 'status', 'contract_version'])
       || typeof row.selection_id !== 'string' || !uuidPattern.test(row.selection_id)
@@ -142,7 +192,7 @@ export class AdaptiveNutritionReadOnlyService {
     });
     if (error) return this.finish(session, { kind: 'unavailable' });
     const decoded = decodeDiscovery(data) ?? { kind: 'invalid-server-response' as const };
-    if (decoded.kind === 'ready' && decoded.timeZone !== timeZone) {
+    if ((decoded.kind === 'ready' || decoded.kind === 'pending_generation') && decoded.timeZone !== timeZone) {
       return this.finish(session, { kind: 'invalid-server-response' });
     }
     return this.finish(session, decoded);
