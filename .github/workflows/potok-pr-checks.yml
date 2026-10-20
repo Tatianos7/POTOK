@@ -47,7 +47,11 @@ jobs:
         shell: bash
         run: |
           if [ -f src/utils/__tests__/nutritionIntegrityV1.test.ts ]; then
-            npx --no-install tsx --test src/utils/__tests__/nutritionIntegrityV1.test.ts
+            tests=(src/utils/__tests__/nutritionIntegrityV1.test.ts)
+            if [ -f src/server/__tests__/nutritionIntegrityReviewedEvidenceAdapterV1.test.ts ]; then
+              tests+=(src/server/__tests__/nutritionIntegrityReviewedEvidenceAdapterV1.test.ts)
+            fi
+            npx --no-install tsx --test "${tests[@]}"
           else
             echo "Nutrition Integrity V1 tests are not present in this PR; skipping."
           fi
