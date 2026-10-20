@@ -45,6 +45,12 @@ The following implementation and policy details **remain unapproved** despite th
 6. **Tests first**: disposable PostgreSQL fixtures for first/middle/last account closure, RESTRICT FK negative test, source-in-event/receipt copy audit, concurrent issuance-vs-closure, expired receipt and backup restoration semantics; separate live **STAGING-only** Supabase Auth/JWT/PostgREST acceptance after owner approval. For now, negative test that physical DELETE is blocked is evidence of the defect, not proof of an erasure fix.
 7. **Rollout**: owner reviews exact policy and authored SQL changes; separate authorization for live SELECT-only preflight and, later, STAGING apply; canary/rollback acceptance before any Main deployment. Zero changes to live data in this PR.
 
+## Implemented in Draft PR — admission-only contract (2026-10-20)
+
+`src/server/accountClosureFenceV1.ts` adds an **unmounted, read-only** admission classifier and injected read port. Verified `ACTIVE` observation returns a revision-bound **preliminary** ALLOW; `CLOSING`, `CLOSED`, absent/foreign/malformed data or read failures all fail closed. `src/server/__tests__/accountClosureFenceV1.test.ts` covers those cases in PR CI.
+
+**Security scope:** the read port MUST be backed by trusted server storage and Auth authority; an arbitrary client-generated observation is not a trusted state. Even trusted `ACTIVE` does **not** grant permission to issue an evidence mutation: issuance and the `CLOSING` transition still require a single serialized, commit-checked database write-side fence and a recoverable closure journal. No database tables, endpoints, account deletion worker or runtime imports were added. Hence **ACCOUNT_CLOSURE_IMPLEMENTED=false**, **LIVE_ERASURE_VERIFIED=false**. The owner-approved preservation principle does not authorize retention dates, wiping evidence, changes to FKs or live rollout.
+
 ## Immediate automated review guard
 
 `scripts/contracts/p5-03c-retention-gates-v1.test.ts` performs source-level regression checks that known identity-linked FKs, immutable retained copies and explicit nonapproval remain visible. It rejects accidental CASCADE or an unsupported claim of completed erasure/retention, but **does not prove** data deletion, satisfy legal policy, or authorize deployment.
