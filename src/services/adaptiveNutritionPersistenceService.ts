@@ -12,6 +12,8 @@ type AdaptiveNutritionRuntimeGate = boolean | (() => boolean);
 
 export const ADAPTIVE_NUTRITION_RUNTIME_FLAG = 'VITE_ADAPTIVE_NUTRITION_RUNTIME_V1' as const;
 export const ADAPTIVE_NUTRITION_READ_FLAG = 'VITE_ADAPTIVE_NUTRITION_READ_V1' as const;
+export const ADAPTIVE_NUTRITION_CONFLICT_DETAILS = 'POTOK_ADAPTIVE_NUTRITION_CONFLICT_V1' as const;
+export const ADAPTIVE_NUTRITION_INVARIANT_DETAILS = 'POTOK_ADAPTIVE_NUTRITION_INVARIANT_FAILURE_V1' as const;
 
 /** Build-time runtime gate. No localStorage override: browser input cannot enable writes. */
 export function isAdaptiveNutritionRuntimeEnabled(): boolean {
@@ -41,7 +43,9 @@ export type AdaptiveNutritionRuntimeFailure =
   | { kind: 'session-stale' }
   | { kind: 'unknown' }
   | { kind: 'denied' }
-  | { kind: 'conflict' };
+  | { kind: 'conflict' }
+  | { kind: 'server-integrity' }
+  | { kind: 'technical-failure' };
 
 export interface AdaptiveNutritionReceiptV1 {
   kind: 'settled';
@@ -53,6 +57,18 @@ export interface AdaptiveNutritionReceiptV1 {
   reason: string | null;
   result: Record<string, unknown> | null;
   committedAt: string | null;
+}
+
+interface AdaptiveNutritionAcceptedResultV1 extends Record<string, unknown> {
+  contract: 'adaptive-nutrition-receipt-v1';
+  outcome: 'accepted';
+  operation_id: string;
+  selection_id: string;
+  plan_revision: string;
+  goal_revision: string;
+  history_revision: string;
+  diary_revision: string;
+  event_ids: string[];
 }
 
 export interface AdaptiveNutritionReadModelV1 {
@@ -91,16 +107,41 @@ function nullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
 }
 
+function decodeAcceptedResult(value: unknown, operationId: string): AdaptiveNutritionAcceptedResultV1 | null {
+  const row = record(value);
+  if (!row || row.contract !== 'adaptive-nutrition-receipt-v1' || row.outcome !== 'accepted'
+      || row.operation_id !== operationId || typeof row.selection_id !== 'string'
+      || !uuidPattern.test(row.selection_id)
+      || ![row.plan_revision, row.goal_revision, row.history_revision, row.diary_revision]
+        .every((revision) => typeof revision === 'string' && uuidPattern.test(revision))
+      || !Array.isArray(row.event_ids) || row.event_ids.length !== 1
+      || row.event_ids.some((eventId) => typeof eventId !== 'string' || !uuidPattern.test(eventId))) return null;
+  return row as AdaptiveNutritionAcceptedResultV1;
+}
+
+export function classifyAdaptiveNutritionMutationError(error: unknown): AdaptiveNutritionRuntimeFailure {
+  const row = record(error);
+  const code = row && typeof row.code === 'string' ? row.code : '';
+  const details = row && typeof row.details === 'string' ? row.details : '';
+  if (code === 'PT409' && details === ADAPTIVE_NUTRITION_CONFLICT_DETAILS) return { kind: 'conflict' };
+  if (code === 'PT500' && details === ADAPTIVE_NUTRITION_INVARIANT_DETAILS) return { kind: 'server-integrity' };
+  if (code === '42501') return { kind: 'denied' };
+  return code ? { kind: 'technical-failure' } : { kind: 'unknown' };
+}
+
 function decodeReceipt(value: unknown): AdaptiveNutritionReceiptV1 | null {
   const row = record(value);
-  const result = row ? record(row.result) : null;
   if (!row || row.kind !== 'settled' || typeof row.operation_id !== 'string' || !uuidPattern.test(row.operation_id)
       || typeof row.idempotency_key !== 'string' || !uuidPattern.test(row.idempotency_key)
       || typeof row.digest_version !== 'string' || typeof row.request_digest_hex !== 'string'
       || !digestPattern.test(row.request_digest_hex)
       || !['accepted', 'conflict', 'rejected'].includes(String(row.outcome))
       || !nullableString(row.reason) || !nullableString(row.committed_at)
-      || (row.result !== null && !result)) return null;
+      || (row.outcome === 'accepted' && !decodeAcceptedResult(row.result, row.operation_id))
+      || (row.outcome !== 'accepted' && row.result !== null && !record(row.result))) return null;
+  const result = row.outcome === 'accepted'
+    ? decodeAcceptedResult(row.result, row.operation_id)
+    : record(row.result);
   return {
     kind: 'settled',
     operationId: row.operation_id,
@@ -112,6 +153,25 @@ function decodeReceipt(value: unknown): AdaptiveNutritionReceiptV1 | null {
     result,
     committedAt: row.committed_at,
   };
+}
+
+export async function adaptiveNutritionReceiptMatchesRequestV1(
+  receipt: AdaptiveNutritionReceiptV1,
+  rawRequest: string,
+): Promise<boolean> {
+  let decoded: { request: AdaptiveNutritionWireRequestV1; canonicalBytes: Uint8Array };
+  try {
+    decoded = decodeAdaptiveNutritionWireEnvelopeV1(rawRequest);
+    const digest = await adaptiveNutritionSha256HexV1(decoded.canonicalBytes);
+    const accepted = receipt.outcome === 'accepted' ? decodeAcceptedResult(receipt.result, receipt.operationId) : null;
+    return receipt.idempotencyKey === decoded.request.idempotencyKey
+      && receipt.digestVersion === adaptiveNutritionCanonicalEncodingV1
+      && receipt.requestDigestHex === digest
+      && (receipt.outcome !== 'accepted'
+        || Boolean(accepted && accepted.selection_id === decoded.request.expected.planId));
+  } catch {
+    return false;
+  }
 }
 
 export function decodeAdaptiveNutritionReadResultV1(value: unknown): AdaptiveNutritionReadResult | null {
@@ -193,16 +253,31 @@ export class AdaptiveNutritionPersistenceService {
     session: AdaptiveNutritionRuntimeSession,
     value: T,
     gate: 'read' | 'mutation',
-  ): Promise<T | { kind: 'session-stale' }> {
-    if (!this.isCurrent(session) || !await this.authenticated(session, gate)) return { kind: 'session-stale' };
-    return value;
+  ): Promise<T | { kind: 'session-stale' } | { kind: 'unknown' }> {
+    if (!this.isCurrent(session)) return { kind: 'session-stale' };
+    try {
+      if (!await this.authenticated(session, gate)) return { kind: 'session-stale' };
+      return value;
+    } catch {
+      return { kind: 'unknown' };
+    }
   }
 
   async lookup(session: AdaptiveNutritionRuntimeSession, idempotencyKey: string): Promise<AdaptiveNutritionLookupResult> {
     if (!this.isReadEnabled() || !this.client) return { kind: 'unavailable' };
     if (!uuidPattern.test(idempotencyKey)) return { kind: 'invalid-request', reason: 'invalid_idempotency_key' };
-    if (!await this.authenticated(session, 'read')) return { kind: 'session-stale' };
-    const { data, error } = await this.client.rpc('adaptive_nutrition_lookup_v1', { p_idempotency_key: idempotencyKey });
+    try {
+      if (!await this.authenticated(session, 'read')) return { kind: 'session-stale' };
+    } catch {
+      return { kind: 'session-stale' };
+    }
+    let response: Awaited<ReturnType<AdaptiveNutritionRpcClient['rpc']>>;
+    try {
+      response = await this.client.rpc('adaptive_nutrition_lookup_v1', { p_idempotency_key: idempotencyKey });
+    } catch {
+      return this.finish(session, { kind: 'unknown' }, 'read');
+    }
+    const { data, error } = response;
     if (error) return this.finish(session, { kind: 'unknown' }, 'read');
     const row = record(data);
     const decoded = row?.kind === 'unknown' ? { kind: 'unknown' as const }
@@ -237,11 +312,21 @@ export class AdaptiveNutritionPersistenceService {
     operationId: string | null): Promise<AdaptiveNutritionReadResult> {
     if (!this.isReadEnabled() || !this.client) return { kind: 'unavailable' };
     if (!uuidPattern.test(selectionId)) return { kind: 'invalid-request', reason: 'invalid_selection_id' };
-    if (!await this.authenticated(session, 'read')) return { kind: 'session-stale' };
-    const { data, error } = await this.client.rpc('adaptive_nutrition_read_v1', {
-      p_selection_id: selectionId,
-      p_operation_id: operationId,
-    });
+    try {
+      if (!await this.authenticated(session, 'read')) return { kind: 'session-stale' };
+    } catch {
+      return { kind: 'session-stale' };
+    }
+    let response: Awaited<ReturnType<AdaptiveNutritionRpcClient['rpc']>>;
+    try {
+      response = await this.client.rpc('adaptive_nutrition_read_v1', {
+        p_selection_id: selectionId,
+        p_operation_id: operationId,
+      });
+    } catch {
+      return this.finish(session, { kind: 'unknown' }, 'read');
+    }
+    const { data, error } = response;
     if (error) return this.finish(session, { kind: 'unknown' }, 'read');
     const decoded = decodeAdaptiveNutritionReadResultV1(data);
     if (decoded?.kind === 'ready' && (decoded.selectionId !== selectionId
@@ -260,7 +345,13 @@ export class AdaptiveNutritionPersistenceService {
     if (!supportedMutationActions.has(decoded.request.action.type)) {
       return { kind: 'invalid-request', reason: 'fact_actions_not_enabled' };
     }
-    if (decoded.request.expected.accountId !== session.accountId || !await this.authenticated(session, 'mutation')) {
+    let authenticated = false;
+    try {
+      authenticated = await this.authenticated(session, 'mutation');
+    } catch {
+      return { kind: 'session-stale' };
+    }
+    if (decoded.request.expected.accountId !== session.accountId || !authenticated) {
       return { kind: 'session-stale' };
     }
     let localDigest: string;
@@ -269,13 +360,15 @@ export class AdaptiveNutritionPersistenceService {
     } catch {
       return { kind: 'unavailable' };
     }
-    const { data, error } = await this.client.rpc('adaptive_nutrition_mutate_v1', { p_request_text: rawRequest });
+    let response: Awaited<ReturnType<AdaptiveNutritionRpcClient['rpc']>>;
+    try {
+      response = await this.client.rpc('adaptive_nutrition_mutate_v1', { p_request_text: rawRequest });
+    } catch {
+      return this.finish(session, { kind: 'unknown' }, 'mutation');
+    }
+    const { data, error } = response;
     if (error) {
-      const code = typeof error.code === 'string' ? error.code : '';
-      const outcome = code === '40001' ? { kind: 'conflict' as const }
-        : code === '42501' ? { kind: 'denied' as const }
-        : { kind: 'unknown' as const };
-      return this.finish(session, outcome, 'mutation');
+      return this.finish(session, classifyAdaptiveNutritionMutationError(error), 'mutation');
     }
     const row = record(data);
     if (row?.kind === 'unknown') return this.finish(session, { kind: 'unknown' }, 'mutation');
@@ -284,8 +377,10 @@ export class AdaptiveNutritionPersistenceService {
     const receipt = decodeReceipt(data);
     if (!receipt || receipt.idempotencyKey !== decoded.request.idempotencyKey
         || receipt.digestVersion !== adaptiveNutritionCanonicalEncodingV1
-        || receipt.requestDigestHex !== localDigest) {
-      return this.finish(session, { kind: 'invalid-server-response' }, 'mutation');
+        || receipt.requestDigestHex !== localDigest
+        || receipt.outcome === 'accepted'
+          && (receipt.result?.selection_id !== decoded.request.expected.planId)) {
+      return this.finish(session, { kind: 'unknown' }, 'mutation');
     }
     return this.finish(session, receipt, 'mutation');
   }
