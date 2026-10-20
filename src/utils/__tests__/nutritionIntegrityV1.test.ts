@@ -1,4 +1,8 @@
 import assert from 'node:assert/strict';
+import {
+  assessServerPortionV1, type ServerFoodEvidenceV1, type TrustedNutritionStorageV1,
+} from '../../server/nutritionIntegrityServerResolverV1';
+
 import test from 'node:test';
 import {
   assessPortionV1, readStoredIntegrityStatusV1,
@@ -254,10 +258,6 @@ test('evaluation is deterministic and does not mutate the supplied evidence', ()
   const first = JSON.stringify(assessPortionV1(request('37.5', 'ml'), reviewed, [density]));
   assert.equal(JSON.stringify(assessPortionV1(request('37.5', 'ml'), reviewed, [density])), first);
 });
-
-import {
-  assessServerPortionV1, type ServerFoodEvidenceV1, type TrustedNutritionStorageV1,
-} from '../../server/nutritionIntegrityServerResolverV1';
 
 const reviewedServer: ServerFoodEvidenceV1 = {
   kind: 'REVIEWED', foodId, basis: 'PER_100_G_EDIBLE', nutrition,
