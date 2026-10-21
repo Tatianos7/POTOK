@@ -16,12 +16,12 @@ async function post(path, key, data) {
  return JSON.parse(raw);
 }
 const users=[];
-for(const suffix of ['a','b']){
+for(const suffix of ['a','b','c']){
  const email=`potok-ci-${suffix}@example.invalid`;
  const password='Potok-ci-Only-2026!';
  const created=await post('/auth/v1/admin/users',service,{email,password,email_confirm:true});
  assert(created.id,'Auth user ID absent');
- await post('/rest/v1/user_profiles',service,{id_user:created.id,first_name:suffix});
+ if(suffix !== 'c') await post('/rest/v1/user_profiles',service,{id_user:created.id,first_name:suffix});
  const token=await post('/auth/v1/token?grant_type=password',anon,{email,password});
  assert(token.access_token,'Auth access token absent');
  users.push({id:created.id,jwt:token.access_token});
@@ -30,5 +30,6 @@ Object.assign(process.env,{
  POTOK_TEST_SUPABASE_URL:url,POTOK_TEST_ANON_KEY:anon,
  POTOK_TEST_USER_A_ID:users[0].id,POTOK_TEST_USER_B_ID:users[1].id,
  POTOK_TEST_USER_A_JWT:users[0].jwt,POTOK_TEST_USER_B_JWT:users[1].jwt,
+ POTOK_TEST_USER_C_ID:users[2].id,POTOK_TEST_USER_C_JWT:users[2].jwt,
 });
 await import('./supabase-auth-postgrest-acceptance.mjs');
