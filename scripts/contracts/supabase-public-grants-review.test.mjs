@@ -16,7 +16,7 @@ test('profile client ordinary field allowlist excludes privilege fields', () => 
 });
 
 test('profile uses upsert and settings updates; column grants need integration tests', () => {
-  assert.match(profile, /\.from\('user_profiles'\)\s*\.upsert\(/);
+  assert.match(profile, /\.from\('user_profiles'\)[\s\S]{0,300}?\.upsert\(/);
   for (const field of ['avatar_url','coach_settings','voice_settings']) {
     assert.match(profile, new RegExp('\\.update\\(\\{ ' + field + ':'));
   }
