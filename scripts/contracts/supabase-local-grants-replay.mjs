@@ -22,3 +22,18 @@ if(assertions.stdout) process.stdout.write(assertions.stdout);
 if(assertions.stderr) process.stderr.write(assertions.stderr);
 assert.equal(assertions.status,0,'Effective grant assertions failed');
 console.log('PASS: exact table-grant review SQL replay and effective privilege assertions');
+
+// Replay the exact Premium RPC review draft ONLY in disposable local PostgreSQL.
+// This tests function authorization; it never contacts a payment provider,
+ // creates a paid subscription, or invokes any cloud project.
+const rpcFile='supabase/migration_drafts/premium_rpc_authority_hardening_review_20261021.sql';
+const rpcOriginal=readFileSync(rpcFile,'utf8');
+assert(/^BEGIN;\s*$/m.test(rpcOriginal) && /^ROLLBACK;\s*$/m.test(rpcOriginal),
+ 'Premium RPC review SQL must retain BEGIN/ROLLBACK');
+const rpcSql=rpcOriginal.replace(/^ROLLBACK;\s*$/m,'COMMIT;');
+const rpcReplay=spawnSync('psql',args,{input:rpcSql,encoding:'utf8',
+ env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024});
+if(rpcReplay.stdout) process.stdout.write(rpcReplay.stdout);
+if(rpcReplay.stderr) process.stderr.write(rpcReplay.stderr);
+assert.equal(rpcReplay.status,0,'Exact Premium RPC review SQL replay failed');
+console.log('PASS: exact Premium RPC review SQL replay in disposable local Supabase');
