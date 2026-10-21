@@ -21,7 +21,7 @@ jobs:
         run: supabase start -x studio,imgproxy,mailpit,analytics,vector,edge-runtime,logflare
       - name: Install fixture into disposable local PostgreSQL
         run: |
-          supabase db execute --local --file scripts/contracts/supabase-local-auth-fixture.sql
+          PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/contracts/supabase-local-auth-fixture.sql
       - name: Test actual Auth and PostgREST
         run: node scripts/contracts/supabase-local-auth-setup.mjs
       - name: Stop disposable services
