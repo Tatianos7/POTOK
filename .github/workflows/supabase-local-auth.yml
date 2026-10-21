@@ -1,0 +1,29 @@
+name: Supabase local Auth PostgREST integration
+on:
+  pull_request:
+    paths:
+      - 'scripts/contracts/supabase-local-auth-fixture.sql'
+      - 'scripts/contracts/supabase-auth-postgrest-acceptance.mjs'
+      - 'scripts/contracts/supabase-local-auth-setup.mjs'
+      - '.github/workflows/supabase-local-auth.yml'
+  push:
+    branches: [audit/supabase-public-grants-20261021]
+jobs:
+  local-auth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Start disposable Supabase services
+        run: supabase start -x studio,imgproxy,mailpit,analytics,vector,edge-runtime,logflare
+      - name: Install fixture into disposable local PostgreSQL
+        run: |
+          supabase db execute --local --file scripts/contracts/supabase-local-auth-fixture.sql
+      - name: Test actual Auth and PostgREST
+        run: node scripts/contracts/supabase-local-auth-setup.mjs
+      - name: Stop disposable services
+        if: always()
+        run: supabase stop --no-backup
