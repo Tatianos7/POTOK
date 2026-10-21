@@ -13,13 +13,17 @@ CREATE TABLE potok_grants_test.user_profiles (
 );
 CREATE TABLE potok_grants_test.entitlements (id_user uuid PRIMARY KEY, tier text);
 GRANT USAGE ON SCHEMA potok_grants_test TO potok_test_authenticated, potok_test_anon;
-GRANT SELECT, INSERT ON potok_grants_test.user_profiles TO potok_test_authenticated;
+GRANT SELECT ON potok_grants_test.user_profiles TO potok_test_authenticated;
+GRANT INSERT (id_user,first_name,coach_settings) ON potok_grants_test.user_profiles TO potok_test_authenticated;
 GRANT UPDATE (first_name,coach_settings) ON potok_grants_test.user_profiles TO potok_test_authenticated;
 GRANT SELECT ON potok_grants_test.entitlements TO potok_test_authenticated;
 DO $$
 BEGIN
  IF has_column_privilege('potok_test_authenticated','potok_grants_test.user_profiles','has_premium','UPDATE') THEN
   RAISE EXCEPTION 'premium column writable';
+ END IF;
+ IF has_column_privilege('potok_test_authenticated','potok_grants_test.user_profiles','has_premium','INSERT') THEN
+  RAISE EXCEPTION 'premium column insertable';
  END IF;
  IF has_column_privilege('potok_test_authenticated','potok_grants_test.user_profiles','is_admin','UPDATE') THEN
   RAISE EXCEPTION 'admin column writable';
