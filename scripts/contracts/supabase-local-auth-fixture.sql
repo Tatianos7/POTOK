@@ -16,9 +16,9 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
  has_premium boolean NOT NULL DEFAULT false,
  is_admin boolean NOT NULL DEFAULT false
 );
-CREATE TABLE IF NOT EXISTS public.subscriptions (user_id uuid PRIMARY KEY REFERENCES auth.users(id), status text);
-CREATE TABLE IF NOT EXISTS public.entitlements (user_id uuid PRIMARY KEY REFERENCES auth.users(id), tier text);
-CREATE TABLE IF NOT EXISTS public.billing_events (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id uuid NOT NULL REFERENCES auth.users(id), description text, provider text, event_type text, idempotency_key text NOT NULL UNIQUE, payload jsonb NOT NULL DEFAULT '{}'::jsonb);
+CREATE TABLE IF NOT EXISTS public.subscriptions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users(id), plan text NOT NULL CHECK (plan IN ('free','pro','vision_pro')), status text NOT NULL CHECK (status IN ('active','canceled','past_due','trial')), current_period_start timestamptz, current_period_end timestamptz, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.entitlements (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users(id), tier text NOT NULL CHECK (tier IN ('free','pro','vision_pro','coach')), flags jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS public.billing_events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users(id), provider text NOT NULL CHECK (provider IN ('app_store','play_store','vision_pro')), event_type text NOT NULL, idempotency_key text NOT NULL UNIQUE, payload jsonb, created_at timestamptz NOT NULL DEFAULT now());
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entitlements ENABLE ROW LEVEL SECURITY;
@@ -36,7 +36,6 @@ GRANT UPDATE (first_name,coach_settings,voice_settings) ON public.user_profiles 
 GRANT SELECT ON public.subscriptions,public.entitlements,public.billing_events TO authenticated;
 
 -- Disposable mirror of proposed Premium RPC authorization; not a cloud migration.
-ALTER TABLE public.entitlements ADD COLUMN IF NOT EXISTS flags jsonb NOT NULL DEFAULT '{}'::jsonb;
 CREATE OR REPLACE FUNCTION public.get_entitlements(p_user_id uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
 AS $$
