@@ -5,6 +5,8 @@ on:
       - 'scripts/contracts/supabase-local-auth-fixture.sql'
       - 'scripts/contracts/supabase-auth-postgrest-acceptance.mjs'
       - 'scripts/contracts/supabase-local-auth-setup.mjs'
+      - 'scripts/contracts/supabase-local-grants-replay.mjs'
+      - 'supabase/migration_drafts/public_api_privileges_hardening_review_20261021.sql'
       - '.github/workflows/supabase-local-auth.yml'
   push:
     branches: [audit/supabase-public-grants-20261021]
@@ -26,6 +28,8 @@ jobs:
       - name: Install fixture into disposable local PostgreSQL
         run: |
           PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/contracts/supabase-local-auth-fixture.sql
+      - name: Replay exact review table grants in disposable local PostgreSQL
+        run: node scripts/contracts/supabase-local-grants-replay.mjs
       - name: Test actual Auth and PostgREST
         run: node scripts/contracts/supabase-local-auth-setup.mjs
       - name: Stop disposable services
