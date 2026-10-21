@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/contracts/supabase-public-grants-review.test.mjs'
+      - 'scripts/contracts/premium-rpc-callsite-inventory.mjs'
       - 'supabase/migration_drafts/public_api_privileges_hardening_review_20261021.sql'
       - 'src/services/profileService.ts'
       - '.github/workflows/supabase-grants-review.yml'
@@ -19,6 +20,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check static review contract
         run: node --test scripts/contracts/supabase-public-grants-review.test.mjs
+      - name: Inventory actual Premium RPC and profile call sites
+        run: node scripts/contracts/premium-rpc-callsite-inventory.mjs
+      - name: Upload read-only call-site inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: premium-rpc-callsite-inventory
+          path: premium-rpc-callsite-inventory.json
   postgres-disposable:
     runs-on: ubuntu-latest
     services:
