@@ -1,0 +1,19 @@
+name: Supabase real Auth acceptance (disposable only)
+on:
+  workflow_dispatch:
+jobs:
+  postgrest-auth:
+    runs-on: ubuntu-latest
+    environment: supabase-disposable-security
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify isolated test configuration
+        env:
+          POTOK_TEST_SUPABASE_URL: ${{ secrets.POTOK_TEST_SUPABASE_URL }}
+          POTOK_TEST_ANON_KEY: ${{ secrets.POTOK_TEST_ANON_KEY }}
+          POTOK_TEST_USER_A_JWT: ${{ secrets.POTOK_TEST_USER_A_JWT }}
+          POTOK_TEST_USER_B_JWT: ${{ secrets.POTOK_TEST_USER_B_JWT }}
+          POTOK_TEST_USER_A_ID: ${{ secrets.POTOK_TEST_USER_A_ID }}
+          POTOK_TEST_USER_B_ID: ${{ secrets.POTOK_TEST_USER_B_ID }}
+        run: node scripts/contracts/supabase-auth-postgrest-acceptance.mjs
