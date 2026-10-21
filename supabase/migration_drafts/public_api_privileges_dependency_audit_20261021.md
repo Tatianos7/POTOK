@@ -21,3 +21,14 @@ Status: REVIEW ONLY. No Staging/Production mutations. Draft PR #184.
 
 ## Rollout rule
 Review SQL is BEGIN/ROLLBACK only. Do not rename/copy into `supabase/migrations` or apply automatically. Fail closed on schema drift; verify post-grant effective permissions, RLS, and ordinary profile writes.
+
+## SECURITY DEFINER inspection (production, read-only)
+All four public functions `get_entitlements(p_user_id)`, `get_paywall_state(p_feature,p_user_id)`, `start_purchase(p_user_id,p_provider,p_plan,p_idempotency_key)`, and `restore_purchase(p_user_id,p_provider,p_receipt,p_idempotency_key)` are owned by `postgres`, SECURITY DEFINER, and effectively executable by `anon`, `authenticated`, and `service_role`. They set `search_path=public, pg_temp`.
+- `get_entitlements` uses `coalesce(p_user_id,auth.uid())` and selects another user's entitlement without comparing to the caller; cross-account disclosure possible.
+- `get_paywall_state` delegates to `get_entitlements(p_user_id)`, inheriting its cross-account issue.
+- `start_purchase` inserts `billing_events` for caller-supplied `p_user_id` without checking `auth.uid()`.
+- `restore_purchase` does the same, storing caller-supplied receipt; the returned `restored` status does not prove payment validation or Premium grant.
+- Revoking direct table INSERT alone will not prevent writes through SECURITY DEFINER functions. Function authorization/EXECUTE grants require a separate patch and acceptance tests.
+- `update_updated_at_column` is SECURITY INVOKER, owned by postgres, and has effective EXECUTE grants to anon/authenticated/service_role; it is attached as a trigger on `user_profiles`.
+
+**STOP/NO-GO:** do not deploy table-grant hardening in isolation. First design and test RPC authorization and caller ownership, check client call sites, and verify legitimate purchase flows. No cloud modifications were made.
