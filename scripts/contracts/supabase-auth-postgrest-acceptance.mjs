@@ -211,12 +211,12 @@ const serviceKey=process.env.POTOK_TEST_SERVICE_ROLE_KEY;
 const purchaseId='trusted-purchase-'+a;
 const restoreId='trusted-restore-'+a;
 const trustedPurchase=await rpc(serviceKey,'start_purchase',{
- p_user_id:a,p_provider:'disposable-ci',p_plan:'pro',p_idempotency_key:purchaseId
+ p_user_id:a,p_provider:'play_store',p_plan:'pro',p_idempotency_key:purchaseId
 });
 assert(trustedPurchase.ok && trustedPurchase.data?.status==='started',
  'Trusted purchase RPC must be callable by service_role');
 const trustedRestore=await rpc(serviceKey,'restore_purchase',{
- p_user_id:a,p_provider:'disposable-ci',p_receipt:'fixture-only',p_idempotency_key:restoreId
+ p_user_id:a,p_provider:'play_store',p_receipt:'fixture-only',p_idempotency_key:restoreId
 });
 assert(trustedRestore.ok && trustedRestore.data?.status==='restored',
  'Trusted restore RPC must be callable by service_role');
@@ -230,7 +230,7 @@ assert(events.data.some(x=>x.event_type==='purchase_started'&&x.idempotency_key=
 assert(events.data.some(x=>x.event_type==='restore'&&x.idempotency_key===restoreId),
  'Missing trusted restore event');
 const duplicate=await rpc(serviceKey,'start_purchase',{
- p_user_id:a,p_provider:'disposable-ci',p_plan:'pro',p_idempotency_key:purchaseId
+ p_user_id:a,p_provider:'play_store',p_plan:'pro',p_idempotency_key:purchaseId
 });
 assert(duplicate.ok,'Idempotent trusted purchase retry must succeed');
 const afterRetry=await request(serviceKey,'billing_events','GET',{
