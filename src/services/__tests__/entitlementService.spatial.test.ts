@@ -18,7 +18,7 @@ function serviceFor(tier: string, flags: Record<string, boolean>) {
 
 test('spatial access requires explicit can_spatial, regardless of tier or voice', async () => {
   for (const tier of ['free', 'pro', 'vision_pro', 'coach']) {
-    for (const flags of [{}, { can_spatial: false }, { can_voice: true }]) {
+    for (const flags of ([{}, { can_spatial: false }, { can_voice: true }] as Record<string, boolean>[])) {
       assert.equal((await serviceFor(tier, flags).canRealtimePose(userId)).allowed, false);
     }
     assert.equal(
