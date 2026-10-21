@@ -16,4 +16,9 @@ const run=spawnSync('psql',args,{input:sql,encoding:'utf8',
 if(run.stdout) process.stdout.write(run.stdout);
 if(run.stderr) process.stderr.write(run.stderr);
 assert.equal(run.status,0,'Disposable grant SQL replay failed');
-console.log('PASS: exact table-grant review SQL replayed in local disposable database');
+const assertions=spawnSync('psql',[...args,'-f','scripts/contracts/supabase-local-grants-assertions.sql'],{
+ encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024});
+if(assertions.stdout) process.stdout.write(assertions.stdout);
+if(assertions.stderr) process.stderr.write(assertions.stderr);
+assert.equal(assertions.status,0,'Effective grant assertions failed');
+console.log('PASS: exact table-grant review SQL replay and effective privilege assertions');
