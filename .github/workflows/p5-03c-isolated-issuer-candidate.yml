@@ -1,5 +1,11 @@
 name: P5-03C isolated issuer candidate checks
 on:
+  pull_request:
+    branches:
+      - codex/p5-03c-food-nonfood-current-master-review-20261020
+    paths:
+      - 'scripts/contracts/p5-03c-*'
+      - '.github/workflows/p5-03c-isolated-issuer-candidate.yml'
   push:
     branches:
       - review/p5-03c-real-issuer-closure-acceptance-20261020
