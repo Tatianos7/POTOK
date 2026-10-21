@@ -6,6 +6,7 @@ on:
       - 'scripts/contracts/supabase-auth-postgrest-acceptance.mjs'
       - 'scripts/contracts/supabase-local-auth-setup.mjs'
       - 'scripts/contracts/supabase-local-grants-replay.mjs'
+      - 'scripts/contracts/supabase-local-grants-assertions.sql'
       - 'supabase/migration_drafts/public_api_privileges_hardening_review_20261021.sql'
       - '.github/workflows/supabase-local-auth.yml'
   push:
