@@ -197,3 +197,37 @@ for(const name of ['start_purchase','restore_purchase']) {
  }
 }
 console.log('PASS: Premium RPC own reads, cross-account denial, anonymous denial, purchase RPC client denial');
+
+assert(process.env.POTOK_TEST_SERVICE_ROLE_KEY,'Local service role credential required');
+const serviceKey=process.env.POTOK_TEST_SERVICE_ROLE_KEY;
+const purchaseId='trusted-purchase-'+a;
+const restoreId='trusted-restore-'+a;
+const trustedPurchase=await rpc(serviceKey,'start_purchase',{
+ p_user_id:a,p_provider:'disposable-ci',p_plan:'pro',p_idempotency_key:purchaseId
+});
+assert(trustedPurchase.ok && trustedPurchase.data?.status==='started',
+ 'Trusted purchase RPC must be callable by service_role');
+const trustedRestore=await rpc(serviceKey,'restore_purchase',{
+ p_user_id:a,p_provider:'disposable-ci',p_receipt:'fixture-only',p_idempotency_key:restoreId
+});
+assert(trustedRestore.ok && trustedRestore.data?.status==='restored',
+ 'Trusted restore RPC must be callable by service_role');
+const events=await request(serviceKey,'billing_events','GET',{
+ query:'?user_id=eq.'+a+'&select=user_id,event_type,idempotency_key,payload'
+});
+assert(events.ok && Array.isArray(events.data) && events.data.length===2,
+ 'Trusted purchase/restore must persist two disposable billing events');
+assert(events.data.some(x=>x.event_type==='purchase_started'&&x.idempotency_key===purchaseId),
+ 'Missing trusted purchase event');
+assert(events.data.some(x=>x.event_type==='restore'&&x.idempotency_key===restoreId),
+ 'Missing trusted restore event');
+const duplicate=await rpc(serviceKey,'start_purchase',{
+ p_user_id:a,p_provider:'disposable-ci',p_plan:'pro',p_idempotency_key:purchaseId
+});
+assert(duplicate.ok,'Idempotent trusted purchase retry must succeed');
+const afterRetry=await request(serviceKey,'billing_events','GET',{
+ query:'?user_id=eq.'+a+'&select=idempotency_key'
+});
+assert(afterRetry.ok&&afterRetry.data?.length===2,
+ 'Idempotent retry must not duplicate events');
+console.log('PASS: trusted service_role purchase and restore persist events and retry idempotently');
