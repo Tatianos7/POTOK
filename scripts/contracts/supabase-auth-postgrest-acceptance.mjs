@@ -11,6 +11,7 @@ const names = [
   'POTOK_TEST_SUPABASE_URL', 'POTOK_TEST_ANON_KEY',
   'POTOK_TEST_USER_A_JWT', 'POTOK_TEST_USER_B_JWT',
   'POTOK_TEST_USER_A_ID', 'POTOK_TEST_USER_B_ID',
+  'POTOK_TEST_USER_C_ID', 'POTOK_TEST_USER_C_JWT',
 ];
 for (const key of names) {
   if (!process.env[key]) throw new Error(`Missing ${key}; real Supabase acceptance NOT run`);
@@ -99,6 +100,37 @@ const deleteOwnSeed=await request(jwtB,'user_profiles','DELETE',{
 // DELETE is intentionally not granted. A disposable fixture may only be reset by
 // the privileged setup script, so use a separate unseeded disposable Auth user instead.
 assert(!deleteOwnSeed.ok,'Authenticated profile DELETE unexpectedly allowed');
+// Third disposable Auth user has no profile. Exercise the first-write path and
+// simultaneous INSERT race: exactly one create succeeds; the other conflicts.
+const newId=env.POTOK_TEST_USER_C_ID;
+const newJwt=env.POTOK_TEST_USER_C_JWT;
+const beforeCreate=await request(newJwt,'user_profiles','GET',{
+  query:`?id_user=eq.${newId}&select=id_user`
+});
+assert(beforeCreate.ok && Array.isArray(beforeCreate.data) && beforeCreate.data.length===0,
+  'Third Auth user must start without a profile');
+const creation=await Promise.all([
+  request(newJwt,'user_profiles','POST',{body:{id_user:newId,first_name:'first'}}),
+  request(newJwt,'user_profiles','POST',{body:{id_user:newId,first_name:'second'}}),
+]);
+assert(creation.filter(x=>x.ok).length===1,
+  `Concurrent profile INSERTs must have one winner: ${JSON.stringify(creation)}`);
+assert(creation.filter(x=>x.data?.code==='23505').length===1,
+  `Concurrent profile INSERT loser must receive unique conflict: ${JSON.stringify(creation)}`);
+// The profile service handles 23505 by PATCHing ordinary fields only.
+const retry=await request(newJwt,'user_profiles','PATCH',{
+  query:`?id_user=eq.${newId}`,body:{first_name:'conflict-recovered'}
+});
+assert(retry.ok && retry.data?.length===1 &&
+  retry.data[0].first_name==='conflict-recovered',
+  `Conflict recovery PATCH failed: ${JSON.stringify(retry)}`);
+const created=await request(newJwt,'user_profiles','GET',{
+  query:`?id_user=eq.${newId}&select=id_user,first_name,has_premium,is_admin`
+});
+assert(created.ok && created.data?.length===1 &&
+  created.data[0].id_user===newId && created.data[0].first_name==='conflict-recovered' &&
+  created.data[0].has_premium===false && created.data[0].is_admin===false,
+  `New profile not persisted safely: ${JSON.stringify(created)}`);
 // A broad ON CONFLICT UPSERT must NOT be enabled merely to support profile writes.
 const unsafeUpsert=await fetch(new URL('user_profiles?on_conflict=id_user',api),{
   method:'POST',
