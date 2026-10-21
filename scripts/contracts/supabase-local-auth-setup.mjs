@@ -27,7 +27,8 @@ for(const suffix of ['a','b','c']){
  users.push({id:created.id,jwt:token.access_token});
 }
 Object.assign(process.env,{
- POTOK_TEST_SUPABASE_URL:url,POTOK_TEST_ANON_KEY:anon,\n POTOK_TEST_SERVICE_ROLE_KEY:service,
+ POTOK_TEST_SUPABASE_URL:url,POTOK_TEST_ANON_KEY:anon,
+ POTOK_TEST_SERVICE_ROLE_KEY:service,
  POTOK_TEST_USER_A_ID:users[0].id,POTOK_TEST_USER_B_ID:users[1].id,
  POTOK_TEST_USER_A_JWT:users[0].jwt,POTOK_TEST_USER_B_JWT:users[1].jwt,
  POTOK_TEST_USER_C_ID:users[2].id,POTOK_TEST_USER_C_JWT:users[2].jwt,
