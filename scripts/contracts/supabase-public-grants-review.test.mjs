@@ -33,3 +33,16 @@ test('SQL candidate is non-applying and cannot silently become deployment migrat
   assert.match(candidate, /REVOKE UPDATE ON TABLE public\.user_profiles FROM anon, authenticated;/);
   assert.match(candidate, /REVOKE INSERT, UPDATE, DELETE ON TABLE/);
 });
+
+const rpcCandidate = readFileSync('supabase/migration_drafts/premium_rpc_authority_hardening_review_20261021.sql','utf8');
+test('Premium RPC candidate remains non-applying and restricts cross-account reads', () => {
+  assert.match(rpcCandidate,/^BEGIN;/m);
+  assert.match(rpcCandidate,/^ROLLBACK;/m);
+  assert.doesNotMatch(rpcCandidate,/^COMMIT;/m);
+  assert.match(rpcCandidate,/resolved_user <> caller/);
+  assert.match(rpcCandidate,/auth\.role\(\) <> 'authenticated'/);
+  for (const name of ['start_purchase','restore_purchase']) {
+    assert.match(rpcCandidate,new RegExp('REVOKE ALL ON FUNCTION public\\.'+name));
+    assert.match(rpcCandidate,new RegExp('GRANT EXECUTE ON FUNCTION public\\.'+name+'\\(uuid,text,text,text\\) TO service_role'));
+  }
+});
