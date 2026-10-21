@@ -37,3 +37,9 @@ Do not merge Draft PR #184 or deploy either review SQL file as-is. Both SQL draf
 - start_purchase and restore_purchase record billing events but do not validate payment receipts or caller ownership. Their responses are not evidence of a paid entitlement.
 - CI passed 3/3 at commit 920410d8f8df1511d262558c0f2c88dca50a20d5; payment-provider verification and Production parity remain unproven.
 - Next gate: inventory actual trusted server writers and receipt verification, review rollback and negative tests. NO-GO remains.
+
+## Payment writer and receipt verification gate — 2026-10-21
+
+**Verified:** The current production `start_purchase` and `restore_purchase` functions only append billing events and return success-shaped status objects; they do not authenticate a payment provider or verify a receipt. The disposable PostgREST acceptance script exercises these functions using a service-role credential and fixture-only payment values; this validates RPC permissions and event idempotency, **not payment authenticity**. The tracked-source inventory script (`scripts/contracts/premium-rpc-callsite-inventory.mjs`) scans `src/`, `supabase/functions/`, `api/`, `server/` and `scripts/` on checked-out PR HEAD and emits an artifact; GitHub default-branch search returning zero matches cannot establish absence of other writers.
+
+**Required evidence before rollout:** Identify each actual privileged server writer and payment provider integration; verify signed/provider-origin evidence server-side, link purchases to the authenticated account, reject replay or conflicting idempotency payloads, prevent arbitrary user ID injection, and ensure entitlement grants are derived only from verified provider state. A `restored` or `started` RPC response must never grant Premium. Capture exact PR-HEAD inventory artifact and review every privileged path. Do not deploy any paid integration or invoke a payment provider for this audit. **NO-GO remains.**
