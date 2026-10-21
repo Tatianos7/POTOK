@@ -11,7 +11,7 @@ Verified by direct file reads:
 Blockers before migration:
 1. Obtain a complete recursive source inventory on the exact PR HEAD (not GitHub default-branch search alone), inspect all `.rpc(`, `functions.invoke(`, `get_entitlements`, `get_paywall_state`, `start_purchase`, `restore_purchase`, `subscriptions`, `entitlements`, `billing_events`, `has_premium`, `is_admin`, and edge/backend routes.
 2. Determine whether frontend directly calls purchase/restore, and identify verified server-side provider receipt validation and authority source. **Do not infer absence from search returning no hits.**
-3. Validate user_profiles ordinary-write callers against column allowlist; coach_settings/voice_settings are present in live Production but not in the current ordinary-write allowlist, so any current client writes would be blocked by proposed grants. Verify real callers before rollout.
+3. Validate user_profiles ordinary-write callers against column allowlist; coach_settings/voice_settings are present in live Production **and are explicitly included in the current review SQL column-scoped INSERT/UPDATE allowlist and disposable fixture**. Their grant coverage is verified in `supabase-local-grants-assertions.sql`; still inspect actual client writers and payloads before rollout.
 4. Build and run a disposable production-shape RPC acceptance suite before Staging.
 
 No cloud mutations were performed for this audit.
