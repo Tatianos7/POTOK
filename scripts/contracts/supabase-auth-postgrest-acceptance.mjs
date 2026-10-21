@@ -84,8 +84,15 @@ for (const [field,value] of [
   assert(response.ok && response.data?.length===1,
     `Own profile ${field} update failed (HTTP ${response.status}): ${JSON.stringify(response.data)}`);
 }
-// Real client-style PostgREST upsert must remain functional for ordinary fields.
-const upsertResponse=await fetch(new URL('user_profiles?on_conflict=id_user&select=id_user,first_name',api),{
+// Profile service now uses a scoped SELECT then PATCH for existing profiles.
+const ordinaryUpdate=await request(jwtA,'user_profiles','PATCH',{
+  query:`?id_user=eq.${a}`,body:{first_name:'scoped-update-test'}
+});
+assert(ordinaryUpdate.ok && ordinaryUpdate.data?.length===1 &&
+  ordinaryUpdate.data[0].first_name==='scoped-update-test',
+  `Ordinary profile PATCH failed (HTTP ${ordinaryUpdate.status}): ${JSON.stringify(ordinaryUpdate.data)}`);
+// A broad ON CONFLICT UPSERT must NOT be enabled merely to support profile writes.
+const unsafeUpsert=await fetch(new URL('user_profiles?on_conflict=id_user',api),{
   method:'POST',
   headers:{
     apikey:env.POTOK_TEST_ANON_KEY,
@@ -93,15 +100,9 @@ const upsertResponse=await fetch(new URL('user_profiles?on_conflict=id_user&sele
     'Content-Type':'application/json',
     Prefer:'resolution=merge-duplicates,return=representation',
   },
-  body:JSON.stringify({id_user:a,first_name:'upsert-test'}),
+  body:JSON.stringify({id_user:a,first_name:'unsafe-upsert'}),
 });
-const upsertBody=await upsertResponse.text();
-assert(upsertResponse.ok,
-  `Ordinary client profile UPSERT failed (HTTP ${upsertResponse.status}): ${upsertBody}`);
-const upsertRows=JSON.parse(upsertBody);
-assert(Array.isArray(upsertRows) && upsertRows.length===1 &&
-  upsertRows[0].id_user===a && upsertRows[0].first_name==='upsert-test',
-  'Own profile UPSERT returned incorrect result');
+assert(!unsafeUpsert.ok,'Unsafe broad UPSERT unexpectedly allowed');
 // Attempt privilege escalation during INSERT, not just UPDATE.
 for (const [field,value] of [['has_premium',true],['is_admin',true]]) {
   denied(await request(jwtA,'user_profiles','POST',{
