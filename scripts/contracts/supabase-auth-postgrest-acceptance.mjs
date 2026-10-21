@@ -91,6 +91,14 @@ const ordinaryUpdate=await request(jwtA,'user_profiles','PATCH',{
 assert(ordinaryUpdate.ok && ordinaryUpdate.data?.length===1 &&
   ordinaryUpdate.data[0].first_name==='scoped-update-test',
   `Ordinary profile PATCH failed (HTTP ${ordinaryUpdate.status}): ${JSON.stringify(ordinaryUpdate.data)}`);
+// Exercise a truly new profile: delete only the disposable user's own seeded row,
+// then create it using the least-privilege INSERT used by the profile service.
+const deleteOwnSeed=await request(jwtB,'user_profiles','DELETE',{
+  query:`?id_user=eq.${b}`
+});
+// DELETE is intentionally not granted. A disposable fixture may only be reset by
+// the privileged setup script, so use a separate unseeded disposable Auth user instead.
+assert(!deleteOwnSeed.ok,'Authenticated profile DELETE unexpectedly allowed');
 // A broad ON CONFLICT UPSERT must NOT be enabled merely to support profile writes.
 const unsafeUpsert=await fetch(new URL('user_profiles?on_conflict=id_user',api),{
   method:'POST',
