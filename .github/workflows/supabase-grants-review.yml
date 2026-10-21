@@ -6,6 +6,7 @@ on:
       - 'supabase/migration_drafts/public_api_privileges_hardening_review_20261021.sql'
       - 'src/services/profileService.ts'
       - '.github/workflows/supabase-grants-review.yml'
+      - 'scripts/contracts/supabase-grants-disposable.test.sql'
   push:
     branches:
       - audit/supabase-public-grants-20261021
@@ -16,3 +17,23 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check static review contract
         run: node --test scripts/contracts/supabase-public-grants-review.test.mjs
+  postgres-disposable:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: PostgreSQL isolated grant contract
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/contracts/supabase-grants-disposable.test.sql
