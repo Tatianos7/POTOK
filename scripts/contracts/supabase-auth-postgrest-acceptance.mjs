@@ -92,8 +92,11 @@ for (const [field,value] of [['has_premium',true],['is_admin',true]]) {
 }
 // Anonymous callers must not see user profiles or modify financial records.
 const anonymous=await request(env.POTOK_TEST_ANON_KEY,'user_profiles','GET',{query:q});
-assert(anonymous.ok && Array.isArray(anonymous.data) && anonymous.data.length===0,
-  'Anonymous caller can read profiles or request failed unexpectedly');
+assert(
+  (anonymous.status === 401 || anonymous.status === 403) ||
+  (anonymous.ok && Array.isArray(anonymous.data) && anonymous.data.length === 0),
+  `Anonymous profile access unexpectedly exposed data or returned an unrecognized response (HTTP ${anonymous.status}): ${JSON.stringify(anonymous.data)}`
+);
 for(const table of ['subscriptions','entitlements','billing_events']) {
   denied(await request(jwtA,table,'PATCH',{
     query:`?user_id=eq.${a}`,body:table==='subscriptions'?{status:'premium'}:
