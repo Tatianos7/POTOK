@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 );
 CREATE TABLE IF NOT EXISTS public.subscriptions (user_id uuid PRIMARY KEY REFERENCES auth.users(id), status text);
 CREATE TABLE IF NOT EXISTS public.entitlements (user_id uuid PRIMARY KEY REFERENCES auth.users(id), tier text);
-CREATE TABLE IF NOT EXISTS public.billing_events (user_id uuid PRIMARY KEY REFERENCES auth.users(id), description text);
+CREATE TABLE IF NOT EXISTS public.billing_events (id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY, user_id uuid NOT NULL REFERENCES auth.users(id), description text, provider text, event_type text, idempotency_key text NOT NULL UNIQUE, payload jsonb NOT NULL DEFAULT '{}'::jsonb);
 ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entitlements ENABLE ROW LEVEL SECURITY;
@@ -60,10 +60,20 @@ BEGIN
 END $$;
 CREATE OR REPLACE FUNCTION public.start_purchase(p_user_id uuid,p_provider text,p_plan text,p_idempotency_key text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
-AS $$ BEGIN RETURN jsonb_build_object('status','started'); END $$;
+AS $ BEGIN
+ INSERT INTO public.billing_events(user_id,provider,event_type,idempotency_key,payload)
+ VALUES(p_user_id,p_provider,'purchase_started',p_idempotency_key,jsonb_build_object('plan',p_plan))
+ ON CONFLICT(idempotency_key) DO NOTHING;
+ RETURN jsonb_build_object('status','started','plan',p_plan);
+END $;
 CREATE OR REPLACE FUNCTION public.restore_purchase(p_user_id uuid,p_provider text,p_receipt text,p_idempotency_key text)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
-AS $$ BEGIN RETURN jsonb_build_object('status','restored'); END $$;
+AS $ BEGIN
+ INSERT INTO public.billing_events(user_id,provider,event_type,idempotency_key,payload)
+ VALUES(p_user_id,p_provider,'restore',p_idempotency_key,jsonb_build_object('receipt',p_receipt))
+ ON CONFLICT(idempotency_key) DO NOTHING;
+ RETURN jsonb_build_object('status','restored');
+END $;
 REVOKE ALL ON FUNCTION public.get_entitlements(uuid),public.get_paywall_state(text,uuid),
  public.start_purchase(uuid,text,text,text),public.restore_purchase(uuid,text,text,text)
  FROM PUBLIC,anon,authenticated;
