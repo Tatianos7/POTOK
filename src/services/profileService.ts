@@ -595,7 +595,6 @@ class ProfileService {
 
     // Try to save to Supabase
     if (supabase) {
-      const client = supabase;
       try {
         const upsertByColumn = async (column: 'id_user' | 'user_id') =>
           this.writeOrdinaryProfile(sessionUserId, column, ordinaryPayload);
