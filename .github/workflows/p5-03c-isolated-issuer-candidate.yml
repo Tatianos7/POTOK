@@ -1,0 +1,55 @@
+name: P5-03C isolated issuer candidate checks
+on:
+  pull_request:
+    branches:
+      - codex/p5-03c-food-nonfood-current-master-review-20261020
+    paths:
+      - 'scripts/contracts/p5-03c-*'
+      - '.github/workflows/p5-03c-isolated-issuer-candidate.yml'
+  push:
+    branches:
+      - review/p5-03c-real-issuer-closure-acceptance-20261020
+    paths:
+      - 'scripts/contracts/p5-03c-*'
+      - '.github/workflows/p5-03c-isolated-issuer-candidate.yml'
+permissions:
+  contents: read
+jobs:
+  source-transformation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Test exact disposable issuer source transformations
+        run: node --import tsx --test scripts/contracts/p5-03c-build-disposable-issuers.test.ts
+      - name: Verify expected RED real-issuer integration gate
+        run: |
+          if node --import tsx --test scripts/contracts/p5-03c-real-issuer-closure-gate.test.ts; then
+            echo 'Unexpected GREEN: real issuer drafts changed without review' >&2
+            exit 1
+          fi
+          echo 'Expected RED: live issuer drafts remain unmodified and unmounted.'
+  disposable-postgres-prototype:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: postgres:17
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Run actual PostgreSQL prototype concurrency acceptance
+        run: |
+          runuser -u postgres -- env PATH="$PATH" POTOK_CLOSURE_REQUIRE_DB=1 node --import tsx --test --test-isolation=none scripts/contracts/p5-03c-closure-disposable-db-v1.test.ts
