@@ -5,6 +5,9 @@ Owner contract received 2026-09-19 supersedes fixed 14-day nutrition as the targ
 Current week means Monday–Sunday in the user's local calendar; next week is
 provisional, never automatically activated. This is not an automatic diet reset.
 
+The [owner-approved nutrition data principles for 2026-10-15](../architecture/nutrition-data-semantics-owner-decisions-2026-10-15.md)
+have implementation pending.
+
 | State | Existing evidence / smallest change |
 | --- | --- |
 | DONE / REUSE | `goalService.UserGoal`, `goalProjection`, exact `goal_<userId>` reads; keep persisted goals and historical formulas untouched until reviewed replacement |
