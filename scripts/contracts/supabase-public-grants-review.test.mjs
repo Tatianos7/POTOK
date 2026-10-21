@@ -15,8 +15,12 @@ test('profile client ordinary field allowlist excludes privilege fields', () => 
   }
 });
 
-test('profile uses upsert and settings updates; column grants need integration tests', () => {
-  assert.match(profile, /\.from\('user_profiles'\)[\s\S]{0,300}?\.upsert\(/);
+test('profile uses scoped ordinary writes and settings updates without broad upsert', () => {
+  assert.match(profile, /private async writeOrdinaryProfile\(/);
+  assert.match(profile, /table\.select\(column\)\.eq\(column, userId\)\.maybeSingle\(\)/);
+  assert.match(profile, /table\.update\(ordinary\)\.eq\(column, userId\)/);
+  assert.match(profile, /table\.insert\(\{ \[column\]: userId, \.\.\.ordinary \}\)/);
+  assert.doesNotMatch(profile, /\.upsert\(/);
   for (const field of ['avatar_url','coach_settings','voice_settings']) {
     assert.match(profile, new RegExp('\\.update\\(\\{ ' + field + ':'));
   }
