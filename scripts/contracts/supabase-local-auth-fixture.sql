@@ -65,6 +65,12 @@ BEGIN
  IF p_feature='adaptation' AND NOT coalesce((flags->>'can_adapt')::boolean,false) THEN
   RETURN jsonb_build_object('locked',true,'required_tier','pro','reason','adaptation_locked');
  END IF;
+ IF p_feature='explainability' AND NOT coalesce((flags->>'can_explain')::boolean,false) THEN
+  RETURN jsonb_build_object('locked',true,'required_tier','pro','reason','explainability_locked');
+ END IF;
+ IF p_feature='spatial' AND NOT coalesce((flags->>'can_spatial')::boolean,false) THEN
+  RETURN jsonb_build_object('locked',true,'required_tier','vision_pro','reason','spatial_locked');
+ END IF;
  RETURN jsonb_build_object('locked',false,'tier',ent->>'tier');
 END $$;
 CREATE OR REPLACE FUNCTION public.start_purchase(p_user_id uuid,p_provider text,p_plan text,p_idempotency_key text)
