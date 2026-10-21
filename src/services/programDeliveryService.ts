@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { entitlementService } from './entitlementService';
-import { profileService } from './profileService';
+import { adminAccessService } from './adminAccessService';
 import { programGenerationService } from './programGenerationService';
 import type { ProgramExplainabilityDTO } from '../types/explainability';
 import type { ProgramMyPlanDTO, ProgramPhaseWeekDTO, ProgramTodayDTO, ProgramTier, ProgramWhyDTO } from '../types/programDelivery';
@@ -38,11 +38,16 @@ class ProgramDeliveryService {
     return data.user.id;
   }
 
-  private async resolveTier(userId: string, override?: ProgramTier): Promise<ProgramTier> {
-    if (override) return override;
-    const profile = await profileService.getProfile(userId);
-    if (profile?.is_admin) return 'coach';
-    if (profile?.has_premium) return 'pro';
+  private async resolveTier(userId: string, _override?: ProgramTier): Promise<ProgramTier> {
+    // Caller-provided tier and legacy profile booleans are not trusted authority.
+    // Preserve the existing API signature for compatibility, but never grant access from override.
+    const capabilities = await adminAccessService.getVerifiedCurrentUserCapabilities(userId);
+    if (capabilities.adminVerified && capabilities.admin) return 'coach';
+    if (capabilities.premiumVerified && capabilities.premium) {
+      const entitlements = await entitlementService.getEntitlements(userId);
+      if (entitlements?.tier === 'vision_pro') return 'vision_pro';
+      return 'pro';
+    }
     return 'free';
   }
 
