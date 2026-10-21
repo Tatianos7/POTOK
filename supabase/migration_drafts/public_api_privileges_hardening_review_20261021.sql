@@ -31,7 +31,7 @@ REVOKE UPDATE ON TABLE public.user_profiles FROM anon, authenticated;
 REVOKE INSERT ON TABLE public.user_profiles FROM anon, authenticated;
 -- Existing column-level privileges must also be cleared; REVOKE at table
 -- scope alone does not revoke grants previously made on individual columns.
-DO $
+DO $$
 DECLARE col record;
 BEGIN
   FOR col IN
@@ -42,9 +42,9 @@ BEGIN
     EXECUTE format('REVOKE INSERT (%I), UPDATE (%I) ON TABLE public.user_profiles FROM anon, authenticated',
       col.column_name, col.column_name);
   END LOOP;
-END $;
+END $$;
 -- Explicitly fail closed on schema drift. Do not silently omit ordinary fields.
-DO $
+DO $$
 DECLARE required_cols text[] := ARRAY[
   'id_user','first_name','last_name','middle_name','birth_date','age',
   'height','goal','email','phone','avatar_url','coach_settings','voice_settings'
@@ -60,7 +60,7 @@ BEGIN
   IF missing_cols IS NOT NULL THEN
     RAISE EXCEPTION 'Review blocked: user_profiles missing required columns: %', missing_cols;
   END IF;
-END $;
+END $$;
 GRANT INSERT (
   id_user,first_name,last_name,middle_name,birth_date,age,height,goal,
   email,phone,avatar_url,coach_settings,voice_settings
