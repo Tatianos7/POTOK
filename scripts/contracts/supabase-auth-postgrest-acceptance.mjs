@@ -166,3 +166,34 @@ for(const table of ['subscriptions','entitlements','billing_events']) {
   }), `user A DELETE ${table}`);
 }
 console.log('PASS: real PostgREST RLS, profile settings, protected INSERT/UPDATE and financial write denials');
+
+async function rpc(jwt,name,body) {
+ return request(jwt,'rpc/'+name,'POST',{body});
+}
+const entOwn=await rpc(jwtA,'get_entitlements',{p_user_id:a});
+assert(entOwn.ok && entOwn.data?.tier==='free',
+  'Own entitlement read must work for authenticated caller');
+const entDefault=await rpc(jwtA,'get_entitlements',{});
+assert(entDefault.ok && entDefault.data?.tier==='free',
+  'Default entitlement read must resolve auth.uid()');
+denied(await rpc(jwtA,'get_entitlements',{p_user_id:b}),
+  'Cross-account entitlement read');
+denied(await rpc(jwtA,'get_paywall_state',{p_feature:'adaptation',p_user_id:b}),
+  'Cross-account paywall read');
+const paywall=await rpc(jwtA,'get_paywall_state',{p_feature:'adaptation',p_user_id:a});
+assert(paywall.ok && paywall.data?.locked===true,
+  'Own Free paywall must stay locked');
+for (const name of ['get_entitlements','get_paywall_state']) {
+ denied(await rpc(env.POTOK_TEST_ANON_KEY,name,
+   name==='get_entitlements'?{p_user_id:a}:{p_feature:'adaptation',p_user_id:a}),
+   'Anonymous '+name);
+}
+for(const name of ['start_purchase','restore_purchase']) {
+ for(const [jwt,label] of [[jwtA,'authenticated'],[env.POTOK_TEST_ANON_KEY,'anonymous']]) {
+  denied(await rpc(jwt,name,{
+   p_user_id:b,p_provider:'fixture',p_idempotency_key:'test-'+name,
+   ...(name==='start_purchase'?{p_plan:'pro'}:{p_receipt:'fake'})
+  }),label+' '+name+' forged cross-account event');
+ }
+}
+console.log('PASS: Premium RPC own reads, cross-account denial, anonymous denial, purchase RPC client denial');
