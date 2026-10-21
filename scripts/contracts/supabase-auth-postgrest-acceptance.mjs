@@ -181,8 +181,16 @@ denied(await rpc(jwtA,'get_entitlements',{p_user_id:b}),
 denied(await rpc(jwtA,'get_paywall_state',{p_feature:'adaptation',p_user_id:b}),
   'Cross-account paywall read');
 const paywall=await rpc(jwtA,'get_paywall_state',{p_feature:'adaptation',p_user_id:a});
-assert(paywall.ok && paywall.data?.locked===true,
-  'Own Free paywall must stay locked');
+assert(paywall.ok && paywall.data?.locked===true && paywall.data?.reason==='adaptation_locked',
+  'Own Free adaptation paywall must stay locked');
+for (const [feature,reason,tier] of [
+ ['explainability','explainability_locked','pro'],
+ ['spatial','spatial_locked','vision_pro']
+]) {
+ const result=await rpc(jwtA,'get_paywall_state',{p_feature:feature,p_user_id:a});
+ assert(result.ok && result.data?.locked===true && result.data?.reason===reason && result.data?.required_tier===tier,
+  `Production-compatible Free paywall branch ${feature} failed: ${JSON.stringify(result)}`);
+}
 for (const name of ['get_entitlements','get_paywall_state']) {
  denied(await rpc(env.POTOK_TEST_ANON_KEY,name,
    name==='get_entitlements'?{p_user_id:a}:{p_feature:'adaptation',p_user_id:a}),
