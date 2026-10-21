@@ -29,3 +29,11 @@ Status: **NO-GO for cloud deployment**. Review-only planning in Draft PR #184. N
 - Missing rollback, payment-authority evidence, or explicit environment-specific approval.
 
 Do not merge Draft PR #184 or deploy either review SQL file as-is. Both SQL drafts are wrapped in `BEGIN; ... ROLLBACK;` and are not deployment migrations.
+
+## Additional read-only Premium RPC findings (2026-10-21)
+- Production RPC signatures and SECURITY DEFINER/search_path settings match the review draft.
+- get_entitlements accepts a supplied user UUID without enforcing auth.uid ownership; proposed denial changes anonymous behavior.
+- get_paywall_state already checks can_spatial for spatial access. Owner approved verified server-side can_spatial only.
+- start_purchase and restore_purchase record billing events but do not validate payment receipts or caller ownership. Their responses are not evidence of a paid entitlement.
+- CI passed 3/3 at commit 920410d8f8df1511d262558c0f2c88dca50a20d5; payment-provider verification and Production parity remain unproven.
+- Next gate: inventory actual trusted server writers and receipt verification, review rollback and negative tests. NO-GO remains.
