@@ -74,4 +74,33 @@ for (const [table,body] of [
 ]) {
   denied(await request(jwtA,table,'POST',{body}), `user A INSERT ${table}`);
 }
-console.log('PASS: real PostgREST RLS and privilege checks for disposable Supabase users');
+// Ordinary profile writes should remain usable after privilege hardening.
+for (const [field,value] of [
+  ['coach_settings',{mode:'off'}],['voice_settings',{enabled:false}]
+]) {
+  const response=await request(jwtA,'user_profiles','PATCH',{
+    query:`?id_user=eq.${a}`,body:{[field]:value}
+  });
+  assert(response.ok && response.data?.length===1,
+    `Own profile ${field} update failed (HTTP ${response.status}): ${JSON.stringify(response.data)}`);
+}
+// Attempt privilege escalation during INSERT, not just UPDATE.
+for (const [field,value] of [['has_premium',true],['is_admin',true]]) {
+  denied(await request(jwtA,'user_profiles','POST',{
+    body:{id_user:a,[field]:value}
+  }), `user A INSERT ${field}`);
+}
+// Anonymous callers must not see user profiles or modify financial records.
+const anonymous=await request(env.POTOK_TEST_ANON_KEY,'user_profiles','GET',{query:q});
+assert(anonymous.ok && Array.isArray(anonymous.data) && anonymous.data.length===0,
+  'Anonymous caller can read profiles or request failed unexpectedly');
+for(const table of ['subscriptions','entitlements','billing_events']) {
+  denied(await request(jwtA,table,'PATCH',{
+    query:`?user_id=eq.${a}`,body:table==='subscriptions'?{status:'premium'}:
+      table==='entitlements'?{tier:'premium'}:{description:'forged'}
+  }), `user A UPDATE ${table}`);
+  denied(await request(jwtA,table,'DELETE',{
+    query:`?user_id=eq.${a}`
+  }), `user A DELETE ${table}`);
+}
+console.log('PASS: real PostgREST RLS, profile settings, protected INSERT/UPDATE and financial write denials');
