@@ -54,7 +54,8 @@ export class EntitlementService {
     const ent = await this.getEntitlements(userId);
     const tier = (ent?.tier as EntitlementStatus['plan']) ?? 'free';
     const flags = ent?.flags ?? {};
-    const allowed = Boolean(flags?.can_spatial || flags?.can_voice || tier === 'pro' || tier === 'vision_pro');
+    // Spatial capability requires explicit server-provided entitlement; tier/voice alone are insufficient.
+    const allowed = flags?.can_spatial === true;
     return { allowed, plan: tier, flags };
   }
 
