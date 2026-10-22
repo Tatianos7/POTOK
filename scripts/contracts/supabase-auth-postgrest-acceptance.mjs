@@ -472,13 +472,13 @@ const afterFailedProgram=await request(serviceKey,'nutrition_programs','GET',{
  query:'?id=eq.'+programB+'&select=program_version'});
 const failedVersion=await request(serviceKey,'program_versions','GET',{
  query:'?program_id=eq.'+programB+'&program_type=eq.nutrition&version=eq.4&select=id'});
-const failedEvidence=await request(serviceKey,'program_explainability','GET',{
+const failedReplanEvidence=await request(serviceKey,'program_explainability','GET',{
  query:'?program_id=eq.'+programB+'&program_type=eq.nutrition&version=eq.4&select=id'});
 assert(beforeFailedReplan.ok && afterFailedReplan.ok &&
  JSON.stringify(beforeFailedReplan.data)===JSON.stringify(afterFailedReplan.data) &&
  afterFailedProgram.ok && afterFailedProgram.data?.[0]?.program_version===3 &&
  failedVersion.ok && failedVersion.data?.length===0 &&
- failedEvidence.ok && failedEvidence.data?.length===0,
+ failedReplanEvidence.ok && failedReplanEvidence.data?.length===0,
  'Failed nutrition replan must rollback future targets, program version and explainability');
 console.log('PASS: forced nutrition replan failure rolls back all writes');
 
