@@ -19,6 +19,16 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 CREATE TABLE IF NOT EXISTS public.subscriptions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, plan text NOT NULL CHECK (plan IN ('free','pro','vision_pro')), status text NOT NULL CHECK (status IN ('active','canceled','past_due','trial')), current_period_start timestamptz, current_period_end timestamptz, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS public.entitlements (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, tier text NOT NULL CHECK (tier IN ('free','pro','vision_pro','coach')), flags jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS public.billing_events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, provider text NOT NULL CHECK (provider IN ('app_store','play_store','vision_pro')), event_type text NOT NULL, idempotency_key text NOT NULL UNIQUE, payload jsonb, created_at timestamptz NOT NULL DEFAULT now());
+-- Server-generated program evidence: disposable minimal mirror for privilege replay.
+-- Ownership RLS is tested separately; this fixture validates SQL grants only.
+CREATE TABLE IF NOT EXISTS public.program_explainability (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ program_id uuid NOT NULL,
+ program_type text NOT NULL,
+ decision_ref text NOT NULL
+);
+ALTER TABLE public.program_explainability ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.program_explainability TO anon, authenticated;
 CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_user_idx ON public.subscriptions(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS entitlements_user_idx ON public.entitlements(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS billing_events_idempotency_idx ON public.billing_events(idempotency_key);
