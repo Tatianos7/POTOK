@@ -404,3 +404,34 @@ assert(rollbackProgram.ok && rollbackProgram.data?.[0]?.program_version===1 &&
  rollbackEvidence.ok && rollbackEvidence.data?.length===0,
  'Failed adaptation must leave program version and evidence unchanged');
 console.log('PASS: atomic adaptation permissions, concurrent idempotency, stale CAS and forced rollback');
+
+const futureDate='2026-11-01';
+const futureDay=await request(serviceKey,'program_days','POST',{body:{
+ block_id:env.POTOK_TEST_PREMIUM_BLOCK_ID,date:futureDate,targets:{calories:2100}
+}});
+assert(futureDay.ok,'Could not seed future nutrition plan day: '+JSON.stringify(futureDay));
+const replanKey=crypto.randomUUID();
+const replanBody={p_program_id:programB,p_expected_version:2,p_request_id:replanKey,p_mode:'deload'};
+denied(await rpc(jwtA,'adapt_nutrition_program_atomic_v1',replanBody),'Free cross-user nutrition replan');
+denied(await rpc(env.POTOK_TEST_ANON_KEY,'adapt_nutrition_program_atomic_v1',replanBody),
+ 'Anonymous nutrition replan');
+const replanParallel=await Promise.all(Array.from({length:3},
+ ()=>rpc(jwtB,'adapt_nutrition_program_atomic_v1',replanBody)));
+assert(replanParallel.every(x=>x.ok) &&
+ replanParallel.filter(x=>x.data?.status==='applied').length===1 &&
+ replanParallel.filter(x=>x.data?.status==='already_applied').length===2,
+ 'Nutrition replan must be atomic/idempotent: '+JSON.stringify(replanParallel));
+const changedFuture=await request(serviceKey,'program_days','GET',{
+ query:'?block_id=eq.'+env.POTOK_TEST_PREMIUM_BLOCK_ID+'&date=eq.'+futureDate+'&select=targets'});
+assert(changedFuture.ok && changedFuture.data?.[0]?.targets?.calories===1600,
+ 'Future nutrition targets must derive from authoritative user goals');
+const unchangedPast=await request(serviceKey,'program_days','GET',{
+ query:'?block_id=eq.'+env.POTOK_TEST_PREMIUM_BLOCK_ID+'&date=eq.2026-10-22&select=targets'});
+assert(unchangedPast.ok && unchangedPast.data?.[0]?.targets?.calories===2100,
+ 'Past nutrition targets must remain unchanged');
+denied(await rpc(jwtB,'adapt_nutrition_program_atomic_v1',{...replanBody,p_mode:'maintain'}),
+ 'Idempotency key reused with different mode');
+denied(await rpc(jwtB,'adapt_nutrition_program_atomic_v1',{
+ ...replanBody,p_request_id:crypto.randomUUID()
+}),'Stale nutrition version');
+console.log('PASS: server-owned future nutrition recalculation, past-day preservation and concurrent idempotency');
