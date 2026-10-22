@@ -35,3 +35,14 @@ Do not merge/deploy the review SQL or client changes based on green CI alone. Th
 - **Data exposure still unverified:** `getMyPlanDTO` forwards `day.explainability_summary` returned by `get_program_days` without a `can_explain` check. The actual production RPC implementation and server-side redaction must be inspected before any conclusion about exposure.
 - **Deployment dependency:** The client now requires `pause_program_atomic`, which is absent from the deployed environment until a separately authorized server rollout. **Never ship this client change ahead of its RPC.** Server grants/revokes and client deployment need a coordinated compatibility gate.
 - **Remaining NO-GO requirements:** inventory server/edge/SQL writers and direct-table readers, review actual production schemas and function bodies read-only, design trusted server commands for resume/day lifecycle/feedback/adaptation, prove `can_adapt` enforcement and summary redaction, and prepare a versioned rollout/rollback plan. Green disposable CI is necessary but insufficient for cloud deployment.
+
+## Production read-only RPC inspection — 2026-10-22
+
+Catalog introspection (no cloud mutation) confirms:
+- `get_program_days(uuid)` is **SECURITY INVOKER** and directly SELECTs `program_explainability` in `latest_explain`, then returns `decision_ref` and `guard_notes.reason_code` as `explainability_summary`. It contains **no explicit can_explain entitlement check**. Thus the summary is a real alternate reader and potential Free-tier exposure, subject to current table RLS/grants.
+- `get_program_day_details(uuid,date)` is **SECURITY INVOKER** and returns full `program_explainability` rows under `explainability`, with **no explicit can_explain check**. This is a more serious alternate read path.
+- Proposed direct SELECT revocation on `program_explainability` may cause both RPCs to fail for ordinary users because they run as invoker. They must be redesigned with ownership and capability-aware server-side output, preserving non-Premium day data, before revocation.
+- `get_program_status(uuid)` is SECURITY INVOKER and references `program_guard_events` for blocked state. Verify its existing grants/RLS and compatibility when changing guard-event permissions.
+- `get_active_program(text)` filters by `auth.uid()` and is SECURITY INVOKER; it does not itself expose explainability.
+
+**Confirmed rollout blocker:** server-side redaction and compatibility of both day RPCs are required, not merely client gating. Do not deploy the current grants draft or client before these are resolved.
