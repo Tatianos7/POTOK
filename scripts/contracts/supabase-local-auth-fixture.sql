@@ -145,3 +145,7 @@ GRANT EXECUTE ON FUNCTION public.start_purchase(uuid,text,text,text),
 
 -- Server-owned nutrition replan requires authoritative goals in disposable DB.
 CREATE TABLE public.user_goals (user_id uuid PRIMARY KEY,calories integer,protein numeric,fat numeric,carbs numeric);
+-- Disposable fault injection: reject one nutrition replan receipt to verify transaction rollback.
+ALTER TABLE public.program_versions ADD CONSTRAINT disposable_nutrition_replan_rollback
+ CHECK (NOT (program_type='nutrition' AND reason='adaptation_replan' AND snapshot->>'mode'='maintain'));
+
