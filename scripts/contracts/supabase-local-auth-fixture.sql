@@ -29,7 +29,10 @@ CREATE TABLE IF NOT EXISTS public.nutrition_programs (
 );
 CREATE TABLE IF NOT EXISTS public.training_programs (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- user_id uuid NOT NULL REFERENCES auth.users(id)
+ user_id uuid NOT NULL REFERENCES auth.users(id),
+ status text NOT NULL DEFAULT 'active',
+ program_version integer NOT NULL DEFAULT 1,
+ knowledge_version_ref jsonb
 );
 ALTER TABLE public.nutrition_programs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.training_programs ENABLE ROW LEVEL SECURITY;
@@ -51,7 +54,7 @@ CREATE TABLE IF NOT EXISTS public.program_explainability (
  guard_notes jsonb,
  created_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE TABLE public.program_guard_events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),program_id uuid NOT NULL,program_type text NOT NULL,risk_level text NOT NULL,flags text[],blocked_actions text[]);
+CREATE TABLE public.program_guard_events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),program_id uuid NOT NULL,program_type text NOT NULL,risk_level text NOT NULL,flags text[],blocked_actions text[], CONSTRAINT disposable_training_failure CHECK (NOT (program_type='training' AND risk_level='caution')));
 ALTER TABLE public.program_explainability ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.program_explainability TO anon, authenticated;
 CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_user_idx ON public.subscriptions(user_id);
