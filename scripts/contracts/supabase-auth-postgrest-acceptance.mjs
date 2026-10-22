@@ -441,3 +441,19 @@ denied(await rpc(jwtB,'adapt_nutrition_program_atomic_v1',{
  ...replanBody,p_request_id:crypto.randomUUID()
 }),'Stale nutrition version');
 console.log('PASS: server-owned future nutrition recalculation, past-day preservation and concurrent idempotency');
+const postReplanVersion=await request(serviceKey,'nutrition_programs','GET',{
+ query:'?id=eq.'+programB+'&select=program_version'});
+const postReplanVersions=await request(serviceKey,'program_versions','GET',{
+ query:'?program_id=eq.'+programB+'&program_type=eq.nutrition&version=eq.3&select=version,snapshot'});
+const postReplanEvidence=await request(serviceKey,'program_explainability','GET',{
+ query:'?program_id=eq.'+programB+'&program_type=eq.nutrition&version=eq.3&select=id'});
+assert(postReplanVersion.ok && postReplanVersion.data?.[0]?.program_version===3 &&
+ postReplanVersions.ok && postReplanVersions.data?.length===1 &&
+ postReplanVersions.data[0].snapshot?.adaptation_request_id===replanKey &&
+ postReplanEvidence.ok && postReplanEvidence.data?.length===1,
+ 'Nutrition replan must atomically persist version, receipt and explainability evidence');
+const replayAfterCommit=await rpc(jwtB,'adapt_nutrition_program_atomic_v1',replanBody);
+assert(replayAfterCommit.ok && replayAfterCommit.data?.status==='already_applied',
+ 'Retry after commit must return the original receipt');
+console.log('PASS: nutrition version/evidence persistence and durable retry receipt');
+
