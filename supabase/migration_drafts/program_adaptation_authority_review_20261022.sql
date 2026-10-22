@@ -14,7 +14,7 @@ DECLARE
   capability boolean := false;
   owned boolean := false;
 BEGIN
-  IF caller IS NULL OR current_setting('request.jwt.claim.role',true) IS DISTINCT FROM 'authenticated' THEN
+  IF caller IS NULL OR auth.role() IS DISTINCT FROM 'authenticated' THEN
     RAISE EXCEPTION 'authentication required' USING ERRCODE='42501';
   END IF;
   IF p_program_id IS NULL OR p_program_type NOT IN ('nutrition','training') OR p_program_type IS NULL THEN
