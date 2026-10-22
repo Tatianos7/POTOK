@@ -37,3 +37,11 @@ if(rpcReplay.stdout) process.stdout.write(rpcReplay.stdout);
 if(rpcReplay.stderr) process.stderr.write(rpcReplay.stderr);
 assert.equal(rpcReplay.status,0,'Exact Premium RPC review SQL replay failed');
 console.log('PASS: exact Premium RPC review SQL replay in disposable local Supabase');
+
+// Execute the exact pause review draft only in disposable localhost PostgreSQL.
+const pauseOriginal=readFileSync('supabase/migration_drafts/program_pause_atomic_review_20261022.sql','utf8');
+assert(/^BEGIN;\\s*$/m.test(pauseOriginal) && /^ROLLBACK;\\s*$/m.test(pauseOriginal),'Pause draft must remain rollback guarded');
+const pauseRun=spawnSync('psql',args,{input:pauseOriginal.replace(/^ROLLBACK;\\s*$/m,'COMMIT;'),encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024});
+if(pauseRun.stdout)process.stdout.write(pauseRun.stdout);
+if(pauseRun.stderr)process.stderr.write(pauseRun.stderr);
+assert.equal(pauseRun.status,0,'Exact atomic pause review SQL replay failed');
