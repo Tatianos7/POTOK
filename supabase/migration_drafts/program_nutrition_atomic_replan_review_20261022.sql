@@ -2,6 +2,11 @@
 -- This is not the adaptive strategy engine; 'maintain' and 'deload' are bounded.
 -- Caller cannot provide calorie/macronutrient values or arbitrary multipliers.
 -- Do not enable until client writers are removed and entitlement provenance verified.
+-- PRODUCT SAFETY BLOCKER: the deload factor scales protein/fat/carbs together
+-- and does not reconcile kcal with macro energy; no owner-approved nutrition policy.
+-- DATA CONSISTENCY BLOCKER: user_goals is read live rather than from an immutable
+-- plan revision; program_sessions.plan_payload and FACT ownership are not reconciled.
+-- REVIEW/TEST ONLY: never promote this SQL as a production migration as-is.
 BEGIN;
 CREATE OR REPLACE FUNCTION public.adapt_nutrition_program_atomic_v1(
  p_program_id uuid,p_expected_version integer,p_request_id uuid,p_mode text
