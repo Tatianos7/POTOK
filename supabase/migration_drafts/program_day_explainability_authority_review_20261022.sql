@@ -47,7 +47,11 @@ BEGIN
   FROM latest_days ld JOIN public.program_blocks pb ON pb.id=ld.block_id
   JOIN public.program_phases pp ON pp.id=pb.phase_id
   LEFT JOIN latest_sessions ls ON ls.program_id=p_program_id AND ls.date=ld.date
-  LEFT JOIN latest_explain le ON le.program_id=p_program_id
+  LEFT JOIN LATERAL (
+    SELECT le.decision_ref,le.guard_notes,le.program_id
+    FROM latest_explain le WHERE le.program_id=p_program_id
+    ORDER BY le.decision_ref ASC LIMIT 1
+  ) le ON true
   ORDER BY ld.date ASC;
 END $potok_days$;
 
