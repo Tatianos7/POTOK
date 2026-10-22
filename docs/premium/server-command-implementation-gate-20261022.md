@@ -58,3 +58,9 @@ Queried `information_schema.columns` and `information_schema.table_constraints` 
 - No currently deployed `advance_program_adaptation_atomic` or `adapt_nutrition_program_atomic_v1` was returned in public function inventory. Existing SQL draft functions remain review-only.
 
 **Next gate:** audit `get_entitlements` body for user scoping, and inspect version duplicates before disposable unique-index and atomic server transition tests. No cloud SQL modifications.
+
+## Completed read-only checks — 2026-10-22
+- Deployed `get_entitlements(p_user_id uuid DEFAULT NULL)` is SECURITY DEFINER. Its implementation selects `coalesce(p_user_id, auth.uid())` without checking that an explicitly supplied ID belongs to the caller. Earlier privilege inspection showed both anon and authenticated can invoke it. **Confirmed cross-user entitlement metadata disclosure risk** for a known user UUID; no evidence of data mutation from this function alone.
+- Required remediation: restrict explicit user IDs to the authenticated caller, verify existing trusted callers, and test anonymous, self, cross-user and fallback cases before changing the deployed RPC. Review EXECUTE grants and function security mode. This is a security fix, not a Premium feature change.
+- Read-only duplicate check on `program_versions` grouped by `program_id, program_type, version` returned **no duplicate groups**. The existing index on those columns is nonunique. A unique index, race tests and rollback checks are still necessary.
+- No cloud database changes were made in these checks.
