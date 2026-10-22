@@ -415,6 +415,10 @@ assert(futureDay.ok,'Could not seed future nutrition plan day: '+JSON.stringify(
 const replanKey=crypto.randomUUID();
 const replanBody={p_program_id:programB,p_expected_version:2,p_request_id:replanKey,p_mode:'deload'};
 denied(await rpc(jwtA,'adapt_nutrition_program_atomic_v1',replanBody),'Free cross-user nutrition replan');
+denied(await rpc(jwtB,'adapt_nutrition_program_atomic_v1',{...replanBody,p_program_id:programA}),
+ 'Premium cannot replan another user program');
+denied(await rpc(jwtB,'adapt_nutrition_program_atomic_v1',{...replanBody,p_mode:'unbounded'}),
+ 'Unrecognized nutrition adaptation mode');
 denied(await rpc(env.POTOK_TEST_ANON_KEY,'adapt_nutrition_program_atomic_v1',replanBody),
  'Anonymous nutrition replan');
 const replanParallel=await Promise.all(Array.from({length:3},
