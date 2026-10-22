@@ -13,7 +13,7 @@ DECLARE
  pr record;
  goal_row record;
  previous record;
- targets jsonb;
+ v_targets jsonb;
  updated_count integer;
  next_version integer;
  factor numeric;
@@ -55,12 +55,12 @@ BEGIN
  SELECT calories,protein,fat,carbs INTO STRICT goal_row
  FROM public.user_goals WHERE user_id=caller;
  factor:=CASE WHEN p_mode='deload' THEN 0.8 ELSE 1 END;
- targets:=public.potok_nutrition_adaptation_targets_v1(
+ v_targets:=public.potok_nutrition_adaptation_targets_v1(
   goal_row.calories,goal_row.protein,goal_row.fat,goal_row.carbs,
   1,factor,false);
  -- Only future plan days. Past plan history and completed/skipped sessions remain unchanged.
  -- Existing plan structures are not deleted/recreated.
- UPDATE public.program_days d SET targets=targets
+ UPDATE public.program_days d SET targets=v_targets
  FROM public.program_blocks b JOIN public.program_phases ph ON ph.id=b.phase_id
  WHERE d.block_id=b.id AND ph.program_id=p_program_id AND ph.program_type='nutrition'
  AND d.date > current_date
@@ -74,7 +74,7 @@ BEGIN
  INSERT INTO public.program_versions(program_id,program_type,version,snapshot,reason)
  VALUES(p_program_id,'nutrition',next_version,
  jsonb_build_object('adaptation_request_id',p_request_id::text,
-  'expected_version',p_expected_version,'mode',p_mode,'targets',targets,
+  'expected_version',p_expected_version,'mode',p_mode,'targets',v_targets,
   'updated_future_days',updated_count),'adaptation_replan');
  INSERT INTO public.program_explainability(program_id,program_type,version,decision_ref,knowledge_refs,guard_notes)
  VALUES(p_program_id,'nutrition',next_version,'why_changed',
@@ -83,7 +83,7 @@ BEGIN
  'updated_future_days',updated_count));
  UPDATE public.nutrition_programs SET program_version=next_version WHERE id=p_program_id;
  RETURN jsonb_build_object('status','applied','from_version',p_expected_version,
-  'to_version',next_version,'updated_future_days',updated_count,'targets',targets);
+  'to_version',next_version,'updated_future_days',updated_count,'targets',v_targets);
 END $potok_nutrition_atomic$;
 REVOKE ALL ON FUNCTION public.adapt_nutrition_program_atomic_v1(uuid,integer,uuid,text)
  FROM PUBLIC,anon,authenticated;
