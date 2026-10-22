@@ -301,3 +301,28 @@ const failedEvidence=await request(serviceKey,'program_explainability','GET',{qu
 assert(failedEvents.ok && failedEvents.data.length===0 && failedEvidence.ok && failedEvidence.data.length===0,
  'Failed pause must roll back guard and explainability records');
 console.log('PASS: concurrent pause serialization and forced failure atomic rollback');
+
+
+// Day RPCs must preserve Free plan content while redacting Premium evidence.
+const freeDays=await rpc(jwtA,'get_program_days',{p_program_id:programA});
+assert(freeDays.ok && Array.isArray(freeDays.data) && freeDays.data.length===1,
+ 'Free user must retain normal day plan: '+JSON.stringify(freeDays));
+assert(freeDays.data[0].targets?.calories===1800 && freeDays.data[0].explainability_summary===null,
+ 'Free day plan must keep targets and redact Premium summary');
+const premiumDays=await rpc(jwtB,'get_program_days',{p_program_id:programB});
+assert(premiumDays.ok && premiumDays.data?.length===1 &&
+ premiumDays.data[0].explainability_summary?.decision_ref==='fixture-premium',
+ 'Premium owner must retain explainability summary: '+JSON.stringify(premiumDays));
+const freeDetails=await rpc(jwtA,'get_program_day_details',{p_program_id:programA,p_date:'2026-10-22'});
+assert(freeDetails.ok && freeDetails.data?.day?.targets?.calories===1800 &&
+ freeDetails.data?.explainability===null,'Free day details must redact full evidence');
+const premiumDetails=await rpc(jwtB,'get_program_day_details',{p_program_id:programB,p_date:'2026-10-22'});
+assert(premiumDetails.ok && premiumDetails.data?.explainability?.length===1 &&
+ premiumDetails.data.explainability[0].decision_ref==='fixture-premium',
+ 'Premium day details must include own evidence: '+JSON.stringify(premiumDetails));
+for(const fn of ['get_program_days','get_program_day_details']){
+ const ownArgs=fn==='get_program_days'?{p_program_id:programA}:{p_program_id:programA,p_date:'2026-10-22'};
+ denied(await rpc(jwtB,fn,ownArgs),'Cross-account '+fn);
+ denied(await rpc(env.POTOK_TEST_ANON_KEY,fn,ownArgs),'Anonymous '+fn);
+}
+console.log('PASS: Free plan preserved, Premium evidence redacted, owner and anonymous boundaries enforced for both day RPCs');
