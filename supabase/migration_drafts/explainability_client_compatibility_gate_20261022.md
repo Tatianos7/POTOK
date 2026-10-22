@@ -76,3 +76,11 @@ Verified actual production `pg_get_functiondef`:
 - No other public function with a name matching entitlement/premium/purchase/restore/subscription was found in this name-based inventory. This is not a complete inventory of Edge Functions, triggers, external writers or functions with unrelated names.
 
 **Blocking requirement:** determine the actual trusted grant/revoke authority (including service role, triggers, Edge Functions, admin flows) and verify provider receipts and revocation semantics before enabling server adaptation. The already-proposed service_role-only execute restriction on purchase RPCs may break existing purchase UI until a compatible trusted gateway is provided. Keep Draft PR review-only and do not deploy.
+
+## Adaptation implementation audit — 2026-10-22
+
+Source review of `src/services/programGenerationService.ts` confirms `adaptProgram` calls `entitlementService.canAdaptProgram(sessionUserId)`, which calls client-accessible `get_entitlements` and reads `flags.can_adapt`. It does **not** run adaptation in a trusted server transaction. The client then reads the program by ID without an explicit `user_id=sessionUserId` predicate (RLS is the current ownership barrier) and writes session statuses, guard events, program versions, explainability, hierarchy and program status through multiple independent PostgREST calls. Partial failures can leave inconsistent state. This is **not** made server-authoritative merely by the initial capability check.
+
+`skipDay` and `submitFeedback` both invoke that client-side adaptation. Consequently, the correct next implementation is a server-owned adaptation command (including ownership, trusted capability, locking, idempotency, atomic commit, and explicit Free behavior), not simply adding another frontend `can_adapt` check. The current grant-hardening draft revokes direct explainability writes, so the existing client adaptation path would break if deployed alone.
+
+No changes to cloud databases were made. This is a deployment blocker until the trusted writer, exact schema-parity fixture, and integration tests are implemented.
