@@ -20,3 +20,9 @@ Status: **NO-GO**. Review only. No cloud changes.
 ## Deployment guard
 
 Do not merge/deploy the review SQL or client changes based on green CI alone. This report documents a functional incompatibility; no server writer is implemented here.
+
+## 2026-10-22 implementation progress
+
+- Added `program_pause_atomic_review_20261022.sql`: owner-scoped, row-locked, transactional pause RPC draft. Production schema columns were inspected read-only.
+- This SQL is **not included** in disposable replay, has **no passing integration acceptance**, and the client still calls direct INSERT. **NO-GO remains**.
+- Next: extend disposable fixture with real pause schema, replay the exact draft SQL, test own/foreign/anonymous/concurrent/retry and failed-write rollback, then coordinate client migration and removal of direct INSERT.
