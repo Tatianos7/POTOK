@@ -326,3 +326,14 @@ for(const fn of ['get_program_days','get_program_day_details']){
  denied(await rpc(env.POTOK_TEST_ANON_KEY,fn,ownArgs),'Anonymous '+fn);
 }
 console.log('PASS: Free plan preserved, Premium evidence redacted, owner and anonymous boundaries enforced for both day RPCs');
+
+
+// Regression: multiple evidence rows for one program version must not duplicate day cards.
+const extraEvidence=await request(serviceKey,'program_explainability','POST',{
+ body:{program_id:programB,program_type:'nutrition',version:1,decision_ref:'fixture-premium-extra'}
+});
+assert(extraEvidence.ok,'Failed to seed second Premium evidence row: '+JSON.stringify(extraEvidence));
+const noDuplicateDays=await rpc(jwtB,'get_program_days',{p_program_id:programB});
+assert(noDuplicateDays.ok && noDuplicateDays.data?.length===1,
+ 'Multiple evidence rows must not multiply day cards: '+JSON.stringify(noDuplicateDays));
+console.log('PASS: multiple explanation records do not duplicate program day cards');
