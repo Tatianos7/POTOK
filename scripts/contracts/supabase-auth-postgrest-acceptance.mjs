@@ -170,6 +170,20 @@ console.log('PASS: real PostgREST RLS, profile settings, protected INSERT/UPDATE
 async function rpc(jwt,name,body) {
  return request(jwt,'rpc/'+name,'POST',{body});
 }
+// Regression: a Free user must not self-issue Premium capability flags.
+for (const [method,body,query] of [
+  ['POST',{user_id:a,tier:'premium',flags:{can_adapt:true,can_explain:true}},''],
+  ['PATCH',{flags:{can_adapt:true,can_explain:true}},`?user_id=eq.${a}`],
+]) {
+  denied(await request(jwtA,'entitlements',method,{query,body}),
+    `Free self-service entitlement ${method} with can_adapt/can_explain`);
+}
+const freeAfterForgery=await rpc(jwtA,'get_entitlements',{p_user_id:a});
+assert(freeAfterForgery.ok && freeAfterForgery.data?.tier==='free' &&
+  freeAfterForgery.data?.flags?.can_adapt!==true &&
+  freeAfterForgery.data?.flags?.can_explain!==true,
+  'Free capabilities must remain disabled after rejected entitlement forgery');
+console.log('PASS: Free user cannot self-grant can_adapt/can_explain via PostgREST');
 const entOwn=await rpc(jwtA,'get_entitlements',{p_user_id:a});
 assert(entOwn.ok && entOwn.data?.tier==='free',
   'Own entitlement read must work for authenticated caller');
