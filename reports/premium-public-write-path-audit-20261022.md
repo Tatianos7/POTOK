@@ -59,3 +59,29 @@ Status: PARTIAL / BLOCKED on exhaustive GitHub client-writer enumeration. Read-o
 3. Prevent session status updates from overwriting PLAN payload; distinguish execution FACT/status from immutable PLAN.
 4. Add compatibility tests for Free FACT after Premium expiry, concurrent acceptance, duplicate requests, blocked entitlements, historical immutability, and mid-transaction failure.
 5. Re-run inventory excluding `android/app/src/main/assets`, SQL drafts and tests for a precise runtime-source matrix. Do not treat this initial scanner as a security proof.
+
+## Runtime-only inventory — confirmed 2026-10-22
+GitHub Actions run `39800894003` completed SUCCESS, artifact `12434539206`.
+Source-only scan: **15 files containing target-table references, 51 proximity-classified candidate write references across five files**: `aiTrustService.ts`, `goalService.ts`, `mealService.ts`, `programDeliveryService.ts`, `programGenerationService.ts`. These counts are scanner output, not a count of independently proven mutations. The scanner only covers its named tables and `src`, so absence of another writer is not proven.
+
+### Verified compatibility matrix
+| Service | Direct mutation | Classification | Required treatment |
+|---|---|---|---|
+| `goalService.ts:270` | `user_goals.upsert` | User-controlled GOAL | Preserve existing goal editing; no automatic adaptation writes |
+| `mealService.ts:294,338,408,815,948,959,970,1213,1269,1367` | Diary insert/update/delete/upsert | User FACT, Free-critical | Preserve functional access; independently test canonical snapshots, idempotency, history |
+| `aiTrustService.ts:48` | `ai_trust_scores.upsert` | Server-authoritative derived trust | Move to validated server action; no client-authoritative trust score |
+| `programGenerationService.ts:229-293,353-474,495-542,642-860` | Phase/block/day/session/program/version/guard/adaptation/explainability writes | Server-authoritative PLAN | Replace multi-request writes with atomic server transaction and immutable revision receipts |
+| `programDeliveryService.ts:171-261` | Session status/payload, program status, trust score, feedback writes | Mixed execution FACT + authority | Split explicit user feedback from server-owned state transitions; preserve PLAN payload |
+| `programDeliveryService.ts:84-161,239` | Read RPCs; pause RPC | RPC (not direct table write) | Audit function EXECUTE/ownership and result behavior separately |
+
+### Blocking defects and rollout gates
+1. `programDeliveryService.ts:212` replaces `plan_payload` with `{reason}` on skip: potential irreversible PLAN loss. Fix with server-side FACT/status action preserving immutable PLAN; do not simply patch a mutable snapshot and call it immutable.
+2. `programGenerationService.ts:759-767` has direct nutrition adjustment factors. Must not execute as an approved Premium automatic plan change before explicit acceptance.
+3. Client-side `ai_trust_scores.upsert` can be authority spoofing if grants/RLS permit; confirm grants and remove client authority only after server replacement.
+4. Generation/adaptation across tables are not atomic as currently written. Need durable idempotency receipt, compare-and-swap, bounded UNKNOWN recovery and append-only revision.
+5. DO NOT revoke authenticated table DML yet: existing client writers would fail. DO NOT enable proposed SQL drafts in production or staging.
+
+### Implementation order
+A. Introduce a **read-only compatibility guard** that fails CI when new direct writes to server-authoritative tables appear outside the existing legacy writer allowlist. Existing legacy writes are debt, not approval.
+B. Design and implement the atomic server command boundary using existing reviewed contracts, with disposable-DB integration tests and a feature-flagged caller transition.
+C. Only after green tests and owner rollout approval, restrict public DML and switch client writers; preserve Free FACT and user GOAL.
