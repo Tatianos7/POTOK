@@ -42,7 +42,7 @@ CREATE POLICY training_programs_owner ON public.training_programs
  FOR SELECT TO authenticated USING (auth.uid() = user_id);
 GRANT SELECT ON public.nutrition_programs,public.training_programs TO authenticated;
 -- Minimal program-day hierarchy matching the reviewed production RPC column contract.
-CREATE TABLE public.program_phases (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),program_id uuid NOT NULL,phase_type text,phase_goal text);
+CREATE TABLE public.program_phases (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),program_id uuid NOT NULL,program_type text NOT NULL DEFAULT 'nutrition',phase_type text,phase_goal text);
 CREATE TABLE public.program_blocks (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),phase_id uuid NOT NULL,block_type text);
 CREATE TABLE public.program_days (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),block_id uuid NOT NULL,date date NOT NULL,targets jsonb,session_plan jsonb,created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE public.program_versions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),program_id uuid NOT NULL,program_type text NOT NULL,version integer NOT NULL,snapshot jsonb NOT NULL,reason text,created_at timestamptz NOT NULL DEFAULT now(),CONSTRAINT disposable_adapt_rollback CHECK (NOT (program_type='training' AND reason='adaptation_pending')));
