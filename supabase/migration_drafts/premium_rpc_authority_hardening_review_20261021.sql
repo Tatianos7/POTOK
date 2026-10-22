@@ -51,7 +51,7 @@ CREATE OR REPLACE FUNCTION public.get_program_explainability(
   p_program_id uuid, p_version integer DEFAULT NULL
 )
 RETURNS SETOF public.program_explainability
-LANGUAGE plpgsql SECURITY INVOKER
+LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO 'public','pg_temp'
 AS $
 DECLARE
