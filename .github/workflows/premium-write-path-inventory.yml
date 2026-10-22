@@ -4,10 +4,14 @@ on:
     branches: [audit/supabase-public-grants-20261021]
     paths:
       - 'scripts/contracts/premium-write-path-inventory.mjs'
+      - 'scripts/contracts/premium-client-authority-guard.mjs'
+      - 'src/**'
       - '.github/workflows/premium-write-path-inventory.yml'
   pull_request:
     paths:
       - 'scripts/contracts/premium-write-path-inventory.mjs'
+      - 'scripts/contracts/premium-client-authority-guard.mjs'
+      - 'src/**'
       - '.github/workflows/premium-write-path-inventory.yml'
 jobs:
   scan:
@@ -16,6 +20,8 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - name: Block new client authority writes
+        run: node scripts/contracts/premium-client-authority-guard.mjs
       - name: Inventory checked-out source
         run: |
           node scripts/contracts/premium-write-path-inventory.mjs > /tmp/premium-writers.json
