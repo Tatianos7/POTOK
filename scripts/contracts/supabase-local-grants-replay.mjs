@@ -100,3 +100,13 @@ if(nutritionRun.stdout)process.stdout.write(nutritionRun.stdout);
 if(nutritionRun.stderr)process.stderr.write(nutritionRun.stderr);
 assert.equal(nutritionRun.status,0,'Server nutrition target contract replay failed');
 console.log('PASS: server-only bounded nutrition target calculation');
+
+const replanOriginal=readFileSync('supabase/migration_drafts/program_nutrition_atomic_replan_review_20261022.sql','utf8');
+assert(/^BEGIN;\s*$/m.test(replanOriginal) && /^ROLLBACK;\s*$/m.test(replanOriginal),
+ 'Nutrition replan review must remain rollback guarded');
+const replanRun=spawnSync('psql',args,{input:replanOriginal.replace(/^ROLLBACK;\s*$/m,'COMMIT;'),
+ encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024});
+if(replanRun.stdout)process.stdout.write(replanRun.stdout);
+if(replanRun.stderr)process.stderr.write(replanRun.stderr);
+assert.equal(replanRun.status,0,'Nutrition atomic replan SQL replay failed');
+console.log('PASS: nutrition atomic replan review SQL replay in disposable local Supabase');
