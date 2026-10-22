@@ -22,7 +22,10 @@ CREATE TABLE IF NOT EXISTS public.billing_events (id uuid PRIMARY KEY DEFAULT ge
 -- Minimal program owners for server-side explainability authorization tests.
 CREATE TABLE IF NOT EXISTS public.nutrition_programs (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
- user_id uuid NOT NULL REFERENCES auth.users(id)
+ user_id uuid NOT NULL REFERENCES auth.users(id),
+ status text NOT NULL DEFAULT 'active',
+ program_version integer NOT NULL DEFAULT 1,
+ knowledge_version_ref jsonb
 );
 CREATE TABLE IF NOT EXISTS public.training_programs (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,8 +46,12 @@ CREATE TABLE IF NOT EXISTS public.program_explainability (
  program_type text NOT NULL,
  version integer NOT NULL DEFAULT 1,
  decision_ref text NOT NULL,
+ knowledge_refs jsonb,
+ confidence numeric,
+ guard_notes jsonb,
  created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE public.program_guard_events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),program_id uuid NOT NULL,program_type text NOT NULL,risk_level text NOT NULL,flags text[],blocked_actions text[]);
 ALTER TABLE public.program_explainability ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.program_explainability TO anon, authenticated;
 CREATE UNIQUE INDEX IF NOT EXISTS subscriptions_user_idx ON public.subscriptions(user_id);
