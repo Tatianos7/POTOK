@@ -65,3 +65,13 @@ if(adaptRun.stdout)process.stdout.write(adaptRun.stdout);
 if(adaptRun.stderr)process.stderr.write(adaptRun.stderr);
 assert.equal(adaptRun.status,0,'Exact adaptation authority review SQL replay failed');
 console.log('PASS: adaptation authority review SQL replay in disposable local Supabase');
+
+const atomicOriginal=readFileSync('supabase/migration_drafts/program_adaptation_atomic_transition_review_20261022.sql','utf8');
+assert(/^BEGIN;\s*$/m.test(atomicOriginal) && /^ROLLBACK;\s*$/m.test(atomicOriginal),
+ 'Atomic adaptation review must remain rollback guarded');
+const atomicRun=spawnSync('psql',args,{input:atomicOriginal.replace(/^ROLLBACK;\s*$/m,'COMMIT;'),
+ encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024});
+if(atomicRun.stdout)process.stdout.write(atomicRun.stdout);
+if(atomicRun.stderr)process.stderr.write(atomicRun.stderr);
+assert.equal(atomicRun.status,0,'Exact atomic adaptation review SQL replay failed');
+console.log('PASS: atomic adaptation review SQL replay in disposable local Supabase');
