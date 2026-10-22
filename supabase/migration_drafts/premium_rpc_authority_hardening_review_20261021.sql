@@ -53,7 +53,7 @@ CREATE OR REPLACE FUNCTION public.get_program_explainability(
 RETURNS SETOF public.program_explainability
 LANGUAGE plpgsql SECURITY DEFINER
 SET search_path TO 'public','pg_temp'
-AS $
+AS $potok_explain$
 DECLARE
   caller uuid := auth.uid();
   entitlement_flags jsonb;
@@ -80,7 +80,7 @@ BEGIN
     )))
     AND (p_version IS NULL OR pe.version = p_version)
   ORDER BY pe.created_at DESC;
-END $;
+END $potok_explain$;
 REVOKE ALL ON FUNCTION public.get_program_explainability(uuid,integer)
 FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.get_program_explainability(uuid,integer)
