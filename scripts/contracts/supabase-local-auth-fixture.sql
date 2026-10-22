@@ -142,3 +142,6 @@ GRANT EXECUTE ON FUNCTION public.get_entitlements(uuid),public.get_paywall_state
  TO authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.start_purchase(uuid,text,text,text),
  public.restore_purchase(uuid,text,text,text) TO service_role;
+
+-- Server-owned nutrition replan requires authoritative goals in disposable DB.
+CREATE TABLE public.user_goals (user_id uuid PRIMARY KEY,calories integer,protein numeric,fat numeric,carbs numeric);
