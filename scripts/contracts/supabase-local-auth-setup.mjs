@@ -26,11 +26,20 @@ for(const suffix of ['a','b','c']){
  assert(token.access_token,'Auth access token absent');
  users.push({id:created.id,jwt:token.access_token});
 }
+// Disposable evidence fixtures: A is Free, B has a seeded Premium entitlement.
+const programA=crypto.randomUUID();
+const programB=crypto.randomUUID();
+await post('/rest/v1/nutrition_programs',service,{id:programA,user_id:users[0].id});
+await post('/rest/v1/nutrition_programs',service,{id:programB,user_id:users[1].id});
+await post('/rest/v1/program_explainability',service,{program_id:programA,program_type:'nutrition',decision_ref:'fixture-free'});
+await post('/rest/v1/program_explainability',service,{program_id:programB,program_type:'nutrition',decision_ref:'fixture-premium'});
+await post('/rest/v1/entitlements',service,{user_id:users[1].id,tier:'pro',flags:{can_explain:true}});
 Object.assign(process.env,{
  POTOK_TEST_SUPABASE_URL:url,POTOK_TEST_ANON_KEY:anon,
  POTOK_TEST_SERVICE_ROLE_KEY:service,
  POTOK_TEST_USER_A_ID:users[0].id,POTOK_TEST_USER_B_ID:users[1].id,
  POTOK_TEST_USER_A_JWT:users[0].jwt,POTOK_TEST_USER_B_JWT:users[1].jwt,
  POTOK_TEST_USER_C_ID:users[2].id,POTOK_TEST_USER_C_JWT:users[2].jwt,
+ POTOK_TEST_PROGRAM_A_ID:programA,POTOK_TEST_PROGRAM_B_ID:programB,
 });
 await import('./supabase-auth-postgrest-acceptance.mjs');
