@@ -236,39 +236,12 @@ class ProgramDeliveryService {
 
   async pauseProgram(programId: string, programType: ProgramType, reason: string) {
     if (!supabase) throw new Error('Supabase не инициализирован');
-    await supabase
-      .from(programType === 'nutrition' ? 'nutrition_programs' : 'training_programs')
-      .update({ status: 'paused' })
-      .eq('id', programId);
-
-    await supabase.from('program_guard_events').insert({
-      program_id: programId,
-      program_type: programType,
-      risk_level: 'caution',
-      flags: ['manual_pause'],
-      blocked_actions: ['program_delivery'],
+    const { error } = await supabase.rpc('pause_program_atomic', {
+      p_program_id: programId,
+      p_program_type: programType,
+      p_reason: reason,
     });
-
-    const { data: program } = await supabase
-      .from(programType === 'nutrition' ? 'nutrition_programs' : 'training_programs')
-      .select('program_version,knowledge_version_ref')
-      .eq('id', programId)
-      .maybeSingle();
-
-    await supabase.from('program_explainability').insert({
-      program_id: programId,
-      program_type: programType,
-      version: Number(program?.program_version ?? 1),
-      decision_ref: 'why_paused',
-      knowledge_refs: program?.knowledge_version_ref ?? {},
-      confidence: (program?.knowledge_version_ref as any)?.effective_confidence ?? null,
-      guard_notes: {
-        reason_code: 'manual_pause',
-        diff_summary: { status: 'paused' },
-        safety_notes: { reason },
-      },
-    });
-
+    if (error) throw error;
   }
 
   async resumeProgram(programId: string, programType: ProgramType) {
