@@ -367,3 +367,40 @@ const noDuplicateDays=await rpc(jwtB,'get_program_days',{p_program_id:programB})
 assert(noDuplicateDays.ok && noDuplicateDays.data?.length===1,
  'Multiple evidence rows must not multiply day cards: '+JSON.stringify(noDuplicateDays));
 console.log('PASS: multiple explanation records do not duplicate program day cards');
+
+// Atomic adaptation transition: permission, replay, version CAS, concurrency, rollback.
+const advance=(id,version,key,type='nutrition')=>rpc(jwtB,'advance_program_adaptation_atomic',{
+ p_program_id:id,p_program_type:type,p_expected_version:version,p_idempotency_key:key
+});
+const idempotencyKey=crypto.randomUUID();
+denied(await rpc(jwtA,'advance_program_adaptation_atomic',{
+ p_program_id:programA,p_program_type:'nutrition',p_expected_version:1,p_idempotency_key:crypto.randomUUID()
+}), 'Free adaptation transition');
+denied(await advance(programA,1,crypto.randomUUID()),'Cross-user adaptation transition');
+denied(await rpc(env.POTOK_TEST_ANON_KEY,'advance_program_adaptation_atomic',{
+ p_program_id:programB,p_program_type:'nutrition',p_expected_version:1,p_idempotency_key:crypto.randomUUID()
+}), 'Anonymous adaptation transition');
+const parallelAdapt=await Promise.all(Array.from({length:4},()=>advance(programB,1,idempotencyKey)));
+assert(parallelAdapt.every(x=>x.ok) &&
+ parallelAdapt.filter(x=>x.data?.status==='pending_server_generation').length===1 &&
+ parallelAdapt.filter(x=>x.data?.status==='already_applied').length===3,
+ 'Same-key concurrent adaptation must commit once: '+JSON.stringify(parallelAdapt));
+const afterAdapt=await request(serviceKey,'nutrition_programs','GET',{query:'?id=eq.'+programB+'&select=program_version'});
+assert(afterAdapt.ok && afterAdapt.data?.[0]?.program_version===2,'Atomic version transition missing');
+const versionRows=await request(serviceKey,'program_versions','GET',{query:'?program_id=eq.'+programB+'&select=version,snapshot'});
+const adaptedEvidence=await request(serviceKey,'program_explainability','GET',{query:'?program_id=eq.'+programB+'&version=eq.2&select=id'});
+assert(versionRows.ok && versionRows.data?.length===1 && adaptedEvidence.ok && adaptedEvidence.data?.length===1,
+ 'Atomic transition must persist exactly one version and evidence');
+denied(await advance(programB,1,crypto.randomUUID()),'Stale adaptation expected version');
+denied(await advance(programB,2,idempotencyKey),'Reused key with changed expected version');
+const failureId=process.env.POTOK_TEST_ADAPT_ROLLBACK_ID;
+assert(failureId,'Disposable Premium training rollback program missing');
+denied(await advance(failureId,1,crypto.randomUUID(),'training'),'Forced adaptation version insert failure');
+const rollbackProgram=await request(serviceKey,'training_programs','GET',{query:'?id=eq.'+failureId+'&select=program_version'});
+const rollbackVersions=await request(serviceKey,'program_versions','GET',{query:'?program_id=eq.'+failureId+'&select=id'});
+const rollbackEvidence=await request(serviceKey,'program_explainability','GET',{query:'?program_id=eq.'+failureId+'&select=id'});
+assert(rollbackProgram.ok && rollbackProgram.data?.[0]?.program_version===1 &&
+ rollbackVersions.ok && rollbackVersions.data?.length===0 &&
+ rollbackEvidence.ok && rollbackEvidence.data?.length===0,
+ 'Failed adaptation must leave program version and evidence unchanged');
+console.log('PASS: atomic adaptation permissions, concurrent idempotency, stale CAS and forced rollback');
