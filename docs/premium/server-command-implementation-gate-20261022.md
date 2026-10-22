@@ -49,3 +49,12 @@ Queried `information_schema.columns` and `information_schema.table_constraints` 
 4. The first server status command must preserve `plan_payload` byte-for-byte/JSONB-equal, and must not accept arbitrary program status or nutrition factors.
 
 **Outcome:** schema mapping advanced; first mutation remains blocked on authority and idempotency design. No SQL executed beyond SELECT.
+
+## Read-only index and RPC privilege evidence — 2026-10-22
+- `program_sessions` has a UNIQUE INDEX on `(program_id,date)`, plus its primary key. There is no `program_type` in the unique key: a command must resolve ownership/type explicitly and cannot assume a session FK to the intended program.
+- `program_versions` has only a nonunique index `(program_id,program_type,version)` plus PK on `id`. A revision CAS must not rely on that index for uniqueness; add a unique constraint/index after duplicate audit and local tests.
+- `entitlements.user_id` is uniquely indexed, but uniqueness does not make flags authoritative; earlier write grants still block trusted entitlement use.
+- Public RPC inventory: `get_active_program`, `get_program_day_details`, `get_program_days`, `get_program_explainability`, `get_program_phases`, `get_program_status` are invoker; `get_entitlements` is SECURITY DEFINER. All seven currently report EXECUTE privilege for both `anon` and `authenticated`. This does **not** prove exploitable disclosure without reviewing each function body, but requires explicit API exposure review. `update_programs_updated_at` is also executable by both roles.
+- No currently deployed `advance_program_adaptation_atomic` or `adapt_nutrition_program_atomic_v1` was returned in public function inventory. Existing SQL draft functions remain review-only.
+
+**Next gate:** audit `get_entitlements` body for user scoping, and inspect version duplicates before disposable unique-index and atomic server transition tests. No cloud SQL modifications.
