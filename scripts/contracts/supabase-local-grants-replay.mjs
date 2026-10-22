@@ -45,3 +45,13 @@ const pauseRun=spawnSync('psql',args,{input:pauseOriginal.replace(/^ROLLBACK;\s*
 if(pauseRun.stdout)process.stdout.write(pauseRun.stdout);
 if(pauseRun.stderr)process.stderr.write(pauseRun.stderr);
 assert.equal(pauseRun.status,0,'Exact atomic pause review SQL replay failed');
+
+
+// Exact day-RPC review draft, committed only inside disposable localhost Supabase.
+const dayOriginal=readFileSync('supabase/migration_drafts/program_day_explainability_authority_review_20261022.sql','utf8');
+assert(/^BEGIN;\s*$/m.test(dayOriginal) && /^ROLLBACK;\s*$/m.test(dayOriginal),'Day RPC draft must remain rollback guarded');
+const dayRun=spawnSync('psql',args,{input:dayOriginal.replace(/^ROLLBACK;\s*$/m,'COMMIT;'),encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024});
+if(dayRun.stdout)process.stdout.write(dayRun.stdout);
+if(dayRun.stderr)process.stderr.write(dayRun.stderr);
+assert.equal(dayRun.status,0,'Exact day-RPC authority review SQL replay failed');
+console.log('PASS: exact day-RPC review SQL replay in disposable local Supabase');
