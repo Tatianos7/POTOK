@@ -19,13 +19,31 @@ CREATE TABLE IF NOT EXISTS public.user_profiles (
 CREATE TABLE IF NOT EXISTS public.subscriptions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, plan text NOT NULL CHECK (plan IN ('free','pro','vision_pro')), status text NOT NULL CHECK (status IN ('active','canceled','past_due','trial')), current_period_start timestamptz, current_period_end timestamptz, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS public.entitlements (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, tier text NOT NULL CHECK (tier IN ('free','pro','vision_pro','coach')), flags jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS public.billing_events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, provider text NOT NULL CHECK (provider IN ('app_store','play_store','vision_pro')), event_type text NOT NULL, idempotency_key text NOT NULL UNIQUE, payload jsonb, created_at timestamptz NOT NULL DEFAULT now());
+-- Minimal program owners for server-side explainability authorization tests.
+CREATE TABLE IF NOT EXISTS public.nutrition_programs (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ user_id uuid NOT NULL REFERENCES auth.users(id)
+);
+CREATE TABLE IF NOT EXISTS public.training_programs (
+ id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+ user_id uuid NOT NULL REFERENCES auth.users(id)
+);
+ALTER TABLE public.nutrition_programs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.training_programs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY nutrition_programs_owner ON public.nutrition_programs
+ FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY training_programs_owner ON public.training_programs
+ FOR SELECT TO authenticated USING (auth.uid() = user_id);
+GRANT SELECT ON public.nutrition_programs,public.training_programs TO authenticated;
 -- Server-generated program evidence: disposable minimal mirror for privilege replay.
 -- Ownership RLS is tested separately; this fixture validates SQL grants only.
 CREATE TABLE IF NOT EXISTS public.program_explainability (
  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
  program_id uuid NOT NULL,
  program_type text NOT NULL,
- decision_ref text NOT NULL
+ version integer NOT NULL DEFAULT 1,
+ decision_ref text NOT NULL,
+ created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.program_explainability ENABLE ROW LEVEL SECURITY;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.program_explainability TO anon, authenticated;
