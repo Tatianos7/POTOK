@@ -42,4 +42,39 @@ REVOKE ALL ON FUNCTION public.start_purchase(uuid,text,text,text) FROM PUBLIC,an
 REVOKE ALL ON FUNCTION public.restore_purchase(uuid,text,text,text) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.start_purchase(uuid,text,text,text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.restore_purchase(uuid,text,text,text) TO service_role;
+-- Production verified: get_program_explainability(uuid,integer) currently
+-- returns pe.* with no Premium gate; PUBLIC/anon/authenticated have EXECUTE.
+-- Server-side fail-closed guard. SECURITY INVOKER preserves owner RLS.
+-- Important: table SELECT and all alternate explainability readers must also
+-- enforce can_explain; this RPC alone is not a complete Premium boundary.
+CREATE OR REPLACE FUNCTION public.get_program_explainability(
+  p_program_id uuid, p_version integer DEFAULT NULL
+)
+RETURNS SETOF public.program_explainability
+LANGUAGE plpgsql SECURITY INVOKER
+SET search_path TO 'public','pg_temp'
+AS $
+DECLARE
+  caller uuid := auth.uid();
+  entitlement_flags jsonb;
+BEGIN
+  IF auth.role() <> 'authenticated' OR caller IS NULL THEN
+    RAISE EXCEPTION 'authentication required' USING ERRCODE='42501';
+  END IF;
+  SELECT e.flags INTO entitlement_flags
+  FROM public.entitlements e
+  WHERE e.user_id = caller;
+  IF NOT coalesce((entitlement_flags->>'can_explain')::boolean,false) THEN
+    RAISE EXCEPTION 'explainability capability required' USING ERRCODE='42501';
+  END IF;
+  RETURN QUERY
+  SELECT pe.* FROM public.program_explainability pe
+  WHERE pe.program_id = p_program_id
+    AND (p_version IS NULL OR pe.version = p_version)
+  ORDER BY pe.created_at DESC;
+END $;
+REVOKE ALL ON FUNCTION public.get_program_explainability(uuid,integer)
+FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.get_program_explainability(uuid,integer)
+TO authenticated,service_role;
 ROLLBACK;
