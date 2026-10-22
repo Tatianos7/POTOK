@@ -55,3 +55,13 @@ if(dayRun.stdout)process.stdout.write(dayRun.stdout);
 if(dayRun.stderr)process.stderr.write(dayRun.stderr);
 assert.equal(dayRun.status,0,'Exact day-RPC authority review SQL replay failed');
 console.log('PASS: exact day-RPC review SQL replay in disposable local Supabase');
+
+const adaptOriginal=readFileSync('supabase/migration_drafts/program_adaptation_authority_review_20261022.sql','utf8');
+assert(/^BEGIN;\s*$/m.test(adaptOriginal) && /^ROLLBACK;\s*$/m.test(adaptOriginal),
+ 'Adaptation authority review SQL must remain rollback guarded');
+const adaptRun=spawnSync('psql',args,{input:adaptOriginal.replace(/^ROLLBACK;\s*$/m,'COMMIT;'),
+ encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024});
+if(adaptRun.stdout)process.stdout.write(adaptRun.stdout);
+if(adaptRun.stderr)process.stderr.write(adaptRun.stderr);
+assert.equal(adaptRun.status,0,'Exact adaptation authority review SQL replay failed');
+console.log('PASS: adaptation authority review SQL replay in disposable local Supabase');
