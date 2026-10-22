@@ -9,6 +9,7 @@ on:
       - 'scripts/contracts/supabase-local-grants-assertions.sql'
       - 'supabase/migration_drafts/public_api_privileges_hardening_review_20261021.sql'
       - 'supabase/migration_drafts/premium_rpc_authority_hardening_review_20261021.sql'
+      - 'supabase/migration_drafts/program_pause_atomic_review_20261022.sql'
       - '.github/workflows/supabase-local-auth.yml'
   push:
     branches: [audit/supabase-public-grants-20261021]
