@@ -258,6 +258,22 @@ console.log('PASS: trusted service_role purchase and restore persist events and 
 const programA=process.env.POTOK_TEST_PROGRAM_A_ID;
 const programB=process.env.POTOK_TEST_PROGRAM_B_ID;
 assert(programA && programB && programA!==programB,'Distinct disposable program IDs required');
+// Adaptation authority must enforce authenticated ownership and server-issued capability.
+const adaptArgs=(programId,programType='nutrition')=>({
+ p_program_id:programId,p_program_type:programType
+});
+denied(await rpc(jwtA,'assert_program_adaptation_authority',adaptArgs(programA)),
+ 'Free A cannot adapt own program');
+denied(await rpc(jwtB,'assert_program_adaptation_authority',adaptArgs(programA)),
+ 'Premium B cannot adapt another user program');
+denied(await rpc(env.POTOK_TEST_ANON_KEY,'assert_program_adaptation_authority',adaptArgs(programB)),
+ 'Anonymous cannot request adaptation authority');
+denied(await rpc(jwtB,'assert_program_adaptation_authority',adaptArgs(programB,'invalid')),
+ 'Invalid program type rejected');
+const premiumAdapt=await rpc(jwtB,'assert_program_adaptation_authority',adaptArgs(programB));
+assert(premiumAdapt.ok && premiumAdapt.data===true,
+ 'Premium B must pass server-side own-program adaptation authority: '+JSON.stringify(premiumAdapt));
+console.log('PASS: server adaptation authority Free/Premium/foreign/anonymous/type boundaries');
 for(const [jwt,label] of [
  [jwtA,'Free A'],[jwtB,'Premium B'],[env.POTOK_TEST_ANON_KEY,'anonymous']
 ]) {
