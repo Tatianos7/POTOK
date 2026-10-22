@@ -405,7 +405,7 @@ assert(rollbackProgram.ok && rollbackProgram.data?.[0]?.program_version===1 &&
  'Failed adaptation must leave program version and evidence unchanged');
 console.log('PASS: atomic adaptation permissions, concurrent idempotency, stale CAS and forced rollback');
 
-const futureDate='2026-11-01';
+const futureDate=new Date(Date.now()+30*24*60*60*1000).toISOString().slice(0,10);
 assert.match(process.env.POTOK_TEST_PREMIUM_BLOCK_ID ?? '',/^[0-9a-f-]{36}$/i,
  'Disposable Premium block UUID required for nutrition replan test');
 const futureDay=await request(serviceKey,'program_days','POST',{body:{
