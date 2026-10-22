@@ -31,10 +31,12 @@ const programA=crypto.randomUUID();
 const programB=crypto.randomUUID();
 const programConcurrent=crypto.randomUUID();
 const trainingRollback=crypto.randomUUID();
+const premiumTrainingRollback=crypto.randomUUID();
 await post('/rest/v1/nutrition_programs',service,{id:programA,user_id:users[0].id});
 await post('/rest/v1/nutrition_programs',service,{id:programB,user_id:users[1].id});
 await post('/rest/v1/nutrition_programs',service,{id:programConcurrent,user_id:users[0].id});
 await post('/rest/v1/training_programs',service,{id:trainingRollback,user_id:users[0].id});
+await post('/rest/v1/training_programs',service,{id:premiumTrainingRollback,user_id:users[1].id});
 await post('/rest/v1/program_explainability',service,{program_id:programA,program_type:'nutrition',decision_ref:'fixture-free'});
 await post('/rest/v1/program_explainability',service,{program_id:programB,program_type:'nutrition',decision_ref:'fixture-premium'});
 await post('/rest/v1/entitlements',service,{user_id:users[1].id,tier:'pro',flags:{can_explain:true,can_adapt:true}});
@@ -56,5 +58,6 @@ Object.assign(process.env,{
  POTOK_TEST_USER_C_ID:users[2].id,POTOK_TEST_USER_C_JWT:users[2].jwt,
  POTOK_TEST_PROGRAM_A_ID:programA,POTOK_TEST_PROGRAM_B_ID:programB,
  POTOK_TEST_PROGRAM_CONCURRENT_ID:programConcurrent,POTOK_TEST_TRAINING_ROLLBACK_ID:trainingRollback,
+ POTOK_TEST_ADAPT_ROLLBACK_ID:premiumTrainingRollback,
 });
 await import('./supabase-auth-postgrest-acceptance.mjs');
