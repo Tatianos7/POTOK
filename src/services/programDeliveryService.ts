@@ -144,14 +144,9 @@ class ProgramDeliveryService {
     const userId = await this.getSessionUserId();
     const canExplain = await entitlementService.canExplain(userId);
     if (!canExplain) {
-      const { data, error } = await supabase.rpc('get_program_explainability', {
-        p_program_id: programId,
-        p_version: version ?? null,
-      });
-      if (error) throw error;
-      return (data as ProgramWhyDTO[]).map((row) => ({
-        decisionRef: (row as any).decision_ref ?? row.decisionRef,
-      }));
+      // Never fetch premium explainability details and redact them client-side.
+      // The server RPC must independently enforce can_explain before rollout.
+      return [] as ProgramWhyDTO[];
     }
     const { data, error } = await supabase.rpc('get_program_explainability', {
       p_program_id: programId,
