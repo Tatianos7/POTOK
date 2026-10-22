@@ -262,3 +262,20 @@ const premiumOther=await rpc(jwtB,'get_program_explainability',{p_program_id:pro
 assert(premiumOther.ok && Array.isArray(premiumOther.data) && premiumOther.data.length===0,
  'Premium B must not read Free A program evidence');
 console.log('PASS: explainability Free denial, Premium own access, cross-owner isolation, anonymous and direct-table denial');
+
+const pauseBody={p_program_id:programA,p_program_type:'nutrition',p_reason:'user requested pause'};
+denied(await rpc(jwtB,'pause_program_atomic',pauseBody),'Cross-user atomic pause');
+denied(await rpc(env.POTOK_TEST_ANON_KEY,'pause_program_atomic',pauseBody),'Anonymous atomic pause');
+const firstPause=await rpc(jwtA,'pause_program_atomic',pauseBody);
+assert(firstPause.ok && firstPause.data?.status==='paused' && firstPause.data?.changed===true,
+ 'Own atomic pause failed: '+JSON.stringify(firstPause));
+const repeatedPause=await rpc(jwtA,'pause_program_atomic',pauseBody);
+assert(repeatedPause.ok && repeatedPause.data?.changed===false,'Repeat pause must be idempotent');
+const paused=await request(serviceKey,'nutrition_programs','GET',{query:'?id=eq.'+programA+'&select=status'});
+assert(paused.data?.length===1 && paused.data[0].status==='paused','Pause status not persisted');
+const pauseEvents=await request(serviceKey,'program_guard_events','GET',{query:'?program_id=eq.'+programA+'&select=id'});
+assert(pauseEvents.data?.length===1,'Pause must persist exactly one guard event');
+const pauseEvidence=await request(serviceKey,'program_explainability','GET',{query:'?program_id=eq.'+programA+'&select=decision_ref'});
+assert(pauseEvidence.data?.length===2 && pauseEvidence.data.some(x=>x.decision_ref==='why_paused'),
+ 'Pause must persist exactly one additional explanation');
+console.log('PASS: atomic pause ownership, anonymous denial, retry, status and evidence');
