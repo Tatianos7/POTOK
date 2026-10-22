@@ -457,3 +457,29 @@ assert(replayAfterCommit.ok && replayAfterCommit.data?.status==='already_applied
  'Retry after commit must return the original receipt');
 console.log('PASS: nutrition version/evidence persistence and durable retry receipt');
 
+const beforeFailedReplan=await request(serviceKey,'program_days','GET',{
+ query:'?block_id=eq.'+process.env.POTOK_TEST_PREMIUM_BLOCK_ID+'&date=eq.'+futureDate+'&select=targets'});
+const failedReplanKey=crypto.randomUUID();
+const failedReplan=await rpc(jwtB,'adapt_nutrition_program_atomic_v1',{
+ p_program_id:programB,p_expected_version:3,p_request_id:failedReplanKey,p_mode:'maintain'
+});
+denied(failedReplan,'Forced nutrition replan receipt failure');
+assert(failedReplan.data?.code==='23514',
+ 'Forced failure must reach disposable receipt constraint: '+JSON.stringify(failedReplan));
+const afterFailedReplan=await request(serviceKey,'program_days','GET',{
+ query:'?block_id=eq.'+process.env.POTOK_TEST_PREMIUM_BLOCK_ID+'&date=eq.'+futureDate+'&select=targets'});
+const afterFailedProgram=await request(serviceKey,'nutrition_programs','GET',{
+ query:'?id=eq.'+programB+'&select=program_version'});
+const failedVersion=await request(serviceKey,'program_versions','GET',{
+ query:'?program_id=eq.'+programB+'&program_type=eq.nutrition&version=eq.4&select=id'});
+const failedEvidence=await request(serviceKey,'program_explainability','GET',{
+ query:'?program_id=eq.'+programB+'&program_type=eq.nutrition&version=eq.4&select=id'});
+assert(beforeFailedReplan.ok && afterFailedReplan.ok &&
+ JSON.stringify(beforeFailedReplan.data)===JSON.stringify(afterFailedReplan.data) &&
+ afterFailedProgram.ok && afterFailedProgram.data?.[0]?.program_version===3 &&
+ failedVersion.ok && failedVersion.data?.length===0 &&
+ failedEvidence.ok && failedEvidence.data?.length===0,
+ 'Failed nutrition replan must rollback future targets, program version and explainability');
+console.log('PASS: forced nutrition replan failure rolls back all writes');
+
+
