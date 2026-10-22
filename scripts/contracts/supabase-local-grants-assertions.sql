@@ -28,5 +28,15 @@ BEGIN
     OR NOT has_column_privilege('authenticated','public.user_profiles','id_user','INSERT') THEN
   RAISE EXCEPTION 'Ordinary profile write privilege missing';
  END IF;
+ FOR role_name IN SELECT unnest(ARRAY['anon','authenticated']) LOOP
+  FOREACH op IN ARRAY ARRAY['INSERT','UPDATE','DELETE','TRUNCATE','TRIGGER','REFERENCES'] LOOP
+   IF has_table_privilege(role_name,'public.program_explainability',op) THEN
+    RAISE EXCEPTION '% unexpectedly has % on program_explainability',role_name,op;
+   END IF;
+  END LOOP;
+ END LOOP;
+ IF NOT has_table_privilege('authenticated','public.program_explainability','SELECT') THEN
+  RAISE EXCEPTION 'Authenticated owner read privilege missing for program_explainability';
+ END IF;
  RAISE NOTICE 'PASS: effective grants for finance and profile allowlist';
 END $$;
