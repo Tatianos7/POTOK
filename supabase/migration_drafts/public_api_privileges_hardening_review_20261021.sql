@@ -18,6 +18,16 @@ BEGIN
     );
   END LOOP;
 END $$;
+-- Program session and feedback remain owner-scoped through RLS, but never
+-- expose TRUNCATE/DDL-adjacent privileges to client roles (covered above).
+-- Explainability is server-generated: prevent clients from forging its rows.
+-- Keep SELECT for authenticated owners; RLS alone does not enforce can_explain,
+-- so the read path needs a separate server capability gate before deployment.
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.program_explainability
+FROM anon, authenticated;
+-- A premium-only feedback write must be enforced server-side, not by
+-- program_feedback_owner (which only checks ownership). This is a review gate:
+-- do not revoke feedback INSERT here until a verified RPC writer is tested.
 -- Privileged subscription and payment writes must use trusted server authority.
 REVOKE INSERT, UPDATE, DELETE ON TABLE
   public.billing_events, public.entitlements, public.subscriptions
