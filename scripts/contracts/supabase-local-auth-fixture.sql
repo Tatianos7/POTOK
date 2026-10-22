@@ -45,6 +45,7 @@ GRANT SELECT ON public.nutrition_programs,public.training_programs TO authentica
 CREATE TABLE public.program_phases (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),program_id uuid NOT NULL,phase_type text,phase_goal text);
 CREATE TABLE public.program_blocks (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),phase_id uuid NOT NULL,block_type text);
 CREATE TABLE public.program_days (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),block_id uuid NOT NULL,date date NOT NULL,targets jsonb,session_plan jsonb,created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE public.program_versions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),program_id uuid NOT NULL,program_type text NOT NULL,version integer NOT NULL,snapshot jsonb NOT NULL,reason text,created_at timestamptz NOT NULL DEFAULT now());
 CREATE TABLE public.program_sessions (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),program_id uuid NOT NULL,date date NOT NULL,status text,created_at timestamptz NOT NULL DEFAULT now());
 -- Server-generated program evidence: disposable minimal mirror for privilege replay.
 -- Ownership RLS is tested separately; this fixture validates SQL grants only.
