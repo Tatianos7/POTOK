@@ -36,3 +36,26 @@ Status: PARTIAL / BLOCKED on exhaustive GitHub client-writer enumeration. Read-o
 
 ## Decision
 **NO-GO for cloud GRANT/RLS changes or nutrition replan deployment.** Continue read-only code-path inventory, then draft compatibility tests and staged server-owned write migrations. Preserve approved PLAN != FACT architecture. No production/staging/master modifications.
+
+## GitHub Actions scanner evidence (run 39798556374, artifact 12433609457)
+- Scanner succeeded: 137 files with table references, 210 candidate-write references. These are proximity matches, not 210 proven writes; includes compiled Android assets, SQL drafts, fixtures and tests.
+- Confirmed production-source client writes:
+  - `src/services/goalService.ts:270-274`: direct `user_goals.upsert` — preserve user-controlled GOAL workflow.
+  - `src/services/mealService.ts:294-300,338-343,408-413,815-816,948-971,1213-1214,1269-1270,1367+`: direct diary INSERT/UPDATE/DELETE/UPSERT and bulk replacement. **High compatibility sensitivity:** avoid blanket removal of diary grants; check snapshot-first and idempotency on all paths.
+  - `src/services/programGenerationService.ts:229-293`: direct phase/block/day/session INSERT and session UPDATE.
+  - `src/services/programGenerationService.ts:353-474`: generation job INSERT/UPDATE, program INSERT, version and explainability INSERT.
+  - `src/services/programGenerationService.ts:495-542,642-736,780-860`: program adaptation writes across sessions, guards, phases/days, version, adaptation, explainability and program status. Multiple client requests without demonstrated encompassing DB transaction; partial writes possible.
+  - `src/services/programDeliveryService.ts:171-251`: direct session status and payload UPDATE, trust-score UPSERT, program status UPDATE; pause calls `pause_program_atomic` RPC.
+  - `src/services/programDeliveryService.ts:261+`: feedback INSERT.
+- **Critical confirmed client-side contract conflict:** `programGenerationService.ts:759-766` calculates nutrition adjustment factors (including 0.9 on adherence drop and DELOAD_FACTOR) without a separate explicit user-acceptance step visible in this code. This conflicts with the agreed propose/accept Premium adaptation contract. Do not ship this as approved Premium nutrition logic.
+- **Potential data loss:** `programDeliveryService.ts:212-213` updates `program_sessions.plan_payload` to `{reason}` when skipping, rather than preserving the original plan payload. Treat as plan snapshot destruction until tests prove otherwise.
+- **Potential cross-write inconsistency:** program generation and adaptation mutate multiple tables sequentially; no single server-side atomic transaction is visible across the shown operations.
+- `programDeliveryService.ts` read RPCs are not writes; separate them from writes in remediation.
+- This is a targeted confirmed source-level classification, not an exhaustive manual review of every one of 210 candidates.
+
+## Next implementation boundary
+1. Keep current user-authorized diary/goal writes working while auditing every diary path for snapshot-first and idempotency.
+2. Introduce server-owned generation/adaptation/delivery commands with explicit authorization, CAS, receipts, UNKNOWN lookup and atomic PLAN revisions; migrate callers before revoking table DML.
+3. Prevent session status updates from overwriting PLAN payload; distinguish execution FACT/status from immutable PLAN.
+4. Add compatibility tests for Free FACT after Premium expiry, concurrent acceptance, duplicate requests, blocked entitlements, historical immutability, and mid-transaction failure.
+5. Re-run inventory excluding `android/app/src/main/assets`, SQL drafts and tests for a precise runtime-source matrix. Do not treat this initial scanner as a security proof.
