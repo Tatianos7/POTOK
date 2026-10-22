@@ -38,6 +38,16 @@ await post('/rest/v1/training_programs',service,{id:trainingRollback,user_id:use
 await post('/rest/v1/program_explainability',service,{program_id:programA,program_type:'nutrition',decision_ref:'fixture-free'});
 await post('/rest/v1/program_explainability',service,{program_id:programB,program_type:'nutrition',decision_ref:'fixture-premium'});
 await post('/rest/v1/entitlements',service,{user_id:users[1].id,tier:'pro',flags:{can_explain:true}});
+const phaseA=crypto.randomUUID(),phaseB=crypto.randomUUID();
+const blockA=crypto.randomUUID(),blockB=crypto.randomUUID();
+await post('/rest/v1/program_phases',service,{id:phaseA,program_id:programA,phase_type:'base',phase_goal:'fixture'});
+await post('/rest/v1/program_phases',service,{id:phaseB,program_id:programB,phase_type:'base',phase_goal:'fixture'});
+await post('/rest/v1/program_blocks',service,{id:blockA,phase_id:phaseA,block_type:'base'});
+await post('/rest/v1/program_blocks',service,{id:blockB,phase_id:phaseB,block_type:'base'});
+await post('/rest/v1/program_days',service,{block_id:blockA,date:'2026-10-22',targets:{calories:1800},session_plan:{kind:'nutrition'}});
+await post('/rest/v1/program_days',service,{block_id:blockB,date:'2026-10-22',targets:{calories:2100},session_plan:{kind:'nutrition'}});
+await post('/rest/v1/program_sessions',service,{program_id:programA,date:'2026-10-22',status:'planned'});
+await post('/rest/v1/program_sessions',service,{program_id:programB,date:'2026-10-22',status:'planned'});
 Object.assign(process.env,{
  POTOK_TEST_SUPABASE_URL:url,POTOK_TEST_ANON_KEY:anon,
  POTOK_TEST_SERVICE_ROLE_KEY:service,
