@@ -31,3 +31,21 @@ Status: IMPLEMENTATION PREPARATION / NO-GO CLOUD. Scope: Draft PR #184 only.
 
 ## Next concrete engineering deliverable
 A verified schema dependency map (tables, FK, existing RPCs, authority and grants) plus disposable test fixtures for the first **non-nutrition-mutating** server transition. Then implement and run it before client cutover.
+
+## Live read-only schema verification (POTOK production, 2026-10-22)
+Queried `information_schema.columns` and `information_schema.table_constraints` without modifying any data.
+
+- `program_sessions`: `id`, `program_id`, `date`, `session_type`, `plan_payload` (nullable JSONB), `status`, `created_at`, `day_date`. PK `id`; check constraints on `session_type` and `status`. **No foreign key from `program_sessions.program_id` to either program table appears in the inspected constraints.** Ownership must be checked explicitly against the correct program type, not assumed via FK.
+- `program_days`: `id`, `block_id` FK to `program_blocks.id`, `date`, `targets`, `session_plan`, `constraints_applied`, `created_at`. No direct program_id. Ownership joins must traverse block → phase → program.
+- `program_versions`: `id`, `program_id`, `program_type`, `version`, `snapshot` (non-null JSONB), `reason`, `created_at`. Inspected constraints show PK and program_type check, but **no FK or unique constraint on (program_id,program_type,version)**. CAS and append-only correctness require an explicit verified uniqueness/locking strategy.
+- `nutrition_programs` and `training_programs`: both have `id`, `user_id`, `status`, `program_version`, `knowledge_version_ref`; `goal_id` references `user_goals.user_id`.
+- `entitlements`: `id`, `user_id`, `tier`, `flags`, `updated_at`. Prior audit found client-facing DML grants, so its tier/flags cannot currently serve as trusted authorization until authority hardening is proven.
+- `program_feedback` stores execution feedback, while `program_explainability` stores decision metadata. These are not substitutes for immutable execution receipts.
+
+### Immediate engineering blockers
+1. Establish program ownership for `program_sessions` across both program types and prove no cross-type UUID ambiguity.
+2. Inspect indexes (not only constraints) and existing RPCs before adding uniqueness/receipt storage; do not assume no uniqueness solely from constraints.
+3. Do not implement a SECURITY DEFINER mutation using `entitlements.flags` as trusted Premium proof while the privilege issue remains unresolved.
+4. The first server status command must preserve `plan_payload` byte-for-byte/JSONB-equal, and must not accept arbitrary program status or nutrition factors.
+
+**Outcome:** schema mapping advanced; first mutation remains blocked on authority and idempotency design. No SQL executed beyond SELECT.
