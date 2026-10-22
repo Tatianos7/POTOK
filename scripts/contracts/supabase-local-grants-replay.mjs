@@ -75,3 +75,28 @@ if(atomicRun.stdout)process.stdout.write(atomicRun.stdout);
 if(atomicRun.stderr)process.stderr.write(atomicRun.stderr);
 assert.equal(atomicRun.status,0,'Exact atomic adaptation review SQL replay failed');
 console.log('PASS: atomic adaptation review SQL replay in disposable local Supabase');
+
+const nutritionOriginal=readFileSync('supabase/migration_drafts/program_nutrition_adaptation_targets_review_20261022.sql','utf8');
+assert(/^BEGIN;\s*$/m.test(nutritionOriginal) && /^ROLLBACK;\s*$/m.test(nutritionOriginal),
+ 'Nutrition targets draft must remain rollback guarded');
+const nutritionSql=nutritionOriginal.replace(/^ROLLBACK;\s*$/m,`
+DO $potok_test$
+DECLARE result jsonb;
+BEGIN
+ result:=public.potok_nutrition_adaptation_targets_v1(2000,100,60,220,1,0.8,true);
+ IF result <> '{"calories":1600,"protein":80,"fat":48,"carbs":194}'::jsonb THEN
+   RAISE EXCEPTION 'Nutrition target regression: %',result;
+ END IF;
+ BEGIN
+   PERFORM public.potok_nutrition_adaptation_targets_v1(2000,100,60,220,1,0.2,false);
+   RAISE EXCEPTION 'Out-of-range factor accepted';
+ EXCEPTION WHEN sqlstate '22023' THEN NULL;
+ END;
+END $potok_test$;
+COMMIT;`);
+const nutritionRun=spawnSync('psql',args,{input:nutritionSql,encoding:'utf8',
+ env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024});
+if(nutritionRun.stdout)process.stdout.write(nutritionRun.stdout);
+if(nutritionRun.stderr)process.stderr.write(nutritionRun.stderr);
+assert.equal(nutritionRun.status,0,'Server nutrition target contract replay failed');
+console.log('PASS: server-only bounded nutrition target calculation');
