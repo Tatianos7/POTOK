@@ -239,3 +239,26 @@ const afterRetry=await request(serviceKey,'billing_events','GET',{
 assert(afterRetry.ok&&afterRetry.data?.length===2,
  'Idempotent retry must not duplicate events');
 console.log('PASS: trusted service_role purchase and restore persist events and retry idempotently');
+
+ // Explainability must be gated by server authority, not just UI filtering.
+const programA=process.env.POTOK_TEST_PROGRAM_A_ID;
+const programB=process.env.POTOK_TEST_PROGRAM_B_ID;
+assert(programA && programB && programA!==programB,'Distinct disposable program IDs required');
+for(const [jwt,label] of [
+ [jwtA,'Free A'],[jwtB,'Premium B'],[env.POTOK_TEST_ANON_KEY,'anonymous']
+]) {
+ denied(await request(jwt,'program_explainability','GET',{query:'?select=id,decision_ref'}),
+   label+' direct explainability table SELECT');
+}
+denied(await rpc(jwtA,'get_program_explainability',{p_program_id:programA}),
+ 'Free A own explainability RPC');
+denied(await rpc(env.POTOK_TEST_ANON_KEY,'get_program_explainability',{p_program_id:programB}),
+ 'Anonymous explainability RPC');
+const premiumOwn=await rpc(jwtB,'get_program_explainability',{p_program_id:programB});
+assert(premiumOwn.ok && Array.isArray(premiumOwn.data) &&
+ premiumOwn.data.length===1 && premiumOwn.data[0].decision_ref==='fixture-premium',
+ 'Premium B must read own program evidence through guarded RPC: '+JSON.stringify(premiumOwn));
+const premiumOther=await rpc(jwtB,'get_program_explainability',{p_program_id:programA});
+assert(premiumOther.ok && Array.isArray(premiumOther.data) && premiumOther.data.length===0,
+ 'Premium B must not read Free A program evidence');
+console.log('PASS: explainability Free denial, Premium own access, cross-owner isolation, anonymous and direct-table denial');
