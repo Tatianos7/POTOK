@@ -108,18 +108,32 @@ class ProgramDeliveryService {
 
   async getProgramDayDetails(programId: string, date: string) {
     if (!supabase) throw new Error('Supabase не инициализирован');
+    // Cache is scoped to the verified current account, not only the program/date.
+    const userId = await this.getSessionUserId();
+    const key = this.cacheKey('day', `${userId}_${programId}_${date}`);
     try {
       const { data, error } = await supabase.rpc('get_program_day_details', {
         p_program_id: programId,
         p_date: date,
       });
       if (error) throw error;
-      localStorage.setItem(this.cacheKey('day', `${programId}_${date}`), JSON.stringify(data));
+      // A session switch while the RPC was in flight must not populate another account's cache.
+      await this.getSessionUserId(userId);
+      localStorage.setItem(key, JSON.stringify(data));
       return data as ProgramTodayDTO;
-    } catch (err: any) {
-      const cached = localStorage.getItem(this.cacheKey('day', `${programId}_${date}`));
+    } catch (err: unknown) {
+      // Never treat an authorization or server rejection as permission to serve cached data.
+      const message = err instanceof Error ? err.message : '';
+      const isNetworkFailure = /failed to fetch|networkerror|network request failed|err_network|err_name_not_resolved/i.test(message);
+      if (!isNetworkFailure) throw err;
+      await this.getSessionUserId(userId);
+      const cached = localStorage.getItem(key);
       if (cached) {
-        return JSON.parse(cached) as ProgramTodayDTO;
+        try {
+          return JSON.parse(cached) as ProgramTodayDTO;
+        } catch {
+          localStorage.removeItem(key);
+        }
       }
       throw err;
     }
