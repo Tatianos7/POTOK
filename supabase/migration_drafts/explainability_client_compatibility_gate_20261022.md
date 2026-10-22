@@ -46,3 +46,9 @@ Catalog introspection (no cloud mutation) confirms:
 - `get_active_program(text)` filters by `auth.uid()` and is SECURITY INVOKER; it does not itself expose explainability.
 
 **Confirmed rollout blocker:** server-side redaction and compatibility of both day RPCs are required, not merely client gating. Do not deploy the current grants draft or client before these are resolved.
+
+## Verified adaptation and lifecycle authority audit — 2026-10-22
+
+Production read-only catalog introspection shows `program_feedback`, `program_sessions` and `ai_trust_scores` currently grant INSERT/UPDATE/DELETE (and other table privileges) to `anon` and `authenticated`. Grants alone do not establish exploitability; effective RLS and RPC policies still require review. The client currently relies on a local tier check in `submitFeedback`, but a client-side tier check cannot enforce `can_adapt` for direct PostgREST requests. `skipDay` invokes `adaptProgram` without the same tier check. `resumeProgram` and `completeDay` write `active` directly, and trust-score upserts ignore errors. Production `program_sessions` requires `session_type` and has `day_date` in addition to `date`; disposable fixtures do not yet mirror those constraints.
+
+**Rollout decision: NO-GO.** Before removing direct writes, inventory the actual server adaptation endpoint and other consumers, then implement trusted server-side `can_adapt` authorization and transactional lifecycle commands. Preserve Free day completion and skip recording where appropriate, without silently granting paid adaptation. Add disposable RLS/permission tests for Free, Premium, foreign users, anonymous callers, and concurrency/rollback. Do not equate an entitlement row with a trusted subscription grant until the entitlement writer and policy are verified.
