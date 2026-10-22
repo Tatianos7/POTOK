@@ -279,3 +279,25 @@ const pauseEvidence=await request(serviceKey,'program_explainability','GET',{que
 assert(pauseEvidence.data?.length===2 && pauseEvidence.data.some(x=>x.decision_ref==='why_paused'),
  'Pause must persist exactly one additional explanation');
 console.log('PASS: atomic pause ownership, anonymous denial, retry, status and evidence');
+
+const concurrentId=process.env.POTOK_TEST_PROGRAM_CONCURRENT_ID;
+const concurrentBody={p_program_id:concurrentId,p_program_type:'nutrition',p_reason:'concurrent pause'};
+const simultaneous=await Promise.all(Array.from({length:4},()=>rpc(jwtA,'pause_program_atomic',concurrentBody)));
+assert(simultaneous.every(x=>x.ok), 'Concurrent pause calls must all succeed: '+JSON.stringify(simultaneous));
+assert(simultaneous.filter(x=>x.data?.changed===true).length===1,
+ 'Exactly one concurrent pause should transition the state');
+const concurrentEvents=await request(serviceKey,'program_guard_events','GET',{query:'?program_id=eq.'+concurrentId+'&select=id'});
+const concurrentEvidence=await request(serviceKey,'program_explainability','GET',{query:'?program_id=eq.'+concurrentId+'&select=id'});
+assert(concurrentEvents.ok && concurrentEvents.data.length===1 && concurrentEvidence.ok && concurrentEvidence.data.length===1,
+ 'Concurrent pause must persist one guard event and one evidence record');
+const rollbackId=process.env.POTOK_TEST_TRAINING_ROLLBACK_ID;
+const failedPause=await rpc(jwtA,'pause_program_atomic',{p_program_id:rollbackId,p_program_type:'training',p_reason:'rollback probe'});
+denied(failedPause,'Disposable forced guard-event failure');
+const afterFailure=await request(serviceKey,'training_programs','GET',{query:'?id=eq.'+rollbackId+'&select=status'});
+assert(afterFailure.ok && afterFailure.data.length===1 && afterFailure.data[0].status==='active',
+ 'Failed pause must roll back status update');
+const failedEvents=await request(serviceKey,'program_guard_events','GET',{query:'?program_id=eq.'+rollbackId+'&select=id'});
+const failedEvidence=await request(serviceKey,'program_explainability','GET',{query:'?program_id=eq.'+rollbackId+'&select=id'});
+assert(failedEvents.ok && failedEvents.data.length===0 && failedEvidence.ok && failedEvidence.data.length===0,
+ 'Failed pause must roll back guard and explainability records');
+console.log('PASS: concurrent pause serialization and forced failure atomic rollback');
