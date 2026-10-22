@@ -406,8 +406,10 @@ assert(rollbackProgram.ok && rollbackProgram.data?.[0]?.program_version===1 &&
 console.log('PASS: atomic adaptation permissions, concurrent idempotency, stale CAS and forced rollback');
 
 const futureDate='2026-11-01';
+assert.match(process.env.POTOK_TEST_PREMIUM_BLOCK_ID ?? '',/^[0-9a-f-]{36}$/i,
+ 'Disposable Premium block UUID required for nutrition replan test');
 const futureDay=await request(serviceKey,'program_days','POST',{body:{
- block_id:env.POTOK_TEST_PREMIUM_BLOCK_ID,date:futureDate,targets:{calories:2100}
+ block_id:process.env.POTOK_TEST_PREMIUM_BLOCK_ID,date:futureDate,targets:{calories:2100}
 }});
 assert(futureDay.ok,'Could not seed future nutrition plan day: '+JSON.stringify(futureDay));
 const replanKey=crypto.randomUUID();
@@ -422,11 +424,11 @@ assert(replanParallel.every(x=>x.ok) &&
  replanParallel.filter(x=>x.data?.status==='already_applied').length===2,
  'Nutrition replan must be atomic/idempotent: '+JSON.stringify(replanParallel));
 const changedFuture=await request(serviceKey,'program_days','GET',{
- query:'?block_id=eq.'+env.POTOK_TEST_PREMIUM_BLOCK_ID+'&date=eq.'+futureDate+'&select=targets'});
+ query:'?block_id=eq.'+process.env.POTOK_TEST_PREMIUM_BLOCK_ID+'&date=eq.'+futureDate+'&select=targets'});
 assert(changedFuture.ok && changedFuture.data?.[0]?.targets?.calories===1600,
  'Future nutrition targets must derive from authoritative user goals');
 const unchangedPast=await request(serviceKey,'program_days','GET',{
- query:'?block_id=eq.'+env.POTOK_TEST_PREMIUM_BLOCK_ID+'&date=eq.2026-10-22&select=targets'});
+ query:'?block_id=eq.'+process.env.POTOK_TEST_PREMIUM_BLOCK_ID+'&date=eq.2026-10-22&select=targets'});
 assert(unchangedPast.ok && unchangedPast.data?.[0]?.targets?.calories===2100,
  'Past nutrition targets must remain unchanged');
 denied(await rpc(jwtB,'adapt_nutrition_program_atomic_v1',{...replanBody,p_mode:'maintain'}),
