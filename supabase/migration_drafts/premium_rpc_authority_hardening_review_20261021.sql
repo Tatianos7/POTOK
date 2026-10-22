@@ -44,9 +44,9 @@ GRANT EXECUTE ON FUNCTION public.start_purchase(uuid,text,text,text) TO service_
 GRANT EXECUTE ON FUNCTION public.restore_purchase(uuid,text,text,text) TO service_role;
 -- Production verified: get_program_explainability(uuid,integer) currently
 -- returns pe.* with no Premium gate; PUBLIC/anon/authenticated have EXECUTE.
--- Server-side fail-closed guard. SECURITY INVOKER preserves owner RLS.
--- Important: table SELECT and all alternate explainability readers must also
--- enforce can_explain; this RPC alone is not a complete Premium boundary.
+-- Server-side fail-closed guard. Direct table SELECT is revoked below;
+-- SECURITY DEFINER reads require explicit ownership + capability checks.
+-- Audit every alternate reader before deployment.
 CREATE OR REPLACE FUNCTION public.get_program_explainability(
   p_program_id uuid, p_version integer DEFAULT NULL
 )
@@ -67,14 +67,25 @@ BEGIN
   IF NOT coalesce((entitlement_flags->>'can_explain')::boolean,false) THEN
     RAISE EXCEPTION 'explainability capability required' USING ERRCODE='42501';
   END IF;
+  -- SECURITY DEFINER bypasses ordinary caller RLS: enforce ownership explicitly.
   RETURN QUERY
   SELECT pe.* FROM public.program_explainability pe
   WHERE pe.program_id = p_program_id
+    AND ((pe.program_type = 'nutrition' AND EXISTS (
+      SELECT 1 FROM public.nutrition_programs np
+      WHERE np.id = pe.program_id AND np.user_id = caller
+    )) OR (pe.program_type = 'training' AND EXISTS (
+      SELECT 1 FROM public.training_programs tp
+      WHERE tp.id = pe.program_id AND tp.user_id = caller
+    )))
     AND (p_version IS NULL OR pe.version = p_version)
   ORDER BY pe.created_at DESC;
 END $;
 REVOKE ALL ON FUNCTION public.get_program_explainability(uuid,integer)
 FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.get_program_explainability(uuid,integer)
-TO authenticated,service_role;
+TO authenticated;
+-- Direct PostgREST table access bypasses the RPC entitlement check.
+REVOKE SELECT ON TABLE public.program_explainability FROM PUBLIC,anon,authenticated;
+-- Privileged server writers must use a verified server-owned path.
 ROLLBACK;
