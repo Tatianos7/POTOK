@@ -64,3 +64,8 @@ Queried `information_schema.columns` and `information_schema.table_constraints` 
 - Required remediation: restrict explicit user IDs to the authenticated caller, verify existing trusted callers, and test anonymous, self, cross-user and fallback cases before changing the deployed RPC. Review EXECUTE grants and function security mode. This is a security fix, not a Premium feature change.
 - Read-only duplicate check on `program_versions` grouped by `program_id, program_type, version` returned **no duplicate groups**. The existing index on those columns is nonunique. A unique index, race tests and rollback checks are still necessary.
 - No cloud database changes were made in these checks.
+
+## Existing remediation and acceptance located (2026-10-22)
+- `supabase/migration_drafts/premium_rpc_authority_hardening_review_20261021.sql` already contains a **review-only** guarded replacement for `get_entitlements`: authenticated caller required, `coalesce(p_user_id, caller)`, mismatch rejected with SQLSTATE 42501, and proposed EXECUTE grant restricted to authenticated/service_role. It also guards `get_paywall_state`. Do not create a duplicate patch or apply this draft directly.
+- `scripts/contracts/supabase-auth-postgrest-acceptance.mjs` already exercises own/default entitlement reads, cross-account denial, anonymous denial, Free capability spoofing and paywall compatibility. It explicitly rejects production/staging URLs and requires disposable test credentials.
+- **Actionable next step:** validate the existing draft against all live call sites and run this existing acceptance suite on a disposable instance. The observed production function remains unpatched. The CI status of the newest documentation commit is not an authorization to deploy.
