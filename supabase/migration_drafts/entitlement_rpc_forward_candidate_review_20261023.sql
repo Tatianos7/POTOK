@@ -1,5 +1,5 @@
 -- REVIEW ONLY. Candidate forward migration; do not deploy without owner approval.
--- Service-role contract unresolved: authenticated-only execution inside function.
+-- Approved owner contract: authenticated own-account only; service_role denied.
 BEGIN;
 CREATE OR REPLACE FUNCTION public.get_entitlements(p_user_id uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
@@ -25,6 +25,6 @@ BEGIN
  END IF;
  RETURN jsonb_build_object('tier',row_ent.tier,'flags',row_ent.flags);
 END $$;
-REVOKE ALL ON FUNCTION public.get_entitlements(uuid) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.get_entitlements(uuid) TO authenticated,service_role;
+REVOKE ALL ON FUNCTION public.get_entitlements(uuid) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.get_entitlements(uuid) TO authenticated;
 ROLLBACK;
