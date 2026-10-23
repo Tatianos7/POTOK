@@ -45,7 +45,7 @@ SELECT set_config('request.jwt.claim.sub','cccccccc-cccc-4ccc-8ccc-cccccccccccc'
 SELECT set_config('request.jwt.claim.role','authenticated',true);
 SELECT public.get_entitlements('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')::text;
 ROLLBACK;`;
-assert.match(localPsql(crossAccountSql,'Legacy exposure reproduction failed'),/"tier"\\s*:\\s*"pro"/,
+assert.match(localPsql(crossAccountSql,'Legacy exposure reproduction failed'),/"tier"\s*:\s*"pro"/,
  'Legacy known-UUID cross-account read was not reproduced');
 const forwardFile='supabase/migration_drafts/entitlement_rpc_forward_candidate_review_20261023.sql';
 const forwardOriginal=readFileSync(forwardFile,'utf8');
