@@ -49,9 +49,9 @@ assert.match(localPsql(crossAccountSql,'Legacy exposure reproduction failed'),/"
  'Legacy known-UUID cross-account read was not reproduced');
 const forwardFile='supabase/migration_drafts/entitlement_rpc_forward_candidate_review_20261023.sql';
 const forwardOriginal=readFileSync(forwardFile,'utf8');
-assert(/^BEGIN;\\s*$/m.test(forwardOriginal)&&/^ROLLBACK;\\s*$/m.test(forwardOriginal),
+assert(/^BEGIN;\s*$/m.test(forwardOriginal)&&/^ROLLBACK;\s*$/m.test(forwardOriginal),
  'Forward candidate must retain review guard');
-localPsql(forwardOriginal.replace(/^ROLLBACK;\\s*$/m,'COMMIT;'),
+localPsql(forwardOriginal.replace(/^ROLLBACK;\s*$/m,'COMMIT;'),
  'Clean legacy-to-guarded forward migration failed');
 const guardedSql=`BEGIN;
 SET LOCAL ROLE authenticated;
