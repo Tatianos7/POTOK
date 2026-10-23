@@ -55,6 +55,27 @@ if(isolatedEntitlementRun.stderr)process.stderr.write(isolatedEntitlementRun.std
 assert.equal(isolatedEntitlementRun.status,0,'Exact isolated entitlement review SQL replay failed');
 console.log('PASS: exact isolated entitlement review SQL replay in disposable local Supabase');
 
+// Exercise exact forward -> rollback -> forward candidate SQL on localhost only.
+// Final forward replay restores the guarded behavior for Auth/PostgREST tests.
+const entitlementCandidates=[
+ 'supabase/migration_drafts/entitlement_rpc_forward_candidate_review_20261023.sql',
+ 'supabase/migration_drafts/entitlement_rpc_rollback_candidate_review_20261023.sql',
+ 'supabase/migration_drafts/entitlement_rpc_forward_candidate_review_20261023.sql'
+];
+for(const candidate of entitlementCandidates){
+ const source=readFileSync(candidate,'utf8');
+ assert(/^BEGIN;\s*$/m.test(source) && /^ROLLBACK;\s*$/m.test(source),
+  'Entitlement candidate must retain review transaction guard');
+ const executed=spawnSync('psql',args,{
+  input:source.replace(/^ROLLBACK;\s*$/m,'COMMIT;'),
+  encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024
+ });
+ if(executed.stdout)process.stdout.write(executed.stdout);
+ if(executed.stderr)process.stderr.write(executed.stderr);
+ assert.equal(executed.status,0,'Entitlement candidate failed: '+candidate);
+ console.log('PASS: disposable candidate replay '+candidate);
+}
+
 // Execute the exact pause review draft only in disposable localhost PostgreSQL.
 const pauseOriginal=readFileSync('supabase/migration_drafts/program_pause_atomic_review_20261022.sql','utf8');
 assert(/^BEGIN;\s*$/m.test(pauseOriginal) && /^ROLLBACK;\s*$/m.test(pauseOriginal),'Pause draft must remain rollback guarded');
