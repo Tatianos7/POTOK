@@ -44,8 +44,20 @@ const isolatedEntitlementFile='supabase/migration_drafts/entitlement_rpc_isolate
 const isolatedEntitlementOriginal=readFileSync(isolatedEntitlementFile,'utf8');
 assert(/^BEGIN;\s*$/m.test(isolatedEntitlementOriginal) && /^ROLLBACK;\s*$/m.test(isolatedEntitlementOriginal),
  'Isolated entitlement review must retain BEGIN/ROLLBACK');
-assert(!/\b(?:CREATE\s+OR\s+REPLACE\s+FUNCTION|GRANT\s+EXECUTE\s+ON\s+FUNCTION|REVOKE\s+ALL\s+ON\s+FUNCTION)\s+public\.(?!get_entitlements\b)/i.test(isolatedEntitlementOriginal),
- 'Isolated entitlement patch must not modify other RPCs');
+// The approved scope is exactly two RPCs: entitlement body/grants and paywall grants.
+// Never permit a paywall body rewrite or an unrelated RPC modification.
+const isolatedMutations=[...isolatedEntitlementOriginal.matchAll(/\b(CREATE\s+OR\s+REPLACE\s+FUNCTION|GRANT\s+EXECUTE\s+ON\s+FUNCTION|REVOKE\s+ALL\s+ON\s+FUNCTION)\s+public\.([a-z_]+)\s*\(/gi)];
+assert(isolatedMutations.length>=4,'Expected entitlement and paywall changes missing');
+for(const [,operation,fn] of isolatedMutations){
+ assert(fn==='get_entitlements'||fn==='get_paywall_state',
+  'Unapproved RPC modification: '+fn);
+ assert(fn!=='get_paywall_state'||!/^CREATE/i.test(operation),
+  'Paywall body modification is not approved');
+}
+assert(isolatedMutations.some(([,operation,fn])=>fn==='get_paywall_state'&&/^REVOKE/i.test(operation)),
+ 'Expected paywall REVOKE missing');
+assert(isolatedMutations.some(([,operation,fn])=>fn==='get_paywall_state'&&/^GRANT/i.test(operation)),
+ 'Expected paywall GRANT missing');
 const isolatedEntitlementRun=spawnSync('psql',args,{
  input:isolatedEntitlementOriginal.replace(/^ROLLBACK;\s*$/m,'COMMIT;'),
  encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024
