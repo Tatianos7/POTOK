@@ -12,6 +12,7 @@ on:
       - 'src/services/profileService.ts'
       - '.github/workflows/supabase-grants-review.yml'
       - 'scripts/contracts/supabase-grants-disposable.test.sql'
+      - 'scripts/contracts/entitlement-rpc-disposable.test.sql'
       - 'scripts/contracts/supabase-profile-upsert-disposable.test.sql'
       - 'scripts/contracts/supabase-rls-claims-disposable.test.sql'
   push:
@@ -93,3 +94,24 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/contracts/supabase-rls-claims-disposable.test.sql
+
+  entitlement-rpc-disposable:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolated entitlement RPC ownership acceptance
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/contracts/entitlement-rpc-disposable.test.sql
