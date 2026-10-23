@@ -96,6 +96,40 @@ if(entitlementPrivileges.stderr)process.stderr.write(entitlementPrivileges.stder
 assert.equal(entitlementPrivileges.status,0,'Approved entitlement RPC privilege assertions failed');
 console.log('PASS: entitlement RPC authenticated-only effective grants; anon and service_role denied');
 
+// Security-preserving recovery: deny everyone, then reapply guarded forward.
+const safeRecoveryFile='supabase/migration_drafts/entitlement_rpc_safe_recovery_review_20261023.sql';
+const safeRecoverySource=readFileSync(safeRecoveryFile,'utf8');
+assert(/^BEGIN;\s*$/m.test(safeRecoverySource) && /^ROLLBACK;\s*$/m.test(safeRecoverySource),
+ 'Safe recovery must remain rollback-guarded');
+const recoveryRun=spawnSync('psql',args,{
+ input:safeRecoverySource.replace(/^ROLLBACK;\s*$/m,'COMMIT;'),
+ encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024
+});
+if(recoveryRun.stderr)process.stderr.write(recoveryRun.stderr);
+assert.equal(recoveryRun.status,0,'Fail-closed recovery replay failed');
+const recoveryAssertions=spawnSync('psql',args,{
+ input:`DO $potok_recovery$
+BEGIN
+ IF has_function_privilege('authenticated','public.get_entitlements(uuid)','EXECUTE')
+ OR has_function_privilege('anon','public.get_entitlements(uuid)','EXECUTE')
+ OR has_function_privilege('service_role','public.get_entitlements(uuid)','EXECUTE') THEN
+  RAISE EXCEPTION 'Fail-closed recovery did not revoke execute';
+ END IF;
+END $potok_recovery$;`,
+ encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024
+});
+if(recoveryAssertions.stderr)process.stderr.write(recoveryAssertions.stderr);
+assert.equal(recoveryAssertions.status,0,'Fail-closed recovery grant assertions failed');
+console.log('PASS: entitlement safe recovery denies all public RPC execution');
+const recoveryForward=readFileSync(entitlementCandidates[0],'utf8');
+const restoreRun=spawnSync('psql',args,{
+ input:recoveryForward.replace(/^ROLLBACK;\s*$/m,'COMMIT;'),
+ encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024
+});
+if(restoreRun.stderr)process.stderr.write(restoreRun.stderr);
+assert.equal(restoreRun.status,0,'Guarded forward restoration after recovery failed');
+console.log('PASS: guarded entitlement forward restored after safe recovery');
+
 // Execute the exact pause review draft only in disposable localhost PostgreSQL.
 const pauseOriginal=readFileSync('supabase/migration_drafts/program_pause_atomic_review_20261022.sql','utf8');
 assert(/^BEGIN;\s*$/m.test(pauseOriginal) && /^ROLLBACK;\s*$/m.test(pauseOriginal),'Pause draft must remain rollback guarded');
