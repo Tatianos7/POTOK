@@ -13,6 +13,7 @@ on:
       - '.github/workflows/supabase-grants-review.yml'
       - 'scripts/contracts/supabase-grants-disposable.test.sql'
       - 'scripts/contracts/entitlement-rpc-disposable.test.sql'
+      - 'supabase/migration_drafts/entitlement_rpc_isolated_review_20261023.sql'
       - 'scripts/contracts/supabase-profile-upsert-disposable.test.sql'
       - 'scripts/contracts/supabase-rls-claims-disposable.test.sql'
   push:
