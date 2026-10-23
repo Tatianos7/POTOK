@@ -27,4 +27,8 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION public.get_entitlements(uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.get_entitlements(uuid) TO authenticated;
+-- Owner-approved: paywall endpoint matches entitlement authenticated-only grants.
+REVOKE ALL ON FUNCTION public.get_paywall_state(text,uuid)
+ FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.get_paywall_state(text,uuid) TO authenticated;
 ROLLBACK;
