@@ -4,6 +4,10 @@ on:
     paths:
       - 'scripts/contracts/supabase-public-grants-review.test.mjs'
       - 'scripts/contracts/premium-rpc-callsite-inventory.mjs'
+      - 'scripts/contracts/premium-entitlement-rpc-review-guard.mjs'
+      - 'src/services/entitlementService.ts'
+      - 'supabase/migration_drafts/premium_rpc_authority_hardening_review_20261021.sql'
+      - 'scripts/contracts/supabase-auth-postgrest-acceptance.mjs'
       - 'supabase/migration_drafts/public_api_privileges_hardening_review_20261021.sql'
       - 'src/services/profileService.ts'
       - '.github/workflows/supabase-grants-review.yml'
@@ -20,6 +24,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check static review contract
         run: node --test scripts/contracts/supabase-public-grants-review.test.mjs
+      - name: Verify entitlement RPC review guard
+        run: node --test scripts/contracts/premium-entitlement-rpc-review-guard.mjs
       - name: Inventory actual Premium RPC and profile call sites
         run: node scripts/contracts/premium-rpc-callsite-inventory.mjs
       - name: Upload read-only call-site inventory
