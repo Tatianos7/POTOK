@@ -79,11 +79,14 @@ for(const candidate of entitlementCandidates){
 // Assert final candidate grants match the owner-approved authenticated-only policy.
 const entitlementPrivilegeSql=`DO $potok_entitlement_privileges$
 BEGIN
- IF NOT has_function_privilege('authenticated','public.get_entitlements(uuid)','EXECUTE') THEN
+ IF NOT has_function_privilege('authenticated','public.get_entitlements(uuid)','EXECUTE')
+ OR NOT has_function_privilege('authenticated','public.get_paywall_state(text,uuid)','EXECUTE') THEN
   RAISE EXCEPTION 'authenticated entitlement execute missing';
  END IF;
  IF has_function_privilege('anon','public.get_entitlements(uuid)','EXECUTE')
-    OR has_function_privilege('service_role','public.get_entitlements(uuid)','EXECUTE') THEN
+    OR has_function_privilege('service_role','public.get_entitlements(uuid)','EXECUTE')
+ OR has_function_privilege('anon','public.get_paywall_state(text,uuid)','EXECUTE')
+ OR has_function_privilege('service_role','public.get_paywall_state(text,uuid)','EXECUTE') THEN
   RAISE EXCEPTION 'anon or service_role entitlement execute unexpectedly granted';
  END IF;
 END $potok_entitlement_privileges$;`;
@@ -111,8 +114,11 @@ const recoveryAssertions=spawnSync('psql',args,{
  input:`DO $potok_recovery$
 BEGIN
  IF has_function_privilege('authenticated','public.get_entitlements(uuid)','EXECUTE')
+ OR has_function_privilege('authenticated','public.get_paywall_state(text,uuid)','EXECUTE')
  OR has_function_privilege('anon','public.get_entitlements(uuid)','EXECUTE')
- OR has_function_privilege('service_role','public.get_entitlements(uuid)','EXECUTE') THEN
+ OR has_function_privilege('service_role','public.get_entitlements(uuid)','EXECUTE')
+ OR has_function_privilege('anon','public.get_paywall_state(text,uuid)','EXECUTE')
+ OR has_function_privilege('service_role','public.get_paywall_state(text,uuid)','EXECUTE') THEN
   RAISE EXCEPTION 'Fail-closed recovery did not revoke execute';
  END IF;
 END $potok_recovery$;`,
