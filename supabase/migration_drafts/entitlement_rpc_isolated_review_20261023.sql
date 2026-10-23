@@ -25,6 +25,6 @@ BEGIN
   END IF;
   RETURN jsonb_build_object('tier',row_ent.tier,'flags',row_ent.flags);
 END $$;
-REVOKE ALL ON FUNCTION public.get_entitlements(uuid) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.get_entitlements(uuid) TO authenticated,service_role;
+REVOKE ALL ON FUNCTION public.get_entitlements(uuid) FROM PUBLIC,anon,authenticated,service_role;
+GRANT EXECUTE ON FUNCTION public.get_entitlements(uuid) TO authenticated;
 ROLLBACK;
