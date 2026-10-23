@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 
 // Independent production-legacy -> guarded forward test BEFORE broad RPC replay.
 // Only synthetic UUIDs and disposable localhost PostgreSQL are used.
-const legacyFixture=\`CREATE OR REPLACE FUNCTION public.get_entitlements(p_user_id uuid DEFAULT NULL)
+const legacyFixture=`CREATE OR REPLACE FUNCTION public.get_entitlements(p_user_id uuid DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public','pg_temp'
 AS $legacy$
 DECLARE resolved_user uuid; row_ent public.entitlements;
@@ -28,7 +28,7 @@ REVOKE ALL ON FUNCTION public.get_paywall_state(text,uuid) FROM PUBLIC,anon,auth
 GRANT EXECUTE ON FUNCTION public.get_paywall_state(text,uuid) TO authenticated;
 INSERT INTO public.entitlements(id,user_id,tier,flags)
 VALUES('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','pro','{"can_adapt":true}'::jsonb)
-ON CONFLICT(user_id) DO UPDATE SET tier=EXCLUDED.tier,flags=EXCLUDED.flags;\`;
+ON CONFLICT(user_id) DO UPDATE SET tier=EXCLUDED.tier,flags=EXCLUDED.flags;`;
 function localPsql(input,label){
  const result=spawnSync('psql',['-h','127.0.0.1','-p','54322','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1'],{
   input,encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024
@@ -38,12 +38,12 @@ function localPsql(input,label){
  return result.stdout;
 }
 localPsql(legacyFixture,'Clean legacy fixture failed');
-const crossAccountSql=\`BEGIN;
+const crossAccountSql=`BEGIN;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','cccccccc-cccc-4ccc-8ccc-cccccccccccc',true);
 SELECT set_config('request.jwt.claim.role','authenticated',true);
 SELECT public.get_entitlements('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb')::text;
-ROLLBACK;\`;
+ROLLBACK;`;
 assert.match(localPsql(crossAccountSql,'Legacy exposure reproduction failed'),/"tier"\\s*:\\s*"pro"/,
  'Legacy known-UUID cross-account read was not reproduced');
 const forwardFile='supabase/migration_drafts/entitlement_rpc_forward_candidate_review_20261023.sql';
@@ -52,7 +52,7 @@ assert(/^BEGIN;\\s*$/m.test(forwardOriginal)&&/^ROLLBACK;\\s*$/m.test(forwardOri
  'Forward candidate must retain review guard');
 localPsql(forwardOriginal.replace(/^ROLLBACK;\\s*$/m,'COMMIT;'),
  'Clean legacy-to-guarded forward migration failed');
-const guardedSql=\`BEGIN;
+const guardedSql=`BEGIN;
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub','cccccccc-cccc-4ccc-8ccc-cccccccccccc',true);
 SELECT set_config('request.jwt.claim.role','authenticated',true);
@@ -72,7 +72,7 @@ BEGIN
  EXCEPTION WHEN insufficient_privilege THEN NULL;
  END;
 END $check$;
-ROLLBACK;\`;
+ROLLBACK;`;
 localPsql(guardedSql,'Guarded clean-baseline acceptance failed');
 console.log('PASS: independent legacy known-UUID exposure reproduced then denied by exact forward candidate');
 
