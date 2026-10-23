@@ -76,6 +76,26 @@ for(const candidate of entitlementCandidates){
  console.log('PASS: disposable candidate replay '+candidate);
 }
 
+// Assert final candidate grants match the owner-approved authenticated-only policy.
+const entitlementPrivilegeSql=`DO $potok_entitlement_privileges$
+BEGIN
+ IF NOT has_function_privilege('authenticated','public.get_entitlements(uuid)','EXECUTE') THEN
+  RAISE EXCEPTION 'authenticated entitlement execute missing';
+ END IF;
+ IF has_function_privilege('anon','public.get_entitlements(uuid)','EXECUTE')
+    OR has_function_privilege('service_role','public.get_entitlements(uuid)','EXECUTE') THEN
+  RAISE EXCEPTION 'anon or service_role entitlement execute unexpectedly granted';
+ END IF;
+END $potok_entitlement_privileges$;`;
+const entitlementPrivileges=spawnSync('psql',args,{
+ input:entitlementPrivilegeSql,encoding:'utf8',
+ env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024
+});
+if(entitlementPrivileges.stdout)process.stdout.write(entitlementPrivileges.stdout);
+if(entitlementPrivileges.stderr)process.stderr.write(entitlementPrivileges.stderr);
+assert.equal(entitlementPrivileges.status,0,'Approved entitlement RPC privilege assertions failed');
+console.log('PASS: entitlement RPC authenticated-only effective grants; anon and service_role denied');
+
 // Execute the exact pause review draft only in disposable localhost PostgreSQL.
 const pauseOriginal=readFileSync('supabase/migration_drafts/program_pause_atomic_review_20261022.sql','utf8');
 assert(/^BEGIN;\s*$/m.test(pauseOriginal) && /^ROLLBACK;\s*$/m.test(pauseOriginal),'Pause draft must remain rollback guarded');
