@@ -38,6 +38,23 @@ if(rpcReplay.stderr) process.stderr.write(rpcReplay.stderr);
 assert.equal(rpcReplay.status,0,'Exact Premium RPC review SQL replay failed');
 console.log('PASS: exact Premium RPC review SQL replay in disposable local Supabase');
 
+// Replay the isolated entitlement patch after the broader review draft. The
+// following real Auth/PostgREST acceptance therefore exercises this exact file.
+const isolatedEntitlementFile='supabase/migration_drafts/entitlement_rpc_isolated_review_20261023.sql';
+const isolatedEntitlementOriginal=readFileSync(isolatedEntitlementFile,'utf8');
+assert(/^BEGIN;\s*$/m.test(isolatedEntitlementOriginal) && /^ROLLBACK;\s*$/m.test(isolatedEntitlementOriginal),
+ 'Isolated entitlement review must retain BEGIN/ROLLBACK');
+assert(!/\b(?:CREATE\s+OR\s+REPLACE\s+FUNCTION|GRANT\s+EXECUTE\s+ON\s+FUNCTION|REVOKE\s+ALL\s+ON\s+FUNCTION)\s+public\.(?!get_entitlements\b)/i.test(isolatedEntitlementOriginal),
+ 'Isolated entitlement patch must not modify other RPCs');
+const isolatedEntitlementRun=spawnSync('psql',args,{
+ input:isolatedEntitlementOriginal.replace(/^ROLLBACK;\s*$/m,'COMMIT;'),
+ encoding:'utf8',env:{...process.env,PGPASSWORD:'postgres'},maxBuffer:4*1024*1024
+});
+if(isolatedEntitlementRun.stdout)process.stdout.write(isolatedEntitlementRun.stdout);
+if(isolatedEntitlementRun.stderr)process.stderr.write(isolatedEntitlementRun.stderr);
+assert.equal(isolatedEntitlementRun.status,0,'Exact isolated entitlement review SQL replay failed');
+console.log('PASS: exact isolated entitlement review SQL replay in disposable local Supabase');
+
 // Execute the exact pause review draft only in disposable localhost PostgreSQL.
 const pauseOriginal=readFileSync('supabase/migration_drafts/program_pause_atomic_review_20261022.sql','utf8');
 assert(/^BEGIN;\s*$/m.test(pauseOriginal) && /^ROLLBACK;\s*$/m.test(pauseOriginal),'Pause draft must remain rollback guarded');
