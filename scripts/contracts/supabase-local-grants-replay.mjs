@@ -26,6 +26,7 @@ REVOKE ALL ON FUNCTION public.get_entitlements(uuid) FROM PUBLIC,anon,authentica
 GRANT EXECUTE ON FUNCTION public.get_entitlements(uuid) TO authenticated;
 REVOKE ALL ON FUNCTION public.get_paywall_state(text,uuid) FROM PUBLIC,anon,authenticated,service_role;
 GRANT EXECUTE ON FUNCTION public.get_paywall_state(text,uuid) TO authenticated;
+INSERT INTO auth.users(id,instance_id,aud,role,email,encrypted_password,created_at,updated_at) VALUES ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','00000000-0000-0000-0000-000000000000','authenticated','authenticated','legacy-entitlement-fixture@example.invalid','',now(),now()) ON CONFLICT(id) DO NOTHING;
 INSERT INTO public.entitlements(id,user_id,tier,flags)
 VALUES('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb','pro','{"can_adapt":true}'::jsonb)
 ON CONFLICT(user_id) DO UPDATE SET tier=EXCLUDED.tier,flags=EXCLUDED.flags;`;
