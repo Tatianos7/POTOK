@@ -1,0 +1,28 @@
+-- REVIEW ONLY: POTOK Supabase public privilege hardening.
+-- NOT APPLIED. Requires dependency audit, disposable acceptance and owner approval.
+-- The old broad privileges on public tables are not a safe baseline.
+-- This migration intentionally does not contain an executable REVOKE until
+-- application read/write dependencies and effective RPC owners are inventoried.
+--
+-- Confirmed on main POTOK project, 2026-10-21:
+-- 81 public tables, all RLS enabled; 63 tables expose TRUNCATE to anon or authenticated.
+-- billing_events, subscriptions, entitlements: anon/authenticated have
+-- INSERT/UPDATE/DELETE/TRUNCATE/TRIGGER etc. Owner ALL policies.
+-- user_profiles: authenticated can UPDATE has_premium and is_admin.
+--
+-- Remediation design (requires integration tests):
+-- 1. Revoke TRUNCATE, TRIGGER, REFERENCES, MAINTAIN from anon and authenticated
+--    on every *reviewed* public table; do not blanket change without dependency check.
+-- 2. Revoke client INSERT/UPDATE/DELETE on billing_events, subscriptions,
+--    entitlements; keep necessary owner SELECT only if required by client.
+-- 3. For user_profiles, revoke table-level UPDATE then explicitly grant UPDATE
+--    on reviewed profile-editable columns only. Do not grant has_premium/is_admin.
+--    Account for column grants, inheritance, PUBLIC and default privileges.
+-- 4. Replace owner ALL policies for billing tables with read-only authenticated
+--    policies where needed. Privileged writes via verified server-side authority.
+-- 5. Add exact-grant assertions, role impersonation negative tests,
+--    full Supabase Auth/PostgREST smoke, and rollback before staging apply.
+-- 6. On new CREATE TABLE in public, explicitly GRANT minimum operations and
+--    enable RLS/policies in the same migration. Never blindly copy email grants.
+--
+-- DO NOT RUN THIS FILE AS A MIGRATION: documentation only.

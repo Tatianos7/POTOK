@@ -1,0 +1,34 @@
+name: POTOK Premium write-path inventory
+on:
+  push:
+    branches: [audit/supabase-public-grants-20261021]
+    paths:
+      - 'scripts/contracts/premium-write-path-inventory.mjs'
+      - 'scripts/contracts/premium-client-authority-guard.mjs'
+      - 'src/**'
+      - '.github/workflows/premium-write-path-inventory.yml'
+  pull_request:
+    paths:
+      - 'scripts/contracts/premium-write-path-inventory.mjs'
+      - 'scripts/contracts/premium-client-authority-guard.mjs'
+      - 'src/**'
+      - '.github/workflows/premium-write-path-inventory.yml'
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Block new client authority writes
+        run: node scripts/contracts/premium-client-authority-guard.mjs
+      - name: Inventory checked-out source
+        run: |
+          node scripts/contracts/premium-write-path-inventory.mjs > /tmp/premium-writers.json
+          node -e "const x=require('/tmp/premium-writers.json'); console.log(JSON.stringify({filesWithMatches:x.filesWithMatches,candidateWriteReferences:x.candidateWriteReferences,byFile:[...new Set(x.results.filter(r=>r.classification==='candidate_write').map(r=>r.file))]},null,2))"
+      - name: Upload full inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: premium-write-path-inventory
+          path: /tmp/premium-writers.json
+          retention-days: 7

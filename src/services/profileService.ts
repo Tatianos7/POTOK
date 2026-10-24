@@ -436,9 +436,7 @@ class ProfileService {
       if (!pending) return;
       try {
         const upsertByColumn = async (column: 'id_user' | 'user_id') =>
-          await client
-            .from('user_profiles')
-            .upsert({ [column]: sessionUserId, ...pending.ordinary }, { onConflict: column });
+          this.writeOrdinaryProfile(sessionUserId, column, pending.ordinary);
         let { error } = await upsertByColumn(primaryUserIdColumn);
         if (error && this.isProfileSchemaError(error)) {
           const fallbackColumn = this.getAlternateUserIdColumn(primaryUserIdColumn);
@@ -548,6 +546,28 @@ class ProfileService {
     return defaultProfile;
   }
 
+  private async writeOrdinaryProfile(
+    userId: string,
+    column: 'id_user' | 'user_id',
+    ordinary: OrdinaryProfileWritePayload,
+  ) {
+    if (!supabase) throw new Error('Supabase не инициализирован');
+    const table = supabase.from('user_profiles');
+    const existing = await table.select(column).eq(column, userId).maybeSingle();
+    if (existing.error) return { error: existing.error };
+    if (existing.data) {
+      const updated = await table.update(ordinary).eq(column, userId);
+      return { error: updated.error };
+    }
+    const inserted = await table.insert({ [column]: userId, ...ordinary });
+    if (inserted.error?.code === '23505') {
+      // Concurrent creation: the other request won; update only ordinary fields.
+      const updated = await table.update(ordinary).eq(column, userId);
+      return { error: updated.error };
+    }
+    return { error: inserted.error };
+  }
+
   // Сохранить/обновить профиль пользователя
   async saveProfile(userId: string, profile: Partial<ProfileDetails>): Promise<void> {
     let sessionUserId = userId;
@@ -575,18 +595,9 @@ class ProfileService {
 
     // Try to save to Supabase
     if (supabase) {
-      const client = supabase;
       try {
-        const upsertByColumn = async (column: 'id_user' | 'user_id') => {
-          return await client
-            .from('user_profiles')
-            .upsert({
-              [column]: sessionUserId,
-              ...ordinaryPayload,
-            }, {
-              onConflict: column,
-            });
-        };
+        const upsertByColumn = async (column: 'id_user' | 'user_id') =>
+          this.writeOrdinaryProfile(sessionUserId, column, ordinaryPayload);
         let { error } = await upsertByColumn(primaryUserIdColumn);
         if (error && this.isProfileSchemaError(error)) {
           const fallbackColumn = this.getAlternateUserIdColumn(primaryUserIdColumn);

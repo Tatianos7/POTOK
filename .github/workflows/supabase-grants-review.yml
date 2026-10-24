@@ -1,0 +1,118 @@
+name: Supabase grants review guards
+on:
+  pull_request:
+    paths:
+      - 'scripts/contracts/supabase-public-grants-review.test.mjs'
+      - 'scripts/contracts/premium-rpc-callsite-inventory.mjs'
+      - 'scripts/contracts/premium-entitlement-rpc-review-guard.mjs'
+      - 'src/services/entitlementService.ts'
+      - 'supabase/migration_drafts/premium_rpc_authority_hardening_review_20261021.sql'
+      - 'scripts/contracts/supabase-auth-postgrest-acceptance.mjs'
+      - 'supabase/migration_drafts/public_api_privileges_hardening_review_20261021.sql'
+      - 'src/services/profileService.ts'
+      - '.github/workflows/supabase-grants-review.yml'
+      - 'scripts/contracts/supabase-grants-disposable.test.sql'
+      - 'scripts/contracts/entitlement-rpc-disposable.test.sql'
+      - 'supabase/migration_drafts/entitlement_rpc_isolated_review_20261023.sql'
+      - 'scripts/contracts/supabase-profile-upsert-disposable.test.sql'
+      - 'scripts/contracts/supabase-rls-claims-disposable.test.sql'
+  push:
+    branches:
+      - audit/supabase-public-grants-20261021
+jobs:
+  static-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check static review contract
+        run: node --test scripts/contracts/supabase-public-grants-review.test.mjs
+      - name: Verify entitlement RPC review guard
+        run: node --test scripts/contracts/premium-entitlement-rpc-review-guard.mjs
+      - name: Inventory actual Premium RPC and profile call sites
+        run: node scripts/contracts/premium-rpc-callsite-inventory.mjs
+      - name: Upload read-only call-site inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: premium-rpc-callsite-inventory
+          path: premium-rpc-callsite-inventory.json
+  postgres-disposable:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: PostgreSQL isolated grant contract
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/contracts/supabase-grants-disposable.test.sql
+  profile-upsert-disposable:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Profile upsert and privilege acceptance
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/contracts/supabase-profile-upsert-disposable.test.sql
+  rls-claims-disposable:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolated RLS and JWT claim simulation
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/contracts/supabase-rls-claims-disposable.test.sql
+
+  entitlement-rpc-disposable:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolated entitlement RPC ownership acceptance
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/contracts/entitlement-rpc-disposable.test.sql

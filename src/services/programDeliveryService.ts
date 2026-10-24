@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { entitlementService } from './entitlementService';
-import { profileService } from './profileService';
+import { adminAccessService } from './adminAccessService';
 import { programGenerationService } from './programGenerationService';
 import type { ProgramExplainabilityDTO } from '../types/explainability';
 import type { ProgramMyPlanDTO, ProgramPhaseWeekDTO, ProgramTodayDTO, ProgramTier, ProgramWhyDTO } from '../types/programDelivery';
@@ -38,11 +38,16 @@ class ProgramDeliveryService {
     return data.user.id;
   }
 
-  private async resolveTier(userId: string, override?: ProgramTier): Promise<ProgramTier> {
-    if (override) return override;
-    const profile = await profileService.getProfile(userId);
-    if (profile?.is_admin) return 'coach';
-    if (profile?.has_premium) return 'pro';
+  private async resolveTier(userId: string, _override?: ProgramTier): Promise<ProgramTier> {
+    // Caller-provided tier and legacy profile booleans are not trusted authority.
+    // Preserve the existing API signature for compatibility, but never grant access from override.
+    const capabilities = await adminAccessService.getVerifiedCurrentUserCapabilities(userId);
+    if (capabilities.adminVerified && capabilities.admin) return 'coach';
+    if (capabilities.premiumVerified && capabilities.premium) {
+      const entitlements = await entitlementService.getEntitlements(userId);
+      if (entitlements?.tier === 'vision_pro') return 'vision_pro';
+      return 'pro';
+    }
     return 'free';
   }
 
@@ -103,18 +108,32 @@ class ProgramDeliveryService {
 
   async getProgramDayDetails(programId: string, date: string) {
     if (!supabase) throw new Error('Supabase не инициализирован');
+    // Cache is scoped to the verified current account, not only the program/date.
+    const userId = await this.getSessionUserId();
+    const key = this.cacheKey('day', `${userId}_${programId}_${date}`);
     try {
       const { data, error } = await supabase.rpc('get_program_day_details', {
         p_program_id: programId,
         p_date: date,
       });
       if (error) throw error;
-      localStorage.setItem(this.cacheKey('day', `${programId}_${date}`), JSON.stringify(data));
+      // A session switch while the RPC was in flight must not populate another account's cache.
+      await this.getSessionUserId(userId);
+      localStorage.setItem(key, JSON.stringify(data));
       return data as ProgramTodayDTO;
-    } catch (err: any) {
-      const cached = localStorage.getItem(this.cacheKey('day', `${programId}_${date}`));
+    } catch (err: unknown) {
+      // Never treat an authorization or server rejection as permission to serve cached data.
+      const message = err instanceof Error ? err.message : '';
+      const isNetworkFailure = /failed to fetch|networkerror|network request failed|err_network|err_name_not_resolved/i.test(message);
+      if (!isNetworkFailure) throw err;
+      await this.getSessionUserId(userId);
+      const cached = localStorage.getItem(key);
       if (cached) {
-        return JSON.parse(cached) as ProgramTodayDTO;
+        try {
+          return JSON.parse(cached) as ProgramTodayDTO;
+        } catch {
+          localStorage.removeItem(key);
+        }
       }
       throw err;
     }
@@ -125,14 +144,9 @@ class ProgramDeliveryService {
     const userId = await this.getSessionUserId();
     const canExplain = await entitlementService.canExplain(userId);
     if (!canExplain) {
-      const { data, error } = await supabase.rpc('get_program_explainability', {
-        p_program_id: programId,
-        p_version: version ?? null,
-      });
-      if (error) throw error;
-      return (data as ProgramWhyDTO[]).map((row) => ({
-        decisionRef: (row as any).decision_ref ?? row.decisionRef,
-      }));
+      // Never fetch premium explainability details and redact them client-side.
+      // The server RPC must independently enforce can_explain before rollout.
+      return [] as ProgramWhyDTO[];
     }
     const { data, error } = await supabase.rpc('get_program_explainability', {
       p_program_id: programId,
@@ -222,39 +236,12 @@ class ProgramDeliveryService {
 
   async pauseProgram(programId: string, programType: ProgramType, reason: string) {
     if (!supabase) throw new Error('Supabase не инициализирован');
-    await supabase
-      .from(programType === 'nutrition' ? 'nutrition_programs' : 'training_programs')
-      .update({ status: 'paused' })
-      .eq('id', programId);
-
-    await supabase.from('program_guard_events').insert({
-      program_id: programId,
-      program_type: programType,
-      risk_level: 'caution',
-      flags: ['manual_pause'],
-      blocked_actions: ['program_delivery'],
+    const { error } = await supabase.rpc('pause_program_atomic', {
+      p_program_id: programId,
+      p_program_type: programType,
+      p_reason: reason,
     });
-
-    const { data: program } = await supabase
-      .from(programType === 'nutrition' ? 'nutrition_programs' : 'training_programs')
-      .select('program_version,knowledge_version_ref')
-      .eq('id', programId)
-      .maybeSingle();
-
-    await supabase.from('program_explainability').insert({
-      program_id: programId,
-      program_type: programType,
-      version: Number(program?.program_version ?? 1),
-      decision_ref: 'why_paused',
-      knowledge_refs: program?.knowledge_version_ref ?? {},
-      confidence: (program?.knowledge_version_ref as any)?.effective_confidence ?? null,
-      guard_notes: {
-        reason_code: 'manual_pause',
-        diff_summary: { status: 'paused' },
-        safety_notes: { reason },
-      },
-    });
-
+    if (error) throw error;
   }
 
   async resumeProgram(programId: string, programType: ProgramType) {
