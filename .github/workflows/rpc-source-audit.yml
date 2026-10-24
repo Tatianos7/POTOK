@@ -1,0 +1,24 @@
+name: Complete RPC source inventory
+on:
+  pull_request:
+    paths:
+      - 'scripts/contracts/rpc-source-inventory*'
+      - '.github/workflows/rpc-source-audit.yml'
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: node --test scripts/contracts/rpc-source-inventory.test.mjs
+      - run: node scripts/contracts/rpc-source-inventory.mjs HEAD /tmp/rpc-source-inventory.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rpc-source-inventory
+          path: /tmp/rpc-source-inventory.json
