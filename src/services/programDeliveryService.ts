@@ -33,7 +33,7 @@ class ProgramDeliveryService {
       throw new Error('Пользователь не авторизован');
     }
     if (userId && userId !== data.user.id) {
-      console.warn('[programDeliveryService] Передан userId не совпадает с сессией');
+      throw new Error('Пользователь изменился. Повторите действие.');
     }
     return data.user.id;
   }
