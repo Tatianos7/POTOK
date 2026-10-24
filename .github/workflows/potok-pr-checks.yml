@@ -41,6 +41,11 @@ jobs:
       - name: Diary contract tests
         run: npm run test:diary
 
+      - name: Account isolation and historical snapshot regressions
+        run: |
+          node --test scripts/contracts/program-day-cache-account-isolation.test.mjs \
+            scripts/contracts/food-import-snapshot-preservation.test.mjs
+
       # Nutrition Integrity V1 lives in an unmerged Draft PR.
       # Once included in a checked-out PR, run its isolated pure tests too.
       - name: Nutrition Integrity V1 contract tests when present
