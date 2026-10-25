@@ -106,5 +106,15 @@ try{
   await assert.rejects(apply(),/server purchase capability changed/);
   assert.equal((await rows("SELECT has_table_privilege('authenticated','public.entitlements','UPDATE') AS allowed"))[0].allowed,true);
  });
+ await test('a broad extra SELECT policy rejects the baseline before changes',async()=>{
+  await exec('SET ROLE postgres;CREATE POLICY broad_read ON public.entitlements FOR SELECT USING(true);RESET ROLE;');
+  await assert.rejects(apply(),/Finance owner policy drift/);
+  assert.equal((await rows("SELECT has_table_privilege('authenticated','public.entitlements','UPDATE') AS allowed"))[0].allowed,true);
+ });
+ await test('missing unique entitlement owner index rejects the baseline before changes',async()=>{
+  await exec('DROP INDEX public.entitlements_user_idx;');
+  await assert.rejects(apply(),/Expected unique entitlement user index/);
+  assert.equal((await rows("SELECT has_table_privilege('authenticated','public.entitlements','UPDATE') AS allowed"))[0].allowed,true);
+ });
  console.log(`PREMIUM_AUTHORITY_SQL_OK: ${passed} cases; public source fixture only`);
 }finally{embedded?await db.close():await db.end();}

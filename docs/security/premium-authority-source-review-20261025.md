@@ -33,7 +33,8 @@ activation is unchanged and unauthorized by this review.
 ## Narrow candidate
 
 `premium_finance_authority_review_v1.sql` requires PostgreSQL 17, postgres actor,
-expected finance table ownership/RLS and exact public legacy RPC body hashes.
+expected finance table ownership/RLS, owner policy semantics, unique entitlement
+owner index and exact public legacy RPC body hashes.
 Unknown function bodies abort before privilege changes. It is deliberately a
 one-time source-baseline candidate: reapplying after the body has changed rejects
 the baseline rather than silently accepting unreviewed drift.
@@ -65,14 +66,15 @@ anonymous API role and missing identity are denied.
 
 ## Acceptance
 
-Ten embedded PostgreSQL 17.5 cases pass: source exploit reproductions; data,
+Twelve embedded PostgreSQL 17.5 cases pass: source exploit reproductions; data,
 policies, other function bodies, own reads and server DML preservation; column
 write revocation; own free/paid/fallback/paywall DTOs; cross-account denial;
 missing role/identity and user-metadata manipulation; endpoint role boundaries;
 unknown-body and inherited-grant rollback; full review-wrapper rollback; and
-service capability inherited only from PUBLIC aborting safely.
+service capability inherited only from PUBLIC aborting safely, plus broad extra
+policy and missing unique owner index rejection before changes.
 
-Native PostgreSQL 17 repeats the ten cases. A separate real CLI 2.122.0 local
+Native PostgreSQL 17 repeats the twelve cases. A separate real CLI 2.122.0 local
 Auth/Mailpit/PostgREST job first reruns the prior measurement-photo API acceptance
 after extracting its unchanged Auth helpers into local-auth.mjs. It then obtains
 two additional real OTP sessions and reproduces own upgrade, foreign disclosure

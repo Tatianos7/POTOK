@@ -15,7 +15,26 @@ BEGIN
       AND c.relowner='postgres'::regrole AND c.relrowsecurity) THEN
       RAISE EXCEPTION 'Finance table owner/type/RLS drift: %',t;
     END IF;
+    IF NOT EXISTS(SELECT FROM pg_attribute WHERE attrelid=to_regclass('public.'||t)
+      AND attname='user_id' AND atttypid='uuid'::regtype AND attnotnull AND NOT attisdropped) THEN
+      RAISE EXCEPTION 'Finance owner column drift: %',t;
+    END IF;
+    IF (SELECT count(*) FROM pg_policy WHERE polrelid=to_regclass('public.'||t))<>1
+      OR NOT EXISTS(SELECT FROM pg_policy WHERE polrelid=to_regclass('public.'||t)
+        AND polcmd='*' AND polpermissive
+        AND (polroles=ARRAY[0::oid] OR polroles=ARRAY['authenticated'::regrole::oid])
+        AND regexp_replace(pg_get_expr(polqual,polrelid),'[[:space:]()]','','g')='auth.uid=user_id'
+        AND regexp_replace(pg_get_expr(polwithcheck,polrelid),'[[:space:]()]','','g')='auth.uid=user_id') THEN
+      RAISE EXCEPTION 'Finance owner policy drift: %',t;
+    END IF;
   END LOOP;
+  IF NOT EXISTS(SELECT FROM pg_index i JOIN pg_attribute a
+    ON a.attrelid=i.indrelid AND a.attname='user_id' AND a.attnum=i.indkey[0]
+    WHERE i.indrelid='public.entitlements'::regclass AND i.indisunique
+      AND i.indisvalid AND i.indisready AND i.indnkeyatts=1
+      AND i.indexprs IS NULL AND i.indpred IS NULL) THEN
+    RAISE EXCEPTION 'Expected unique entitlement user index';
+  END IF;
   FOR f IN SELECT * FROM (VALUES
     ('public.get_entitlements(uuid)','7bdf53d5c9120c74748815544df9387d'),
     ('public.get_paywall_state(text,uuid)','0ee06a885f411da3e3f5f9382ca82eb7'),
