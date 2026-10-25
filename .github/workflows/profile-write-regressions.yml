@@ -5,6 +5,12 @@ on:
       - 'supabase/migration_drafts/profile_column_write_containment_v1.sql'
       - 'scripts/security/profile-writes/**'
       - '.github/workflows/profile-write-regressions.yml'
+      - 'src/services/profileService.ts'
+      - 'src/lib/supabaseClient.ts'
+      - 'src/context/AuthContext.tsx'
+      - 'src/pages/Login.tsx'
+      - 'src/pages/Profile.tsx'
+      - 'package-lock.json'
   workflow_dispatch:
 permissions:
   contents: read
