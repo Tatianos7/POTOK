@@ -1,0 +1,39 @@
+name: Joint restored rehearsal regressions
+on:
+  pull_request:
+    paths:
+      - 'scripts/security/joint-rehearsal/**'
+      - '.github/workflows/joint-restored-rehearsal.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  joint-sql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test_admin
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: potok_joint_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test_admin -d potok_joint_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated SQL driver
+        run: npm install --prefix "$RUNNER_TEMP/potok-joint-driver" --no-save --ignore-scripts --no-audit --no-fund pg@8.16.3
+      - name: Verify atomic composition, content preservation and failure rollback
+        run: node scripts/security/joint-rehearsal/test.mjs
+        env:
+          TEST_DATABASE_URL: postgres://test_admin:disposable-ci-only@127.0.0.1:5432/potok_joint_test
+          SQL_TEST_PG_MODULE: ${{ runner.temp }}/potok-joint-driver/node_modules/pg/lib/index.js
+          JOINT_SQL_OUT: ${{ runner.temp }}/potok-joint-fixture.sql
+      - name: Verify actual psql stdin semantics on the disposable fixture
+        run: docker exec -i '${{ job.services.postgres.id }}' psql -X -U test_admin -d potok_joint_test --set ON_ERROR_STOP=1 --command 'SET ROLE postgres' --file /dev/stdin < "$RUNNER_TEMP/potok-joint-fixture.sql"
