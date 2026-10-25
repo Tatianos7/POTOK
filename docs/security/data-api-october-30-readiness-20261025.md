@@ -74,13 +74,42 @@ the historical CREATE EXTENSION pgcrypto line because packaging is unavailable;
 gen_random_uuid is core PostgreSQL. Native PostgreSQL 17 CI replays the complete
 original files, including extension DDL. Its synthetic auth.uid/JWT substitute
 does not prove real Auth/PostgREST upsert behavior. Real HTTP acceptance is an
-outstanding gate; the tests issue the matching INSERT ON CONFLICT UPDATE in SQL.
+outstanding gate for the SQL-only package; those tests issue the matching
+INSERT ON CONFLICT UPDATE in SQL.
 
 Run locally only against a disposable engine/database; the test drops its fixture
 schemas. It accepts an embedded engine or named loopback database
 `potok_data_api_test`, never a hosted connection string. Native CI uses a separate
 test_admin bootstrap role and creates a non-superuser postgres owner before any
 candidate application. It never demotes the PostgreSQL bootstrap superuser.
+
+## Real Auth/PostgREST follow-up
+
+`local-prepare.mjs` and `http.mjs` add a separate disposable Supabase CLI 2.122.0
+CI job. It starts only the required local Auth, Mailpit and REST services on a
+loopback-bound Docker network. There is no project link, hosted URL, remote DB
+argument or Supabase access token. CLI status and startup logs stay private.
+
+The database helper replays both complete historical migrations as non-superuser
+postgres, removes automatic table/sequence grants for future postgres-created
+objects and asserts actual absence of table AND column API privileges. The HTTP
+test obtains two independent sessions via real Auth OTP emails captured locally.
+It reproduces missing table grants and the missing UPDATE policy using actual
+PostgREST requests. The temporary grants used for the latter reproduction are
+revoked before the exact review candidate is committed in this fresh fixture.
+
+Acceptance then checks photo upsert (including conflict update), repeated
+deletion-marker upsert with persisted timestamp, own reads/deletes, foreign
+reads/updates/deletes returning no rows, denied foreign inserts/reassignment,
+protected id-column update denial and anonymous denial. A fresh SQL connection
+checks final empty tables, two Auth users, no new anon/service grants and limited
+UPDATE privileges. Tokens/OTPs stay in memory and no Auth response bodies are
+logged. HTTP requests reject redirects and all non-local origins.
+
+This is direct API acceptance, not the actual measurementsService UI, a Storage
+binary upload test, all four previous candidates together, a full restored-schema
+test or hosted acceptance. CI result must be checked before claiming this gate
+passed. Native PostgreSQL SQL acceptance remains a separate job.
 
 ## Remaining completion gates and agreed order
 
