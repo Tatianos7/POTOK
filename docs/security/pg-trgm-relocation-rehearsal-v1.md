@@ -22,11 +22,11 @@ The script fails if anon/authenticated can CREATE in extensions, or if expected 
 
 ## Automated coverage
 
-The dedicated workflow uses a fresh native PostgreSQL 17 service, with no Supabase/app secrets. Nine scenarios cover rollback and temporary evidence cleanup; fixture commit preserving similarity, index use and client RLS; replay on an already moved extension; explicit public calls; restricted search_path; target CREATE/USAGE; unexpected actor; and non-owner refusal. Index planner use is checked as table owner, while authenticated filtering/results are checked separately because RLS can affect planner choices.
+The dedicated workflow uses a fresh native PostgreSQL 17 service, with no Supabase/app secrets. Ten native scenarios (nine in PGlite) cover rollback and temporary evidence cleanup; fixture commit preserving similarity, index use and client RLS; replay on an already moved extension; explicit public calls; restricted search_path; target CREATE/USAGE; unexpected actor; non-owner refusal and the trusted-extension/bootstrap-owner split. Index planner use is checked as table owner, while authenticated filtering/results are checked separately because RLS can affect planner choices.
 
 The test runner destroys public/extensions schemas and creates fixture roles, so it accepts only a loopback host and database named potok_trgm_test. Never point it at the restored user database. The temporary fixture-only commit is generated only inside that guarded test runner; the reviewed operator file stays rollback-only.
 
-For optional PGlite PostgreSQL 17 feedback, provide SQL_TEST_PGLITE_MODULE and SQL_TEST_TRGM_MODULE. PGlite does not support database CREATE grants on its virtual database catalog, so its fixture temporarily promotes postgres only while installing the extension, then demotes it before executing any rehearsal. Native CI uses an ordinary database CREATE grant; all relocation scenarios run as a non-superuser. Neither engine simulates Supabase's managed-role hooks.
+For optional PGlite PostgreSQL 17 feedback, provide SQL_TEST_PGLITE_MODULE and SQL_TEST_TRGM_MODULE. Both engines bootstrap the positive fixture by temporarily promoting postgres only while installing the extension, then demote it before executing any rehearsal. This makes postgres own all fixture extension objects. Installing a trusted extension as an ordinary role on native PostgreSQL can leave its internal functions owned by the bootstrap superuser; owning the extension alone is insufficient to relocate those functions. The separate non-owner refusal scenario covers the permission boundary. Neither fixture engine simulates Supabase's managed-role hooks or proves that hosted postgres can move admin-owned objects.
 
 ## Prevention and remaining work
 

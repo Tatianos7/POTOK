@@ -21,15 +21,14 @@ const sql = await readFile(new URL('./rehearsal.sql', import.meta.url), 'utf8');
 assert.equal((sql.match(/^ROLLBACK;$/gm) ?? []).length, 1);
 assert(!/^COMMIT;/m.test(sql));
 const commitForFixture = sql.replace(/ROLLBACK;\s*$/, 'COMMIT;\n');
-const fixtureDatabase = embedded ? 'template1' : 'potok_trgm_test';
 const fixture = `RESET ROLE; DROP EXTENSION IF EXISTS pg_trgm CASCADE;
 DROP SCHEMA IF EXISTS public CASCADE; DROP SCHEMA IF EXISTS extensions CASCADE;
 CREATE SCHEMA public AUTHORIZATION postgres; CREATE SCHEMA extensions AUTHORIZATION postgres;
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT USAGE ON SCHEMA public, extensions TO anon, authenticated;
-${embedded ? 'ALTER ROLE postgres SUPERUSER' : `GRANT CREATE ON DATABASE ${fixtureDatabase} TO postgres`};
+ALTER ROLE postgres SUPERUSER;
 SET ROLE postgres; CREATE EXTENSION pg_trgm WITH SCHEMA public;
-${embedded ? 'RESET ROLE; ALTER ROLE postgres NOSUPERUSER; SET ROLE postgres;' : ''}
+RESET ROLE; ALTER ROLE postgres NOSUPERUSER; SET ROLE postgres;
 CREATE TABLE public.food_fixture (id integer PRIMARY KEY, name text NOT NULL);
 INSERT INTO public.food_fixture VALUES (1,'apple'),(2,'oatmeal'),(3,'another user item');
 CREATE INDEX food_name_trgm_idx ON public.food_fixture USING gin(name public.gin_trgm_ops);
@@ -39,7 +38,9 @@ GRANT SELECT ON public.food_fixture TO authenticated;
 RESET ROLE;`;
 async function schema() { return (await rows("SELECT n.nspname FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE e.extname='pg_trgm'"))[0].nspname; }
 async function fixtureReset() { await exec('ROLLBACK; RESET ROLE;'); for (const statement of fixture.split(';').filter(s=>s.trim())) await exec(statement); }
-async function apply(s = sql) { await exec('SET ROLE postgres;'); await exec(s); }
+async function apply(s = sql) { await exec('SET ROLE postgres;');
+  assert.equal((await rows("SELECT rolsuper FROM pg_roles WHERE rolname=current_user"))[0].rolsuper, false);
+  await exec(s); }
 async function reject(message) {
   await assert.rejects(apply(), e => e.message.includes(message));
   await exec('ROLLBACK; RESET ROLE;'); assert.equal(await schema(), 'public');
@@ -85,6 +86,13 @@ try {
   await test('non-owner permission failure is preserved, without elevation', async () => {
     await exec('DROP EXTENSION pg_trgm CASCADE; CREATE EXTENSION pg_trgm WITH SCHEMA public;');
     await assert.rejects(apply(), e=>e.code==='42501'); await exec('ROLLBACK; RESET ROLE;'); assert.equal(await schema(), 'public');
+  });
+  if (!embedded) await test('trusted extension owner cannot move bootstrap-owned members', async () => {
+    await exec('DROP EXTENSION pg_trgm CASCADE; GRANT CREATE ON DATABASE potok_trgm_test TO postgres; SET ROLE postgres; CREATE EXTENSION pg_trgm WITH SCHEMA public; RESET ROLE;');
+    assert.equal((await rows("SELECT extowner = 'postgres'::regrole AS owned FROM pg_extension WHERE extname='pg_trgm'"))[0].owned, true);
+    assert((await rows("SELECT count(*)::integer AS n FROM pg_proc p JOIN pg_depend d ON d.classid='pg_proc'::regclass AND d.objid=p.oid AND d.deptype='e' JOIN pg_extension e ON e.oid=d.refobjid WHERE e.extname='pg_trgm' AND p.proowner <> 'postgres'::regrole"))[0].n > 0);
+    await assert.rejects(apply(), e=>e.code==='42501');
+    await exec('ROLLBACK; RESET ROLE;'); assert.equal(await schema(), 'public');
   });
   console.log(`${passed} pg_trgm regression scenarios passed`);
 } finally { await exec('ROLLBACK; RESET ROLE;').catch(()=>{}); await (embedded ? db.close() : db.end()); }
