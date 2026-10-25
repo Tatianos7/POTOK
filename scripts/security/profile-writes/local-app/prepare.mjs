@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {readFile,writeFile,mkdir} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,chmod} from 'node:fs/promises';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 const root=process.env.POTOK_LOCAL_AUTH_DIR;
@@ -17,6 +17,9 @@ if(process.argv[2]==='config'){
  text+='\n[auth.email.template.magic_link]\nsubject = "POTOK isolated acceptance"\ncontent_path = "./supabase/templates/otp.html"\n\n[auth.email.template.confirmation]\nsubject = "POTOK isolated acceptance"\ncontent_path = "./supabase/templates/otp.html"\n';
  await mkdir(path.join(root,'supabase/templates'),{recursive:true});
  await writeFile(path.join(root,'supabase/templates/otp.html'),'<p>POTOK_TEST_CODE={{ .Token }}</p>\n',{mode:0o600});
+ // Static template contains only a placeholder. Kong's nginx worker must read
+ // the bind-mounted file; configuration/status and actual OTPs stay private.
+ await chmod(path.join(root,'supabase/templates/otp.html'),0o644);
  await writeFile(config,text,{mode:0o600});
  console.log('Isolated local Auth configuration prepared');
 }else{

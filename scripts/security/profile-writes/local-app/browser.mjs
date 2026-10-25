@@ -32,13 +32,13 @@ const server=await createServer({configFile:false,envDir,plugins:[react(),{name:
 let browser,context;
 let stage="initialization";
 const forbidden=[];
-const diagnostics={otpHttpStatus:null,mailMessages:0,matchingMessages:0,templateMarker:false,otpRequests:0,failedRequests:0,ui:null};
+const diagnostics={otpHttpStatus:null,mailMessages:0,matchingMessages:0,templateMarker:false,customSubject:false,otpRequests:0,failedRequests:0,ui:null};
 async function poll(fn,message){for(let n=0;n<80;n++){if(await fn())return;await new Promise(r=>setTimeout(r,250));}throw Error(message);}
 async function mailCode(email){let code;await poll(async()=>{
  const list=await fetch('http://127.0.0.1:54324/api/v1/messages',{signal:AbortSignal.timeout(3000)}).then(r=>r.json());
  diagnostics.mailMessages=list.messages?.length??0;
  const matching=list.messages?.filter(m=>m.To?.some(to=>to.Address===email))??[];diagnostics.matchingMessages=matching.length;
- const message=matching[0];
+ const message=matching[0];diagnostics.customSubject=message?.Subject==='POTOK isolated acceptance';
  if(!message)return false;
  const detail=await fetch('http://127.0.0.1:54324/api/v1/message/'+message.ID,{signal:AbortSignal.timeout(3000)}).then(r=>r.json());
  diagnostics.templateMarker=(detail.Text+' '+detail.HTML).includes('POTOK_TEST_CODE=');
