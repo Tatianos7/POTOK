@@ -1,0 +1,141 @@
+name: Profile write regressions
+on:
+  pull_request:
+    paths:
+      - 'supabase/migration_drafts/profile_column_write_containment_v1.sql'
+      - 'scripts/security/profile-writes/**'
+      - '.github/workflows/profile-write-regressions.yml'
+      - 'src/services/profileService.ts'
+      - 'src/lib/supabaseClient.ts'
+      - 'src/context/AuthContext.tsx'
+      - 'src/pages/Login.tsx'
+      - 'src/pages/Profile.tsx'
+      - 'package-lock.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  profile-writes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test_admin
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: potok_profile_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_admin -d potok_profile_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install isolated test driver
+        run: npm install --prefix "$RUNNER_TEMP/potok-sql-test" --no-save --ignore-scripts --no-audit --no-fund pg@8.16.3
+      - name: Check protected column denial, upsert and RLS
+        run: node scripts/security/profile-writes/test.mjs
+        env:
+          SQL_TEST_PG_MODULE: ${{ runner.temp }}/potok-sql-test/node_modules/pg/lib/index.js
+          TEST_DATABASE_URL: postgres://test_admin:disposable-ci-only@127.0.0.1:5432/potok_profile_test
+
+  profile-http:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test_admin
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: potok_profile_api_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test_admin -d potok_profile_api_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://test_admin:disposable-ci-only@127.0.0.1:5432/potok_profile_api_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install isolated test driver and generate disposable signing key
+        run: |
+          npm install --prefix "$RUNNER_TEMP/potok-sql-test" --no-save --ignore-scripts --no-audit --no-fund pg@8.16.3
+          node -e 'process.stdout.write("POTOK_TEST_JWT_SECRET="+require("node:crypto").randomBytes(48).toString("hex")+"\n")' >> "$GITHUB_ENV"
+      - name: Prepare empty synthetic database and commit reviewed candidate locally
+        run: node scripts/security/profile-writes/api/test.mjs setup
+        env:
+          SQL_TEST_PG_MODULE: ${{ runner.temp }}/potok-sql-test/node_modules/pg/lib/index.js
+      - name: Start loopback PostgREST with unprivileged authenticator
+        run: |
+          docker run --detach --name potok-profile-http --network host \
+            -e PGRST_DB_URI=postgres://authenticator:disposable-api-only@127.0.0.1:5432/potok_profile_api_test \
+            -e PGRST_DB_SCHEMAS=public -e PGRST_DB_ANON_ROLE=anon \
+            -e PGRST_JWT_SECRET="$POTOK_TEST_JWT_SECRET" \
+            -e PGRST_SERVER_HOST=127.0.0.1 -e PGRST_SERVER_PORT=55439 \
+            postgrest/postgrest:v12.2.3
+      - name: Check HTTP upsert, protected fields, JWT and account isolation
+        run: node scripts/security/profile-writes/api/test.mjs check
+        env:
+          SQL_TEST_PG_MODULE: ${{ runner.temp }}/potok-sql-test/node_modules/pg/lib/index.js
+      - name: Remove disposable API container
+        if: always()
+        run: docker rm -f potok-profile-http || true
+
+  local-auth-profile:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      SUPABASE_ACCESS_TOKEN: ''
+      SUPABASE_DB_PASSWORD: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked application dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+      - name: Install Chromium for actual components
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Initialize an unlinked disposable Supabase project
+        env:
+          POTOK_LOCAL_AUTH_DIR: ${{ runner.temp }}/potok-profile-acceptance
+        run: |
+          set -e
+          umask 077
+          mkdir "$POTOK_LOCAL_AUTH_DIR"
+          supabase init --workdir "$POTOK_LOCAL_AUTH_DIR"
+          node scripts/security/profile-writes/local-app/prepare.mjs config
+      - name: Start local Auth, Mailpit and REST with loopback binding
+        env:
+          POTOK_LOCAL_AUTH_DIR: ${{ runner.temp }}/potok-profile-acceptance
+        run: |
+          set -e
+          umask 077
+          docker network create -o 'com.docker.network.bridge.host_binding_ipv4=127.0.0.1' potok-profile-acceptance
+          if ! supabase start --workdir "$POTOK_LOCAL_AUTH_DIR" --network-id potok-profile-acceptance --exclude realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "$POTOK_LOCAL_AUTH_DIR/start.log" 2>&1; then
+            echo 'Disposable Supabase startup failed; private output retained only for runner lifetime.'
+            exit 1
+          fi
+          supabase status --workdir "$POTOK_LOCAL_AUTH_DIR" -o json > "$POTOK_LOCAL_AUTH_DIR/status.json" 2> "$POTOK_LOCAL_AUTH_DIR/status.log"
+          node scripts/security/profile-writes/local-app/prepare.mjs database
+      - name: Exercise real OTP Login, profile avatar, offline sync and account isolation
+        env:
+          POTOK_LOCAL_AUTH_DIR: ${{ runner.temp }}/potok-profile-acceptance
+        run: node scripts/security/profile-writes/local-app/browser.mjs
+      - name: Stop only this disposable project
+        if: always()
+        env:
+          POTOK_LOCAL_AUTH_DIR: ${{ runner.temp }}/potok-profile-acceptance
+        run: |
+          supabase stop --workdir "$POTOK_LOCAL_AUTH_DIR" --no-backup > "$RUNNER_TEMP/potok-profile-stop.log" 2>&1 || true
+          docker network rm potok-profile-acceptance > /dev/null 2>&1 || true
