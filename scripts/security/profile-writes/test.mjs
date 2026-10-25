@@ -67,6 +67,11 @@ await test('new column requires explicit review',async()=>{await exec('ALTER TAB
 await test('weaker ownership policy aborts',async()=>{await exec('ALTER POLICY owner_update ON public.user_profiles WITH CHECK(true);');await reject('Profile ownership policy');});
 await test('disabled RLS aborts',async()=>{await exec('ALTER TABLE public.user_profiles DISABLE ROW LEVEL SECURITY;');await reject('ownership or RLS');});
 await test('PUBLIC-only service writes are not silently lost',async()=>{await exec('REVOKE INSERT,UPDATE ON public.user_profiles FROM service_role;');await reject('Required profile access');});
+await test('existing restricted client writes are not broadened',async()=>{
+await exec('REVOKE INSERT,UPDATE ON public.user_profiles FROM authenticated,PUBLIC;');
+await assert.rejects(apply(),e=>e.message.includes('Ordinary profile writes or SELECT'));
+await exec('ROLLBACK;RESET ROLE;');assert.equal((await rows("SELECT has_column_privilege('authenticated','public.user_profiles','first_name','UPDATE') AS allowed"))[0].allowed,false);
+});
 await test('unexpected actor aborts',async()=>{await assert.rejects(exec(patch),e=>e.message.includes('Expected effective role postgres'));await baseline();});
 console.log(`${passed} profile privilege regression scenarios passed`);
 }finally{await exec('ROLLBACK;RESET ROLE;').catch(()=>{});await(embedded?db.close():db.end());}

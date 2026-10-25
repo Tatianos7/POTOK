@@ -32,6 +32,12 @@ BEGIN
       AND a.attnotnull AND pg_get_expr(d.adbin,d.adrelid)='false') <> 2 THEN
     RAISE EXCEPTION 'Privilege defaults must be non-null false';
   END IF;
+  IF NOT has_table_privilege('authenticated',t.oid,'SELECT') OR EXISTS (
+    SELECT 1 FROM potok_profile_allowed c WHERE
+      NOT has_column_privilege('authenticated',t.oid,c.name,'INSERT')
+      OR NOT has_column_privilege('authenticated',t.oid,c.name,'UPDATE')) THEN
+    RAISE EXCEPTION 'Ordinary profile writes or SELECT require baseline review';
+  END IF;
   -- id_user UPDATE is required by PostgREST upsert. Require the exact bounded
   -- ownership policy shape before preserving that column privilege.
   IF (SELECT count(*) FROM pg_policy WHERE polrelid=t.oid) <> 3 OR EXISTS (

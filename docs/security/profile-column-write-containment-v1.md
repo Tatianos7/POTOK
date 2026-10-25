@@ -14,7 +14,7 @@ Old clients explicitly sending privilege fields, even false, will be rejected. U
 
 ## Preconditions and effective postconditions
 
-Require effective postgres, a postgres-owned ordinary user_profiles table with RLS, exactly the reviewed 17 columns, a non-null UUID id_user, and non-null boolean privilege flags whose defaults are false. Policy shape drift, extra columns, disabled RLS or changed defaults abort for review. No new or altered policies, role memberships, triggers or routine bodies are installed.
+Require effective postgres, a postgres-owned ordinary user_profiles table with RLS, exactly the reviewed 17 columns, a non-null UUID id_user, and non-null boolean privilege flags whose defaults are false. Policy shape drift, extra columns, disabled RLS or changed defaults abort for review. Existing authenticated SELECT and every ordinary INSERT/UPDATE privilege must already be present; restricted baselines abort rather than receiving newly broadened access. No new or altered policies, role memberships, triggers or routine bodies are installed.
 
 After revocation/grant, check effective permissions (including inherited roles): protected writes denied, ordinary writes permitted, anonymous writes denied, service-role column access preserved, and authenticated SELECT unchanged. A policy hash must also remain identical. Unresolved inherited rights or required role access loss abort the whole transaction. lock_timeout is 5 seconds and statement_timeout is 30 seconds. Use stop-on-error; disconnect/ROLLBACK on failure.
 
@@ -24,7 +24,7 @@ This does not revoke DELETE/TRUNCATE or change future defaults; those are separa
 
 `scripts/security/profile-writes/rehearsal.sql` performs the same transaction checks, prints PROFILE_WRITE_REHEARSAL_OK and the four protected-column permissions, then always ROLLBACKs. It does not execute profile writes or any privileged RPC body. Use it only on the restored Docker database as postgres with ON_ERROR_STOP=1, followed by the existing row-count verification. This proves ACL rehearsal, not persistent protection or real API compatibility.
 
-The dedicated CI workflow uses native PostgreSQL 17. Thirteen scenarios cover baseline self-promotion, denied protected INSERT/UPDATE (including explicit false), ordinary INSERT/UPDATE and PostgREST-shaped upsert, default false flags, avatar/coach/voice writes, RLS foreign-user denial and key reassignment, preserved service authority/data, anon denial, replay, exact rehearsal rollback, inherited protected grants, unsafe defaults, schema/policy/RLS drift, required service access loss and wrong actor.
+The dedicated CI workflow uses native PostgreSQL 17. Fourteen scenarios cover baseline self-promotion, denied protected INSERT/UPDATE (including explicit false), ordinary INSERT/UPDATE and PostgREST-shaped upsert, default false flags, avatar/coach/voice writes, RLS foreign-user denial and key reassignment, preserved service authority/data, anon denial, replay, exact rehearsal rollback, inherited protected grants, unsafe defaults, schema/policy/RLS drift, required service access loss, restricted client baselines and wrong actor.
 
 The runner uses synthetic user IDs and an auth.uid fixture driven by a session setting; it does not validate real JWTs or prove hosted PostgREST behavior. It destroys public and creates auth fixture objects/roles, accepts only a loopback database named potok_profile_test, and must never be pointed at a restored user database. Optional PostgreSQL 17 PGlite can run the same suite.
 
