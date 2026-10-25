@@ -72,7 +72,7 @@ async function apply() {await exec('BEGIN; SET LOCAL ROLE postgres;'+body+'COMMI
 async function test(name,fn) {await fixture();await fn();passed++;console.log('PASS '+name);}
 try {
   if(embedded) await exec('CREATE ROLE test_admin SUPERUSER; SET SESSION AUTHORIZATION test_admin; ALTER ROLE postgres RENAME TO embedded_bootstrap; CREATE ROLE postgres NOSUPERUSER;');
-  else await exec('CREATE ROLE test_admin SUPERUSER; SET SESSION AUTHORIZATION test_admin; ALTER ROLE postgres NOSUPERUSER;');
+  else await exec('CREATE ROLE postgres NOSUPERUSER; ALTER DATABASE potok_data_api_test OWNER TO postgres;');
   await exec('CREATE ROLE authenticated; CREATE ROLE anon; CREATE ROLE service_role BYPASSRLS;');
   assert.equal((await rows("SELECT rolsuper FROM pg_roles WHERE rolname='postgres'"))[0].rolsuper,false);
   await test('exact historical table creation fails without implicit Data API grants',async()=>{

@@ -16,12 +16,13 @@ jobs:
       postgres:
         image: postgres:17
         env:
+          POSTGRES_USER: test_admin
           POSTGRES_PASSWORD: disposable-test-only
           POSTGRES_DB: potok_data_api_test
         ports:
           - 127.0.0.1:5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d potok_data_api_test"
+          --health-cmd "pg_isready -U test_admin -d potok_data_api_test"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -33,6 +34,6 @@ jobs:
       - run: npm ci --prefix scripts/security/data-api-explicit-grants --ignore-scripts
       - name: Replay historical sources without automatic table grants
         env:
-          TEST_DATABASE_URL: postgres://postgres:disposable-test-only@127.0.0.1:5432/potok_data_api_test
+          TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_data_api_test
           SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
         run: node scripts/security/data-api-explicit-grants/test.mjs

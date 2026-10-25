@@ -78,8 +78,9 @@ outstanding gate; the tests issue the matching INSERT ON CONFLICT UPDATE in SQL.
 
 Run locally only against a disposable engine/database; the test drops its fixture
 schemas. It accepts an embedded engine or named loopback database
-`potok_data_api_test`, never a hosted connection string. The native bootstrap
-creates a test admin and demotes postgres before any candidate application.
+`potok_data_api_test`, never a hosted connection string. Native CI uses a separate
+test_admin bootstrap role and creates a non-superuser postgres owner before any
+candidate application. It never demotes the PostgreSQL bootstrap superuser.
 
 ## Remaining completion gates and agreed order
 
