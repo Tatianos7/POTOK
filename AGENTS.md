@@ -10,3 +10,4 @@
 - Preserve the domain invariant `PLAN != FACT`; a planned meal never proves consumption.
 - Preserve Graph v1 compatibility. Graph v2 is separately versioned and must not silently replace Graph v1.
 - The trusted generator and Edge execution remain inactive unless the owner explicitly approves activation.
+- New public tables must declare their intended API roles and minimum explicit GRANTs alongside RLS/policies; do not rely on Supabase automatic/default grants. Internal tables must remain ungranted to clients. Include needed sequence privileges for sequence-backed inserts and test with automatic grants absent. Never restore blanket grants to resolve permission errors.
