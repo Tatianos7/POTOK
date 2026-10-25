@@ -35,8 +35,14 @@ Do not present this patch as complete RPC authorization, a verified payment syst
 
 ## Verification
 
-The dedicated workflow provisions native PostgreSQL 17 and an isolated pg driver, with no Supabase credentials or app dependency changes. Ten scenarios reproduce anonymous SECURITY DEFINER invocation, deny all eight calls after apply, preserve authenticated/service calls, keep unrelated RPC access, replay, and roll back inherited privileges, missing functions, owner/definer drift, PUBLIC-only required access and wrong actors.
+The dedicated workflow provisions native PostgreSQL 17 and an isolated pg driver, with no Supabase credentials or app dependency changes. Eleven scenarios reproduce anonymous SECURITY DEFINER invocation, deny all eight calls after apply, preserve authenticated/service calls, keep unrelated RPC access, replay, and roll back inherited privileges, missing functions, owner/definer drift, PUBLIC-only required access and wrong actors.
 
 The runner destroys public and creates cluster roles. It only accepts a loopback URL whose database is potok_rpc_test; never use it on a restored user database. Optional SQL_TEST_PGLITE_MODULE runs the same suite on an installed PostgreSQL 17 PGlite module.
 
 Reference: [Supabase securing API functions](https://supabase.com/docs/guides/database/functions#function-privileges).
+
+## Rollback-only restored database rehearsal
+
+`scripts/security/anonymous-rpc/rehearsal.sql` runs the candidate checks and revokes in a transaction, prints ANON_RPC_REHEARSAL_OK and the eight effective permission results, then ends in ROLLBACK instead of COMMIT. Run it only on the restored Docker copy as non-superuser postgres with ON_ERROR_STOP=1. On any failure, disconnect/ROLLBACK and stop. It does not invoke any of the mutation RPC bodies. The existing 112-table row-count verification can run afterward.
+
+Within the transaction, anon_execute must be false; authenticated_execute and service_execute must retain their pre-apply values. After ROLLBACK the original grants return, so this proves rehearsal behavior, not a permanent security fix. The suite checks exact pre/post ACLs and definition hashes for all public fixture functions and temporary evidence cleanup.

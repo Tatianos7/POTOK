@@ -16,6 +16,7 @@ if (embedded) {
 const exec=sql=>embedded ? db.exec(sql) : db.query(sql);
 const rows=async sql=>(await db.query(sql)).rows;
 const sql=await readFile(new URL('../../../supabase/migration_drafts/anonymous_rpc_execute_containment_v1.sql',import.meta.url),'utf8');
+const rehearsal=await readFile(new URL('./rehearsal.sql',import.meta.url),'utf8');
 const signatures=[
  'apply_admin_approved_food_alias(uuid,text,text)', 'apply_owner_approved_missing_food_draft(uuid)',
  'get_entitlements(uuid)', 'get_paywall_state(text,uuid)', 'recompute_food_entries_for_food_ids(uuid[])',
@@ -55,6 +56,14 @@ try {
     await exec('SET ROLE authenticated;'); assert.equal((await rows('SELECT public.get_entitlements(NULL) AS actor'))[0].actor,'postgres');
     await exec('SET ROLE service_role;'); assert.equal((await rows('SELECT public.get_entitlements(NULL) AS actor'))[0].actor,'postgres');
     await exec('SET ROLE anon;'); assert.equal((await rows('SELECT public.unrelated() AS actor'))[0].actor,'postgres'); await exec('RESET ROLE;');
+  });
+  await test('restored-database rehearsal rolls back every target ACL and temporary evidence',async()=>{
+    const before=await rows("SELECT p.oid,p.proacl::text AS acl,md5(pg_get_functiondef(p.oid)) AS definition FROM pg_proc p WHERE p.pronamespace='public'::regnamespace ORDER BY p.oid");
+    await exec('SET ROLE postgres;'); await exec(rehearsal); await exec('RESET ROLE;');
+    const after=await rows("SELECT p.oid,p.proacl::text AS acl,md5(pg_get_functiondef(p.oid)) AS definition FROM pg_proc p WHERE p.pronamespace='public'::regnamespace ORDER BY p.oid");
+    assert.deepEqual(after,before);
+    assert.equal((await rows("SELECT to_regclass('pg_temp.potok_rpc_targets') IS NULL AS gone"))[0].gone,true);
+    for(const signature of signatures) assert.equal((await rows(`SELECT has_function_privilege('anon','public.${signature}','EXECUTE') AS allowed`))[0].allowed,true);
   });
   await test('replay is idempotent',async()=>{await apply(); await apply();});
   await test('inherited anonymous EXECUTE aborts and restores all revokes',async()=>{
