@@ -8,7 +8,7 @@ The service defaults of supabase_admin cannot be changed by hosted postgres. Sup
 
 This file is deliberately outside supabase/migrations. It is not an apply candidate. Do not change its ROLLBACK to COMMIT for a hosted project. A later apply needs the restored Supabase rehearsal, reviewed application smoke results and explicit approval under AGENTS.md.
 
-The catalog queries read public table row counts but do not export user records or routine bodies. A conservative source scan blocks explicit public extension references and likely extension calls/operators in routines whose configured search_path omits extensions. It can produce false positives and is not a complete parser: computed dynamic SQL, quoted identifiers, external clients, extension operators and unusual routine languages require separate review. No routine search_path or grant is changed automatically.
+The catalog queries read public table row counts but do not export user records or routine bodies. A conservative source scan blocks explicit public extension references and likely extension calls/operators in routines whose configured search_path omits extensions. It can produce false positives and is not a complete parser: computed dynamic SQL, quoted identifiers, external clients, extension operators and unusual routine languages require separate review. The scan removes only simple line-start RAISE message literals before checking dependencies, so their percent formatting placeholders do not masquerade as pg_trgm operators. RAISE argument expressions remain checked. Other literal/comment forms still receive conservative review; this is not a full PL/pgSQL lexer. No routine search_path or grant is changed automatically.
 
 ## Required restored Supabase acceptance
 
@@ -22,7 +22,7 @@ The script fails if anon/authenticated can CREATE in extensions, or if expected 
 
 ## Automated coverage
 
-The dedicated workflow uses a fresh native PostgreSQL 17 service, with no Supabase/app secrets. Ten native scenarios (nine in PGlite) cover rollback and temporary evidence cleanup; fixture commit preserving similarity, index use and client RLS; replay on an already moved extension; explicit public calls; restricted search_path; target CREATE/USAGE; unexpected actor; non-owner refusal and the trusted-extension/bootstrap-owner split. Index planner use is checked as table owner, while authenticated filtering/results are checked separately because RLS can affect planner choices.
+The dedicated workflow uses a fresh native PostgreSQL 17 service, with no Supabase/app secrets. Thirteen native scenarios (twelve in PGlite) cover rollback and temporary evidence cleanup; fixture commit preserving similarity, index use and client RLS; replay on an already moved extension; explicit public calls; restricted search_path; target CREATE/USAGE; unexpected actor; non-owner refusal and the trusted-extension/bootstrap-owner split. Additional regressions distinguish RAISE formatting placeholders from real percent operators and extension calls in RAISE arguments. Index planner use is checked as table owner, while authenticated filtering/results are checked separately because RLS can affect planner choices.
 
 The test runner destroys public/extensions schemas and creates fixture roles, so it accepts only a loopback host and database named potok_trgm_test. Never point it at the restored user database. The temporary fixture-only commit is generated only inside that guarded test runner; the reviewed operator file stays rollback-only.
 

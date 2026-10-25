@@ -6,7 +6,7 @@ SET LOCAL statement_timeout = '60s';
 SET LOCAL search_path = pg_catalog, pg_temp;
 
 DO $preflight$
-DECLARE e record; f record; names text; has_path boolean;
+DECLARE e record; f record; names text; has_path boolean; code text;
 BEGIN
   IF current_user <> 'postgres' THEN RAISE EXCEPTION 'Expected effective role postgres'; END IF;
   SELECT x.*, n.nspname INTO e FROM pg_extension x
@@ -35,12 +35,19 @@ BEGIN
       AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_proc'::regclass
         AND d.objid = p.oid AND d.deptype = 'e')
   LOOP
-    IF f.prosrc ~* ('\mpublic\s*\.\s*(' || names || ')\s*\(')
-       OR f.prosrc ~* 'OPERATOR\s*\(\s*public\s*\.' THEN
+    -- Ignore only a simple, line-start RAISE message literal. Its '%' tokens
+    -- are formatting placeholders. Keep the argument expressions unchanged:
+    -- they may contain real extension calls/operators. Other string forms
+    -- remain conservatively subject to review; this is not a PL/pgSQL parser.
+    code := regexp_replace(f.prosrc,
+      $raise$(^[[:blank:]]*RAISE[[:blank:]]+(DEBUG|LOG|INFO|NOTICE|WARNING|EXCEPTION)[[:blank:]]+)'([^']|'')*'$raise$,
+      $message$\1'<message>'$message$, 'gin');
+    IF code ~* ('\mpublic\s*\.\s*(' || names || ')\s*\(')
+       OR code ~* 'OPERATOR\s*\(\s*public\s*\.' THEN
       RAISE EXCEPTION 'Explicit public extension reference requires review: %', f.oid::regprocedure;
     END IF;
-    IF f.prosrc ~* ('\m(' || names || ')\s*\(')
-       OR f.prosrc ~ '(^|[[:space:](])(%|<%|%>|<<%|%>>|<->|<<->|<->>)([[:space:](]|$)' THEN
+    IF code ~* ('\m(' || names || ')\s*\(')
+       OR code ~ '(^|[[:space:](])(%|<%|%>|<<%|%>>|<->|<<->|<->>)([[:space:](]|$)' THEN
       SELECT EXISTS (SELECT 1 FROM unnest(f.proconfig) s
         WHERE s LIKE 'search_path=%'
           AND replace(s, '"', '') !~ '(^|[ ,=])extensions([ ,]|$)') INTO has_path;

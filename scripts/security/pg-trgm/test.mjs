@@ -80,6 +80,31 @@ try {
     await exec("SET ROLE postgres; CREATE FUNCTION public.fixture_search(text) RETURNS real LANGUAGE plpgsql SET search_path=public AS 'BEGIN RETURN similarity($1,$1); END'; RESET ROLE;");
     await reject('Restricted search_path');
   });
+  await test('RAISE formatting placeholders do not imply extension dependency', async () => {
+    await exec(`SET ROLE postgres;
+      CREATE FUNCTION public.fixture_log() RETURNS void LANGUAGE plpgsql SET search_path=public,pg_temp AS $body$
+      BEGIN
+        RAISE LOG 'fixture: skip % (details: %.)', 'item', 'context';
+        RAISE NOTICE 'quoted ''message'' % (more %)', 'item', 'context';
+      END;
+      $body$;
+      RESET ROLE;`);
+    await apply(); assert.equal(await schema(), 'public');
+  });
+  await test('real percent operator with restricted search_path is still blocked', async () => {
+    await exec(`SET ROLE postgres; CREATE FUNCTION public.fixture_match(a text,b text)
+      RETURNS boolean LANGUAGE plpgsql SET search_path=public AS 'BEGIN RETURN a % b; END'; RESET ROLE;`);
+    await reject('Restricted search_path');
+  });
+  await test('extension call in a RAISE argument is still blocked', async () => {
+    await exec(`SET ROLE postgres; CREATE FUNCTION public.fixture_log_search() RETURNS void
+      LANGUAGE plpgsql SET search_path=public AS $body$
+      BEGIN
+        RAISE NOTICE 'score %', similarity('apple','apple');
+      END;
+      $body$; RESET ROLE;`);
+    await reject('Restricted search_path');
+  });
   await test('client target CREATE blocks move', async () => { await exec('GRANT CREATE ON SCHEMA extensions TO anon;'); await reject('Client CREATE'); });
   await test('missing target USAGE blocks move', async () => { await exec('REVOKE USAGE ON SCHEMA extensions FROM anon;'); await reject('Target schema USAGE'); });
   await test('wrong actor blocks move', async () => { await assert.rejects(exec(sql), e=>e.message.includes('Expected effective role postgres')); await exec('ROLLBACK;'); });
