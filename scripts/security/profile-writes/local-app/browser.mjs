@@ -32,15 +32,19 @@ const server=await createServer({configFile:false,envDir,plugins:[react(),{name:
 let browser,context;
 let stage="initialization";
 const forbidden=[];
+const diagnostics={otpHttpStatus:null,mailMessages:0,matchingMessages:0,templateMarker:false};
 async function poll(fn,message){for(let n=0;n<80;n++){if(await fn())return;await new Promise(r=>setTimeout(r,250));}throw Error(message);}
 async function mailCode(email){let code;await poll(async()=>{
  const list=await fetch('http://127.0.0.1:54324/api/v1/messages',{signal:AbortSignal.timeout(3000)}).then(r=>r.json());
- const message=list.messages?.find(m=>m.To?.some(to=>to.Address===email));
+ diagnostics.mailMessages=list.messages?.length??0;
+ const matching=list.messages?.filter(m=>m.To?.some(to=>to.Address===email))??[];diagnostics.matchingMessages=matching.length;
+ const message=matching[0];
  if(!message)return false;
  const detail=await fetch('http://127.0.0.1:54324/api/v1/message/'+message.ID,{signal:AbortSignal.timeout(3000)}).then(r=>r.json());
+ diagnostics.templateMarker=(detail.Text+' '+detail.HTML).includes('POTOK_TEST_CODE=');
  code=(detail.Text+' '+detail.HTML).match(/POTOK_TEST_CODE=(\d{6})/)?.[1];return Boolean(code);
  },'Local captured email/OTP not received');return code;}
-async function login(page,email){await page.goto('http://127.0.0.1:55440/auth');await page.locator('#email').fill(email);await page.getByRole('button',{name:'Получить код',exact:true}).click();const code=await mailCode(email);await page.locator('#otpCodeEmail').fill(code);await page.getByRole('button',{name:'Войти',exact:true}).click();await page.waitForFunction(()=>window.__potokAcceptance?.state?.status==='authenticated');const id=await page.evaluate(()=>window.__potokAcceptance.state.id);assert.match(id,/^[0-9a-f-]{36}$/);return id;}
+async function login(page,email){page.on('response',r=>{if(r.url().startsWith('http://127.0.0.1:54321/auth/v1/otp'))diagnostics.otpHttpStatus=r.status();});await page.goto('http://127.0.0.1:55440/auth');await page.locator('#email').fill(email);await page.getByRole('button',{name:'Получить код',exact:true}).click();const code=await mailCode(email);await page.locator('#otpCodeEmail').fill(code);await page.getByRole('button',{name:'Войти',exact:true}).click();await page.waitForFunction(()=>window.__potokAcceptance?.state?.status==='authenticated');const id=await page.evaluate(()=>window.__potokAcceptance.state.id);assert.match(id,/^[0-9a-f-]{36}$/);return id;}
 async function remote(page,id){return page.evaluate(async id=>{const {data,error}=await window.__potokAcceptance.client.from('user_profiles').select('*').eq('id_user',id).single();if(error)throw Error('Remote profile lookup failed');return data;},id);}
 try{
  await server.listen();browser=await chromium.launch({headless:true});context=await browser.newContext();
@@ -82,4 +86,4 @@ try{
  console.log('PASS actual A-to-B session change preserves A queue and denies foreign profile writes/reads');
  assert.equal(forbidden.length,0,'Browser attempted non-local network access');
  console.log('LOCAL_AUTH_PROFILE_ACCEPTANCE_OK (isolated fixtures; not hosted acceptance)');
-}catch(error){console.error('LOCAL_AUTH_PROFILE_ACCEPTANCE_FAILED stage='+stage+' type='+error.name);process.exitCode=1;}finally{await context?.close();await browser?.close();await server.close();await rm(envDir,{recursive:true,force:true});}
+}catch(error){console.error('LOCAL_AUTH_PROFILE_ACCEPTANCE_FAILED stage='+stage+' type='+error.name+' diagnostics='+JSON.stringify(diagnostics));process.exitCode=1;}finally{await context?.close();await browser?.close();await server.close();await rm(envDir,{recursive:true,force:true});}
