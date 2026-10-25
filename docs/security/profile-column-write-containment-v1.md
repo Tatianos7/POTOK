@@ -38,7 +38,7 @@ Primary references: [PostgreSQL 17 column privileges](https://www.postgresql.org
 
 ## Disposable HTTP/JWT integration gate
 
-The `Profile HTTP regressions` workflow starts native PostgreSQL 17 and pinned PostgREST v12.2.3 with a non-superuser, NOINHERIT authenticator. It commits this exact candidate in a fresh synthetic database, then makes real HTTP requests signed by a per-run disposable HS256 key. The fixture auth.uid reads PostgREST request.jwt.claims. No hosted credentials, restored user records, Supabase project links or production endpoints are used.
+The `profile-http` job in the `Profile write regressions` workflow starts native PostgreSQL 17 and pinned PostgREST v12.2.3 with a non-superuser, NOINHERIT authenticator. It commits this exact candidate in a fresh synthetic database, then makes real HTTP requests signed by a per-run disposable HS256 key. The fixture auth.uid reads PostgREST request.jwt.claims. No hosted credentials, restored user records, Supabase project links or production endpoints are used.
 
 It checks profile creation with false authority defaults, actual HTTP merge-duplicates upsert including id_user, avatar URL and coach/voice preference persistence, protected INSERT/UPDATE denial (including explicit false), A/B row isolation, foreign insertion and ownership reassignment denial, anonymous writes, invalid/expired JWT rejection and final unchanged authority flags. The database driver accepts only 127.0.0.1 and the exact disposable database name; setup refuses an existing profile table or auth schema. The API endpoint is fixed to loopback port 55439. The fixture is destructive only in its newly created disposable database; never run it on the restored backup.
 
