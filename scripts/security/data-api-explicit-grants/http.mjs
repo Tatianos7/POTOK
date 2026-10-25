@@ -47,7 +47,12 @@ async function rest(table,user,method='GET',body,query='',prefer='return=represe
   });
   const text=await r.text();return {status:r.status,body:text?JSON.parse(text):null};
 }
-async function ok(promise,expectedStatus) {const r=await promise;assert.equal(r.status,expectedStatus,'REST success status');return r.body;}
+async function ok(promise,expectedStatus) {
+  const r=await promise;
+  assert((Array.isArray(expectedStatus)?expectedStatus:[expectedStatus]).includes(r.status),
+    'REST success status='+r.status+' code='+(r.body?.code??'none'));
+  return r.body;
+}
 async function denied(promise) {const r=await promise;assert([401,403].includes(r.status),'REST denied status');assert.equal(r.body?.code,'42501','Postgres privilege/RLS denial code');}
 function prepare(mode) {
   const r=spawnSync(process.execPath,[fileURLToPath(new URL('./local-prepare.mjs',import.meta.url)),mode],{encoding:'utf8',timeout:120000});
@@ -79,13 +84,15 @@ try {
   await ok(upsert('measurement_photo_deletions',a,deletion,'user_id,day'),201);
   await denied(upsert('measurement_photo_deletions',a,{...deletion,deleted_at:'2026-10-25T11:00:00Z'},'user_id,day'));
   console.log('PASS real PostgREST repeated upsert reproduces missing UPDATE policy');
-  stage='candidate';prepare('candidate');await waitForCandidate(a);
+  stage='candidate application';prepare('candidate');await waitForCandidate(a);
   const asset={user_id:a.id,day:'2026-10-25',slot:'main_1',storage_path:'synthetic/first.png'};
-  await ok(upsert('measurement_photo_assets',a,asset,'user_id,day,slot'),201);
-  await ok(upsert('measurement_photo_assets',a,{...asset,storage_path:'synthetic/second.png'},'user_id,day,slot'),201);
+  stage='candidate photo insert';await ok(upsert('measurement_photo_assets',a,asset,'user_id,day,slot'),201);
+  stage='candidate photo conflict update';
+  await ok(upsert('measurement_photo_assets',a,{...asset,storage_path:'synthetic/second.png'},'user_id,day,slot'),[200,201]);
   let saved=await ok(rest('measurement_photo_assets',a),200);assert.equal(saved.length,1);assert.equal(saved[0].storage_path,'synthetic/second.png');
   const assetId=saved[0].id;
-  deletion.deleted_at='2026-10-25T12:00:00Z';await ok(upsert('measurement_photo_deletions',a,deletion,'user_id,day'),201);
+  stage='candidate deletion-marker conflict update';
+  deletion.deleted_at='2026-10-25T12:00:00Z';await ok(upsert('measurement_photo_deletions',a,deletion,'user_id,day'),[200,201]);
   saved=await ok(rest('measurement_photo_deletions',a),200);assert.equal(saved.length,1);assert.equal(Date.parse(saved[0].deleted_at),Date.parse(deletion.deleted_at));
   console.log('PASS committed candidate enables real HTTP photo and deletion-marker upsert');
   stage='foreign account isolation';
