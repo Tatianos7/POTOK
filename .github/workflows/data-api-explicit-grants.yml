@@ -43,7 +43,6 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ''
       SUPABASE_DB_PASSWORD: ''
-      POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,6 +52,8 @@ jobs:
         with:
           version: 2.122.0
       - name: Initialize fixed unlinked local project
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
         run: |
           set -e
           umask 077
@@ -60,6 +61,8 @@ jobs:
           supabase init --workdir "$POTOK_PHOTO_AUTH_DIR"
           node scripts/security/data-api-explicit-grants/local-prepare.mjs config
       - name: Start loopback-only Auth, Mailpit and REST
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
         run: |
           set -e
           umask 077
@@ -72,9 +75,13 @@ jobs:
           node scripts/security/data-api-explicit-grants/local-prepare.mjs database
       - name: Real OTP and PostgREST photo acceptance
         timeout-minutes: 4
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
         run: node scripts/security/data-api-explicit-grants/http.mjs
       - name: Stop only disposable project
         if: always()
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
         run: |
           supabase stop --workdir "$POTOK_PHOTO_AUTH_DIR" --no-backup > "$RUNNER_TEMP/potok-photo-stop.log" 2>&1 || true
           docker network rm potok-photo-http-acceptance > /dev/null 2>&1 || true
