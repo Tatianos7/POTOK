@@ -1,0 +1,68 @@
+name: Combined local application acceptance
+on:
+  pull_request:
+    paths:
+      - 'scripts/security/joint-rehearsal/**'
+      - '.github/workflows/combined-local-app.yml'
+      - 'src/services/profileService.ts'
+      - 'src/lib/supabaseClient.ts'
+      - 'src/context/AuthContext.tsx'
+      - 'src/pages/Login.tsx'
+      - 'src/pages/Profile.tsx'
+      - 'package-lock.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  local-auth-profile:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      SUPABASE_ACCESS_TOKEN: ''
+      SUPABASE_DB_PASSWORD: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install locked application dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+      - name: Install Chromium for actual components
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Initialize an unlinked disposable Supabase project
+        env:
+          POTOK_LOCAL_AUTH_DIR: ${{ runner.temp }}/potok-profile-acceptance
+        run: |
+          set -e
+          umask 077
+          mkdir "$POTOK_LOCAL_AUTH_DIR"
+          supabase init --workdir "$POTOK_LOCAL_AUTH_DIR"
+          node scripts/security/joint-rehearsal/local-app/prepare.mjs config
+      - name: Start local Auth, Mailpit and REST with loopback binding
+        env:
+          POTOK_LOCAL_AUTH_DIR: ${{ runner.temp }}/potok-profile-acceptance
+        run: |
+          set -e
+          umask 077
+          docker network create -o 'com.docker.network.bridge.host_binding_ipv4=127.0.0.1' potok-profile-acceptance
+          if ! supabase start --workdir "$POTOK_LOCAL_AUTH_DIR" --network-id potok-profile-acceptance --exclude realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "$POTOK_LOCAL_AUTH_DIR/start.log" 2>&1; then
+            echo 'Disposable Supabase startup failed; private output retained only for runner lifetime.'
+            exit 1
+          fi
+          supabase status --workdir "$POTOK_LOCAL_AUTH_DIR" -o json > "$POTOK_LOCAL_AUTH_DIR/status.json" 2> "$POTOK_LOCAL_AUTH_DIR/status.log"
+          node scripts/security/joint-rehearsal/local-app/prepare.mjs database
+      - name: Exercise real OTP Login, profile avatar, offline sync and account isolation
+        timeout-minutes: 3
+        env:
+          POTOK_LOCAL_AUTH_DIR: ${{ runner.temp }}/potok-profile-acceptance
+        run: node scripts/security/joint-rehearsal/local-app/browser.mjs
+      - name: Stop only this disposable project
+        if: always()
+        env:
+          POTOK_LOCAL_AUTH_DIR: ${{ runner.temp }}/potok-profile-acceptance
+        run: |
+          supabase stop --workdir "$POTOK_LOCAL_AUTH_DIR" --no-backup > "$RUNNER_TEMP/potok-profile-stop.log" 2>&1 || true
+          docker network rm potok-profile-acceptance > /dev/null 2>&1 || true
