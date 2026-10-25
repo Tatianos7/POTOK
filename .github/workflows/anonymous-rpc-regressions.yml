@@ -1,0 +1,38 @@
+name: Anonymous RPC regressions
+on:
+  pull_request:
+    paths:
+      - 'supabase/migration_drafts/anonymous_rpc_execute_containment_v1.sql'
+      - 'scripts/security/anonymous-rpc/**'
+      - '.github/workflows/anonymous-rpc-regressions.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  anonymous-rpc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test_admin
+          POSTGRES_PASSWORD: disposable-ci-only
+          POSTGRES_DB: potok_rpc_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_admin -d potok_rpc_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install isolated test driver
+        run: npm install --prefix "$RUNNER_TEMP/potok-sql-test" --no-save --ignore-scripts --no-audit --no-fund pg@8.16.3
+      - name: Check anonymous denial, required access and rollback
+        run: node scripts/security/anonymous-rpc/test.mjs
+        env:
+          SQL_TEST_PG_MODULE: ${{ runner.temp }}/potok-sql-test/node_modules/pg/lib/index.js
+          TEST_DATABASE_URL: postgres://test_admin:disposable-ci-only@127.0.0.1:5432/potok_rpc_test
