@@ -91,6 +91,14 @@ try{
  await test('all twelve pinned candidates stream one transaction and fully restore metadata/content',async()=>{
   const before=await snapshot();await protocol(await script());assert.deepEqual(await snapshot(),before);
  });
+ await test('twelve candidates meet the narrow application SQL boundary with platform defaults retained',async()=>{
+  const before=await snapshot();const sql=await script();const [prefix,rest]=sql.split(/^BEGIN;\n/m),[transaction,suffix]=rest.split(/^ROLLBACK;\n/m);
+  const check=(await readFile('scripts/security/platform-defaults/check.sql','utf8')).replace(/^BEGIN READ ONLY;$/m,'').replace(/^ROLLBACK;$/m,'');
+  await exec('SET SESSION AUTHORIZATION postgres;');try{
+   await exec(prefix);await exec('BEGIN;\n'+transaction);const [r]=await rows(check);assert.equal(r.verdict,'SQL_BOUNDARY_VERIFIED');assert.equal(r.platform_public_truncate_defaults,2);await exec('ROLLBACK;');await exec(suffix);
+  }finally{await exec('ROLLBACK;SET SESSION AUTHORIZATION test_admin;');}
+  assert.deepEqual(await snapshot(),before);
+ });
  await test('exact trailing day_date date values survive all twelve candidates and rollback',async()=>{
   await exec("SET ROLE postgres;ALTER TABLE public.program_sessions ADD COLUMN day_date date;UPDATE public.program_sessions SET day_date='2026-10-25';RESET ROLE;");
   const before=await snapshot();await protocol(await script());assert.deepEqual(await snapshot(),before);
