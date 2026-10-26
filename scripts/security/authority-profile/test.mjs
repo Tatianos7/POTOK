@@ -50,6 +50,11 @@ try{
   assert.equal((await client('authenticated',B,"SELECT public.has_verified_entitlement_v1('admin') AS allowed"))[0].allowed,false);
   assert.equal((await rows(`SELECT potok_control.is_effective_entitlement_v2('${B}','premium',now()+interval '2 days') AS allowed`))[0].allowed,false);
  });
+ await test('revocation remains possible if the profile was removed after issuance',async()=>{
+  await rows(grant(B));await exec(`DELETE FROM public.user_profiles WHERE id_user='${B}'`);
+  await rows(revoke(B));assert.equal((await client('authenticated',B,"SELECT public.has_verified_entitlement_v1('admin') AS allowed"))[0].allowed,false);
+  await exec('SAVEPOINT missing_profile;');await assert.rejects(()=>rows(grant(B)),e=>e.code==='23503');await exec('ROLLBACK TO missing_profile;RELEASE missing_profile;');
+ });
  await test('API roles cannot read or provision private authority, including service_role',async()=>{
   for(const role of ['anon','authenticated','service_role'])for(const q of ['SELECT * FROM potok_control.access_attestations',grant(B),revoke(B)])await denied(()=>client(role,B,q));
   for(const role of ['anon','service_role'])await denied(()=>client(role,B,"SELECT public.has_verified_entitlement_v1('admin')"));

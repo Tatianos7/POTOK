@@ -65,7 +65,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA potok_nutrition REVOKE ALL ON FUNCTIONS FROM 
   const projection=writer.indexOf("  IF p_capability = 'premium' THEN"),ret=writer.indexOf('  RETURN v_attestation_id;',projection);assert(projection>0&&ret>projection);
   writer=writer.slice(0,projection)+writer.slice(ret);
   const lock='  -- Preserve the capability lineage lock, now strictly secondary.';
-  writer=writer.replace(lock,`  -- Require the existing profile without modifying its legacy fields.
+  if(action==='grant')writer=writer.replace(lock,`  -- Require the existing profile without modifying its legacy fields.
   PERFORM 1 FROM public.user_profiles WHERE id_user=p_account_id FOR KEY SHARE;
   IF NOT FOUND THEN RAISE EXCEPTION 'existing account profile required' USING ERRCODE='23503';END IF;
 `+lock);

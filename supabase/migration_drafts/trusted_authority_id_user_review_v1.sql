@@ -272,9 +272,6 @@ BEGIN
   END IF;
 
   PERFORM potok_nutrition.acquire_shared_account_gate_v1(p_account_id);
-  -- Require the existing profile without modifying its legacy fields.
-  PERFORM 1 FROM public.user_profiles WHERE id_user=p_account_id FOR KEY SHARE;
-  IF NOT FOUND THEN RAISE EXCEPTION 'existing account profile required' USING ERRCODE='23503';END IF;
   -- Preserve the capability lineage lock, now strictly secondary.
   PERFORM pg_catalog.pg_advisory_xact_lock(
     pg_catalog.hashtextextended('potok-entitlement-v2:' || p_account_id::text || ':' || p_capability, 0)
