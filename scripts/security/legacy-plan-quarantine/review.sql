@@ -25,6 +25,13 @@ BEGIN
  IF NOT FOUND OR pg_get_userbyid(p.proowner)<>'postgres' OR NOT p.prosecdef OR p.proconfig IS DISTINCT FROM ARRAY['search_path=""']
  OR md5(p.prosrc)<>'b05c7dd8e77f3c5cba77fd73236e01af' OR NOT has_function_privilege('authenticated',p.oid,'EXECUTE')
  THEN RAISE EXCEPTION 'Reviewed scoped program reader from #207 required';END IF;
+ IF EXISTS(SELECT FROM unnest(ARRAY['anon','authenticated']) grantee(role_name),
+  unnest(ARRAY['program_versions','program_adaptations','program_explainability','program_guard_events']) t(name)
+  WHERE has_table_privilege(grantee.role_name,'public.'||t.name,'UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN'))
+ OR EXISTS(SELECT FROM pg_class c JOIN pg_attribute a ON a.attrelid=c.oid,unnest(ARRAY['anon','authenticated']) grantee(role_name)
+  WHERE c.oid IN('public.program_versions'::regclass,'public.program_adaptations'::regclass,'public.program_explainability'::regclass,'public.program_guard_events'::regclass)
+  AND a.attnum>0 AND NOT a.attisdropped AND has_column_privilege(grantee.role_name,c.oid,a.attnum,'UPDATE,REFERENCES'))
+ THEN RAISE EXCEPTION 'Prior history containment from #208 required';END IF;
 END
 $preflight$;
 CREATE TEMP TABLE legacy_plan_keep_table_caps ON COMMIT DROP AS

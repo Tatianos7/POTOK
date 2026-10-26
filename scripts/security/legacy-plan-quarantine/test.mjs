@@ -65,6 +65,10 @@ async function runCases(){
   await client('authenticated',A,insert('program_adaptations'));
  });
  const before=await snapshot();await exec(review);assert.deepEqual(await snapshot(),before);passed++;console.log('PASS review rollback restores content, columns, ACL and policies');
+ await test('missing prior history containment rejects before any schema or permission change',async()=>{
+  await exec('GRANT UPDATE(version) ON public.program_versions TO authenticated;');const state=await snapshot();
+  await exec('SAVEPOINT prior;');await assert.rejects(()=>exec(body),/history containment from #208 required/);await exec('ROLLBACK TO prior;RELEASE prior;');assert.deepEqual(await snapshot(),state);
+ });
  await test('inherited table/column privileges reject atomically without changing memberships',async()=>{
   for(const [table,privilege] of [['program_days','DELETE'],['program_days','UPDATE(targets)'],['program_versions','INSERT(version)']]){
    await exec(`SAVEPOINT leak;GRANT ${privilege} ON public.${table} TO leaked_reader;`);const state=await snapshot();
