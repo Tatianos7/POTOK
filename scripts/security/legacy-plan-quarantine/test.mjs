@@ -64,6 +64,18 @@ async function runCases(){
   await client('authenticated',A,`UPDATE public.program_sessions SET plan_payload='{}' WHERE id='${PA}'`);
   await client('authenticated',A,insert('program_adaptations'));
  });
+ await test('exact trailing day_date date is preserved and never made client writable',async()=>{
+  await exec("ALTER TABLE public.program_sessions ADD COLUMN day_date date;UPDATE public.program_sessions SET day_date='2026-10-25';");
+  const before=(await snapshot()).data;await exec(body);assert.deepEqual((await snapshot()).data,before);
+  const [row]=await client('authenticated',A,`UPDATE public.program_sessions SET status='skipped',execution_reason='fatigue' WHERE id='${PA}' RETURNING date::text,day_date::text,plan_payload`);
+  assert.equal(row.date,'2026-10-26');assert.equal(row.day_date,'2026-10-25');assert.deepEqual(row.plan_payload,{preserved:'synthetic plan'});
+  await denied(()=>client('authenticated',A,`UPDATE public.program_sessions SET day_date='2026-10-27' WHERE id='${PA}'`));
+  await exec(finalSQL());await exec(historyFinalSQL());await exec(await readFinalSQL());
+ });
+ await test('same trailing day_date name with a different type is rejected before mutation',async()=>{
+  await exec('ALTER TABLE public.program_sessions ADD COLUMN day_date text;');const state=await snapshot();await exec('SAVEPOINT shape;');
+  await assert.rejects(()=>exec(body),/session shape/);await exec('ROLLBACK TO shape;RELEASE shape;');assert.deepEqual(await snapshot(),state);
+ });
  const before=await snapshot();await exec(review);assert.deepEqual(await snapshot(),before);passed++;console.log('PASS review rollback restores content, columns, ACL and policies');
  await test('missing prior history containment rejects before any schema or permission change',async()=>{
   await exec('GRANT UPDATE(version) ON public.program_versions TO authenticated;');const state=await snapshot();
