@@ -1,0 +1,79 @@
+name: Eight candidates real API and actual application acceptance
+on:
+  pull_request:
+    paths:
+      - 'scripts/security/combined-api/**'
+      - 'scripts/security/accumulated/**'
+      - 'scripts/security/authority-profile/fixture.mjs'
+      - 'scripts/security/catalog-authority/fixture.mjs'
+      - 'scripts/security/data-api-explicit-grants/**'
+      - 'supabase/migration_drafts/**'
+      - 'src/context/**'
+      - 'src/pages/Login.tsx'
+      - 'src/pages/Profile.tsx'
+      - 'src/services/profileService.ts'
+      - 'src/services/adminAccessService.ts'
+      - '.github/workflows/combined-eight-app.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-auth-postgrest:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    env:
+      SUPABASE_ACCESS_TOKEN: ''
+      SUPABASE_DB_PASSWORD: ''
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.0
+      - name: Initialize unlinked local project
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
+        run: |
+          set -e
+          umask 077
+          mkdir "$POTOK_PHOTO_AUTH_DIR"
+          supabase init --workdir "$POTOK_PHOTO_AUTH_DIR"
+          node scripts/security/data-api-explicit-grants/local-prepare.mjs config
+          node scripts/security/combined-api/local-prepare.mjs config
+      - name: Start loopback-only Auth, Mailpit and REST
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
+        run: |
+          set -e
+          umask 077
+          docker network create -o 'com.docker.network.bridge.host_binding_ipv4=127.0.0.1' potok-photo-http-acceptance
+          if ! supabase start --workdir "$POTOK_PHOTO_AUTH_DIR" --network-id potok-photo-http-acceptance --exclude realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > "$POTOK_PHOTO_AUTH_DIR/start.log" 2>&1; then
+            echo 'Disposable startup failed; logs remain private.'
+            exit 1
+          fi
+          supabase status --workdir "$POTOK_PHOTO_AUTH_DIR" -o json > "$POTOK_PHOTO_AUTH_DIR/status.json" 2> "$POTOK_PHOTO_AUTH_DIR/status.log"
+          node scripts/security/data-api-explicit-grants/local-prepare.mjs database
+      - name: Eight committed candidates with real OTP and API/service acceptance
+        timeout-minutes: 5
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
+        run: node scripts/security/combined-api/api.mjs
+      - name: Actual Login/Profile/AuthProvider and offline/account/authority acceptance
+        timeout-minutes: 5
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
+        run: |
+          set -e
+          node scripts/security/combined-api/browser.mjs
+          node scripts/security/combined-api/local-prepare.mjs verify-app
+      - name: Stop only disposable project
+        if: always()
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
+        run: |
+          supabase stop --workdir "$POTOK_PHOTO_AUTH_DIR" --no-backup > "$RUNNER_TEMP/potok-combined-eight-stop.log" 2>&1 || true
+          docker network rm potok-photo-http-acceptance > /dev/null 2>&1 || true
