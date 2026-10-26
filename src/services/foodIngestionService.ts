@@ -337,22 +337,13 @@ class FoodIngestionService {
 
     const foodIds = (upserted || []).map((row: any) => row.id);
     if (foodIds.length > 0) {
-      await this.recomputeDiaryEntries(foodIds);
+      // Catalog revisions affect future entries; historical diary snapshots stay immutable.
       await this.requeueAiRecommendations(foodIds);
     }
 
     await supabase.from('food_import_batches').update({ status: 'committed' }).eq('id', batchId);
 
     return { inserted: upserted?.length ?? 0, updated: 0 };
-  }
-
-  private async recomputeDiaryEntries(foodIds: string[]): Promise<void> {
-    if (!supabase || foodIds.length === 0) return;
-    try {
-      await supabase.rpc('recompute_food_entries_for_food_ids', { food_ids: foodIds });
-    } catch (error) {
-      console.error('[foodIngestionService] recompute diary entries failed:', error);
-    }
   }
 
   private async requeueAiRecommendations(foodIds: string[]): Promise<void> {
