@@ -41,6 +41,9 @@ jobs:
       - name: Diary contract tests
         run: npm run test:diary
 
+      - name: Catalog import preserves historical diary snapshots
+        run: node --test scripts/security/catalog-authority/food-import-snapshot-preservation.test.mjs
+
       # Nutrition Integrity V1 lives in an unmerged Draft PR.
       # Once included in a checked-out PR, run its isolated pure tests too.
       - name: Nutrition Integrity V1 contract tests when present
