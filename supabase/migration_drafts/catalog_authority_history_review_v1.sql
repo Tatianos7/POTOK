@@ -109,26 +109,26 @@ $policies$;
 
 -- Restrictive source boundaries cannot be bypassed by an older permissive own
 -- policy. They add no new catalog-wide write grants or user-private read access.
-CREATE POLICY catalog_food_read_boundary_v1 ON public.foods AS RESTRICTIVE FOR SELECT TO authenticated
+CREATE POLICY catalog_food_read_boundary_v1 ON public.foods AS RESTRICTIVE FOR SELECT TO anon,authenticated
  USING(source IN ('core','brand') OR (source='user' AND created_by_user_id=auth.uid()));
-CREATE POLICY catalog_food_insert_boundary_v1 ON public.foods AS RESTRICTIVE FOR INSERT TO authenticated
+CREATE POLICY catalog_food_insert_boundary_v1 ON public.foods AS RESTRICTIVE FOR INSERT TO anon,authenticated
  WITH CHECK((source='user' AND created_by_user_id=auth.uid()) OR (source IN ('core','brand') AND public.has_catalog_admin_access_v1()));
-CREATE POLICY catalog_food_update_boundary_v1 ON public.foods AS RESTRICTIVE FOR UPDATE TO authenticated
+CREATE POLICY catalog_food_update_boundary_v1 ON public.foods AS RESTRICTIVE FOR UPDATE TO anon,authenticated
  USING((source='user' AND created_by_user_id=auth.uid()) OR (source IN ('core','brand') AND public.has_catalog_admin_access_v1()))
  WITH CHECK((source='user' AND created_by_user_id=auth.uid()) OR (source IN ('core','brand') AND public.has_catalog_admin_access_v1()));
-CREATE POLICY catalog_food_delete_boundary_v1 ON public.foods AS RESTRICTIVE FOR DELETE TO authenticated
+CREATE POLICY catalog_food_delete_boundary_v1 ON public.foods AS RESTRICTIVE FOR DELETE TO anon,authenticated
  USING((source='user' AND created_by_user_id=auth.uid()) OR (source IN ('core','brand') AND public.has_catalog_admin_access_v1()));
-CREATE POLICY catalog_alias_read_boundary_v1 ON public.food_aliases AS RESTRICTIVE FOR SELECT TO authenticated
+CREATE POLICY catalog_alias_read_boundary_v1 ON public.food_aliases AS RESTRICTIVE FOR SELECT TO anon,authenticated
  USING((source IN ('core','brand') OR (source='user' AND created_by_user_id=auth.uid()))
    AND EXISTS(SELECT FROM public.foods f WHERE f.id=food_aliases.canonical_food_id));
-CREATE POLICY catalog_alias_insert_boundary_v1 ON public.food_aliases AS RESTRICTIVE FOR INSERT TO authenticated
+CREATE POLICY catalog_alias_insert_boundary_v1 ON public.food_aliases AS RESTRICTIVE FOR INSERT TO anon,authenticated
  WITH CHECK(((source='user' AND created_by_user_id=auth.uid()) OR (source IN ('core','brand') AND public.has_catalog_admin_access_v1()))
    AND EXISTS(SELECT FROM public.foods f WHERE f.id=food_aliases.canonical_food_id));
-CREATE POLICY catalog_alias_update_boundary_v1 ON public.food_aliases AS RESTRICTIVE FOR UPDATE TO authenticated
+CREATE POLICY catalog_alias_update_boundary_v1 ON public.food_aliases AS RESTRICTIVE FOR UPDATE TO anon,authenticated
  USING((source='user' AND created_by_user_id=auth.uid()) OR (source IN ('core','brand') AND public.has_catalog_admin_access_v1()))
  WITH CHECK(((source='user' AND created_by_user_id=auth.uid()) OR (source IN ('core','brand') AND public.has_catalog_admin_access_v1()))
    AND EXISTS(SELECT FROM public.foods f WHERE f.id=food_aliases.canonical_food_id));
-CREATE POLICY catalog_alias_delete_boundary_v1 ON public.food_aliases AS RESTRICTIVE FOR DELETE TO authenticated
+CREATE POLICY catalog_alias_delete_boundary_v1 ON public.food_aliases AS RESTRICTIVE FOR DELETE TO anon,authenticated
  USING((source='user' AND created_by_user_id=auth.uid()) OR (source IN ('core','brand') AND public.has_catalog_admin_access_v1()));
 
 -- Audit rows are written by the reviewed definer RPCs, never forged directly.

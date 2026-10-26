@@ -100,6 +100,15 @@ try{
   await assert.rejects(()=>as('authenticated',A,`SELECT public.recompute_food_entries_for_food_ids(ARRAY['${FOOD}'::uuid])`),e=>e.code==='42703');
   const before=await diary();await apply();await denied(()=>as('postgres',A,`SELECT public.recompute_food_entries_for_food_ids(ARRAY['${FOOD}'::uuid])`));assert.deepEqual(await diary(),before);
  });
+ await test('anonymous broad legacy SELECT cannot disclose personal foods or aliases',async()=>{
+  await exec(`SET ROLE postgres;CREATE POLICY broad_anon_food_read ON public.foods FOR SELECT TO anon USING(true);
+   CREATE POLICY broad_anon_alias_read ON public.food_aliases FOR SELECT TO anon USING(true);
+   INSERT INTO public.foods(name,source,created_by_user_id) VALUES('Private anonymous boundary','user','${A}');
+   INSERT INTO public.food_aliases(canonical_food_id,alias,source,created_by_user_id) VALUES('${FOOD}','Private anonymous alias','user','${A}');RESET ROLE;`);
+  assert.equal((await as('anon',null,'SELECT * FROM public.food_aliases')).length,1);
+  await apply();assert.equal((await as('anon',null,'SELECT * FROM public.food_aliases')).length,0);
+  const visible=await as('anon',null,'SELECT name FROM public.foods');assert.deepEqual(visible,[{name:'Fixture apple'}]);
+ });
  console.log(`CATALOG_AUTHORITY_SQL_OK: ${passed} cases; actual public RPC/policy sources and v2 reader functions`);
 }catch(error){console.error('CATALOG_AUTHORITY_SQL_FAILED phase='+phase+': '+error.message+' code='+(error.code??'none'));process.exitCode=1;}
 finally{embedded?await db.close():await db.end();}

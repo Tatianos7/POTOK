@@ -43,7 +43,7 @@ relation and normalization references are explicitly schema-qualified.
 
 Six named administrative RLS policies move to the verified predicate. Ordinary
 own-search analytics policies are preserved. Restrictive foods/aliases policies
-prevent a client-owned personal row from being published as shared core/brand
+bound both anon and authenticated roles and prevent a client-owned personal row from being published as shared core/brand
 data and keep a personal alias private even when its target is a shared food.
 Visible alias targets must themselves be visible through foods RLS. These policies
 add no new permissive catalog-wide write privilege or foreign-personal-data read
@@ -66,7 +66,7 @@ old history RPC calls will now fail rather than rewrite snapshots.
 
 ## Acceptance and its limits
 
-Twelve embedded PostgreSQL 17.5 cases pass. Native PostgreSQL 17 repeats them:
+Thirteen embedded PostgreSQL 17.5 cases pass. Native PostgreSQL 17 repeats them:
 legacy profile authorization/history rewrite reproduction; legacy flag denial;
 verified admin with false old flag successfully applying the complete public
 alias and missing-food RPC bodies; duplicate apply behavior; NULL fiber; unchanged
@@ -74,7 +74,8 @@ full diary rows, favorites and ingredient pointers; same-JWT revocation and
 metadata manipulation; missing/failed verification; personal/shared source and
 alias visibility; ordinary analytics; audit forgery denial; client/service/owner
 and definer-delegated history denial; source/policy drift rollback; review-wrapper
-rollback; and the id_user-only profile schema compatibility case.
+rollback; the id_user-only profile schema compatibility case; and anonymous
+personal-data denial despite a deliberately broad legacy SELECT policy.
 
 The schema is synthetic. Complete public review/alias/draft SQL is replayed;
 foods/alias/history base table shapes are fixture definitions, and normalization

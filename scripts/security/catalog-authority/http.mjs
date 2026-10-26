@@ -8,14 +8,24 @@ async function request(route,user,method='GET',body){const r=await localFetch(st
 const rpc=(name,user,body={})=>request('rpc/'+name,user,'POST',body);
 async function ok(promise,expected=200){const r=await promise;assert.equal(r.status,expected,'Catalog REST status='+r.status+' code='+(r.body?.code??'none'));return r.body;}
 async function denied(promise){const r=await promise;assert([401,403].includes(r.status),'Catalog denial status='+r.status);assert.equal(r.body?.code,'42501');}
+async function waitForRpc(name,user,body){
+ for(let n=0;n<40;n++){
+  const r=await rpc(name,user,body);if(r.status===200)return;
+  assert.equal(r.body?.code,'PGRST202','Unexpected response during schema refresh');
+  await new Promise(resolve=>setTimeout(resolve,250));
+ }
+ throw Error('PostgREST function schema refresh timeout');
+}
 let stage='OTP';
 try{
  const a=await login('catalog-a@example.test'),b=await login('catalog-b@example.test');prepare('fixture',a.id,b.id);
+ await waitForRpc('apply_owner_approved_missing_food_draft',a,{p_draft_id:'00000000-0000-4000-8000-000000000000'});
  stage='legacy';assert.equal((await ok(rpc('apply_admin_approved_food_alias',a,{p_review_id:REVIEW})))[0].result,'applied');
  await ok(request('foods',a,'POST',{name:'forged-core',source:'core',created_by_user_id:a.id}),201);
  await ok(rpc('recompute_food_entries_for_food_ids',a,{food_ids:[FOOD]}),204);
  console.log('PASS real API reproduces legacy admin flag, direct catalog publication and history rewrite');
  stage='candidate';prepare('candidate',a.id,b.id);
+ await waitForRpc('has_catalog_admin_access_v1',a,{});
  const beforeA=await ok(request('food_diary_entries',a)),beforeB=await ok(request('food_diary_entries',b));
  assert.equal(await ok(rpc('has_catalog_admin_access_v1',a)),false);assert.equal(await ok(rpc('has_catalog_admin_access_v1',b)),true);
  assert.equal((await ok(rpc('apply_owner_approved_missing_food_draft',a,{p_draft_id:DRAFT})))[0].result,'permission_denied');
