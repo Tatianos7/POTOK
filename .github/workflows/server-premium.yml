@@ -1,0 +1,42 @@
+name: Server Premium paywall and program boundary review
+on:
+  pull_request:
+    paths:
+      - 'scripts/security/server-premium/**'
+      - 'supabase/phase7_2*.sql'
+      - 'supabase/phase7_3_2_monetization.sql'
+      - 'supabase/migration_drafts/premium_finance_authority_review_v1.sql'
+      - 'supabase/migration_drafts/trusted_authority_id_user_review_v1.sql'
+      - '.github/workflows/server-premium.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test_admin
+          POSTGRES_PASSWORD: disposable-test-only
+          POSTGRES_DB: potok_server_premium_test
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_admin -d potok_server_premium_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix scripts/security/data-api-explicit-grants --ignore-scripts
+      - name: Paywall candidate acceptance and open direct-program boundary reproduction
+        env:
+          TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_server_premium_test
+          SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
+        run: node scripts/security/server-premium/test.mjs

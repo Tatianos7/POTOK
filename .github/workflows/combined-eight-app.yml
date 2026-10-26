@@ -1,8 +1,9 @@
-name: Eight candidates real API and actual application acceptance
+name: Combined candidates, Premium client and server paywall API acceptance
 on:
   pull_request:
     paths:
       - 'scripts/security/combined-api/**'
+      - 'scripts/security/server-premium/**'
       - 'scripts/security/accumulated/**'
       - 'scripts/security/authority-profile/fixture.mjs'
       - 'scripts/security/catalog-authority/fixture.mjs'
