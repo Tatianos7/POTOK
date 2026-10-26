@@ -43,6 +43,9 @@ async function fixture(){
  INSERT INTO public.entitlements(user_id,tier,flags) VALUES('${A}','free','{"can_adapt":false}'),('${B}','pro','{"can_adapt":true}');
  INSERT INTO public.subscriptions(user_id,plan,status) VALUES('${A}','free','active'),('${B}','pro','active');
  INSERT INTO public.billing_events(user_id,provider,event_type,idempotency_key) VALUES('${A}','play_store','fixture','seed-a');`);
+ // Fixture-only: explicitly place the trusted crypto dependency outside public before
+ // the old photo SQL's IF NOT EXISTS check; do not change any pinned candidate.
+ if(!embedded)await exec('CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;');
  // Photo tables are created after the deliberately broad historical fixture grants.
  for(const name of ['20260224_measurements_photo_assets.sql','20260225_measurement_photo_deletions.sql']){
   const sql=await readFile('supabase/migrations/'+name,'utf8');await exec(embedded?sql.replace(/^create extension if not exists pgcrypto;\s*/i,''):sql);
