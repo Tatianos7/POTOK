@@ -37,7 +37,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --prefix scripts/security/data-api-explicit-grants --ignore-scripts
-      - name: Seven pinned candidates, final effective permissions, content and rollback
+      - name: Eight pinned candidates, real issuer, final rights and restored runner protocol
         env:
           TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_accumulated_test
           SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
-import {legacySchema,verifiedReaders,A,B,FOOD,REVIEW,DRAFT} from '../catalog-authority/fixture.mjs';
+import {legacySchema,A,B,FOOD,REVIEW,DRAFT} from '../catalog-authority/fixture.mjs';
 import {loadInputs,combined,body,order} from './inputs.mjs';
+import {permissionQuery,assertPermissions} from './checks.mjs';
+import {buildRehearsal,parseCopyCounts} from './restored.mjs';
 
 const embedded=process.env.SQL_TEST_PGLITE_MODULE;let db;
 if(embedded){const {PGlite}=await import(pathToFileURL(embedded));const {pg_trgm}=await import(pathToFileURL(process.env.SQL_TEST_TRGM_MODULE));db=new PGlite({extensions:{pg_trgm}});}
@@ -15,13 +17,13 @@ const profile=`CREATE TABLE public.user_profiles(id_user uuid PRIMARY KEY,first_
  CREATE POLICY owner_read ON public.user_profiles FOR SELECT TO authenticated USING(auth.uid()=id_user);
  CREATE POLICY owner_insert ON public.user_profiles FOR INSERT TO authenticated WITH CHECK(auth.uid()=id_user);
  CREATE POLICY owner_update ON public.user_profiles FOR UPDATE TO authenticated USING(auth.uid()=id_user) WITH CHECK(auth.uid()=id_user);`;
-async function fixture({verified=true}={}){
- await exec(`ROLLBACK;RESET ROLE;DROP EXTENSION IF EXISTS pg_trgm CASCADE;DROP SCHEMA IF EXISTS public CASCADE;DROP SCHEMA IF EXISTS extensions CASCADE;DROP SCHEMA IF EXISTS auth CASCADE;DROP SCHEMA IF EXISTS storage CASCADE;DROP SCHEMA IF EXISTS potok_control CASCADE;
- CREATE SCHEMA public AUTHORIZATION postgres;CREATE SCHEMA extensions AUTHORIZATION postgres;CREATE SCHEMA auth;CREATE SCHEMA storage AUTHORIZATION postgres;CREATE SCHEMA potok_control AUTHORIZATION postgres;
+async function fixture(){
+ await exec(`ROLLBACK;RESET ROLE;DROP EXTENSION IF EXISTS pg_trgm CASCADE;DROP SCHEMA IF EXISTS public CASCADE;DROP SCHEMA IF EXISTS extensions CASCADE;DROP SCHEMA IF EXISTS auth CASCADE;DROP SCHEMA IF EXISTS storage CASCADE;DROP SCHEMA IF EXISTS potok_control CASCADE;DROP SCHEMA IF EXISTS potok_nutrition CASCADE;
+ CREATE SCHEMA public AUTHORIZATION postgres;CREATE SCHEMA extensions AUTHORIZATION postgres;CREATE SCHEMA auth;CREATE SCHEMA storage AUTHORIZATION postgres;
  REVOKE CREATE ON SCHEMA public,extensions FROM PUBLIC;GRANT USAGE ON SCHEMA public,extensions,auth TO postgres,anon,authenticated,service_role;
  CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$ SELECT coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb $$;
  CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$ SELECT (auth.jwt()->>'sub')::uuid $$;
- CREATE TABLE auth.users(id uuid PRIMARY KEY);INSERT INTO auth.users VALUES('${A}'),('${B}');GRANT REFERENCES ON auth.users TO postgres;
+ CREATE TABLE auth.users(id uuid PRIMARY KEY);INSERT INTO auth.users VALUES('${A}'),('${B}');GRANT SELECT,REFERENCES ON auth.users TO postgres;
  CREATE TABLE storage.buckets(id text PRIMARY KEY,name text,public boolean);ALTER TABLE storage.buckets OWNER TO postgres;
  CREATE TABLE storage.objects(id uuid PRIMARY KEY,bucket_id text,name text);ALTER TABLE storage.objects OWNER TO postgres;
  ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public REVOKE ALL ON TABLES FROM PUBLIC,anon,authenticated,service_role;`);
@@ -44,42 +46,24 @@ async function fixture({verified=true}={}){
  for(const name of ['20260224_measurements_photo_assets.sql','20260225_measurement_photo_deletions.sql']){
   const sql=await readFile('supabase/migrations/'+name,'utf8');await exec(embedded?sql.replace(/^create extension if not exists pgcrypto;\s*/i,''):sql);
  }
- if(verified)await exec(await verifiedReaders());
  await exec('RESET ROLE;ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT TRUNCATE ON TABLES TO anon,authenticated;');
 }
 async function as(role,sub,sql){await exec(`BEGIN;SET LOCAL ROLE ${role};SELECT set_config('request.jwt.claims','${JSON.stringify({role,sub})}',true);`);try{const r=await rows(sql);await exec('COMMIT;');return r;}catch(e){await exec('ROLLBACK;');throw e;}}
 const denied=fn=>assert.rejects(fn,e=>e.code==='42501');
-async function apply(text=combined(sources),commit=true){await exec('BEGIN;SET LOCAL ROLE postgres;');try{await exec(text);await finalPermissions();await exec(commit?'COMMIT;':'ROLLBACK;');}catch(e){await exec('ROLLBACK;');throw e;}}
-async function finalPermissions(){
- const r=(await rows(`SELECT
- NOT EXISTS(SELECT FROM pg_class c WHERE c.relnamespace='public'::regnamespace AND c.relkind IN('r','p') AND (has_table_privilege('anon',c.oid,'TRUNCATE') OR has_table_privilege('authenticated',c.oid,'TRUNCATE'))) AS trunc,
- NOT EXISTS(SELECT FROM unnest(ARRAY['anon','authenticated']) r(role),unnest(ARRAY['is_admin','has_premium','created_at','updated_at']) c(col)
- WHERE has_column_privilege(r.role,'public.user_profiles',c.col,'INSERT') OR has_column_privilege(r.role,'public.user_profiles',c.col,'UPDATE')) AS profile,
- has_column_privilege('authenticated','public.user_profiles','first_name','UPDATE') AS ordinary_profile,
- NOT EXISTS(SELECT FROM unnest(ARRAY['public.apply_admin_approved_food_alias(uuid,text,text)','public.apply_owner_approved_missing_food_draft(uuid)','public.get_entitlements(uuid)','public.get_paywall_state(text,uuid)','public.recompute_food_entries_for_food_ids(uuid[])','public.restore_purchase(uuid,text,text,text)','public.rls_auto_enable()','public.start_purchase(uuid,text,text,text)']) s(signature)
- WHERE has_function_privilege('anon',s.signature,'EXECUTE')) AS anon_rpc,
- has_function_privilege('authenticated','public.get_entitlements(uuid)','EXECUTE') AS own_read,
- NOT has_function_privilege('service_role','public.get_entitlements(uuid)','EXECUTE') AS service_read_denied,
- NOT has_function_privilege('authenticated','public.start_purchase(uuid,text,text,text)','EXECUTE') AS client_purchase_denied,
- has_function_privilege('service_role','public.start_purchase(uuid,text,text,text)','EXECUTE') AS server_event_retained,
- NOT EXISTS(SELECT FROM unnest(ARRAY['anon','authenticated']) r(role),unnest(ARRAY['public.entitlements','public.subscriptions','public.billing_events']) t(name)
- WHERE has_table_privilege(r.role,t.name,'INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN')) AS finance,
- NOT has_function_privilege('service_role','public.apply_admin_approved_food_alias(uuid,text,text)','EXECUTE') AS server_admin_denied,
- NOT has_function_privilege('authenticated','public.recompute_food_entries_for_food_ids(uuid[])','EXECUTE') AS history,
- has_table_privilege('authenticated','public.measurement_photo_assets','INSERT') AS photo,
- has_column_privilege('authenticated','public.measurement_photo_deletions','deleted_at','UPDATE') AS photo_upsert,
- (SELECT extnamespace='extensions'::regnamespace FROM pg_extension WHERE extname='pg_trgm') AS trgm`))[0];
- assert(Object.values(r).every(x=>x===true),'Accumulated effective permissions failed: '+JSON.stringify(r));
-}
+async function apply(text=combined(sources),commit=true,authority=true){await exec('SET SESSION AUTHORIZATION postgres;BEGIN;');try{await exec(text);await finalPermissions(authority);await exec(commit?'COMMIT;':'ROLLBACK;');}catch(e){await exec('ROLLBACK;');throw e;}finally{await exec('SET SESSION AUTHORIZATION test_admin;RESET ROLE;');}}
+async function issue(action='grant'){await exec('SET SESSION AUTHORIZATION postgres;');try{return await rows(action==='grant'?`SELECT potok_control.grant_entitlement_v2('${B}','admin',now()+interval '1 day','synthetic-combination','synthetic-test')`:`SELECT potok_control.revoke_entitlement_v2('${B}','admin','synthetic-combination-revoke','synthetic-test')`);}finally{await exec('SET SESSION AUTHORIZATION test_admin;');}}
+async function finalPermissions(authority=true){assertPermissions((await rows(permissionQuery(authority)))[0]);}
+
 async function snapshot(){
  const metadata=await rows(`SELECT jsonb_build_object(
- 'relations',(SELECT jsonb_agg(to_jsonb(c) ORDER BY c.oid) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','extensions','potok_control')),
- 'columns',(SELECT jsonb_agg(to_jsonb(a) ORDER BY a.attrelid,a.attnum) FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','extensions','potok_control')),
- 'routines',(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.oid) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('public','extensions','potok_control')),
+ 'relations',(SELECT jsonb_agg(to_jsonb(c) ORDER BY c.oid) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','extensions','potok_control','potok_nutrition')),
+ 'columns',(SELECT jsonb_agg(to_jsonb(a) ORDER BY a.attrelid,a.attnum) FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','extensions','potok_control','potok_nutrition')),
+ 'routines',(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.oid) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('public','extensions','potok_control','potok_nutrition')),
  'policies',(SELECT jsonb_agg(to_jsonb(p) ORDER BY p.oid) FROM pg_policy p),
  'defaults',(SELECT jsonb_agg(to_jsonb(d) ORDER BY d.oid) FROM pg_default_acl d),
  'constraints',(SELECT jsonb_agg(to_jsonb(c) ORDER BY c.oid) FROM pg_constraint c WHERE c.connamespace='public'::regnamespace),
  'extension',(SELECT to_jsonb(e) FROM pg_extension e WHERE extname='pg_trgm'),
+ 'schemas',(SELECT jsonb_agg(to_jsonb(n) ORDER BY oid) FROM pg_namespace n WHERE nspname IN('public','extensions','potok_control','potok_nutrition')),
  'roles',(SELECT jsonb_agg(to_jsonb(r) ORDER BY oid) FROM pg_roles r)) AS metadata`);
  const tables=await rows("SELECT n.nspname AS schema,c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('public','potok_control','storage') AND c.relkind IN('r','p') ORDER BY 1,2");
  const data=[];for(const t of tables){const quote=s=>'"'+s.replace(/"/g,'""')+'"';data.push({table:t.schema+'.'+t.name,rows:await rows('SELECT to_jsonb(t) AS row FROM '+quote(t.schema)+'.'+quote(t.name)+' t ORDER BY to_jsonb(t)::text')});}
@@ -87,19 +71,20 @@ async function snapshot(){
 }
 let passed=0;async function test(name,fn,options){await fixture(options);await fn();passed++;console.log('PASS '+name);}
 try{
- if(embedded)await exec('CREATE ROLE test_admin SUPERUSER;SET SESSION AUTHORIZATION test_admin;ALTER ROLE postgres RENAME TO embedded_bootstrap;CREATE ROLE postgres NOSUPERUSER;');
- else await exec('CREATE ROLE postgres NOSUPERUSER;ALTER DATABASE potok_accumulated_test OWNER TO postgres;');
+ if(embedded)await exec('CREATE ROLE test_admin SUPERUSER;SET SESSION AUTHORIZATION test_admin;ALTER ROLE postgres RENAME TO embedded_bootstrap;CREATE ROLE postgres NOSUPERUSER BYPASSRLS;');
+ else await exec('CREATE ROLE postgres NOSUPERUSER BYPASSRLS;ALTER DATABASE potok_accumulated_test OWNER TO postgres;');
  await exec('CREATE ROLE anon;CREATE ROLE authenticated;CREATE ROLE service_role BYPASSRLS;CREATE ROLE supabase_admin;');
- await test('all seven exact candidates coexist; review rollback restores metadata and every synthetic row',async()=>{
+ const database=(await rows('SELECT current_database() AS name'))[0].name;assert(/^[a-z_][a-z0-9_]*$/.test(database));await exec('ALTER DATABASE '+database+' OWNER TO postgres;');
+ await test('all eight exact candidates coexist; review rollback restores metadata and every synthetic row',async()=>{
   const before=await snapshot();await apply(undefined,false);assert.deepEqual(await snapshot(),before);
  });
  await test('committed combination preserves data and final rights beyond the transaction',async()=>{
-  const before=(await snapshot()).data;await apply();await finalPermissions();assert.deepEqual((await snapshot()).data,before);
+  const before=(await snapshot()).data;await apply();await finalPermissions();const after=(await snapshot()).data;assert.deepEqual(after.filter(t=>before.some(b=>b.table===t.table)),before);assert.deepEqual(after.filter(t=>!before.some(b=>b.table===t.table)),[{table:'potok_control.access_attestations',rows:[]}]);
   assert.equal((await rows("SELECT rolsuper FROM pg_roles WHERE rolname='postgres'"))[0].rolsuper,false);
   const residual=await rows("SELECT a.privilege_type FROM pg_default_acl d CROSS JOIN LATERAL aclexplode(d.defaclacl) a WHERE d.defaclrole='supabase_admin'::regrole AND a.privilege_type='TRUNCATE'");assert.equal(residual.length,2);
  });
  await test('committed profile, finance, verified catalog and photo paths work together',async()=>{
-  await apply();const before=await rows('SELECT to_jsonb(d) AS row FROM public.food_diary_entries d ORDER BY user_id');
+  await apply();await issue();const before=await rows('SELECT to_jsonb(d) AS row FROM public.food_diary_entries d ORDER BY user_id');
   await as('authenticated',A,"UPDATE public.user_profiles SET first_name='Updated' WHERE id_user=auth.uid()");
   await denied(()=>as('authenticated',A,'UPDATE public.user_profiles SET is_admin=true WHERE id_user=auth.uid()'));
   assert.equal((await as('authenticated',A,'SELECT public.get_entitlements() AS e'))[0].e.tier,'free');
@@ -115,28 +100,60 @@ try{
   assert.equal((await as('authenticated',A,"SELECT name FROM public.foods WHERE name ILIKE '%apple%'"))[0].name,'Fixture apple');
   assert.deepEqual(await rows('SELECT to_jsonb(d) AS row FROM public.food_diary_entries d ORDER BY user_id'),before);await finalPermissions();
  });
+ await test('combined installation starts empty; real issuance and same-claims revocation preserve profile and history',async()=>{
+  await apply();const before=await rows('SELECT to_jsonb(p) AS row FROM public.user_profiles p ORDER BY id_user');
+  assert.equal((await as('authenticated',A,"SELECT public.has_verified_entitlement_v1('admin') AS allowed"))[0].allowed,false);
+  assert.equal((await as('authenticated',B,"SELECT public.has_verified_entitlement_v1('admin') AS allowed"))[0].allowed,false);
+  await issue();assert.equal((await as('authenticated',B,'SELECT public.has_catalog_admin_access_v1() AS allowed'))[0].allowed,true);
+  await issue('revoke');assert.equal((await as('authenticated',B,'SELECT public.has_catalog_admin_access_v1() AS allowed'))[0].allowed,false);
+  assert.deepEqual(await rows('SELECT to_jsonb(p) AS row FROM public.user_profiles p ORDER BY id_user'),before);await finalPermissions();
+ });
+ await test('authority before profile containment fails and restores the whole baseline',async()=>{
+  const before=await snapshot();await assert.rejects(()=>apply(combined(sources,['truncate','authority','profile','anonymous','photos','finance','catalog','trgm'])),/profile column containment/);assert.deepEqual(await snapshot(),before);
+ });
  await test('missing verified authority keeps administration closed without blocking ordinary profile/photo access',async()=>{
-  await apply();assert.equal((await as('authenticated',B,'SELECT public.has_catalog_admin_access_v1() AS allowed'))[0].allowed,false);
+  await apply(combined(sources,order.filter(k=>k!=='authority')),true,false);assert.equal((await as('authenticated',B,'SELECT public.has_catalog_admin_access_v1() AS allowed'))[0].allowed,false);
   assert.equal((await as('authenticated',A,`SELECT * FROM public.apply_owner_approved_missing_food_draft('${DRAFT}')`))[0].result,'permission_denied');
   await as('authenticated',A,"UPDATE public.user_profiles SET first_name='Ordinary' WHERE id_user=auth.uid()");
   await as('authenticated',A,`INSERT INTO public.measurement_photo_assets(user_id,day,slot,storage_path) VALUES('${A}','2026-10-26','main_1','synthetic')`);
- },{verified:false});
+ });
  await test('last candidate failure atomically restores all earlier changes',async()=>{
   await exec('GRANT CREATE ON SCHEMA extensions TO authenticated;');const before=await snapshot();
   await assert.rejects(apply(),/Client CREATE on target schema/);assert.deepEqual(await snapshot(),before);
  });
  await test('anonymous containment must precede retiring the SECURITY DEFINER history endpoint',async()=>{
-  const before=await snapshot();const wrong=['truncate','profile','photos','finance','catalog','anonymous','trgm'];
+  const before=await snapshot();const wrong=['truncate','profile','photos','finance','authority','catalog','anonymous','trgm'];
   await assert.rejects(()=>apply(combined(sources,wrong)),/SECURITY DEFINER drift/);assert.deepEqual(await snapshot(),before);
  });
  await test('a late grant regression is rejected by the accumulated final verifier',async()=>{
   const before=await snapshot();await assert.rejects(()=>apply(combined(sources)+'\nGRANT EXECUTE ON FUNCTION public.get_entitlements(uuid) TO service_role;'),/Accumulated effective permissions failed/);assert.deepEqual(await snapshot(),before);
  });
+ await test('late verified-reader replacement is rejected even when grants remain correct',async()=>{
+  const before=await snapshot();await assert.rejects(()=>apply(combined(sources)+"\nCREATE OR REPLACE FUNCTION public.has_verified_entitlement_v1(p_capability text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS 'SELECT true';"),/Accumulated effective permissions failed/);assert.deepEqual(await snapshot(),before);
+ });
+ await test('owner restored rehearsal streams prefix, rollback transaction and postchecks with content proof',async()=>{
+  const before=await snapshot();const tables=await rows("SELECT n.nspname AS schema,c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('auth','public','storage') AND c.relkind='r' ORDER BY 1,2");
+  for(const t of tables)t.rows=Number((await rows('SELECT count(*) AS n FROM "'+t.schema+'"."'+t.name+'"'))[0].n);
+  const script=buildRehearsal(sources,tables),[prefix,rest]=script.split(/^BEGIN;\n/m),[transaction,suffix]=rest.split(/^ROLLBACK;\n/m);assert(prefix&&transaction&&suffix);
+  await exec('SET SESSION AUTHORIZATION postgres;');try{await exec(prefix);await exec('BEGIN;\n'+transaction+'ROLLBACK;');await exec(suffix);}finally{await exec('ROLLBACK;SET SESSION AUTHORIZATION test_admin;');}
+  assert.deepEqual(await snapshot(),before);
+  assert.throws(()=>parseCopyCounts('COPY public.t (x) FROM stdin;\nunfinished'));
+  assert.deepEqual(parseCopyCounts('COPY public.empty (x) FROM stdin;\n\\.\n'),[{schema:'public',name:'empty',rows:0}]);
+ });
  await test('single-use source guards reject reapplication without changing the secured state',async()=>{
   await apply();const before=await snapshot();await assert.rejects(apply);assert.deepEqual(await snapshot(),before);
  });
+ await test('restored rehearsal detects changed content even when row counts stay identical',async()=>{
+  const before=await snapshot();const tables=[{schema:'public',name:'user_profiles',rows:2}];
+  const script=buildRehearsal(sources,tables).replace('DO $permissions$',"UPDATE public.user_profiles SET first_name='tampered';\nDO $permissions$");
+  const [prefix,rest]=script.split(/^BEGIN;\n/m),[transaction]=rest.split(/^ROLLBACK;\n/m);
+  await exec('SET SESSION AUTHORIZATION postgres;');try{
+   await exec(prefix);await assert.rejects(()=>exec('BEGIN;\n'+transaction+'ROLLBACK;'),/Restored content mismatch/);await exec('ROLLBACK;DROP TABLE potok_eight_data,potok_eight_state;');
+  }finally{await exec('ROLLBACK;SET SESSION AUTHORIZATION test_admin;');}
+  assert.deepEqual(await snapshot(),before);
+ });
  assert.throws(()=>body('BEGIN;\nROLLBACK;\nCOMMIT;','COMMIT'));assert.throws(()=>combined(sources,['profile','profile']));
- assert.deepEqual(order,['truncate','profile','anonymous','photos','finance','catalog','trgm']);
- console.log(`ACCUMULATED_SECURITY_OK: ${passed} cases / seven pinned candidates; synthetic data only; no hosted access`);
+ assert.deepEqual(order,['truncate','profile','anonymous','photos','finance','authority','catalog','trgm']);
+ console.log(`ACCUMULATED_SECURITY_OK: ${passed} cases / eight pinned candidates; synthetic data only; no hosted access`);
 }catch(e){console.error('ACCUMULATED_SECURITY_FAILED: '+e.message+' '+(e.code??''));process.exitCode=1;}
 finally{await exec('ROLLBACK;RESET ROLE;').catch(()=>{});await(embedded?db.close():db.end());}
