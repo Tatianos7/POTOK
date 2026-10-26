@@ -90,6 +90,10 @@ async function runCases(){
   await denied(()=>client('authenticated',A,'SELECT knowledge_refs FROM public.program_explainability'));
  });
  await test('preserving INSERT does not grant a foreign program write',async()=>{for(const t of tables)await denied(()=>client('authenticated',B,insert(t,PA)));});
+ await test('preserved INSERT cannot overwrite old history with ON CONFLICT DO UPDATE',async()=>{
+  const q=`INSERT INTO public.program_versions(id,program_id,program_type,version,snapshot) VALUES('${PA}','${PA}','nutrition',99,'{}') ON CONFLICT(id) DO UPDATE SET version=excluded.version`;
+  await denied(()=>client('authenticated',A,q));
+ });
  await test('ordinary own session/status paths and existing trusted service DML remain available',async()=>{
   await client('authenticated',A,`UPDATE public.program_sessions SET status='completed' WHERE program_id='${PA}'`);
   await client('authenticated',A,`UPDATE public.nutrition_programs SET status='paused' WHERE id='${PA}'`);

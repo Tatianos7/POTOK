@@ -99,6 +99,7 @@ try{
   await denied(request(table+'?id=eq.'+PA,user,'PATCH',historyPatch[table],{'Prefer':'return=minimal'}));
   await denied(request(table+'?id=eq.'+PA,user,'DELETE',undefined,{'Prefer':'return=minimal'}));
  }
+ for(const table of historyTables)await denied(request(table+'?on_conflict=id',a,'POST',{id:PA,...historyInsert(table,PA)},{'Prefer':'return=minimal,resolution=merge-duplicates'}));
  stage='verified Premium';const unchangedToken=b.token;prepare('premium-grant',b.id);
  assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).premium,true);assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).admin,false);
  assert.equal(await eb.canAdaptProgram(b.id),true);assert.equal(await eb.canExplain(b.id),true);assert.equal((await eb.canRealtimePose(b.id)).allowed,true);
