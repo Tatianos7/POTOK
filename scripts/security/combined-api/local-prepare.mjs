@@ -6,17 +6,18 @@ import {createHash} from 'node:crypto';
 import {catalogFixture,A,B} from '../authority-profile/fixture.mjs';
 import {loadInputs,combined} from '../accumulated/inputs.mjs';
 import {permissionQuery} from '../accumulated/checks.mjs';
+import {seedSQL as seedPrograms,finalSQL as programReadFinalSQL} from '../program-reads/fixture.mjs';
 assert.equal(process.env.GITHUB_ACTIONS,'true');
 const root=process.env.POTOK_PHOTO_AUTH_DIR;assert(root&&path.isAbsolute(root)&&path.basename(root)==='potok-photo-http-acceptance');
 assert((await readFile(path.join(root,'supabase/config.toml'),'utf8')).includes('project_id = "potok-photo-http-acceptance"'));
-const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','premium-grant','premium-revoke','verify-app','paywall-review'].includes(mode));
+const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','premium-grant','premium-revoke','verify-app','paywall-review','program-read-fixture','program-read-review'].includes(mode));
 if(mode==='config'){
  assert.equal(ids.length,0);const config=path.join(root,'supabase/config.toml');let s=await readFile(config,'utf8');
  s=s.replace(/^site_url = .*$/m,'site_url = "http://127.0.0.1:55440"').replace(/^additional_redirect_urls = .*$/m,'additional_redirect_urls = ["http://127.0.0.1:55440/auth/callback"]');
  assert(s.includes('site_url = "http://127.0.0.1:55440"'));await writeFile(config,s,{mode:0o600});console.log('EIGHT_LOCAL_CONFIG_OK');process.exit(0);
 }
 for(const id of ids)assert.match(id,/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-assert.equal(ids.length,mode==='fixture'?2:['grant','revoke','ui-grant','ui-revoke','premium-grant','premium-revoke'].includes(mode)?1:0);
+assert.equal(ids.length,['fixture','program-read-fixture'].includes(mode)?2:['grant','revoke','ui-grant','ui-revoke','premium-grant','premium-revoke'].includes(mode)?1:0);
 const container='supabase_db_potok-photo-http-acceptance';
 const inspect=spawnSync('docker',['inspect','--format','{{.State.Running}} {{.State.Health.Status}} {{.Config.Image}}',container],{encoding:'utf8',timeout:10000});assert.equal(inspect.status,0);assert.match(inspect.stdout,/^true healthy .*supabase\/postgres:17\./);
 const expectedUsers=mode.startsWith('ui-')||mode==='verify-app'?4:2;
@@ -52,6 +53,17 @@ if(mode==='fixture'){
  THEN RAISE EXCEPTION 'Combined committed installation checks failed';END IF;END $$;
  COMMIT;
  `;
+}else if(mode==='program-read-fixture'){
+ assert.notEqual(ids[0],ids[1]);
+ sql+=`DO $$ BEGIN IF to_regclass('public.nutrition_programs') IS NOT NULL OR to_regclass('public.user_goals') IS NOT NULL
+ OR NOT EXISTS(SELECT FROM auth.users WHERE id='${ids[0]}' AND email='combined-a@example.test')
+ OR NOT EXISTS(SELECT FROM auth.users WHERE id='${ids[1]}' AND email='combined-b@example.test') THEN RAISE EXCEPTION 'Expected fresh synthetic program fixture';END IF;END $$;`;
+ sql+=await seedPrograms(ids[0],ids[1]);
+}else if(mode==='program-read-review'){
+ const review=await readFile('scripts/security/program-reads/review.sql','utf8');
+ assert.equal((review.match(/^ROLLBACK;$/gm)??[]).length,1);assert.doesNotMatch(review,/^COMMIT;$/m);
+ sql+=review.replace(/^ROLLBACK;$/m,'COMMIT;');
+ sql+=await programReadFinalSQL();
 }else if(mode==='paywall-review'){
  const review=await readFile('scripts/security/server-premium/paywall-review.sql','utf8');
  assert.equal((review.match(/^ROLLBACK;$/gm)??[]).length,1);assert.doesNotMatch(review,/^COMMIT;$/m);
@@ -62,6 +74,7 @@ if(mode==='fixture'){
  sql+=`DO $$ BEGIN IF NOT EXISTS(SELECT FROM auth.users WHERE id='${id}' AND email='${email}') THEN RAISE EXCEPTION 'Wrong synthetic issuance target';END IF;END $$;`;
  sql+=mode.endsWith('grant')?`SELECT potok_control.grant_entitlement_v2('${id}','${capability}',now()+interval '1 day','synthetic-combined-evidence','synthetic-combined-test');`:`SELECT potok_control.revoke_entitlement_v2('${id}','${capability}','synthetic-combined-revoke','synthetic-combined-test');`;
 }else{
+ sql+=await programReadFinalSQL();
  const review=await readFile('scripts/security/server-premium/paywall-review.sql','utf8');
  const match=review.match(/AS \$paywall\$([\s\S]*?)\$paywall\$/);assert(match);
  const expectedPaywallHash=createHash('md5').update(match[1]).digest('hex');

@@ -5,9 +5,17 @@ import {fileURLToPath} from 'node:url';
 import ts from 'typescript';
 import {login,localFetch,status} from '../data-api-explicit-grants/local-auth.mjs';
 import {DRAFT,REVIEW} from '../catalog-authority/fixture.mjs';
+import {PA,PB} from '../program-reads/fixture.mjs';
 function prepare(mode,...ids){const r=spawnSync(process.execPath,[fileURLToPath(new URL('./local-prepare.mjs',import.meta.url)),mode,...ids],{encoding:'utf8',timeout:120000});if(r.status!==0)console.error(r.stderr);assert.equal(r.status,0,'Eight-candidate '+mode);}
-async function request(route,user,method='GET',body){const r=await localFetch(status.API_URL+'/rest/v1/'+route,{method,headers:{apikey:status.ANON_KEY,Authorization:'Bearer '+(user?.token??status.ANON_KEY),'Content-Type':'application/json',Prefer:'return=representation,resolution=merge-duplicates'},...(body===undefined?{}:{body:JSON.stringify(body)})});const s=await r.text();return{status:r.status,body:s?JSON.parse(s):null};}
+async function request(route,user,method='GET',body,extraHeaders={}){const r=await localFetch(status.API_URL+'/rest/v1/'+route,{method,headers:{apikey:status.ANON_KEY,Authorization:'Bearer '+(user?.token??status.ANON_KEY),'Content-Type':'application/json',Prefer:'return=representation,resolution=merge-duplicates',...extraHeaders},...(body===undefined?{}:{body:JSON.stringify(body)})});const s=await r.text();return{status:r.status,body:s?JSON.parse(s):null};}
 const rpc=(name,user,body={})=>request('rpc/'+name,user,'POST',body);
+const explanation=(user,id)=>rpc('get_program_explainability',user,{p_program_id:id,p_version:null});
+function maskedExplanation(e){assert.equal(e.knowledge_refs,null);assert.equal(e.confidence,null);assert.deepEqual(e.guard_notes,{reason_code:'synthetic_reason'});}
+async function maskedProgramReads(user,id){
+ maskedExplanation((await ok(explanation(user,id)))[0]);
+ const d=await ok(rpc('get_program_day_details',user,{p_program_id:id,p_date:'2026-10-26'}));maskedExplanation(d.explainability[0]);assert.equal(d.day.targets.calories,123);
+ const days=await ok(rpc('get_program_days',user,{p_program_id:id}));assert.equal(days[0].explainability_summary.reason_code,'synthetic_reason');
+}
 async function ok(p,expected=200){const r=await p;assert.equal(r.status,expected,'Authority/profile HTTP status='+r.status+' code='+(r.body?.code??'none'));return r.body;}
 async function denied(p){const r=await p;assert([401,403].includes(r.status));assert.equal(r.body?.code,'42501');}
 async function loadService(file,name){
@@ -73,14 +81,30 @@ try{
  for(const p_feature of ['adaptation','explainability','spatial'])assert.equal((await ok(rpc('get_paywall_state',b,{p_feature}))).locked,true);
  await denied(rpc('get_paywall_state',a,{p_feature:'adaptation',p_user_id:b.id}));
  for(const user of [null,serviceRole])await denied(rpc('get_paywall_state',user,{p_feature:'adaptation'}));
+ stage='program read follow-up';prepare('program-read-fixture',a.id,b.id);
+ for(let n=0;;n++){const r=await explanation(b,PB);if(r.status===200){assert.equal(r.body[0].guard_notes.details,'synthetic full b');break;}assert.equal(r.body?.code,'PGRST202');assert(n<39);await new Promise(resolve=>setTimeout(resolve,250));}
+ prepare('program-read-review');
+ await maskedProgramReads(a,PA);await maskedProgramReads(b,PB);
+ for(const col of ['*','knowledge_refs','confidence','guard_notes'])await denied(request('program_explainability?select='+col,b));
+ assert.equal((await ok(request('program_explainability?select=decision_ref',b))).length,1);
+ assert.deepEqual(await ok(explanation(b,PA)),[]);
+ const foreignDay=await ok(rpc('get_program_day_details',b,{p_program_id:PA,p_date:'2026-10-26'}));assert.equal(foreignDay.day,null);assert.equal(foreignDay.explainability,null);
+ for(const user of [null,serviceRole])await denied(explanation(user,PB));
+ const privateRpc=await rpc('read_program_explainability_v1',b,{p_program_id:PB,p_version:null});assert.equal(privateRpc.status,404);
+ const privateSchema=await request('rpc/read_program_explainability_v1',b,'POST',{p_program_id:PB,p_version:null},{'Content-Profile':'potok_delivery'});assert.equal(privateSchema.status,406);assert.equal(privateSchema.body?.code,'PGRST106');
  stage='verified Premium';const unchangedToken=b.token;prepare('premium-grant',b.id);
  assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).premium,true);assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).admin,false);
  assert.equal(await eb.canAdaptProgram(b.id),true);assert.equal(await eb.canExplain(b.id),true);assert.equal((await eb.canRealtimePose(b.id)).allowed,true);
  for(const p_feature of ['adaptation','explainability','spatial'])assert.equal((await ok(rpc('get_paywall_state',b,{p_feature}))).locked,false);
+ assert.equal((await ok(explanation(b,PB)))[0].guard_notes.details,'synthetic full b');
+ assert.equal((await ok(rpc('get_program_day_details',b,{p_program_id:PB,p_date:'2026-10-26'}))).explainability[0].knowledge_refs.evidence,'synthetic full b');
+ await denied(request('program_explainability?select=guard_notes',b));
  prepare('premium-revoke',b.id);assert(b.token===unchangedToken,'Synthetic JWT unexpectedly changed');
  assert.equal(await eb.canAdaptProgram(b.id),false);assert.equal(await eb.canExplain(b.id),false);assert.equal((await eb.canRealtimePose(b.id)).allowed,false);
  for(const p_feature of ['adaptation','explainability','spatial'])assert.equal((await ok(rpc('get_paywall_state',b,{p_feature}))).locked,true);
  assert.equal((await ok(rpc('get_paywall_state',b,{p_feature:'unknown'}))).locked,true);
+ await maskedProgramReads(b,PB);
+ console.log('PROGRAM_READ_HTTP_OK: separate read projection; Free summary, owned verified full response and same-JWT redaction after revoke; direct protected column and foreign access denied');
  console.log('SERVER_PAYWALL_HTTP_OK: separate follow-up candidate; signed own-account, exact flags and live verified Premium; same-JWT revoke; program data paths remain separate');
  assert.equal((await eb.getEntitlements(b.id)).tier,'pro');assert.equal((await ok(request('user_profiles',b)))[0].has_premium,false);
  console.log('PREMIUM_CLIENT_HTTP_OK: actual EntitlementService, verified grant/revoke on same JWT; legacy-paid denial and Free preservation; no provider integration');

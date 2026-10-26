@@ -1,9 +1,10 @@
-name: Combined candidates, Premium client and server paywall API acceptance
+name: Combined security and program explanation API acceptance
 on:
   pull_request:
     paths:
       - 'scripts/security/combined-api/**'
       - 'scripts/security/server-premium/**'
+      - 'scripts/security/program-reads/**'
       - 'scripts/security/accumulated/**'
       - 'scripts/security/authority-profile/fixture.mjs'
       - 'scripts/security/catalog-authority/fixture.mjs'
