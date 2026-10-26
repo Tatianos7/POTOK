@@ -10,4 +10,5 @@
 - Preserve the domain invariant `PLAN != FACT`; a planned meal never proves consumption.
 - Preserve Graph v1 compatibility. Graph v2 is separately versioned and must not silently replace Graph v1.
 - The trusted generator and Edge execution remain inactive unless the owner explicitly approves activation.
+- Owner sequence (2026-10-26): finish the agreed security stage, celebrate with fireworks, resume meal-plan generation, then implement real purchase verification tracked in https://github.com/Tatianos7/POTOK/issues/198. Do not pull payment implementation into the current security stage. Read docs/security/accumulated-release-order-20261026.md for candidate dependencies and outstanding release gates.
 - New public tables must declare their intended API roles and minimum explicit GRANTs alongside RLS/policies; do not rely on Supabase automatic/default grants. Internal tables must remain ungranted to clients. Include needed sequence privileges for sequence-backed inserts and test with automatic grants absent. Never restore blanket grants to resolve permission errors.
