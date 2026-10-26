@@ -10,15 +10,21 @@ async function request(route,user,method='GET',body){const r=await localFetch(st
 const rpc=(name,user,body={})=>request('rpc/'+name,user,'POST',body);
 async function ok(p,expected=200){const r=await p;assert.equal(r.status,expected,'Authority/profile HTTP status='+r.status+' code='+(r.body?.code??'none'));return r.body;}
 async function denied(p){const r=await p;assert([401,403].includes(r.status));assert.equal(r.body?.code,'42501');}
-const source=await readFile('src/services/adminAccessService.ts','utf8');
-const javascript=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
-const module={exports:{}};new Function('require','exports',javascript)(id=>{assert.equal(id,'../lib/supabaseClient');return{supabase:null};},module.exports);
-function service(user){return new module.exports.AdminAccessService({auth:{getUser:async()=>{const r=await localFetch(status.API_URL+'/auth/v1/user',{headers:{apikey:status.ANON_KEY,Authorization:'Bearer '+user.token}});assert.equal(r.status,200);return{data:{user:await r.json()},error:null};}},rpc:async(name,args)=>{const r=await rpc(name,user,args);return{data:r.body,error:r.status===200?null:{message:'local RPC failed'}};}});}
+async function loadService(file,name){
+ const source=await readFile('src/services/'+file,'utf8');
+ const javascript=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+ const module={exports:{}};new Function('require','exports',javascript)(id=>{assert.equal(id,'../lib/supabaseClient');return{supabase:null};},module.exports);
+ return module.exports[name];
+}
+const AdminAccessService=await loadService('adminAccessService.ts','AdminAccessService');
+const EntitlementService=await loadService('entitlementService.ts','EntitlementService');
+function serviceClient(user){return{auth:{getUser:async()=>{const r=await localFetch(status.API_URL+'/auth/v1/user',{headers:{apikey:status.ANON_KEY,Authorization:'Bearer '+user.token}});assert.equal(r.status,200);return{data:{user:await r.json()},error:null};}},rpc:async(name,args)=>{const r=await rpc(name,user,args);return{data:r.body,error:r.status===200?null:{message:'local RPC failed'}};}};}
+function service(user){return new AdminAccessService(serviceClient(user));}
 let stage='OTP';
 try{
  const a=await login('combined-a@example.test'),b=await login('combined-b@example.test');prepare('fixture',a.id,b.id);
  for(let n=0;;n++){const r=await rpc('has_verified_entitlement_v1',a,{p_capability:'admin'});if(r.status===200)break;assert.equal(r.body?.code,'PGRST202');assert(n<39);await new Promise(resolve=>setTimeout(resolve,250));}
- stage='empty authority';const sa=service(a),sb=service(b);assert.equal((await sa.getVerifiedCurrentUserCapabilities(a.id)).admin,false);assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).admin,false);
+ stage='empty authority';const sa=service(a),sb=service(b),ea=new EntitlementService(serviceClient(a)),eb=new EntitlementService(serviceClient(b));assert.equal((await sa.getVerifiedCurrentUserCapabilities(a.id)).admin,false);assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).admin,false);
  const beforeA=await ok(request('food_diary_entries',a)),beforeB=await ok(request('food_diary_entries',b));
  stage='profile';const upsert=await request('user_profiles?on_conflict=id_user',a,'POST',{id_user:a.id,first_name:'Saved API',coach_settings:{mode:'off'},voice_settings:{enabled:false}});assert([200,201].includes(upsert.status));assert.equal(upsert.body[0].first_name,'Saved API');assert.equal(upsert.body[0].coach_settings.mode,'off');
  assert.deepEqual(await ok(request('user_profiles?id_user=eq.'+a.id,b)),[]);
@@ -36,6 +42,7 @@ try{
  await denied(request('entitlements?user_id=eq.'+a.id,a,'PATCH',{tier:'pro'}));await denied(request('billing_events',a,'POST',{user_id:a.id,provider:'play_store',event_type:'forged',idempotency_key:'forged-table'}));
  assert.equal((await ok(rpc('start_purchase',serviceRole,{p_user_id:a.id,p_provider:'play_store',p_plan:'pro',p_idempotency_key:'synthetic-server-event'}))).status,'started');assert.equal((await ok(rpc('get_entitlements',a))).tier,'free');
  console.log('PASS combined own finance/paywall, foreign/write/purchase denial and event-only server behavior');
+ stage='legacy Premium containment';assert.equal(await ea.canGenerateProgram(a.id),true);assert.equal(await eb.canAdaptProgram(b.id),false);assert.equal(await eb.canExplain(b.id),false);assert.equal((await eb.canRealtimePose(b.id)).allowed,false);
  stage='photos';const asset={user_id:a.id,day:'2026-10-26',slot:'main_1',storage_path:'synthetic/first.png'};
  const marker={user_id:a.id,day:'2026-10-26',deleted_at:'2026-10-26T10:00:00Z'};
  for(const [table,row,conflict,change] of [['measurement_photo_assets',asset,'user_id,day,slot',{storage_path:'synthetic/second.png'}],['measurement_photo_deletions',marker,'user_id,day',{deleted_at:'2026-10-26T11:00:00Z'}]]){
@@ -60,6 +67,14 @@ try{
  stage='server boundaries';await denied(rpc('has_verified_entitlement_v1',null,{p_capability:'admin'}));
  const foreignArgument=await rpc('has_verified_entitlement_v1',a,{p_account_id:b.id,p_capability:'admin'});assert.equal(foreignArgument.status,404);assert.equal(foreignArgument.body?.code,'PGRST202');
  stage='revocation';prepare('revoke',b.id);assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).admin,false);assert.equal((await ok(rpc('apply_owner_approved_missing_food_draft',b,{p_draft_id:DRAFT})))[0].result,'permission_denied');
- assert.deepEqual(await ok(request('food_diary_entries',a)),beforeA);assert.deepEqual(await ok(request('food_diary_entries',b)),beforeB);assert.equal((await ok(request('user_profiles',b)))[0].is_admin,false);prepare('verify-api');
+ assert.deepEqual(await ok(request('food_diary_entries',a)),beforeA);assert.deepEqual(await ok(request('food_diary_entries',b)),beforeB);assert.equal((await ok(request('user_profiles',b)))[0].is_admin,false);
+ stage='verified Premium';const unchangedToken=b.token;prepare('premium-grant',b.id);
+ assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).premium,true);assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).admin,false);
+ assert.equal(await eb.canAdaptProgram(b.id),true);assert.equal(await eb.canExplain(b.id),true);assert.equal((await eb.canRealtimePose(b.id)).allowed,true);
+ prepare('premium-revoke',b.id);assert(b.token===unchangedToken,'Synthetic JWT unexpectedly changed');
+ assert.equal(await eb.canAdaptProgram(b.id),false);assert.equal(await eb.canExplain(b.id),false);assert.equal((await eb.canRealtimePose(b.id)).allowed,false);
+ assert.equal((await eb.getEntitlements(b.id)).tier,'pro');assert.equal((await ok(request('user_profiles',b)))[0].has_premium,false);
+ console.log('PREMIUM_CLIENT_HTTP_OK: actual EntitlementService, verified grant/revoke on same JWT; legacy-paid denial and Free preservation; no provider integration');
+ prepare('verify-api');
  console.log('EIGHT_COMBINED_API_OK: eight committed candidates; actual AdminAccessService and real Auth/PostgREST; profile, finance, photo, catalog, history and revocation');
 }catch(e){console.error('EIGHT_COMBINED_API_FAILED stage='+stage+' reason='+e.message);process.exitCode=1;}

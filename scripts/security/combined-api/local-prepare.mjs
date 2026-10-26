@@ -8,14 +8,14 @@ import {permissionQuery} from '../accumulated/checks.mjs';
 assert.equal(process.env.GITHUB_ACTIONS,'true');
 const root=process.env.POTOK_PHOTO_AUTH_DIR;assert(root&&path.isAbsolute(root)&&path.basename(root)==='potok-photo-http-acceptance');
 assert((await readFile(path.join(root,'supabase/config.toml'),'utf8')).includes('project_id = "potok-photo-http-acceptance"'));
-const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','verify-app'].includes(mode));
+const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','premium-grant','premium-revoke','verify-app'].includes(mode));
 if(mode==='config'){
  assert.equal(ids.length,0);const config=path.join(root,'supabase/config.toml');let s=await readFile(config,'utf8');
  s=s.replace(/^site_url = .*$/m,'site_url = "http://127.0.0.1:55440"').replace(/^additional_redirect_urls = .*$/m,'additional_redirect_urls = ["http://127.0.0.1:55440/auth/callback"]');
  assert(s.includes('site_url = "http://127.0.0.1:55440"'));await writeFile(config,s,{mode:0o600});console.log('EIGHT_LOCAL_CONFIG_OK');process.exit(0);
 }
 for(const id of ids)assert.match(id,/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
-assert.equal(ids.length,mode==='fixture'?2:['grant','revoke','ui-grant','ui-revoke'].includes(mode)?1:0);
+assert.equal(ids.length,mode==='fixture'?2:['grant','revoke','ui-grant','ui-revoke','premium-grant','premium-revoke'].includes(mode)?1:0);
 const container='supabase_db_potok-photo-http-acceptance';
 const inspect=spawnSync('docker',['inspect','--format','{{.State.Running}} {{.State.Health.Status}} {{.Config.Image}}',container],{encoding:'utf8',timeout:10000});assert.equal(inspect.status,0);assert.match(inspect.stdout,/^true healthy .*supabase\/postgres:17\./);
 const expectedUsers=mode.startsWith('ui-')||mode==='verify-app'?4:2;
@@ -37,7 +37,7 @@ if(mode==='fixture'){
  GRANT ALL ON public.entitlements,public.subscriptions,public.billing_events TO PUBLIC;
  GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO authenticated,service_role;
  ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT TRUNCATE ON TABLES TO anon,authenticated;
- INSERT INTO public.entitlements(user_id,tier,flags) VALUES('${a}','free','{"can_adapt":false}'),('${b}','pro','{"can_adapt":true}');
+ INSERT INTO public.entitlements(user_id,tier,flags) VALUES('${a}','free','{"can_adapt":false}'),('${b}','pro','{"can_adapt":true,"can_explain":true,"can_spatial":true}');
  INSERT INTO public.subscriptions(user_id,plan,status) VALUES('${a}','free','active'),('${b}','pro','active');
  INSERT INTO public.billing_events(user_id,provider,event_type,idempotency_key) VALUES('${a}','play_store','fixture','seed-a'),('${b}','play_store','fixture','seed-b');
  CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public;
@@ -51,14 +51,15 @@ if(mode==='fixture'){
  THEN RAISE EXCEPTION 'Combined committed installation checks failed';END IF;END $$;
  COMMIT;
  `;
-}else if(['grant','revoke','ui-grant','ui-revoke'].includes(mode)){
+}else if(['grant','revoke','ui-grant','ui-revoke','premium-grant','premium-revoke'].includes(mode)){
+ const capability=mode.startsWith('premium-')?'premium':'admin';
  const email=mode.startsWith('ui-')?'combined-ui-b@example.test':'combined-b@example.test';const id=ids[0];
  sql+=`DO $$ BEGIN IF NOT EXISTS(SELECT FROM auth.users WHERE id='${id}' AND email='${email}') THEN RAISE EXCEPTION 'Wrong synthetic issuance target';END IF;END $$;`;
- sql+=mode.endsWith('grant')?`SELECT potok_control.grant_entitlement_v2('${id}','admin',now()+interval '1 day','synthetic-combined-evidence','synthetic-combined-test');`:`SELECT potok_control.revoke_entitlement_v2('${id}','admin','synthetic-combined-revoke','synthetic-combined-test');`;
+ sql+=mode.endsWith('grant')?`SELECT potok_control.grant_entitlement_v2('${id}','${capability}',now()+interval '1 day','synthetic-combined-evidence','synthetic-combined-test');`:`SELECT potok_control.revoke_entitlement_v2('${id}','${capability}','synthetic-combined-revoke','synthetic-combined-test');`;
 }else{
  sql+=`DO $$ DECLARE checks jsonb;BEGIN SELECT to_jsonb(q) INTO checks FROM (${permissionQuery()}) q;
  IF EXISTS(SELECT FROM jsonb_each(checks) e WHERE e.value IS DISTINCT FROM 'true'::jsonb)
- OR (SELECT count(*) FROM potok_control.access_attestations)<>${mode==='verify-app'?4:2}
+ OR (SELECT count(*) FROM potok_control.access_attestations)<>${mode==='verify-app'?6:4}
  OR NOT EXISTS(SELECT FROM public.user_profiles p JOIN auth.users u ON p.id_user=u.id WHERE u.email='combined-a@example.test' AND p.is_admin AND p.has_premium AND p.first_name='Saved API')
  OR EXISTS(SELECT FROM public.user_profiles p JOIN auth.users u ON p.id_user=u.id WHERE u.email IN('combined-b@example.test','combined-ui-a@example.test','combined-ui-b@example.test') AND (p.is_admin OR p.has_premium))
  OR (SELECT count(*) FROM public.food_diary_entries)<>2
