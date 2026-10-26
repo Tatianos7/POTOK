@@ -70,3 +70,7 @@ SHA относятся к конкретным исходным файлам, н
 Владелец подтвердил TWELVE_RESTORED_REHEARSAL_OK для runner из `387a03148939abe44bb1233c7aff215bcbfe5eb7`: 112 таблиц / 14888 строк, content и metadata rollback. Это не committed application acceptance и не hosted apply.
 
 Фраза «устранить две записи supabase_admin defaults» заменяется проверяемым условием из `platform-default-boundary-20261026.md`. Платформенные defaults могут остаться, если применённая группа закрывает затрагиваемую SQL/API границу; один их служебный владелец не является доказательством закрытия. Успех checker на synthetic group не закрывает проверку реального target/API после отдельно разрешённого выпуска.
+
+## Отдельная постоянная приватная копия
+
+Владелец подтвердил запуск `potok_security_candidate_2026-10-26` на отдельном одноимённом томе: сеть none, cron launcher off, PostgreSQL 17.6, postgres без superuser, исходная база healthy. Количество строк совпало: 112 таблиц / 14888 строк. Для следующего шага подготовлен отдельный clone-only installer из `private-candidate-install-20261026.md`; старые rollback runners неизменны. Подготовка и CI установщика не означают, что он уже запущен на Mac. После отдельного подтверждённого COMMIT остаётся приёмка приложения/API на полной копии; Production/Staging apply этим не разрешается.

@@ -4,6 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {legacySchema,A,B} from '../catalog-authority/fixture.mjs';
 import {loadInputs,body} from './inputs.mjs';
 import {buildTwelve,loadFollowups} from './restored-twelve.mjs';
+import {buildInstall,finalSQL,fingerprintSQL,boundaryQuery,settingsSQL,validateTarget,candidateName,originalName} from './private-candidate.mjs';
 import {seedSQL as seedPrograms} from '../program-reads/fixture.mjs';
 import {seedSQL as seedHistory} from '../program-history/fixture.mjs';
 
@@ -138,6 +139,53 @@ try{
  await test('missing follow-up and malformed transaction wrappers are rejected before SQL',async()=>{
   const bad={...followups};delete bad.history;assert.throws(()=>buildTwelve(sources,bad,[{schema:'public',name:'user_profiles',rows:2}]));
   assert.throws(()=>body('BEGIN;\nROLLBACK;\nCOMMIT;','ROLLBACK'));
+ });
+ const boundary=boundaryQuery(await readFile('scripts/security/platform-defaults/check.sql','utf8')).trim().replace(/;$/,'');
+ async function installInput(){
+  const tables=await rows("SELECT n.nspname AS schema,c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('auth','public','storage') AND c.relkind='r' ORDER BY 1,2");
+  for(const t of tables)t.rows=Number((await rows('SELECT count(*) AS n FROM "'+t.schema+'"."'+t.name+'"'))[0].n);
+  const fingerprint=(await rows(fingerprintSQL(tables)))[0].fingerprint;
+  return {tables,fingerprint,sql:buildInstall(sources,followups,tables,fingerprint,boundary)};
+ }
+ await test('private clone installer commits twelve candidates and verifies persisted content and final rights',async()=>{
+  await exec("SET ROLE postgres;ALTER TABLE public.program_sessions ADD COLUMN day_date date;UPDATE public.program_sessions SET day_date='2026-10-25';RESET ROLE;");
+  const {tables,fingerprint,sql}=await installInput();
+  await exec('SET SESSION AUTHORIZATION postgres;');await exec(sql);
+  const verify=`${settingsSQL}BEGIN READ ONLY;${finalSQL(tables,fingerprint,boundary)}ROLLBACK;`;
+  if(embedded)await exec(verify);
+  else{
+   const {default:pg}=await import(pathToFileURL(process.env.SQL_TEST_PG_MODULE));const committed=new pg.Client({connectionString:process.env.TEST_DATABASE_URL});await committed.connect();
+   try{await committed.query('SET SESSION AUTHORIZATION postgres;');await committed.query(verify);}finally{await committed.end();}
+  }
+  assert.equal((await rows("SELECT count(*)::int AS n FROM public.program_sessions WHERE day_date='2026-10-25'"))[0].n,2);
+  await exec('SET SESSION AUTHORIZATION test_admin;');const committed=await snapshot();
+  await exec('SET SESSION AUTHORIZATION postgres;');await assert.rejects(()=>exec(sql),/not fresh/);await exec('ROLLBACK;SET SESSION AUTHORIZATION test_admin;');assert.deepEqual(await snapshot(),committed);
+ });
+ await test('private installation atomically rolls back on late content tamper',async()=>{
+  const before=await snapshot(),{tables,fingerprint}=await installInput();
+  const bad={...followups,quarantine:followups.quarantine+"\nUPDATE public.program_sessions SET plan_payload='{\"changed\":true}';"};
+  await exec('SET SESSION AUTHORIZATION postgres;');await assert.rejects(()=>exec(buildInstall(sources,bad,tables,fingerprint,boundary)),/content changed/);
+  await exec('ROLLBACK;SET SESSION AUTHORIZATION test_admin;');assert.deepEqual(await snapshot(),before);
+ });
+ await test('private installation rolls back when the final client privilege check fails',async()=>{
+  const before=await snapshot(),{tables,fingerprint}=await installInput();
+  const bad={...followups,quarantine:followups.quarantine+'\nGRANT UPDATE(plan_payload) ON public.program_sessions TO authenticated;'};
+  await exec('SET SESSION AUTHORIZATION postgres;');await assert.rejects(()=>exec(buildInstall(sources,bad,tables,fingerprint,boundary)),/quarantine final permissions mismatch/);
+  await exec('ROLLBACK;SET SESSION AUTHORIZATION test_admin;');assert.deepEqual(await snapshot(),before);
+ });
+ await test('private installation blocks a changed baseline before any candidate is committed',async()=>{
+  const {sql}=await installInput();await exec("SET ROLE postgres;UPDATE public.program_sessions SET plan_payload='{\"changed_before_install\":true}';RESET ROLE;");const before=await snapshot();
+  await exec('SET SESSION AUTHORIZATION postgres;');await assert.rejects(()=>exec(sql),/content changed/);
+  await exec('ROLLBACK;SET SESSION AUTHORIZATION test_admin;');assert.deepEqual(await snapshot(),before);
+ });
+ await test('private target guards reject baseline, network, volume, image and privilege substitution',async()=>{
+  const clone={Id:'a'.repeat(64),Name:'/'+candidateName,Image:'sha256:'+'c'.repeat(64),State:{Running:true,Health:{Status:'healthy'}},Config:{Image:'public.ecr.aws/supabase/postgres:17.6.1.063',User:'postgres',Entrypoint:['postgres']},HostConfig:{NetworkMode:'none',PortBindings:{},Privileged:false,PidMode:'',IpcMode:'private'},NetworkSettings:{Ports:{}},Mounts:[{Type:'volume',Name:candidateName,Destination:'/var/lib/postgresql/data',RW:true}]};
+  const original=structuredClone(clone);original.Id='b'.repeat(64);original.Name='/'+originalName;original.Mounts[0].Name=originalName;
+  const volume={Name:candidateName,Driver:'local',Options:null,Labels:{'potok.purpose':'security-test-copy'}};
+  assert.equal(validateTarget(clone,original,volume),clone.Id);
+  for(const change of [c=>c.Name=original.Name,c=>c.Id=original.Id,c=>c.HostConfig.NetworkMode='bridge',c=>c.HostConfig.PortBindings={'5432/tcp':[{HostPort:'5432'}]},c=>c.Mounts[0].Name=originalName,c=>c.Mounts.push({Type:'bind'}),c=>c.Image='sha256:'+'d'.repeat(64),c=>c.Config.User='root',c=>c.HostConfig.Privileged=true,c=>c.State.Health.Status='starting']){const c=structuredClone(clone);change(c);assert.throws(()=>validateTarget(c,original,volume));}
+  assert.throws(()=>validateTarget(clone,original,{...volume,Options:{device:'/private'}}));
+  assert.throws(()=>boundaryQuery('SELECT true;'));
  });
  console.log('TWELVE_RUNNER_ACCEPTANCE_OK: '+passed+' cases; synthetic fixture only, not owner backup acceptance');
 }catch(e){console.error('TWELVE_RUNNER_ACCEPTANCE_FAILED: '+e.message+' '+(e.code??'')+' '+(e.where??''));process.exitCode=1;}

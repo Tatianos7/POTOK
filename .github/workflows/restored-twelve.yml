@@ -1,4 +1,4 @@
-name: Twelve candidate restored rollback protocol
+name: Twelve candidate restored rollback and private commit protocol
 on:
   pull_request:
     paths:
@@ -43,7 +43,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci --prefix scripts/security/data-api-explicit-grants --ignore-scripts
-      - name: Twelve pinned candidates, original-column hashes, final rights and rollback protocol
+      - name: Twelve candidates, rollback, isolated private commit and independent committed checks
         env:
           TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_restored_twelve_test
           SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
