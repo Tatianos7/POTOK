@@ -188,7 +188,7 @@ class ProgramDeliveryService {
   async skipDay(
     programId: string,
     date: string,
-    programType: ProgramType,
+    _programType: ProgramType,
     reason: 'fatigue' | 'pose_risk' | 'user_override' = 'user_override'
   ) {
     if (!supabase) throw new Error('Supabase не инициализирован');
