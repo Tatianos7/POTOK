@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/security/accumulated/**'
+      - 'scripts/security/platform-defaults/**'
       - 'scripts/security/program-reads/**'
       - 'scripts/security/program-history/**'
       - 'scripts/security/legacy-plan-quarantine/**'

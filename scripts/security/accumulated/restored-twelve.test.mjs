@@ -43,6 +43,9 @@ async function fixture(){
  INSERT INTO public.entitlements(user_id,tier,flags) VALUES('${A}','free','{"can_adapt":false}'),('${B}','pro','{"can_adapt":true}');
  INSERT INTO public.subscriptions(user_id,plan,status) VALUES('${A}','free','active'),('${B}','pro','active');
  INSERT INTO public.billing_events(user_id,provider,event_type,idempotency_key) VALUES('${A}','play_store','fixture','seed-a');`);
+ // Fixture-only: explicitly place the trusted crypto dependency outside public before
+ // the old photo SQL's IF NOT EXISTS check; do not change any pinned candidate.
+ if(!embedded)await exec('CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;');
  // Photo tables are created after the deliberately broad historical fixture grants.
  for(const name of ['20260224_measurements_photo_assets.sql','20260225_measurement_photo_deletions.sql']){
   const sql=await readFile('supabase/migrations/'+name,'utf8');await exec(embedded?sql.replace(/^create extension if not exists pgcrypto;\s*/i,''):sql);
@@ -90,6 +93,14 @@ try{
  const database=(await rows('SELECT current_database() AS name'))[0].name;assert(/^[a-z_][a-z0-9_]*$/.test(database));await exec('ALTER DATABASE '+database+' OWNER TO postgres;');
  await test('all twelve pinned candidates stream one transaction and fully restore metadata/content',async()=>{
   const before=await snapshot();await protocol(await script());assert.deepEqual(await snapshot(),before);
+ });
+ await test('twelve candidates meet the narrow application SQL boundary with platform defaults retained',async()=>{
+  const before=await snapshot();const sql=await script();const [prefix,rest]=sql.split(/^BEGIN;\n/m),[transaction,suffix]=rest.split(/^ROLLBACK;\n/m);
+  const check=(await readFile('scripts/security/platform-defaults/check.sql','utf8')).replace(/^BEGIN READ ONLY;$/m,'').replace(/^ROLLBACK;$/m,'');
+  await exec('SET SESSION AUTHORIZATION postgres;');try{
+   await exec(prefix);await exec('BEGIN;\n'+transaction);const [r]=await rows(check);assert.equal(r.verdict,'SQL_BOUNDARY_VERIFIED');assert.equal(r.platform_public_truncate_defaults,2);await exec('ROLLBACK;');await exec(suffix);
+  }finally{await exec('ROLLBACK;SET SESSION AUTHORIZATION test_admin;');}
+  assert.deepEqual(await snapshot(),before);
  });
  await test('exact trailing day_date date values survive all twelve candidates and rollback',async()=>{
   await exec("SET ROLE postgres;ALTER TABLE public.program_sessions ADD COLUMN day_date date;UPDATE public.program_sessions SET day_date='2026-10-25';RESET ROLE;");

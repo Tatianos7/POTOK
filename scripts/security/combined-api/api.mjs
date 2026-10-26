@@ -93,6 +93,8 @@ try{
  for(const user of [null,serviceRole])await denied(explanation(user,PB));
  const privateRpc=await rpc('read_program_explainability_v1',b,{p_program_id:PB,p_version:null});assert.equal(privateRpc.status,404);
  const privateSchema=await request('rpc/read_program_explainability_v1',b,'POST',{p_program_id:PB,p_version:null},{'Content-Profile':'potok_delivery'});assert.equal(privateSchema.status,406);assert.equal(privateSchema.body?.code,'PGRST106');
+ const extensionSchema=await request('rpc/potok_extension_boundary_probe',b,'POST',{}, {'Content-Profile':'extensions'});assert.equal(extensionSchema.status,406);assert.equal(extensionSchema.body?.code,'PGRST106');
+ console.log('EXTENSIONS_SCHEMA_HTTP_CLOSED_OK: disposable fixture only; no hosted configuration claim');
  stage='history containment';prepare('history-review');
  const historyPatch={program_versions:{version:99},program_adaptations:{summary:{forged:true}},program_explainability:{decision_ref:'synthetic:forged'},program_guard_events:{risk_level:'safe'}};
  for(const table of historyTables)for(const user of [a,b]){
