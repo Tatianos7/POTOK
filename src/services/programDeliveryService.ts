@@ -1,7 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { entitlementService } from './entitlementService';
 import { profileService } from './profileService';
-import { programGenerationService } from './programGenerationService';
 import type { ProgramExplainabilityDTO } from '../types/explainability';
 import type { ProgramMyPlanDTO, ProgramPhaseWeekDTO, ProgramTodayDTO, ProgramTier, ProgramWhyDTO } from '../types/programDelivery';
 
@@ -155,7 +154,7 @@ class ProgramDeliveryService {
     if (!supabase) throw new Error('Supabase не инициализирован');
     const { error: sessionError } = await supabase
       .from('program_sessions')
-      .update({ status: 'planned' })
+      .update({ status: 'planned', execution_reason: null })
       .eq('program_id', programId)
       .eq('date', date);
     if (sessionError) throw sessionError;
@@ -166,7 +165,7 @@ class ProgramDeliveryService {
     const userId = await this.getSessionUserId();
     const { error: sessionError } = await supabase
       .from('program_sessions')
-      .update({ status: 'completed' })
+      .update({ status: 'completed', execution_reason: null })
       .eq('program_id', programId)
       .eq('date', date);
     if (sessionError) throw sessionError;
@@ -196,7 +195,7 @@ class ProgramDeliveryService {
     const userId = await this.getSessionUserId();
     const { error: sessionError } = await supabase
       .from('program_sessions')
-      .update({ status: 'skipped', plan_payload: { reason } })
+      .update({ status: 'skipped', execution_reason: reason })
       .eq('program_id', programId)
       .eq('date', date);
     if (sessionError) throw sessionError;
@@ -209,15 +208,7 @@ class ProgramDeliveryService {
     const nextTrust = this.adjustTrustScore(Number(trustRow?.trust_score ?? 50), -3);
     await supabase.from('ai_trust_scores').upsert({ user_id: userId, trust_score: nextTrust });
 
-    await programGenerationService.adaptProgram({
-      programId,
-      programType,
-      constraints: {
-        skipped_dates: [date],
-        skip_reason: reason,
-      },
-    });
-
+    return { adaptationApplied: false as const };
   }
 
   async pauseProgram(programId: string, programType: ProgramType, reason: string) {
@@ -268,8 +259,9 @@ class ProgramDeliveryService {
   async submitFeedback(input: ProgramFeedbackInput) {
     if (!supabase) throw new Error('Supabase не инициализирован');
     const userId = await this.getSessionUserId();
-    const tier = await this.resolveTier(userId);
-    this.assertEntitlement(tier, ['pro', 'coach', 'vision_pro']);
+    if (!await entitlementService.canAdaptProgram(userId)) {
+      throw new Error('Недостаточно прав для отправки обратной связи');
+    }
 
     const { error: feedbackError } = await supabase.from('program_feedback').insert({
       program_id: input.programId,
@@ -284,19 +276,7 @@ class ProgramDeliveryService {
     });
     if (feedbackError) throw feedbackError;
 
-    await programGenerationService.adaptProgram({
-      programId: input.programId,
-      programType: input.programType,
-      constraints: {
-        feedback: {
-          energy: input.energy,
-          hunger: input.hunger,
-          difficulty: input.difficulty,
-          pain: input.pain,
-          motivation: input.motivation,
-        },
-      },
-    });
+    return { feedbackSaved: true as const, adaptationApplied: false as const };
   }
 
   async getMyPlanDTO(programId: string, programType: ProgramType): Promise<ProgramMyPlanDTO> {

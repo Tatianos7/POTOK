@@ -8,10 +8,11 @@ import {loadInputs,combined} from '../accumulated/inputs.mjs';
 import {permissionQuery} from '../accumulated/checks.mjs';
 import {seedSQL as seedPrograms,finalSQL as programReadFinalSQL} from '../program-reads/fixture.mjs';
 import {seedSQL as seedHistory,finalSQL as historyFinalSQL} from '../program-history/fixture.mjs';
+import {finalSQL as quarantineFinalSQL} from '../legacy-plan-quarantine/fixture.mjs';
 assert.equal(process.env.GITHUB_ACTIONS,'true');
 const root=process.env.POTOK_PHOTO_AUTH_DIR;assert(root&&path.isAbsolute(root)&&path.basename(root)==='potok-photo-http-acceptance');
 assert((await readFile(path.join(root,'supabase/config.toml'),'utf8')).includes('project_id = "potok-photo-http-acceptance"'));
-const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','premium-grant','premium-revoke','verify-app','paywall-review','program-read-fixture','program-read-review','history-review'].includes(mode));
+const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','premium-grant','premium-revoke','verify-app','paywall-review','program-read-fixture','program-read-review','history-review','quarantine-review'].includes(mode));
 if(mode==='config'){
  assert.equal(ids.length,0);const config=path.join(root,'supabase/config.toml');let s=await readFile(config,'utf8');
  s=s.replace(/^site_url = .*$/m,'site_url = "http://127.0.0.1:55440"').replace(/^additional_redirect_urls = .*$/m,'additional_redirect_urls = ["http://127.0.0.1:55440/auth/callback"]');
@@ -72,6 +73,11 @@ if(mode==='fixture'){
  const review=await readFile('scripts/security/program-history/review.sql','utf8');
  assert.equal((review.match(/^ROLLBACK;$/gm)??[]).length,1);assert.doesNotMatch(review,/^COMMIT;$/m);
  sql+=review.replace(/^ROLLBACK;$/m,'COMMIT;');sql+=historyFinalSQL();
+}else if(mode==='quarantine-review'){
+ sql+=historyFinalSQL();sql+=await programReadFinalSQL();
+ const review=await readFile('scripts/security/legacy-plan-quarantine/review.sql','utf8');
+ assert.equal((review.match(/^ROLLBACK;$/gm)??[]).length,1);assert.doesNotMatch(review,/^COMMIT;$/m);
+ sql+=review.replace(/^ROLLBACK;$/m,'COMMIT;');sql+=quarantineFinalSQL();
 }else if(mode==='paywall-review'){
  const review=await readFile('scripts/security/server-premium/paywall-review.sql','utf8');
  assert.equal((review.match(/^ROLLBACK;$/gm)??[]).length,1);assert.doesNotMatch(review,/^COMMIT;$/m);
@@ -84,6 +90,7 @@ if(mode==='fixture'){
 }else{
  sql+=await programReadFinalSQL();
  sql+=historyFinalSQL();
+ sql+=quarantineFinalSQL();
  const review=await readFile('scripts/security/server-premium/paywall-review.sql','utf8');
  const match=review.match(/AS \$paywall\$([\s\S]*?)\$paywall\$/);assert(match);
  const expectedPaywallHash=createHash('md5').update(match[1]).digest('hex');

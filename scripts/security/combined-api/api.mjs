@@ -121,6 +121,31 @@ try{
  }
  console.log('PROGRAM_HISTORY_HTTP_OK: own/foreign past-row PATCH and DELETE denied; own no-returning inserts preserved, foreign inserts denied; trusted atomic plan mutation remains separate');
  console.log('PREMIUM_CLIENT_HTTP_OK: actual EntitlementService, verified grant/revoke on same JWT; legacy-paid denial and Free preservation; no provider integration');
+ stage='legacy plan quarantine';
+ const oldSession=await ok(request('program_sessions?id=eq.'+PA,a));assert.equal(oldSession.length,1);
+ prepare('quarantine-review');
+ for(let n=0;;n++){const r=await request('program_sessions?select=execution_reason&id=eq.'+PA,a);if(r.status===200)break;assert(['42703','PGRST204'].includes(r.body?.code));assert(n<39);await new Promise(resolve=>setTimeout(resolve,250));}
+ for(const table of ['nutrition_programs','training_programs']){
+  await denied(request(table,a,'POST',{user_id:a.id},{'Prefer':'return=minimal'}));
+  await denied(request(table+'?id=eq.'+PA,a,'PATCH',{program_version:99},{'Prefer':'return=minimal'}));
+  await denied(request(table+'?id=eq.'+PA,a,'DELETE',undefined,{'Prefer':'return=minimal'}));
+ }
+ for(const [table,patch] of Object.entries({program_phases:{name:'forged'},program_blocks:{block_type:'forged'},program_days:{targets:{forged:true}},program_sessions:{plan_payload:{forged:true}},program_generation_jobs:{status:'completed'}})){
+  await denied(request(table,a,'PATCH',patch,{'Prefer':'return=minimal'}));
+  await denied(request(table,a,'DELETE',undefined,{'Prefer':'return=minimal'}));
+ }
+ for(const table of ['program_versions','program_adaptations']){
+  await denied(request(table,a,'POST',historyInsert(table,PA),{'Prefer':'return=minimal'}));
+  await denied(request(table+'?on_conflict=id',a,'POST',{id:PA,...historyInsert(table,PA)},{'Prefer':'return=minimal,resolution=merge-duplicates'}));
+ }
+ for(const status of ['paused','active'])await ok(request('nutrition_programs?id=eq.'+PA,a,'PATCH',{status},{'Prefer':'return=minimal'}),204);
+ for(const [status,execution_reason] of [['skipped','fatigue'],['planned',null],['completed',null]]){
+  const r=await ok(request('program_sessions?id=eq.'+PA,a,'PATCH',{status,execution_reason}));assert.equal(r.length,1);assert.equal(r[0].status,status);assert.deepEqual(r[0].plan_payload,oldSession[0].plan_payload);
+ }
+ assert.deepEqual(await ok(request('program_sessions?id=eq.'+PA,b,'PATCH',{status:'skipped'})),[]);
+ const invalid=await request('program_sessions?id=eq.'+PA,a,'PATCH',{execution_reason:'forged'});assert.equal(invalid.status,400);assert.equal(invalid.body?.code,'23514');
+ await maskedProgramReads(a,PA);await maskedProgramReads(b,PB);
+ console.log('LEGACY_PLAN_QUARANTINE_HTTP_OK: old creation/content/version/adaptation writes denied; own status/reason preserved, foreign annotation denied and plan payload unchanged');
  prepare('verify-api');
  console.log('EIGHT_COMBINED_API_OK: eight committed candidates; actual AdminAccessService and real Auth/PostgREST; profile, finance, photo, catalog, history and revocation');
 }catch(e){console.error('EIGHT_COMBINED_API_FAILED stage='+stage+' reason='+e.message);process.exitCode=1;}
