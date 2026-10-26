@@ -54,6 +54,9 @@ try{
  INSERT INTO public.program_explainability(program_id,program_type,version,decision_ref,knowledge_refs,guard_notes) VALUES('${program}','nutrition',1,'synthetic:decision','{"source":"synthetic"}','{"reason_code":"synthetic:reason","details":"synthetic full explanation"}');`);
  await test('legacy server paywall unlocks old paid row despite empty verified ledger',async()=>{assert.equal(await locked('adaptation'),false);assert.equal((await client('authenticated',B,"SELECT public.has_verified_entitlement_v1('premium') AS allowed"))[0].allowed,false);});
  const before=await snapshot();await exec(review);assert.deepEqual(await snapshot(),before);console.log('PASS review wrapper preserves rows and original function metadata through ROLLBACK');passed++;
+ await test('exact tracked 20260311 paywall search_path variant remains compatible',async()=>{
+  await exec('ALTER FUNCTION public.get_paywall_state(text,uuid) SET search_path=public,pg_temp;');await exec(body);assert.equal(await locked('adaptation'),true);
+ });
  await test('changed verified reader body, path drift and inherited PUBLIC execute abort before replacement',async()=>{
   for(const drift of [
    "CREATE OR REPLACE FUNCTION public.has_verified_entitlement_v1(p_capability text) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=pg_catalog AS $$ SELECT true $$;",

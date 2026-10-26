@@ -20,7 +20,7 @@ BEGIN
   IF NOT FOUND OR pg_get_userbyid(p.proowner)<>'postgres' OR NOT p.prosecdef
    OR p.prorettype<>r.result_type OR p.proretset OR md5(p.prosrc)<>r.source_md5
    OR (r.pinned_path AND p.proconfig IS DISTINCT FROM ARRAY['search_path=pg_catalog'])
-   OR (r.signature='public.get_paywall_state(text,uuid)' AND p.proconfig IS NOT NULL)
+   OR (r.signature='public.get_paywall_state(text,uuid)' AND p.proconfig IS NOT NULL AND p.proconfig IS DISTINCT FROM ARRAY['search_path=public, pg_temp'])
    OR (r.signature='public.get_entitlements(uuid)' AND p.proconfig IS DISTINCT FROM ARRAY['search_path=""'])
   THEN RAISE EXCEPTION 'Server Premium source contract requires review: %',r.signature;END IF;
  END LOOP;
