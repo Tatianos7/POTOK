@@ -44,6 +44,10 @@ SELECT jsonb_build_object(
   (has_schema_privilege(r.oid,s.relnamespace,'USAGE,CREATE') OR has_table_privilege(r.oid,s.oid,'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER,MAINTAIN'))) FROM store s),false),
  'readers',(SELECT jsonb_agg(to_jsonb(r) ORDER BY signature) FROM readers r),
  'writers',(SELECT jsonb_agg(to_jsonb(w) ORDER BY signature) FROM writer_state w),
- 'extension_relocation_actor_authorized',coalesce((SELECT pg_has_role(e.extowner,'USAGE') OR (SELECT rolsuper FROM pg_roles WHERE rolname=current_user) FROM pg_extension e WHERE extname='pg_trgm'),false),
+ 'extension_core_owner_authorized',coalesce((SELECT pg_has_role(e.extowner,'USAGE') OR (SELECT rolsuper FROM pg_roles WHERE rolname=current_user) FROM pg_extension e WHERE extname='pg_trgm'),false),
+ 'supautils_privileged_extension_hint',coalesce('pg_trgm'=ANY(regexp_split_to_array(current_setting('supautils.privileged_extensions',true),'[[:space:]]*,[[:space:]]*')),false)
+  AND CASE WHEN to_regrole(current_setting('supautils.privileged_role',true)) IS NULL THEN false
+      ELSE pg_has_role(to_regrole(current_setting('supautils.privileged_role',true)),'USAGE') END,
+ 'extension_set_schema_evidence','not executed; metadata does not prove managed-platform DDL authorization',
  'legacy_target_count',(SELECT count(*) FROM pg_proc WHERE pronamespace='public'::regnamespace AND proname IN('apply_admin_approved_food_alias','apply_owner_approved_missing_food_draft','get_entitlements','get_paywall_state','start_purchase','restore_purchase','recompute_food_entries_for_food_ids','rls_auto_enable'))
 ) AS readiness;

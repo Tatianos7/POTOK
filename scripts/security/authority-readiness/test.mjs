@@ -37,7 +37,12 @@ try{
  await test('later public graph writer bodies are distinguished from the older repair',async()=>{const r=await check();assert(r.writers.every(x=>x.version==='graph-v2-account-gate'&&x.owner_only));});
  await exec(repair);
  await test('replaying old repair demonstrably removes the newer gate binding',async()=>{assert((await check()).writers.every(x=>x.version==='v2.2-statement-clock-without-account-gate'));const r=await rows("SELECT prosrc FROM pg_proc WHERE pronamespace='potok_control'::regnamespace AND proname IN('grant_entitlement_v2','revoke_entitlement_v2')");assert(r.every(x=>!x.prosrc.includes('acquire_shared_account_gate_v1')));});
- await test('extension owned by another role is blocked for a non-member operator',async()=>{assert.equal((await check()).extension_relocation_actor_authorized,false);await assert.rejects(()=>exec('ALTER EXTENSION pg_trgm SET SCHEMA potok_nutrition'),e=>e.code==='42501');});
+ await test('ordinary PostgreSQL without platform hooks rejects a foreign extension owner',async()=>{assert.equal((await check()).extension_core_owner_authorized,false);await assert.rejects(()=>exec('ALTER EXTENSION pg_trgm SET SCHEMA potok_nutrition'),e=>e.code==='42501');});
+ await test('platform GUC hints are observations and do not establish DDL authorization',async()=>{
+  await exec("SET supautils.privileged_role='postgres';SET supautils.privileged_extensions='pg_trgm';");
+  const r=await check();assert.equal(r.extension_core_owner_authorized,false);assert.equal(r.supautils_privileged_extension_hint,true);assert.match(r.extension_set_schema_evidence,/not executed/);
+  await assert.rejects(()=>exec('ALTER EXTENSION pg_trgm SET SCHEMA potok_nutrition'),e=>e.code==='42501');
+ });
  await test('diagnostic works in READ ONLY and preserves authority rows and definitions',async()=>{const before=await rows("SELECT oid,md5(prosrc) AS hash FROM pg_proc WHERE pronamespace IN('public'::regnamespace,'potok_control'::regnamespace) ORDER BY oid");await check();assert.deepEqual(await rows("SELECT oid,md5(prosrc) AS hash FROM pg_proc WHERE pronamespace IN('public'::regnamespace,'potok_control'::regnamespace) ORDER BY oid"),before);assert.equal((await rows('SELECT count(*)::int AS n FROM potok_control.access_attestations'))[0].n,0);});
  console.log(`AUTHORITY_READINESS_OK: ${passed} cases; complete public v2 installer and exact later writer source; disposable only`);
 }catch(e){console.error('AUTHORITY_READINESS_FAILED: '+e.message+' '+(e.code??''));process.exitCode=1;}finally{await exec('ROLLBACK;RESET SESSION AUTHORIZATION;').catch(()=>{});await(embedded?db.close():db.end());}
