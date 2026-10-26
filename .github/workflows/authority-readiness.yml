@@ -1,0 +1,41 @@
+name: Authority version and operator readiness acceptance
+on:
+  pull_request:
+    paths:
+      - 'scripts/security/authority-readiness/**'
+      - 'docs/premium/drafts/20260921_trusted_entitlement_v2.sql'
+      - 'docs/premium/drafts/20260921_trusted_entitlement_v2_2_repair.sql'
+      - 'docs/premium/drafts/20260927_adaptive_nutrition_graph_v2_authorities_activation_v1.sql'
+      - '.github/workflows/authority-readiness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test_admin
+          POSTGRES_PASSWORD: disposable-test-only
+          POSTGRES_DB: potok_authority_test
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_admin -d potok_authority_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix scripts/security/data-api-explicit-grants --ignore-scripts
+      - name: Public source authority version order and foreign extension ownership
+        env:
+          TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_authority_test
+          SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
+        run: node scripts/security/authority-readiness/test.mjs
