@@ -5,7 +5,7 @@ SET LOCAL search_path=pg_catalog,pg_temp;
 SET LOCAL lock_timeout='3s';
 SET LOCAL statement_timeout='30s';
 DO $preflight$
-DECLARE r record;p pg_proc;
+DECLARE r record;p pg_proc;session_columns text[];
 BEGIN
  IF current_user<>'postgres' OR session_user<>'postgres'
  OR current_setting('server_version_num')::integer/10000<>17
@@ -16,8 +16,14 @@ BEGIN
   IF NOT EXISTS(SELECT FROM pg_class WHERE oid=to_regclass('public.'||r.name) AND relkind='r' AND relrowsecurity AND pg_get_userbyid(relowner)='postgres')
   THEN RAISE EXCEPTION 'Legacy plan table ownership/RLS requires review: %',r.name;END IF;
  END LOOP;
- IF (SELECT array_agg(attname::text ORDER BY attnum) FROM pg_attribute WHERE attrelid='public.program_sessions'::regclass AND attnum>0 AND NOT attisdropped)
- IS DISTINCT FROM ARRAY['id','program_id','date','session_type','plan_payload','status','created_at']
+ SELECT array_agg(attname::text ORDER BY attnum) INTO session_columns
+ FROM pg_attribute WHERE attrelid='public.program_sessions'::regclass AND attnum>0 AND NOT attisdropped;
+ -- Both exact compatibility shapes retain every pre-existing column unchanged.
+ -- day_date is a read field used by the public Progress client, never a new write grant.
+ IF NOT(session_columns=ARRAY['id','program_id','date','session_type','plan_payload','status','created_at']
+ OR (session_columns=ARRAY['id','program_id','date','session_type','plan_payload','status','created_at','day_date']
+ AND EXISTS(SELECT FROM pg_attribute WHERE attrelid='public.program_sessions'::regclass
+  AND attname='day_date' AND atttypid='date'::regtype AND NOT attisdropped)))
  OR EXISTS(SELECT FROM unnest(ARRAY['nutrition_programs','training_programs','program_sessions']) t(name)
   WHERE NOT has_column_privilege('authenticated','public.'||t.name,'status','UPDATE') OR NOT has_table_privilege('authenticated','public.'||t.name,'SELECT'))
  THEN RAISE EXCEPTION 'Expected existing bounded execution capability and session shape';END IF;
