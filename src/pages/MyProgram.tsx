@@ -6,7 +6,7 @@ import { uiRuntimeAdapter, type RuntimeStatus } from '../services/uiRuntimeAdapt
 import type { ProgramMyPlanDTO } from '../types/programDelivery';
 import type { ProgramExplainabilityDTO } from '../types/explainability';
 import { programDeliveryService } from '../services/programDeliveryService';
-import { programGenerationService } from '../services/programGenerationService';
+import { programGenerationService, LEGACY_PROGRAM_MUTATIONS_AVAILABLE } from '../services/programGenerationService';
 import { classifyTrustDecision } from '../services/trustSafetyService';
 import Card from '../ui/components/Card';
 import Timeline from '../ui/components/Timeline';
@@ -449,7 +449,7 @@ const MyProgram = () => {
 
                 <Card title="Управление планом">
                   <p style={typography.subtitle}>
-                    Вы управляете темпом. Мы бережно сохраняем путь и адаптируемся к вашему состоянию.
+                    Вы управляете темпом. Пауза и продолжение доступны. Автоматическая корректировка плана пока недоступна.
                   </p>
                   <div className="flex flex-wrap" style={{ gap: spacing.sm, marginTop: spacing.sm }}>
                     <Button variant="outline" size="sm" onClick={() => handleProgramAction('pause')} disabled={plan.status === 'paused'}>
@@ -467,7 +467,7 @@ const MyProgram = () => {
                       variant="outline"
                       size="sm"
                       onClick={() => handleProgramAction('replan')}
-                      disabled={plan.status === 'cancelled'}
+                      disabled={!LEGACY_PROGRAM_MUTATIONS_AVAILABLE || plan.status === 'cancelled'}
                     >
                       Перепланировать
                     </Button>
