@@ -18,7 +18,7 @@ async function maskedProgramReads(user,id){
  const days=await ok(rpc('get_program_days',user,{p_program_id:id}));assert.equal(days[0].explainability_summary.reason_code,'synthetic_reason');
 }
 async function ok(p,expected=200){const r=await p;assert.equal(r.status,expected,'Authority/profile HTTP status='+r.status+' code='+(r.body?.code??'none'));return r.body;}
-async function denied(p){const r=await p;assert([401,403].includes(r.status));assert.equal(r.body?.code,'42501');}
+async function denied(p){const r=await p;assert([401,403].includes(r.status),'Expected permission denial; status='+r.status+' code='+(r.body?.code??'none'));assert.equal(r.body?.code,'42501');}
 async function loadService(file,name){
  const source=await readFile('src/services/'+file,'utf8');
  const javascript=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
@@ -126,15 +126,18 @@ try{
  prepare('quarantine-review');
  for(let n=0;;n++){const r=await request('program_sessions?select=execution_reason&id=eq.'+PA,a);if(r.status===200)break;assert(['42703','PGRST204'].includes(r.body?.code));assert(n<39);await new Promise(resolve=>setTimeout(resolve,250));}
  for(const table of ['nutrition_programs','training_programs']){
+  stage='legacy plan quarantine '+table+' creation/head/delete';
   await denied(request(table,a,'POST',{user_id:a.id},{'Prefer':'return=minimal'}));
   await denied(request(table+'?id=eq.'+PA,a,'PATCH',{program_version:99},{'Prefer':'return=minimal'}));
   await denied(request(table+'?id=eq.'+PA,a,'DELETE',undefined,{'Prefer':'return=minimal'}));
  }
  for(const [table,patch] of Object.entries({program_phases:{name:'forged'},program_blocks:{block_type:'forged'},program_days:{targets:{forged:true}},program_sessions:{plan_payload:{forged:true}},program_generation_jobs:{status:'completed'}})){
-  await denied(request(table,a,'PATCH',patch,{'Prefer':'return=minimal'}));
-  await denied(request(table,a,'DELETE',undefined,{'Prefer':'return=minimal'}));
+  stage='legacy plan quarantine '+table+' content/delete';
+  await denied(request(table+'?id=eq.'+PA,a,'PATCH',patch,{'Prefer':'return=minimal'}));
+  await denied(request(table+'?id=eq.'+PA,a,'DELETE',undefined,{'Prefer':'return=minimal'}));
  }
  for(const table of ['program_versions','program_adaptations']){
+  stage='legacy plan quarantine '+table+' insertion/upsert';
   await denied(request(table,a,'POST',historyInsert(table,PA),{'Prefer':'return=minimal'}));
   await denied(request(table+'?on_conflict=id',a,'POST',{id:PA,...historyInsert(table,PA)},{'Prefer':'return=minimal,resolution=merge-duplicates'}));
  }
