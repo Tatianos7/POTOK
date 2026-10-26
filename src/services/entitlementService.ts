@@ -34,6 +34,10 @@ export class EntitlementService {
       p_user_id: sessionUserId,
     });
     if (error) throw error;
+    await this.getSessionUserId(sessionUserId);
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      throw new Error('[entitlementService] Некорректный ответ проверки прав');
+    }
     return data;
   }
 
@@ -47,30 +51,51 @@ export class EntitlementService {
       p_user_id: sessionUserId,
     });
     if (error) throw error;
+    await this.getSessionUserId(sessionUserId);
     return data;
+  }
+
+  private booleanFlags(ent: { flags?: unknown }): Record<string, boolean> {
+    const flags = ent.flags;
+    if (!flags || typeof flags !== 'object' || Array.isArray(flags)) return {};
+    return Object.fromEntries(Object.entries(flags).map(([key, value]) => [key, value === true]));
+  }
+
+  private async hasVerifiedPremium(userId: string): Promise<boolean> {
+    await this.getSessionUserId(userId);
+    if (!this.client) return false;
+    // Legacy tier/flags can restrict a feature, but cannot establish Premium.
+    const { data, error } = await this.client.rpc('has_verified_entitlement_v1', {
+      p_capability: 'premium',
+    });
+    await this.getSessionUserId(userId);
+    return !error && data === true;
   }
 
   async canRealtimePose(userId: string): Promise<EntitlementStatus> {
     const ent = await this.getEntitlements(userId);
-    const tier = (ent?.tier as EntitlementStatus['plan']) ?? 'free';
-    const flags = ent?.flags ?? {};
-    const allowed = Boolean(flags?.can_spatial || flags?.can_voice || tier === 'pro' || tier === 'vision_pro');
+    const tier: EntitlementStatus['plan'] = ent.tier === 'pro' || ent.tier === 'vision_pro' ? ent.tier : 'free';
+    const flags = this.booleanFlags(ent);
+    const allowed = flags.can_spatial === true && await this.hasVerifiedPremium(userId);
     return { allowed, plan: tier, flags };
   }
 
   async canGenerateProgram(userId: string): Promise<boolean> {
     const ent = await this.getEntitlements(userId);
-    return Boolean(ent?.flags?.can_view_plan ?? true);
+    // Preserve existing Free default, but never coerce a malformed flag to true.
+    if (ent.flags != null && (typeof ent.flags !== 'object' || Array.isArray(ent.flags))) return false;
+    const flag = ent.flags?.can_view_plan;
+    return flag === undefined || flag === null ? true : flag === true;
   }
 
   async canAdaptProgram(userId: string): Promise<boolean> {
     const ent = await this.getEntitlements(userId);
-    return Boolean(ent?.flags?.can_adapt ?? false);
+    return this.booleanFlags(ent).can_adapt === true && await this.hasVerifiedPremium(userId);
   }
 
   async canExplain(userId: string): Promise<boolean> {
     const ent = await this.getEntitlements(userId);
-    return Boolean(ent?.flags?.can_explain ?? false);
+    return this.booleanFlags(ent).can_explain === true && await this.hasVerifiedPremium(userId);
   }
 
   async load(): Promise<void> {

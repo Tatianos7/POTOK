@@ -44,8 +44,11 @@ jobs:
       - name: Catalog import preserves historical diary snapshots
         run: node --test scripts/security/catalog-authority/food-import-snapshot-preservation.test.mjs
 
-      - name: Reproduce open legacy Premium findings (diagnostic, not release approval)
+      - name: Legacy Premium client containment regressions
         run: node --test scripts/security/legacy-premium/observations.test.mjs
+
+      - name: Entitlement account scope and Free compatibility
+        run: npx --no-install tsx --test src/services/__tests__/entitlementService.account-scope.test.ts
 
       # Nutrition Integrity V1 lives in an unmerged Draft PR.
       # Once included in a checked-out PR, run its isolated pure tests too.

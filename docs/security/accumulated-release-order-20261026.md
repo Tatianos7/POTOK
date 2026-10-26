@@ -39,6 +39,8 @@ SHA относятся к конкретным исходным файлам, н
 
 Совместная bounded real API/UI-проверка восьми кандидатов завершена в #203 (фиксированная синтетическая local Supabase, настоящий Auth/PostgREST и Login/Profile/AuthProvider). Она не заменяет full restored application acceptance. Следующий source review в `legacy-premium-gates-20261026.md` воспроизводит оставшиеся независимые legacy gates; его diagnostic tests фиксируют открытые проблемы, не разрешают релиз. Восемь pinned SQL inputs не изменены.
 
+Последующее узкое клиентское исправление — `premium-client-containment-20261026.md`: verified Premium обязателен вместе с exact feature flag, строгие boolean и повторная account проверка. Исходные diagnostics заменены containment regressions. Серверные mutation gates и raw legacy DTO ещё требуют отдельной работы; клиентский успех не закрывает их и не меняет восемь SQL входов.
+
 1. Зафиксировать exact выбранный commit, матрицу входов и CI. Проверить release diff относительно master, клиентскую совместимость, явные GRANT/RLS всех нужных новых объектов и ещё не рассмотренные bootstrap/draft/view/function/sequence случаи из письма Supabase.
 2. Проверить read-only drift цели и условия #201: fresh namespaces/predicates, профиль/ownership/RLS/defaults/ACL и API. Existing authority — отдельная adaptation, не слепой reapply. Не переносить старые is_admin/has_premium или finance tier как provenance; administrator list, evidence, expiry, retention/erasure требуют отдельного решения.
 3. Сопоставить поздние версии issuer/gate по публичному контракту #200/#201. Не переписывать shared-account binding старым repair. Не устанавливать полный Graph draft ради helper и не активировать генератор.
