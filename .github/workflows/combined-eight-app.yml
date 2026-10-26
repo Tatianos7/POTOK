@@ -5,6 +5,7 @@ on:
       - 'scripts/security/combined-api/**'
       - 'scripts/security/server-premium/**'
       - 'scripts/security/program-reads/**'
+      - 'scripts/security/program-history/**'
       - 'scripts/security/accumulated/**'
       - 'scripts/security/authority-profile/fixture.mjs'
       - 'scripts/security/catalog-authority/fixture.mjs'
