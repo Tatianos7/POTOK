@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import {readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {catalogFixture,A,B} from '../authority-profile/fixture.mjs';
 import {loadInputs,combined} from '../accumulated/inputs.mjs';
 import {permissionQuery} from '../accumulated/checks.mjs';
 assert.equal(process.env.GITHUB_ACTIONS,'true');
 const root=process.env.POTOK_PHOTO_AUTH_DIR;assert(root&&path.isAbsolute(root)&&path.basename(root)==='potok-photo-http-acceptance');
 assert((await readFile(path.join(root,'supabase/config.toml'),'utf8')).includes('project_id = "potok-photo-http-acceptance"'));
-const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','premium-grant','premium-revoke','verify-app'].includes(mode));
+const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','premium-grant','premium-revoke','verify-app','paywall-review'].includes(mode));
 if(mode==='config'){
  assert.equal(ids.length,0);const config=path.join(root,'supabase/config.toml');let s=await readFile(config,'utf8');
  s=s.replace(/^site_url = .*$/m,'site_url = "http://127.0.0.1:55440"').replace(/^additional_redirect_urls = .*$/m,'additional_redirect_urls = ["http://127.0.0.1:55440/auth/callback"]');
@@ -51,14 +52,22 @@ if(mode==='fixture'){
  THEN RAISE EXCEPTION 'Combined committed installation checks failed';END IF;END $$;
  COMMIT;
  `;
+}else if(mode==='paywall-review'){
+ const review=await readFile('scripts/security/server-premium/paywall-review.sql','utf8');
+ assert.equal((review.match(/^ROLLBACK;$/gm)??[]).length,1);assert.doesNotMatch(review,/^COMMIT;$/m);
+ sql+=review.replace(/^ROLLBACK;$/m,'COMMIT;');
 }else if(['grant','revoke','ui-grant','ui-revoke','premium-grant','premium-revoke'].includes(mode)){
  const capability=mode.startsWith('premium-')?'premium':'admin';
  const email=mode.startsWith('ui-')?'combined-ui-b@example.test':'combined-b@example.test';const id=ids[0];
  sql+=`DO $$ BEGIN IF NOT EXISTS(SELECT FROM auth.users WHERE id='${id}' AND email='${email}') THEN RAISE EXCEPTION 'Wrong synthetic issuance target';END IF;END $$;`;
  sql+=mode.endsWith('grant')?`SELECT potok_control.grant_entitlement_v2('${id}','${capability}',now()+interval '1 day','synthetic-combined-evidence','synthetic-combined-test');`:`SELECT potok_control.revoke_entitlement_v2('${id}','${capability}','synthetic-combined-revoke','synthetic-combined-test');`;
 }else{
+ const review=await readFile('scripts/security/server-premium/paywall-review.sql','utf8');
+ const match=review.match(/AS \$paywall\$([\s\S]*?)\$paywall\$/);assert(match);
+ const expectedPaywallHash=createHash('md5').update(match[1]).digest('hex');
  sql+=`DO $$ DECLARE checks jsonb;BEGIN SELECT to_jsonb(q) INTO checks FROM (${permissionQuery()}) q;
  IF EXISTS(SELECT FROM jsonb_each(checks) e WHERE e.value IS DISTINCT FROM 'true'::jsonb)
+ OR (SELECT prosecdef OR proconfig IS DISTINCT FROM ARRAY['search_path=""'] OR pg_get_userbyid(proowner)<>'postgres' OR md5(prosrc)<>'${expectedPaywallHash}' FROM pg_proc WHERE oid='public.get_paywall_state(text,uuid)'::regprocedure)
  OR (SELECT count(*) FROM potok_control.access_attestations)<>${mode==='verify-app'?6:4}
  OR NOT EXISTS(SELECT FROM public.user_profiles p JOIN auth.users u ON p.id_user=u.id WHERE u.email='combined-a@example.test' AND p.is_admin AND p.has_premium AND p.first_name='Saved API')
  OR EXISTS(SELECT FROM public.user_profiles p JOIN auth.users u ON p.id_user=u.id WHERE u.email IN('combined-b@example.test','combined-ui-a@example.test','combined-ui-b@example.test') AND (p.is_admin OR p.has_premium))
