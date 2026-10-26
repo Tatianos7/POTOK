@@ -71,7 +71,7 @@ try{
  stage='verified Premium';const unchangedToken=b.token;prepare('premium-grant',b.id);
  assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).premium,true);assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).admin,false);
  assert.equal(await eb.canAdaptProgram(b.id),true);assert.equal(await eb.canExplain(b.id),true);assert.equal((await eb.canRealtimePose(b.id)).allowed,true);
- prepare('premium-revoke',b.id);assert.equal(b.token,unchangedToken);
+ prepare('premium-revoke',b.id);assert(b.token===unchangedToken,'Synthetic JWT unexpectedly changed');
  assert.equal(await eb.canAdaptProgram(b.id),false);assert.equal(await eb.canExplain(b.id),false);assert.equal((await eb.canRealtimePose(b.id)).allowed,false);
  assert.equal((await eb.getEntitlements(b.id)).tier,'pro');assert.equal((await ok(request('user_profiles',b)))[0].has_premium,false);
  console.log('PREMIUM_CLIENT_HTTP_OK: actual EntitlementService, verified grant/revoke on same JWT; legacy-paid denial and Free preservation; no provider integration');

@@ -18,7 +18,7 @@ for(const id of ids)assert.match(id,/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-
 assert.equal(ids.length,mode==='fixture'?2:['grant','revoke','ui-grant','ui-revoke','premium-grant','premium-revoke'].includes(mode)?1:0);
 const container='supabase_db_potok-photo-http-acceptance';
 const inspect=spawnSync('docker',['inspect','--format','{{.State.Running}} {{.State.Health.Status}} {{.Config.Image}}',container],{encoding:'utf8',timeout:10000});assert.equal(inspect.status,0);assert.match(inspect.stdout,/^true healthy .*supabase\/postgres:17\./);
-const expectedUsers=mode.startsWith('ui-')||mode==='verify-app'?6:4;
+const expectedUsers=mode.startsWith('ui-')||mode==='verify-app'?4:2;
 let sql=`DO $$ BEGIN IF current_user<>'postgres' OR session_user<>'postgres' OR current_database()<>'postgres'
  OR (SELECT rolsuper FROM pg_roles WHERE rolname=current_user) OR (SELECT count(*) FROM auth.users)<>${expectedUsers}
  OR EXISTS(SELECT FROM auth.users WHERE email NOT IN('combined-a@example.test','combined-b@example.test','combined-ui-a@example.test','combined-ui-b@example.test'))
