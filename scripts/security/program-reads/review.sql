@@ -22,7 +22,9 @@ BEGIN
  ) v(signature,source_md5,definer,config) LOOP
   SELECT * INTO p FROM pg_proc WHERE oid=to_regprocedure(r.signature);
   IF NOT FOUND OR pg_get_userbyid(p.proowner)<>'postgres' OR p.prosecdef<>r.definer
-  OR md5(p.prosrc)<>r.source_md5 OR p.proconfig IS DISTINCT FROM r.config
+  OR md5(p.prosrc)<>r.source_md5 OR (p.proconfig IS DISTINCT FROM r.config AND NOT
+   (r.config IS NULL AND r.signature IN('public.get_program_explainability(uuid,integer)','public.get_program_days(uuid)','public.get_program_day_details(uuid,date)')
+    AND p.proconfig=ARRAY['search_path=public, pg_temp']))
   THEN RAISE EXCEPTION 'Program read source contract requires review: %',r.signature;END IF;
  END LOOP;
  FOR r IN SELECT unnest(ARRAY['nutrition_programs','training_programs','program_explainability','program_phases','program_blocks','program_days','program_sessions']) AS name LOOP

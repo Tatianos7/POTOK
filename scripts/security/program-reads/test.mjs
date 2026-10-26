@@ -68,6 +68,10 @@ async function runCases(){
   assert.equal((await client('authenticated',A,details()))[0].d.explainability[0].guard_notes.details,'synthetic full a');
  });
  const before=await snapshot();await exec(review);assert.deepEqual(await snapshot(),before);console.log('PASS complete review ROLLBACK restores metadata, grants, data and namespace');passed++;
+ await test('exact tracked 20260311 hardening search_path variant remains compatible',async()=>{
+  for(const sig of ['get_program_explainability(uuid,integer)','get_program_days(uuid)','get_program_day_details(uuid,date)'])await exec('ALTER FUNCTION public.'+sig+' SET search_path=public,pg_temp;');
+  await exec(body);await exec(await finalSQL());masked((await client('authenticated',A,explain()))[0]);
+ });
  await test('source/path and inherited protected-column grants fail with no partial installation',async()=>{
   for(const drift of ["ALTER FUNCTION public.get_program_days(uuid) SET search_path=public;",'GRANT SELECT(guard_notes) ON public.program_explainability TO leaked_reader;']){
    await exec('SAVEPOINT drift;'+drift);await assert.rejects(()=>exec(body),/source contract|privilege boundary/);await exec('ROLLBACK TO drift;RELEASE drift;');

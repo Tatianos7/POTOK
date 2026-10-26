@@ -26,7 +26,7 @@
 
 ## Допуск и сохранность
 
-`scripts/security/program-reads/review.sql` заканчивается ROLLBACK. Preflight требует nonsuperuser postgres BYPASSRLS на PG17, fresh namespace, исходные public-source hashes/config/security/owner трёх старых RPC и существующих authority/paywall readers, owner/RLS базовых program таблиц и точные имена/типы девяти explanation колонок. Confidence сохраняет numeric(4,3). Неизвестный source/shape/доступ останавливает установку; replay не является автоматическим upgrade.
+`scripts/security/program-reads/review.sql` заканчивается ROLLBACK. Preflight требует nonsuperuser postgres BYPASSRLS на PG17, fresh namespace, исходные public-source hashes/config/security/owner трёх старых RPC и существующих authority/paywall readers, owner/RLS базовых program таблиц и точные имена/типы девяти explanation колонок. Для трёх legacy program RPC допускаются только исходный NULL config либо точный public, pg_temp из tracked 20260311_security_advisor_hardening.sql; неизвестный path по-прежнему запрещён. У paywall #206 до установки также учтён этот точный tracked вариант, без изменения нового тела/публичного контракта. Confidence сохраняет numeric(4,3). Неизвестный source/shape/доступ останавливает установку; replay не является автоматическим upgrade.
 
 Кандидат не меняет строки, параметры плана или профиль, не выдаёт Premium. Existing authenticated/service table DML capabilities и service column SELECT проверяются на сохранность; неожиданный inherited-only service SELECT loss откатывает пакет. Три user-facing RPC становятся authenticated-only; service/anon RPC read compatibility не обещается и требует проверки внешних callers до release. Полные колонковые ответы напрямую не доступны даже verified пользователю — только через scoped reader.
 
@@ -41,7 +41,7 @@
 
 ## Проверки
 
-12 embedded PG17 cases: старое full раскрытие; полное восстановление metadata/ACL/данных/namespace после ROLLBACK; source/path/inherited-column drift; COMMIT без data/authority mutations; Free projection и direct-column denial; owner verified grant/full и same-claims revoke/mask; foreign scope даже при добавленной broad permissive policy; UUID/type collision и неправильная polymorphic запись; anon/service/null identity/metadata/admin; malformed flag/reason; сохранность конкретного Free insert плюс OPEN plan mutation; безопасный отказ reapply. Native PG17 job повторяет их.
+13 embedded PG17 cases: старое full раскрытие; полное восстановление metadata/ACL/данных/namespace после ROLLBACK; source/path/inherited-column drift; COMMIT без data/authority mutations; Free projection и direct-column denial; owner verified grant/full и same-claims revoke/mask; foreign scope даже при добавленной broad permissive policy; UUID/type collision и неправильная polymorphic запись; anon/service/null identity/metadata/admin; malformed flag/reason; сохранность конкретного Free insert плюс OPEN plan mutation; совместимость с точным tracked hardening path; безопасный отказ reapply. Native PG17 job повторяет их.
 
 Real local Auth/PostgREST acceptance отдельно ставит read follow-up после восьми кандидатов и #206 paywall, проверяет все три RPC, direct-column/foreign/role/private-schema denial, настоящий Premium grant/full и revoke/mask с тем же JWT. Fresh SQL проверяет тела/security/owner/config/EXECUTE пяти readers и effective columns/schema grants. Предыдущие фактические EntitlementService/Login/Profile/AuthProvider и photo/catalog/history проверки повторяются. Секреты/OTP/status не публикуются; CI результаты нужно подтвердить на exact commit.
 
