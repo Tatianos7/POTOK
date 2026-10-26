@@ -61,6 +61,8 @@ if(mode==='fixture'){
  OR NOT EXISTS(SELECT FROM auth.users WHERE id='${ids[0]}' AND email='combined-a@example.test')
  OR NOT EXISTS(SELECT FROM auth.users WHERE id='${ids[1]}' AND email='combined-b@example.test') THEN RAISE EXCEPTION 'Expected fresh synthetic program fixture';END IF;END $$;`;
  sql+=await seedPrograms(ids[0],ids[1]);
+ // Synthetic compatibility variant; never a hosted catalog replay.
+ sql+="ALTER TABLE public.program_sessions ADD COLUMN day_date date;UPDATE public.program_sessions SET day_date='2026-10-25';";
 }else if(mode==='program-read-review'){
  const review=await readFile('scripts/security/program-reads/review.sql','utf8');
  assert.equal((review.match(/^ROLLBACK;$/gm)??[]).length,1);assert.doesNotMatch(review,/^COMMIT;$/m);

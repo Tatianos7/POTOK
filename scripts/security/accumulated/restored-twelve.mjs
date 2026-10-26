@@ -8,13 +8,13 @@ import {inputs,loadInputs,body} from './inputs.mjs';
 import {buildRehearsal,parseCopyCounts} from './restored.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const literal=s=>"'"+String(s).replace(/'/g,"''")+"'";
-// All four files are authored public candidates pinned to the reviewed #209 tree.
+// Authored public candidates: #209 tree plus the narrow day_date compatibility follow-up.
 export const followupInputs=[
  ['paywall','scripts/security/server-premium/paywall-review.sql','eec945610cdd3e3e94fe57b1c974f537ac01fc4b7ba78f14ba05158c6b92a07c'],
  ['programRead','scripts/security/program-reads/review.sql','b6f3780740bf02267d34f58172115be005e829a3f6ff1b8244005fd6521162f0'],
  ['history','scripts/security/program-history/review.sql','d27309df8b5612566ab7156ad31b90113a27ca485af7c64267304d336efb446a'],
- ['quarantine','scripts/security/legacy-plan-quarantine/review.sql','b816386be98f9961069abf30233c2f934bbb2f676f005cb402755c9dac9d2f8c'],
-].map(([key,path,sha256])=>({key,path,sha256,ref:'2e84692a3b86315b4824ba176ec48b6d808266f6'}));
+ ['quarantine','scripts/security/legacy-plan-quarantine/review.sql','c4d14fdd05df0453a993662108035234b3818ba792b443fd3bb8ee238ae63fbc'],
+].map(([key,path,sha256])=>({key,path,sha256,ref:key==='quarantine'?'90571af942a98b3822ed175ec1483a65adb5d8d7':'2e84692a3b86315b4824ba176ec48b6d808266f6'}));
 export async function loadFollowups({remote=false}={}){
  const result={};for(const item of followupInputs){let bytes;
   if(remote){const r=await fetch(`https://raw.githubusercontent.com/Tatianos7/POTOK/${item.ref}/${item.path}`,{redirect:'error',signal:AbortSignal.timeout(30000)});assert(r.ok,'Pinned follow-up unavailable: '+item.key);bytes=Buffer.from(await r.arrayBuffer());}

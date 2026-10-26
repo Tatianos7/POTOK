@@ -141,9 +141,10 @@ try{
   await denied(request(table,a,'POST',historyInsert(table,PA),{'Prefer':'return=minimal'}));
   await denied(request(table+'?on_conflict=id',a,'POST',{id:PA,...historyInsert(table,PA)},{'Prefer':'return=minimal,resolution=merge-duplicates'}));
  }
+ await denied(request('program_sessions?id=eq.'+PA,a,'PATCH',{day_date:'2026-10-27'},{'Prefer':'return=minimal'}));
  for(const status of ['paused','active'])await ok(request('nutrition_programs?id=eq.'+PA,a,'PATCH',{status},{'Prefer':'return=minimal'}),204);
  for(const [status,execution_reason] of [['skipped','fatigue'],['planned',null],['completed',null]]){
-  const r=await ok(request('program_sessions?id=eq.'+PA,a,'PATCH',{status,execution_reason}));assert.equal(r.length,1);assert.equal(r[0].status,status);assert.deepEqual(r[0].plan_payload,oldSession[0].plan_payload);
+  const r=await ok(request('program_sessions?id=eq.'+PA,a,'PATCH',{status,execution_reason}));assert.equal(r.length,1);assert.equal(r[0].status,status);assert.deepEqual(r[0].plan_payload,oldSession[0].plan_payload);assert.equal(r[0].day_date,oldSession[0].day_date);assert.equal(r[0].day_date,'2026-10-25');
  }
  assert.deepEqual(await ok(request('program_sessions?id=eq.'+PA,b,'PATCH',{status:'skipped'})),[]);
  const invalid=await request('program_sessions?id=eq.'+PA,a,'PATCH',{execution_reason:'forged'});assert.equal(invalid.status,400);assert.equal(invalid.body?.code,'23514');

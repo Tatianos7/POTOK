@@ -91,6 +91,19 @@ try{
  await test('all twelve pinned candidates stream one transaction and fully restore metadata/content',async()=>{
   const before=await snapshot();await protocol(await script());assert.deepEqual(await snapshot(),before);
  });
+ await test('exact trailing day_date date values survive all twelve candidates and rollback',async()=>{
+  await exec("SET ROLE postgres;ALTER TABLE public.program_sessions ADD COLUMN day_date date;UPDATE public.program_sessions SET day_date='2026-10-25';RESET ROLE;");
+  const before=await snapshot();await protocol(await script());assert.deepEqual(await snapshot(),before);
+ });
+ await test('generated trailing day_date date also remains unchanged through the twelve-candidate rollback',async()=>{
+  await exec('SET ROLE postgres;ALTER TABLE public.program_sessions ADD COLUMN day_date date GENERATED ALWAYS AS (date) STORED;RESET ROLE;');
+  const before=await snapshot();await protocol(await script());assert.deepEqual(await snapshot(),before);
+ });
+ await test('day_date remains inside original-column content hashes and tampering is detected',async()=>{
+  await exec("SET ROLE postgres;ALTER TABLE public.program_sessions ADD COLUMN day_date date;UPDATE public.program_sessions SET day_date='2026-10-25';RESET ROLE;");
+  const before=await snapshot();const sql=(await script()).replace('DO $annotation$',"UPDATE public.program_sessions SET day_date='2026-10-24';\nDO $annotation$");
+  await protocol(sql,{error:/Restored content mismatch/});assert.deepEqual(await snapshot(),before);
+ });
  await test('same-count legacy session payload tamper is detected despite the nullable annotation addition',async()=>{
   const before=await snapshot();const sql=(await script()).replace('DO $annotation$',`UPDATE public.program_sessions SET plan_payload='{"tampered":true}';\nDO $annotation$`);
   await protocol(sql,{error:/Restored content mismatch/});assert.deepEqual(await snapshot(),before);
