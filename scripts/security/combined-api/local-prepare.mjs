@@ -7,10 +7,11 @@ import {catalogFixture,A,B} from '../authority-profile/fixture.mjs';
 import {loadInputs,combined} from '../accumulated/inputs.mjs';
 import {permissionQuery} from '../accumulated/checks.mjs';
 import {seedSQL as seedPrograms,finalSQL as programReadFinalSQL} from '../program-reads/fixture.mjs';
+import {seedSQL as seedHistory,finalSQL as historyFinalSQL} from '../program-history/fixture.mjs';
 assert.equal(process.env.GITHUB_ACTIONS,'true');
 const root=process.env.POTOK_PHOTO_AUTH_DIR;assert(root&&path.isAbsolute(root)&&path.basename(root)==='potok-photo-http-acceptance');
 assert((await readFile(path.join(root,'supabase/config.toml'),'utf8')).includes('project_id = "potok-photo-http-acceptance"'));
-const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','premium-grant','premium-revoke','verify-app','paywall-review','program-read-fixture','program-read-review'].includes(mode));
+const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','premium-grant','premium-revoke','verify-app','paywall-review','program-read-fixture','program-read-review','history-review'].includes(mode));
 if(mode==='config'){
  assert.equal(ids.length,0);const config=path.join(root,'supabase/config.toml');let s=await readFile(config,'utf8');
  s=s.replace(/^site_url = .*$/m,'site_url = "http://127.0.0.1:55440"').replace(/^additional_redirect_urls = .*$/m,'additional_redirect_urls = ["http://127.0.0.1:55440/auth/callback"]');
@@ -64,6 +65,13 @@ if(mode==='fixture'){
  assert.equal((review.match(/^ROLLBACK;$/gm)??[]).length,1);assert.doesNotMatch(review,/^COMMIT;$/m);
  sql+=review.replace(/^ROLLBACK;$/m,'COMMIT;');
  sql+=await programReadFinalSQL();
+}else if(mode==='history-review'){
+ sql+=`DO $$ BEGIN IF (SELECT count(*) FROM public.program_versions)<>0 OR (SELECT count(*) FROM public.program_adaptations)<>0 OR (SELECT count(*) FROM public.program_guard_events)<>0
+ OR (SELECT count(*) FROM public.program_explainability)<>2 THEN RAISE EXCEPTION 'Expected fresh synthetic history fixture';END IF;END $$;`;
+ sql+=seedHistory();
+ const review=await readFile('scripts/security/program-history/review.sql','utf8');
+ assert.equal((review.match(/^ROLLBACK;$/gm)??[]).length,1);assert.doesNotMatch(review,/^COMMIT;$/m);
+ sql+=review.replace(/^ROLLBACK;$/m,'COMMIT;');sql+=historyFinalSQL();
 }else if(mode==='paywall-review'){
  const review=await readFile('scripts/security/server-premium/paywall-review.sql','utf8');
  assert.equal((review.match(/^ROLLBACK;$/gm)??[]).length,1);assert.doesNotMatch(review,/^COMMIT;$/m);
@@ -75,6 +83,7 @@ if(mode==='fixture'){
  sql+=mode.endsWith('grant')?`SELECT potok_control.grant_entitlement_v2('${id}','${capability}',now()+interval '1 day','synthetic-combined-evidence','synthetic-combined-test');`:`SELECT potok_control.revoke_entitlement_v2('${id}','${capability}','synthetic-combined-revoke','synthetic-combined-test');`;
 }else{
  sql+=await programReadFinalSQL();
+ sql+=historyFinalSQL();
  const review=await readFile('scripts/security/server-premium/paywall-review.sql','utf8');
  const match=review.match(/AS \$paywall\$([\s\S]*?)\$paywall\$/);assert(match);
  const expectedPaywallHash=createHash('md5').update(match[1]).digest('hex');

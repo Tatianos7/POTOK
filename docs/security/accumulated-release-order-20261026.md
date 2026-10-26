@@ -45,6 +45,8 @@ SHA относятся к конкретным исходным файлам, н
 
 Следующий read-only по данным кандидат — `program-explanation-projection-20261026.md`: серверный Free summary/owned verified full response и запрет прямого чтения защищённых explanation колонок. Он создаёт отдельную private projection с public INVOKER facades; исходная восьмёрка не расширяется молча. Program mutation, прочие payloads/callers и client caches остаются отдельными gates.
 
+Последующий permission-only кандидат — `program-history-containment-20261026.md`: запрет прямого клиентского UPDATE/DELETE/TRUNCATE и лишних reference/trigger/maintenance прав на четыре журнала с сохранением INSERT/read/service capabilities. Это не доверенная атомарная адаптация: новые поддельные записи и parent plan mutations остаются OPEN.
+
 1. Зафиксировать exact выбранный commit, матрицу входов и CI. Проверить release diff относительно master, клиентскую совместимость, явные GRANT/RLS всех нужных новых объектов и ещё не рассмотренные bootstrap/draft/view/function/sequence случаи из письма Supabase.
 2. Проверить read-only drift цели и условия #201: fresh namespaces/predicates, профиль/ownership/RLS/defaults/ACL и API. Existing authority — отдельная adaptation, не слепой reapply. Не переносить старые is_admin/has_premium или finance tier как provenance; administrator list, evidence, expiry, retention/erasure требуют отдельного решения.
 3. Сопоставить поздние версии issuer/gate по публичному контракту #200/#201. Не переписывать shared-account binding старым repair. Не устанавливать полный Graph draft ради helper и не активировать генератор.
