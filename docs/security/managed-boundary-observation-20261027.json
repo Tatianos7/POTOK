@@ -1,0 +1,95 @@
+{
+  "protocol": "potok-managed-boundary-observation-v1",
+  "target": "POTOK",
+  "projectRef": "dtsdnhbcwpbfrhcazqkb",
+  "readOnly": true,
+  "managedFacts": {
+    "actor": "postgres",
+    "trgm_owner": "supabase_admin",
+    "observed_at": "2026-10-27T10:58:39.022901+00:00",
+    "relocatable": true,
+    "trgm_schema": "public",
+    "trgm_indexes": 1,
+    "privileged_role": "supabase_privileged_role",
+    "target_usage_ok": true,
+    "trgm_allowlisted": true,
+    "extension_members": 47,
+    "privileged_member": true,
+    "invalid_trgm_indexes": 0,
+    "target_client_create": false,
+    "extensions_schema_exists": true,
+    "reserved_public_truncate_defaults": 2
+  },
+  "http": {
+    "protocol": "potok-http-schema-observation-v1",
+    "observedAt": "2026-10-27T11:02:16.016Z",
+    "target": "https://dtsdnhbcwpbfrhcazqkb.supabase.co",
+    "method": "GET",
+    "roleContext": "public-key/anon; no user JWT",
+    "rowsRequested": 0,
+    "schemas": null,
+    "exclusions": [
+      {
+        "profile": "extensions",
+        "rejected": true,
+        "code": "PGRST106",
+        "status": 406
+      },
+      {
+        "profile": "potok_control",
+        "rejected": true,
+        "code": "PGRST106",
+        "status": 406
+      },
+      {
+        "profile": "potok_nutrition",
+        "rejected": true,
+        "code": "PGRST106",
+        "status": 406
+      },
+      {
+        "profile": "potok_delivery",
+        "rejected": true,
+        "code": "PGRST106",
+        "status": 406
+      }
+    ],
+    "publicResourceCheck": {
+      "status": 404,
+      "code": "PGRST205"
+    },
+    "publicReachable": true,
+    "verdict": "OBSERVED_HTTP_SCHEMA_EXCLUSIONS",
+    "releaseReady": false,
+    "note": "Only the four named exclusions and positive public route were tested. No complete schema list is inferred when the server omits it. Not a Management config export, permission/RLS proof, authenticated A/B acceptance or future exposure guarantee."
+  },
+  "trgmSourcePreflight": {
+    "result": "TRGM_SOURCE_PREFLIGHT_READ_ONLY_OK",
+    "transaction": "BEGIN READ ONLY / ROLLBACK",
+    "sourceRef": "a1b91d8bfbfba8135478803605512e1014dbafcc",
+    "sourcePath": "scripts/security/pg-trgm/rehearsal.sql",
+    "sourceSha256": "a22d809784f341030029be46fe3975c3842813b41eb57414ee17ab6d9e1a52d7",
+    "onlyPreflightBlock": true,
+    "relocationPerformed": false
+  },
+  "sources": [
+    {
+      "topic": "supported managed pg_trgm path and reserved defaults",
+      "url": "https://supabase.com/kb/troubleshooting/cant-change-the-default-privileges-of-supabase_admin-in-the-public-schema"
+    },
+    {
+      "topic": "schema profile negotiation",
+      "url": "https://docs.postgrest.org/en/stable/references/api/schemas.html"
+    },
+    {
+      "topic": "Management configuration endpoint (not called)",
+      "url": "https://supabase.com/docs/reference/api/v1-get-postgrest-service-config"
+    }
+  ],
+  "supportedManagedMechanism": "DOCUMENTED_AND_CONFIG_CONSISTENT",
+  "sourceScan": "PASS_READ_ONLY_CONSERVATIVE_SCAN",
+  "httpNamedExclusions": "OBSERVED_PUBLIC_KEY_ANON",
+  "managementConfigurationExport": "NOT_OBTAINED",
+  "hostedRelocationRehearsal": "NOT_PERFORMED",
+  "releaseReady": false
+}

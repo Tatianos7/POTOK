@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/security/release-packet/**'
+      - 'scripts/security/managed-boundary/**'
       - 'scripts/security/accumulated/inputs.mjs'
       - 'scripts/security/accumulated/restored-twelve.mjs'
       - 'scripts/security/accumulated/checks.mjs'
@@ -44,6 +45,8 @@ jobs:
         run: node scripts/security/release-packet/prepare.mjs --verify
       - name: Fail-closed recovery and source artifact policies
         run: node --test scripts/security/release-packet/state.test.mjs
+      - name: Metadata HTTP policy and pinned read-only extension scan
+        run: node --test scripts/security/managed-boundary/http-profile.test.mjs
       - name: Locked native test driver only
         run: npm ci --prefix scripts/security/data-api-explicit-grants --ignore-scripts
       - name: Exact review SQL cannot reach the first candidate

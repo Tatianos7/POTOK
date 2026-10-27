@@ -98,3 +98,7 @@ SHA относятся к конкретным исходным файлам, н
 ## Пакет source-ревью и актуальная read-only проверка — 27 октября
 
 После #221 подготовлен `scripts/security/release-packet/`: 12 pinned sources в guarded forward.review.sql без COMMIT, manifest, metadata-only preflight и fail-closed recovery classifier. Preflight действительно выполнен на POTOK только чтением: baseline-shaped состояние, не полный committed пакет; managed pg_trgm/public, HTTP exposure и актуальный backup/scope остаются условиями допуска. Подробный порядок и recovery — `release-packet-20261027.md`; sanitized observation не содержит пользовательских строк/ключей. Это source-review packet, не hosted apply/migration и не универсальный down/restore. Старые Mac-команды не повторяются, поздние результаты владельца ожидают сверки доказательств.
+
+## Managed mechanism и реальные HTTP exclusions — 27 октября
+
+После #222: `managed-boundary-20261027.md` фиксирует официальный путь pg_trgm, подходящие supautils/target-schema настройки и успешно выполненный на POTOK read-only preflight из закреплённого trgm-кандидата. Реальные GET подтвердили 406/PGRST106 для extensions/potok_control/potok_nutrition/potok_delivery при работающем public API; ключ не сохранялся. Это named-profile evidence без user JWT, не полный config/extra-search-path export и не выполненный hosted ALTER. Source scan не заменяет managed rehearsal; backup/recovery и target-bound release/точное одобрение остаются условиями. Guarded packet #222 не превращается в apply, старые Mac-команды не повторяются.
