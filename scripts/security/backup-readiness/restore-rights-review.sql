@@ -33,4 +33,3 @@ SELECT jsonb_build_object(
  'releaseReady',false,'mayApply',false
 ) AS evidence;
 ROLLBACK;
-
