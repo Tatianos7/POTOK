@@ -28,7 +28,7 @@ permissions:
 jobs:
   real-auth-postgrest:
     runs-on: ubuntu-22.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       SUPABASE_ACCESS_TOKEN: ''
       SUPABASE_DB_PASSWORD: ''
@@ -40,6 +40,8 @@ jobs:
       - run: npm ci
       - name: Restricted local browser gateway protocol
         run: node --test scripts/security/combined-api/private-gateway.test.mjs
+      - name: Private browser package policy
+        run: node --test scripts/security/accumulated/private-browser.test.mjs
       - run: npx playwright install --with-deps chromium
       - uses: supabase/setup-cli@v1
         with:
@@ -80,6 +82,11 @@ jobs:
           set -e
           node scripts/security/combined-api/browser.mjs
           node scripts/security/combined-api/local-prepare.mjs verify-app
+      - name: Read-only non-root packaged browser runtime and real OTP/profile acceptance
+        timeout-minutes: 15
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
+        run: node scripts/security/accumulated/private-browser-ci.mjs
       - name: Stop only disposable project
         if: always()
         env:

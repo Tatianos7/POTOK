@@ -39,7 +39,9 @@ export async function verifyProfileRecovery({page, context, a, b, remote}) {
     assert.equal(recovered.is_admin, false);
     assert.equal(recovered.has_premium, false);
     assert.equal(recovered.created_at, before.created_at);
-    assert.equal(recovered.updated_at, before.updated_at);
+    // A real server trigger may advance updated_at for this ordinary edit.
+    assert(Date.parse(recovered.updated_at) >= Date.parse(before.updated_at));
+    assert(Date.parse(recovered.updated_at) <= Date.now() + 60000);
     assert.equal(await page.evaluate(id => localStorage.getItem('profile_pending_v1_' + id), b), null);
     const quarantine = await page.evaluate(id => window.__potokAcceptance.profiles.getProfilePrivilegeQuarantine(id), b);
     assert.deepEqual(quarantine, {

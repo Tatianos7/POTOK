@@ -1,0 +1,32 @@
+# Private full-copy profile browser package
+
+Continuation of the owner's confirmed #215 A/B OTP and #216–217 synthetic application/gateway acceptance. No claim of an owner full-copy browser pass is made until PRIVATE_BROWSER_OK is supplied. This package is profile acceptance; diary, Storage binaries, programs and hosted release remain separate.
+
+## Two separate operations
+
+1. `private-browser-runtime.mjs --prepare-runtime` operates on a public source checkout/archive and a local Docker engine only. It never reads backups, service Env or a database. A SHA-256-pinned manifest admits 601 exact public source/lock/runtime files; no repository env files or arbitrary build context are copied. Copied files are rehashed. It builds Node 24.22.1 bookworm-slim with locked npm dependencies/Playwright 1.40.0/Chromium, captures the immutable image ID/source digest and runs a non-root read-only network-none self-check that loads actual Login/AuthProvider modules. At least 8 GiB free is required. Image preparation can take several minutes and downloads packages/browser dependencies; it does not connect copied data to the network.
+2. `private-browser.mjs --run-private-browser` is a fixed-target one-shot controller from the original backup cwd. It requires a successful matching prepared-image receipt and the exact existing successful A/B receipt. No new Auth process, users, migrations, grants, host ports or data mounts are created. A new captured browser container shares the existing network-none candidate's namespace; original baseline/DB/API/Auth services remain running unchanged. A bounded tmpfs supplies browser/cache files, all capabilities are dropped and no-new-privileges is set.
+
+Owner instructions must pin the exact public source commit and verify downloaded controller/runtime/manifest inputs before execution. Long pasted heredocs previously truncated on the owner's remote terminal; give short commands in separate steps. Do not issue an owner execution command before exact-head packaged real browser CI passes. No account password, OTP, token or private log is to be sent in chat.
+
+## Browser credentials and test scope
+
+The controller validates the captured candidate/baseline/volume/API/Auth identities, isolation settings, pinned old security modules, final twelve-candidate source/effective contracts, backups and unchanged Auth metadata. It reuses the two exact synthetic UUIDs/addresses from successful A/B state. The former broad self-registration UI is exercised only for these already-present addresses; admission confirms there are exactly two extra users/profiles, and final scope checks catch any unexpected account creation.
+
+The browser receives only its two synthetic identities and a short-lived ordinary anon client JWT signed locally for this isolated stack, with role=anon and no user subject. This is not a forged authenticated user token. Actual user JWTs come from Auth OTP and are checked by the application/server. No DB/authenticator password, signing key, Docker socket, source backup or database volume enters the browser container. The SMTP/template capture restarts inside that process with only these two allowed recipients; received OTPs stay in memory, never behind an HTTP code endpoint. The same restricted loopback gateway is used. Browser requests are bounded to harness/gateway; the shared namespace has no external network.
+
+Actual Login/Profile/AuthProvider/profileService paths cover A/B OTP, matching captured IDs, ordinary profile writes, avatar file/reload, session refresh, offline/reconnect, A queue retention during B, foreign read/write rejection, old queue sanitization, names-only privilege quarantine, forged cached flags and blocked old privilege setters. No issuer is called and authority stays empty. A legitimate server updated_at trigger may advance its timestamp; the client may not send that field or inject a future timestamp.
+
+## Preservation, failure and recovery
+
+The original 112-table / 14888-row full-row hash multiset from before A/B remains the reference. It is not replaced with a new baseline that accepts earlier changes. Every original row/duplicate multiplicity must survive. Extra Auth lifecycle rows are permitted only when scoped to the two captured users (AMR via their sessions/audits via actor_id); there must remain exactly two extra users and profiles. Test profiles and their Auth sessions can change through normal application operations. Sequences may advance and are not reset. Auth definitions and exact final security contracts are rechecked before and after; original backups stay byte-identical.
+
+Private `private-browser-*` evidence records captured IDs/image/source receipt and status. It does not store OTPs/user JWTs; browser storage/tmpfs disappears with runtime teardown, while synthetic accounts stay local. The ordinary anon client key is a private local env file. Keep all evidence local; do not upload row hash/metadata snapshots or logs.
+
+If browser assertions fail, the independent final data/schema/security proof is still attempted. A wait/start error stops only the captured browser before the proof; if that stop fails, no preservation claim is made while the worker could still mutate. The fixed browser name prevents blind re-execution after partial failure. Original services are not automatically recreated, unsafe old rights are not restored and data are not deleted. Interruption is not success; preserve checkpoints for a scoped diagnosis.
+
+## Validation boundary
+
+Four native policy cases cover exact synthetic account admission, namespace/image/read-only/no-mount run arguments, exact identity-scoped lifecycle allowances and public-only pinned runtime inputs. The existing gateway and A/B preservation tests remain applicable.
+
+CI first runs the existing real synthetic application acceptance, then builds the actual runtime image, performs network-none self-check and runs the packaged browser as non-root/read-only against those same two synthetic users. CI alone uses host networking to reach its published loopback-only disposable stack and Mailpit; owner run arguments never permit host networking. The packaged CI result must not be described as network-none/full-copy acceptance. No original private data or hosted endpoints are used. Native unit and syntax checks pass locally; Docker runtime/real packaged CI are pending until the published exact-head workflow completes.

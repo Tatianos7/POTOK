@@ -1,0 +1,2406 @@
+[
+  {
+    "path": "package-lock.json",
+    "sha256": "ba7a198dbe98ca34359ee83b8b5e6b74edd86dbfa9da72652fa620dca4035751"
+  },
+  {
+    "path": "package.json",
+    "sha256": "29ac7e88178b7ef59ac7e1c01c77a73efb51a58a9491189525203195f2b6ddd6"
+  },
+  {
+    "path": "scripts/security/accumulated/private-auth-ab-worker.mjs",
+    "sha256": "9bef14be1bf7aca68b59a6698b39df84c8aee27f79101921c37646335accdfe8"
+  },
+  {
+    "path": "scripts/security/accumulated/private-browser-policy.mjs",
+    "sha256": "ddf998fdb7b2e36e73c800adfbab873907955d6e6635c3317af455c5bc0f72e2"
+  },
+  {
+    "path": "scripts/security/accumulated/private-browser-worker.mjs",
+    "sha256": "cca95b0eb0e9ce9a83329e23c35781b36f95026078e8ed108246b7f586a375a5"
+  },
+  {
+    "path": "scripts/security/combined-api/private-gateway.mjs",
+    "sha256": "9a676223acf7814021b13acd98b636be9334d6d75e4b1d8ad12691cd6e69f9d3"
+  },
+  {
+    "path": "scripts/security/combined-api/profile-recovery.mjs",
+    "sha256": "b013715826dfc9dabeb457d1a0e0bbd150c4560863de8c42d607dd62c20b8447"
+  },
+  {
+    "path": "src/App.tsx",
+    "sha256": "b76db533a7baffecb1a66eb9af37e88d8ff914ccb7ab629dd38c580d3bcc6de0"
+  },
+  {
+    "path": "src/api/generateAdvice.ts",
+    "sha256": "ea7ede82cbe6aaebcfab70477c81c2b060111405db119ffd0b3c3cc70ea04990"
+  },
+  {
+    "path": "src/components/AdaptiveNutritionReadOnlyEntry.tsx",
+    "sha256": "eb3d5f61db323b4bb1ed457e7f01cff4cc56251ef2f28032fc5061168ae61702"
+  },
+  {
+    "path": "src/components/AdaptiveNutritionRuntimeWeekPreview.tsx",
+    "sha256": "eacaf4520b633e98304ad711e255c095b825f83834481deb6799e71db1bfc7af"
+  },
+  {
+    "path": "src/components/AddFoodToMealModal.tsx",
+    "sha256": "c1a87824ba2abfeee1de073385c0b48910946aa5f0acc353369e0f589b6ab9a4"
+  },
+  {
+    "path": "src/components/AddProductModal.tsx",
+    "sha256": "991477a68284841740d76efa0683757491ab078da1c48600a21d04d3d5096bde"
+  },
+  {
+    "path": "src/components/AiAdviceBlock.tsx",
+    "sha256": "2fbcd34fafe272f9fab318cdf405251c6ce2def8d088739610484e8574808682"
+  },
+  {
+    "path": "src/components/AppBottomDock.tsx",
+    "sha256": "f341f530f1d582086916eda5b4c6686569d28a86339cbe785bd92a2605922f64"
+  },
+  {
+    "path": "src/components/AppBottomNavigation.tsx",
+    "sha256": "fb9e40e94aead164a670b141af74e7988294656f8cadba8e958e88aa5b87a54a"
+  },
+  {
+    "path": "src/components/BarcodeScanner.tsx",
+    "sha256": "40f23c750558da93ee86cc2dc33897b37ac15cfc9e28efdc669461fc469bb182"
+  },
+  {
+    "path": "src/components/CameraBarcodeScanner.tsx",
+    "sha256": "9b0f126ba9a882fd0f0bff8991f6c7b0bd4f42f3b4fa1173d68056194f70e50b"
+  },
+  {
+    "path": "src/components/ChangePasswordModal.tsx",
+    "sha256": "d8f2946d22536b4c408c0802cc5ba704fe0f582f2457d21fda12940183e7d1ec"
+  },
+  {
+    "path": "src/components/ChangeSubscriptionModal.tsx",
+    "sha256": "143dee995117d5ac3be07fc9b43d6d28e3b5ea22e36c959bfbcbe8d162e0f271"
+  },
+  {
+    "path": "src/components/ConfirmScannedFoodModal.tsx",
+    "sha256": "99dc9bbe357b2d0c6fd563b578a210bc72810cb9f689bc56b51b4cccc9e78dd4"
+  },
+  {
+    "path": "src/components/CopyMealModal.tsx",
+    "sha256": "ea5803d162bb14ee93c908882cb21ac7ba33a24624555c7dd97b1bfcce1a8165"
+  },
+  {
+    "path": "src/components/CreateCustomFoodModal.tsx",
+    "sha256": "32628f9042b3017dafd3bfd9e769aba2497f057546f4f7183a3bd6ce0bf1fbd3"
+  },
+  {
+    "path": "src/components/CreateExerciseModal.tsx",
+    "sha256": "9ceea314dfa7168950dc2f20e7e4d0937e772733f2cb4cc7ea86f65aef828d3e"
+  },
+  {
+    "path": "src/components/CreateGoalModal.tsx",
+    "sha256": "3fcbed8ac7542f9f04e46bdbf56c5ec9d3955e524bb719eb93c08549cdf45367"
+  },
+  {
+    "path": "src/components/DeleteMealConfirmModal.tsx",
+    "sha256": "d05a7d3f7cb2edfe4b82eacf005b279fa985be216cf6a03a57cd512fcce29df0"
+  },
+  {
+    "path": "src/components/DeleteSubscriptionModal.tsx",
+    "sha256": "5558c85976f98312b0ae4564500a0dd470ff91347d6ec32a40c7f72ad4caf728"
+  },
+  {
+    "path": "src/components/EditGoalModal.tsx",
+    "sha256": "7c764bb56bdaa420e631ca08d147c79afac5d7d08823aac15f0e0c38fd8f8cbe"
+  },
+  {
+    "path": "src/components/EditMealEntryModal.tsx",
+    "sha256": "1a15c617e15fda3b317084e469d6c4d73d2bca53760d99b697dedf3f7acf92cb"
+  },
+  {
+    "path": "src/components/EditWorkoutEntryModal.tsx",
+    "sha256": "bed30d76665b7be74f0e225d25689be5cbb8168d1a930b2cc671e98029ae21df"
+  },
+  {
+    "path": "src/components/ErrorBoundary.tsx",
+    "sha256": "5c67a5016758276f62be2bb2c52b05172d597e57db4cef58a67b7ee88ad605a0"
+  },
+  {
+    "path": "src/components/ExerciseCategoryModal.tsx",
+    "sha256": "87a0c420965d39f12d7905a8a4ce4563d2f9a7b70e682f9d05d531cb5b6beb2e"
+  },
+  {
+    "path": "src/components/ExerciseCategorySheet.tsx",
+    "sha256": "6b81558935be1263ec691238f1f63cf229140580877db50f5898b15b6f38f4c4"
+  },
+  {
+    "path": "src/components/ExerciseDefinitionSheet.tsx",
+    "sha256": "39f88300326d1eeae5cd5b7177c42a41aa5fea16faeb03ce8e0302ed64023d4e"
+  },
+  {
+    "path": "src/components/ExerciseListSheet.tsx",
+    "sha256": "93838763f6d7f036c31c4a24a5bcbba7f8731783643727a5d12de1e0b775a5ff"
+  },
+  {
+    "path": "src/components/ExerciseMediaViewerOverlay.tsx",
+    "sha256": "9e4fa29087f7b3943205d14ccdcbf8564a58e09980470866861b7e19489d49a5"
+  },
+  {
+    "path": "src/components/ExplainabilityDrawer.tsx",
+    "sha256": "4e3eb9f4e6ae210b3960112cfb016c880811493476480904a1aa0d078f7c79ab"
+  },
+  {
+    "path": "src/components/FeatureCard.tsx",
+    "sha256": "beea9722d7328c05bd3edb20d8a444738404f496846ff4984964e98b92e1acec"
+  },
+  {
+    "path": "src/components/FoodIngestionPanel.tsx",
+    "sha256": "a93a6c3b1f3920a91cb2ac49b43ea587aa0f91752aae7d57c4d4a504f5150dd7"
+  },
+  {
+    "path": "src/components/FoodMultiAddCartButton.tsx",
+    "sha256": "4ab9dcee8f2fb3045f7574ec8a68b293ad9cfc58ca6a7ba4d59fff8fac497e9e"
+  },
+  {
+    "path": "src/components/FoodMultiAddCartSheet.tsx",
+    "sha256": "0d2d5427502f119bee3494554bb9626ff612b9136a302488cec40b45ac4d9e20"
+  },
+  {
+    "path": "src/components/FoodSourceBadge.tsx",
+    "sha256": "79d3553924cb1d612cb73b2de9da543dc450ac872afc9c95c1a36f83a1b3b1de"
+  },
+  {
+    "path": "src/components/Header.tsx",
+    "sha256": "f371c2a54d53e441c8198016ccf80ea52049ea87d282349e035926458d849e66"
+  },
+  {
+    "path": "src/components/Icon.tsx",
+    "sha256": "a517cf53429718f5b73aef39978802e34996ecd4d3ad66f2b23dbfe0536d55a1"
+  },
+  {
+    "path": "src/components/InlineCalendar.tsx",
+    "sha256": "32bd483265f1d0b73ac14840d87707d208be510d18f15e4ec7a0480fdd106219"
+  },
+  {
+    "path": "src/components/MealNoteModal.tsx",
+    "sha256": "477069bd3cf407665496b7eeb07ff3da5e5aacfea116fbd039bc90f99180f26f"
+  },
+  {
+    "path": "src/components/MealTypeSelectorModal.tsx",
+    "sha256": "3a361a66b341132d8f02ae5d1c4155a8d35f670d6fd84dbe98f00071b7cd57f0"
+  },
+  {
+    "path": "src/components/Menu.tsx",
+    "sha256": "a03252dbafc27e1866d6213f35173cdfbb9976184c66b96708bcf378943c1995"
+  },
+  {
+    "path": "src/components/MuscleMap.tsx",
+    "sha256": "24558e6d76b6d91f948a65a3ec8879c6268ccafe11ca26219a959688e3b61d7e"
+  },
+  {
+    "path": "src/components/NotificationDetailsModal.tsx",
+    "sha256": "e9035ba0bba7a0e3a30f4a7ee7f410c084307d990888bbf48484f044f19e134d"
+  },
+  {
+    "path": "src/components/NotificationThreadModal.tsx",
+    "sha256": "cfdd54cc3f94105fdff9dcfe255836c6260438eaef8d956a9aa6029cc3ef87a7"
+  },
+  {
+    "path": "src/components/NutritionBottomActions.tsx",
+    "sha256": "2cdc34af3b50dcc174d25d1cfb415083ba7fe78eb0d8b298e69c136db2f95888"
+  },
+  {
+    "path": "src/components/NutritionMealActionPreview.tsx",
+    "sha256": "e29fdcf8cd71768296fcac0ee7eaf6ce7cae0d12fd982f20504ddf58aaa85701"
+  },
+  {
+    "path": "src/components/NutritionRecoveryStatus.tsx",
+    "sha256": "ed54b012f862f5289bf2e6388dc5b582fa6ff8b8383fd20a4f475f372f8fa717"
+  },
+  {
+    "path": "src/components/NutritionWeekPreview.tsx",
+    "sha256": "a0a37b5d89e480bf138dbecf2f04b30bb88b15bf2cef203791176c3c4a0c4426"
+  },
+  {
+    "path": "src/components/OtpCodeInput.tsx",
+    "sha256": "99e0b114ed96263252c3c4caaae258c3c5e31328669ed3338ae4a80a5678d568"
+  },
+  {
+    "path": "src/components/PaymentHistoryModal.tsx",
+    "sha256": "fcf1f995889b49637e646db0e152044c329fd5f12fa6ff83b6c3c027b643672a"
+  },
+  {
+    "path": "src/components/PaymentModal.tsx",
+    "sha256": "eee0ae585e33c2d8642a592c1b291c078bc36cc1f3134b500cbdd9d540ab8823"
+  },
+  {
+    "path": "src/components/PaymentSuccessModal.tsx",
+    "sha256": "4d031cad8dfb07b7c150d0881612b45f1ec46e515c9ff57a66cc361fc851a03f"
+  },
+  {
+    "path": "src/components/PhotoFoodAnalyzerModal.tsx",
+    "sha256": "62341d6daed77acefe1e0e7311bf24f88e76dfe301e7e86970fbf76ff0c6402a"
+  },
+  {
+    "path": "src/components/PremiumRoute.tsx",
+    "sha256": "98b9d68515eb654e7af277cc84f13b9a23f5871e68af631432e3ae112031b4f2"
+  },
+  {
+    "path": "src/components/PrivacyPolicyModal.tsx",
+    "sha256": "a2daef682b5ca03b18e05796993f8e14c6a9537b20be7b533d9a9e10e445f8e5"
+  },
+  {
+    "path": "src/components/ProductCard.tsx",
+    "sha256": "15befe77b75af74a5a55d74cf7e8dcecc03a637b247727b38591a3101017f8a8"
+  },
+  {
+    "path": "src/components/ProductSearch.tsx",
+    "sha256": "638e65de35a63e398a88fff972b4daca063f2b2948050bb7ab7247e915123963"
+  },
+  {
+    "path": "src/components/ProgressCard.tsx",
+    "sha256": "25b7d26fdb52cab7bf665d6c90d55916bcb4b2cbdc51494b3449ebe0876ac0b3"
+  },
+  {
+    "path": "src/components/ProgressDailyGoalCard.tsx",
+    "sha256": "3d833b4c4a6e581ed52d362c3a8e71af04d02b17c498240d6b986744ea77ad31"
+  },
+  {
+    "path": "src/components/ProtectedRoute.tsx",
+    "sha256": "ed4247457437c0dec21bb384e3ae395881b56bd7f858d2ecd5c9a6de788e4e2e"
+  },
+  {
+    "path": "src/components/RecipeAnalyzePicker.tsx",
+    "sha256": "915d13b54f40daf1e546c09cf0946c319685778ca77cfd314a151aca57648e76"
+  },
+  {
+    "path": "src/components/RecipeAnalyzeResultSheet.tsx",
+    "sha256": "1e37a77e98a062be236df9ba73924df51f38e1f864fd1cbc785d6e3bdf1f5b1e"
+  },
+  {
+    "path": "src/components/RecipeAnalyzerResult.tsx",
+    "sha256": "473e9965200809b2674afaf0e02f9a9c404d874e8f74ca39789f69bfd611d1a0"
+  },
+  {
+    "path": "src/components/RecipeBadge.tsx",
+    "sha256": "57cd1b94d97f20277cedd62c8792c5fa9740d5802492d77488c9b221dddf6b89"
+  },
+  {
+    "path": "src/components/RecipeFilterDropdown.tsx",
+    "sha256": "a4e8bd95d657b2b9a89d853917764d52363a49a05932861338bacc83f112c144"
+  },
+  {
+    "path": "src/components/RecipeFilterModal.tsx",
+    "sha256": "8cf801efb79320ae59a6dd6a4843f4bb145219b62e2e2784996e69eb97cacebd"
+  },
+  {
+    "path": "src/components/RecipeIngredientsTable.tsx",
+    "sha256": "aaad53352a794c7dfc6c44d4793fd0928c60065450e6b27188e39517a0cd726a"
+  },
+  {
+    "path": "src/components/RecipeNoteModal.tsx",
+    "sha256": "a9fe07e050b6ab779fa14c2725c6337e852a375afe1678515a158a03c178869e"
+  },
+  {
+    "path": "src/components/RecipesGrid.tsx",
+    "sha256": "444e4c9c5b2adf3b4a99757531ee88196670be1c41f5749d16b8f3422a88f657"
+  },
+  {
+    "path": "src/components/RecipesList.tsx",
+    "sha256": "c75943433c33357e356af70de00564f5cb45fe39f0d5d393ae4bbb6703f27122"
+  },
+  {
+    "path": "src/components/RepeatWorkoutModal.tsx",
+    "sha256": "e40e43ceb22f00b818851bff17d48be442aa8b35d1a87a962c15d4de3b187641"
+  },
+  {
+    "path": "src/components/SaveMealAsRecipeModal.tsx",
+    "sha256": "6437d711eeb61dcee4a30355bd48191faf60ba831b4991bf5f90e07fe28e367b"
+  },
+  {
+    "path": "src/components/SaveRecipeModal.tsx",
+    "sha256": "fd96c4ea1958d3f75007fadb72a12c299e05956177d3873eeff0b52cc669f34e"
+  },
+  {
+    "path": "src/components/SaveRecipeToDiarySheet.tsx",
+    "sha256": "f595358bfec6f39dff62d265c9dc315a81ed3b03fc721efc12f52ce0c2f222aa"
+  },
+  {
+    "path": "src/components/ScanConfirmBottomSheet.tsx",
+    "sha256": "38375af1f4796383a081829ff26bec603640786788fd0e31382d94594d7ad6d1"
+  },
+  {
+    "path": "src/components/SelectedExercisesEditor.tsx",
+    "sha256": "8df76a3e71392a8e3c8f9e576cf8e4584b37f380d374681e2b6d8d9c9b07d40e"
+  },
+  {
+    "path": "src/components/SettingsModal.tsx",
+    "sha256": "1148a6d3e2876347a4d2be1ebbee50d798c2983c71f647a6aca47003d7bb7f58"
+  },
+  {
+    "path": "src/components/SupportForm.tsx",
+    "sha256": "cb8d35a7a4c8e24d79b673f5bab2735ee3872b27ad7ae2fa982559cdb4e2d1ce"
+  },
+  {
+    "path": "src/components/WorkoutDayNoteBlock.tsx",
+    "sha256": "0dc3c102f4af5b8b99aaf3d23d7695da79b30d45abde4d0ed7bc9233e6a69372"
+  },
+  {
+    "path": "src/components/WorkoutEntryCard.tsx",
+    "sha256": "c4d03a5c457408203c2ffe5bfdbf832f2a45aa45f684458968d4f6ce3130287b"
+  },
+  {
+    "path": "src/components/WorkoutEntryInlineNote.tsx",
+    "sha256": "3e1a7b49be56c86665080af9e1f029946ce5cfb5064e2f1da059cdcc3a482881"
+  },
+  {
+    "path": "src/components/WorkoutEntryNoteComposer.tsx",
+    "sha256": "8b3632ca51a0da6cdf1d2ee8f07782cdc557ae036aea891122efd20ab2719c8f"
+  },
+  {
+    "path": "src/components/WorkoutExerciseCardSheet.tsx",
+    "sha256": "92f300868c403fb2e6851fee99c6cda69282b63893c4e3eab4a935430f43c78a"
+  },
+  {
+    "path": "src/components/WorkoutExerciseProgressView.tsx",
+    "sha256": "68a4e555df690a474a3f9041641d44b715c6eb9569fd5a4c72deb02c78dd8c8f"
+  },
+  {
+    "path": "src/components/WorkoutHistoryDayDetails.tsx",
+    "sha256": "31b57448c6e0bc76f15c5e7beea4ab19bb61212cfafbd0815712e8bc0d227769"
+  },
+  {
+    "path": "src/components/WorkoutHistoryList.tsx",
+    "sha256": "ed6256f3429994d3f68f968691cdac7c9900c899094b0ff339d17194145c02f2"
+  },
+  {
+    "path": "src/components/WorkoutProgressList.tsx",
+    "sha256": "081c8b9358dc68eeae5d6b89d3cae9ecaffa974547e70976bcfe665f7ad80064"
+  },
+  {
+    "path": "src/components/WorkoutProgressMonthPicker.tsx",
+    "sha256": "60cd3f0bb627677efd068642b0cca4054194d45ff98323ac27d6bdb9d2a86b98"
+  },
+  {
+    "path": "src/components/__tests__/AdaptiveNutritionReadOnlyEntry.test.tsx",
+    "sha256": "4db269c6453a1580ccbaf55ea5bbb70f6ffba4ba2fa723422ed39a2d185112c5"
+  },
+  {
+    "path": "src/components/__tests__/AdaptiveNutritionRuntimeWeekPreview.test.tsx",
+    "sha256": "a722d10cc4d4024910b43f6885dd4aadd166002f122ec394375b26a21757142e"
+  },
+  {
+    "path": "src/components/__tests__/AddProductModal.test.tsx",
+    "sha256": "8ccc4c132b671c37e31402aef4070e08115eec17259f3ab01bea7feb8f4098e0"
+  },
+  {
+    "path": "src/components/__tests__/AppBottomNavigation.test.tsx",
+    "sha256": "7355c25cd86195cfb68028f12867260882b5e821fef5cdea031c1d9ce7d0c575"
+  },
+  {
+    "path": "src/components/__tests__/CreateExerciseModal.test.tsx",
+    "sha256": "51d6996d0469b8c443663453d4f496901c1664e27f04f574779de3fc742e829f"
+  },
+  {
+    "path": "src/components/__tests__/EditWorkoutEntryModal.test.tsx",
+    "sha256": "c0e2240ef524e0661068b609e99304b6d5e0945c7aeec88bc6737e5d31bcf109"
+  },
+  {
+    "path": "src/components/__tests__/ExerciseCategorySheet.test.ts",
+    "sha256": "d6d929f05194d723dfe7f973d3e3523a2b614e8fdd37a23d60158c264e2368b3"
+  },
+  {
+    "path": "src/components/__tests__/ExerciseDefinitionSheet.test.tsx",
+    "sha256": "f15dab4ffc8d69b38ac9c72928bbb1ecd0d74320eebeacf9c0422fd3606ee9f2"
+  },
+  {
+    "path": "src/components/__tests__/ExerciseListSheet.test.tsx",
+    "sha256": "ca2fb9983b5351455c03313e642c7d008c4369bd2c0f49f63a18eb6d2e749eb1"
+  },
+  {
+    "path": "src/components/__tests__/FoodMultiAddCartButton.test.tsx",
+    "sha256": "df1a396e9446e35813882dbbaa57605a5d0c00169f50a64916de0a638bd31d04"
+  },
+  {
+    "path": "src/components/__tests__/FoodMultiAddCartSheet.test.tsx",
+    "sha256": "bfc85a77e48d02712949233c4be406ba96534cd1aaf35a3f50ff67e3daf0c2c6"
+  },
+  {
+    "path": "src/components/__tests__/FoodSourceBadge.test.tsx",
+    "sha256": "32e6027ed58665d07bb2d0db0e57f131073650f6a0c6f3359f691c955c7199ac"
+  },
+  {
+    "path": "src/components/__tests__/MealEntryUnitPresetsUI.test.tsx",
+    "sha256": "e4304e240ce2444bdb4dc8d3b360d9db5f1c5174e45a5db62cdd0feea3183039"
+  },
+  {
+    "path": "src/components/__tests__/MealNoteModal.test.tsx",
+    "sha256": "0f4836b59d60c7fc0d3ce55f824e964d59f73677d6b21690b29e5ca6e6691e83"
+  },
+  {
+    "path": "src/components/__tests__/MuscleMap.test.tsx",
+    "sha256": "6bdcfe4bf568f50f81f8d3b13f40578482690cc380cb89669a31db657976ee53"
+  },
+  {
+    "path": "src/components/__tests__/NutritionMealActionPreview.test.tsx",
+    "sha256": "1555f01eee05738d39557d5c294fa7b4e45928737ab2121ca0c2df5b3e97747f"
+  },
+  {
+    "path": "src/components/__tests__/PremiumRoute.test.tsx",
+    "sha256": "24404c1da9beaf97529ec3c85032212a19a91c6575b7ae5d97b837504c495170"
+  },
+  {
+    "path": "src/components/__tests__/ProductCardMultiAddAction.test.tsx",
+    "sha256": "0712c3580fd54f2d825e8f1cfde701f86164f1da10913b745123fbade158ecea"
+  },
+  {
+    "path": "src/components/__tests__/ProductSearchAnalytics.test.ts",
+    "sha256": "55c90035788bd8cb5780a3789353ea381290f0631b0c60e26cb1dc1a90681e48"
+  },
+  {
+    "path": "src/components/__tests__/ProductSearchOverlay.test.tsx",
+    "sha256": "c00f19d55d2d501da85e4c1401d0f8265fba13e528540e7053a529036a09cd52"
+  },
+  {
+    "path": "src/components/__tests__/ProgressDailyGoalCard.test.tsx",
+    "sha256": "25c336acd2e2f27a6561858e566c825d615dbe57f8ccb6a000afff1250983581"
+  },
+  {
+    "path": "src/components/__tests__/RecipeAnalyzerResult.test.tsx",
+    "sha256": "0294a63e6d363165b052b22a1a03583b0556bb3277dea447261bb2b314f84684"
+  },
+  {
+    "path": "src/components/__tests__/RecipesReadSide.test.tsx",
+    "sha256": "a9f6c54be5604b5e267fbbb782cb016a3876ee27caf5d09a55c0c108e8e844d6"
+  },
+  {
+    "path": "src/components/__tests__/RepeatWorkoutModal.test.tsx",
+    "sha256": "e7836857ce2c9ccad1d1b102a10ecc1ef95d4dcde979134b19345dfde96067ad"
+  },
+  {
+    "path": "src/components/__tests__/SelectedExercisesEditor.test.tsx",
+    "sha256": "8abdee83dcc452081216134c8f8c8e9d1ba6d33a7139f02a5f31b07f47f2e473"
+  },
+  {
+    "path": "src/components/__tests__/WorkoutDayNoteBlock.test.tsx",
+    "sha256": "2bfb35da825e60781529e146d97b2623f1246b34ba8fdd51b7234659a9125ca4"
+  },
+  {
+    "path": "src/components/__tests__/WorkoutEntryInlineNote.test.tsx",
+    "sha256": "3272346466268d0850a54391a7ee48694685efcebb9dd26d7b5e9d1b0b9fb2a5"
+  },
+  {
+    "path": "src/components/__tests__/WorkoutEntryNoteComposer.test.tsx",
+    "sha256": "847da92bb282190aa2786d15a56dff2bed46a6a2decbf71f2ad5958bf8efbd1f"
+  },
+  {
+    "path": "src/components/__tests__/WorkoutExerciseCardSheet.test.tsx",
+    "sha256": "702be512a1dc44e52446b22d1bcf1b427e1d9487dfa7cabd8260e6ca3e417ca9"
+  },
+  {
+    "path": "src/components/__tests__/WorkoutExerciseProgressView.test.tsx",
+    "sha256": "c8a3c2a6f1099ca864b8baf8a7ab2584dff342e8bef13351816e57527592f150"
+  },
+  {
+    "path": "src/components/__tests__/WorkoutHistoryReadSide.test.tsx",
+    "sha256": "ce86aeca6494cc2c114185664e08a63a99d9a3e920fd42b0fe943099acf0b1e3"
+  },
+  {
+    "path": "src/components/__tests__/WorkoutProgressList.test.tsx",
+    "sha256": "d90d737672669d27362c03fa583e66006af1b3d6da0d553f3de4d21e59e6f186"
+  },
+  {
+    "path": "src/components/__tests__/WorkoutProgressMonthPicker.test.tsx",
+    "sha256": "a499805001281580406a34922b6cb6531e3eafe57fcd12e9a6c7b6f46171ebfc"
+  },
+  {
+    "path": "src/components/muscle-map/MuscleMap.tsx",
+    "sha256": "68bf2c445ac70403d9b2c434cbe589747f5f65daf8ba631c7986e8c0b1f4e277"
+  },
+  {
+    "path": "src/components/muscle-map/MuscleMapSvg.tsx",
+    "sha256": "6815f8a23d3f6781fb11cb1dcd7a713d456b613ba4c59aa513f72f74088d1452"
+  },
+  {
+    "path": "src/components/muscle-map/assets/muscle-map-back.svg",
+    "sha256": "2e9b782a25bde8c8ad35db419e47f47e66f17d3aaffd0a5e9d3a0514fbabee8a"
+  },
+  {
+    "path": "src/components/muscle-map/assets/muscle-map-front.svg",
+    "sha256": "f4d6facc84e13355d7240b3d5dc379585a3818f1b7d48ff53f6a89c2909d9136"
+  },
+  {
+    "path": "src/components/ui/BaseInput.tsx",
+    "sha256": "b914b4479fc8679738a70722eb1ab5c85bfe5503eb25dc8c610415d60eb7dcf3"
+  },
+  {
+    "path": "src/constants/activityHints.ts",
+    "sha256": "52e59b83f453bbf545b6f590b2081f409fa845b419410c34aa07d586c6393e8a"
+  },
+  {
+    "path": "src/constants/muscles.ts",
+    "sha256": "42975edd024dc4e2d2a14a189fa7b304f00262ad139ac7a52f82464b0e730bca"
+  },
+  {
+    "path": "src/context/AuthContext.tsx",
+    "sha256": "1092b6d68cb234506ad6b2e7893217ce64b873cf5476caecff92eb15c62f8f7c"
+  },
+  {
+    "path": "src/context/ThemeContext.tsx",
+    "sha256": "3dc7e499b8826ea708eec06aedcc2c2d0efa9b50e401a2f8357694568adbe83c"
+  },
+  {
+    "path": "src/data/baseFoods.ts",
+    "sha256": "d7f811d66c1affc094e463f6079e33f79953d514209f53a0b9bee134dffeee62"
+  },
+  {
+    "path": "src/data/categoryDefaults.ts",
+    "sha256": "1e0d60f954eba680b32c2103ae1553b397da655d3bb8e15d55a2c5e62a857c02"
+  },
+  {
+    "path": "src/data/demoProducts.ts",
+    "sha256": "aeecd88ce69d971409cdb79690af1511446eaf2e7a9f987b01f3e6a1fe68e626"
+  },
+  {
+    "path": "src/data/eanIndexSeed.ts",
+    "sha256": "d3061a8489c9638f92e7186e7278be0a7aa78d5af96e2b8a53f2cc31f545da20"
+  },
+  {
+    "path": "src/data/exerciseContent.ts",
+    "sha256": "3d8d1c4be06bf51c2ea21e97209a33513348db2b825da2b8ec7282601157ee8f"
+  },
+  {
+    "path": "src/data/exercisesSeed.ts",
+    "sha256": "5b46ba95bb78a6bcc98ddca67ce464c685710b82bd780f3263efc966c4985f8d"
+  },
+  {
+    "path": "src/data/features.ts",
+    "sha256": "2970009c2cf45d15300ebea5250c9ffadef0b7b29062776b989b610bc7e3b6b4"
+  },
+  {
+    "path": "src/data/foodsDatabase.ts",
+    "sha256": "01a9ab38458b297d9e2e4873152add2f54e5ff29e3eddf2972c9fc719ce8f4c6"
+  },
+  {
+    "path": "src/data/foodsDatabaseExtended.ts",
+    "sha256": "28dbb7a82691f13837a5e1c7fff38e57ab3217f5d44ad7e14ed19e654dd7fbaa"
+  },
+  {
+    "path": "src/data/foodsDatabaseGenerator.ts",
+    "sha256": "7e95196de59cee416b333ca4ff68882e38bbfd4bed2af86d68bb44d09c7b514f"
+  },
+  {
+    "path": "src/data/mockFoodDatabase.ts",
+    "sha256": "b24be96cc1321a21756bc7cdd3dd69ed94cc1039ab79059b75d87484999c7239"
+  },
+  {
+    "path": "src/data/muscles/muscleLabels.ts",
+    "sha256": "c6942600777d785d84326b35934a41966bbe6559b95394090282282a105d09e4"
+  },
+  {
+    "path": "src/data/muscles/muscleMapRegions.ts",
+    "sha256": "1b661031590589114b32897ac8c5052b4637ba345e702deff3b025414f61a8c3"
+  },
+  {
+    "path": "src/data/muscles/types.ts",
+    "sha256": "b62aaaf4289ab65612f783f975980bf3776261d0958ec6f76d2295546750dd4b"
+  },
+  {
+    "path": "src/data/rusProductsSeed.ts",
+    "sha256": "67f613737fd0ee6763c067f76b732bd9267c8d6fd7f1c941ea1d3b1345cc1a89"
+  },
+  {
+    "path": "src/data/unitConversions.ts",
+    "sha256": "91cd25850375bb76d2280e054aa113a8f95a8d788974e57b383b081a2026e0b7"
+  },
+  {
+    "path": "src/hooks/useAdminAccess.ts",
+    "sha256": "bc57109d5ed871b47254d7d9405166eb7aa05148f18eb58793a930758fa9e5fa"
+  },
+  {
+    "path": "src/hooks/useAiAdvice.ts",
+    "sha256": "77b09a939ff677306f02301ae44140afc3b3f54015a13b3ea5a1123b4461c92d"
+  },
+  {
+    "path": "src/index.css",
+    "sha256": "424fe243981e459e73fa45147037095075fd7cc80c4057e6c6f92f7c48056a10"
+  },
+  {
+    "path": "src/lib/supabaseClient.ts",
+    "sha256": "cc283ca8dced256070daf277416e04e6b0f3d95069e9ef44d4da7d19bdd33bc7"
+  },
+  {
+    "path": "src/main.tsx",
+    "sha256": "b08bfa4a07d596920b5fd2892c4600833809f144ba9fcc1dc8c25e32dc5b6930"
+  },
+  {
+    "path": "src/pages/AdminPanel.tsx",
+    "sha256": "9666e3f8ed3af3770c5bc393e1b4a2ea69cead7abb6b06ff24819b2b7d77d0f5"
+  },
+  {
+    "path": "src/pages/AuthCallback.tsx",
+    "sha256": "e0fb7fea9ef9bb645a9fe686d791806001a63dac4475d12e3fa6b8ed65bb9d41"
+  },
+  {
+    "path": "src/pages/CoachHistory.tsx",
+    "sha256": "2092495bef59b4072f03e991a7f8aaf54e8a46dd8d59a094f54b5bab0dbee8f4"
+  },
+  {
+    "path": "src/pages/CreateBrandProductPage.tsx",
+    "sha256": "8a9267376bd8a34cd8b48271d4a6572343906618045fd4245c781f18c8ebd8a7"
+  },
+  {
+    "path": "src/pages/CreateCustomProductPage.tsx",
+    "sha256": "49885f1b7a2c36184afe52352e8a2915f052e52c9b71500fc95098b6eff25029"
+  },
+  {
+    "path": "src/pages/Dashboard.tsx",
+    "sha256": "de29d387230990271ea56f077dd6fadab5d68f2969e887fd0058634e737e6552"
+  },
+  {
+    "path": "src/pages/EditProfile.tsx",
+    "sha256": "400238066dd8dab39bccc54211a8e87b04d3297c20da895bd3ba6413d0fd05f8"
+  },
+  {
+    "path": "src/pages/FavoritesProductsPage.tsx",
+    "sha256": "8aa724c81a89243f7b6ef0853eaa9fdc08583ed5829bcc86ff4ffadb5d69a3cf"
+  },
+  {
+    "path": "src/pages/FoodDiary.tsx",
+    "sha256": "3dfa799ad51d5b48083173dc44f912b26eab86501fe2d707906636804db27075"
+  },
+  {
+    "path": "src/pages/FoodSearch.tsx",
+    "sha256": "266440054da588b261f1cb2477d0c3f5711ec22402076aecf8e1dadc798dc189"
+  },
+  {
+    "path": "src/pages/ForgotPassword.tsx",
+    "sha256": "a5d3cd74759b4043e5ade1830615370e450dad4376d782d98e9328b9ca598ac8"
+  },
+  {
+    "path": "src/pages/Goal.tsx",
+    "sha256": "50c5d6936c6219060456075f13edb8226aed881b3b2e7a91874196e823081771"
+  },
+  {
+    "path": "src/pages/GoalResult.tsx",
+    "sha256": "1bbd2c845cec02632a19e92a25a757b5e7f90de28b8ab05493cae1b64f9efddc"
+  },
+  {
+    "path": "src/pages/ImportExercises.tsx",
+    "sha256": "21ed2d8155e57f66f9c33d6ce5f083ddc69b3a1c873f119c686a91e39380fc36"
+  },
+  {
+    "path": "src/pages/Login.tsx",
+    "sha256": "df5f7bb85aeaa190d1cc347dc31cdcdb8f4a7c0569e0b189ef1f936843d22107"
+  },
+  {
+    "path": "src/pages/Measurements.tsx",
+    "sha256": "c6a1bf85dd92d371e46b0ed48e13ea30c850c6cbc28841d66164704781de08f9"
+  },
+  {
+    "path": "src/pages/MissingFoodReviewQueue.tsx",
+    "sha256": "58853401f7a6bc7bb1d2090321f13edc78315b64c8e182f3843ea1f0dd84bb4c"
+  },
+  {
+    "path": "src/pages/MuscleMapDemo.tsx",
+    "sha256": "0020e6ac45bd81cb2917c26e945dab58b11fd4d552e519275d423138f916b577"
+  },
+  {
+    "path": "src/pages/MyProgram.tsx",
+    "sha256": "db0e18831f551d2d15c01c2317ee8f4ae181a18ba0d9c52afb5b810f1217c8cc"
+  },
+  {
+    "path": "src/pages/Notifications.tsx",
+    "sha256": "3c2a8e8983249a617bde0b386f67d6ac881d5a5da6052b871bce76a18b797014"
+  },
+  {
+    "path": "src/pages/Paywall.tsx",
+    "sha256": "e697d2a1f35cd32de028438e8ec2e3257d6476cdacbe7e2ffc7cc84492f80d76"
+  },
+  {
+    "path": "src/pages/PinOffer.tsx",
+    "sha256": "4d583aec7e4d007028d3c4e8877dc643a850bb202cf70918372a580cb746448f"
+  },
+  {
+    "path": "src/pages/PinSetup.tsx",
+    "sha256": "e89ae25ccea8f3428c6ee9d173bc04d26fb0ed3e6d8e58b8f63aa5b7abad1332"
+  },
+  {
+    "path": "src/pages/PinUnlock.tsx",
+    "sha256": "414b0ad49c4c61cfdb815d38f77efcc20c8dbfedeb845b6c187159258504d2bf"
+  },
+  {
+    "path": "src/pages/PoseCoach.tsx",
+    "sha256": "3e1fd3702c134f48b371c00090820a7029768cee76b0aaeea5918de32fae1a46"
+  },
+  {
+    "path": "src/pages/PremiumRecipes.tsx",
+    "sha256": "819efc74ce922ea5b6578781c9941734de7ff15958845858a0c487e5b7187ea8"
+  },
+  {
+    "path": "src/pages/Profile.tsx",
+    "sha256": "c2199fd778c1d72cc4e203f1d27d79ee23810ec123bb227f7ca710d4d6bc997d"
+  },
+  {
+    "path": "src/pages/Progress.tsx",
+    "sha256": "6e9cea230daf6138640d38f09e590ab0849f571476c39d9ba4033493e9296a29"
+  },
+  {
+    "path": "src/pages/ProgressHub.css",
+    "sha256": "7db460640f3ea3581e13b3edff4c9067be13851ff19452f28f404cb5112d5190"
+  },
+  {
+    "path": "src/pages/ProgressMeasurements.module.css",
+    "sha256": "e53b57c423b3a41cbba0bbd27b5ccc51c4adddb85ce0dcc924953e56db6b8298"
+  },
+  {
+    "path": "src/pages/ProgressMeasurements.tsx",
+    "sha256": "ccccfd9eccd05a66fa6460d8107cbe6a0658bfd903e0a09dca6a006acb45cf86"
+  },
+  {
+    "path": "src/pages/ProgressNutrition.tsx",
+    "sha256": "314c6926a7f8c228afbc9e9dbb92440ba3f665722c126568058f06b20b888fa2"
+  },
+  {
+    "path": "src/pages/ProgressWorkoutExercise.tsx",
+    "sha256": "1333a85828d511916930de5bac44df01e9c49dc83b631ca3d2657f74b3492604"
+  },
+  {
+    "path": "src/pages/ProgressWorkouts.tsx",
+    "sha256": "7e6fd89a54c49db37c61026d2b88488d5daf6a0f891658dd38d9fb52ef763c08"
+  },
+  {
+    "path": "src/pages/RecipeAnalyzer.tsx",
+    "sha256": "44806923aebabc514b798cb64ba9f85ec6b09549ee41c43b7ba8d5fad5ce4b20"
+  },
+  {
+    "path": "src/pages/RecipeDetails.tsx",
+    "sha256": "c16d784c8fecd62d40594055ae093931d7dd9e372087573ab1d133ae4150df78"
+  },
+  {
+    "path": "src/pages/Recipes.tsx",
+    "sha256": "ec6b732b1c253872a1fb586fdd1c6a9991efbff80fd72451baf599df4b3ae965"
+  },
+  {
+    "path": "src/pages/RecipesLibrary.tsx",
+    "sha256": "28d38b2d3c2dc0bdf7098bd4953fd1948e413089ba37a83421b279429da3e41c"
+  },
+  {
+    "path": "src/pages/Register.tsx",
+    "sha256": "9ecea0e6f46984feee33371047fba7680955631a9e7a9854650934dcc126cd71"
+  },
+  {
+    "path": "src/pages/SearchAnalyticsAdminReview.tsx",
+    "sha256": "47597a4ac65799544274b64dec95ec7a3822b3da80d8559cd077d57151a3a1f1"
+  },
+  {
+    "path": "src/pages/SubscriptionManagement.tsx",
+    "sha256": "a20a80f0728b0b4321a6ef74401e141e18ec5a7ca641abd3e672e9a1c9fff1d4"
+  },
+  {
+    "path": "src/pages/Today.tsx",
+    "sha256": "3c0d6ac845e9ffb9b468660a17c30c34335387aaefc3795c6443370890e86ee4"
+  },
+  {
+    "path": "src/pages/WorkoutHistory.tsx",
+    "sha256": "01e143a46d44d8da7b52f4a141f8b55d49cb07db2ba3d6045fda07852432b88f"
+  },
+  {
+    "path": "src/pages/Workouts.tsx",
+    "sha256": "0abaad01fd6829923f94599ccf2fbd4ccbdf57f0013db6a7673a55f9265891b7"
+  },
+  {
+    "path": "src/pages/__tests__/AdminAccessRouteGuard.test.ts",
+    "sha256": "2c83d1f61dfe248efcc1b978f96c44502d01872395d07e65ada80412bc3db823"
+  },
+  {
+    "path": "src/pages/__tests__/AuthCallback.test.ts",
+    "sha256": "fe90365d382451eae1c437d0e4e03cafd089f77d5caa35222d64c975a3ae3f61"
+  },
+  {
+    "path": "src/pages/__tests__/CreateCustomProductPage.test.ts",
+    "sha256": "fb7b4c20c931c5898f272d4da8b48004e9878acaa04a1a6518fc7fc5908a95b0"
+  },
+  {
+    "path": "src/pages/__tests__/DashboardFeatureBadges.test.ts",
+    "sha256": "c92db22ec5bfdfbd5493ae2953cc22cb2aca24dbed02b0a2d2359c44c3e91b0f"
+  },
+  {
+    "path": "src/pages/__tests__/FoodDiaryProgressEntry.test.ts",
+    "sha256": "d7c2fd904ec215db2937c05042b9f9b8b956b1f677a43f5d50d0411b3bea91d1"
+  },
+  {
+    "path": "src/pages/__tests__/MissingFoodReviewQueue.test.ts",
+    "sha256": "0984b6c49c87774bbaa3486f1607fb36946d94e798097a3d090c6ca2fd40489d"
+  },
+  {
+    "path": "src/pages/__tests__/PaywallPremiumCopy.test.ts",
+    "sha256": "d57f9f89102a85e47c00b8e1da7af8f3181e5fc45cd9ab8e6675ac05699f4f12"
+  },
+  {
+    "path": "src/pages/__tests__/PremiumRecipes.test.tsx",
+    "sha256": "667f61c154b41095973a884a85130eae6e2799b2ee86fa8c6034972c2ee835ab"
+  },
+  {
+    "path": "src/pages/__tests__/PremiumRecipesMountedAsync.test.tsx",
+    "sha256": "50585a3aa8a16fd3101098ff23a32109710ac0e2de1fbe516e26349224f8c2a6"
+  },
+  {
+    "path": "src/pages/__tests__/ProgressNutritionDeficitUI.test.ts",
+    "sha256": "9ea88cac84b6edb58505cc14839b78144626cf90f12329e71e750fb1d1aa73c7"
+  },
+  {
+    "path": "src/pages/__tests__/ProgressWorkouts.test.ts",
+    "sha256": "a2aebd3b87e0211bde90452cad4b8b317549c871f26180435300b3dccaad0c44"
+  },
+  {
+    "path": "src/pages/__tests__/SearchAnalyticsAdminReviewAliasApply.test.ts",
+    "sha256": "8a3fe4805dea2ec662f137a00ff4319c6887c3ac19e1cb8875a5b3f41ab2ceac"
+  },
+  {
+    "path": "src/pages/__tests__/TodayAdaptiveReadOnlyEntry.test.ts",
+    "sha256": "ec0170b8f57a8726c2ed01d3cd8b116995ca69964811984fffefd38712bc1667"
+  },
+  {
+    "path": "src/pages/__tests__/TodayMountedAsync.test.tsx",
+    "sha256": "bc3e283d02691c776c714a01d0cea1335c03dcc32b4291616560703bd4df7ad3"
+  },
+  {
+    "path": "src/pages/__tests__/TodayNutritionRecoveryPreview.test.tsx",
+    "sha256": "db4df9bbe88f9f1b1e8206d3d7f820806ff1c1398d0fbe55707d98ed58d9dfc3"
+  },
+  {
+    "path": "src/pages/__tests__/TodayNutritionWeekPreview.test.tsx",
+    "sha256": "82c40987cafa90052c8cd2f58265fa5655053cf2117ed97996f784999c5e2b01"
+  },
+  {
+    "path": "src/pages/__tests__/TodayPaidEntry.test.tsx",
+    "sha256": "c9a17884180f898d0a54c7e53fec971038ffaf1557bb140cc53f275c9fb3b39f"
+  },
+  {
+    "path": "src/pages/__tests__/TodayReplacementsShoppingMountedAsync.test.tsx",
+    "sha256": "0df0f4a39056f4182551b85ce3f23f1f5e8f44f9ec29f1f675f1dccceda26442"
+  },
+  {
+    "path": "src/pages/__tests__/WorkoutHistory.test.ts",
+    "sha256": "b3fad91f397817124ac362e6b13f708da7b1c8f62290b1235a90d2acb49e1d32"
+  },
+  {
+    "path": "src/pages/__tests__/Workouts.test.ts",
+    "sha256": "c18f1f0f9d8beb62e417cdc69678f3a042bda3f0d6c27dda47c8fede3779c691"
+  },
+  {
+    "path": "src/server/__tests__/nutritionIntegrityAtomicReadPortV1.test.ts",
+    "sha256": "ba6d46363db8ad37a0d9021af09212070db5386aa6e001ae66883812b20ed3a0"
+  },
+  {
+    "path": "src/server/__tests__/nutritionIntegrityReviewedEvidenceAdapterV1.test.ts",
+    "sha256": "1e0f7d3c82bc365f9883557f9378bdbac646c12b1e4f3d0be7cd13a453fe55a0"
+  },
+  {
+    "path": "src/server/nutritionIntegrityAtomicReadPortV1.ts",
+    "sha256": "ebc9cd1d37fa830389ec794fd9dfac7f10cdf720ffd399e40aa99fff2477d6ea"
+  },
+  {
+    "path": "src/server/nutritionIntegrityReviewedEvidenceAdapterV1.ts",
+    "sha256": "cd8f0d4291a8321bb44b2626afcbbb8c10deae0df60f9e357a83eb8f35c2bd2c"
+  },
+  {
+    "path": "src/server/nutritionIntegrityServerResolverV1.ts",
+    "sha256": "7fdf541cca0ce80225e88a2ee2fa381128ee49a39d5ee408ee3b80018961c9f9"
+  },
+  {
+    "path": "src/services/__tests__/adaptiveNutritionPersistenceService.test.ts",
+    "sha256": "ed3f45e27a849c85cdedc1c6a631db3ff1f2ffe72303bb1839b44226785fb365"
+  },
+  {
+    "path": "src/services/__tests__/adaptiveNutritionReadOnlyEntry.test.ts",
+    "sha256": "b90b8f9ac2571b2714d2d9fc3679b525494b5d0316f8474048e992538f252487"
+  },
+  {
+    "path": "src/services/__tests__/adaptiveNutritionReadOnlyService.test.ts",
+    "sha256": "420639245d39c019d383341224845271c85fe4f932ed8f49df32f7761cd8d605"
+  },
+  {
+    "path": "src/services/__tests__/adaptiveNutritionSmokePreview.test.ts",
+    "sha256": "ce5d3d8a356928e86586a5c2a1946da600c0689367b17c20ecc3c9f7b6851da1"
+  },
+  {
+    "path": "src/services/__tests__/adaptiveNutritionTodayRuntime.test.ts",
+    "sha256": "9f0d2fff95b479c01e31643e9328b36535d44d55ea98d63ca5a636b3a43b3a69"
+  },
+  {
+    "path": "src/services/__tests__/adminAccessService.test.ts",
+    "sha256": "56d7a27082020cd2a2b22b3253e3d75e2ff5f1ba97510e1ab9b3b7fee2fb08c7"
+  },
+  {
+    "path": "src/services/__tests__/aliasApplyService.test.ts",
+    "sha256": "e1e89136b4819b96ceeacc3c9466ce72e1964fadb5cf7f31d529ab0954d170b9"
+  },
+  {
+    "path": "src/services/__tests__/canonicalFoodResolver.test.ts",
+    "sha256": "74b351b79773bd5b03453ec071b06ae04e4c085410a67dd9a274c6cc56ba5f55"
+  },
+  {
+    "path": "src/services/__tests__/demoPremiumAccess.test.ts",
+    "sha256": "449913b63fef9e56e73eeb6cb154b4457ec655f18c581edfe7683db3e8aca7da"
+  },
+  {
+    "path": "src/services/__tests__/demoSmartDayProvider.test.ts",
+    "sha256": "293a360899156ba2602424236e5760dae247c0a02fb91efdec516867f0a6a9fd"
+  },
+  {
+    "path": "src/services/__tests__/demoTodayPlansProvider.test.ts",
+    "sha256": "56fa7d5ce91d7d13de7ca2603301b4a273db406f4e6e76d1f113813a74ab34dc"
+  },
+  {
+    "path": "src/services/__tests__/diaryCreateService.integration.test.ts",
+    "sha256": "51667829b722a74760341bb65abaccd5423edf08eb505bac685ff4e1f54d7f2f"
+  },
+  {
+    "path": "src/services/__tests__/diaryCreateService.test.ts",
+    "sha256": "9df4d52b4a46a507934899287b791a3b9f18658ee94d88f71f668aff44a9f0f3"
+  },
+  {
+    "path": "src/services/__tests__/entitlementService.account-scope.test.ts",
+    "sha256": "6d2480d2ffab2d6b4211b5685a7cb22e17f7dc780fc7aa8278dce8fba51492c0"
+  },
+  {
+    "path": "src/services/__tests__/exerciseService.test.ts",
+    "sha256": "1bb8f389f60b062ea09d98908e8d34c506a42a6b5c264fd233488f6b87f3b23f"
+  },
+  {
+    "path": "src/services/__tests__/favoritesService.test.ts",
+    "sha256": "c886aa3932178c6c7333c4d4c1dc43ed7323d1aff2d9a98972ad5a8976659209"
+  },
+  {
+    "path": "src/services/__tests__/foodService.manual-create.test.ts",
+    "sha256": "bea7ee7381c95673fabf8f68779af83fe07726e9d9b7fdd44c15d4e7bdd7daa0"
+  },
+  {
+    "path": "src/services/__tests__/foodService.search-mapping.test.ts",
+    "sha256": "ec4d777487bc22bea9391ee8f9f564fcfff0685fc8718eee229040e08216f755"
+  },
+  {
+    "path": "src/services/__tests__/foodService.visibility.test.ts",
+    "sha256": "a15a6f57a441621b01af52909541afb1d3fdee19e2f283f44ae77c3d45928cfe"
+  },
+  {
+    "path": "src/services/__tests__/goalService.test.ts",
+    "sha256": "f1f31c9036371fdffd4fa2de79e20b8b4aa50b453d4d8c5821f00a489b078904"
+  },
+  {
+    "path": "src/services/__tests__/mealEntryNotesService.test.ts",
+    "sha256": "9a9a4926a766e45f313f96336db359abf7eab4596ada9dde43b413049ce23825"
+  },
+  {
+    "path": "src/services/__tests__/mealService.diary-enforcement.test.ts",
+    "sha256": "568a667c17b9e9445ce3c4c199ef9349b623ca8ff870f2799022a6179227837e"
+  },
+  {
+    "path": "src/services/__tests__/missingFoodDraftService.test.ts",
+    "sha256": "e80a0d384027b60116e67357d4031d2c743d02cadf04ef25fa4b6ce179e46de7"
+  },
+  {
+    "path": "src/services/__tests__/missingFoodReviewQueueService.test.ts",
+    "sha256": "f4b7fc95dbdc2794a17d433747242006c29940e0f9ca63aea0a5e53e41ea908e"
+  },
+  {
+    "path": "src/services/__tests__/premiumCatalogService.test.ts",
+    "sha256": "2c758169d2373afe310b0e07bd2a402cba5d6c58d00c4d290e60107b9f0a6f6d"
+  },
+  {
+    "path": "src/services/__tests__/premiumNutritionWeek.test.ts",
+    "sha256": "82c65197234a00f9631c439a1cfe262b8456b66b0610eca0b94348e6f3bb723e"
+  },
+  {
+    "path": "src/services/__tests__/premiumTodayAdapter.test.ts",
+    "sha256": "0078665c972903499bf4b2fec618bcbb0e975aca732e3c52c2284dad7103acb8"
+  },
+  {
+    "path": "src/services/__tests__/profileService.account-scope.test.ts",
+    "sha256": "dd8c5f2b429fb7be899ca7ffdccf40dd7b8ec63f6946937d964fa339079326fe"
+  },
+  {
+    "path": "src/services/__tests__/progressHubService.test.ts",
+    "sha256": "0671632bbdcd208b68b4074fa653430f5e5c6bbd2703b7458ec40b86dd99e7fe"
+  },
+  {
+    "path": "src/services/__tests__/progressNutritionService.test.ts",
+    "sha256": "56184dec8214b01c65a7f5d0b9cba9e0036e48b429aaaa001ee2758bfedc8f12"
+  },
+  {
+    "path": "src/services/__tests__/recipeAnalyzerReal.food-core.test.ts",
+    "sha256": "4a8a3f2665165e4d9c973efa72acf896c69cd2d1130679755f2c6b5ad5bfef00"
+  },
+  {
+    "path": "src/services/__tests__/recipeAnalyzerSaveContract.test.ts",
+    "sha256": "236038e712bd474b3f272fd14dd878a01821e6c4f6fc2831553e3ddba5f5d4ca"
+  },
+  {
+    "path": "src/services/__tests__/recipeDetailsSaveContract.test.ts",
+    "sha256": "2721ebfcc0148ba024c00544c53967404a0c4e9649d5e3f719c5bf3c1981c111"
+  },
+  {
+    "path": "src/services/__tests__/recipeImagesSaveContract.test.ts",
+    "sha256": "12b197289d8975790d06efb58da9a6a894aff7f6e67821535acf9f0f60ad60a6"
+  },
+  {
+    "path": "src/services/__tests__/recipeNotesSaveContract.test.ts",
+    "sha256": "eaae0fbb6ed95a5617a49bf9b41d8e1d2d45731f89cd39fac5155964fc81ab6f"
+  },
+  {
+    "path": "src/services/__tests__/recipeResolutionSafety.test.ts",
+    "sha256": "ee57c087b5ee5f5e6a1eeb2fb594299521cb93b98cff6cbd7397cfae5536d2ee"
+  },
+  {
+    "path": "src/services/__tests__/searchAdminReviewService.test.ts",
+    "sha256": "7aa1318a06e6fedd71f97f0f11758c4865892c975660365e83fe7ae8b3fa2a15"
+  },
+  {
+    "path": "src/services/__tests__/searchAnalyticsService.test.ts",
+    "sha256": "34b75de16da046017533d9310b1a55e407f3878634473d834f93d513ea9e1b07"
+  },
+  {
+    "path": "src/services/__tests__/userExerciseMediaService.test.ts",
+    "sha256": "31c1423b436c7547cd96af2dd58e3b12472efceb8581171086e0fe78bb8e4710"
+  },
+  {
+    "path": "src/services/__tests__/workoutDayNotesService.test.ts",
+    "sha256": "18983836efa78debc65c4bee9592fb0b680d5a1e332c437074f7779ec8d0c4ec"
+  },
+  {
+    "path": "src/services/__tests__/workoutEntryNotesService.test.ts",
+    "sha256": "995c821937edac4c9d608a6991678027909739816bfbfed20f8a820a43302ae2"
+  },
+  {
+    "path": "src/services/__tests__/workoutProgressService.test.ts",
+    "sha256": "ea519c768bbf97e03bbe4a144e1b43b661cb7d85c018bc105a877291ba6e5ef2"
+  },
+  {
+    "path": "src/services/__tests__/workoutService.test.ts",
+    "sha256": "89ce383f9c51de116b2c814348519356e1a5dfa067f0ff279d56017fce458bfd"
+  },
+  {
+    "path": "src/services/activityService.ts",
+    "sha256": "76f021f7ffea91a24ab8cb7661b868adabfd3896f4c1e75f96163bef7b0a44b1"
+  },
+  {
+    "path": "src/services/adaptiveNutritionPersistenceService.ts",
+    "sha256": "661bcf4178caba1617054fbccd65940838050def03e82a7f28cd4575dcc2b224"
+  },
+  {
+    "path": "src/services/adaptiveNutritionReadOnlyEntry.ts",
+    "sha256": "7adc5b8fa458496a5a42f2eee682de19479a2036583d0e7a1150f6295a0ec614"
+  },
+  {
+    "path": "src/services/adaptiveNutritionReadOnlyService.ts",
+    "sha256": "5c5a7034ecc88a7a2662b58db1471c14078699e5d10aa9ed19b5e0ccb08e13e7"
+  },
+  {
+    "path": "src/services/adaptiveNutritionSmokePreview.ts",
+    "sha256": "33cf08ba55da4773b8a83640b272c9b7fdc199a5b05045a23592126df48dd5a8"
+  },
+  {
+    "path": "src/services/adaptiveNutritionTodayRuntime.ts",
+    "sha256": "185f08108576e054aecba9df71d01f99e27c11a48f57422c781483080fb4e8ff"
+  },
+  {
+    "path": "src/services/adminAccessService.ts",
+    "sha256": "665b80412da7b1fa7fada0ac3da5e897dbf47b7255000c16260ade6e121e8bbf"
+  },
+  {
+    "path": "src/services/aiAdviceService.ts",
+    "sha256": "aa5d16311f8aec2fc445d95e66eb8f91a4fcac8783923ad26d546e5f308e1360"
+  },
+  {
+    "path": "src/services/aiCoachingService.ts",
+    "sha256": "fdf1c23c093109a28cd006bb1abce32510a430cfc31c0041ead5d1045bc66d6f"
+  },
+  {
+    "path": "src/services/aiFeedbackService.ts",
+    "sha256": "117741249f0c356009dfb76eac1e2998a34cccfe8c9d9afab3713c3ce466c1b9"
+  },
+  {
+    "path": "src/services/aiGuardService.ts",
+    "sha256": "0307decf3e85135942601a036c078f6e82957a41f1d743cc711b167675e4c89f"
+  },
+  {
+    "path": "src/services/aiLongTermMemoryService.ts",
+    "sha256": "1ea617380895e99af31b642ea805ad089188b7bef63762b024ba10f97486f842"
+  },
+  {
+    "path": "src/services/aiMealPlansService.ts",
+    "sha256": "ddb7dce824a811a04ffeeb6f46fa4b19bf65e2a53a44468bb8c55436471d84b8"
+  },
+  {
+    "path": "src/services/aiNotificationScoringService.ts",
+    "sha256": "6b7d2c026a0f945326e8a93ae2462aae2aadcf56b01bbd2c62d850c5684457d6"
+  },
+  {
+    "path": "src/services/aiPoseCoachService.ts",
+    "sha256": "9f60361906bd7bad12d780695891db82a80d3ec4b4374e6ae90b941b1e0a4cd0"
+  },
+  {
+    "path": "src/services/aiQualityService.ts",
+    "sha256": "e5e92efdcfc45dab706b8ec8484dac77881ffa5310ad6b657e53892cd8b81bd2"
+  },
+  {
+    "path": "src/services/aiRecommendationsService.ts",
+    "sha256": "c28c09edd8b98897a6ca850c43fef68ee57aae85bc2c4a6bf69ddb78509c3d7b"
+  },
+  {
+    "path": "src/services/aiTrainingPlansService.ts",
+    "sha256": "3653dc0dc41b9e8546553169b944b4fe38c4b7a821258c4df150f7e5777f25a7"
+  },
+  {
+    "path": "src/services/aiTrustService.ts",
+    "sha256": "77134fed96c607c8131c5c21eef94940be4a0774f2fb78e30eaea43f0ee267a7"
+  },
+  {
+    "path": "src/services/aliasApplyService.ts",
+    "sha256": "bd269ca18d214c8ec016f5b06ea2e9b828c9a92f1e3566969c1e6b7793bb4610"
+  },
+  {
+    "path": "src/services/analyticsService.ts",
+    "sha256": "f550e79ba37fa635583ced54b47bd73d04f8b763ac2b7fe585295ea5fc3acd26"
+  },
+  {
+    "path": "src/services/apiService.ts",
+    "sha256": "13570c2f0c2769f2a6b1f900a260c62dcb8c8d877a72c82765fb0a4a6b360bbe"
+  },
+  {
+    "path": "src/services/barcodeLookupService.ts",
+    "sha256": "cb1c7a89ea7749b5190606a4c76d25ee84b146fd654603a5161d0e6fc57e0cf2"
+  },
+  {
+    "path": "src/services/canonicalFoodResolver.ts",
+    "sha256": "3aa15ae5dab354ae2559ef564552fce808e322dbd583748bf75bca00b2b9d453"
+  },
+  {
+    "path": "src/services/challengeService.ts",
+    "sha256": "83b8a3dd2cb053ad3fd10f2fbc0e3bda6bcf84afaee0810c17ed68779ee0da1a"
+  },
+  {
+    "path": "src/services/coachCircuitBreaker.ts",
+    "sha256": "929f023f6900506f964a7cc231870328a363277b20fe7bd22d596cccdecc6ff7"
+  },
+  {
+    "path": "src/services/coachMemoryFacade.ts",
+    "sha256": "cdea3581f0532d9727be1bed3df7fb7555ce48861cdfce8ae72a85dea670a90e"
+  },
+  {
+    "path": "src/services/coachMemoryPersistenceService.ts",
+    "sha256": "c804ee0459b5401ee0a9ac655372379210ce3d1af025878eed17b7981e577f5b"
+  },
+  {
+    "path": "src/services/coachMemoryService.ts",
+    "sha256": "b83678cf4f98ec3a94e33523db543defc56aceaad702fc49ff0d010ebe442270"
+  },
+  {
+    "path": "src/services/coachRuntime.ts",
+    "sha256": "5fb9646d66c3b3a0b7b1a02bade74cb73f16fd72ab0cb6e6fb5eaf0adba7f273"
+  },
+  {
+    "path": "src/services/coachTelemetry.ts",
+    "sha256": "b823c1cbac5f1711dd3771a7563bb1c463dbe57d91b524605b2a824187c5f91e"
+  },
+  {
+    "path": "src/services/contracts/uiRuntimeContracts.ts",
+    "sha256": "07ca5ebbbda7c1845b0c02501b08a17bae607bfab313a9ddf46364eaac61c275"
+  },
+  {
+    "path": "src/services/dbUtils.ts",
+    "sha256": "d3f72de7043b1907c2303177748bb1b2cb07cfd59b5477fe8489a441aa3c36f4"
+  },
+  {
+    "path": "src/services/demoPremiumAccess.ts",
+    "sha256": "85ec4cfab14088041cec1bf993c5080a0bbcef3d6e3666f079738d93e9da3fd9"
+  },
+  {
+    "path": "src/services/demoSmartDayProvider.ts",
+    "sha256": "9d7f557f99903805fc7aa46f2f558e68ea84c363fa053f95e675174ca7af393f"
+  },
+  {
+    "path": "src/services/demoTodayPlansProvider.ts",
+    "sha256": "6c585e9ed186dc05b563710186b42d23e93d4a3e2737b74a8c24434dafc85996"
+  },
+  {
+    "path": "src/services/diaryCreateService.ts",
+    "sha256": "d00acbb8d6779f3e3b39247de39fcedd04d1a4adfb0a0004cf79f17b045dc4d0"
+  },
+  {
+    "path": "src/services/entitlementService.ts",
+    "sha256": "6a8b7c54cb3f5087b3f2a6a3216fa92123915fc0cd4d9755e58cd246f10c2d6c"
+  },
+  {
+    "path": "src/services/exerciseService.ts",
+    "sha256": "cd0b55230f9c4c0d1491a0224326077ed919224994a11b616f8d7c024790f339"
+  },
+  {
+    "path": "src/services/favoritesService.ts",
+    "sha256": "aa883c95c406c86841563ec2e7a780b9c3079fcb7e0da5f70b5a9a7bc0d6f67a"
+  },
+  {
+    "path": "src/services/featureFlags.ts",
+    "sha256": "f60992112fd5d917d6745e743b0eaa3666315dffbe275fe38820abb5a4055c7d"
+  },
+  {
+    "path": "src/services/foodIngestionService.ts",
+    "sha256": "951a1580250d292d188c5e22cd0a799985cb453197b1f08bbafb988318c00256"
+  },
+  {
+    "path": "src/services/foodService.ts",
+    "sha256": "6b89291490b53297b5c7a33fc574bb363552e8ab683386835f0e5c407fccf693"
+  },
+  {
+    "path": "src/services/gamificationService.ts",
+    "sha256": "3e49e8f5441bc1d3be305a7280280ac003b1430a4c4483d0eebe77775c30def0"
+  },
+  {
+    "path": "src/services/goalService.ts",
+    "sha256": "4cd4b9205c987de66d29def8f10cf7901f21412b05fdca4420f333c5b98638c8"
+  },
+  {
+    "path": "src/services/habitsService.ts",
+    "sha256": "f07a019d1676a2066027a1a3bbc115138da9aef04fe59c0ac6d200dc0e2918f9"
+  },
+  {
+    "path": "src/services/localAIFoodAnalyzer.ts",
+    "sha256": "c0fe29243acbfd0a832fbcc364e0936d6a3d871c40ddb452601aa2bc109832e8"
+  },
+  {
+    "path": "src/services/mealEntryNotesService.ts",
+    "sha256": "944477d18453ccbea3491b5d14a87d9e7b643514bce6bf863ade940a36d0d983"
+  },
+  {
+    "path": "src/services/mealService.ts",
+    "sha256": "c40b8165f678e2c948d7dc0a2bd51ba796a4ad932ac92608408c89f7fb40a1d4"
+  },
+  {
+    "path": "src/services/measurementsService.ts",
+    "sha256": "0f72b5bac413fde0c8111b5570e0a58fa558df88c44971c7e1b322ad8cbe6e76"
+  },
+  {
+    "path": "src/services/missingFoodDraftService.ts",
+    "sha256": "4314162b731f776385c7be01372d601f02547abc38adfea942b04c5bac86c9bf"
+  },
+  {
+    "path": "src/services/missingFoodReviewQueueService.ts",
+    "sha256": "9bdc45ce413c48201ec0d7032f235a3fea6fa87fe963f61123c91762dc1b8c7a"
+  },
+  {
+    "path": "src/services/notificationService.ts",
+    "sha256": "5ebb20e1d8d625374280fdbfbca3c2620d32ed433133b4ad58dbb34f6d31373a"
+  },
+  {
+    "path": "src/services/openFoodFactsService.ts",
+    "sha256": "a70e2c5d687ebd07e9823ad37c359cc1d32e2ada5f62feb8ba66febb8bfcddca"
+  },
+  {
+    "path": "src/services/photoFoodAnalyzer.ts",
+    "sha256": "192062a542fcab232cf320a01ad6af943d0dc340fe6ce9501a82fbf381030a32"
+  },
+  {
+    "path": "src/services/pinLockService.ts",
+    "sha256": "4b24a49a84ba54d754f85d16b7d42a5d0556cf973c8aa4f06b9b2158420f93fe"
+  },
+  {
+    "path": "src/services/pose3dService.ts",
+    "sha256": "d6ca117746f4c3d0dfa24bed7dee6dea5bfc20c8eff8d938288e6a3c512f10ab"
+  },
+  {
+    "path": "src/services/poseEdgeBufferService.ts",
+    "sha256": "714e4beae766a1ff9155f2c9a72551c75df09e903274403845e4df1a9b370c09"
+  },
+  {
+    "path": "src/services/poseEdgePipelineService.ts",
+    "sha256": "a5642308f26090aa25571210181d8e268d4819583a27db6f02d39f96d98d65f4"
+  },
+  {
+    "path": "src/services/poseGuardService.ts",
+    "sha256": "229bea32ca573ea71c9728371908d335334c1fee6055387f8f3a0cb7c496f6f5"
+  },
+  {
+    "path": "src/services/poseRealtimeFeedbackService.ts",
+    "sha256": "ecc23e53a57696c433032bf15410de2fcdb4b431b9ad1e595dc6897dcceb952d"
+  },
+  {
+    "path": "src/services/poseService.ts",
+    "sha256": "74e842ddb1eecb2885656c262c3781727b64ef2e40d281672860b060fa56f2ff"
+  },
+  {
+    "path": "src/services/poseSpatialOverlayService.ts",
+    "sha256": "2128191403a60ab7ed9b00fa3c1da3847ee3b35d94deba7b7526cbac92e54d40"
+  },
+  {
+    "path": "src/services/poseVoiceCueService.ts",
+    "sha256": "05f4af54eb94014481165ef06c8a9cc85529cf8f0077a41c7e01e9a5fbff51fe"
+  },
+  {
+    "path": "src/services/poseVoiceQueueService.ts",
+    "sha256": "47ab0cde71c356f9c30631858fe19c5b7c47fa9fc99a4559260edb3d72e71a2a"
+  },
+  {
+    "path": "src/services/premiumCatalogService.ts",
+    "sha256": "8cc43a339732f19be5182e357eabe793017221dfeb997baadcf3e23d19604e7b"
+  },
+  {
+    "path": "src/services/premiumTodayAdapter.ts",
+    "sha256": "2e65559e3f576688ec7ee724040ecf78f4d49fc114fff04d03fdc087204e2bfc"
+  },
+  {
+    "path": "src/services/profileService.ts",
+    "sha256": "c23d058e379420683b5e45c0509fda508e55d64b605c498e52272222172aff66"
+  },
+  {
+    "path": "src/services/programDeliveryService.ts",
+    "sha256": "0731844c9eca4c68836d0b8f127546934769ec3a687e5773d79ba1b9b492d879"
+  },
+  {
+    "path": "src/services/programGenerationService.ts",
+    "sha256": "66586bd5a3f66966adbc56c8ff5805392011e695cdd383d818311488f342c23a"
+  },
+  {
+    "path": "src/services/programUxRuntimeService.ts",
+    "sha256": "a54fb92aac6d76a49ccbe7507b310a5cbb877cd0edcd785a9732fdb33bc52900"
+  },
+  {
+    "path": "src/services/progressAggregatorService.ts",
+    "sha256": "5dd73410607c435118740ec0d190f1ec38aaa49101377ef020579813a6a855e2"
+  },
+  {
+    "path": "src/services/progressDashboardService.ts",
+    "sha256": "26929274ce333ca1ac10f585467122175bf00a7b8fc783bcc8084c6d592828ba"
+  },
+  {
+    "path": "src/services/progressHubService.ts",
+    "sha256": "be22acec10f58518d7c1a9a9fe834e0c9d7491b590ec6cb8fa018348e6038404"
+  },
+  {
+    "path": "src/services/progressNutritionService.ts",
+    "sha256": "43aa7c4c040cd32164d4d8ee28d4da8daaa8903967f0277d79499f556d2437e4"
+  },
+  {
+    "path": "src/services/recipeAnalyzerDemo.ts",
+    "sha256": "272380a579e70a3a739bc7ea43e37697aef56e5808f8ecd6dc01a272869b566e"
+  },
+  {
+    "path": "src/services/recipeAnalyzerReal.ts",
+    "sha256": "36ad098875df9e94ef71f641be6ca2a2d1216278964c8f4ff0dbfa66c4a5f713"
+  },
+  {
+    "path": "src/services/recipeAnalyzerService.ts",
+    "sha256": "07973f7eb9a689ff5fd8bf296a40fa5fd80a6a557c6a6eb9f1250a771a8e64da"
+  },
+  {
+    "path": "src/services/recipeDiaryService.ts",
+    "sha256": "379af85567857208a4c711b3c320def237b7d4f6d8a967e1c5c4341376bbf863"
+  },
+  {
+    "path": "src/services/recipeImagesService.ts",
+    "sha256": "3c02c428bdca14c957593c9405c07581ab084835879c5d639de42b46f45ec103"
+  },
+  {
+    "path": "src/services/recipeNotesService.ts",
+    "sha256": "699af418d5ec171f53f1c7423872168672477c3349fc6dace41f99227a747f1a"
+  },
+  {
+    "path": "src/services/recipePhotoAnalyzer.ts",
+    "sha256": "2677da387e9adbb598674fd7b91a68f8673e192262af6cc557ec16154992f209"
+  },
+  {
+    "path": "src/services/recipesService.ts",
+    "sha256": "5ebb4665f00a14dae48a1d753fb4db5a717db910fab6e2f63113eb480f4c48e6"
+  },
+  {
+    "path": "src/services/reportService.ts",
+    "sha256": "e3b012a93bed6f8b337a37e033bebf78d70163f6f137ff8f48944c18b328d5ca"
+  },
+  {
+    "path": "src/services/searchAdminReviewService.ts",
+    "sha256": "c993c9d044d364240d44d28f061c54a77490a4da32f028ad71beac59c96ad5fa"
+  },
+  {
+    "path": "src/services/searchAnalyticsService.ts",
+    "sha256": "b4bb38d7e67a6864eea292a1defd18c04f6dd1eecee6818e34bc8b79fc7ea3a2"
+  },
+  {
+    "path": "src/services/socialProofService.ts",
+    "sha256": "188bfb44fd77b0d39b470095682122637370f66f04687616f0cb1d452cf950b6"
+  },
+  {
+    "path": "src/services/supportService.ts",
+    "sha256": "0e87e942ab9bf0c0ddd16186fd42a6c05498950c3455381f3c0d0956fe451e2a"
+  },
+  {
+    "path": "src/services/trustSafetyService.ts",
+    "sha256": "87d5a2448b561425a198eff40c062048e1b8a9680a9a6e5a6bcfe13c1e2eae63"
+  },
+  {
+    "path": "src/services/uiRuntimeAdapter.ts",
+    "sha256": "24e5b2441b42337edfd6d840d001e533c446275a7785e157e65973187ec96f39"
+  },
+  {
+    "path": "src/services/usdaService.ts",
+    "sha256": "237f4ccd2c6da92aa9eea3eb1ce8fb7dfe861b6fd38853a4b04544d25528c3ef"
+  },
+  {
+    "path": "src/services/userExerciseMediaService.ts",
+    "sha256": "4e63dd18ed05cd3c9bf3e4e51ed2fdd7e29f10bf4950d48925f97efc2aba38a0"
+  },
+  {
+    "path": "src/services/userStateService.ts",
+    "sha256": "edb6f8f829b6b3a47fefcb39d48676834e0e00cf45cef37ef346c5c0b62cb923"
+  },
+  {
+    "path": "src/services/workoutDayNotesService.ts",
+    "sha256": "499d0659713d12355ff373c11490c54010f612ccbf6deea59193003434c5a088"
+  },
+  {
+    "path": "src/services/workoutEntryNotesService.ts",
+    "sha256": "a5ab8d4cf2e1dd11b72ae9753cdf6e26b63deb2e5d50627c289752c93eb7c3ca"
+  },
+  {
+    "path": "src/services/workoutProgressService.ts",
+    "sha256": "42baf3ac88819526b8a4923da718194aba36a8983f7db741121cbb88637e8ec7"
+  },
+  {
+    "path": "src/services/workoutService.ts",
+    "sha256": "14e11d1c431634cd1e272dbffb32d2cbc9056993cce2de0f90991df7babf4be7"
+  },
+  {
+    "path": "src/test/__tests__/premiumReadOnlyMountedAsyncHarness.test.ts",
+    "sha256": "061d1d2a47262b3c0b807c2cc0cea9f48d49a8a9263516891729d8fbde544528"
+  },
+  {
+    "path": "src/test/mountedAsyncTestUtils.ts",
+    "sha256": "b2a949856667db0f9c11b66353cdc50bcfbbbbad1093ba04221ac7e878cf5eec"
+  },
+  {
+    "path": "src/test/nutritionWeekPreviewFixture.ts",
+    "sha256": "4c67f5066aaaac285ef5387a8d2a3af95e44010cafe4c2cc6c16ddd40c66ba62"
+  },
+  {
+    "path": "src/test/premiumReadOnlyFixtures.ts",
+    "sha256": "42de975cd3d456350b2be325ab90a6b28996f9792cf7310ecd2edee2500de99e"
+  },
+  {
+    "path": "src/types/adaptiveNutrition.ts",
+    "sha256": "71aa405af4903487036c342dfb8d6c6f4ae82521d7921010309d1b5827c4b35b"
+  },
+  {
+    "path": "src/types/aiAdvice.ts",
+    "sha256": "af6abace687dbf9aec8c50a7ad261ac4fb20fa69d11736c3f0a9aa88bdd2009d"
+  },
+  {
+    "path": "src/types/coachMemory.ts",
+    "sha256": "942a1ac64844c878cbeda1da0f82b748dc015cef2fc8c1121a7b0f55f16dd968"
+  },
+  {
+    "path": "src/types/coachSettings.ts",
+    "sha256": "3343231a900586a00086b92b47caa939842b9ce3481312dd601720c34e294bdb"
+  },
+  {
+    "path": "src/types/explainability.ts",
+    "sha256": "926454c8ef1b5fd7e5e5f27b8cc6dc6f2ff875ab4722086d6c2c032d5f2a7cd4"
+  },
+  {
+    "path": "src/types/index.ts",
+    "sha256": "fd7acfbc6e56ea36431bbf1444c8039de966539d97c50808bf450915a4de6dec"
+  },
+  {
+    "path": "src/types/mediapipe.d.ts",
+    "sha256": "a2a6ddf583c6aef04f51139dcce1fbd70b761f07d58a8c83f0ee835ea45c47d3"
+  },
+  {
+    "path": "src/types/monetization.ts",
+    "sha256": "d5d60af7b7dc7ccc9d9634dae76bd96763d9bf3bc68884a858eae157d66d8960"
+  },
+  {
+    "path": "src/types/nutritionPersistence.ts",
+    "sha256": "813d76966aa9fcd34dcdf80d5873d255a8b2ab110ed6ba563a8a2eadf8925889"
+  },
+  {
+    "path": "src/types/onnxruntime-web.d.ts",
+    "sha256": "8b98fa3d9ed32836f0cbb0646fe1a25ad9de5f589283ab1d5b65077398a20abc"
+  },
+  {
+    "path": "src/types/programDelivery.ts",
+    "sha256": "9729e9f9d59d640d0cee2b79b0b279d08a9d74681f71176ffc32c3a467bf44b9"
+  },
+  {
+    "path": "src/types/progressDashboard.ts",
+    "sha256": "b6dc18ef0561c743877ced0b193c0e26eb2490906f573fd28d6f21d4e664ca7b"
+  },
+  {
+    "path": "src/types/recipe.ts",
+    "sha256": "1d0a57c324ca346247c4b509cb25c79d0f3e9c02c385fd2ebd6ac5c714643fbd"
+  },
+  {
+    "path": "src/types/todayPlan.ts",
+    "sha256": "d7f74625c609cba49b6d9bcd2611e543342d113b6581525e3baf3dc3d5808e11"
+  },
+  {
+    "path": "src/types/workout.ts",
+    "sha256": "2169f920830ee6f6ae6b2570086be1e0dcfb6133820391486c3a81de2b1e25be"
+  },
+  {
+    "path": "src/ui/coach/CoachDialog.tsx",
+    "sha256": "f7724a559f15b2ebbb1c904128b2be2398b88551429c1eaea9e93aa240ed8009"
+  },
+  {
+    "path": "src/ui/coach/CoachDialogThread.tsx",
+    "sha256": "9d03bcdce15d240534709e7aab453e1e0dab2f0a6b832f7ccc87b5cb9fde959f"
+  },
+  {
+    "path": "src/ui/coach/CoachExplainability.tsx",
+    "sha256": "b317c63f2854062164da23faa0ac349c08a6f02eefbe2cc1125f95fb639dab2f"
+  },
+  {
+    "path": "src/ui/coach/CoachExplainabilityDrawer.tsx",
+    "sha256": "94e7459fc838194ebe1f1a551a5ceb491ef23237f5a420b8820895ad46a0e5dd"
+  },
+  {
+    "path": "src/ui/coach/CoachExplainabilityTimeline.tsx",
+    "sha256": "518ef8874d1b270a0bd54fbdc65aba280aae7a5b3d9fc31ffdc5fd1c0281dea9"
+  },
+  {
+    "path": "src/ui/coach/CoachListeningOverlay.tsx",
+    "sha256": "13bafb012d740fe4bd6d7d0badf45ef42381d58256321a13e16332252f6ab2a6"
+  },
+  {
+    "path": "src/ui/coach/CoachMemoryCard.tsx",
+    "sha256": "0aaedf065a08e46577e0970fd62263fff8908c73fb31e3c5d2ea3aa3a7832ffd"
+  },
+  {
+    "path": "src/ui/coach/CoachMessageCard.tsx",
+    "sha256": "a2d0e6e04050336bf54a7b29ef89896dfee90cbba02caf66ffaed804e2cd0c92"
+  },
+  {
+    "path": "src/ui/coach/CoachNudge.tsx",
+    "sha256": "84124915cd06070a1da94682b05a8766bf75723f65afae7f4934d12bb8a187e6"
+  },
+  {
+    "path": "src/ui/coach/CoachRequestModal.tsx",
+    "sha256": "31706368fb7c416f0fd4f04aca0808b8cd1eeed650fc045add1dc333a623bb51"
+  },
+  {
+    "path": "src/ui/coach/CoachSafetyBanner.tsx",
+    "sha256": "0c9ff0d5d229b59bf83699e90e1a39f8c18e18d40c21e28e4ff728ed86fa215a"
+  },
+  {
+    "path": "src/ui/coach/CoachSpeakingIndicator.tsx",
+    "sha256": "ec6fabb2104d7587ad4947ea6a9fe68a1ca14b7248e797848f9ae8362e17beba"
+  },
+  {
+    "path": "src/ui/coach/CoachTimelineComment.tsx",
+    "sha256": "e623c7f608e47ef908e1e1a06e6c940b9a7869e7ccec43d72364f7034d8bfa77"
+  },
+  {
+    "path": "src/ui/coach/CoachVoiceButton.tsx",
+    "sha256": "242d1e6d2578aa1bbd7df1a13773f35824d70f3fa099d0872043af7fd0c233ed"
+  },
+  {
+    "path": "src/ui/coach/TrustEvolutionIndicator.tsx",
+    "sha256": "d3c30fe247c1c06d9d6f27e58ad7852b45bbd124c53e464459bd5f10fa8ee06a"
+  },
+  {
+    "path": "src/ui/coach/coachAnimations.ts",
+    "sha256": "aa7798b9718a3799c0bbc345c9593c33909bb7ad029743d21490801496bd92f6"
+  },
+  {
+    "path": "src/ui/coach/coachStyles.ts",
+    "sha256": "a83d842845201594cc788ea838b511dcf9bb6b960967815beb5ff581edcce296"
+  },
+  {
+    "path": "src/ui/components/Badge.tsx",
+    "sha256": "854e49e357abeb7d77188046bc81a2a90af8439abfe072d9683ce64e208f69a1"
+  },
+  {
+    "path": "src/ui/components/Button.tsx",
+    "sha256": "65ff1afc1fbb37410031d94d1733d0013b058eebccb60efbb570b7c265a67119"
+  },
+  {
+    "path": "src/ui/components/Card.tsx",
+    "sha256": "44066e6fda89eebb50b63816465b9a11b62cce1fc45a6c90709377420bd6682e"
+  },
+  {
+    "path": "src/ui/components/Chip.tsx",
+    "sha256": "ae5431778636bf836083b423a154753235f94fc2d6b730ef731956fc76ec087d"
+  },
+  {
+    "path": "src/ui/components/ContextMenu.tsx",
+    "sha256": "c8bc6975189a6988279501cf1f372fb214af989c12a08ffbfcb2ec3dd9a9dc2e"
+  },
+  {
+    "path": "src/ui/components/Divider.tsx",
+    "sha256": "c476829341b21b5e284c8f8cc7bf8c18b7abd9178a997bb0f5b066c4c0d9dd32"
+  },
+  {
+    "path": "src/ui/components/ExerciseActionMenu.tsx",
+    "sha256": "cceb3fc4897ea36e9a055eb0cd48e6848aa509baad27195446fad4a5b8a4ca40"
+  },
+  {
+    "path": "src/ui/components/ExerciseActionsMenu.tsx",
+    "sha256": "2f563da48070f8cefb6227ed13b2b0d2f9cd5e874422c62a81cfa9d05069c296"
+  },
+  {
+    "path": "src/ui/components/ExerciseRow.tsx",
+    "sha256": "e2f3b0694c3e382ac90537cb68d5da04ef0acc51926e491ff24426e7ea65a9cf"
+  },
+  {
+    "path": "src/ui/components/ExerciseTableHeader.tsx",
+    "sha256": "3cd303fcb5ed851526e1a5c70cb538d767d3d224798fad19d688ad9ad00b6df7"
+  },
+  {
+    "path": "src/ui/components/ExplainabilityDrawer.tsx",
+    "sha256": "35d00604934abdcdf9e917c2b63c088d5c35962654a581272ae3a3eb8557e541"
+  },
+  {
+    "path": "src/ui/components/Input.tsx",
+    "sha256": "969967c61072aa25754a73861485a1ba6df0fc93762add16c4bf5b2a5e9264eb"
+  },
+  {
+    "path": "src/ui/components/ListItem.tsx",
+    "sha256": "a17e3000888b1046c26d284ab5b64d70d25a4e0df8a4c9f524cb7b32a43d27d9"
+  },
+  {
+    "path": "src/ui/components/OverlayAnchor.tsx",
+    "sha256": "61c5f656ec30e4da5d2d26764ba20180f3db2429d813299364010270af5e591a"
+  },
+  {
+    "path": "src/ui/components/OverlayLayer.tsx",
+    "sha256": "36043146725fa50be3c03f7e48a634198eaa6e83ea043941388965f75240c05c"
+  },
+  {
+    "path": "src/ui/components/ProgressBar.tsx",
+    "sha256": "38d13ee35dd87169fc26f00883844fc1044a2fd4389a09f60dd4f1385376fd0b"
+  },
+  {
+    "path": "src/ui/components/ProgressTable.tsx",
+    "sha256": "b42c53fd488e2678df5fc805eedf00ef7bdc99cfe8dc04e67a38c3cf57dd5c06"
+  },
+  {
+    "path": "src/ui/components/ScreenContainer.tsx",
+    "sha256": "3271f285deb5ee79654d0807fef55f86496cbd988b2ffd37811eb014b14db58f"
+  },
+  {
+    "path": "src/ui/components/Section.tsx",
+    "sha256": "29f5517fe01b457a8628b9883071b16997ca5a0cf8cc8473f27be1c497db9d4c"
+  },
+  {
+    "path": "src/ui/components/Stack.tsx",
+    "sha256": "f94729512b2694995c38ed02e13f4a90f85493b303c8f80093e4d42cc2918736"
+  },
+  {
+    "path": "src/ui/components/StateContainer.tsx",
+    "sha256": "a1231e2686dbdcff9064fc47165a8b33d9f4de242a71d461a661b1e56a1c7b84"
+  },
+  {
+    "path": "src/ui/components/Text.tsx",
+    "sha256": "9daccd3ed0f6da306b17b1f8a51db3a5d732df8a9060105ddfbdfc2f12f8db17"
+  },
+  {
+    "path": "src/ui/components/Timeline.tsx",
+    "sha256": "3ba5db6b1ca84004f7062f09178871a1f5ab174b68319ba633c4776c9c37c29d"
+  },
+  {
+    "path": "src/ui/components/TrustBanner.tsx",
+    "sha256": "cb668b4b3ee3878781a70d6591e365c11c25eb0f49cf7fc3baf6602a20972367"
+  },
+  {
+    "path": "src/ui/components/__tests__/ExerciseRow.test.tsx",
+    "sha256": "e1ce1ccb485520fcf42b7a2aeb52f7a90728634b2deadee12b2132abd332a36c"
+  },
+  {
+    "path": "src/ui/components/exerciseTableLayout.ts",
+    "sha256": "ed2ce6c806b0a285e1def905e9b5aa84757d9faf7cbc1e30064e79e5ea50605c"
+  },
+  {
+    "path": "src/ui/theme/tokens.ts",
+    "sha256": "7cadc4f3ae466632eaa6e25da8abf4c7b03e0b79d2cb87a2f195307f41fbe722"
+  },
+  {
+    "path": "src/utils/__tests__/adaptiveNutrition.test.ts",
+    "sha256": "85b3ee81c9b83497d08ed5d2f64ef1c9c3ff88c326ed1189c90ebe5215f7c358"
+  },
+  {
+    "path": "src/utils/__tests__/adaptiveNutritionActivationV1.test.ts",
+    "sha256": "397659ad1525abff5f24627f2a2650a34657175ec608e4212f14c0c343a23eff"
+  },
+  {
+    "path": "src/utils/__tests__/adaptiveNutritionAuthoritiesV1.test.ts",
+    "sha256": "bc31544b3d942c339846268cfee2079b24ab4db11e84f6d068217511a25cdff5"
+  },
+  {
+    "path": "src/utils/__tests__/adaptiveNutritionGraphV1.test.ts",
+    "sha256": "955174d9ae385bf51865d1da6f10095e3a9f5670520d5d2a63d2bdb66c83fcf9"
+  },
+  {
+    "path": "src/utils/__tests__/adaptiveNutritionGraphV2.test.ts",
+    "sha256": "6e744a9c5de1b5f470ac55961fce42964f7e6be5ca16b193c79c860694156aca"
+  },
+  {
+    "path": "src/utils/__tests__/adaptiveNutritionMealBalanceV1.test.ts",
+    "sha256": "29f253ad2f7e3ad9ee073c7832a8afbdbaa354dd6be9f9a532d3d1dfd9ee679f"
+  },
+  {
+    "path": "src/utils/__tests__/adaptiveNutritionMealCompositionV1.test.ts",
+    "sha256": "20f02743759d9690d51dfe94b76c16cbf2eff1204af215b73cb4cdc92900109e"
+  },
+  {
+    "path": "src/utils/__tests__/asyncModalSubmit.test.ts",
+    "sha256": "0966933a9c267d8c09d34a4cb6d9ac3f96f822f7daf8d75d7bfec4633a150125"
+  },
+  {
+    "path": "src/utils/__tests__/authRedirect.test.ts",
+    "sha256": "e3500a850d0a038b3d71c8d2f0df979ecb61787d7c80f4bbf1e993e48853bbb9"
+  },
+  {
+    "path": "src/utils/__tests__/authRequestGuard.test.ts",
+    "sha256": "2c01fe7aed187208188ef3601423444d4f1dedab1e375a6e9bb6be0f2163b9a1"
+  },
+  {
+    "path": "src/utils/__tests__/curatedRecipePublicationV1.test.ts",
+    "sha256": "b48139ee96c8e2302de38d591ce3f5d4bf43db150247b2787995b5b58fc61b64"
+  },
+  {
+    "path": "src/utils/__tests__/diaryAddNavigation.test.ts",
+    "sha256": "b1ea203fa844a410faf406388e22b731cd97bbdfe6b510659b27d550410ca8f8"
+  },
+  {
+    "path": "src/utils/__tests__/exerciseContentLookup.test.ts",
+    "sha256": "a212763f0f1d428146578b64a5cb3ee3d336f01b99ebec480f22f2cd39b2fb8b"
+  },
+  {
+    "path": "src/utils/__tests__/exerciseDedup.test.ts",
+    "sha256": "5b92ff1ad46534dbd385a22cb76de2883a32c81a13c77e54a6f0010d6cfd77cb"
+  },
+  {
+    "path": "src/utils/__tests__/exerciseListFilters.test.ts",
+    "sha256": "1150c05a363dee409bd57be84d5129f59fcbd6682ed943c100843a205d17080b"
+  },
+  {
+    "path": "src/utils/__tests__/favoritesFoodSelection.test.ts",
+    "sha256": "51aa65d1be8821259158619b8f3b5689b7552130cefade55992877717c2b21fe"
+  },
+  {
+    "path": "src/utils/__tests__/foodDiaryMultiAdd.test.ts",
+    "sha256": "05d22e6095967b370ab941328f344b68cfa7d72ab631d28737b86fb488434eb9"
+  },
+  {
+    "path": "src/utils/__tests__/foodDiaryNavigation.test.ts",
+    "sha256": "37c172f0470f2bcc77db8abd47dd501395ebf83f285a1e588b38da778f71d4e5"
+  },
+  {
+    "path": "src/utils/__tests__/foodMeasurementPresets.test.ts",
+    "sha256": "a2deae8247f626c8ee75ba6fe11c2b82ae2a7290e3101c668f9a320adb0afcfd"
+  },
+  {
+    "path": "src/utils/__tests__/foodReviewedEvidenceV1.test.ts",
+    "sha256": "4c70a632a812859b42de51c2adb398fc79388358a6fe4c472d97138c534a392e"
+  },
+  {
+    "path": "src/utils/__tests__/githubPagesRouteRestore.test.ts",
+    "sha256": "c0c2a7986826330fd6f4a9421d9cc4ba318955b3e629dc9e446d65df64cc2b90"
+  },
+  {
+    "path": "src/utils/__tests__/goalProjection.test.ts",
+    "sha256": "3e2449781b58a950b6ce29f333feb20f860a2b69bd58cb8bda955c95a4bde9b6"
+  },
+  {
+    "path": "src/utils/__tests__/goalValidation.test.ts",
+    "sha256": "a527fcb3b48cc7f9cb6cc8e5eb7d34607195e92553123f97bd8f59ab5214350d"
+  },
+  {
+    "path": "src/utils/__tests__/initializeExerciseData.test.ts",
+    "sha256": "898ec2cb0ca876386da39987daf3e1ee92b2ab73df0bc990d92af23626ab976d"
+  },
+  {
+    "path": "src/utils/__tests__/manualFoodFlow.test.ts",
+    "sha256": "5cb4777fce07d323f622e5de83c52138392f7a53dc1209747a3a0f9e3245e660"
+  },
+  {
+    "path": "src/utils/__tests__/muscleLabels.test.ts",
+    "sha256": "391e94840eb806753e9ab3a84bc4255f66b6d007c1598f4e063f8d2388c1389b"
+  },
+  {
+    "path": "src/utils/__tests__/muscleMap.test.ts",
+    "sha256": "430f46935c3ed376d076731394e7705ecc7b028f878aa241f3418092ef749ff5"
+  },
+  {
+    "path": "src/utils/__tests__/muscleNormalizer.test.ts",
+    "sha256": "228b380d5c9c9ddb45b887c08822bc209d6ade88ce65fdeb9726b736b494b03b"
+  },
+  {
+    "path": "src/utils/__tests__/nutritionAdaptation.test.ts",
+    "sha256": "ab08e3cf8c0eec8f551200137fa657cd950288cb1f67d971014944cab2bf4389"
+  },
+  {
+    "path": "src/utils/__tests__/nutritionIntegrityV1.test.ts",
+    "sha256": "e807ee6f6320365744565624faa9ecf57c4a90c503bac32975e0cb19560aed3c"
+  },
+  {
+    "path": "src/utils/__tests__/nutritionPersistence.test.ts",
+    "sha256": "bfcab155f49a48570c80275bd420f3177dff3f3903458ca519e4e475720af057"
+  },
+  {
+    "path": "src/utils/__tests__/nutritionRecovery.test.ts",
+    "sha256": "4fc2eedace8fa9ca67f0002aa89d3b68cfd9c4c2c9af90c1bc2fc3e11c1ae2b5"
+  },
+  {
+    "path": "src/utils/__tests__/nutritionReplacement.test.ts",
+    "sha256": "9d9158eef0b5c395bee94a2b0cc2c3850aaa0fdb0a1f9d2fbaefa72d16816611"
+  },
+  {
+    "path": "src/utils/__tests__/nutritionShopping.test.ts",
+    "sha256": "a1384dde69e8444ed716bb2f658ad023c37ec29f8af432e14f51e37a421bfe81"
+  },
+  {
+    "path": "src/utils/__tests__/nutritionWeekPreview.test.ts",
+    "sha256": "a4334e7bada8a0966e1692eb1ed9dfc387c1c8d27ea1528f548331ace6db7b25"
+  },
+  {
+    "path": "src/utils/__tests__/optionalSupabaseResource.test.ts",
+    "sha256": "80f93139717f00d92f583bdc75768a6c683b8e6c85eed898078e7c98b1fab320"
+  },
+  {
+    "path": "src/utils/__tests__/photoImageValidation.test.ts",
+    "sha256": "1f0fe55623f73f9f45d628bf5fe5f1e7857b2ace8da4734ca785255a1813798f"
+  },
+  {
+    "path": "src/utils/__tests__/premiumRecipeReadState.test.ts",
+    "sha256": "c1679b4621320e73d4b4f702657e6c9916f058e4a47b73502d3d15f8e17359a7"
+  },
+  {
+    "path": "src/utils/__tests__/privateRecipeVisibility.test.ts",
+    "sha256": "0750a89a0233ec4761a27af8ac0db86d409464b27fc4ce4866dd98965e68016e"
+  },
+  {
+    "path": "src/utils/__tests__/progressDailyGoal.test.ts",
+    "sha256": "6a8dabf3869f058fef3dbc3b1809e39e2fcbfa0cd37b1b0de1e68930c477e7e7"
+  },
+  {
+    "path": "src/utils/__tests__/recipeCombinedSave.test.ts",
+    "sha256": "7f52df64c5c63c58449edcb3a2acfa4c4e7dbabae39b5d4c7e85c2ea73fd8589"
+  },
+  {
+    "path": "src/utils/__tests__/repeatWorkoutFlow.test.ts",
+    "sha256": "7f1536b32d201330a7b3aa892124ec725274900db7591e44ffa79e1109fc3504"
+  },
+  {
+    "path": "src/utils/__tests__/reviewedRuntimeRecipePublicationEvidenceV1.test.ts",
+    "sha256": "a23a37480355f6170136d3b2c72bf82956f9737f4ab8ae35300f08854758d2a6"
+  },
+  {
+    "path": "src/utils/__tests__/todayGoalSummary.test.ts",
+    "sha256": "197e167e9923d1bf6380a49589f5a2e6c2ee053f50e7e3b14ce0b57a7957e44c"
+  },
+  {
+    "path": "src/utils/__tests__/trustedGeneratedWeekValidatorV1.test.ts",
+    "sha256": "c17252e523aca576bbd45c4ff39fe23319d0f26b537da7952c448b2a9811536c"
+  },
+  {
+    "path": "src/utils/__tests__/trustedMealWarningEvidenceV1.test.ts",
+    "sha256": "8ae46a5970fa414c9f689aad65c0c456d593de5703c2352a07123883ad0579f5"
+  },
+  {
+    "path": "src/utils/__tests__/trustedValidationEvidenceV1.test.ts",
+    "sha256": "6934158f2bd8609d2f0390bf09f48916754f72ae60f3421286588dec42ed3144"
+  },
+  {
+    "path": "src/utils/__tests__/trustedValidationPoliciesV1.test.ts",
+    "sha256": "b2de04fc030c5b14af0ec0a9e9ddec76207a6d0a0d09683eeca3e5fb481d812e"
+  },
+  {
+    "path": "src/utils/__tests__/workoutAddFlowNavigation.test.ts",
+    "sha256": "bf82dced5b8d4ded2a03304c1f7ef1438ad36cfe9b83f97f95d6fc2c8f8b4416"
+  },
+  {
+    "path": "src/utils/__tests__/workoutDayNoteClipboard.test.ts",
+    "sha256": "0194a0cb35bbf41b688a389934fdeaff891737e600e48a5c14129a7d7f9374b4"
+  },
+  {
+    "path": "src/utils/__tests__/workoutDiaryMutations.test.ts",
+    "sha256": "cf3d244ce71bbd6dd63f146aee8ccd9a8403f8e5acb2f85659bdd813fe376e57"
+  },
+  {
+    "path": "src/utils/__tests__/workoutEditorState.test.ts",
+    "sha256": "4f6b150028ff77884f3418ab4d8f201e878aa3b8fec941ae14fb710c945db05e"
+  },
+  {
+    "path": "src/utils/__tests__/workoutEntryMetric.test.ts",
+    "sha256": "032d01349438dbd7a38b09b92967bd1aa9929004a2236821552fdcbcfa648f7b"
+  },
+  {
+    "path": "src/utils/__tests__/workoutEntryNotesUi.test.ts",
+    "sha256": "43b36425f870b98540f5cb474b98b7a15587da04da19b4d7db7ef328be50a8f5"
+  },
+  {
+    "path": "src/utils/__tests__/workoutEntryWeightInput.test.ts",
+    "sha256": "89a6709ae694504c3c99b3f218ad1024dec37f94ae5e1a46fa0225b1e7a33650"
+  },
+  {
+    "path": "src/utils/__tests__/workoutExerciseProgress.test.ts",
+    "sha256": "74ba62e5d77424454e5ac696615b880878dc1b229c8a941fc96d1385508a2ec5"
+  },
+  {
+    "path": "src/utils/__tests__/workoutHistoryRange.test.ts",
+    "sha256": "dd0815458abdb6cdc1ca0eedc503b56743bfd9698b471be604c416d4af406bdf"
+  },
+  {
+    "path": "src/utils/__tests__/workoutHistorySelection.test.ts",
+    "sha256": "98a5ecf582fcba91ca5d1829dd118d0b597c16a5d6d8a0e3b5203d6b65820a58"
+  },
+  {
+    "path": "src/utils/__tests__/workoutHistoryUi.test.ts",
+    "sha256": "fb1a5685eb78ee33d840b9c00d992108f8fb5704e830b9702465a3161391e5dc"
+  },
+  {
+    "path": "src/utils/__tests__/workoutLayout.test.ts",
+    "sha256": "3495e6f11dcff1347b6b200c98694c54c69f606566a6241914604acb05d6c21f"
+  },
+  {
+    "path": "src/utils/__tests__/workoutMainScreenActions.test.ts",
+    "sha256": "eb07901e2ee6bd56a120fb6614e7c46bcbd49c50ffc6c694c64e5fae43266de4"
+  },
+  {
+    "path": "src/utils/__tests__/workoutMuscleKeyResolver.test.ts",
+    "sha256": "70288ed9c69fbb5e2516ea4b07a8a4edf508e371d7e2c57123efb188305a9e72"
+  },
+  {
+    "path": "src/utils/__tests__/workoutNumericInput.test.ts",
+    "sha256": "b86c9b5b665914d304f8db3e6625e6e687b09c9052c7f7c2b6774959f90a646d"
+  },
+  {
+    "path": "src/utils/__tests__/workoutProgress.test.ts",
+    "sha256": "54ecbbfd7f45f329ffc07b6259c7549de19ed9f830a5b85556184f693abc03f8"
+  },
+  {
+    "path": "src/utils/__tests__/workoutProgressCache.test.ts",
+    "sha256": "c25f8dfae1811fcd0566648a5a9be1d2c623c67041e60b352a5928768fc99188"
+  },
+  {
+    "path": "src/utils/__tests__/workoutProgressPeriod.test.ts",
+    "sha256": "c6665e6e0a4e2e36113160fccace67ef7d9ad369cefc5fb7f076e41c95fdb21d"
+  },
+  {
+    "path": "src/utils/adaptiveNutrition.ts",
+    "sha256": "eb515f0357f5f566a351dd35c8ad02a92c13e2c6b1768b883252e1910e3f1230"
+  },
+  {
+    "path": "src/utils/adaptiveNutritionActivationV1.ts",
+    "sha256": "a3b2d3baba60e1ce6765c10f88531ebbfdea0d882e4b45e46a550be11f3fb68b"
+  },
+  {
+    "path": "src/utils/adaptiveNutritionAuthoritiesV1.ts",
+    "sha256": "241ebb0b27384313e0b7976c295df91e0ac8f89ed8f2bc43a31a4a545411c8c7"
+  },
+  {
+    "path": "src/utils/adaptiveNutritionGraphV1.ts",
+    "sha256": "06a9e1e5feabe4e3911e4976ec5eb325114b779a6c4af124a4c3a64e9ac2c088"
+  },
+  {
+    "path": "src/utils/adaptiveNutritionGraphV2.ts",
+    "sha256": "3eff606163daeb893c0637d84399c9e7f5c7b7cb6b6c4a76e820ec58225c2858"
+  },
+  {
+    "path": "src/utils/adaptiveNutritionMealBalanceV1.ts",
+    "sha256": "4fa95295665c76b45b98b2a6239e77b83ecaca852fb8bf3ea28a03bbc1aff23f"
+  },
+  {
+    "path": "src/utils/adaptiveNutritionMealCompositionV1.ts",
+    "sha256": "09f0789da67b8a1d7dd3e7f3ada41a8082455827727fb3e44c837d1b1a4f0054"
+  },
+  {
+    "path": "src/utils/adaptiveNutritionWireV1.ts",
+    "sha256": "4b871ee2b0bff9368dc8cdac250ed2c2e9a1234144b2454dc8117937b51552db"
+  },
+  {
+    "path": "src/utils/asyncModalSubmit.ts",
+    "sha256": "8d9e06724f011fea53c468f971d9647cc6f32f8fcc61ec5d627802056dcc8bbe"
+  },
+  {
+    "path": "src/utils/authRedirect.ts",
+    "sha256": "b29eb6e4740e81cbbdbc2f80862a6753f24c4ee14d953d0dadb34c6dea62f0dc"
+  },
+  {
+    "path": "src/utils/authRequestGuard.ts",
+    "sha256": "e97abf5baeeb12f4b13b8b227a2cdf94a65775299b08c4e33e2bc436b4823880"
+  },
+  {
+    "path": "src/utils/checkExercisesData.ts",
+    "sha256": "420afe7a0ab70af162f40e7fdaf9509fc94047d89cdd68336e904ebec6dba534"
+  },
+  {
+    "path": "src/utils/constants.ts",
+    "sha256": "533fa27289d5c7400b4b59204bdab0ccf3c43ad2dd6088d22ff79f203477982d"
+  },
+  {
+    "path": "src/utils/curatedRecipeEligibility.ts",
+    "sha256": "1215376e0ad95d9bfcab7b0f38195ec7fab97ebe90292a3210dad76b4ed1bea4"
+  },
+  {
+    "path": "src/utils/curatedRecipePublicationV1.ts",
+    "sha256": "a346ab8acd864e303e6a055eac37cf7e52e3e961f6c68eeaff611c9a610342b6"
+  },
+  {
+    "path": "src/utils/dateKey.ts",
+    "sha256": "53ecafef7867d9a5c9f6a8ba4918b2d0684d4698f7f44cb786777cf07b702bfc"
+  },
+  {
+    "path": "src/utils/dayKey.ts",
+    "sha256": "dd2c4c4432118c425b001c92577c68614606f7182dcf4883fb57bba5b8f85034"
+  },
+  {
+    "path": "src/utils/diaryAddNavigation.ts",
+    "sha256": "8121f80262d1010adb958fc089b2bbdeb71073c096fe58c77d17308582e51102"
+  },
+  {
+    "path": "src/utils/exerciseContentLookup.ts",
+    "sha256": "bb55cc02065e744db115e68bb60c0b2b5159361cfaf0b937c146d6dc13b70289"
+  },
+  {
+    "path": "src/utils/exerciseDedup.ts",
+    "sha256": "3eff30927d8da4b6816fcfa0bd987cc0322060b405542023a017f345854a2f01"
+  },
+  {
+    "path": "src/utils/exerciseListFilters.ts",
+    "sha256": "232f2cbcbae72d48c2e936babf8fb058e1420651a5edc152a9a068bda73e08a9"
+  },
+  {
+    "path": "src/utils/exerciseMedia.ts",
+    "sha256": "e3dbd4658baa4b0188857859948370765fbe5ff858bb1effbac9c5a71254178e"
+  },
+  {
+    "path": "src/utils/favoritesFoodSelection.ts",
+    "sha256": "911fb6311b00353428bf2b2ae5576c3c325ec66261664e60b3b06e0bdab50798"
+  },
+  {
+    "path": "src/utils/foodCache.ts",
+    "sha256": "a28d50d394d719e817b1cc306228925abe21f1a63a674c571860db8e5b6dc8b7"
+  },
+  {
+    "path": "src/utils/foodDiaryMultiAdd.ts",
+    "sha256": "0d578f17f34c65b907f57f51157a4e69ef589e273c43a3d33aa3e27583087098"
+  },
+  {
+    "path": "src/utils/foodDiaryNavigation.ts",
+    "sha256": "01ba67bd11ba32898871875e7d56e0f3697fd823f9f78d056d4919eac1e8783f"
+  },
+  {
+    "path": "src/utils/foodDisplayName.ts",
+    "sha256": "b1ecd83c7362a147aaf61243e90f0f4a8c6bfedd5fd0d3e74c77a9a286209690"
+  },
+  {
+    "path": "src/utils/foodImportPipeline.ts",
+    "sha256": "d674099d4fc61355de75d99d41a80c48dbd51e3f123ef9a872bd6220afa061ca"
+  },
+  {
+    "path": "src/utils/foodLabelMapper.ts",
+    "sha256": "0bf1774012d158217c459aeb6ccce1fdd8200ab8200365b9bc1c6b99c149db0c"
+  },
+  {
+    "path": "src/utils/foodMeasurementPresets.ts",
+    "sha256": "1ac6507f528083cd19c88edc7c23e7fd1b92d478824fa375b6bcf04044ce4f62"
+  },
+  {
+    "path": "src/utils/foodNormalizer.ts",
+    "sha256": "325ca48aca2fa3688bb53108587dfa3046ba17f65894a5946f79984394056ff8"
+  },
+  {
+    "path": "src/utils/foodReviewedEvidenceV1.ts",
+    "sha256": "52c799d83ece30660ba25284fb1ff206eee8a11ed4ffe9d433e07d2b892a3537"
+  },
+  {
+    "path": "src/utils/foodUnits.ts",
+    "sha256": "0e853e93badad1eaa2b52b8fd6c72765026c4423342437ff623d49e2657ded5b"
+  },
+  {
+    "path": "src/utils/githubPagesRouteRestore.ts",
+    "sha256": "b2ad5ab42f2ddee56529f29369aefa38daa15b711ef588016cd0d77d987831e2"
+  },
+  {
+    "path": "src/utils/goalProjection.ts",
+    "sha256": "6b1635f6a988fd9b2895218e7625bdca759177704979aab82429667b99f42350"
+  },
+  {
+    "path": "src/utils/goalValidation.ts",
+    "sha256": "91b2fcb5d8052bc6f53658499c66439fcc0d9a1fb0404dc3a68b6e37201c1326"
+  },
+  {
+    "path": "src/utils/ingredientParser.ts",
+    "sha256": "64db54c264a2aff5d6ead40eeade886b87d917e750d7e365373a15ac093d7659"
+  },
+  {
+    "path": "src/utils/initializeExerciseData.ts",
+    "sha256": "5c4f78e04dcee2eb5fdef8b17087a0d01fc6901812ca2f8331d23a1bf68b2e22"
+  },
+  {
+    "path": "src/utils/manualFoodFlow.ts",
+    "sha256": "0984c261637b3503fdbacca3c01a400a70cd9eead3655c779392c0f1ed646abd"
+  },
+  {
+    "path": "src/utils/muscleLabels.ts",
+    "sha256": "5c295110cd4f5990aae77c31cd80c391c20f0acb502659a4eb28ae14d8556f0d"
+  },
+  {
+    "path": "src/utils/muscleMap.ts",
+    "sha256": "5bbbd398b2f2a9dcdd16dfac7db50213245ad29b6fab91b8e4fb23b65169b7cc"
+  },
+  {
+    "path": "src/utils/muscleNormalizer.ts",
+    "sha256": "04f4aac192b9960ea930f977e1ab8c2a0d53d308b581f8e319e06e6fa6e9b8b2"
+  },
+  {
+    "path": "src/utils/myProductsVisibility.ts",
+    "sha256": "1a46626866da40adfbfa3af74373b0584ca02cc6287eef39aefc1f8acd16728e"
+  },
+  {
+    "path": "src/utils/normalizeFoodData.ts",
+    "sha256": "048f9fdb1717b9233421367900096d7d2147ce46aa4dcb32254aa1d067112f03"
+  },
+  {
+    "path": "src/utils/nutritionAdaptation.ts",
+    "sha256": "c36f28ed94be6313214740c447f22c925291589af816b66d70c38026c96f59fa"
+  },
+  {
+    "path": "src/utils/nutritionCalculator.ts",
+    "sha256": "cd71e7e3712bda8a6b8d7fc53a307892abe1cb5048ecb4c628943126ef8db58d"
+  },
+  {
+    "path": "src/utils/nutritionIntegrityV1.ts",
+    "sha256": "9cdf93b410df08c8d96aa4985df6a580244419cf43eacdfc00d546e6f931f054"
+  },
+  {
+    "path": "src/utils/nutritionPersistence.ts",
+    "sha256": "f8e1d1d5f19826ac892d5b550a919965762dc46b7318fad60b50cdc5a45575fd"
+  },
+  {
+    "path": "src/utils/nutritionRecovery.ts",
+    "sha256": "04388fdb20b21018b5c5fccc3af3007c91208107e055892bdf9385cdf9b9fb21"
+  },
+  {
+    "path": "src/utils/nutritionReplacement.ts",
+    "sha256": "18d1aae3ad5221a17089f2fa3e49b50a0cdffec6f4e62a2e4cb009310fdd598c"
+  },
+  {
+    "path": "src/utils/nutritionShopping.ts",
+    "sha256": "7fb2ba54874480edbfc80929f436ea02536911bf7c07bc23d98919f56a90905f"
+  },
+  {
+    "path": "src/utils/nutritionWeek.ts",
+    "sha256": "7ade5233bcf198eb854ebd1bdee3b640416f9856f1123874e882b115c565b8e0"
+  },
+  {
+    "path": "src/utils/nutritionWeekPreview.ts",
+    "sha256": "3c5499fa1bc649790554546492b03292be889e572e66d1d48c90eb02ee15097b"
+  },
+  {
+    "path": "src/utils/optionalSupabaseResource.ts",
+    "sha256": "8f0efa9deefc9e5575c8e90fefbd73473e27cfbbe11cc46e7258ad37eb31e1bd"
+  },
+  {
+    "path": "src/utils/pdfGenerator.ts",
+    "sha256": "b07e62593902ec9224cb6ea659203414efc6f85429b680a4e1c94ee342ef31b1"
+  },
+  {
+    "path": "src/utils/photoImageValidation.ts",
+    "sha256": "aef4dec2a4f63fbde3de2eef1f506cabe34533a511c1255693ff44650d7ed342"
+  },
+  {
+    "path": "src/utils/portionEstimator.ts",
+    "sha256": "c032611ef0badaa2c5e36b4eafdd5419c6b2ee90ec4c31d3849c3a8b7add3ce5"
+  },
+  {
+    "path": "src/utils/pose3dMath.ts",
+    "sha256": "2a0f1bdf2863e62fba4399552b93b2713f77910a68d497e07c4c705c2aeba01c"
+  },
+  {
+    "path": "src/utils/poseBiomechanics.ts",
+    "sha256": "86fd8b20d17633aa5f63d982ebc322b1a102fcd57427594f09a99387c04ffa8e"
+  },
+  {
+    "path": "src/utils/poseKinematics.ts",
+    "sha256": "4349498e015cad1d572c683e02240eadbe79b0a2375b7a99b2f5668fac60cf99"
+  },
+  {
+    "path": "src/utils/poseMath.ts",
+    "sha256": "78e8444253f14a15767e400832b7a94ca923258821b73e1517f01415cfe694db"
+  },
+  {
+    "path": "src/utils/poseTemplates.ts",
+    "sha256": "952ae3675b2440b41d35ef5f35f2397d3b42b06fa112c7e782c1abbb40b9d505"
+  },
+  {
+    "path": "src/utils/premiumAccess.ts",
+    "sha256": "32cfc4f614145359e3b8e7a278c4b7c9632039563e7bd8a382d36ab13e155d85"
+  },
+  {
+    "path": "src/utils/premiumRecipeReadState.ts",
+    "sha256": "0ed24ff67d3abbadfd3f6957bc587b1da7afe06d647ea6e8b395625eeaa06c30"
+  },
+  {
+    "path": "src/utils/privateRecipeVisibility.ts",
+    "sha256": "4cd544218e687dc0e5419c04a6d3dc9a2de3e27490e6dc07b53dd12dd4bc0d59"
+  },
+  {
+    "path": "src/utils/progressDailyGoal.ts",
+    "sha256": "f1e66a06af8243ee4b599d787607f30be20ed46644f5e0b8592db057e0be84e0"
+  },
+  {
+    "path": "src/utils/progressMetrics.ts",
+    "sha256": "3a23b22654160dac521567f3d24514d01e16f532d6797cd0516309ec1851896c"
+  },
+  {
+    "path": "src/utils/promptBuilder.ts",
+    "sha256": "1c7ddeab296ba4f218f8dcbd9ef5100488055f16f1e6b64b9ed7209c8382dc3d"
+  },
+  {
+    "path": "src/utils/recipeBadges.ts",
+    "sha256": "66d2f6d4119eade30eac467a3a50c234ad9f9385d6a7cf0d009d01a3eeb9c878"
+  },
+  {
+    "path": "src/utils/recipeCombinedSave.ts",
+    "sha256": "23905a50bb276364f2a445947981f939cddcfb042d82051d7e9a22206b518878"
+  },
+  {
+    "path": "src/utils/recipeFilterRecommendations.ts",
+    "sha256": "03a5cdde9ab8c4c04aa9396df770cb23f1aafaf588e0d3e643dd50e690280138"
+  },
+  {
+    "path": "src/utils/recipeParser.test.ts",
+    "sha256": "5fbdd4be54a46dedaf7cf61dd5062ceaac46904600ae3e706a46c98696c75500"
+  },
+  {
+    "path": "src/utils/recipeParser.ts",
+    "sha256": "d48d7106030b5372429ad9fbb7bb231941b250e9ea178071374dad36e2c4f6b2"
+  },
+  {
+    "path": "src/utils/repeatWorkoutFlow.ts",
+    "sha256": "5457e508acb9fadba4ceecfa81e327c5a34642793fce00e0bb4434be56b07cf3"
+  },
+  {
+    "path": "src/utils/reviewedRuntimeRecipePublicationEvidenceV1.ts",
+    "sha256": "ec5e0bac7e6d84dedb32a422cc47d60afc60feeae88fa5163ea8f9574a8884d9"
+  },
+  {
+    "path": "src/utils/seedExercises.ts",
+    "sha256": "e15216eedddd12ca2abfa02830f895109ec448bf1353afa21490f98a04ce3c4c"
+  },
+  {
+    "path": "src/utils/seedFoods.ts",
+    "sha256": "9546039dafe2047ffe941534a9f72ae11748e1f8c8c198a17dc0098c077a8611"
+  },
+  {
+    "path": "src/utils/storage.ts",
+    "sha256": "fe68606ae308cfbf90102bfd5ffd50ba9060cbce1550cf09fd13003f6852695a"
+  },
+  {
+    "path": "src/utils/todayGoalSummary.ts",
+    "sha256": "c032fc224b291427733ccc0662fe81ee4bbbc43390137ec0ea01faac3b61689a"
+  },
+  {
+    "path": "src/utils/trustedGeneratedWeekValidatorV1.ts",
+    "sha256": "f12135e6a85f46ed1998c40739660cc04e5319465b339c44a6fd249e43c35fd2"
+  },
+  {
+    "path": "src/utils/trustedMealWarningEvidenceV1.ts",
+    "sha256": "1f402a6d1648ebdc91d72486afabb259c1a45d5fbbfcbd79dae2b7fcb8c6b894"
+  },
+  {
+    "path": "src/utils/trustedValidationEvidenceV1.ts",
+    "sha256": "a2f7e0cae76c47b3199c6b391d41cf7f3c2f92c7ae72a202c48d33c5f98a4ba4"
+  },
+  {
+    "path": "src/utils/trustedValidationPoliciesV1.ts",
+    "sha256": "f1c503db7d8f8d287278ff83d66f0f46a332219597a9d153e68f222f5e326f6d"
+  },
+  {
+    "path": "src/utils/workoutAddFlowNavigation.ts",
+    "sha256": "7240c95bd7f5811ddc2c44c71d4dcca5bbfab78cf3836a2edb5a017fa96b593e"
+  },
+  {
+    "path": "src/utils/workoutDayNoteClipboard.ts",
+    "sha256": "322cec01c04521ce23d05f47da03797d0277a2d9d6031b084577b251ecf73561"
+  },
+  {
+    "path": "src/utils/workoutDiaryMutations.ts",
+    "sha256": "bab1349f581d3ab772ada319be421d269323f0301424db8eca87315af7507b13"
+  },
+  {
+    "path": "src/utils/workoutEditorState.ts",
+    "sha256": "f1b5fc6a745ca904e8d105d1f7b1711db18a3f393c494854356c0efe58c6ce7d"
+  },
+  {
+    "path": "src/utils/workoutEntryMetric.ts",
+    "sha256": "d99785157831428a09d53c0efbebac0500198a48b0d577b9e1a050c89033042e"
+  },
+  {
+    "path": "src/utils/workoutEntryNotesUi.ts",
+    "sha256": "6784147dd50ff1cfb183590f68ed2f6a8463b0a150ac6cccc47f02c16d09aab8"
+  },
+  {
+    "path": "src/utils/workoutEntryWeightInput.ts",
+    "sha256": "a92f2eba9cfcba2cbda7bb4ccc0941d07bc26d089c8439b058fc8b8fdd62c7b1"
+  },
+  {
+    "path": "src/utils/workoutExerciseProgress.ts",
+    "sha256": "7950cd8a5c37aa7dc37f38eeae578e38a4676255969e22a67cdbada98b631c93"
+  },
+  {
+    "path": "src/utils/workoutHistoryRange.ts",
+    "sha256": "5ebd38fadfdd1d5b257daf42c70cdd2d899a7a9ab14cf3a5c5aab3958db071b0"
+  },
+  {
+    "path": "src/utils/workoutHistorySelection.ts",
+    "sha256": "34cbbd2fc79210674f4ac4d96c5a79ff5e40cfb14843f6d06df6dea9bf96120b"
+  },
+  {
+    "path": "src/utils/workoutHistoryUi.ts",
+    "sha256": "43dce5667e50817b02aba880b9cd2fb0ab410c882d8a57a0e93489b22b461076"
+  },
+  {
+    "path": "src/utils/workoutInputValidation.ts",
+    "sha256": "6fbe721d2e04006aa6341fb4334aef9ce5a1b7ca15526c49911cdb12c9a2b7df"
+  },
+  {
+    "path": "src/utils/workoutLayout.ts",
+    "sha256": "0735bb58f23fa2b55eaa1b4df8c897a24cc7206038f8434bc12b3cbbb855d9c9"
+  },
+  {
+    "path": "src/utils/workoutMainScreenActions.ts",
+    "sha256": "59b669b7e520d700fcd6c15913e8753459d33dd1f92290df8c9c55ece8c4e85d"
+  },
+  {
+    "path": "src/utils/workoutMetrics.ts",
+    "sha256": "8b1a3ace452d0bf80115c313288e292529b6fc20f08fd806a703043954c1cc24"
+  },
+  {
+    "path": "src/utils/workoutMuscleKeyResolver.ts",
+    "sha256": "13c5ee46ae77f7494951fa7a0d3d461bc70a4ccd7aad07e6fa543ebe893a3630"
+  },
+  {
+    "path": "src/utils/workoutNumericInput.ts",
+    "sha256": "a9f0f3ee4ac17b323f6d9194ea9de42dcbb3e7737ecff180c61004ec9bbe0f7d"
+  },
+  {
+    "path": "src/utils/workoutProgress.ts",
+    "sha256": "ba79ac86a434241945be23ce653d52bd94c5a9ca95a4662d5d7c1bfd30a4f828"
+  },
+  {
+    "path": "src/utils/workoutProgressCache.ts",
+    "sha256": "a95e56c0e35af1234bfeea83f449a17112b3752895c7170ebc4e6c956be9331f"
+  },
+  {
+    "path": "src/utils/workoutProgressPeriod.ts",
+    "sha256": "8f24afba63e3db2becd85136cd07ef46642d78f114f242daab27d76562697483"
+  },
+  {
+    "path": "src/utils/workoutUnits.ts",
+    "sha256": "e6b6bc43a00aad46965bd424f1af2d106d9bcff5cd3cc2bcf3ffed8a9494f073"
+  },
+  {
+    "path": "src/vite-env.d.ts",
+    "sha256": "ec0ecab3f1168b615c757164eef6e2232419271183a32610e787353ef63c171f"
+  }
+]
