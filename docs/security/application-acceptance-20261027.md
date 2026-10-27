@@ -24,6 +24,8 @@ The fixed isolated synthetic workflow already applies later paywall/projection/h
 
 ## Full-copy browser preparation and remaining gates
 
+The #216 exact-head browser run passed legacy recovery, account isolation and fail-closed cached privileges on its synthetic schema, alongside production build and root regressions. The next transport implementation is documented in `private-browser-gateway-20261027.md`: a narrow fixed-loopback gateway used by the same real application browser harness. It is not yet an owner browser launcher and does not change the full-copy pending status below.
+
 The owner can pause Mac work now. Preparation and source/CI review run without their terminal; full-copy execution requires that Docker machine again (or its existing remote desktop). This work does not expose its isolated database/API on host or public ports.
 
 The next implementation must provide an exact-source application harness and browser inside an isolated execution boundary. The actual client expects `/auth/v1` and `/rest/v1` on one base URL, while the copied services use separate loopback ports. A reviewed local gateway must allow only these two paths to captured loopback targets; unknown paths/upstreams fail closed. The browser must receive an ordinary client key only, never authenticator credentials or a signing secret. Dependencies/browser runtime must be pinned and validated before access to copied data; repo env files and production URLs must not be loaded. The public app bundle must be reviewed for hosted URL fallbacks and all browser network requests restricted to the local gateway/harness. No Docker socket or database volume belongs in the browser container.

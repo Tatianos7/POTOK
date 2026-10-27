@@ -15,8 +15,8 @@ assert((await readFile(path.join(root,'supabase/config.toml'),'utf8')).includes(
 const [mode,...ids]=process.argv.slice(2);assert(['config','fixture','grant','revoke','verify-api','ui-grant','ui-revoke','premium-grant','premium-revoke','verify-app','paywall-review','program-read-fixture','program-read-review','history-review','quarantine-review'].includes(mode));
 if(mode==='config'){
  assert.equal(ids.length,0);const config=path.join(root,'supabase/config.toml');let s=await readFile(config,'utf8');
- s=s.replace(/^site_url = .*$/m,'site_url = "http://127.0.0.1:55440"').replace(/^additional_redirect_urls = .*$/m,'additional_redirect_urls = ["http://127.0.0.1:55440/auth/callback"]');
- assert(s.includes('site_url = "http://127.0.0.1:55440"'));await writeFile(config,s,{mode:0o600});console.log('EIGHT_LOCAL_CONFIG_OK');process.exit(0);
+ s=s.replace(/^site_url = .*$/m,'site_url = "http://127.0.0.1:13005"').replace(/^additional_redirect_urls = .*$/m,'additional_redirect_urls = ["http://127.0.0.1:13005/auth/callback"]');
+ assert(s.includes('site_url = "http://127.0.0.1:13005"'));await writeFile(config,s,{mode:0o600});console.log('EIGHT_LOCAL_CONFIG_OK');process.exit(0);
 }
 for(const id of ids)assert.match(id,/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 assert.equal(ids.length,['fixture','program-read-fixture'].includes(mode)?2:['grant','revoke','ui-grant','ui-revoke','premium-grant','premium-revoke'].includes(mode)?1:0);

@@ -38,6 +38,8 @@ jobs:
         with:
           node-version: '22'
       - run: npm ci
+      - name: Restricted local browser gateway protocol
+        run: node --test scripts/security/combined-api/private-gateway.test.mjs
       - run: npx playwright install --with-deps chromium
       - uses: supabase/setup-cli@v1
         with:
