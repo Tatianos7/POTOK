@@ -10,6 +10,7 @@ on:
       - 'scripts/security/legacy-plan-quarantine/**'
       - 'src/services/programGenerationService.ts'
       - 'src/services/programDeliveryService.ts'
+      - 'src/services/programExecutionService.ts'
       - 'src/pages/MyProgram.tsx'
       - 'scripts/security/accumulated/**'
       - 'scripts/security/authority-profile/fixture.mjs'

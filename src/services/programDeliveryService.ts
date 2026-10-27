@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { programExecutionService } from './programExecutionService';
 import { entitlementService } from './entitlementService';
 import { profileService } from './profileService';
 import type { ProgramExplainabilityDTO } from '../types/explainability';
@@ -151,24 +152,12 @@ class ProgramDeliveryService {
   }
 
   async startDay(programId: string, date: string) {
-    if (!supabase) throw new Error('Supabase не инициализирован');
-    const { error: sessionError } = await supabase
-      .from('program_sessions')
-      .update({ status: 'planned', execution_reason: null })
-      .eq('program_id', programId)
-      .eq('date', date);
-    if (sessionError) throw sessionError;
+    await programExecutionService.annotate({ programId, date, status: 'planned' });
   }
 
   async completeDay(programId: string, date: string, programType: ProgramType) {
     if (!supabase) throw new Error('Supabase не инициализирован');
-    const userId = await this.getSessionUserId();
-    const { error: sessionError } = await supabase
-      .from('program_sessions')
-      .update({ status: 'completed', execution_reason: null })
-      .eq('program_id', programId)
-      .eq('date', date);
-    if (sessionError) throw sessionError;
+    const { userId } = await programExecutionService.annotate({ programId, date, programType, status: 'completed' });
 
     const { data: trustRow } = await supabase
       .from('ai_trust_scores')
@@ -182,23 +171,16 @@ class ProgramDeliveryService {
       .from(programType === 'nutrition' ? 'nutrition_programs' : 'training_programs')
       .update({ status: 'active' })
       .eq('id', programId);
-
   }
 
   async skipDay(
     programId: string,
     date: string,
-    _programType: ProgramType,
+    programType: ProgramType,
     reason: 'fatigue' | 'pose_risk' | 'user_override' = 'user_override'
   ) {
     if (!supabase) throw new Error('Supabase не инициализирован');
-    const userId = await this.getSessionUserId();
-    const { error: sessionError } = await supabase
-      .from('program_sessions')
-      .update({ status: 'skipped', execution_reason: reason })
-      .eq('program_id', programId)
-      .eq('date', date);
-    if (sessionError) throw sessionError;
+    const { userId } = await programExecutionService.annotate({ programId, date, programType, status: 'skipped', reason });
 
     const { data: trustRow } = await supabase
       .from('ai_trust_scores')
