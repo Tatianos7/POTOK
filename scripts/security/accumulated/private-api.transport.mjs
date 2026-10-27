@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {makeEnvironment,createAPIArgs,probeScript,restTag,nodeTag} from './private-api.mjs';
 import {authEnvironment,authArgs,authProbe,authMetadataSQL,authTag} from './private-auth.mjs';
-import {templateEnvironment,workerArgs,rowSnapshotSQL,assertOriginalRows} from './private-auth-ab.mjs';
+import {templateEnvironment,workerArgs,rowSnapshotSQL,assertOriginalRows,identityScopeSQL} from './private-auth-ab.mjs';
 import {readFile} from 'node:fs/promises';
 assert.equal(process.env.GITHUB_ACTIONS,'true');
 const prefix='potok-private-api-ci-'+process.env.GITHUB_RUN_ID;assert.match(prefix,/^potok-private-api-ci-[0-9]+$/);
@@ -55,7 +55,7 @@ try{
  const tableList=JSON.parse(adminSQL("SELECT jsonb_agg(jsonb_build_object('schema',n.nspname,'name',c.relname) ORDER BY 1) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('auth','public') AND c.relkind='r';")),original=JSON.parse(adminSQL(rowSnapshotSQL(tableList)+';')),authBefore=JSON.parse(adminSQL(authMetadataSQL+';'));
  const abEnv=templateEnvironment(authEnv);await writeFile(authEnvFile,Object.entries(abEnv).map(([k,v])=>k+'='+v).join('\n')+'\n',{mode:0o600});const workerEnvFile=path.join(directory,'worker.env');await writeFile(workerEnvFile,'TEST_EMAIL_A=potok-ab-cafe-a@example.test\nTEST_EMAIL_B=potok-ab-cafe-b@example.test\n',{mode:0o600});
  workerId=docker(workerArgs({name:prefix+'-worker',dbId,imageId:node.Id,envFile:workerEnvFile,source:await readFile(new URL('private-auth-ab-worker.mjs',import.meta.url),'utf8')}));docker(['start',workerId]);authId=docker(authArgs({name:prefix+'-auth',dbId,imageId:authImage.Id,binary:authBinary,envFile:authEnvFile}));docker(['start',authId]);
- const workerExit=docker(['wait',workerId]),workerLog=docker(['logs',workerId]);assert.equal(workerExit,'0','Synthetic OTP worker failed');assert(workerLog.includes('PRIVATE_AUTH_AB_HTTP_OK'));const preserved=assertOriginalRows(original,JSON.parse(adminSQL(rowSnapshotSQL(tableList)+';')));assert.deepEqual(JSON.parse(adminSQL(authMetadataSQL+';')),authBefore);assert(preserved.addedRows>0);
+ const workerExit=docker(['wait',workerId]),workerLog=docker(['logs',workerId]);assert.equal(workerExit,'0','Synthetic OTP worker failed');assert(workerLog.includes('PRIVATE_AUTH_AB_HTTP_OK'));const afterRows=JSON.parse(adminSQL(rowSnapshotSQL(tableList)+';')),preserved=assertOriginalRows(original,afterRows);assert.deepEqual(JSON.parse(adminSQL(authMetadataSQL+';')),authBefore);assert(preserved.addedRows>0);const abResult=JSON.parse(workerLog.split('\n').find(l=>l.startsWith('{"users":')));for(const t of JSON.parse(adminSQL(identityScopeSQL(abResult.users)+';')))assert.equal(t.rows,afterRows.find(s=>s.schema===t.schema&&s.name===t.name).hashes.length-original.find(s=>s.schema===t.schema&&s.name===t.name).hashes.length);
  console.log('PRIVATE_AUTH_AB_TRANSPORT_OK: real local OTP for A/B, actual JWT validation, own profile creation, foreign access and protected writes denied; original rows/schema preserved; minimal synthetic profile/false-capability fixture only');
 }catch(e){
  console.error('PRIVATE_API_TRANSPORT_FAILED');

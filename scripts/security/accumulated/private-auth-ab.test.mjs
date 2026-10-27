@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import {connect} from 'node:net';
 import {readFile} from 'node:fs/promises';
 import {createMailCapture} from './private-auth-ab-worker.mjs';
-import {assertOriginalRows,rowSnapshotSQL,templateEnvironment,workerArgs,workerHash} from './private-auth-ab.mjs';
+import {assertOriginalRows,rowSnapshotSQL,templateEnvironment,workerArgs,workerHash,identityScopeSQL} from './private-auth-ab.mjs';
 import {authEnvironment} from './private-auth.mjs';
 const hash=s=>createHash('sha256').update(s).digest('hex');let passed=0;const test=async(name,fn)=>{await fn();passed++;console.log('PASS '+name);};
 await test('original duplicate row multiplicities must survive while bounded synthetic rows are added',()=>{
@@ -11,6 +11,9 @@ await test('original duplicate row multiplicities must survive while bounded syn
 });
 await test('new data outside Auth/profile scope and same-count historical tamper are rejected',()=>{
  const old=[{schema:'public',name:'food_diary_entries',hashes:[hash('preserved')]}];assert.throws(()=>assertOriginalRows(old,[{...old[0],hashes:[hash('preserved'),hash('extra')]}]));assert.throws(()=>assertOriginalRows(old,[{...old[0],hashes:[hash('changed')]}]));assert.throws(()=>rowSnapshotSQL([{schema:'private',name:'x'}]));
+});
+await test('AMR records are bounded to the two new sessions and identity SQL rejects injected IDs',()=>{
+ const old=[{schema:'auth',name:'mfa_amr_claims',hashes:[hash('old')]}];assert.deepEqual(assertOriginalRows(old,[{...old[0],hashes:[hash('old'),hash('new session amr')]}]),{originalRows:1,addedRows:1});const users=[{id:'11111111-1111-4111-8111-111111111111'},{id:'22222222-2222-4222-8222-222222222222'}];assert(identityScopeSQL(users).includes('session_id IN(SELECT id FROM auth.sessions WHERE user_id::text IN'));assert.throws(()=>identityScopeSQL([{id:"'; DROP TABLE auth.users;--"},users[1]]));
 });
 await test('controlled loopback endpoint/template overrides preserve the existing key and role/cleanup guards',()=>{
  const before=authEnvironment('synthetic','a'.repeat(128)),after=templateEnvironment(before);assert.deepEqual(Object.keys(after).filter(k=>before[k]!==after[k]).sort(),['API_EXTERNAL_URL','GOTRUE_API_PORT','GOTRUE_MAILER_TEMPLATES_CONFIRMATION','GOTRUE_MAILER_TEMPLATES_MAGIC_LINK','GOTRUE_SITE_URL','PORT']);assert.equal(after.GOTRUE_JWT_SECRET,before.GOTRUE_JWT_SECRET);assert.throws(()=>templateEnvironment({...before,GOTRUE_SMTP_HOST:'external.invalid'}));
