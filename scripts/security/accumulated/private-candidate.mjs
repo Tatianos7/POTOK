@@ -90,8 +90,11 @@ export function buildInstall(sources,followups,tables,fingerprint,boundary){
 }
 export function validateTarget(target,original,volume){
  assert.equal(target.Name,'/'+candidateName);assert.equal(original.Name,'/'+originalName);
- for(const c of [target,original]){assert.match(c.Id,/^[a-f0-9]{64}$/);assert(c.State.Running&&c.State.Health?.Status==='healthy');assert.equal(c.Config.Image,imageName);}
+ for(const c of [target,original]){assert.match(c.Id,/^[a-f0-9]{64}$/);assert(c.State.Running&&c.State.Health?.Status==='healthy');}
+ assert.equal(original.Config.Image,imageName);
  assert.notEqual(target.Id,original.Id);assert.match(target.Image,/^sha256:[a-f0-9]{64}$/);assert.equal(target.Image,original.Image);
+ // docker create by immutable ID records that ID in Config.Image, not the tag.
+ assert([imageName,original.Image].includes(target.Config.Image),'Unexpected candidate image reference');
  assert.equal(target.HostConfig.NetworkMode,'none');assert.deepEqual(target.HostConfig.PortBindings??{},{});assert(Object.values(target.NetworkSettings.Ports??{}).every(bindings=>bindings===null),'Published ports are prohibited');
  assert.equal(target.HostConfig.Privileged,false);assert.equal(target.HostConfig.PidMode,'');assert.equal(target.HostConfig.IpcMode,'private');
  assert.equal(target.Config.User,'postgres');assert.equal(target.Config.Entrypoint?.[0],'postgres');

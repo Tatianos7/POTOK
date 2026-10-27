@@ -183,7 +183,9 @@ try{
   const original=structuredClone(clone);original.Id='b'.repeat(64);original.Name='/'+originalName;original.Mounts[0].Name=originalName;
   const volume={Name:candidateName,Driver:'local',Options:null,Labels:{'potok.purpose':'security-test-copy'}};
   assert.equal(validateTarget(clone,original,volume),clone.Id);
-  for(const change of [c=>c.Name=original.Name,c=>c.Id=original.Id,c=>c.HostConfig.NetworkMode='bridge',c=>c.HostConfig.PortBindings={'5432/tcp':[{HostPort:'5432'}]},c=>c.Mounts[0].Name=originalName,c=>c.Mounts.push({Type:'bind'}),c=>c.Image='sha256:'+'d'.repeat(64),c=>c.Config.User='root',c=>c.HostConfig.Privileged=true,c=>c.State.Health.Status='starting']){const c=structuredClone(clone);change(c);assert.throws(()=>validateTarget(c,original,volume));}
+  const byId=structuredClone(clone);byId.Config.Image=original.Image;assert.equal(validateTarget(byId,original,volume),clone.Id);
+  for(const change of [c=>c.Name=original.Name,c=>c.Id=original.Id,c=>c.HostConfig.NetworkMode='bridge',c=>c.HostConfig.PortBindings={'5432/tcp':[{HostPort:'5432'}]},c=>c.Mounts[0].Name=originalName,c=>c.Mounts.push({Type:'bind'}),c=>c.Image='sha256:'+'d'.repeat(64),c=>c.Config.Image='sha256:'+'d'.repeat(64),c=>c.Config.Image='unreviewed:latest',c=>c.Config.User='root',c=>c.HostConfig.Privileged=true,c=>c.State.Health.Status='starting']){const c=structuredClone(byId);change(c);assert.throws(()=>validateTarget(c,original,volume));}
+  const badOriginal=structuredClone(original);badOriginal.Config.Image=original.Image;assert.throws(()=>validateTarget(byId,badOriginal,volume));
   assert.throws(()=>validateTarget(clone,original,{...volume,Options:{device:'/private'}}));
   assert.throws(()=>boundaryQuery('SELECT true;'));
  });
