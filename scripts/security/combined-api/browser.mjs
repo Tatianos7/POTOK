@@ -8,6 +8,7 @@ import path from 'node:path';
 import {createServer} from 'vite';
 import react from '@vitejs/plugin-react';
 import {chromium} from 'playwright';
+import {verifyProfileRecovery} from './profile-recovery.mjs';
 const root=process.env.POTOK_PHOTO_AUTH_DIR;
 assert(root && path.basename(root)==='potok-photo-http-acceptance');
 assert.equal(process.env.GITHUB_ACTIONS,'true','Combined application fixture is CI-only');
@@ -94,6 +95,8 @@ try{
  const foreign=await page.evaluate(async id=>{const r=await window.__potokAcceptance.client.from('user_profiles').select('id_user').eq('id_user',id);return {data:r.data,error:Boolean(r.error)};},a);assert.deepEqual(foreign,{data:[],error:false});
  assert.equal((await remote(page,b)).is_admin,false);assert.equal((await remote(page,b)).has_premium,false);
  console.log('PASS actual A-to-B session change preserves A queue and denies foreign profile writes/reads');
+ stage='legacy queue and offline profile recovery';
+ await verifyProfileRecovery({page,context,a,b,remote});
  stage='verified UI authority';
  const prepare=mode=>{const r=spawnSync(process.execPath,[fileURLToPath(new URL('./local-prepare.mjs',import.meta.url)),mode,b],{encoding:'utf8',timeout:120000});if(r.status!==0)console.error('Disposable UI authority failed');assert.equal(r.status,0);};
  const tokenHash=()=>page.evaluate(async()=>{const {data}=await window.__potokAcceptance.client.auth.getSession();const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(data.session.access_token));return Array.from(new Uint8Array(bytes)).map(x=>x.toString(16).padStart(2,'0')).join('');});
