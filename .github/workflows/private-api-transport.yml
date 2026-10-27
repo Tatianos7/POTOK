@@ -17,4 +17,5 @@ jobs:
         with:
           node-version: '24'
       - run: node scripts/security/accumulated/private-api.test.mjs
+      - run: node scripts/security/accumulated/private-auth.test.mjs
       - run: node scripts/security/accumulated/private-api.transport.mjs
