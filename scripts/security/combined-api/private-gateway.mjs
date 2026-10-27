@@ -43,7 +43,7 @@ export function createPrivateGateway({mode = 'private'} = {}) {
   const sockets = new Set(), upstreams = new Set();
   const server = createServer({maxHeaderSize: 16384}, async (req, res) => {
     const origin = req.headers.origin;
-    if (origin && origin !== 'http://127.0.0.1:55440') { res.writeHead(403); res.end(); return; }
+    if (origin && origin !== 'http://127.0.0.1:13005') { res.writeHead(403); res.end(); return; }
     const cors = origin ? {'Access-Control-Allow-Origin': origin, 'Vary': 'Origin'} : {};
     if (req.method === 'OPTIONS') {
       const method = req.headers['access-control-request-method'];

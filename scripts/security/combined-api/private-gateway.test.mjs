@@ -53,19 +53,19 @@ test('real HTTP gateway forwards only to fixed loopback services and fails close
     await t.test('ordinary credentials and query/body go to the expected local service', async () => {
       const response = await call('/rest/v1/user_profiles?id_user=eq.synthetic', {method: 'PATCH',
         headers: {Authorization: 'Bearer synthetic-user', 'Content-Type': 'application/json',
-          Origin: 'http://127.0.0.1:55440', Forwarded: 'host=external.test', 'Proxy-Authorization': 'drop'},
+          Origin: 'http://127.0.0.1:13005', Forwarded: 'host=external.test', 'Proxy-Authorization': 'drop'},
         body: JSON.stringify({first_name: 'Synthetic'})});
       assert.equal(response.status, 200);
       assert.deepEqual(await response.json(), {service: 'rest'});
       assert.equal(response.headers.get('set-cookie'), null);
-      assert.equal(response.headers.get('access-control-allow-origin'), 'http://127.0.0.1:55440');
+      assert.equal(response.headers.get('access-control-allow-origin'), 'http://127.0.0.1:13005');
       assert.deepEqual(seen.at(-1), {name: 'rest', path: '/user_profiles?id_user=eq.synthetic', method: 'PATCH',
         body: '{"first_name":"Synthetic"}', authorization: 'Bearer synthetic-user', forwarded: undefined, proxy: undefined});
       assert.equal((await call('/auth/v1/health').then(r => r.json())).service, 'auth');
     });
     await t.test('CORS preflight is bounded to the harness and allowed routes/headers', async () => {
       const before = seen.length;
-      const headers = {Origin: 'http://127.0.0.1:55440', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,apikey,x-client-info'};
+      const headers = {Origin: 'http://127.0.0.1:13005', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,apikey,x-client-info'};
       assert.equal((await call('/auth/v1/otp', {method: 'OPTIONS', headers})).status, 204);
       assert.equal((await call('/auth/v1/otp', {method: 'OPTIONS', headers: {...headers, Origin: 'https://external.test'}})).status, 403);
       assert.equal((await call('/auth/v1/otp', {method: 'OPTIONS', headers: {...headers, 'Access-Control-Request-Headers': 'x-forwarded-host'}})).status, 403);
