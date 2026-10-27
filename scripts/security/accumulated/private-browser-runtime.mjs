@@ -17,7 +17,7 @@ USER node
 ENTRYPOINT ["node", "/app/scripts/security/accumulated/private-browser-worker.mjs"]
 `;
 // Replaced only when reviewed runtime inputs change; runtime/controller are not image inputs.
-export const manifestHash = 'cd34a16cbe6cfb750bb23362828567270b6700fb25c6fbb962c5605b27a0f06a';
+export const manifestHash = '42905c3493a09729229f51aa89e1eccca47c0ca15c993af4462f882256d4de9e';
 export async function runtimeInputs(root) {
   const text = await readFile(path.join(root, 'scripts/security/accumulated/private-browser-runtime-inputs.json'), 'utf8');
   assert.equal(sha(text), manifestHash, 'Runtime manifest changed');

@@ -48,7 +48,7 @@ jobs:
         run: node --test scripts/security/legacy-premium/observations.test.mjs
 
       - name: Legacy program quarantine and execution annotation regressions
-        run: node --test scripts/security/legacy-plan-quarantine/client.test.mjs
+        run: node --test scripts/security/legacy-plan-quarantine/client.test.mjs scripts/security/legacy-plan-quarantine/execution-transition.test.mjs
 
       - name: Entitlement account scope and Free compatibility
         run: npx --no-install tsx --test src/services/__tests__/entitlementService.account-scope.test.ts

@@ -6,6 +6,7 @@ import ts from 'typescript';
 import {login,localFetch,status} from '../data-api-explicit-grants/local-auth.mjs';
 import {DRAFT,REVIEW} from '../catalog-authority/fixture.mjs';
 import {PA,PB} from '../program-reads/fixture.mjs';
+import {checkExecutionTransition} from './execution-transition.mjs';
 import {tables as historyTables,insertPayload as historyInsert} from '../program-history/fixture.mjs';
 function prepare(mode,...ids){const r=spawnSync(process.execPath,[fileURLToPath(new URL('./local-prepare.mjs',import.meta.url)),mode,...ids],{encoding:'utf8',timeout:120000});if(r.status!==0)console.error(r.stderr);assert.equal(r.status,0,'Eight-candidate '+mode);}
 async function request(route,user,method='GET',body,extraHeaders={}){const r=await localFetch(status.API_URL+'/rest/v1/'+route,{method,headers:{apikey:status.ANON_KEY,Authorization:'Bearer '+(user?.token??status.ANON_KEY),'Content-Type':'application/json',Prefer:'return=representation,resolution=merge-duplicates',...extraHeaders},...(body===undefined?{}:{body:JSON.stringify(body)})});const s=await r.text();return{status:r.status,body:s?JSON.parse(s):null};}
@@ -125,10 +126,12 @@ try{
  console.log('PREMIUM_CLIENT_HTTP_OK: actual EntitlementService, verified grant/revoke on same JWT; legacy-paid denial and Free preservation; no provider integration');
  stage='legacy plan quarantine';
  const oldSession=await ok(request('program_sessions?id=eq.'+PA,a));assert.equal(oldSession.length,1);
+ await checkExecutionTransition({phase:'before',a,b,status,localFetch,request});
  prepare('quarantine-review');
  // GET projections may reach a new SQL column before the write-body cache has
  // reloaded. A zero-row PATCH checks the actual write cache without changing data.
  stage='quarantine write-cache readiness';for(let n=0;;n++){const r=await request('program_sessions?id=eq.00000000-0000-0000-0000-000000000000',a,'PATCH',{execution_reason:null},{'Prefer':'return=minimal'});if(r.status===204)break;assert.equal(r.body?.code,'PGRST204');assert(n<39);await new Promise(resolve=>setTimeout(resolve,250));}
+ await checkExecutionTransition({phase:'after',a,b,status,localFetch,request});
  for(const table of ['nutrition_programs','training_programs']){
   stage='legacy plan quarantine '+table+' creation/head/delete';
   await denied(request(table,a,'POST',{user_id:a.id},{'Prefer':'return=minimal'}));
