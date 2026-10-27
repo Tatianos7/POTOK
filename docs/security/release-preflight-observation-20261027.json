@@ -1,0 +1,93 @@
+{
+  "target": "POTOK",
+  "projectRef": "dtsdnhbcwpbfrhcazqkb",
+  "readOnly": true,
+  "facts": {
+    "trgm": {
+      "owner": "supabase_admin",
+      "schema": "public",
+      "relocatable": true,
+      "ordinary_actor_owner_access": false
+    },
+    "actor": "postgres",
+    "protocol": "potok-release-preflight-v1",
+    "actor_super": false,
+    "observed_at": "2026-10-27T10:39:47.666027+00:00",
+    "actor_bypass": true,
+    "public_tables": 81,
+    "session_actor": "postgres",
+    "session_columns": [
+      {
+        "name": "id",
+        "type": "uuid"
+      },
+      {
+        "name": "program_id",
+        "type": "uuid"
+      },
+      {
+        "name": "date",
+        "type": "date"
+      },
+      {
+        "name": "session_type",
+        "type": "text"
+      },
+      {
+        "name": "plan_payload",
+        "type": "jsonb"
+      },
+      {
+        "name": "status",
+        "type": "text"
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone"
+      },
+      {
+        "name": "day_date",
+        "type": "date"
+      }
+    ],
+    "replication_role": "origin",
+    "server_version_num": 170006,
+    "candidate_namespaces": [],
+    "plan_tables_reviewed": 9,
+    "rest_schema_settings": [],
+    "client_truncate_tables": 63,
+    "public_metadata_sha256": "427466d34aa57984cb4449a3532ece63ece1d27b61f6ccdfbea86c5cf4c878af",
+    "execution_reason_present": false,
+    "protected_profile_write_columns": 4
+  },
+  "advisors": {
+    "function_search_path_mutable": {
+      "count": 1,
+      "level": "WARN",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+    },
+    "extension_in_public": {
+      "count": 1,
+      "level": "WARN",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+    },
+    "anon_security_definer_function_executable": {
+      "count": 1,
+      "level": "WARN",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+    },
+    "authenticated_security_definer_function_executable": {
+      "count": 1,
+      "level": "WARN",
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+    },
+    "auth_leaked_password_protection": {
+      "count": 1,
+      "level": "WARN",
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  },
+  "countsComparableToCopyBlocks": false,
+  "sourceOfFacts": "Supabase connector; metadata-only transaction and security advisors; no user rows read",
+  "approval": false
+}

@@ -1,0 +1,53 @@
+name: Release source packet and recovery decisions
+on:
+  pull_request:
+    paths:
+      - 'scripts/security/release-packet/**'
+      - 'scripts/security/accumulated/inputs.mjs'
+      - 'scripts/security/accumulated/restored-twelve.mjs'
+      - 'scripts/security/accumulated/checks.mjs'
+      - 'scripts/security/accumulated/private-candidate.mjs'
+      - 'scripts/security/platform-defaults/check.sql'
+      - 'src/services/programExecutionService.ts'
+      - 'src/services/programDeliveryService.ts'
+      - '.node-version'
+      - '.github/workflows/release-review-packet.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  public-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test_admin
+          POSTGRES_PASSWORD: disposable-test-only
+          POSTGRES_DB: potok_release_review_test
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_admin -d potok_release_review_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Verify twelve public pinned inputs and exact review artifacts
+        run: node scripts/security/release-packet/prepare.mjs --verify
+      - name: Fail-closed recovery and source artifact policies
+        run: node --test scripts/security/release-packet/state.test.mjs
+      - name: Locked native test driver only
+        run: npm ci --prefix scripts/security/data-api-explicit-grants --ignore-scripts
+      - name: Exact review SQL cannot reach the first candidate
+        env:
+          TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_release_review_test
+          SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
+        run: node scripts/security/release-packet/guard.test.mjs
