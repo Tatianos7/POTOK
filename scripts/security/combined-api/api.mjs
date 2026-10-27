@@ -17,7 +17,7 @@ async function maskedProgramReads(user,id){
  const d=await ok(rpc('get_program_day_details',user,{p_program_id:id,p_date:'2026-10-26'}));maskedExplanation(d.explainability[0]);assert.equal(d.day.targets.calories,123);
  const days=await ok(rpc('get_program_days',user,{p_program_id:id}));assert.equal(days[0].explainability_summary.reason_code,'synthetic_reason');
 }
-async function ok(p,expected=200){const r=await p;assert.equal(r.status,expected,'Authority/profile HTTP status='+r.status+' code='+(r.body?.code??'none'));return r.body;}
+async function ok(p,expected=200){const r=await p;assert.equal(r.status,expected,'Authority/profile HTTP status='+r.status+' code='+(r.body?.code??'none')+(r.body?.code==='PGRST204'?' synthetic-schema-message='+String(r.body?.message??'').slice(0,240):''));return r.body;}
 async function denied(p){const r=await p;assert([401,403].includes(r.status),'Expected permission denial; status='+r.status+' code='+(r.body?.code??'none')+(r.body?.code==='PGRST204'?' synthetic-schema-message='+String(r.body?.message??'').slice(0,240):''));assert.equal(r.body?.code,'42501');}
 async function loadService(file,name){
  const source=await readFile('src/services/'+file,'utf8');
@@ -126,7 +126,9 @@ try{
  stage='legacy plan quarantine';
  const oldSession=await ok(request('program_sessions?id=eq.'+PA,a));assert.equal(oldSession.length,1);
  prepare('quarantine-review');
- for(let n=0;;n++){const r=await request('program_sessions?select=execution_reason&id=eq.'+PA,a);if(r.status===200)break;assert(['42703','PGRST204'].includes(r.body?.code));assert(n<39);await new Promise(resolve=>setTimeout(resolve,250));}
+ // GET projections may reach a new SQL column before the write-body cache has
+ // reloaded. A zero-row PATCH checks the actual write cache without changing data.
+ stage='quarantine write-cache readiness';for(let n=0;;n++){const r=await request('program_sessions?id=eq.00000000-0000-0000-0000-000000000000',a,'PATCH',{execution_reason:null},{'Prefer':'return=minimal'});if(r.status===204)break;assert.equal(r.body?.code,'PGRST204');assert(n<39);await new Promise(resolve=>setTimeout(resolve,250));}
  for(const table of ['nutrition_programs','training_programs']){
   stage='legacy plan quarantine '+table+' creation/head/delete';
   await denied(request(table,a,'POST',{user_id:a.id},{'Prefer':'return=minimal'}));
@@ -144,7 +146,7 @@ try{
   await denied(request(table+'?on_conflict=id',a,'POST',{id:PA,...historyInsert(table,PA)},{'Prefer':'return=minimal,resolution=merge-duplicates'}));
  }
  await denied(request('program_sessions?id=eq.'+PA,a,'PATCH',{day_date:'2026-10-27'},{'Prefer':'return=minimal'}));
- for(const status of ['paused','active'])await ok(request('nutrition_programs?id=eq.'+PA,a,'PATCH',{status},{'Prefer':'return=minimal'}),204);
+ stage='quarantine own status/reason writes';for(const status of ['paused','active'])await ok(request('nutrition_programs?id=eq.'+PA,a,'PATCH',{status},{'Prefer':'return=minimal'}),204);
  for(const [status,execution_reason] of [['skipped','fatigue'],['planned',null],['completed',null]]){
   const r=await ok(request('program_sessions?id=eq.'+PA,a,'PATCH',{status,execution_reason}));assert.equal(r.length,1);assert.equal(r[0].status,status);assert.deepEqual(r[0].plan_payload,oldSession[0].plan_payload);assert.equal(r[0].day_date,oldSession[0].day_date);assert.equal(r[0].day_date,'2026-10-25');
  }

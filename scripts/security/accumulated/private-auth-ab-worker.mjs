@@ -31,13 +31,13 @@ export function createMailCapture(allowed){
   if(req.method==='GET'&&req.url==='/template'){res.setHeader('Content-Type','text/html; charset=utf-8');res.end('<p>POTOK_OTP_BEGIN{{ .Token }}POTOK_OTP_END</p>');}
   else{res.statusCode=404;res.end();}
  });
- return {smtp,http,codes,counts,get rejected(){return rejected;},async start(){await Promise.all([new Promise((r,j)=>{smtp.once('error',j);smtp.listen(11025,'127.0.0.1',r);}),new Promise((r,j)=>{http.once('error',j);http.listen(33003,'127.0.0.1',r);})]);},async close(){for(const s of sockets)s.destroy();http.closeAllConnections();await Promise.all([new Promise(r=>smtp.close(r)),new Promise(r=>http.close(r))]);}};
+ return {smtp,http,codes,counts,get rejected(){return rejected;},async start(){await Promise.all([new Promise((r,j)=>{smtp.once('error',j);smtp.listen(11025,'127.0.0.1',r);}),new Promise((r,j)=>{http.once('error',j);http.listen(13003,'127.0.0.1',r);})]);},async close(){for(const s of sockets)s.destroy();http.closeAllConnections();await Promise.all([new Promise(r=>smtp.close(r)),new Promise(r=>http.close(r))]);}};
 }
 export async function runABWorker(){
  const emails=[process.env.TEST_EMAIL_A,process.env.TEST_EMAIL_B],capture=createMailCapture(emails),users=[];let stage='capture-start';
  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  const check=(v)=>{if(!v)throw Error('Check failed');};
- async function auth(route,body,token){const r=await fetch('http://127.0.0.1:33002/'+route,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(10000)});return {status:r.status,body:await r.json()};}
+ async function auth(route,body,token){const r=await fetch('http://127.0.0.1:13002/'+route,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{}),redirect:'error',signal:AbortSignal.timeout(10000)});return {status:r.status,body:await r.json()};}
  async function api(route,user,method='GET',body){const r=await fetch('http://127.0.0.1:33001/'+route,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+user.token,Prefer:'return=representation'},...(body===undefined?{}:{body:JSON.stringify(body)}),redirect:'error',signal:AbortSignal.timeout(10000)});const t=await r.text();return{status:r.status,body:t?JSON.parse(t):null};}
  try{
   await capture.start();console.log('PRIVATE_AB_CAPTURE_READY');stage='auth-ready';let ready=false;

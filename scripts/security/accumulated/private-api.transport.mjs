@@ -33,10 +33,10 @@ try{
  const adminSQL=sql=>docker(['exec','-i','--env','PGPASSWORD=disposable-test-only',dbId,'psql','-X','-qAt','-h','127.0.0.1','-U','test_admin','-d','postgres','--set','ON_ERROR_STOP=1'],sql);
  adminSQL("CREATE ROLE supabase_auth_admin LOGIN PASSWORD 'synthetic-auth-only';CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin;SET ROLE supabase_auth_admin;CREATE TABLE auth.schema_migrations(version text PRIMARY KEY);INSERT INTO auth.schema_migrations VALUES('sentinel-no-automatic-migrate');RESET ROLE;");
  const before=JSON.parse(adminSQL(authMetadataSQL+';'));
- const authEnv=authEnvironment('synthetic-auth-only','a'.repeat(128)),authEnvFile=path.join(directory,'auth.env');await writeFile(authEnvFile,Object.entries(authEnv).map(([k,v])=>k+'='+v).join('\n')+'\n',{mode:0o600});
+ const authEnv=templateEnvironment(authEnvironment('synthetic-auth-only','a'.repeat(128))),authEnvFile=path.join(directory,'auth.env');await writeFile(authEnvFile,Object.entries(authEnv).map(([k,v])=>k+'='+v).join('\n')+'\n',{mode:0o600});
  const authImage=JSON.parse(docker(['image','inspect',authTag]))[0],authBinary=authImage.Config.Entrypoint?.[0]??authImage.Config.Cmd?.[0];
  authId=docker(authArgs({name:prefix+'-auth',dbId,imageId:authImage.Id,binary:authBinary,envFile:authEnvFile}));docker(['start',authId]);
- assert.equal(docker(['run','--rm','-i','--network','container:'+dbId,'--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--entrypoint','node',node.Id,'--input-type=module'],authProbe()),'PRIVATE_AUTH_HTTP_READY_OK');
+ assert.equal(docker(['run','--rm','-i','--network','container:'+dbId,'--read-only','--cap-drop','ALL','--security-opt','no-new-privileges','--entrypoint','node',node.Id,'--input-type=module'],authProbe().replaceAll(':33002',':13002')),'PRIVATE_AUTH_HTTP_READY_OK');
  await new Promise(r=>setTimeout(r,1000));assert.deepEqual(JSON.parse(adminSQL(authMetadataSQL+';')),before);assert.equal(adminSQL('SELECT version FROM auth.schema_migrations;'),'sentinel-no-automatic-migrate');
  const auth=JSON.parse(docker(['inspect',authId]))[0];assert.deepEqual(auth.Config.Cmd,['serve']);assert.equal(auth.HostConfig.NetworkMode,'container:'+dbId);
  console.log('PRIVATE_AUTH_SERVE_TRANSPORT_OK: real Auth v2.197.0 serve/health; sentinel schema unchanged and no migration path executed; synthetic fixture only');
