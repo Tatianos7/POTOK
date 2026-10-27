@@ -24,6 +24,8 @@ The fixed isolated synthetic workflow already applies later paywall/projection/h
 
 ## Full-copy browser preparation and remaining gates
 
+The next concrete package is `private-browser-package-20261027.md`: separate public runtime preparation and one-shot fixed-target full-copy profile browser controller. It reuses captured A/B identities and the pre-A/B original row multiset. Package preparation/CI alone do not imply owner execution. Do not repeat prior installers or publish private evidence.
+
 The #216 exact-head browser run passed legacy recovery, account isolation and fail-closed cached privileges on its synthetic schema, alongside production build and root regressions. The next transport implementation is documented in `private-browser-gateway-20261027.md`: a narrow fixed-loopback gateway used by the same real application browser harness. It is not yet an owner browser launcher and does not change the full-copy pending status below.
 
 The owner can pause Mac work now. Preparation and source/CI review run without their terminal; full-copy execution requires that Docker machine again (or its existing remote desktop). This work does not expose its isolated database/API on host or public ports.
