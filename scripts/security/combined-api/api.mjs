@@ -18,7 +18,7 @@ async function maskedProgramReads(user,id){
  const days=await ok(rpc('get_program_days',user,{p_program_id:id}));assert.equal(days[0].explainability_summary.reason_code,'synthetic_reason');
 }
 async function ok(p,expected=200){const r=await p;assert.equal(r.status,expected,'Authority/profile HTTP status='+r.status+' code='+(r.body?.code??'none'));return r.body;}
-async function denied(p){const r=await p;assert([401,403].includes(r.status),'Expected permission denial; status='+r.status+' code='+(r.body?.code??'none'));assert.equal(r.body?.code,'42501');}
+async function denied(p){const r=await p;assert([401,403].includes(r.status),'Expected permission denial; status='+r.status+' code='+(r.body?.code??'none')+(r.body?.code==='PGRST204'?' synthetic-schema-message='+String(r.body?.message??'').slice(0,240):''));assert.equal(r.body?.code,'42501');}
 async function loadService(file,name){
  const source=await readFile('src/services/'+file,'utf8');
  const javascript=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
