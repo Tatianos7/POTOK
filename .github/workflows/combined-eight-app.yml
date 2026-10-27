@@ -2,6 +2,7 @@ name: Combined security and program explanation API acceptance
 on:
   pull_request:
     paths:
+      - '.node-version'
       - 'scripts/security/combined-api/**'
       - 'scripts/security/server-premium/**'
       - 'scripts/security/program-reads/**'
@@ -36,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version-file: .node-version
       - run: npm ci
       - name: Restricted local browser gateway protocol
         run: node --test scripts/security/combined-api/private-gateway.test.mjs
