@@ -8,14 +8,16 @@ import {makeEnvironment,createAPIArgs,probeScript,restTag,nodeTag} from './priva
 assert.equal(process.env.GITHUB_ACTIONS,'true');
 const prefix='potok-private-api-ci-'+process.env.GITHUB_RUN_ID;assert.match(prefix,/^potok-private-api-ci-[0-9]+$/);
 const dbName=prefix+'-db',apiName=prefix+'-rest',directory=await mkdtemp(path.join(tmpdir(),'potok-private-api-ci-'));
-const docker=(args,input)=>{const r=spawnSync('docker',args,{input,encoding:'utf8',timeout:180000,maxBuffer:4*1024*1024});assert.equal(r.status,0,'Disposable transport operation failed');return r.stdout.trim();};
+const docker=(args,input)=>{const r=spawnSync('docker',args,{input,encoding:'utf8',timeout:180000,maxBuffer:4*1024*1024});if(r.status!==0)console.error('Fixture docker '+args[0]+': '+(r.stderr??'').replaceAll('synthetic-api-only','[synthetic]').replaceAll('disposable-test-only','[synthetic]'));assert.equal(r.status,0,'Disposable transport operation failed');return r.stdout.trim();};
 let dbId,apiId;
 try{
  for(const image of ['postgres:17',restTag,nodeTag])docker(['pull',image]);
  dbId=docker(['create','--name',dbName,'--network','none','--env','POSTGRES_USER=test_admin','--env','POSTGRES_PASSWORD=disposable-test-only','--env','POSTGRES_DB=postgres','postgres:17']);
  docker(['start',dbId]);
- for(let i=0;i<40;i++){const r=spawnSync('docker',['exec',dbId,'pg_isready','-U','test_admin','-d','postgres'],{stdio:'ignore'});if(r.status===0)break;await new Promise(r=>setTimeout(r,500));}
- docker(['exec','-i',dbId,'psql','-X','-U','test_admin','-d','postgres','--set','ON_ERROR_STOP=1'],`CREATE ROLE anon;CREATE ROLE authenticator LOGIN NOINHERIT PASSWORD 'synthetic-api-only';GRANT anon TO authenticator;CREATE SCHEMA extensions;CREATE SCHEMA potok_delivery;GRANT USAGE ON SCHEMA public TO anon;`);
+ // The image's temporary init server accepts Unix sockets before it restarts.
+ // Wait for the final TCP listener, then use that listener for fixture setup.
+ let ready=false;for(let i=0;i<60;i++){const r=spawnSync('docker',['exec',dbId,'pg_isready','-h','127.0.0.1','-U','test_admin','-d','postgres'],{stdio:'ignore'});if(r.status===0){ready=true;break;}await new Promise(r=>setTimeout(r,500));}assert(ready,'Final TCP PostgreSQL listener did not become ready');
+ docker(['exec','-i','--env','PGPASSWORD=disposable-test-only',dbId,'psql','-X','-h','127.0.0.1','-U','test_admin','-d','postgres','--set','ON_ERROR_STOP=1'],`CREATE ROLE anon;CREATE ROLE authenticator LOGIN NOINHERIT PASSWORD 'synthetic-api-only';GRANT anon TO authenticator;CREATE SCHEMA extensions;CREATE SCHEMA potok_delivery;GRANT USAGE ON SCHEMA public TO anon;`);
  const environment=makeEnvironment('synthetic-api-only','a'.repeat(128)),envFile=path.join(directory,'api.env');await writeFile(envFile,Object.entries(environment).map(([k,v])=>k+'='+v).join('\n')+'\n',{mode:0o600});
  const rest=JSON.parse(docker(['image','inspect',restTag]))[0],node=JSON.parse(docker(['image','inspect',nodeTag]))[0];
  const binary=rest.Config.Entrypoint?.[0]??rest.Config.Cmd?.[0];
