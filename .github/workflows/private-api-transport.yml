@@ -1,0 +1,20 @@
+name: Private API isolated transport
+on:
+  pull_request:
+    paths:
+      - 'scripts/security/accumulated/**'
+      - '.github/workflows/private-api-transport.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  transport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node scripts/security/accumulated/private-api.test.mjs
+      - run: node scripts/security/accumulated/private-api.transport.mjs
