@@ -14,7 +14,9 @@ const dbName=prefix+'-db',apiName=prefix+'-rest',directory=await mkdtemp(path.jo
 const docker=(args,input)=>{const r=spawnSync('docker',args,{input,encoding:'utf8',timeout:180000,maxBuffer:4*1024*1024});if(r.status!==0)console.error('Fixture docker '+args[0]+': '+(r.stderr??'').replaceAll('synthetic-api-only','[synthetic]').replaceAll('disposable-test-only','[synthetic]'));assert.equal(r.status,0,'Disposable transport operation failed');return r.stdout.trim();};
 let dbId,apiId,authId,workerId;
 try{
- for(const image of ['postgres:17',restTag,nodeTag,authTag])docker(['pull',image]);
+ // Official maintainer mirror avoids ECR public's shared-runner data limit.
+ // Owner runtime still uses its already captured ECR image and never pulls here.
+ const authMirror='supabase/gotrue:v2.197.0';for(const image of ['postgres:17',restTag,nodeTag,authMirror]){console.log('CI_PULL '+image);docker(['pull',image]);}docker(['tag',authMirror,authTag]);
  dbId=docker(['create','--name',dbName,'--network','none','--env','POSTGRES_USER=test_admin','--env','POSTGRES_PASSWORD=disposable-test-only','--env','POSTGRES_DB=postgres','postgres:17']);
  docker(['start',dbId]);
  // The image's temporary init server accepts Unix sockets before it restarts.
