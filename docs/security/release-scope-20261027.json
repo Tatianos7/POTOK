@@ -1,0 +1,241 @@
+{
+  "schema": "potok-release-source-review-v1",
+  "date": "2026-10-27",
+  "base": "555d3263ce20e70ae59576e9dd3e2d2c4a97240e",
+  "candidate": "4e4bbe0bb05a8fb1fb6f47d4affd0b039a7a68ca",
+  "candidateTree": "673153e88e72aafb152247363d8c358a6d837954",
+  "baseIsAncestor": true,
+  "changedFiles": 112,
+  "applicationChangedFiles": 5,
+  "reviewAndInfrastructureChangedFiles": 107,
+  "deploymentWorkflowChanged": false,
+  "newMigrationFiles": [],
+  "deploymentBranchTriggers": [
+    "main",
+    "master",
+    "feature/initial-setup",
+    "feature/workout-diary"
+  ],
+  "buildNodeVersions": {
+    "pagesDeployment": "18",
+    "rootValidation": "20",
+    "combinedBrowserValidation": "22",
+    "packagedBrowser": "24.22.1"
+  },
+  "application": [
+    {
+      "path": "src/pages/MyProgram.tsx",
+      "beforeBlob": "aba08cee4e9599dd6c16b2a9bb5b0211e82a571c",
+      "afterBlob": "096ee407a04d56637e7eca80c1f5385572cb1b5d",
+      "sha256": "db0e18831f551d2d15c01c2317ee8f4ae181a18ba0d9c52afb5b810f1217c8cc"
+    },
+    {
+      "path": "src/services/entitlementService.ts",
+      "beforeBlob": "18ae262f9f346478640ba2a318fbd87e28e18a69",
+      "afterBlob": "ebf3f5ead33e888f594c45e89f81cb3a54f14025",
+      "sha256": "6a8b7c54cb3f5087b3f2a6a3216fa92123915fc0cd4d9755e58cd246f10c2d6c"
+    },
+    {
+      "path": "src/services/foodIngestionService.ts",
+      "beforeBlob": "5894ba6314123fd26f154a90b5b4f1676d988f49",
+      "afterBlob": "06ff21fcbffbaa51830ec09e3b7bc1a61e3c73c7",
+      "sha256": "951a1580250d292d188c5e22cd0a799985cb453197b1f08bbafb988318c00256"
+    },
+    {
+      "path": "src/services/programDeliveryService.ts",
+      "beforeBlob": "f680d736715dd40386b1f2865d5cc05a18ffafdb",
+      "afterBlob": "587f421cceadf234ab35115eb7a5266bbc3b3e25",
+      "sha256": "0731844c9eca4c68836d0b8f127546934769ec3a687e5773d79ba1b9b492d879"
+    },
+    {
+      "path": "src/services/programGenerationService.ts",
+      "beforeBlob": "4c5f74f99b0a350c24018abed1b5296d998db80f",
+      "afterBlob": "41e0f9dafab2fbe99bbcc45707b32786031e23b2",
+      "sha256": "66586bd5a3f66966adbc56c8ff5805392011e695cdd383d818311488f342c23a"
+    }
+  ],
+  "existingCore": [
+    {
+      "path": "src/pages/Login.tsx",
+      "blob": "aabc6c2b74daecff3c2f31b6f3874257fb1aebd2",
+      "unchangedFromBase": true
+    },
+    {
+      "path": "src/pages/Profile.tsx",
+      "blob": "92b19f9c885d1f1a82c75b96cc65eb6bf72c3696",
+      "unchangedFromBase": true
+    },
+    {
+      "path": "src/context/AuthContext.tsx",
+      "blob": "4100e2d95ad6c9d585df8bb078046970aa54e483",
+      "unchangedFromBase": true
+    },
+    {
+      "path": "src/services/profileService.ts",
+      "blob": "881c9bda669768d5edc8852f0dcf834fafb82fe6",
+      "unchangedFromBase": true
+    },
+    {
+      "path": "src/services/adminAccessService.ts",
+      "blob": "b6c401e372b04bceb04ca01d02fc51de7a652df3",
+      "unchangedFromBase": true
+    }
+  ],
+  "sql": [
+    {
+      "order": 1,
+      "key": "truncate",
+      "ref": "c175e74d7a7c1077e4e8d6d4d8f67c960b06d677",
+      "path": "supabase/migration_drafts/client_truncate_containment_v1.sql",
+      "sha256": "007b8a1545824fbc724ce313b3be7258fc7e26fb3e6894c9b7e95bd578b120ec",
+      "sourceTerminator": "COMMIT",
+      "group": "original-eight",
+      "deploymentEligible": false
+    },
+    {
+      "order": 2,
+      "key": "profile",
+      "ref": "7f4f7e24fec497a22dea29dd14f4546115439129",
+      "path": "supabase/migration_drafts/profile_column_write_containment_v1.sql",
+      "sha256": "b781e7754732d12359cfff990ca855f75115695c283b08f9f221f785f5d529ea",
+      "sourceTerminator": "COMMIT",
+      "group": "original-eight",
+      "deploymentEligible": false
+    },
+    {
+      "order": 3,
+      "key": "anonymous",
+      "ref": "47e2ff8bd4937469576f8cfaceecaaefca33548e",
+      "path": "supabase/migration_drafts/anonymous_rpc_execute_containment_v1.sql",
+      "sha256": "a86d36788d3df576e6eaeeea45ed824e57a363409f213317a52d0cbccc9d3368",
+      "sourceTerminator": "COMMIT",
+      "group": "original-eight",
+      "deploymentEligible": false
+    },
+    {
+      "order": 4,
+      "key": "photos",
+      "ref": "c02608a5bbc7c828ea2a05f206d010e48d0720b1",
+      "path": "supabase/migration_drafts/measurement_photo_explicit_grants_review_v1.sql",
+      "sha256": "6f06553f7897bd621c9186f38d9c154317b4f42193bc6888b795180bcb04814b",
+      "sourceTerminator": "ROLLBACK",
+      "group": "original-eight",
+      "deploymentEligible": false
+    },
+    {
+      "order": 5,
+      "key": "finance",
+      "ref": "0419b2ec21ec225206e9e0715b8dd24f54c590ff",
+      "path": "supabase/migration_drafts/premium_finance_authority_review_v1.sql",
+      "sha256": "8f41f0f4fbaa7fc044d22bbe1dd758ab2a48134c4704f12ff859daaac804f977",
+      "sourceTerminator": "ROLLBACK",
+      "group": "original-eight",
+      "deploymentEligible": false
+    },
+    {
+      "order": 6,
+      "key": "authority",
+      "ref": "f542e5433ca377186f0a9e3d0e89ccbf64d91bc0",
+      "path": "supabase/migration_drafts/trusted_authority_id_user_review_v1.sql",
+      "sha256": "8447c5553cd07644c2725e4cd1eee1bb4cdbf584d515eecb0d96f382b161eb70",
+      "sourceTerminator": "ROLLBACK",
+      "group": "original-eight",
+      "deploymentEligible": false
+    },
+    {
+      "order": 7,
+      "key": "catalog",
+      "ref": "a3386a629a0c6d3e69f5224cdf47c9bbe6db2f85",
+      "path": "supabase/migration_drafts/catalog_authority_history_review_v1.sql",
+      "sha256": "d159e92807a0d14633616a4d686aa96e770445a9279c9ae1c315e9865158b36b",
+      "sourceTerminator": "ROLLBACK",
+      "group": "original-eight",
+      "deploymentEligible": false
+    },
+    {
+      "order": 8,
+      "key": "trgm",
+      "ref": "a1b91d8bfbfba8135478803605512e1014dbafcc",
+      "path": "scripts/security/pg-trgm/rehearsal.sql",
+      "sha256": "a22d809784f341030029be46fe3975c3842813b41eb57414ee17ab6d9e1a52d7",
+      "sourceTerminator": "ROLLBACK",
+      "group": "original-eight",
+      "deploymentEligible": false
+    },
+    {
+      "order": 9,
+      "key": "paywall",
+      "ref": "2e84692a3b86315b4824ba176ec48b6d808266f6",
+      "path": "scripts/security/server-premium/paywall-review.sql",
+      "sha256": "eec945610cdd3e3e94fe57b1c974f537ac01fc4b7ba78f14ba05158c6b92a07c",
+      "sourceTerminator": "ROLLBACK",
+      "group": "follow-up-four",
+      "deploymentEligible": false
+    },
+    {
+      "order": 10,
+      "key": "programRead",
+      "ref": "2e84692a3b86315b4824ba176ec48b6d808266f6",
+      "path": "scripts/security/program-reads/review.sql",
+      "sha256": "b6f3780740bf02267d34f58172115be005e829a3f6ff1b8244005fd6521162f0",
+      "sourceTerminator": "ROLLBACK",
+      "group": "follow-up-four",
+      "deploymentEligible": false
+    },
+    {
+      "order": 11,
+      "key": "history",
+      "ref": "2e84692a3b86315b4824ba176ec48b6d808266f6",
+      "path": "scripts/security/program-history/review.sql",
+      "sha256": "d27309df8b5612566ab7156ad31b90113a27ca485af7c64267304d336efb446a",
+      "sourceTerminator": "ROLLBACK",
+      "group": "follow-up-four",
+      "deploymentEligible": false
+    },
+    {
+      "order": 12,
+      "key": "quarantine",
+      "ref": "90571af942a98b3822ed175ec1483a65adb5d8d7",
+      "path": "scripts/security/legacy-plan-quarantine/review.sql",
+      "sha256": "c4d14fdd05df0453a993662108035234b3818ba792b443fd3bb8ee238ae63fbc",
+      "sourceTerminator": "ROLLBACK",
+      "group": "follow-up-four",
+      "deploymentEligible": false
+    }
+  ],
+  "sourceOnly": true,
+  "deploymentAuthorized": false,
+  "releaseReady": false,
+  "blockers": [
+    {
+      "key": "program-client-schema-transition",
+      "evidence": "source-confirmed",
+      "detail": "New delivery writes execution_reason; new quarantine SQL adds it and denies old plan_payload writes. A coordinated program-write transition or separately reviewed bridge is required."
+    },
+    {
+      "key": "forward-migration-and-recovery",
+      "evidence": "source-confirmed",
+      "detail": "Inputs are pinned review/rehearsal wrappers; no approved hosted forward migration or safe recovery batch is present in this reviewed scope."
+    },
+    {
+      "key": "deployment-build-environment",
+      "evidence": "source-confirmed-coverage-gap",
+      "detail": "Pages build selects Node18 while root validation uses Node20. Successful root/browser CI does not prove that exact deployment environment; pushing master triggers publication."
+    },
+    {
+      "key": "private-terminal-and-later-acceptance",
+      "evidence": "unavailable-in-this-chat",
+      "detail": "Owner reports terminal work finished and later tests run; missing synchronized evidence must be reconciled, not rerun or counted as failure."
+    },
+    {
+      "key": "target-drift-and-current-backup",
+      "evidence": "requires-current-target-evidence",
+      "detail": "Source ancestry and CI do not establish current hosted schema, exposed schemas, managed extension behavior or fresh recovery readiness."
+    },
+    {
+      "key": "exact-hosted-batch-approval",
+      "evidence": "not-granted-for-this-review",
+      "detail": "This task authorizes source review/preparation; no hosted apply or release activation is performed."
+    }
+  ]
+}
