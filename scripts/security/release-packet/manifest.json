@@ -1,0 +1,158 @@
+{
+  "protocol": "potok-release-review-packet-v1",
+  "clientCommit": "455deef591456222e08eced30d3a7ba7bf9e242a",
+  "clientFiles": [
+    {
+      "path": "src/services/programDeliveryService.ts",
+      "sha256": "43a889a7d304b550f4717c5115d4950e02cdcdd8bdc5fef06922885dd842f3f3"
+    },
+    {
+      "path": "src/services/programExecutionService.ts",
+      "sha256": "1d4567d603e82ac857ac83fc2e29dae89374d700984c66bfc34ea84d92c680b5"
+    },
+    {
+      "path": ".node-version",
+      "sha256": "d9f318747a126ce2247661af67852b185def7789492eabfad7bba322be087c33"
+    }
+  ],
+  "sqlInputs": [
+    {
+      "order": 1,
+      "key": "truncate",
+      "ref": "c175e74d7a7c1077e4e8d6d4d8f67c960b06d677",
+      "path": "supabase/migration_drafts/client_truncate_containment_v1.sql",
+      "sourceSha256": "007b8a1545824fbc724ce313b3be7258fc7e26fb3e6894c9b7e95bd578b120ec",
+      "wrapperTerminator": "COMMIT",
+      "normalizedBodySha256": "ba8a860e21ff0870c13f88d5a3a1d0bff25f18c4bfbf1b0a7118223892ae521f"
+    },
+    {
+      "order": 2,
+      "key": "profile",
+      "ref": "7f4f7e24fec497a22dea29dd14f4546115439129",
+      "path": "supabase/migration_drafts/profile_column_write_containment_v1.sql",
+      "sourceSha256": "b781e7754732d12359cfff990ca855f75115695c283b08f9f221f785f5d529ea",
+      "wrapperTerminator": "COMMIT",
+      "normalizedBodySha256": "2d118557b3ea644eb423822f946bbdc06957f8bb13ec0aeff0d42faa7f71e0ac"
+    },
+    {
+      "order": 3,
+      "key": "anonymous",
+      "ref": "47e2ff8bd4937469576f8cfaceecaaefca33548e",
+      "path": "supabase/migration_drafts/anonymous_rpc_execute_containment_v1.sql",
+      "sourceSha256": "a86d36788d3df576e6eaeeea45ed824e57a363409f213317a52d0cbccc9d3368",
+      "wrapperTerminator": "COMMIT",
+      "normalizedBodySha256": "ec549f381c748d22eda6a1a56c62072269c24a242a1656ce26735b7c8fbf2ca2"
+    },
+    {
+      "order": 4,
+      "key": "photos",
+      "ref": "c02608a5bbc7c828ea2a05f206d010e48d0720b1",
+      "path": "supabase/migration_drafts/measurement_photo_explicit_grants_review_v1.sql",
+      "sourceSha256": "6f06553f7897bd621c9186f38d9c154317b4f42193bc6888b795180bcb04814b",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "bb65f3d59fdeaf8f8f1c0fc6879f6176483a127d01db2db50d2a3000f12d4c82"
+    },
+    {
+      "order": 5,
+      "key": "finance",
+      "ref": "0419b2ec21ec225206e9e0715b8dd24f54c590ff",
+      "path": "supabase/migration_drafts/premium_finance_authority_review_v1.sql",
+      "sourceSha256": "8f41f0f4fbaa7fc044d22bbe1dd758ab2a48134c4704f12ff859daaac804f977",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "cbe0aa387511398bd7f911dc0d045356dfcc18289b41839bcb1c81dd97f312c7"
+    },
+    {
+      "order": 6,
+      "key": "authority",
+      "ref": "f542e5433ca377186f0a9e3d0e89ccbf64d91bc0",
+      "path": "supabase/migration_drafts/trusted_authority_id_user_review_v1.sql",
+      "sourceSha256": "8447c5553cd07644c2725e4cd1eee1bb4cdbf584d515eecb0d96f382b161eb70",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "81b3a5ebbf46c9bdcefb87a05b351985222b8781ed49c3d0f0245fbaece3ddfb"
+    },
+    {
+      "order": 7,
+      "key": "catalog",
+      "ref": "a3386a629a0c6d3e69f5224cdf47c9bbe6db2f85",
+      "path": "supabase/migration_drafts/catalog_authority_history_review_v1.sql",
+      "sourceSha256": "d159e92807a0d14633616a4d686aa96e770445a9279c9ae1c315e9865158b36b",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "4f436bd492153035e97bf13e64302e1967708f12386429a77bc9f11e6ecfb840"
+    },
+    {
+      "order": 8,
+      "key": "trgm",
+      "ref": "a1b91d8bfbfba8135478803605512e1014dbafcc",
+      "path": "scripts/security/pg-trgm/rehearsal.sql",
+      "sourceSha256": "a22d809784f341030029be46fe3975c3842813b41eb57414ee17ab6d9e1a52d7",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "b105dcd6d730ee26d29bbc2cec2b75684a6cfb820285d3ce1496029cd6dd3c60"
+    },
+    {
+      "order": 9,
+      "key": "paywall",
+      "ref": "2e84692a3b86315b4824ba176ec48b6d808266f6",
+      "path": "scripts/security/server-premium/paywall-review.sql",
+      "sourceSha256": "eec945610cdd3e3e94fe57b1c974f537ac01fc4b7ba78f14ba05158c6b92a07c",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "49d47928f5533c4578d75a46261d111e6a19785260e0832b6fdb90d9fd3f7e55"
+    },
+    {
+      "order": 10,
+      "key": "programRead",
+      "ref": "2e84692a3b86315b4824ba176ec48b6d808266f6",
+      "path": "scripts/security/program-reads/review.sql",
+      "sourceSha256": "b6f3780740bf02267d34f58172115be005e829a3f6ff1b8244005fd6521162f0",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "411fb54318f23d444d392a1ffb2696a2e7f9a8a2703807a094cf4113568afeea"
+    },
+    {
+      "order": 11,
+      "key": "history",
+      "ref": "2e84692a3b86315b4824ba176ec48b6d808266f6",
+      "path": "scripts/security/program-history/review.sql",
+      "sourceSha256": "d27309df8b5612566ab7156ad31b90113a27ca485af7c64267304d336efb446a",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "a3ced85fefe74933cdff156d3035abb1597258c5d759640e6bcc7f5df8475c0a"
+    },
+    {
+      "order": 12,
+      "key": "quarantine",
+      "ref": "90571af942a98b3822ed175ec1483a65adb5d8d7",
+      "path": "scripts/security/legacy-plan-quarantine/review.sql",
+      "sourceSha256": "c4d14fdd05df0453a993662108035234b3818ba792b443fd3bb8ee238ae63fbc",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "a67cc600d8c16cb8bc372079530acd3b90e70c9e6292cf00a24d7ee943cbccdd"
+    }
+  ],
+  "boundaryPolicy": {
+    "path": "scripts/security/platform-defaults/check.sql",
+    "sha256": "352d9b400e65c4632e939188bc195564e4200a00050880b870430123eb82fd5f"
+  },
+  "artifacts": [
+    {
+      "path": "forward.review.sql",
+      "sha256": "72f6b88327f2078c627189afab9102e9c8e1b31e026d66c9d0bcefd1e248b8ea"
+    },
+    {
+      "path": "preflight.sql",
+      "sha256": "f4ed00929a3256682924f996dd72dd61a10734888d97cbc74b4e3fd2c9eabc3d"
+    },
+    {
+      "path": "state.mjs",
+      "sha256": "970a4485833d80636fd2a39a6b8a27c103796cfa2fca0c5fd7c6934c158b72f5"
+    }
+  ],
+  "mayApply": false,
+  "releaseReady": false,
+  "includesHostedMigration": false,
+  "includesAutomaticRecovery": false,
+  "requiredNextEvidence": [
+    "fresh_target_backup_recovery",
+    "complete_table_and_storage_scope",
+    "approved_managed_extension_rehearsal",
+    "target_drift_and_effective_source_checks",
+    "http_exposure_and_client_window",
+    "owner_exact_batch_approval"
+  ]
+}

@@ -1,0 +1,20 @@
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import test from 'node:test';
+import {classifyPreflight,recoveryDecision} from './state.mjs';
+import {assertReviewOnly,main} from './prepare.mjs';
+const baseline={protocol:'potok-release-preflight-v1',public_metadata_sha256:'a'.repeat(64),actor:'postgres',session_actor:'postgres',actor_super:false,actor_bypass:true,server_version_num:170006,replication_role:'origin',public_tables:81,plan_tables_reviewed:9,candidate_namespaces:[],execution_reason_present:false,client_truncate_tables:63,protected_profile_write_columns:4,trgm:{schema:'public',owner:'supabase_admin'},session_columns:[['id','uuid'],['program_id','uuid'],['date','date'],['session_type','text'],['plan_payload','jsonb'],['status','text'],['created_at','timestamp with time zone'],['day_date','date']].map(([name,type])=>({name,type}))};
+test('live-shaped baseline is observation only, never permission to apply or replay',()=>{const r=classifyPreflight(baseline);assert.equal(r.state,'BASELINE_OBSERVED');assert.equal(r.mayApply,false);assert.equal(r.extensionPath,'MANAGED_OWNER_CONFIRMATION_REQUIRED');});
+test('partial install or unrelated day_date type stops rather than skips a candidate',()=>{
+ for(const patch of [{candidate_namespaces:['potok_control']},{execution_reason_present:true},{session_columns:[...baseline.session_columns.slice(0,-1),{name:'day_date',type:'text'}]}])assert.equal(classifyPreflight({...baseline,...patch}).state,'PARTIAL_OR_DRIFT_STOP');
+});
+test('candidate-shaped metadata is not committed visibility or source/content proof',()=>{const r=classifyPreflight({...baseline,candidate_namespaces:['potok_control','potok_delivery','potok_nutrition'],execution_reason_present:true,client_truncate_tables:0,protected_profile_write_columns:0,trgm:{schema:'extensions',owner:'supabase_admin'}});assert.equal(r.state,'CANDIDATE_SHAPED_NEEDS_FULL_VERIFY');assert.equal(r.releaseReady,false);});
+test('wrong actor, superuser, trigger bypass and major version stop',()=>{for(const patch of [{actor:'supabase_admin'},{session_actor:'other'},{actor_super:true},{replication_role:'replica'},{server_version_num:180000}])assert.equal(classifyPreflight({...baseline,...patch}).state,'ACTOR_OR_VERSION_STOP');});
+test('ownership/RLS gap and malformed observations cannot authorize anything',()=>{assert.equal(classifyPreflight({...baseline,plan_tables_reviewed:8}).state,'OWNERSHIP_OR_RLS_STOP');assert.throws(()=>classifyPreflight({...baseline,public_metadata_sha256:'invalid'}));assert.throws(()=>classifyPreflight({...baseline,candidate_namespaces:['unexpected']}));});
+test('unknown COMMIT always reconciles through a new read-only connection',()=>{for(const baselineRestored of [false,true]){const r=recoveryDecision({outcome:'unknown_commit',baselineRestored});assert.equal(r.action,'STOP_AND_RECONCILE_IN_NEW_READ_ONLY_CONNECTION');assert.equal(r.mayRetry,false);}});
+test('recovery never restores unsafe grants, old clients or issues rights',()=>{
+ for(const outcome of ['not_started','rolled_back','committed'])for(const baselineRestored of [false,true]){const r=recoveryDecision({outcome,baselineRestored});for(const key of ['mayApply','mayRetry','restoreBroadGrants','restoreOldClient','issueEntitlements'])assert.equal(r[key],false);}
+ assert.equal(recoveryDecision({outcome:'rolled_back'}).action,'STOP_VERIFY_BASELINE_CONTENT_AND_METADATA');assert.equal(recoveryDecision({outcome:'committed'}).action,'KEEP_CONTAINMENT_REVIEW_FORWARD_REPAIR');
+});
+test('review artifact guard remains before all candidates and cannot COMMIT',async()=>{const sql=await readFile(new URL('forward.review.sql',import.meta.url),'utf8');assertReviewOnly(sql);assert.throws(()=>assertReviewOnly(sql.replace(/^ROLLBACK;$/m,'COMMIT;')));assert.throws(()=>assertReviewOnly(sql.replace("RAISE EXCEPTION 'REVIEW_ONLY_NO_TARGET_APPROVAL'",'NULL')));});
+test('the CLI refuses apply, arbitrary URLs and recovery execution before reading inputs',async()=>{for(const args of [[],['--apply'],['--verify','postgres://example'],['--recover']])await assert.rejects(()=>main(args));});

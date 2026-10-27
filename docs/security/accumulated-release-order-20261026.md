@@ -94,3 +94,7 @@ SHA относятся к конкретным исходным файлам, н
 ## Клиентский переход day actions — кандидат 27 октября
 
 После #220 подготовлен client-first переход без нового SQL/GRANT: ProgramExecutionService закрывает start/complete/skip на старой схеме, сверяет аккаунт и одну session, требует один подтверждённый id после bounded status/reason PATCH. Неизвестный исход не повторяется автоматически; zero-row ответ не считается успехом. Контракт, окно обновления старых вкладок и ограничения — `program-execution-transition-20261027.md`. Существующие 12 SQL pins сохраняются; hosted forward/recovery и его одобрение остаются отдельными. Локальные проверки не заменяют actual API CI и поздние владельческие результаты.
+
+## Пакет source-ревью и актуальная read-only проверка — 27 октября
+
+После #221 подготовлен `scripts/security/release-packet/`: 12 pinned sources в guarded forward.review.sql без COMMIT, manifest, metadata-only preflight и fail-closed recovery classifier. Preflight действительно выполнен на POTOK только чтением: baseline-shaped состояние, не полный committed пакет; managed pg_trgm/public, HTTP exposure и актуальный backup/scope остаются условиями допуска. Подробный порядок и recovery — `release-packet-20261027.md`; sanitized observation не содержит пользовательских строк/ключей. Это source-review packet, не hosted apply/migration и не универсальный down/restore. Старые Mac-команды не повторяются, поздние результаты владельца ожидают сверки доказательств.
