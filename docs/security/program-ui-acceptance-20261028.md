@@ -50,3 +50,10 @@ The same browser bundle, seed and cleanup run on disposable Supabase in CI befor
 the Mac command is supplied. A green CI gate is not a Mac result. Mac success is
 `PRIVATE_PROGRAM_UI_OK`; releaseReady remains false until separate hosted review,
 exact owner approval and deployment/post-apply verification.
+
+The disposable combined CI accounts already own legacy active programs. The UI CI
+setup therefore creates two separate synthetic identities via ordinary captured OTP
+and their ordinary profile INSERTs, before taking the preservation baseline. It does
+not retire/delete legacy plans or weaken ambiguity detection. The browser then logs
+into those initialized identities with real OTP. This CI-only bootstrap is absent
+from the Mac controller, which admits only the original two receipt-bound accounts.
