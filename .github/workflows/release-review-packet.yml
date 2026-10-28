@@ -49,7 +49,7 @@ jobs:
       - name: Metadata HTTP policy and pinned read-only extension scan
         run: node --test scripts/security/managed-boundary/http-profile.test.mjs
       - name: Private backup scope and comparison contracts
-        run: node --test scripts/security/backup-readiness/core.test.mjs scripts/security/backup-readiness/review.test.mjs scripts/security/backup-readiness/rights-rehearsal.test.mjs scripts/security/backup-readiness/strict-twelve.test.mjs scripts/security/backup-readiness/candidate-rights.test.mjs
+        run: node --test scripts/security/backup-readiness/core.test.mjs scripts/security/backup-readiness/review.test.mjs scripts/security/backup-readiness/rights-rehearsal.test.mjs scripts/security/backup-readiness/strict-twelve.test.mjs scripts/security/backup-readiness/candidate-rights.test.mjs scripts/security/backup-readiness/post-acl-reads.test.mjs
       - name: Locked native test driver only
         run: npm ci --prefix scripts/security/data-api-explicit-grants --ignore-scripts
       - name: Exact review SQL cannot reach the first candidate
