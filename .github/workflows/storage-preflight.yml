@@ -1,0 +1,38 @@
+name: Private Storage read-only admission
+on:
+  pull_request:
+    paths:
+      - 'scripts/security/backup-readiness/storage-preflight*'
+      - '.github/workflows/storage-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  readonly-storage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: test_admin
+          POSTGRES_PASSWORD: disposable-test-only
+          POSTGRES_DB: potok_storage_preflight_test
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test_admin -d potok_storage_preflight_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: npm ci --prefix scripts/security/data-api-explicit-grants --ignore-scripts
+      - name: Exact-file scope, image inspection and native readonly SQL
+        env:
+          TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_storage_preflight_test
+          SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
+        run: node --test scripts/security/backup-readiness/storage-preflight.test.mjs
