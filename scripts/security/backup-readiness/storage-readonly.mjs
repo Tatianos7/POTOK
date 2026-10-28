@@ -29,9 +29,9 @@ export async function stageInput(root,relative,bytes,expected){
  assert.equal(createHash('sha256').update(await fs.readFile(dest)).digest('hex'),expected.sha256);
  return {staged:true};
 }
-export async function seedBackend(root,records,{setAttribute}={}){
+export async function seedBackend(root,records,{nativeAttributes}={}){
  const assert=(await import('node:assert/strict')).default,fs=await import('node:fs/promises'),path=await import('node:path'),{createHash}=await import('node:crypto'),{createRequire}=await import('node:module');
- const writeAttribute=setAttribute??createRequire('/app/package.json')('fs-xattr').set;assert.equal(records.length,63);const names=new Set();
+ const attributes=nativeAttributes??createRequire('/app/package.json')('fs-xattr');assert.equal(typeof attributes.setAttributeSync,'function');assert.equal(typeof attributes.getAttributeSync,'function');const writeAttribute=(file,key,value)=>{attributes.setAttributeSync(file,key,value);assert.deepEqual(Buffer.from(attributes.getAttributeSync(file,key)),value);};assert.equal(records.length,63);const names=new Set();
  const safe=s=>{assert.equal(typeof s,'string');assert(s&&!s.startsWith('/')&&!s.includes('\\')&&!s.includes('\0')&&s.split('/').every(p=>p&&p!=='.'&&p!=='..'));};
  const backend=path.join(root,'backend');await fs.mkdir(backend,{recursive:false});
  for(const r of records){safe(r.bucket);assert(!r.bucket.includes('/'));safe(r.name);if(r.version!==null){safe(r.version);assert(!r.version.includes('/'));}

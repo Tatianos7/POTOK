@@ -9,6 +9,7 @@ import {pathToFileURL} from 'node:url';
 import {readonlyURL,storageEnvironment,stageInput,seedBackend,readBinaryObjects} from './storage-readonly.mjs';
 const hash=b=>createHash('sha256').update(b).digest('hex');
 const records=()=>Array.from({length:63},(_,i)=>({bucket:['measurements-photos','recipe-photos','user-exercise-media'][i%3],name:'synthetic/'+i+'.png',version:i%2===0?null:'11111111-1111-4111-8111-111111111111',bytes:String(Buffer.byteLength('file '+i)),sha256:hash('file '+i),mimetype:'image/png'}));
+const fakeAttributes=(calls=[])=>{const values=new Map();return {setAttributeSync(file,key,value){calls.push([file,key,value]);values.set(JSON.stringify([file,key]),Buffer.from(value));},getAttributeSync(file,key){return values.get(JSON.stringify([file,key]));}};};
 const configuration=()=>({password:'synthetic:@p?word',secret:'a'.repeat(64),serviceKey:'abc.def.ghi',anonKey:'abc.def.xyz',migration:'test-migration'});
 test('all database URLs require readonly; freeze/checksum/no-role-install, local file/loopback and background flags are explicit',()=>{
  const v=configuration(),e=storageEnvironment(v),url=new URL(e.DATABASE_URL);assert.equal(decodeURIComponent(url.password),v.password);assert.equal(url.hostname,'127.0.0.1');assert.equal(url.username,'supabase_storage_admin');assert.equal(url.pathname,'/postgres');assert.match(url.searchParams.get('options'),/default_transaction_read_only=on/);assert.equal(e.DATABASE_POOL_URL,e.DATABASE_URL);assert.equal(e.DB_MIGRATIONS_FREEZE_AT,v.migration);assert.equal(e.DB_ALLOW_MIGRATION_REFRESH,'false');assert.equal(e.DB_INSTALL_ROLES,'false');assert.equal(e.PG_QUEUE_ENABLE,'false');assert.equal(e.VECTOR_STORE_MIGRATIONS_ENABLED,'false');assert.equal(e.SERVER_HOST,'127.0.0.1');assert.equal(e.FILE_STORAGE_BACKEND_PATH,'/work/backend');assert.equal(e.TUS_USE_FILE_VERSION_SEPARATOR,'true');assert.equal(e.S3_PROTOCOL_ENABLED,'false');
@@ -27,12 +28,20 @@ test('stdin staging creates private container-owned files without copying foreig
 test('seeding binds versioned backend layout, rejects traversal/collision/tamper and does not alter staged source bytes',async()=>{
  const root=await fs.mkdtemp(path.join(os.tmpdir(),'potok-storage-seed-test-')),r=records(),attributes=[];try{
   for(let i=0;i<r.length;i++){const file=path.join(root,'incoming',r[i].bucket,r[i].bucket,r[i].name);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,'file '+i);}
-  const result=await seedBackend(root,r,{setAttribute:async(...args)=>attributes.push(args)});assert.equal(result.files,63);assert.equal(attributes.length,126);
+  const result=await seedBackend(root,r,{nativeAttributes:fakeAttributes(attributes)});assert.equal(result.files,63);assert.equal(attributes.length,126);
   for(let i=0;i<r.length;i++){const item=r[i],file=path.join(root,'backend/stub/stub',item.bucket,item.name+(item.version?'-$v-'+item.version:''));assert.equal(hash(await fs.readFile(file)),item.sha256);assert.equal((await fs.stat(file)).mode&0o777,0o444);assert.equal(hash(await fs.readFile(path.join(root,'incoming',item.bucket,item.bucket,item.name))),item.sha256);}
-  await assert.rejects(seedBackend(root,r,{setAttribute:async()=>{}}));
+  await assert.rejects(seedBackend(root,r,{nativeAttributes:fakeAttributes()}));
  }finally{await fs.rm(root,{recursive:true,force:true});}
  for(const mutate of [r=>r[0].name='../escape',r=>r[0].version='../../escape',r=>r[0].sha256='0'.repeat(64),r=>r[1]=r[0]]){
-  const root=await fs.mkdtemp(path.join(os.tmpdir(),'potok-storage-seed-bad-')),r=records();try{for(let i=0;i<63;i++){const file=path.join(root,'incoming',r[i].bucket,r[i].bucket,r[i].name);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,'file '+i);}mutate(r);await assert.rejects(seedBackend(root,r,{setAttribute:async()=>{}}));assert.equal(await fs.access(path.join(root,'escape')).then(()=>true,()=>false),false);}finally{await fs.rm(root,{recursive:true,force:true});}
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'potok-storage-seed-bad-')),r=records();try{for(let i=0;i<63;i++){const file=path.join(root,'incoming',r[i].bucket,r[i].bucket,r[i].name);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,'file '+i);}mutate(r);await assert.rejects(seedBackend(root,r,{nativeAttributes:fakeAttributes()}));assert.equal(await fs.access(path.join(root,'escape')).then(()=>true,()=>false),false);}finally{await fs.rm(root,{recursive:true,force:true});}
+ }
+});
+test('native attribute contract requires sync API and verifies readback before accepting a backend',async()=>{
+ for(const nativeAttributes of [{set(){}},{setAttributeSync(){},getAttributeSync(){return Buffer.from('wrong');}}]){
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'potok-storage-attribute-bad-'));try{
+   const r=records();for(let i=0;i<63;i++){const file=path.join(root,'incoming',r[i].bucket,r[i].bucket,r[i].name);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,'file '+i);}
+   await assert.rejects(seedBackend(root,r,{nativeAttributes}));
+  }finally{await fs.rm(root,{recursive:true,force:true});}
  }
 });
 test('HTTP verifies every binary hash/size through authenticated Storage GET and does not claim A/B writes/UI',async()=>{
