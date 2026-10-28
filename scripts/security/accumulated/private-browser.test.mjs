@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {readFile,mkdtemp,mkdir,writeFile,rm,lstat} from 'node:fs/promises';
-import path from 'node:path';
+import {readFile,rm} from 'node:fs/promises';
 import os from 'node:os';
+import {materializeHistoricalRuntime} from './historical-runtime.mjs';
 import {createHash} from 'node:crypto';
 import {validateIdentities, browserArgs, verifyIdentityScope} from './private-browser-policy.mjs';
 import {runtimeInputs, manifestHash, dockerfile} from './private-browser-runtime.mjs';
@@ -35,17 +35,9 @@ test('lifecycle allowance is exact and tied to only two users/profiles', () => {
 test('runtime packages only reviewed public source and immutable lock inputs, never private backup/env', async () => {
   const root = fileURLToPath(new URL('../../../', import.meta.url));
   const manifest = await readFile(new URL('./private-browser-runtime-inputs.json', import.meta.url));
-  const entries=JSON.parse(manifest),temporary=await mkdtemp(path.join(os.tmpdir(),'potok-historical-runtime-'));
-  const history=new Map(['programDeliveryService','uiRuntimeAdapter'].map(name=>['src/services/'+name+'.ts',new URL('./runtime-history/'+name+'.ts.source',import.meta.url)]));
-  let changed=0,result;
-  try{
-    for(const e of entries){const source=path.join(root,e.path),stat=await lstat(source);assert(stat.isFile()&&!stat.isSymbolicLink());let bytes=await readFile(source);
-      if(createHash('sha256').update(bytes).digest('hex')!==e.sha256){assert(history.has(e.path),'Unexpected change outside the reviewed two-file overlay');bytes=await readFile(history.get(e.path));assert.equal(createHash('sha256').update(bytes).digest('hex'),e.sha256);changed++;}
-      const destination=path.join(temporary,e.path);await mkdir(path.dirname(destination),{recursive:true,mode:0o700});await writeFile(destination,bytes,{mode:0o600});
-    }
-    const manifestFile=path.join(temporary,'scripts/security/accumulated/private-browser-runtime-inputs.json');await mkdir(path.dirname(manifestFile),{recursive:true});await writeFile(manifestFile,manifest);result=await runtimeInputs(temporary);
-    if(changed)await assert.rejects(()=>runtimeInputs(root),/Public runtime input changed/);else assert.deepEqual(await runtimeInputs(root),result);
-  }finally{await rm(temporary,{recursive:true,force:true});}
+  const materialized=await materializeHistoricalRuntime(root,os.tmpdir());let result;
+  try{result=await runtimeInputs(materialized.directory);if(materialized.changed)await assert.rejects(()=>runtimeInputs(root),/Public runtime input changed/);else assert.deepEqual(await runtimeInputs(root),result);}
+  finally{await rm(materialized.directory,{recursive:true,force:true});}
   assert.equal(createHash('sha256').update(manifest).digest('hex'), manifestHash);
   assert(result.entries.every(e => e.path.startsWith('src/') || ['package.json', 'package-lock.json'].includes(e.path) || e.path.startsWith('scripts/security/')));
   assert(result.entries.every(e => !/\.env|roles\.sql|data\.sql|schema\.sql|backup/i.test(e.path)));
