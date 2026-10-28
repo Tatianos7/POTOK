@@ -38,6 +38,8 @@ Full-copy postconditions must reuse the original row multiset reference from #21
 
 Remaining acceptance matrix:
 
+28 October checkpoint: owner `PRIVATE_BROWSER_OK` in `private-browser-4xteKI` completes item 1 below on the repaired full copy. Profile acceptance does not need repetition. The next bounded diary/photo metadata probe is described in `scoped-diary-photo-20261028.md`; its full-copy execution remains pending until its own result is supplied.
+
 1. Actual Login/Profile/AuthProvider/profileService: profile/avatar persistence, refresh, offline recovery, forged cached privileges and account isolation on the full copy.
 2. Diary/photo/catalog ordinary operations and owned/foreign access with exact existing schema; photo metadata success is not proof that original Storage binaries are served correctly. A Storage service is not running in this private stack yet.
 3. Program summary/owned reads, execution status/reason and explicit unsupported legacy creation behavior; no plan consumption inference (`PLAN != FACT`). Trusted generator and Edge stay off.

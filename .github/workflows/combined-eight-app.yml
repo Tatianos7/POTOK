@@ -4,6 +4,7 @@ on:
     paths:
       - '.node-version'
       - 'scripts/security/combined-api/**'
+      - 'scripts/security/backup-readiness/scoped-*'
       - 'scripts/security/server-premium/**'
       - 'scripts/security/program-reads/**'
       - 'scripts/security/program-history/**'
@@ -40,6 +41,8 @@ jobs:
         with:
           node-version-file: .node-version
       - run: npm ci
+      - name: Bounded diary/photo writes and existing preservation policy
+        run: node --test scripts/security/backup-readiness/scoped-writes.test.mjs scripts/security/backup-readiness/post-acl-reads.test.mjs
       - name: Restricted local browser gateway protocol
         run: node --test scripts/security/combined-api/private-gateway.test.mjs
       - name: Private browser package policy
