@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'scripts/security/accumulated/**'
+      - 'scripts/security/backup-readiness/strict-twelve*'
+      - 'scripts/security/backup-readiness/rights-rehearsal.mjs'
       - 'scripts/security/platform-defaults/**'
       - 'scripts/security/program-reads/**'
       - 'scripts/security/program-history/**'

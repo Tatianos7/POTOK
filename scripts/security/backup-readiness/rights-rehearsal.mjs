@@ -92,21 +92,25 @@ DROP TABLE pg_temp._potok_rights_before;
 async function regular(file){const s=await fs.lstat(file);assert(s.isFile()&&!s.isSymbolicLink());}
 async function parse(file){await regular(file);const value=JSON.parse(await fs.readFile(file,'utf8'));if(Array.isArray(value)){assert.equal(value.length,1);return typeof value[0].evidence==='string'?JSON.parse(value[0].evidence):value[0].evidence;}return value;}
 async function sourceFiles(dir){await regular(path.join(dir,'SHA256SUMS.txt'));const text=await fs.readFile(path.join(dir,'SHA256SUMS.txt'),'utf8');const seen=new Set();for(const line of text.trim().split(/\r?\n/)){const m=line.match(/^([a-f0-9]{64})\s+\*?(roles\.sql|schema\.sql|data\.sql)$/);assert(m&&!seen.has(m[2]));seen.add(m[2]);await regular(path.join(dir,m[2]));assert.equal(hash(await fs.readFile(path.join(dir,m[2]))),m[1]);}assert.equal(seen.size,3);}
+export async function privateRollbackPlan(directory,localFile,targetFile){
+  const dir=await fs.realpath(directory);await sourceFiles(path.dirname(dir));await regular(path.join(dir,'capture.sql'));assert.equal(await fs.readFile(path.join(dir,'capture.sql'),'utf8'),captureSQL);
+  assert.notEqual(await fs.realpath(localFile),await fs.realpath(targetFile));
+  const inventory=JSON.parse(await fs.readFile(new URL('inventory-20261027.json',import.meta.url),'utf8'));
+  const names=inventory.tables.filter(t=>t.schema==='public').map(t=>t.name);
+  const result=buildRehearsal(await parse(localFile),await parse(targetFile),names);
+  const base=path.dirname(dir),previous=(await fs.readdir(base)).filter(n=>n.startsWith('table-rights-details.'));
+  const candidates=await Promise.all(previous.map(async name=>({name,time:(await fs.stat(path.join(base,name))).mtimeMs})));candidates.sort((a,b)=>b.time-a.time);assert(candidates.length>0);
+  const file=path.join(base,candidates[0].name,'differences.json');await regular(file);const old=JSON.parse(await fs.readFile(file,'utf8'));assert(Array.isArray(old)&&old.length===213&&old.every(r=>r.direction==='extra_on_restored'));
+  assert.deepEqual(old.map(r=>key({table_name:r.table,role:r.role,privilege:r.privilege})).sort(),result.reviewedDiffKeys,'Changed exact difference set');
+  return {result,dir,names};
+}
 export async function main(args){
  if(args.length===2&&args[0]==='--prepare-private'){
   const base=await fs.realpath(args[1]);await sourceFiles(base);const dir=await fs.mkdtemp(path.join(base,'rights-parity-'));await fs.chmod(dir,0o700);
   await fs.writeFile(path.join(dir,'capture.sql'),captureSQL,{mode:0o600,flag:'wx'});console.log('RIGHTS_CAPTURE_PREPARED: '+dir);return;
  }
  if(args.length===4&&args[0]==='--plan-local-rollback'){
-  const dir=await fs.realpath(args[1]);await sourceFiles(path.dirname(dir));await regular(path.join(dir,'capture.sql'));assert.equal(await fs.readFile(path.join(dir,'capture.sql'),'utf8'),captureSQL);
-  assert.notEqual(await fs.realpath(args[2]),await fs.realpath(args[3]));
-  const inventory=JSON.parse(await fs.readFile(new URL('inventory-20261027.json',import.meta.url),'utf8'));
-  const names=inventory.tables.filter(t=>t.schema==='public').map(t=>t.name);
-  const result=buildRehearsal(await parse(args[2]),await parse(args[3]),names);
-  const base=path.dirname(dir),previous=(await fs.readdir(base)).filter(n=>n.startsWith('table-rights-details.'));
-  const candidates=await Promise.all(previous.map(async name=>({name,time:(await fs.stat(path.join(base,name))).mtimeMs})));candidates.sort((a,b)=>b.time-a.time);assert(candidates.length>0);
-  const file=path.join(base,candidates[0].name,'differences.json');await regular(file);const old=JSON.parse(await fs.readFile(file,'utf8'));assert(Array.isArray(old)&&old.length===213&&old.every(r=>r.direction==='extra_on_restored'));
-  assert.deepEqual(old.map(r=>key({table_name:r.table,role:r.role,privilege:r.privilege})).sort(),result.reviewedDiffKeys,'Changed exact difference set');
+  const {result,dir}=await privateRollbackPlan(args[1],args[2],args[3]);
   const out=await fs.mkdtemp(path.join(dir,'rollback-plan-'));await fs.chmod(out,0o700);await fs.writeFile(path.join(out,'local-only.sql'),result.sql,{mode:0o600,flag:'wx'});
   console.log('LOCAL_ROLLBACK_PLAN_PREPARED: exactRevokes=213; not executed; releaseReady=false.');console.log('Private plan: '+path.join(out,'local-only.sql'));return;
  }

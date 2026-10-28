@@ -118,3 +118,7 @@ Mac-результаты: 112 выбранных таблиц совпали п�
 ## Найден restore permission drift: 213 лишних разрешений
 
 Владельческий результат: reviewedDefaultsMatch=true, client TRUNCATE=0, остальные table rights не совпали; точный diff — 213 extra_on_restored, без missing и service различий в выбранном scope. Три примера подтвердили direct postgres ACL и nonsuper/nobypass клиентские роли. Это ограничивает ранее выполненную более разрешающую приёмку: production permission parity не доказана. `local-rights-parity-20261028.md` и offline rights-rehearsal.mjs готовят только приватную rollback репетицию точного списка, с новым independently captured read-only metadata и всеми guards; никакой committed repair/новый GRANT/hosted apply автоматически. После ROLLBACK исходные ACL остаются прежними, application acceptance — отдельна.
+
+## Владельческий rollback parity pass и подготовка проверки двенадцати исправлений
+
+Владелец подтвердил обе LOCAL_RIGHTS_PARITY_*_OK строки #227: selected matrix временно выровнена, исходные ACL восстановлены. Это не committed fix/application acceptance. `strict-twelve-rehearsal-20261028.md` описывает новый source planner: после fresh private exact-diff проверки временные 213 REVOKE предшествуют всем 12 неизменённым кандидатам; единый ROLLBACK сохраняет все старые content/metadata и новые ACL checks. Никакого удаления guard #222 или hosted apply; фактический Mac strict-twelve прогон и затем affected application acceptance остаются отдельными.
