@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {legacySchema,A,B} from '../catalog-authority/fixture.mjs';
+import {captureSQL,buildRehearsal as buildRightsRehearsal} from '../backup-readiness/rights-rehearsal.mjs';
+import {combineStrictTwelve} from '../backup-readiness/strict-twelve.mjs';
 import {loadInputs,body} from './inputs.mjs';
 import {buildTwelve,loadFollowups} from './restored-twelve.mjs';
 import {buildInstall,finalSQL,fingerprintSQL,boundaryQuery,settingsSQL,validateTarget,candidateName,originalName} from './private-candidate.mjs';
@@ -94,6 +96,24 @@ try{
  const database=(await rows('SELECT current_database() AS name'))[0].name;assert(/^[a-z_][a-z0-9_]*$/.test(database));await exec('ALTER DATABASE '+database+' OWNER TO postgres;');
  await test('all twelve pinned candidates stream one transaction and fully restore metadata/content',async()=>{
   const before=await snapshot();await protocol(await script());assert.deepEqual(await snapshot(),before);
+ });
+ if(!embedded)await test('strict permission rehearsal composes with all twelve real candidates and restores all fixture state',async()=>{
+  await exec('SET ROLE postgres;');
+  const initial=await rows("SELECT c.relname FROM pg_class c WHERE c.relnamespace='public'::regnamespace AND c.relkind='r' ORDER BY c.relname");
+  for(let i=initial.length;i<81;i++)await exec('CREATE TABLE public.parity_pad_'+i+'(id integer);');
+  const publicTables=await rows("SELECT c.relname FROM pg_class c WHERE c.relnamespace='public'::regnamespace AND c.relkind='r' ORDER BY c.relname");
+  assert.equal(publicTables.length,81);
+  for(const t of publicTables)await exec('ALTER TABLE public."'+t.relname+'" ENABLE ROW LEVEL SECURITY;');
+  await exec('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;GRANT ALL ON ALL TABLES IN SCHEMA public TO anon,authenticated,service_role;REVOKE TRUNCATE ON ALL TABLES IN SCHEMA public FROM anon,authenticated;');
+  async function capture(){const results=await exec(captureSQL);return results.find(r=>r.rows?.[0]?.evidence).rows[0].evidence;}
+  const first=await capture(),changes=first.rights.filter(r=>r.table_name.startsWith('parity_pad_')&&r.role!=='service_role'&&r.privilege!=='TRUNCATE').slice(0,213);assert.equal(changes.length,213);
+  for(const r of changes)await exec('REVOKE '+r.privilege+' ON public."'+r.table_name+'" FROM "'+r.role+'"');
+  const target=await capture();
+  for(const r of changes)await exec('GRANT '+r.privilege+' ON public."'+r.table_name+'" TO "'+r.role+'"');
+  const local=await capture(),parity=buildRightsRehearsal(local,target,publicTables.map(t=>t.relname));
+  await exec('RESET ROLE;');const before=await snapshot();
+  const sql=combineStrictTwelve(parity.sql,await script());await protocol(sql);assert.deepEqual(await snapshot(),before);
+  console.log('STRICT_TWELVE_NATIVE_OK: temporary exact parity precedes all twelve pinned candidates; fixture metadata/content/ACL restored; not owner or application acceptance');
  });
  await test('twelve candidates meet the narrow application SQL boundary with platform defaults retained',async()=>{
   const before=await snapshot();const sql=await script();const [prefix,rest]=sql.split(/^BEGIN;\n/m),[transaction,suffix]=rest.split(/^ROLLBACK;\n/m);
