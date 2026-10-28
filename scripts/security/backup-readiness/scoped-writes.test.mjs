@@ -2,9 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {spawnSync} from 'node:child_process';
 import {readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import {validateWriteManifest,validateWriteInput,runScopedWrites,runScopedWriteWorker} from './scoped-writes.mjs';
 const users=[{id:'11111111-1111-4111-8111-111111111111',email:'potok-ab-0123456789abcdef01234567-a@example.test'},{id:'22222222-2222-4222-8222-222222222222',email:'potok-ab-0123456789abcdef01234567-b@example.test'}];
 const input=()=>({users:structuredClone(users),manifest:{protocol:'potok-scoped-write-manifest-v1',tag:'0123456789abcdef01234567',day:'2199-01-15',diaryIds:['33333333-3333-4333-8333-333333333333','44444444-4444-4444-8444-444444444444','55555555-5555-4555-8555-555555555555']}});
+test('portable package binds every transitive controller module and fixed inventory by content',async()=>{
+ const root=new URL('../../../',import.meta.url),manifest=await readFile(new URL('scoped-diary-photo-package.sha256',import.meta.url),'utf8'),entries=new Map();
+ for(const line of manifest.trim().split('\n')){const m=line.match(/^([a-f0-9]{64})  (scripts\/security\/[a-z0-9/.-]+)$/);assert(m);assert(!entries.has(m[2]));assert(!m[2].includes('..'));entries.set(m[2],m[1]);assert.equal(createHash('sha256').update(await readFile(new URL(m[2],root))).digest('hex'),m[1]);}
+ assert.equal(entries.size,16);assert(entries.has('scripts/security/backup-readiness/inventory-20261027.json'));
+ const seen=new Set();const walk=async file=>{if(seen.has(file.href))return;seen.add(file.href);assert(entries.has(file.href.slice(root.href.length)));const source=await readFile(file,'utf8');for(const m of source.matchAll(/(?:from\s*|import\s*)['"](\.[^'"]+)['"]/g))if(m[1].endsWith('.mjs'))await walk(new URL(m[1],file));};
+ await walk(new URL('scoped-diary-photo.mjs',import.meta.url));assert.equal(seen.size,15);
+});
 function fixture(variant=''){
  const rows=[],calls=[];let counter=0;
  const api=async(route,u,method='GET',body,extra={})=>{
