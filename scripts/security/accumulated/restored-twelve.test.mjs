@@ -129,7 +129,7 @@ try{
   const tables=await rows("SELECT n.nspname AS schema,c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('auth','public','storage') AND c.relkind='r' ORDER BY 1,2");assert.equal(tables.length,112);
   await exec('SET SESSION AUTHORIZATION postgres;');
   for(const t of tables)t.rows=Number((await rows('SELECT count(*) AS n FROM "'+t.schema+'"."'+t.name+'"'))[0].n);
-  const [f]=await rows(fingerprintSQL(tables));const boundary=await readFile('scripts/security/platform-defaults/check.sql','utf8');
+  const [f]=await rows(fingerprintSQL(tables));const boundary=boundaryQuery(await readFile('scripts/security/platform-defaults/check.sql','utf8')).trim().replace(/;$/,'');
   await exec(buildInstall(sources,followups,tables,f.fingerprint,boundary));
   const capture=async client=>{const result=await client.query(candidateCaptureSQL(tables));return result.find(r=>r.rows?.[0]?.evidence).rows[0].evidence;};
   let captured=await capture(db);
