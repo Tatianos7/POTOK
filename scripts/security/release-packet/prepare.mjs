@@ -9,7 +9,7 @@ import {inputs,loadInputs,combined} from '../accumulated/inputs.mjs';
 import {followupInputs,loadFollowups,followupFinalSQL} from '../accumulated/restored-twelve.mjs';
 import {permissionQuery} from '../accumulated/checks.mjs';
 import {boundaryQuery} from '../accumulated/private-candidate.mjs';
-export const clientCommit='455deef591456222e08eced30d3a7ba7bf9e242a';
+export const clientCommit='996a81c30906000b9cb6ffe88456a98b55cb692f';
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
 const here=new URL('./',import.meta.url);
 export function assertReviewOnly(sql) {
@@ -48,7 +48,7 @@ ROLLBACK;
   assertReviewOnly(sql);
   const records=[...inputs.map(i=>({...i,body:sources[i.key]})),...followupInputs.map(i=>({...i,terminator:'ROLLBACK',body:followups[i.key]}))]
     .map((i,index)=>({order:index+1,key:i.key,ref:i.ref,path:i.path,sourceSha256:i.sha256,wrapperTerminator:i.terminator,normalizedBodySha256:sha(i.body)}));
-  const files=['src/services/programDeliveryService.ts','src/services/programExecutionService.ts','.node-version'];
+  const files=['src/services/programDeliveryService.ts','src/services/programExecutionService.ts','src/services/uiRuntimeAdapter.ts','.node-version'];
   const clientFiles=[];for(const file of files){
     const bytes=await readFile(new URL('../../../'+file,here));
     const pinned=execFileSync('git',['show',clientCommit+':'+file],{maxBuffer:2*1024*1024});

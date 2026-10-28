@@ -16,6 +16,11 @@ an unchanged account and exactly one confirmed status PATCH. They never write
 protected program history/guard records. A zero-row/error response is not success.
 No SQL policy, GRANT, generator activation or hosted change is proposed.
 
+The guarded release-review packet now pins the two updated client files at source
+commit 996a81c30906000b9cb6ffe88456a98b55cb692f, alongside the unchanged execution
+service and Node version. The twelve SQL pins and the review-only unconditional
+stop/ROLLBACK are unchanged. This updates source inventory, not hosted approval.
+
 The bounded UI controller reuses the previously built immutable browser image.
 Two hash-verified public source files are supplied in memory to Vite's loader;
 database/Auth responses are not mocked, redirected to a hosted endpoint or replaced.
