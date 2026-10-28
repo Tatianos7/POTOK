@@ -6,6 +6,7 @@ on:
       - 'scripts/security/backup-readiness/storage-readonly*'
       - 'scripts/security/backup-readiness/storage-write-admission*'
       - 'scripts/security/backup-readiness/storage-policy-rehearsal*'
+      - 'scripts/security/backup-readiness/storage-policy-install*'
       - '.github/workflows/storage-preflight.yml'
   workflow_dispatch:
 permissions:
@@ -38,4 +39,4 @@ jobs:
         env:
           TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_storage_preflight_test
           SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
-        run: node --test scripts/security/backup-readiness/storage-preflight.test.mjs scripts/security/backup-readiness/storage-readonly.test.mjs scripts/security/backup-readiness/storage-write-admission.test.mjs scripts/security/backup-readiness/storage-policy-rehearsal.test.mjs
+        run: node --test scripts/security/backup-readiness/storage-preflight.test.mjs scripts/security/backup-readiness/storage-readonly.test.mjs scripts/security/backup-readiness/storage-write-admission.test.mjs scripts/security/backup-readiness/storage-policy-rehearsal.test.mjs scripts/security/backup-readiness/storage-policy-install.test.mjs
