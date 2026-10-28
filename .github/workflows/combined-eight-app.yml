@@ -44,6 +44,8 @@ jobs:
         run: node --test scripts/security/combined-api/private-gateway.test.mjs
       - name: Private browser package policy
         run: node --test scripts/security/accumulated/private-browser.test.mjs
+      - name: Public browser build recovery policy
+        run: node --test scripts/security/accumulated/private-browser-resume.test.mjs
       - run: npx playwright install --with-deps chromium
       - uses: supabase/setup-cli@v1
         with:
