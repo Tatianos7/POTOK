@@ -5,6 +5,7 @@ on:
       - 'scripts/security/accumulated/**'
       - 'scripts/security/backup-readiness/strict-twelve*'
       - 'scripts/security/backup-readiness/candidate-rights*'
+      - 'scripts/security/backup-readiness/post-acl-reads*'
       - 'scripts/security/backup-readiness/rights-rehearsal.mjs'
       - 'scripts/security/platform-defaults/**'
       - 'scripts/security/program-reads/**'

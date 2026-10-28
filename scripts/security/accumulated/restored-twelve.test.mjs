@@ -5,6 +5,7 @@ import {legacySchema,A,B} from '../catalog-authority/fixture.mjs';
 import {captureSQL,buildRehearsal as buildRightsRehearsal} from '../backup-readiness/rights-rehearsal.mjs';
 import {combineStrictTwelve} from '../backup-readiness/strict-twelve.mjs';
 import {candidateCaptureSQL,buildCandidatePlans} from '../backup-readiness/candidate-rights.mjs';
+import {protectedSnapshotSQL,assertReadPreservation} from '../backup-readiness/post-acl-reads.mjs';
 import {loadInputs,body} from './inputs.mjs';
 import {buildTwelve,loadFollowups} from './restored-twelve.mjs';
 import {buildInstall,finalSQL,fingerprintSQL,boundaryQuery,settingsSQL,validateTarget,candidateName,originalName} from './private-candidate.mjs';
@@ -124,6 +125,8 @@ try{
   for(const t of publicTables)await exec('ALTER TABLE public."'+t.relname+'" ENABLE ROW LEVEL SECURITY;');
   await exec('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;GRANT ALL ON ALL TABLES IN SCHEMA public TO anon,authenticated,service_role;');
   await exec('RESET ROLE;');
+  await exec(`ALTER TABLE auth.users ADD COLUMN email text;UPDATE auth.users SET email=CASE id WHEN '${A}'::uuid THEN 'potok-ab-0123456789abcdef01234567-a@example.test' ELSE 'potok-ab-0123456789abcdef01234567-b@example.test' END;
+  CREATE TABLE auth.identities(id uuid,user_id uuid);CREATE TABLE auth.sessions(id uuid,user_id uuid);CREATE TABLE auth.refresh_tokens(id bigint,user_id text);CREATE TABLE auth.one_time_tokens(id uuid,user_id uuid);CREATE TABLE auth.flow_state(id uuid,user_id uuid);CREATE TABLE auth.audit_log_entries(id uuid,payload jsonb);CREATE TABLE auth.mfa_amr_claims(id uuid,session_id uuid);GRANT SELECT ON ALL TABLES IN SCHEMA auth TO postgres;`);
   const current=await rows("SELECT n.nspname AS schema,c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('auth','public','storage') AND c.relkind='r'");
   for(let i=current.length;i<112;i++)await exec('CREATE TABLE auth.parity_auth_'+i+'(id integer);GRANT SELECT ON auth.parity_auth_'+i+' TO postgres;');
   const tables=await rows("SELECT n.nspname AS schema,c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('auth','public','storage') AND c.relkind='r' ORDER BY 1,2");assert.equal(tables.length,112);
@@ -150,6 +153,14 @@ try{
   try{await independent.query('SET SESSION AUTHORIZATION postgres');const checked=await independent.query(plans.verify);assert(checked.some(r=>r.rows?.[0]?.result==='CANDIDATE_ACL_COMMITTED_VERIFIED_OK'));}finally{await independent.end();}
   const after=await capture(db);assert.equal(after.columnAclSha256,captured.columnAclSha256);assert.equal(after.shapeSha256,captured.shapeSha256);assert.deepEqual(after.content,captured.content);
   for(const item of remaining)assert.equal(after.rights.find(r=>r.table_name===item.table&&r.role===item.role&&r.privilege===item.privilege).allowed,false);
+  const identities=[{id:A,email:'potok-ab-0123456789abcdef01234567-a@example.test'},{id:B,email:'potok-ab-0123456789abcdef01234567-b@example.test'}];
+  const audit=async()=>({capture:await capture(db),protected:(await rows(protectedSnapshotSQL(tables,identities)))[0].evidence});
+  const protectedBefore=await audit();
+  await exec(`SET SESSION AUTHORIZATION test_admin;INSERT INTO auth.sessions VALUES('33333333-3333-4333-8333-333333333333','${A}');INSERT INTO auth.one_time_tokens VALUES('44444444-4444-4444-8444-444444444444','${B}');SET SESSION AUTHORIZATION postgres;`);
+  assertReadPreservation(protectedBefore,await audit());
+  await exec(`SET SESSION AUTHORIZATION test_admin;INSERT INTO auth.sessions VALUES('55555555-5555-4555-8555-555555555555','66666666-6666-4666-8666-666666666666');SET SESSION AUTHORIZATION postgres;`);
+  assert.throws(()=>assertReadPreservation(protectedBefore,{}));const unrelated=await audit();assert.throws(()=>assertReadPreservation(protectedBefore,unrelated));
+  console.log('POST_ACL_PROTECTED_SNAPSHOT_NATIVE_OK: current public data and unrelated Auth rows protected; only existing synthetic Auth scope excluded. No HTTP acceptance.');
   console.log('CANDIDATE_ACL_NATIVE_OK: 211 exact revokes; real twelve contracts/content/column grants preserved; late error rollback; independent committed verification. Synthetic only, no owner/API acceptance.');
   await exec('SET SESSION AUTHORIZATION test_admin;');
  });
