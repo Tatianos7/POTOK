@@ -4,6 +4,9 @@ on:
     paths:
       - 'scripts/security/backup-readiness/program-fixture*'
       - 'scripts/security/backup-readiness/program-client*'
+      - 'scripts/security/backup-readiness/program-ui*'
+      - 'src/services/programDeliveryService.ts'
+      - 'src/services/uiRuntimeAdapter.ts'
       - '.github/workflows/program-fixture-rehearsal.yml'
   workflow_dispatch:
 permissions:
@@ -61,7 +64,7 @@ jobs:
           POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
         run: node scripts/security/combined-api/api.mjs
       - name: Program fixture source guards
-        run: node --test scripts/security/backup-readiness/program-fixture.test.mjs scripts/security/backup-readiness/program-client.test.mjs
+        run: node --test scripts/security/backup-readiness/program-fixture.test.mjs scripts/security/backup-readiness/program-client.test.mjs scripts/security/backup-readiness/program-ui.test.mjs
       - name: Real Supabase SQL roles and rollback for new bounded program fixtures
         env:
           POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
@@ -70,6 +73,12 @@ jobs:
         env:
           POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
         run: node scripts/security/backup-readiness/program-client-ci.mjs
+      - name: Prepare locked headless browser in disposable CI only
+        run: npx --no-install playwright install --with-deps chromium
+      - name: Actual Login and MyProgram screen against real Auth and API
+        env:
+          POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
+        run: node scripts/security/backup-readiness/program-ui-ci.mjs
       - name: Stop only disposable project
         if: always()
         env:

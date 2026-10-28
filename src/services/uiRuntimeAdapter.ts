@@ -479,7 +479,7 @@ class UiRuntimeAdapter {
         ['program_days', 'program_explainability'],
         () => Promise.all([
           programUxRuntimeService.getMyProgram(programId, programType),
-          programDeliveryService.explain(),
+          programDeliveryService.explain(programType),
         ])
       );
       const trust = classifyTrustDecision(undefined, {
