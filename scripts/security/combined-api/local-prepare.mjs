@@ -34,6 +34,8 @@ if(mode==='fixture'){
  THEN RAISE EXCEPTION 'Expected fresh combined fixture';END IF;END $$;`;
  let legacy=await catalogFixture();const broad='GRANT ALL ON ALL TABLES IN SCHEMA public TO anon,authenticated,service_role;';assert(legacy.includes(broad));legacy=legacy.replace(broad,'');
  sql+=legacy.replaceAll(A,a).replaceAll(B,b);
+ // Disposable CI fixture gains the three ordinary diary columns required by the restored-schema probe.
+ sql+=`ALTER TABLE public.food_diary_entries ADD COLUMN date date, ADD COLUMN meal_type text, ADD COLUMN product_name text;`;
  sql+=await readFile('supabase/phase7_3_2_monetization.sql','utf8');
  sql+=`CREATE FUNCTION public.rls_auto_enable() RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$ BEGIN NULL;END $$;
  DO $$ DECLARE t record;BEGIN FOR t IN SELECT relname FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r' AND relname NOT IN('measurement_photo_assets','measurement_photo_deletions') LOOP

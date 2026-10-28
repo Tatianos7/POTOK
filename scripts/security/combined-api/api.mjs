@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import {randomUUID,randomBytes} from 'node:crypto';
+import {runScopedWrites} from '../backup-readiness/scoped-writes.mjs';
 import {spawnSync} from 'node:child_process';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
@@ -63,6 +65,7 @@ try{
  await denied(request('measurement_photo_deletions?user_id=eq.'+a.id,a,'PATCH',{id:a.id}));
  assert.equal((await ok(request('measurement_photo_assets',a)))[0].storage_path,'synthetic/second.png');assert.equal(Date.parse((await ok(request('measurement_photo_deletions',a)))[0].deleted_at),Date.parse('2026-10-26T11:00:00Z'));
  console.log('PASS combined real photo and deletion upsert with column protection and account isolation');
+ stage='bounded diary/photo CRUD';await runScopedWrites({users:[a,b],manifest:{protocol:'potok-scoped-write-manifest-v1',tag:randomBytes(12).toString('hex'),day:'2199-01-15',diaryIds:Array.from({length:3},()=>randomUUID())}},request);console.log('SCOPED_WRITES_REAL_API_OK: synthetic CI identities; bounded diary/photo metadata CRUD and foreign denials');
  stage='grant';prepare('grant',b.id);assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).admin,true);assert.equal((await sb.getVerifiedCurrentUserCapabilities(b.id)).premium,false);assert.equal((await sa.getVerifiedCurrentUserCapabilities(a.id)).admin,false);
  assert.equal((await ok(rpc('apply_owner_approved_missing_food_draft',a,{p_draft_id:DRAFT})))[0].result,'permission_denied');
  assert.equal((await ok(rpc('apply_owner_approved_missing_food_draft',b,{p_draft_id:DRAFT})))[0].result,'applied');
