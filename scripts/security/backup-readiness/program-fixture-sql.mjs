@@ -54,7 +54,7 @@ DO $guard$ DECLARE name text;n bigint;BEGIN
  IF (SELECT count(*) FROM auth.users WHERE id IN(${m.users.map(lit).join(',')}))<>2 OR NOT EXISTS(SELECT FROM pg_attribute WHERE attrelid='public.program_sessions'::regclass AND attname='day_date' AND atttypid='date'::regtype AND attgenerated='' AND NOT attisdropped) OR NOT EXISTS(SELECT FROM pg_attribute WHERE attrelid='public.program_sessions'::regclass AND attname='execution_reason' AND NOT attisdropped) THEN RAISE EXCEPTION 'Expected existing identities and ready session shape';END IF;
  FOREACH name IN ARRAY ARRAY['nutrition_programs','training_programs','program_phases','program_blocks','program_days','program_sessions','program_explainability','program_generation_jobs','program_versions','program_adaptations','program_guard_events','program_feedback'] LOOP
  IF EXISTS(SELECT FROM pg_class WHERE oid=to_regclass('public.'||name) AND NOT relrowsecurity) THEN RAISE EXCEPTION 'Program RLS required';END IF;
- EXECUTE format('SELECT count(*) FROM public.%I WHERE id IN(${ids})',name) INTO STRICT n;
+ EXECUTE format('SELECT count(*) FROM public.%I WHERE id=ANY($1)',name) INTO STRICT n USING ARRAY[${ids}]::uuid[];
  IF n<>0 THEN RAISE EXCEPTION 'Fixture id collision';END IF;
  END LOOP;
 END $guard$;
