@@ -1,0 +1,8 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {spawnSync} from 'node:child_process';
+import {commitSQL,assertPolicyOnlyChange} from './storage-policy-install.mjs';
+import {referencePolicies} from './storage-policy-rehearsal.mjs';
+test('install has one guarded commit, exact 11 rules and no broader grants/content statements',()=>{const sql=commitSQL();assert(sql.endsWith('COMMIT;'));assert.equal((sql.match(/COMMIT;/g)||[]).length,1);assert(!sql.includes('ROLLBACK;'));assert.equal((sql.match(/CREATE POLICY/g)||[]).length,11);assert(!/\bGRANT\b|\bREVOKE\b|\bDELETE FROM\b|\bINSERT INTO\b/.test(sql));assert(sql.includes('Local superuser socket required'));});
+test('independent verification permits only exact policy additions, rejecting content/catalog/drift',()=>{const before={objects:[{name:'protected',metadata:{size:3}}],catalog:{policies:null,columns:[1],routines:[2]}};const after={...structuredClone(before),catalog:{...before.catalog,policies:Array(11).fill({})}};assertPolicyOnlyChange(before,after,referencePolicies());for(const mutate of [x=>x.objects[0].metadata.size=4,x=>x.catalog.columns.push(3),x=>x.catalog.policies.pop()]){const v=structuredClone(after);mutate(v);assert.throws(()=>assertPolicyOnlyChange(before,v,referencePolicies()));}assert.throws(()=>assertPolicyOnlyChange(before,after,referencePolicies().slice(1)));});
+test('CLI rejects unbound mode before Docker without printing supplied targets',()=>{const r=spawnSync(process.execPath,[new URL('storage-policy-install.mjs',import.meta.url).pathname,'--apply','https://example.invalid'],{encoding:'utf8'});assert.equal(r.status,1);assert.match(r.stderr,/phase=admission/);assert(!r.stderr.includes('example.invalid'));});
