@@ -122,3 +122,7 @@ Mac-результаты: 112 выбранных таблиц совпали п�
 ## Владельческий rollback parity pass и подготовка проверки двенадцати исправлений
 
 Владелец подтвердил обе LOCAL_RIGHTS_PARITY_*_OK строки #227: selected matrix временно выровнена, исходные ACL восстановлены. Это не committed fix/application acceptance. `strict-twelve-rehearsal-20261028.md` описывает новый source planner: после fresh private exact-diff проверки временные 213 REVOKE предшествуют всем 12 неизменённым кандидатам; единый ROLLBACK сохраняет все старые content/metadata и новые ACL checks. Никакого удаления guard #222 или hosted apply; фактический Mac strict-twelve прогон и затем affected application acceptance остаются отдельными.
+
+## Сужение прав существующего приватного кандидата — подготовка 28 октября
+
+Владелец подтвердил strict twelve rollback pass, затем 211 оставшихся direct-owner extras из исходных 213 на уже установленном кандидате и отсутствие пересечения с явными column grants/нужными photo grants. `candidate-acl-repair-20261028.md` описывает offline planner: fresh current 112-table fingerprints, точные 211 REVOKE, отдельные rollback/commit/independent-readonly-verify/reconcile файлы. Старое число 14888 не навязывается существующим 11 Auth users/12 profiles; все текущие записи сохраняются. Источник не выполняет SQL, новый локальный repair ещё не подтверждён; ни CI, ни SQL contracts не заменяют affected application acceptance. Никаких reset/reinstall/повторов Auth/A-B, hosted apply или новых GRANT автоматически.
