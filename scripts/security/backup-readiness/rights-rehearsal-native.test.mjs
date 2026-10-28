@@ -9,6 +9,8 @@ const root=new pg.Client({connectionString:url.href});await root.connect();
 const names=JSON.parse(await readFile(new URL('inventory-20261027.json',import.meta.url))).tables.filter(t=>t.schema==='public').map(t=>t.name).sort();
 const quote=s=>'"'+s.replace(/"/g,'""')+'"';
 let db;
+// psql sends pre-BEGIN setup separately; preserve that transaction boundary in the driver.
+async function runPlan(client,sql){const at=sql.indexOf('\nBEGIN;\n');assert(at>0);await client.query(sql.slice(0,at));return client.query(sql.slice(at));}
 async function capture(client){const result=await client.query(captureSQL);return result.find(r=>r.rows?.[0]?.evidence).rows[0].evidence;}
 try {
  for(const name of ['anon','authenticated','service_role'])if(!(await root.query('SELECT 1 FROM pg_roles WHERE rolname=$1',[name])).rowCount)await root.query('CREATE ROLE '+quote(name));
@@ -25,17 +27,17 @@ try {
  const target=await capture(db);
  for(const r of changes)await db.query('GRANT '+r.privilege+' ON public.'+quote(r.table_name)+' TO '+quote(r.role));
  const local=await capture(db),plan=buildRehearsal(local,target,names);
- const notices=[];db.on('notice',n=>notices.push(n.message));await db.query(plan.sql);
+ const notices=[];db.on('notice',n=>notices.push(n.message));await runPlan(db,plan.sql);
  assert(notices.some(s=>s.startsWith('LOCAL_RIGHTS_PARITY_TEMPORARY_OK')));assert(notices.some(s=>s.startsWith('LOCAL_RIGHTS_PARITY_ROLLBACK_OK')));
  const after=await capture(db);assert.equal(after.aclSha256,local.aclSha256);assert.deepEqual(after.rights,local.rights);
  // A late error on a separate connection must also roll back on connection close.
  const failure=new pg.Client({connectionString:fixtureURL.href});await failure.connect();await failure.query('SET ROLE postgres');
  const where=plan.sql.indexOf('\nDO $check$',plan.sql.indexOf('\nREVOKE '));assert(where>0);
- await assert.rejects(()=>failure.query(plan.sql.slice(0,where)+'\nSELECT 1/0;\n'+plan.sql.slice(where)),e=>e.code==='22012');
+ await assert.rejects(()=>runPlan(failure,plan.sql.slice(0,where)+'\nSELECT 1/0;\n'+plan.sql.slice(where)),e=>e.code==='22012');
  await failure.end();const recovered=await capture(db);assert.equal(recovered.aclSha256,local.aclSha256);assert.deepEqual(recovered.rights,local.rights);
  // A grant changed after capture is stopped before the first planned revoke.
  const protectedRight=local.rights.find(r=>r.role==='service_role'&&r.privilege==='SELECT');
  await db.query('REVOKE SELECT ON public.'+quote(protectedRight.table_name)+' FROM service_role');
- await assert.rejects(()=>db.query(plan.sql),e=>e.message==='BASELINE_DRIFT_STOP');await db.query('ROLLBACK');
+ await assert.rejects(()=>runPlan(db,plan.sql),e=>e.message==='BASELINE_DRIFT_STOP');await db.query('ROLLBACK');
  console.log('RIGHTS_PARITY_NATIVE_OK: 213 temporary revokes; exact selected matrix; successful and late-error rollback restore ACL; drift stops before revokes. Synthetic only, no application acceptance.');
 } finally {if(db){await db.query('ROLLBACK');await db.end();}await root.end();}
