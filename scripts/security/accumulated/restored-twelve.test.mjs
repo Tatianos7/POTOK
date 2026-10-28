@@ -4,6 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {legacySchema,A,B} from '../catalog-authority/fixture.mjs';
 import {captureSQL,buildRehearsal as buildRightsRehearsal} from '../backup-readiness/rights-rehearsal.mjs';
 import {combineStrictTwelve} from '../backup-readiness/strict-twelve.mjs';
+import {candidateCaptureSQL,buildCandidatePlans} from '../backup-readiness/candidate-rights.mjs';
 import {loadInputs,body} from './inputs.mjs';
 import {buildTwelve,loadFollowups} from './restored-twelve.mjs';
 import {buildInstall,finalSQL,fingerprintSQL,boundaryQuery,settingsSQL,validateTarget,candidateName,originalName} from './private-candidate.mjs';
@@ -114,6 +115,43 @@ try{
   await exec('RESET ROLE;');const before=await snapshot();
   const sql=combineStrictTwelve(parity.sql,await script());await protocol(sql);assert.deepEqual(await snapshot(),before);
   console.log('STRICT_TWELVE_NATIVE_OK: temporary exact parity precedes all twelve pinned candidates; fixture metadata/content/ACL restored; not owner or application acceptance');
+ });
+ if(!embedded&&process.env.CANDIDATE_ACL_NATIVE==='1')await test('candidate ACL repair preserves real twelve contracts/content and verifies committed rights independently',async()=>{
+  await exec('SET ROLE postgres;');
+  const initial=await rows("SELECT relname FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r' ORDER BY relname");
+  for(let i=initial.length;i<81;i++)await exec('CREATE TABLE public.parity_pad_'+i+'(id integer);');
+  const publicTables=await rows("SELECT relname FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r' ORDER BY relname");assert.equal(publicTables.length,81);
+  for(const t of publicTables)await exec('ALTER TABLE public."'+t.relname+'" ENABLE ROW LEVEL SECURITY;');
+  await exec('REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;GRANT ALL ON ALL TABLES IN SCHEMA public TO anon,authenticated,service_role;');
+  await exec('RESET ROLE;');
+  const current=await rows("SELECT n.nspname AS schema,c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('auth','public','storage') AND c.relkind='r'");
+  for(let i=current.length;i<112;i++)await exec('CREATE TABLE auth.parity_auth_'+i+'(id integer);GRANT SELECT ON auth.parity_auth_'+i+' TO postgres;');
+  const tables=await rows("SELECT n.nspname AS schema,c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN('auth','public','storage') AND c.relkind='r' ORDER BY 1,2");assert.equal(tables.length,112);
+  await exec('SET SESSION AUTHORIZATION postgres;');
+  for(const t of tables)t.rows=Number((await rows('SELECT count(*) AS n FROM "'+t.schema+'"."'+t.name+'"'))[0].n);
+  const [f]=await rows(fingerprintSQL(tables));const boundary=boundaryQuery(await readFile('scripts/security/platform-defaults/check.sql','utf8')).trim().replace(/;$/,'');
+  await exec(buildInstall(sources,followups,tables,f.fingerprint,boundary));
+  const capture=async client=>{const result=await client.query(candidateCaptureSQL(tables));return result.find(r=>r.rows?.[0]?.evidence).rows[0].evidence;};
+  let captured=await capture(db);
+  const selected=captured.rights.filter(r=>r.table_name.startsWith('parity_pad_')&&r.role==='anon'&&r.privilege!=='TRUNCATE').slice(0,211);assert.equal(selected.length,211);
+  const remaining=selected.map(r=>({table:r.table_name,role:r.role,privilege:r.privilege,direction:'extra_on_restored',directOwnerGrant:true}));
+  const original=[...remaining,...['INSERT','UPDATE'].map(privilege=>({table:'user_profiles',role:'anon',privilege,direction:'extra_on_restored'}))];
+  // An explicit grant on the affected column for another role must survive table revocation.
+  await exec('GRANT UPDATE(id) ON public."'+remaining[0].table+'" TO authenticated;');
+  captured=await capture(db);
+  const plans=buildCandidatePlans(captured,original,remaining,{names:publicTables.map(t=>t.relname),tables});
+  const runPlan=async sql=>{const at=sql.indexOf('\nBEGIN;\n');assert(at>0);await exec(sql.slice(0,at));return exec(sql.slice(at+1));};
+  const before=await snapshot();await runPlan(plans.rollback);assert.deepEqual(await snapshot(),before);
+  // Simulate a late failure before COMMIT: all REVOKEs must roll back.
+  const at=plans.commit.indexOf('COMMIT;');assert(at>0);
+  await assert.rejects(()=>runPlan(plans.commit.slice(0,at)+'SELECT 1/0;'+plans.commit.slice(at)),e=>e.code==='22012');await exec('ROLLBACK;');assert.deepEqual(await snapshot(),before);
+  await runPlan(plans.commit);
+  const {default:pg}=await import(pathToFileURL(process.env.SQL_TEST_PG_MODULE));const independent=new pg.Client({connectionString:process.env.TEST_DATABASE_URL});await independent.connect();
+  try{await independent.query('SET SESSION AUTHORIZATION postgres');const checked=await independent.query(plans.verify);assert(checked.some(r=>r.rows?.[0]?.result==='CANDIDATE_ACL_COMMITTED_VERIFIED_OK'));}finally{await independent.end();}
+  const after=await capture(db);assert.equal(after.columnAclSha256,captured.columnAclSha256);assert.equal(after.shapeSha256,captured.shapeSha256);assert.deepEqual(after.content,captured.content);
+  for(const item of remaining)assert.equal(after.rights.find(r=>r.table_name===item.table&&r.role===item.role&&r.privilege===item.privilege).allowed,false);
+  console.log('CANDIDATE_ACL_NATIVE_OK: 211 exact revokes; real twelve contracts/content/column grants preserved; late error rollback; independent committed verification. Synthetic only, no owner/API acceptance.');
+  await exec('SET SESSION AUTHORIZATION test_admin;');
  });
  await test('twelve candidates meet the narrow application SQL boundary with platform defaults retained',async()=>{
   const before=await snapshot();const sql=await script();const [prefix,rest]=sql.split(/^BEGIN;\n/m),[transaction,suffix]=rest.split(/^ROLLBACK;\n/m);

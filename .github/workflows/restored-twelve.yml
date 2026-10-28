@@ -4,6 +4,7 @@ on:
     paths:
       - 'scripts/security/accumulated/**'
       - 'scripts/security/backup-readiness/strict-twelve*'
+      - 'scripts/security/backup-readiness/candidate-rights*'
       - 'scripts/security/backup-readiness/rights-rehearsal.mjs'
       - 'scripts/security/platform-defaults/**'
       - 'scripts/security/program-reads/**'
@@ -50,3 +51,36 @@ jobs:
           TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_restored_twelve_test
           SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
         run: node scripts/security/accumulated/restored-twelve.test.mjs
+  isolated-candidate-acl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - run: npm ci --prefix scripts/security/data-api-explicit-grants --ignore-scripts
+      - name: Cache only the four pinned public remote inputs
+        run: |
+          mkdir -p "$RUNNER_TEMP/potok-public-inputs"
+          node --input-type=module -e '
+          import fs from "node:fs/promises";
+          import {createHash} from "node:crypto";
+          import {inputs} from "./scripts/security/accumulated/inputs.mjs";
+          for(const i of inputs.filter(i=>!i.local)){
+          const r=await fetch(`https://raw.githubusercontent.com/Tatianos7/POTOK/${i.ref}/${i.path}`,{redirect:"error",signal:AbortSignal.timeout(30000)});
+          if(!r.ok)throw Error("Public input unavailable");const bytes=Buffer.from(await r.arrayBuffer());
+          if(createHash("sha256").update(bytes).digest("hex")!==i.sha256)throw Error("Public input changed");
+          await fs.writeFile(process.env.RUNNER_TEMP+"/potok-public-inputs/"+(i.key==="anonymous"?"rpc":i.key)+".sql",bytes);
+          }'
+      - name: PostgreSQL and Node share one isolated network namespace; no published ports
+        run: |
+          set -euo pipefail
+          trap 'docker rm -f potok_candidate_acl_native >/dev/null 2>&1 || true' EXIT
+          docker run --detach --name potok_candidate_acl_native --network none --env POSTGRES_USER=test_admin --env POSTGRES_PASSWORD=disposable-test-only --env POSTGRES_DB=potok_restored_twelve_test postgres:17 -c listen_addresses=127.0.0.1 -c cron.launch_active_jobs=off
+          for attempt in $(seq 1 60); do
+            if docker exec potok_candidate_acl_native pg_isready -h 127.0.0.1 -U test_admin -d potok_restored_twelve_test >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          docker exec potok_candidate_acl_native pg_isready -h 127.0.0.1 -U test_admin -d potok_restored_twelve_test
+          docker run --rm --read-only --cap-drop ALL --security-opt no-new-privileges --user node --network container:potok_candidate_acl_native --tmpfs /tmp:rw,nosuid,nodev,size=64m --mount "type=bind,source=$GITHUB_WORKSPACE/scripts,target=/work/scripts,readonly" --mount "type=bind,source=$GITHUB_WORKSPACE/supabase,target=/work/supabase,readonly" --mount "type=bind,source=$GITHUB_WORKSPACE/docs,target=/work/docs,readonly" --mount "type=bind,source=$RUNNER_TEMP/potok-public-inputs,target=/public-inputs,readonly" --workdir /work --env TEST_DATABASE_URL=postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_restored_twelve_test --env SQL_TEST_PG_MODULE=/work/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js --env ACCUMULATED_INPUT_DIR=/public-inputs --env CANDIDATE_ACL_NATIVE=1 node:24.22.1-alpine3.23 node scripts/security/accumulated/restored-twelve.test.mjs
