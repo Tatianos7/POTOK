@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
 import ts from 'typescript';
-import {createProgramGateway} from './program-ui-worker.mjs';
+import {createProgramGateway,programBrowserFailure} from './program-ui-worker.mjs';
 const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',id='33333333-3333-4333-8333-333333333333';
 function fixture({rows=[],rpcError=null,foreign=false,swap=false,updateError=null,unconfirmed=false}={}){
  const calls=[];let auth=0;const client={auth:{getUser:async()=>({data:{user:{id:swap&&auth++>0?b:a}},error:null})},rpc:async(name,args)=>{calls.push({rpc:name,args});return {data:rows,error:rpcError};},from(table){const c={table,filters:[],body:null};calls.push(c);const q={select(){return q;},eq(k,v){c.filters.push([k,v]);return q;},limit(){return q;},update(body){c.body=body;return q;},then(resolve,reject){return Promise.resolve({data:c.body?(unconfirmed?[]:[{id}]):foreign?[]:[{id,user_id:a}],error:c.body?updateError:null}).then(resolve,reject);}};return q;}};
@@ -25,4 +25,11 @@ test('browser gateway rejects unlisted writes, foreign filters, forged fields an
   assert.equal((await fetch(base+own,{method:'OPTIONS',headers:{Origin:'http://127.0.0.1:13005','Access-Control-Request-Method':'PATCH','Access-Control-Request-Headers':'authorization,content-type'}})).status,204);
   assert.equal(gateway.patches,0);
  }finally{await gateway.close();}
+});
+
+test('browser failure classification exposes only bounded flags and never error contents',()=>{
+ const secret='private-token-and-user-row';
+ for(const error of [Object.assign(Error(secret),{name:'TimeoutError'}),Object.assign(Error(secret),{code:'ERR_ASSERTION'}),Error('Target closed '+secret),Error('page crashed '+secret)]){
+  const r=programBrowserFailure(error);assert.deepEqual(Object.keys(r),['timeout','assertion','browserClosed','pageCrashed']);assert(Object.values(r).every(v=>typeof v==='boolean'));assert(!JSON.stringify(r).includes(secret));assert(Object.values(r).some(Boolean));
+ }
 });

@@ -57,3 +57,23 @@ and their ordinary profile INSERTs, before taking the preservation baseline. It 
 not retire/delete legacy plans or weaken ambiguity detection. The browser then logs
 into those initialized identities with real OTP. This CI-only bootstrap is absent
 from the Mac controller, which admits only the original two receipt-bound accounts.
+
+## Mac stop and bounded diagnostic revision
+
+The first owner run `program-ui-xX8FUk` stopped under the broad
+`independent-after-proof` tail. Saved before/after reports show unchanged
+protected contents, security capture and Storage; the cleanup log has no SQL
+error. The worker failed at `resume-0`, with unknown runtime and a gateway
+404 for `workout_days`. Its container exited 1 after about 31 seconds, with
+OOMKilled false and no saved page-crash, browser-closed or disk-full marker.
+This does not identify whether the action, status wait or subsequent reload
+failed, and it is not Mac UI acceptance. Do not replay the old worker.
+
+The revised worker splits resume and reload into six named checkpoints and
+emits only boolean error categories, page/request failure counts and bounded
+PATCH counts. It never emits original exceptions, stacks, DOM, credentials
+or URL queries. The existing workout-days GET dependency is forwarded through
+the ordinary user's RLS-protected API; no write route or database grant is
+added. All assertions and independent preservation/cleanup checks remain.
+A new owner run requires the revised pinned package after CI verification;
+there is no automatic retry of the stopped run.
