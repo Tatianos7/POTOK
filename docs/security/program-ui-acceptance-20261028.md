@@ -24,6 +24,10 @@ stop/ROLLBACK are unchanged. This updates source inventory, not hosted approval.
 The bounded UI controller reuses the previously built immutable browser image.
 Two hash-verified public source files are supplied in memory to Vite's loader;
 database/Auth responses are not mocked, redirected to a hosted endpoint or replaced.
+The historical runtime test materializes the original two files from hash-checked
+public fixtures at d642823fa8486c1ee3ce0443531e881d606c7628 and verifies all original
+602 runtime inputs. It also requires the old builder to reject the changed current
+source tree. No historical runtime manifest, digest or production guard is weakened.
 No new archive, npm install or browser rebuild is needed on the Mac. Browser traffic
 is limited to loopback; the credential-free gateway permits only listed reads/RPCs
 and status PATCHes bound to manifest parent/owner IDs. The worker has no database

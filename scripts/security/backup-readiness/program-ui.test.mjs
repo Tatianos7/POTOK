@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
 import ts from 'typescript';
+import {createProgramGateway} from './program-ui-worker.mjs';
 const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',id='33333333-3333-4333-8333-333333333333';
 function fixture({rows=[],rpcError=null,foreign=false,swap=false,updateError=null,unconfirmed=false}={}){
  const calls=[];let auth=0;const client={auth:{getUser:async()=>({data:{user:{id:swap&&auth++>0?b:a}},error:null})},rpc:async(name,args)=>{calls.push({rpc:name,args});return {data:rows,error:rpcError};},from(table){const c={table,filters:[],body:null};calls.push(c);const q={select(){return q;},eq(k,v){c.filters.push([k,v]);return q;},limit(){return q;},update(body){c.body=body;return q;},then(resolve,reject){return Promise.resolve({data:c.body?(unconfirmed?[]:[{id}]):foreign?[]:[{id,user_id:a}],error:c.body?updateError:null}).then(resolve,reject);}};return q;}};
@@ -13,3 +14,15 @@ test('actual service selects one active/paused RPC row; empty and retired-only l
 test('malformed, cross-type and ambiguous active lists fail rather than masquerading as an empty screen',async()=>{for(const rows of [null,row,[{...row,program_id:'forged'}],[{...row,program_type:'training'}],[row,{...row,program_id:b}]])await assert.rejects(()=>fixture({rows}).s.getActiveProgram('nutrition'));const e=Error('RPC unavailable');await assert.rejects(()=>fixture({rpcError:e}).s.getActiveProgram('nutrition'),e);});
 test('pause/resume confirm only a bounded owner status PATCH and never write protected history',async()=>{for(const action of ['pauseProgram','resumeProgram']){const f=fixture();await f.s[action](id,'nutrition','manual_pause');const writes=f.calls.filter(c=>c.body);assert.equal(writes.length,1);assert.equal(writes[0].table,'nutrition_programs');assert.deepEqual(writes[0].body,{status:action==='pauseProgram'?'paused':'active'});assert.deepEqual(writes[0].filters,[['id',id],['user_id',a]]);assert(f.calls.every(c=>c.table==='nutrition_programs'));}});
 test('foreign targets, account switch, failed or zero-row writes never return successful UI actions',async()=>{for(const options of [{foreign:true},{swap:true},{updateError:Error('Denied')},{unconfirmed:true}]){const f=fixture(options);await assert.rejects(()=>f.s.pauseProgram(id,'nutrition','manual_pause'));assert.equal(f.calls.filter(c=>c.body).length,options.foreign||options.swap?0:1);}const f=fixture();await assert.rejects(()=>f.s.resumeProgram('bad','nutrition'));assert.equal(f.calls.length,0);});
+test('browser gateway rejects unlisted writes, foreign filters, forged fields and remote origins before upstream',async()=>{
+ const gateway=createProgramGateway({mode:'private',users:[{id:a},{id:b}],manifest:{programs:[{id,owner:0,type:'nutrition'}]}});await gateway.start();
+ const base='http://127.0.0.1:13004/rest/v1/',own='nutrition_programs?id=eq.'+id+'&user_id=eq.'+a;
+ try{
+  for(const route of ['program_explainability','program_guard_events','rpc/start_purchase','rpc/generate_program'])assert.equal((await fetch(base+route,{method:'POST',body:'{}'})).status,404);
+  assert.equal((await fetch(base+own.replace(a,b),{method:'PATCH',body:'{"status":"paused"}'})).status,404);
+  for(const body of [{plan_payload:{}},{status:'completed'},{status:'paused',program_version:2}])assert.equal((await fetch(base+own,{method:'PATCH',body:JSON.stringify(body)})).status,400);
+  assert.equal((await fetch(base+own,{method:'OPTIONS',headers:{Origin:'https://example.invalid','Access-Control-Request-Method':'PATCH'}})).status,403);
+  assert.equal((await fetch(base+own,{method:'OPTIONS',headers:{Origin:'http://127.0.0.1:13005','Access-Control-Request-Method':'PATCH','Access-Control-Request-Headers':'authorization,content-type'}})).status,204);
+  assert.equal(gateway.patches,0);
+ }finally{await gateway.close();}
+});
