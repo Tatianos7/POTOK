@@ -3,6 +3,14 @@
 import assert from 'node:assert/strict';
 import {assertReadPreservation} from './post-acl-reads.mjs';
 export const logicalCategories=['relations','columns','indexes','constraints','functions','triggers'];
+// oid is an unsigned 32-bit PostgreSQL identifier. JSON's general type
+// conversion may encode it as decimal text; do not require an int JSON token.
+export function triggerOidKey(value){
+ assert(typeof value==='string'||typeof value==='number');
+ if(typeof value==='number')assert(Number.isSafeInteger(value));
+ const text=String(value);assert.match(text,/^[1-9][0-9]{0,9}$/);
+ assert(BigInt(text)<=4294967295n);return text;
+}
 export function stableRaw(raw){
  assert.deepEqual(Object.keys(raw).sort(),['columns','relations','routines']);
  for(const key of ['relations','columns','routines'])assert(Array.isArray(raw[key])&&raw[key].length>0);
@@ -23,7 +31,7 @@ export function assertOriginalAuthObservation(original,baseline,onStage=()=>{}){
  const {triggers:baselineTriggers,...baselineDefinitions}=baseline;
  assert.deepEqual(originalDefinitions,baselineDefinitions);
  assertObservation({...original,logical:baseline},baseline);
- const map=rows=>{assert(Array.isArray(rows));const m=new Map(rows.map(t=>{assert(Array.isArray(t)&&t.length===3);assert(Number.isSafeInteger(t[0]));return [t[0],t];}));assert.equal(m.size,rows.length);return m;};
+ const map=rows=>{assert(Array.isArray(rows));const m=new Map(rows.map(t=>{assert(Array.isArray(t)&&t.length===3);return [triggerOidKey(t[0]),t];}));assert.equal(m.size,rows.length);return m;};
  onStage('original-trigger-rows');
  const origin=map(originalTriggers),installed=map(baselineTriggers);
  for(const [id,trigger] of origin)assert.deepEqual(installed.get(id),trigger);

@@ -63,6 +63,8 @@ jobs:
         env:
           POTOK_PHOTO_AUTH_DIR: ${{ runner.temp }}/potok-photo-http-acceptance
         run: node scripts/security/combined-api/api.mjs
+      - name: Actual PostgreSQL Auth trigger JSON admission
+        run: node scripts/security/backup-readiness/program-auth-continuity-ci.mjs
       - name: Program fixture source guards
         run: node --test scripts/security/backup-readiness/program-fixture.test.mjs scripts/security/backup-readiness/program-client.test.mjs scripts/security/backup-readiness/program-ui.test.mjs scripts/security/backup-readiness/program-auth-continuity.test.mjs scripts/security/backup-readiness/program-auth-metadata-review.test.mjs
       - name: Real Supabase SQL roles and rollback for new bounded program fixtures

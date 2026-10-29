@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {assertReviewedAuthContinuity as verify,stableRaw} from './program-auth-continuity.mjs';
+import {assertReviewedAuthContinuity as verify,stableRaw,triggerOidKey} from './program-auth-continuity.mjs';
 const clone=structuredClone;
 function fixture(){
  const logicalBaseline=Object.fromEntries(['relations','columns','indexes','constraints','functions','triggers'].map(k=>[k,[[k,1]]]));
@@ -51,3 +51,13 @@ test('only two exact installed authority FK triggers may be absent from the orig
 });
 
 test('failed admission exposes a bounded checkpoint rather than private assertion values',()=>{const f=fixture(),stages=[];f.reviewOriginal.logical.triggers[0][1]='D';assert.throws(()=>verify({...f,onStage:s=>stages.push(s)}));assert.equal(stages.at(-1),'original-trigger-rows');assert(stages.every(s=>/^[a-z-]+$/.test(s)));});
+
+test('actual PostgreSQL oid JSON decimal strings are accepted without weakening trigger definitions',()=>{
+ const f=fixture();for(const v of [f.logicalBaseline,f.live.logical,f.reviewCandidate.logical,f.reviewOriginal.logical])for(const t of v.triggers)t[0]=String(t[0]);verify(f);
+ f.reviewOriginal.logical.triggers[0][1]='D';assert.throws(()=>verify(f));
+});
+test('OID key parsing rejects noncanonical/out-of-range identifiers and detects mixed-token duplicate identities',()=>{
+ for(const v of [1,4294967295,'1','4294967295'])assert.equal(triggerOidKey(v),String(v));
+ for(const v of [0,-1,1.5,NaN,Infinity,4294967296,'','0','-1','01','1.0','1e3',' 1','4294967296',null,true,{},[]])assert.throws(()=>triggerOidKey(v));
+ const f=fixture();f.reviewOriginal.logical.triggers.push(['10',...f.reviewOriginal.logical.triggers[0].slice(1)]);assert.throws(()=>verify(f));
+});

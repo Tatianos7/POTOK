@@ -220,3 +220,23 @@ must still match the saved installed baseline INCLUDING both triggers. Unknown,
 disabled, changed, extra, duplicate or missing triggers fail. The controller now
 prints a bounded Auth checkpoint on failure without private assertion details.
 No SQL, application source, database trigger or saved baseline is changed.
+
+
+### PostgreSQL OID JSON representation
+
+The corrected owner precheck stopped at precheck-auth-original-trigger-rows.
+The reader incorrectly required a JavaScript integer for the trigger OID, although
+PostgreSQL can encode oid as decimal JSON text. The trigger identity reader now
+accepts canonical decimal string or integer tokens in the positive unsigned
+32-bit OID range, normalizes map keys only, rejects malformed/out-of-range IDs
+and detects string/number duplicate identities. Full trigger rows/DDL/enabled
+states still compare exactly. No metadata values or snapshots are rewritten.
+
+Regression tests cover PostgreSQL-shaped string IDs and malformed/boundary/
+duplicate identities. A separate disposable CI integration reads the unchanged
+metadata query from actual PostgreSQL after the pinned authority installation,
+requires its real oid strings and pg_get_triggerdef output to pass, and rejects
+altered/disabled/different-table trigger fixtures. It uses only a read-only SQL
+transaction and simulates the pre-install trigger-set delta in memory, never
+claiming to recreate private owner evidence. Native success is required before
+giving the owner another revised precheck command.
