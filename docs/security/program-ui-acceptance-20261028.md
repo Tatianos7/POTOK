@@ -97,3 +97,20 @@ The ordinary full program UI assertions are unchanged. Diagnostics now distingui
 probe initialization, Auth status and bounded Chromium network failure codes.
 Playwright 1.40 TimeoutError inherits Error.name, so timeout recognition also checks
 the bounded timeout message signature without printing the original exception.
+
+## Observed temporary filesystem exhaustion
+
+Owner live observation of program-auth-reload-wLVJ5q collected 18 samples:
+/tmp had only 2 MiB free under its 512 MiB tmpfs cap; /dev/shm retained all
+256 MiB; worker cgroup peak was about 997 MiB; VM MemAvailable remained at
+least 2072 MiB; soft file limit was 1048576. The prior failed worker recorded
+net::ERR_INSUFFICIENT_RESOURCES, not a confirmed authentication defect.
+Host disk/idle container totals alone did not reveal this separate tmpfs cap.
+
+Only the new private program browser worker's /tmp cap is raised to 1 GiB.
+This is an upper bound, not a preallocated 1 GiB reservation. No Docker Desktop
+VM setting, database volume, image, API grant or browser assertion changes.
+The worker reports bounded tmpfs capacity/free-space numbers on both failure
+and success, captured before closing Chromium. Reuse the immutable cached
+image. First run the no-program-write Auth reload admission; full fixture UI
+acceptance remains pending until its own independent checks pass.
