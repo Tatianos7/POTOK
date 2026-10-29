@@ -1599,7 +1599,9 @@ function TodayEntry(props: TodayProps) {
   const today = getLocalDayKey();
   const isLocalDevelopment = (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV === true;
   const demoPreviewRequested = new URLSearchParams(location.search).get('weeklyPreview') === 'demo';
-  if (demoPreviewRequested && (isLocalDevelopment || (props.demoPremiumAccess === true && props.verifiedPremium !== true))) {
+  // Home must retain its header and account menu instead of redirecting out of Dashboard.
+  const embeddedDemoRequested = props.embeddedInAppShell === true && props.demoPremiumAccess === true;
+  if ((demoPreviewRequested || embeddedDemoRequested) && (isLocalDevelopment || (props.demoPremiumAccess === true && props.verifiedPremium !== true))) {
     if (!props.currentUserId) return <p className="p-6">Войдите, чтобы открыть недельный предпросмотр.</p>;
     const source = demoPlans[0];
     const weeks = projectTodayNutritionWeeks({
