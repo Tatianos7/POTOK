@@ -114,3 +114,21 @@ The worker reports bounded tmpfs capacity/free-space numbers on both failure
 and success, captured before closing Chromium. Reuse the immutable cached
 image. First run the no-program-write Auth reload admission; full fixture UI
 acceptance remains pending until its own independent checks pass.
+
+## Read-only precheck classification after the Auth reload pass
+
+Owner program-auth-reload-9HiE7u passed with 488 MiB temporary free space,
+unchanged protected/security/Storage snapshots and no program fixture writes.
+The subsequent full UI command stopped at precheck before creating an evidence
+folder, fixtures or browser worker. Do not replay it or replace the baseline.
+Fresh storage-precheck-review-1TdGdc shows the full Storage snapshot, catalog
+and relation fields match the program-client-KTEgS1 reference, readOnly=on.
+
+program-precheck-review.mjs classifies remaining admission conditions against
+that same reference, without browser/OTP, SQL writes, grants, seed or cleanup.
+It admits only the owner backup directory, exact existing isolated candidate
+ID/image/local Unix Docker endpoint and the prior hash-pinned 20-file package.
+Every SQL command must declare a read-only transaction; the underlying pinned
+queries are unchanged. Raw evidence stays in a new owner-only local folder.
+Only changed field/table names, file-validity and contract booleans are printed.
+A mismatch does not authorize updating the baseline or bypassing the full gate.
