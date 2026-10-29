@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {spawnSync} from 'node:child_process';
-import {compareRows,logicalAuthSQL,observationSQL} from './program-auth-metadata-review.mjs';
+import {compareRows,logicalAuthSQL,observationSQL,metadataReadArgs} from './program-auth-metadata-review.mjs';
 import {authMetadataSQL} from '../accumulated/private-auth.mjs';
 test('logical Auth query remains the exact original install-time definition query',()=>{assert.equal(logicalAuthSQL,authMetadataSQL);assert.match(observationSQL,/^BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;/);assert.match(observationSQL,/ROLLBACK;$/);assert.doesNotMatch(observationSQL,/\b(?:INSERT|UPDATE|DELETE|ALTER|GRANT|REVOKE|TRUNCATE|CREATE|DROP)\s/i);});
 test('metadata comparison reports maintenance and security fields alike, without leaking values',()=>{
@@ -13,3 +13,11 @@ test('metadata comparison reports maintenance and security fields alike, without
 });
 test('row identity ordering is irrelevant; missing, added and duplicate catalog objects cannot disappear',()=>{const b=[{oid:1,value:0},{oid:2,value:0}];assert.deepEqual(compareRows(b,[...b].reverse(),x=>x.oid),{changedFields:[],addedObjects:0,removedObjects:0});assert.deepEqual(compareRows(b,[b[0],{oid:3,value:0}],x=>x.oid),{changedFields:[],addedObjects:1,removedObjects:1});assert.throws(()=>compareRows(b,[b[0],b[0]],x=>x.oid));});
 test('unsupported invocation is refused before any Docker dependency',()=>{const r=spawnSync(process.execPath,['scripts/security/backup-readiness/program-auth-metadata-review.mjs','--invalid'],{encoding:'utf8',env:{...process.env,PATH:'/no-docker'}});assert.equal(r.status,1);assert.equal(r.stdout,'');assert.equal(r.stderr.trim(),'AUTH_METADATA_REVIEW_STOPPED: inputs');});
+
+test('candidate and original metadata readers use their distinct known Unix sockets and reject other targets',()=>{
+ const candidate='8ea4ab28ee60efd0c157ec0f6a9d1fa24f02ffd0c58b7a36c30a47a570785989',original='b'.repeat(64);
+ for(const [id,socket] of [[candidate,'/tmp'],[original,'/run/postgresql']]){
+  const args=metadataReadArgs(id,original);assert.deepEqual(args.slice(0,5),['exec','-i',id,'sh','-c']);assert.equal(args.at(-1),socket);assert.match(args[5],/-h "\$1"/);assert.match(args[5],/-U postgres/);
+ }
+ assert.throws(()=>metadataReadArgs('c'.repeat(64),original));assert.throws(()=>metadataReadArgs(candidate,candidate));assert.throws(()=>metadataReadArgs(candidate,'remote-host'));
+});

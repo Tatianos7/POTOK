@@ -34,6 +34,15 @@ export function compareRows(before,after,identity){
 }
 const dbId='8ea4ab28ee60efd0c157ec0f6a9d1fa24f02ffd0c58b7a36c30a47a570785989';
 const dbImage='sha256:40868dfbce8c3a901448991069b7bcabbe14e8f8105ef609af22afce79b2dc44';
+export function metadataReadArgs(id,originalId){
+ assert.match(originalId,/^[a-f0-9]{64}$/);assert.notEqual(originalId,dbId);
+ assert(id===dbId||id===originalId);
+ // The standalone isolated candidate uses /tmp; the original CLI database
+ // retains the image default /run/postgresql. No TCP or socket fallback.
+ const socket=id===dbId?'/tmp':'/run/postgresql';
+ return ['exec','-i',id,'sh','-c','PGPASSWORD="$POSTGRES_PASSWORD" exec psql -X -w -qAt -h "$1" -U postgres -d postgres --set ON_ERROR_STOP=1','potok-auth-metadata-read',socket];
+}
+
 export async function main(args){let stage='inputs';try{
  assert.equal(args.length,2);assert.equal(args[0],'--inspect-local-auth-metadata');
  const base=fs.realpathSync(args[1]);assert.equal(base,fs.realpathSync(path.join(process.env.HOME,'POTOK_BACKUP_2026-10-24')));
@@ -49,7 +58,7 @@ export async function main(args){let stage='inputs';try{
  const inspect=name=>JSON.parse(docker(['inspect',name]))[0];
  const candidate=inspect(dbId);assert.equal(candidate.Id,dbId);assert(candidate.State.Running);assert.equal(candidate.Image,dbImage);assert.equal(candidate.HostConfig.NetworkMode,'none');assert(candidate.Mounts.some(m=>m.Type==='volume'&&m.Name==='potok_security_candidate_2026-10-26'&&m.Destination==='/var/lib/postgresql/data'));
  const original=inspect('supabase_db_POTOK_BACKUP_2026-10-24');assert.equal(original.Name,'/supabase_db_POTOK_BACKUP_2026-10-24');assert.notEqual(original.Id,dbId);assert(original.State.Running);assert.equal(original.Image,dbImage);assert(original.Mounts.some(m=>m.Type==='volume'&&m.Name==='supabase_db_POTOK_BACKUP_2026-10-24'&&m.Destination==='/var/lib/postgresql/data'));
- const query=id=>{const r=JSON.parse(execFileSync('docker',['--host',endpoint,'exec','-i',id,'sh','-c','PGPASSWORD="$POSTGRES_PASSWORD" exec psql -X -w -qAt -h /tmp -U postgres -d postgres --set ON_ERROR_STOP=1'],{...options,input:observationSQL}));assert.equal(r.actor,'postgres');assert.equal(r.readOnly,'on');assert.equal(r.actorSuper,false);assert.match(r.rawHash,/^[a-f0-9]{64}$/);return r;};
+ const query=id=>{const r=JSON.parse(execFileSync('docker',['--host',endpoint,...metadataReadArgs(id,original.Id)],{...options,input:observationSQL}));assert.equal(r.actor,'postgres');assert.equal(r.readOnly,'on');assert.equal(r.actorSuper,false);assert.match(r.rawHash,/^[a-f0-9]{64}$/);return r;};
  stage='candidate-read';const current=query(dbId);stage='original-read';const origin=query(original.Id);
  const out=fs.mkdtempSync(path.join(base,'auth-metadata-review-'));fs.chmodSync(out,0o700);
  for(const [name,value] of [['candidate.json',current],['original.json',origin]])fs.writeFileSync(path.join(out,name),JSON.stringify(value,null,2),{mode:0o600,flag:'wx'});

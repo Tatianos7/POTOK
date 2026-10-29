@@ -156,3 +156,11 @@ https://www.postgresql.org/docs/17/catalog-pg-class.html . These are possible
 sources of drift, not assumed explanations until the exact local comparison.
 The diagnostic reports security and definition differences equally and performs
 no exclusion or normalization of catalog fields.
+
+The first Auth metadata reader stopped at original-read. Its query incorrectly
+used the candidate's /tmp socket for both databases. The original CLI database
+uses /run/postgresql (also shown by the original owner's successful default-socket
+psql sessions). The revised reader binds each inspected fixed container to its
+known Unix socket, passes that socket as a positional shell argument and rejects
+other IDs. There is no TCP/alternate-socket fallback or database change. A regression
+test covers both socket routes and target rejection; the metadata SQL is unchanged.
