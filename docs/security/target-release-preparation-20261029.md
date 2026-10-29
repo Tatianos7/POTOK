@@ -22,7 +22,9 @@ replication role origin. Public metadata SHA-256 совпал с наблюде�
 Полный наблюдённый physical inventory выбранных трёх схем — 116 таблиц:
 27 auth / 81 public / 8 storage. Прежние 112 COPY-таблиц — другой scope с четырьмя
 явными исключениями managed-таблиц. Новый план блокировок перечисляет все 116;
-права/время получения таких блокировок ordinary managed actor ещё не испытаны.
+Новая read-only проверка прав ниже установила, что uniform strong lock для всех
+116 недоступен ordinary managed actor. Старый outline остаётся заблокированным
+историческим артефактом; не считать его исполняемым выпуском.
 
 ## Конкретные подготовленные артефакты
 
@@ -122,7 +124,8 @@ row counts/scope, порядок и duplicates, полный ROLLBACK. Поло�
 Owner pre-release-backup-2026-10-29.eDWkmR: roles.sql 358 B, schema.sql 243 KiB,
 data.sql 7.9 MiB; all three original SHA256 checks passed. New read-only Storage
 inventory reports 63 objects (22/3/38), and all three CLI downloads finished.
-These are creation/download receipts, not new restore or binary verification.
+Последующие owner results подтвердили файлы и свежее локальное SQL восстановление;
+точный перечень закрытого и ограничений — fresh-recovery-checkpoint-20261029.md.
 
 fresh-storage-files.mjs --verify-downloaded BACKUP compares the saved inventory
 with a fresh independent post-download capture, enforces exact doubled-bucket CLI
@@ -131,5 +134,46 @@ streams SHA256 and detects size/mtime/ctime changes during hashing. Only after
 all checks does it write new storage-manifest.json/storage-sha256.json with wx;
 private errors are not printed. Synthetic success/negative cases passed. A SHA
 computed from a downloaded file is local integrity evidence, not an independent
-provider checksum. SQL-dump/Storage consistency, current full-scope backup and
-new recovery verification remain separate; no acceptance or application replay.
+provider checksum. Storage id/path/version/size восстановленной базы совпали с
+файловой копией; COPY content 112/14888 и 117 FK прошли. Полная конфигурация проекта,
+sequence states и внешняя переносимая копия этим не подтверждаются. Ни installer,
+ни завершённая application acceptance не повторяются.
+
+## Точный оставшийся lock boundary — 29 октября, 13:49:57 по Москве
+
+Только BEGIN READ ONLY/ROLLBACK: role postgres nonsuperuser, 116 physical tables.
+Нужный сильный режим разрешён по MAINTAIN/UPDATE/DELETE/TRUNCATE для 112 таблиц.
+Для auth.schema_migrations, storage.migrations, storage.buckets_vectors,
+storage.vector_indexes есть SELECT, но ни одного из этих четырёх прав.
+MAINTAIN проверен отдельно: false для всей четвёрки. Старый uniform SHARE ROW
+EXCLUSIVE outline не выполнился бы; на рабочей базе LOCK не пробовали.
+
+[PostgreSQL 17 LOCK](https://www.postgresql.org/docs/17/sql-lock.html) разрешает
+любой режим при MAINTAIN/UPDATE/DELETE/TRUNCATE, но SELECT даёт только ACCESS SHARE.
+Не запрашиваем reserved-role membership и не меняем ACL managed таблиц ради locks.
+
+lock-admission.mjs — offline review, привязанный к новому exact inventory/actor
+observation. Предлагает 112 SHARE ROW EXCLUSIVE / четыре ACCESS SHARE в общем
+детерминированном порядке. Не удаляет ни одну таблицу из inventory или будущих
+116 old-column row checks. Изменение любого права/owner/таблицы, включая новую
+ограниченную таблицу, останавливает построение; runtime fallback отсутствует.
+managed-locks.review.sql безусловно останавливается до locks и делает ROLLBACK.
+
+ACCESS SHARE не блокирует записи managed сервисов. Поэтому предложение не
+объявлено release-ready: для четвёрки нужно явное решение о provider-maintenance
+окне/границе и свежая проверка на фактическом соединении. Нельзя незаметно заменить
+сильный lock слабым и продолжать обещать полную заморозку строк. Native CI отдельно
+проверяет именно эту разницу двумя соединениями; это не hosted rehearsal.
+
+Управляемый механизм pg_trgm по-прежнему согласован: public / 47 members,
+postgres — effective member supabase_privileged_role, pg_trgm allowlisted,
+reserved public TRUNCATE defaults=2. Они не удаляются через повышение роли;
+SQL_BOUNDARY_VERIFIED по прежнему check.sql допускает их при отсутствии platform
+объектов/extensions в public и unsafe собственных/default grants.
+
+Новый catalog source scan нашёл только `%` внутри RAISE сообщений rls_auto_enable,
+а не реальный trgm caller; прежний корректный source preflight именно такие
+ложные совпадения исключает. Это не parser/runtime proof для внешних клиентов.
+pgrst.db_extra_search_path/db_schemas в SQL setting catalog не раскрыты (NULL/[]).
+Следовательно полный актуальный config/HTTP/managed ALTER не объявлены проверенными.
+Connected Supabase tools не предоставляют read-PostgREST-config метод.

@@ -46,6 +46,10 @@ jobs:
         run: node scripts/security/release-packet/prepare.mjs --verify
       - name: Fixed target preparation and unchanged exact source plan
         run: node scripts/security/release-packet/target-plan.mjs --verify
+      - name: Managed privilege admission review is reproducible and never applies
+        run: |
+          node scripts/security/release-packet/lock-admission.mjs --verify
+          node --test scripts/security/release-packet/lock-admission.test.mjs
       - name: Fail-closed recovery and source artifact policies
         run: node --test scripts/security/release-packet/state.test.mjs scripts/security/release-packet/target-plan.test.mjs scripts/security/backup-readiness/fresh-storage-files.test.mjs
       - name: Metadata HTTP policy and pinned read-only extension scan
@@ -79,3 +83,8 @@ jobs:
           TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_release_review_test
           SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
         run: node scripts/security/release-packet/target-native.test.mjs
+      - name: Actual PG17 lock privileges and concurrent writer semantics, disposable only
+        env:
+          TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_release_review_test
+          SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
+        run: node scripts/security/release-packet/lock-admission-native.test.mjs
