@@ -197,3 +197,26 @@ exact cleanup and independent postchecks. Production is untouched; full Mac UI
 acceptance and release remain pending. Tests reject changed definitions/ACLs/RLS,
 functions, object additions/removals, all other raw fields, unrelated rows/account
 IDs/security, write-mode/superuser observations and mismatched raw captures.
+
+
+### Expected authority FK triggers across the installation boundary
+
+The first reviewed precheck stopped. Owner offline comparisons confirm the
+candidate matches every saved logical category; the original differs only in
+triggers: candidate-only=2, original-only=0, changed-existing=0. Both additions
+are enabled RI triggers from the pinned authority account FK on auth.users,
+referencing potok_control.access_attestations. That FK is declared in
+trusted_authority_id_user_review_v1.sql (pinned f542e543 source / 8447c555 digest).
+The original copy predates its installation; requiring equal trigger sets across
+that boundary was a diagnostic error.
+
+Only the comparison with the pre-install original now accepts this exact delta:
+all original trigger OIDs/definitions/enabled states remain exact; precisely two
+installed additions must have PostgreSQL RI names, enabled O, canonical full DDL
+for AFTER DELETE/restrict_del and AFTER UPDATE/noaction_upd, that exact parent and
+referencing table, immediate/nondeferrable row execution and no extra clause.
+Every other logical category is exact. Reviewed candidate and fresh live metadata
+must still match the saved installed baseline INCLUDING both triggers. Unknown,
+disabled, changed, extra, duplicate or missing triggers fail. The controller now
+prints a bounded Auth checkpoint on failure without private assertion details.
+No SQL, application source, database trigger or saved baseline is changed.
