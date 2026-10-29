@@ -177,3 +177,36 @@ SQL_BOUNDARY_VERIFIED по прежнему check.sql допускает их п
 pgrst.db_extra_search_path/db_schemas в SQL setting catalog не раскрыты (NULL/[]).
 Следовательно полный актуальный config/HTTP/managed ALTER не объявлены проверенными.
 Connected Supabase tools не предоставляют read-PostgREST-config метод.
+
+## Подтверждение двух полей API владельцем — 29 октября
+
+Два снимка Dashboard проекта POTOK / main / PRODUCTION получены и прочитаны.
+Это отдельный источник от SQL setting catalog, а не вывод значений из NULL.
+
+| Поле Dashboard | Видимое значение |
+| --- | --- |
+| Exposed schemas | graphql_public, public; обе отмечены, 2 of 2 |
+| Extra search path | public, extensions |
+| Automatically expose new tables | включено |
+| Max rows | 1000 |
+
+Недостающие два поля теперь подтверждены owner Dashboard evidence. extensions
+присутствует в extra search path и не выбрана exposed schema; переключатели не
+изменялись. Это согласуется с назначением переноса pg_trgm: extension objects
+доступны для разрешения имён, без отдельной публикации schema как Data API.
+Не путать search path с правом вызова функций или RLS/GRANT. Включённое automatic
+exposure не выключать отдельно в обход согласованного пакета; оно не отменяет
+необходимость точных GRANT/REVOKE и RLS и не является гарантией безопасности.
+
+Снимки не являются полным config export, runtime HTTP проверкой после переноса
+или фактически выполненным managed ALTER. Project ref не читается в кадре;
+привязка к именованному проекту основана на владельческом контексте и видимом
+POTOK/main/PRODUCTION. Перед одобренным применением actual connection/target
+проверяются отдельно. Повторно запрашивать эти же два снимка без причины не нужно.
+
+Проверки exact runtime/source head 4b9d68b завершены: release/native workflow
+40861109899 (job 123404274017) и root workflow 40861109906 — success. Native marker
+MANAGED_LOCK_NATIVE_OK подтвердил запрет strong lock при SELECT-only, возможность
+concurrent write при ACCESS SHARE, блокировку writer сильным режимом и сохранение
+table ACL. Этот раздел — только фиксация owner evidence/CI; исходники и прежние
+SQL artifacts не изменены, hosted apply остаётся не выполненным.
