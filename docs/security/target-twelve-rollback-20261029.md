@@ -9,7 +9,8 @@ application acceptance и свежее восстановление не пов�
 target-rehearsal.mjs формирует actual SQL batch, а не старый outline. Он не имеет
 DB/HTTP/Docker клиента или apply режима; доступны только --write-review/--verify.
 Точные SHA256 двух SQL файлов находятся в target-twelve-rehearsal-manifest.json.
-Пакет не запускался на hosted и ожидает отдельного exact owner approval.
+Исходный статус генерации пакета — pending approval. Фактические попытки и
+результаты владельца записаны ниже; этот статус не является разрешением COMMIT.
 
 1. target-twelve-rehearsal.pending-approval.sql — одна READ COMMITTED транзакция,
    двенадцать прежних exact bodies, проверки, единственный обязательный ROLLBACK.
@@ -78,7 +79,9 @@ supabase_admin default TRUNCATE записи могут остаться; кон
 
 ## Решения после фактического запуска
 
-Успех требует rehearsal marker + ROLLBACK + independent baseline after-check.
+При доступных NOTICE успех подтверждается rehearsal marker + ROLLBACK +
+independent baseline after-check. Для CLI Management path NOTICE могут не попасть
+в отчёт: отдельно сохранять exit statuses и не выдумывать отсутствующие markers.
 Сбой до/во время кандидата: независимо проверить baseline, сохранить частные
 результаты, разобрать причину; автоматического повтора нет. Потеря соединения:
 новое read-only соединение и reconciliation, не предполагать успешный исход.
@@ -117,3 +120,13 @@ origin. Проверки baseline public metadata/116 shapes/owners прошли
 linked target/версии/bytes, fresh readonly admission и обязательным independent
 after-check даже при ошибке. Приватные stdout/stderr сохранить на Mac, в чат только
 exit/status; никаких broad cleanup, изменённых bodies или постоянного применения.
+
+## Результат ручного CLI запуска владельца
+
+Владелец 29 октября передал PROJECT_BINDING_OK, оба SQL hash OK,
+REHEARSAL_EXIT=0, AFTER_CHECK_EXIT=0; приватный отчёт `hosted-rollback.6LnsvT`.
+В rehearsal.json/log и after.json/log поиск TARGET_* вернул пустые наборы.
+Фиксируем успешные owner-reported exit statuses для exact batch и независимого
+after-check, а не увиденные NOTICE или полный raw execution receipt. Ради отметок
+репетицию не повторяем. Постоянное внедрение не выполнялось; отдельный точный
+COMMIT пакет и условия находятся в target-permanent-installation-20261029.md.

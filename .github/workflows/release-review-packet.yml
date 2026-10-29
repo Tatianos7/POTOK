@@ -54,6 +54,10 @@ jobs:
         run: |
           node scripts/security/release-packet/target-rehearsal.mjs --verify
           node --test scripts/security/release-packet/target-rehearsal.test.mjs
+      - name: Separate permanent package retains exact rehearsed body and independent readonly JSON checks
+        run: |
+          node scripts/security/release-packet/target-forward.mjs --verify
+          node --test scripts/security/release-packet/target-forward.test.mjs
       - name: Fail-closed recovery and source artifact policies
         run: node --test scripts/security/release-packet/state.test.mjs scripts/security/release-packet/target-plan.test.mjs scripts/security/backup-readiness/fresh-storage-files.test.mjs
       - name: Metadata HTTP policy and pinned read-only extension scan

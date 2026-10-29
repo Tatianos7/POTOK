@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {sequenceSQL,scopeSQL,metadataSQL,canonicalCTE} from './target-rehearsal.mjs';
+import {buildArtifacts as buildForward} from './target-forward.mjs';
 const url=new URL(process.env.TEST_DATABASE_URL??'');assert.equal(url.hostname,'127.0.0.1');assert.equal(url.pathname,'/potok_release_review_test');
 const {default:pg}=await import(pathToFileURL(process.env.SQL_TEST_PG_MODULE));const db=new pg.Client({connectionString:url.href});await db.connect();
 const cte=canonicalCTE(await readFile(new URL('preflight.sql',import.meta.url),'utf8'));
@@ -32,7 +33,12 @@ try{
   await assert.rejects(()=>db.query(metadataSQL(cte,fixture.digest)),e=>e.message==='TARGET_REHEARSAL_METADATA_STOPPED');await db.query('ROLLBACK');
   const sql=await readFile(new URL('target-twelve-rehearsal.pending-approval.sql',import.meta.url),'utf8');
   await assert.rejects(()=>db.query(sql),e=>e.message==='TARGET_REHEARSAL_CONTEXT_STOPPED');await db.query('ROLLBACK');
+  // The actual new permanent artifact must also stop on the wrong actor, before locks/DDL/COMMIT.
+  const permanent=await buildForward();
+  await assert.rejects(()=>db.query(permanent['target-twelve-forward.pending-approval.sql']),e=>e.message==='TARGET_REHEARSAL_CONTEXT_STOPPED');await db.query('ROLLBACK');
+  await assert.rejects(()=>db.query(permanent['target-twelve-postcommit.readonly.sql']),e=>e.message==='TARGET_REHEARSAL_CONTEXT_STOPPED');await db.query('ROLLBACK');
   assert.equal((await db.query("SELECT to_regclass('public.program_sessions') r")).rows[0].r,null);
   assert.equal((await db.query("SELECT to_regclass('public.potok_sequence_guard_fixture_v1') r")).rows[0].r,null);
   console.log('TARGET_REHEARSAL_NATIVE_OK: actual context stops before locks; schema/metadata drift rejected; nullable addition preserved; sequence values/catalog guarded without resets; disposable rollback complete. Not a hosted rehearsal.');
+  console.log('TARGET_FORWARD_NATIVE_CONTEXT_OK: actual permanent and postcommit artifacts reject wrong actor; no commit/install or positive full-target postcheck tested.');
 }finally{await db.query('ROLLBACK');await db.end();}
