@@ -1,0 +1,807 @@
+{
+  "protocol": "potok-release-target-observation-v1",
+  "projectRef": "dtsdnhbcwpbfrhcazqkb",
+  "readOnly": true,
+  "preflight": {
+    "trgm": {
+      "owner": "supabase_admin",
+      "schema": "public",
+      "relocatable": true,
+      "ordinary_actor_owner_access": false
+    },
+    "actor": "postgres",
+    "protocol": "potok-release-preflight-v1",
+    "actor_super": false,
+    "observed_at": "2026-10-29T05:58:00.409738+00:00",
+    "actor_bypass": true,
+    "public_tables": 81,
+    "session_actor": "postgres",
+    "session_columns": [
+      {
+        "name": "id",
+        "type": "uuid"
+      },
+      {
+        "name": "program_id",
+        "type": "uuid"
+      },
+      {
+        "name": "date",
+        "type": "date"
+      },
+      {
+        "name": "session_type",
+        "type": "text"
+      },
+      {
+        "name": "plan_payload",
+        "type": "jsonb"
+      },
+      {
+        "name": "status",
+        "type": "text"
+      },
+      {
+        "name": "created_at",
+        "type": "timestamp with time zone"
+      },
+      {
+        "name": "day_date",
+        "type": "date"
+      }
+    ],
+    "replication_role": "origin",
+    "server_version_num": 170006,
+    "candidate_namespaces": [],
+    "plan_tables_reviewed": 9,
+    "rest_schema_settings": [],
+    "client_truncate_tables": 63,
+    "public_metadata_sha256": "427466d34aa57984cb4449a3532ece63ece1d27b61f6ccdfbea86c5cf4c878af",
+    "execution_reason_present": false,
+    "protected_profile_write_columns": 4
+  },
+  "lockScope": {
+    "tables": [
+      {
+        "kind": "r",
+        "name": "audit_log_entries",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "custom_oauth_providers",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "flow_state",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "identities",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "instances",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "mfa_amr_claims",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "mfa_challenges",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "mfa_factors",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "mfa_recovery_code_sets",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "mfa_recovery_codes",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "oauth_authorizations",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "oauth_client_states",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "oauth_clients",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "oauth_consents",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "one_time_tokens",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "refresh_tokens",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "saml_providers",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "saml_relay_states",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "schema_migrations",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "scim_tokens",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "scim_users",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "sessions",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "sso_domains",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "sso_providers",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "users",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "webauthn_challenges",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "webauthn_credentials",
+        "owner": "supabase_auth_admin",
+        "schema": "auth"
+      },
+      {
+        "kind": "r",
+        "name": "ai_coaching_events",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "ai_generation_params",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "ai_guard_logs",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "ai_long_term_memory",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "ai_meal_plans",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "ai_quality_metrics",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "ai_recommendations",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "ai_training_plans",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "ai_trust_scores",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "analytics_events",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "billing_events",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "entitlements",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "exercise_categories",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "exercise_definition_media",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "exercise_definitions",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "exercise_muscles",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "exercises",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "favorite_products",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "feature_flags",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "food_alias_apply_audit",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "food_aliases",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "food_diary_entries",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "food_import_batches",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "food_import_conflicts",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "food_import_staging",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "food_missing_food_drafts",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "food_missing_review_queue",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "food_search_events",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "food_search_review_queue",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "foods",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "goal_trajectory",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "habit_logs",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "habits",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "meal_entry_notes",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "measurement_history",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "measurement_photo_assets",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "measurement_photo_deletions",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "measurement_photo_history",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "muscles",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "notification_history",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "nutrition_programs",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_3d_angles",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_3d_joints",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_3d_metrics",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_3d_sessions",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_angles",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_biomechanics",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_deviations",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_feedback_events",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_frames",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_guard_flags",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_joints",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_load_estimates",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_quality_scores",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_risk_assessments",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_sessions",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "pose_voice_cues",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "program_adaptations",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "program_blocks",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "program_days",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "program_explainability",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "program_feedback",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "program_generation_jobs",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "program_guard_events",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "program_phases",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "program_sessions",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "program_versions",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "recipe_ingredients",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "recipe_notes",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "recipes",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "subscriptions",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "training_programs",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "user_exercise_media",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "user_goals",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "user_measurements",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "user_profiles",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "user_state",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "workout_day_notes",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "workout_days",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "workout_entries",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "workout_entry_notes",
+        "owner": "postgres",
+        "schema": "public"
+      },
+      {
+        "kind": "r",
+        "name": "buckets",
+        "owner": "supabase_storage_admin",
+        "schema": "storage"
+      },
+      {
+        "kind": "r",
+        "name": "buckets_analytics",
+        "owner": "supabase_storage_admin",
+        "schema": "storage"
+      },
+      {
+        "kind": "r",
+        "name": "buckets_vectors",
+        "owner": "supabase_storage_admin",
+        "schema": "storage"
+      },
+      {
+        "kind": "r",
+        "name": "migrations",
+        "owner": "supabase_storage_admin",
+        "schema": "storage"
+      },
+      {
+        "kind": "r",
+        "name": "objects",
+        "owner": "supabase_storage_admin",
+        "schema": "storage"
+      },
+      {
+        "kind": "r",
+        "name": "s3_multipart_uploads",
+        "owner": "supabase_storage_admin",
+        "schema": "storage"
+      },
+      {
+        "kind": "r",
+        "name": "s3_multipart_uploads_parts",
+        "owner": "supabase_storage_admin",
+        "schema": "storage"
+      },
+      {
+        "kind": "r",
+        "name": "vector_indexes",
+        "owner": "supabase_storage_admin",
+        "schema": "storage"
+      }
+    ],
+    "protocol": "potok-release-lock-scope-v1",
+    "readOnly": "on",
+    "extension": {
+      "name": "pg_trgm",
+      "owner": "supabase_admin",
+      "schema": "public",
+      "members": 47,
+      "version": "1.6"
+    },
+    "observedAt": "2026-10-29T06:01:21.10881+00:00"
+  },
+  "advisors": [
+    {
+      "name": "function_search_path_mutable",
+      "level": "WARN",
+      "count": 8,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+    },
+    {
+      "name": "extension_in_public",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0014_extension_in_public"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "level": "WARN",
+      "count": 8,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "level": "WARN",
+      "count": 8,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "mayApply": false,
+  "containsUserRows": false
+}

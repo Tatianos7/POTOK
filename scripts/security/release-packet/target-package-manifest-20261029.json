@@ -1,0 +1,24 @@
+{
+  "protocol": "potok-target-preparation-bundle-v1",
+  "projectRef": "dtsdnhbcwpbfrhcazqkb",
+  "mayApply": false,
+  "releaseReady": false,
+  "artifacts": [
+    {
+      "path": "target-plan-20261029.json",
+      "sha256": "9ba4544f1c3c852254ddc32c337e4f196b62c21e88e9fde9c77d28571e17d863"
+    },
+    {
+      "path": "target-envelope.review.sql",
+      "sha256": "962a6be42a38420c7ad7bb4a39fa5b2e34c4b12783429ba66d8d1c3c9140f34c"
+    },
+    {
+      "path": "target-rows.before.review.sql",
+      "sha256": "815588aba065be382cfef962855733c9ef3a089c01707491e8d4ba7aa754433d"
+    },
+    {
+      "path": "target-rows.after.review.sql",
+      "sha256": "0ec50daff49f9e5d9eba11c92d8ed8ad92bafbf0ff0cbbf4929575cb1fcef2e0"
+    }
+  ]
+}

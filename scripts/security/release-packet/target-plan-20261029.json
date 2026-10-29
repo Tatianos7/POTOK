@@ -1,0 +1,899 @@
+{
+  "protocol": "potok-target-release-plan-v1",
+  "projectRef": "dtsdnhbcwpbfrhcazqkb",
+  "observedAt": "2026-10-29T05:58:00.409738+00:00",
+  "sourceObservationSha256": "f879d3eb15451b44ee201208dc8dc1c3c77bf9e54596856b7b3a2d63c71be8a4",
+  "reviewManifestSha256": "1d046e2c87bb23fa96e15af89c6ddedbcc59b58b44bbb743bf9fa548b47de31c",
+  "baselineMetadataSha256": "427466d34aa57984cb4449a3532ece63ece1d27b61f6ccdfbea86c5cf4c878af",
+  "acceptedPrivatePackageCommit": "8706594ef46968ae36647f7306262fa481cb3472",
+  "acceptedPrivateEvidence": "program-ui-izBBNW",
+  "clientCommit": "996a81c30906000b9cb6ffe88456a98b55cb692f",
+  "clientFiles": [
+    {
+      "path": "src/services/programDeliveryService.ts",
+      "sha256": "9577dea52dfc2471cb4f5db0e2371969335bc19ebed447b1f05fc904982465be"
+    },
+    {
+      "path": "src/services/programExecutionService.ts",
+      "sha256": "1d4567d603e82ac857ac83fc2e29dae89374d700984c66bfc34ea84d92c680b5"
+    },
+    {
+      "path": "src/services/uiRuntimeAdapter.ts",
+      "sha256": "c7a190ea2c77138b6f17a56684ca8541691fd1f59ddfde98240fd1a0c8f96ea8"
+    },
+    {
+      "path": ".node-version",
+      "sha256": "d9f318747a126ce2247661af67852b185def7789492eabfad7bba322be087c33"
+    }
+  ],
+  "sqlInputs": [
+    {
+      "order": 1,
+      "key": "truncate",
+      "ref": "c175e74d7a7c1077e4e8d6d4d8f67c960b06d677",
+      "path": "supabase/migration_drafts/client_truncate_containment_v1.sql",
+      "sourceSha256": "007b8a1545824fbc724ce313b3be7258fc7e26fb3e6894c9b7e95bd578b120ec",
+      "wrapperTerminator": "COMMIT",
+      "normalizedBodySha256": "ba8a860e21ff0870c13f88d5a3a1d0bff25f18c4bfbf1b0a7118223892ae521f"
+    },
+    {
+      "order": 2,
+      "key": "profile",
+      "ref": "7f4f7e24fec497a22dea29dd14f4546115439129",
+      "path": "supabase/migration_drafts/profile_column_write_containment_v1.sql",
+      "sourceSha256": "b781e7754732d12359cfff990ca855f75115695c283b08f9f221f785f5d529ea",
+      "wrapperTerminator": "COMMIT",
+      "normalizedBodySha256": "2d118557b3ea644eb423822f946bbdc06957f8bb13ec0aeff0d42faa7f71e0ac"
+    },
+    {
+      "order": 3,
+      "key": "anonymous",
+      "ref": "47e2ff8bd4937469576f8cfaceecaaefca33548e",
+      "path": "supabase/migration_drafts/anonymous_rpc_execute_containment_v1.sql",
+      "sourceSha256": "a86d36788d3df576e6eaeeea45ed824e57a363409f213317a52d0cbccc9d3368",
+      "wrapperTerminator": "COMMIT",
+      "normalizedBodySha256": "ec549f381c748d22eda6a1a56c62072269c24a242a1656ce26735b7c8fbf2ca2"
+    },
+    {
+      "order": 4,
+      "key": "photos",
+      "ref": "c02608a5bbc7c828ea2a05f206d010e48d0720b1",
+      "path": "supabase/migration_drafts/measurement_photo_explicit_grants_review_v1.sql",
+      "sourceSha256": "6f06553f7897bd621c9186f38d9c154317b4f42193bc6888b795180bcb04814b",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "bb65f3d59fdeaf8f8f1c0fc6879f6176483a127d01db2db50d2a3000f12d4c82"
+    },
+    {
+      "order": 5,
+      "key": "finance",
+      "ref": "0419b2ec21ec225206e9e0715b8dd24f54c590ff",
+      "path": "supabase/migration_drafts/premium_finance_authority_review_v1.sql",
+      "sourceSha256": "8f41f0f4fbaa7fc044d22bbe1dd758ab2a48134c4704f12ff859daaac804f977",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "cbe0aa387511398bd7f911dc0d045356dfcc18289b41839bcb1c81dd97f312c7"
+    },
+    {
+      "order": 6,
+      "key": "authority",
+      "ref": "f542e5433ca377186f0a9e3d0e89ccbf64d91bc0",
+      "path": "supabase/migration_drafts/trusted_authority_id_user_review_v1.sql",
+      "sourceSha256": "8447c5553cd07644c2725e4cd1eee1bb4cdbf584d515eecb0d96f382b161eb70",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "81b3a5ebbf46c9bdcefb87a05b351985222b8781ed49c3d0f0245fbaece3ddfb"
+    },
+    {
+      "order": 7,
+      "key": "catalog",
+      "ref": "a3386a629a0c6d3e69f5224cdf47c9bbe6db2f85",
+      "path": "supabase/migration_drafts/catalog_authority_history_review_v1.sql",
+      "sourceSha256": "d159e92807a0d14633616a4d686aa96e770445a9279c9ae1c315e9865158b36b",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "4f436bd492153035e97bf13e64302e1967708f12386429a77bc9f11e6ecfb840"
+    },
+    {
+      "order": 8,
+      "key": "trgm",
+      "ref": "a1b91d8bfbfba8135478803605512e1014dbafcc",
+      "path": "scripts/security/pg-trgm/rehearsal.sql",
+      "sourceSha256": "a22d809784f341030029be46fe3975c3842813b41eb57414ee17ab6d9e1a52d7",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "b105dcd6d730ee26d29bbc2cec2b75684a6cfb820285d3ce1496029cd6dd3c60"
+    },
+    {
+      "order": 9,
+      "key": "paywall",
+      "ref": "2e84692a3b86315b4824ba176ec48b6d808266f6",
+      "path": "scripts/security/server-premium/paywall-review.sql",
+      "sourceSha256": "eec945610cdd3e3e94fe57b1c974f537ac01fc4b7ba78f14ba05158c6b92a07c",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "49d47928f5533c4578d75a46261d111e6a19785260e0832b6fdb90d9fd3f7e55"
+    },
+    {
+      "order": 10,
+      "key": "programRead",
+      "ref": "2e84692a3b86315b4824ba176ec48b6d808266f6",
+      "path": "scripts/security/program-reads/review.sql",
+      "sourceSha256": "b6f3780740bf02267d34f58172115be005e829a3f6ff1b8244005fd6521162f0",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "411fb54318f23d444d392a1ffb2696a2e7f9a8a2703807a094cf4113568afeea"
+    },
+    {
+      "order": 11,
+      "key": "history",
+      "ref": "2e84692a3b86315b4824ba176ec48b6d808266f6",
+      "path": "scripts/security/program-history/review.sql",
+      "sourceSha256": "d27309df8b5612566ab7156ad31b90113a27ca485af7c64267304d336efb446a",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "a3ced85fefe74933cdff156d3035abb1597258c5d759640e6bcc7f5df8475c0a"
+    },
+    {
+      "order": 12,
+      "key": "quarantine",
+      "ref": "90571af942a98b3822ed175ec1483a65adb5d8d7",
+      "path": "scripts/security/legacy-plan-quarantine/review.sql",
+      "sourceSha256": "c4d14fdd05df0453a993662108035234b3818ba792b443fd3bb8ee238ae63fbc",
+      "wrapperTerminator": "ROLLBACK",
+      "normalizedBodySha256": "a67cc600d8c16cb8bc372079530acd3b90e70c9e6292cf00a24d7ee943cbccdd"
+    }
+  ],
+  "lockScope": [
+    {
+      "kind": "r",
+      "name": "audit_log_entries",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "custom_oauth_providers",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "flow_state",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "identities",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "instances",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "mfa_amr_claims",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "mfa_challenges",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "mfa_factors",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "mfa_recovery_code_sets",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "mfa_recovery_codes",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "oauth_authorizations",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "oauth_client_states",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "oauth_clients",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "oauth_consents",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "one_time_tokens",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "refresh_tokens",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "saml_providers",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "saml_relay_states",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "schema_migrations",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "scim_tokens",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "scim_users",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "sessions",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "sso_domains",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "sso_providers",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "users",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "webauthn_challenges",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "webauthn_credentials",
+      "owner": "supabase_auth_admin",
+      "schema": "auth"
+    },
+    {
+      "kind": "r",
+      "name": "ai_coaching_events",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "ai_generation_params",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "ai_guard_logs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "ai_long_term_memory",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "ai_meal_plans",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "ai_quality_metrics",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "ai_recommendations",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "ai_training_plans",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "ai_trust_scores",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "analytics_events",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "billing_events",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "entitlements",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "exercise_categories",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "exercise_definition_media",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "exercise_definitions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "exercise_muscles",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "exercises",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "favorite_products",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "feature_flags",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "food_alias_apply_audit",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "food_aliases",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "food_diary_entries",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "food_import_batches",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "food_import_conflicts",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "food_import_staging",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "food_missing_food_drafts",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "food_missing_review_queue",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "food_search_events",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "food_search_review_queue",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "foods",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "goal_trajectory",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "habit_logs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "habits",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "meal_entry_notes",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "measurement_history",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "measurement_photo_assets",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "measurement_photo_deletions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "measurement_photo_history",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "muscles",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "notification_history",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "nutrition_programs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_3d_angles",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_3d_joints",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_3d_metrics",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_3d_sessions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_angles",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_biomechanics",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_deviations",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_feedback_events",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_frames",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_guard_flags",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_joints",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_load_estimates",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_quality_scores",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_risk_assessments",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_sessions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "pose_voice_cues",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "program_adaptations",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "program_blocks",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "program_days",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "program_explainability",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "program_feedback",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "program_generation_jobs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "program_guard_events",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "program_phases",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "program_sessions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "program_versions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "recipe_ingredients",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "recipe_notes",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "recipes",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "subscriptions",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "training_programs",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "user_exercise_media",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "user_goals",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "user_measurements",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "user_profiles",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "user_state",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "workout_day_notes",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "workout_days",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "workout_entries",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "workout_entry_notes",
+      "owner": "postgres",
+      "schema": "public"
+    },
+    {
+      "kind": "r",
+      "name": "buckets",
+      "owner": "supabase_storage_admin",
+      "schema": "storage"
+    },
+    {
+      "kind": "r",
+      "name": "buckets_analytics",
+      "owner": "supabase_storage_admin",
+      "schema": "storage"
+    },
+    {
+      "kind": "r",
+      "name": "buckets_vectors",
+      "owner": "supabase_storage_admin",
+      "schema": "storage"
+    },
+    {
+      "kind": "r",
+      "name": "migrations",
+      "owner": "supabase_storage_admin",
+      "schema": "storage"
+    },
+    {
+      "kind": "r",
+      "name": "objects",
+      "owner": "supabase_storage_admin",
+      "schema": "storage"
+    },
+    {
+      "kind": "r",
+      "name": "s3_multipart_uploads",
+      "owner": "supabase_storage_admin",
+      "schema": "storage"
+    },
+    {
+      "kind": "r",
+      "name": "s3_multipart_uploads_parts",
+      "owner": "supabase_storage_admin",
+      "schema": "storage"
+    },
+    {
+      "kind": "r",
+      "name": "vector_indexes",
+      "owner": "supabase_storage_admin",
+      "schema": "storage"
+    }
+  ],
+  "lockMode": "SHARE ROW EXCLUSIVE",
+  "lockTimeout": "3s",
+  "statementTimeout": "120s",
+  "rowPreservation": "all old columns; sorted SHA256 of every row; counts; no data exported",
+  "guards": {
+    "actor": "postgres",
+    "actorSuper": false,
+    "actorBypass": true,
+    "postgresMajor": 17,
+    "replicationRole": "origin",
+    "scopeMustMatch": true,
+    "metadataMustMatch": true,
+    "authorityMustRemainEmpty": true,
+    "generatorEnabled": false,
+    "paymentVerificationEnabled": false
+  },
+  "requiredBeforeApproval": [
+    "fresh_private_backup_and_full_scope_recovery",
+    "managed_pg_trgm_rehearsal_and_extra_search_path",
+    "reserved_default_boundary_decision",
+    "client_update_window_and_exact_deployed_commit",
+    "fresh_target_metadata_and_source_recheck",
+    "owner_exact_forward_hash_target_and_recovery_approval"
+  ],
+  "recovery": {
+    "not_started": {
+      "action": "PREPARE_ONLY_NO_APPLY",
+      "mayApply": false,
+      "mayRetry": false,
+      "restoreBroadGrants": false,
+      "restoreOldClient": false,
+      "issueEntitlements": false
+    },
+    "rolled_back": {
+      "action": "STOP_VERIFY_BASELINE_CONTENT_AND_METADATA",
+      "mayApply": false,
+      "mayRetry": false,
+      "restoreBroadGrants": false,
+      "restoreOldClient": false,
+      "issueEntitlements": false
+    },
+    "unknown_commit": {
+      "action": "STOP_AND_RECONCILE_IN_NEW_READ_ONLY_CONNECTION",
+      "mayApply": false,
+      "mayRetry": false,
+      "restoreBroadGrants": false,
+      "restoreOldClient": false,
+      "issueEntitlements": false
+    },
+    "committed": {
+      "action": "KEEP_CONTAINMENT_REVIEW_FORWARD_REPAIR",
+      "mayApply": false,
+      "mayRetry": false,
+      "restoreBroadGrants": false,
+      "restoreOldClient": false,
+      "issueEntitlements": false
+    }
+  },
+  "mayApply": false,
+  "releaseReady": false,
+  "includesHostedRunner": false,
+  "terminalActionRequiredNow": false
+}

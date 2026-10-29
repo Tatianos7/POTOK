@@ -44,8 +44,10 @@ jobs:
           node-version-file: .node-version
       - name: Verify twelve public pinned inputs and exact review artifacts
         run: node scripts/security/release-packet/prepare.mjs --verify
+      - name: Fixed target preparation and unchanged exact source plan
+        run: node scripts/security/release-packet/target-plan.mjs --verify
       - name: Fail-closed recovery and source artifact policies
-        run: node --test scripts/security/release-packet/state.test.mjs
+        run: node --test scripts/security/release-packet/state.test.mjs scripts/security/release-packet/target-plan.test.mjs
       - name: Metadata HTTP policy and pinned read-only extension scan
         run: node --test scripts/security/managed-boundary/http-profile.test.mjs
       - name: Private backup scope and comparison contracts
@@ -72,3 +74,8 @@ jobs:
           TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_release_review_test
           SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
         run: node scripts/security/backup-readiness/rights-rehearsal-native.test.mjs
+      - name: Target envelope and all-old-column preservation, disposable only
+        env:
+          TEST_DATABASE_URL: postgres://test_admin:disposable-test-only@127.0.0.1:5432/potok_release_review_test
+          SQL_TEST_PG_MODULE: ${{ github.workspace }}/scripts/security/data-api-explicit-grants/node_modules/pg/lib/index.js
+        run: node scripts/security/release-packet/target-native.test.mjs
