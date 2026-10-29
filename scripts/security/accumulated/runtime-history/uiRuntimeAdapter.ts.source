@@ -1,0 +1,836 @@
+import type { DailyMeals } from '../types';
+import type { WorkoutEntry } from '../types/workout';
+import type { ProgramTodayDTO, ProgramMyPlanDTO } from '../types/programDelivery';
+import type { UserGoal } from './goalService';
+import type { Measurement, MeasurementHistory, PhotoHistory } from './measurementsService';
+import type {
+  BaseExplainabilityDTO,
+  HabitsExplainabilityDTO,
+  PaywallExplainabilityDTO,
+  ProgramExplainabilityDTO,
+  ProgressExplainabilityDTO,
+  TodayExplainabilityDTO,
+} from '../types/explainability';
+import type {
+  CoachRecommendations,
+  MeasurementsTable,
+  NutritionStats,
+  ProgressPeriod,
+  ProgressSectionResult,
+  ProgressSummary,
+  TrainingStats,
+} from '../types/progressDashboard';
+import { programUxRuntimeService } from './programUxRuntimeService';
+import { programDeliveryService, ProgramType } from './programDeliveryService';
+import { progressAggregatorService, ProgressSnapshot, TrendSummary } from './progressAggregatorService';
+import { progressDashboardService } from './progressDashboardService';
+import { entitlementService } from './entitlementService';
+import { goalService } from './goalService';
+import { profileService, UserProfile } from './profileService';
+import type { CoachSettings } from '../types/coachSettings';
+import { measurementsService } from './measurementsService';
+import { mealService } from './mealService';
+import type { MealSyncStatus } from './mealService';
+import { workoutService } from './workoutService';
+import { aggregateWorkoutEntries } from '../utils/workoutMetrics';
+import { classifyTrustDecision, TrustDecision } from './trustSafetyService';
+import { coachTelemetry } from './coachTelemetry';
+import { getFeatureFlags, isCoachKillSwitchEnabled } from './featureFlags';
+import {
+  coachRuntime,
+  type CoachDialogResponse,
+  type CoachResponse,
+  type CoachScreen,
+  type CoachScreenContext,
+  type CoachDecisionHistoryQuery,
+  type CoachDecisionContext,
+  type CoachDecisionResponse,
+  type CoachRequestIntent,
+} from './coachRuntime';
+
+export type RuntimeStatus =
+  | 'loading'
+  | 'active'
+  | 'empty'
+  | 'error'
+  | 'blocked'
+  | 'offline'
+  | 'recovery'
+  | 'partial'
+  | 'explainable';
+
+export interface RuntimeContext {
+  goal?: UserGoal | null;
+  measurements?: Measurement[];
+  meals?: DailyMeals | null;
+  workouts?: WorkoutEntry[] | null;
+}
+
+export interface TodayState {
+  status: RuntimeStatus;
+  message?: string;
+  program?: ProgramTodayDTO | null;
+  context?: RuntimeContext;
+  explainability?: TodayExplainabilityDTO;
+  trust?: TrustDecision;
+}
+
+export interface ProgramState {
+  status: RuntimeStatus;
+  message?: string;
+  program?: ProgramMyPlanDTO | null;
+  context?: RuntimeContext;
+  explainability?: ProgramExplainabilityDTO;
+  trust?: TrustDecision;
+}
+
+export interface ProgressState {
+  status: RuntimeStatus;
+  message?: string;
+  period?: ProgressPeriod;
+  summary?: ProgressSectionResult<ProgressSummary>;
+  nutrition?: ProgressSectionResult<NutritionStats>;
+  training?: ProgressSectionResult<TrainingStats>;
+  measurements?: ProgressSectionResult<MeasurementsTable>;
+  coach?: ProgressSectionResult<CoachRecommendations>;
+  snapshot?: ProgressSnapshot | null;
+  trends?: TrendSummary | null;
+  context?: RuntimeContext;
+  explainability?: ProgressExplainabilityDTO;
+  trust?: TrustDecision;
+}
+
+export interface HabitsState {
+  status: RuntimeStatus;
+  message?: string;
+  habits?: never[];
+  habitStats?: Record<string, { streak: number; adherence: number }>;
+  context?: RuntimeContext;
+  explainability?: HabitsExplainabilityDTO;
+  trust?: TrustDecision;
+}
+
+export interface PaywallState {
+  status: RuntimeStatus;
+  message?: string;
+  paywall?: unknown;
+  explainability?: PaywallExplainabilityDTO;
+  trust?: TrustDecision;
+}
+
+export interface GoalState {
+  status: RuntimeStatus;
+  message?: string;
+  goal?: UserGoal | null;
+  explainability?: BaseExplainabilityDTO;
+  trust?: TrustDecision;
+}
+
+export interface MeasurementsState {
+  status: RuntimeStatus;
+  message?: string;
+  measurements?: Measurement[];
+  photos?: string[];
+  additionalPhotos?: string[];
+  history?: MeasurementHistory[];
+  photoHistory?: PhotoHistory[];
+}
+
+export interface FoodDiaryState {
+  status: RuntimeStatus;
+  message?: string;
+  meals?: DailyMeals | null;
+  goal?: UserGoal | null;
+  syncStatus?: MealSyncStatus;
+  explainability?: BaseExplainabilityDTO;
+  trust?: TrustDecision;
+}
+
+export interface TrainingDiaryState {
+  status: RuntimeStatus;
+  message?: string;
+  entries?: WorkoutEntry[];
+  totals?: ReturnType<typeof aggregateWorkoutEntries> | null;
+  explainability?: BaseExplainabilityDTO;
+  trust?: TrustDecision;
+}
+
+export interface ProfileState {
+  status: RuntimeStatus;
+  message?: string;
+  profile?: UserProfile | null;
+  entitlements?: unknown;
+  explainability?: BaseExplainabilityDTO;
+  trust?: TrustDecision;
+}
+
+class UiRuntimeAdapter {
+  private readonly LOADING_TIMEOUT_MS = 15000;
+  private loadingTimers = new Map<string, number>();
+
+  startLoadingTimer(
+    screenName: string,
+    options?: {
+      pendingSources?: string[];
+      authState?: string;
+      network?: string;
+      onTimeout?: () => void;
+    }
+  ) {
+    this.clearLoadingTimer(screenName);
+    const timeoutId = window.setTimeout(() => {
+      console.warn('[RuntimeWatchdog] Stuck in loading >15s', {
+        screen: screenName,
+        pendingSources: options?.pendingSources ?? [],
+        authState: options?.authState ?? 'unknown',
+        network:
+          options?.network ??
+          (typeof navigator !== 'undefined' && 'onLine' in navigator
+            ? navigator.onLine
+              ? 'online'
+              : 'offline'
+            : 'unknown'),
+      });
+      options?.onTimeout?.();
+    }, this.LOADING_TIMEOUT_MS);
+    this.loadingTimers.set(screenName, timeoutId);
+  }
+
+  clearLoadingTimer(screenName: string) {
+    const timer = this.loadingTimers.get(screenName);
+    if (timer) {
+      window.clearTimeout(timer);
+      this.loadingTimers.delete(screenName);
+    }
+  }
+
+  async refresh(): Promise<void> {
+    await progressAggregatorService.refresh();
+  }
+
+  private async runWithTimeout<T>(
+    screenName: string,
+    pendingSources: string[],
+    task: () => Promise<T>,
+    authState?: string
+  ): Promise<T> {
+    this.startLoadingTimer(screenName, { pendingSources, authState });
+    let timeoutId: number | undefined;
+    const timeoutPromise = new Promise<T>((_, reject) => {
+      timeoutId = window.setTimeout(() => {
+        reject(new Error('loading_timeout'));
+      }, this.LOADING_TIMEOUT_MS);
+    });
+    try {
+      return await Promise.race([task(), timeoutPromise]);
+    } finally {
+      if (timeoutId) window.clearTimeout(timeoutId);
+      this.clearLoadingTimer(screenName);
+    }
+  }
+  private async buildContext(userId: string, date: string): Promise<RuntimeContext> {
+    const [goal, measurements, meals, workouts] = await Promise.all([
+      goalService.getUserGoal(userId).catch(() => null),
+      measurementsService.getCurrentMeasurements(userId).catch(() => [] as Measurement[]),
+      mealService.getMealsForDate(userId, date).catch(() => null),
+      workoutService.getWorkoutEntries(userId, date).catch(() => [] as WorkoutEntry[]),
+    ]);
+
+    return { goal, measurements, meals, workouts };
+  }
+
+  private toRuntimeStatus(status?: string): RuntimeStatus {
+    if (status === 'offline_readonly') return 'offline';
+    if (status === 'blocked') return 'error';
+    if (status === 'paused') return 'recovery';
+    if (status === 'ready') return 'active';
+    return 'active';
+  }
+
+  private buildBaseExplainability(params: {
+    decisionRef: string;
+    dataSources: string[];
+    confidence: number;
+    trustScore?: number;
+    safetyNotes?: string[];
+  }): BaseExplainabilityDTO {
+    return {
+      source: 'manual',
+      version: '1.0',
+      data_sources: params.dataSources,
+      confidence: params.confidence,
+      trust_score: params.trustScore ?? 50,
+      decision_ref: params.decisionRef,
+      safety_notes: params.safetyNotes ?? [],
+    };
+  }
+
+  async getGoalState(userId: string): Promise<GoalState> {
+    try {
+      const goal = await this.runWithTimeout('Goal', ['user_goals', 'local_cache'], () =>
+        goalService.getUserGoal(userId)
+      );
+      const hasGoal = Boolean(goal && (goal.calories || goal.protein || goal.fat || goal.carbs));
+      const explainability = this.buildBaseExplainability({
+        decisionRef: hasGoal ? 'goal:loaded' : 'goal:empty',
+        dataSources: ['user_goals', 'local_cache'],
+        confidence: hasGoal ? 0.9 : 0.3,
+        safetyNotes: hasGoal ? [] : ['Цель ещё не задана.'],
+      });
+      const trust = classifyTrustDecision(undefined, { confidence: explainability.confidence });
+      return {
+        status: hasGoal ? 'active' : 'empty',
+        goal,
+        explainability,
+        trust,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Не удалось загрузить цель.',
+        trust: classifyTrustDecision(error),
+      };
+    }
+  }
+
+  async getMeasurementsState(userId: string): Promise<MeasurementsState> {
+    const loadMeasurements = () =>
+      measurementsService.getCurrentMeasurements(userId).catch(() => [] as Measurement[]);
+    const loadPhotos = () =>
+      measurementsService
+        .getCurrentPhotos(userId)
+        .catch(() => ({ photos: [] as string[], additionalPhotos: [] as string[] }));
+    const loadHistory = () =>
+      measurementsService.getMeasurementHistory(userId).catch(() => [] as MeasurementHistory[]);
+    const loadPhotoHistory = () =>
+      measurementsService.getPhotoHistory(userId).catch(() => [] as PhotoHistory[]);
+
+    try {
+      const [measurements, photosPayload, history, photoHistory] = await this.runWithTimeout(
+        'Measurements',
+        ['user_measurements', 'measurement_history', 'measurement_photo_history'],
+        () => Promise.all([loadMeasurements(), loadPhotos(), loadHistory(), loadPhotoHistory()])
+      );
+
+      return {
+        status: 'active',
+        measurements,
+        photos: photosPayload?.photos ?? [],
+        additionalPhotos: photosPayload?.additionalPhotos ?? [],
+        history,
+        photoHistory,
+      };
+    } catch (error) {
+      // Fallback mode: keep screen usable even if timeout/one source failed.
+      const [mRes, pRes, hRes, phRes] = await Promise.allSettled([
+        loadMeasurements(),
+        loadPhotos(),
+        loadHistory(),
+        loadPhotoHistory(),
+      ]);
+
+      const measurements = mRes.status === 'fulfilled' ? mRes.value : [];
+      const photosPayload =
+        pRes.status === 'fulfilled' ? pRes.value : { photos: [] as string[], additionalPhotos: [] as string[] };
+      const history = hRes.status === 'fulfilled' ? hRes.value : [];
+      const photoHistory = phRes.status === 'fulfilled' ? phRes.value : [];
+
+      const hasData =
+        measurements.length > 0 ||
+        (photosPayload.photos?.length ?? 0) > 0 ||
+        (photosPayload.additionalPhotos?.length ?? 0) > 0 ||
+        history.length > 0 ||
+        photoHistory.length > 0;
+      const hasSuccessfulSource = [mRes, pRes, hRes, phRes].some((result) => result.status === 'fulfilled');
+
+      if (hasData) {
+        return {
+          status: 'active',
+          measurements,
+          photos: photosPayload.photos ?? [],
+          additionalPhotos: photosPayload.additionalPhotos ?? [],
+          history,
+          photoHistory,
+        };
+      }
+
+      if (hasSuccessfulSource) {
+        return {
+          status: 'empty',
+          measurements,
+          photos: photosPayload.photos ?? [],
+          additionalPhotos: photosPayload.additionalPhotos ?? [],
+          history,
+          photoHistory,
+        };
+      }
+
+      return {
+        status: 'error',
+        message: 'Не удалось загрузить замеры.',
+      };
+    }
+  }
+
+  async getFoodDiaryState(userId: string, date: string): Promise<FoodDiaryState> {
+    try {
+      const [meals, goal] = await this.runWithTimeout(
+        'FoodDiary',
+        ['food_diary_entries', 'user_goals', 'local_cache'],
+        () =>
+          Promise.all([
+            mealService.getMealsForDate(userId, date),
+            goalService.getUserGoal(userId).catch(() => null),
+          ])
+      );
+
+      const isEmpty =
+        !meals ||
+        ((meals.breakfast?.length ?? 0) +
+          (meals.lunch?.length ?? 0) +
+          (meals.dinner?.length ?? 0) +
+          (meals.snack?.length ?? 0)) === 0;
+
+      const explainability = this.buildBaseExplainability({
+        decisionRef: isEmpty ? 'food_diary:empty' : 'food_diary:loaded',
+        dataSources: ['food_diary_entries', 'local_cache', 'user_goals'],
+        confidence: isEmpty ? 0.4 : 0.9,
+        safetyNotes: isEmpty ? ['День пока пустой.'] : [],
+      });
+
+      const trust = classifyTrustDecision(undefined, { confidence: explainability.confidence });
+
+      return {
+        status: isEmpty ? 'empty' : 'active',
+        meals,
+        goal,
+        syncStatus: mealService.getSyncStatus(userId, date),
+        explainability,
+        trust,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Не удалось загрузить дневник питания.',
+        trust: classifyTrustDecision(error),
+      };
+    }
+  }
+
+  async getTodayState(userId: string, programType: ProgramType = 'nutrition'): Promise<TodayState> {
+    const date = new Date().toISOString().split('T')[0];
+    const context = await this.buildContext(userId, date);
+
+    try {
+      const { program } = await this.runWithTimeout('Today', ['programs'], () =>
+        programDeliveryService.getActiveProgram(programType)
+      );
+      const programId = program?.id ?? program?.program_id ?? program?.programId;
+      if (!programId) {
+        return { status: 'empty', context };
+      }
+
+      const [today, explainability] = await this.runWithTimeout(
+        'Today',
+        ['program_sessions', 'program_explainability'],
+        () => Promise.all([
+          programUxRuntimeService.getToday(programId, programType),
+          programUxRuntimeService.explain(),
+        ])
+      );
+      const trust = classifyTrustDecision(undefined, {
+        confidence: explainability.confidence,
+        safetyFlags: explainability.safety_flags,
+      });
+
+      return {
+        status: this.toRuntimeStatus(today.state.status),
+        message: today.state.message,
+        program: today.data ?? null,
+        context,
+        explainability,
+        trust,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Не удалось загрузить Today.',
+        context,
+        trust: classifyTrustDecision(error),
+      };
+    }
+  }
+
+  async getProgramState(userId: string, programType: ProgramType = 'nutrition'): Promise<ProgramState> {
+    const date = new Date().toISOString().split('T')[0];
+    const context = await this.buildContext(userId, date);
+
+    try {
+      const { program } = await this.runWithTimeout('MyProgram', ['programs'], () =>
+        programDeliveryService.getActiveProgram(programType)
+      );
+      const programId = program?.id ?? program?.program_id ?? program?.programId;
+      if (!programId) {
+        return { status: 'empty', context };
+      }
+
+      const [plan, explainability] = await this.runWithTimeout(
+        'MyProgram',
+        ['program_days', 'program_explainability'],
+        () => Promise.all([
+          programUxRuntimeService.getMyProgram(programId, programType),
+          programDeliveryService.explain(),
+        ])
+      );
+      const trust = classifyTrustDecision(undefined, {
+        confidence: explainability.confidence,
+        safetyFlags: explainability.safety_flags,
+      });
+
+      return {
+        status: 'active',
+        program: plan,
+        context,
+        explainability,
+        trust,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Не удалось загрузить программу.',
+        context,
+        trust: classifyTrustDecision(error),
+      };
+    }
+  }
+
+  async getProgressState(userId: string, period: ProgressPeriod): Promise<ProgressState> {
+    const context = await this.buildContext(userId, period.end);
+
+    const toErrorSection = <T,>(message: string): ProgressSectionResult<T> => ({
+      status: 'error',
+      data: null,
+      message,
+    });
+
+    try {
+      const results = await this.runWithTimeout(
+        'Progress',
+        ['measurement_history', 'food_diary_entries', 'workout_entries', 'user_goals'],
+        () =>
+          Promise.allSettled([
+            progressDashboardService.getSummary(period, userId),
+            progressDashboardService.getNutritionStats(period, userId),
+            progressDashboardService.getTrainingStats(period, userId),
+            progressDashboardService.getMeasurementsTable(period, userId),
+            progressDashboardService.getCoachRecommendations(period, userId),
+            progressAggregatorService.explain(),
+          ])
+      );
+
+      const summary = results[0].status === 'fulfilled' ? results[0].value : toErrorSection<ProgressSummary>('Сводка недоступна.');
+      const nutrition = results[1].status === 'fulfilled' ? results[1].value : toErrorSection<NutritionStats>('Питание недоступно.');
+      const training = results[2].status === 'fulfilled' ? results[2].value : toErrorSection<TrainingStats>('Тренировки недоступны.');
+      const measurements =
+        results[3].status === 'fulfilled' ? results[3].value : toErrorSection<MeasurementsTable>('Замеры недоступны.');
+      const coach = results[4].status === 'fulfilled' ? results[4].value : toErrorSection<CoachRecommendations>('Рекомендации недоступны.');
+      const explainability = results[5].status === 'fulfilled' ? results[5].value : undefined;
+
+      const hasAny =
+        Boolean(summary.data) ||
+        Boolean(nutrition.data) ||
+        Boolean(training.data) ||
+        Boolean(measurements.data);
+      const hasError = [summary, nutrition, training, measurements].some((section) => section.status === 'error');
+
+      const trust = classifyTrustDecision(undefined, {
+        confidence: explainability?.confidence ?? 0.4,
+        safetyFlags: explainability?.safety_flags,
+      });
+
+      return {
+        status: hasAny ? (hasError ? 'partial' : 'active') : 'empty',
+        period,
+        summary,
+        nutrition,
+        training,
+        measurements,
+        coach,
+        context,
+        explainability,
+        trust,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Не удалось загрузить прогресс.',
+        period,
+        context,
+        trust: classifyTrustDecision(error),
+      };
+    }
+  }
+
+  async getHabitsState(userId: string, date: string): Promise<HabitsState> {
+    const context = await this.buildContext(userId, date);
+
+    return {
+      status: 'empty',
+      habits: [],
+      habitStats: {},
+      context,
+      trust: classifyTrustDecision(undefined, { confidence: 1 }),
+    };
+  }
+
+  async getPaywallState(feature: 'adaptation' | 'explainability' | 'spatial'): Promise<PaywallState> {
+    try {
+      const [paywall, explainability] = await this.runWithTimeout(
+        'Paywall',
+        ['entitlements', 'paywall_state'],
+        () =>
+          Promise.all([
+            entitlementService.getPaywallState(feature),
+            entitlementService.explain(),
+          ])
+      );
+      const trust = classifyTrustDecision(undefined, {
+        confidence: explainability.confidence,
+        safetyFlags: explainability.safety_flags,
+      });
+      return { status: 'active', paywall, explainability, trust };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Не удалось загрузить paywall.',
+        trust: classifyTrustDecision(error),
+      };
+    }
+  }
+
+  async getTrainingDiaryState(userId: string, date: string): Promise<TrainingDiaryState> {
+    try {
+      const entries = await this.runWithTimeout(
+        'TrainingDiary',
+        ['workout_entries', 'local_cache'],
+        () => workoutService.getWorkoutEntries(userId, date)
+      );
+      const totals = aggregateWorkoutEntries(entries || []);
+      const explainability = this.buildBaseExplainability({
+        decisionRef: entries.length ? 'training:loaded' : 'training:empty',
+        dataSources: ['workout_entries', 'local_cache'],
+        confidence: entries.length ? 0.8 : 0.4,
+        safetyNotes: entries.length ? [] : ['Тренировок за день пока нет.'],
+      });
+      const trust = classifyTrustDecision(undefined, { confidence: explainability.confidence });
+      return {
+        status: entries.length ? 'active' : 'empty',
+        entries,
+        totals,
+        explainability,
+        trust,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Не удалось загрузить тренировку.',
+        trust: classifyTrustDecision(error),
+      };
+    }
+  }
+
+  async getProfileState(userId: string): Promise<ProfileState> {
+    try {
+      const profile = await this.runWithTimeout(
+        'Profile',
+        ['user_profiles'],
+        () => profileService.getProfile(userId).catch(() => null),
+        'authenticated'
+      );
+
+      const isPartial = !profile;
+      const explainability = this.buildBaseExplainability({
+        decisionRef: isPartial ? 'profile:partial' : 'profile:loaded',
+        dataSources: ['user_profiles'],
+        confidence: isPartial ? 0.5 : 0.9,
+        safetyNotes: isPartial ? ['Часть данных профиля недоступна.'] : [],
+      });
+      const trust = classifyTrustDecision(undefined, { confidence: explainability.confidence });
+
+      return {
+        status: isPartial ? 'partial' : 'active',
+        profile,
+        explainability,
+        trust,
+      };
+    } catch (error) {
+      return {
+        status: 'error',
+        message: 'Не удалось загрузить профиль.',
+        trust: classifyTrustDecision(error),
+      };
+    }
+  }
+  async offlineSnapshot(): Promise<void> {
+    await Promise.all([
+      programUxRuntimeService.offlineSnapshot(),
+      programDeliveryService.offlineSnapshot(),
+      progressAggregatorService.offlineSnapshot(),
+      entitlementService.offlineSnapshot(),
+    ]);
+  }
+
+  async revalidate(): Promise<void> {
+    await Promise.all([
+      programUxRuntimeService.revalidate(),
+      programDeliveryService.revalidate(),
+      progressAggregatorService.revalidate(),
+      entitlementService.revalidate(),
+    ]);
+  }
+
+  async recover(): Promise<void> {
+    await Promise.all([
+      programUxRuntimeService.recover(),
+      programDeliveryService.recover(),
+      progressAggregatorService.recover(),
+      entitlementService.recover(),
+    ]);
+  }
+
+  private buildCoachContext(screen: CoachScreen, context: Partial<CoachScreenContext> = {}): CoachScreenContext {
+    const confidenceLevel = context.confidenceLevel ?? (context.trustLevel ? context.trustLevel / 100 : undefined);
+
+    return {
+      screen,
+      userMode: context.userMode ?? 'Manual',
+      subscriptionState: context.subscriptionState ?? 'Free',
+      trustLevel: context.trustLevel,
+      confidenceLevel,
+      fatigueLevel: context.fatigueLevel,
+      relapseRisk: context.relapseRisk,
+      motivationLevel: context.motivationLevel,
+      safetyFlags: context.safetyFlags ?? [],
+      adherence: context.adherence,
+      streak: context.streak,
+      timeGapDays: context.timeGapDays,
+    };
+  }
+
+  private readCoachSettings(): CoachSettings {
+    try {
+      const raw = localStorage.getItem('potok_coach_settings');
+      if (!raw) return { coach_enabled: true, coach_mode: 'support' };
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object'
+        ? (parsed as CoachSettings)
+        : { coach_enabled: true, coach_mode: 'support' };
+    } catch {
+      return { coach_enabled: true, coach_mode: 'support' };
+    }
+  }
+
+  private isCoachAvailable(): boolean {
+    if (isCoachKillSwitchEnabled()) return false;
+    const flags = getFeatureFlags();
+    return flags.coach_enabled;
+  }
+
+  async getCoachOverlay(
+    screen: CoachScreen,
+    context: Partial<CoachScreenContext> = {}
+  ): Promise<CoachResponse | null> {
+    if (!this.isCoachAvailable()) return null;
+    const settings = this.readCoachSettings();
+    const mode = settings.coach_enabled ? settings.coach_mode : 'off';
+    if (mode === 'off' || mode === 'on_request') return null;
+    if (mode === 'risk_only') {
+      const hasRisk =
+        (context.safetyFlags?.length ?? 0) > 0 ||
+        (context.fatigueLevel ?? 0) > 0.6 ||
+        (context.relapseRisk ?? 0) > 0.6;
+      if (!hasRisk) return null;
+    }
+    const coachContext = this.buildCoachContext(screen, context);
+    return coachRuntime.getCoachOverlay(coachContext);
+  }
+
+  getCoachNudge(type: 'morning' | 'evening' | 'recovery' | 'motivation'): CoachResponse | null {
+    if (!this.isCoachAvailable()) return null;
+    return coachRuntime.getCoachNudge(type);
+  }
+
+  async getCoachExplainability(decisionId: string, context?: Partial<CoachScreenContext>) {
+    if (!this.isCoachAvailable()) return null;
+    coachTelemetry.increment('coach_explainability_opened', 1, { decisionId });
+    return coachRuntime.getExplainability(decisionId, {
+      subscriptionState: context?.subscriptionState ?? 'Free',
+    });
+  }
+
+  async getCoachHistory(query: CoachDecisionHistoryQuery) {
+    if (!this.isCoachAvailable()) return [];
+    return coachRuntime.listExplainableDecisions(query);
+  }
+
+  async getDecisionSupport(context: CoachDecisionContext): Promise<CoachDecisionResponse | null> {
+    const flags = getFeatureFlags();
+    if (!this.isCoachAvailable() || !flags.coach_decision_support_enabled) return null;
+    const coachContext = this.buildCoachContext(context.screen, {
+      userMode: context.user_mode,
+      subscriptionState: context.subscription_state,
+      trustLevel: context.trust_level,
+      safetyFlags: context.safety_flags,
+    });
+    return coachRuntime.getDecisionSupport({
+      ...context,
+      subscription_state: coachContext.subscriptionState,
+      user_mode: coachContext.userMode,
+      screen: coachContext.screen,
+      trust_level: coachContext.trustLevel,
+      safety_flags: coachContext.safetyFlags,
+    });
+  }
+
+  async getTrustNarrative() {
+    if (!this.isCoachAvailable()) {
+      return 'Сейчас коуч отключен. Его можно включить в настройках в любое время.';
+    }
+    return coachRuntime.buildTrustNarrative();
+  }
+
+  async clearCoachHistory() {
+    if (!this.isCoachAvailable()) return;
+    return coachRuntime.clearCoachHistory();
+  }
+
+  async resetCoachTrust() {
+    if (!this.isCoachAvailable()) return;
+    return coachRuntime.resetTrustStyle();
+  }
+
+  async requestCoachDialogStart(
+    intent: CoachRequestIntent,
+    context: Partial<CoachScreenContext>
+  ): Promise<CoachDialogResponse> {
+    if (!this.isCoachAvailable()) {
+      return { dialogId: '', status: 'cooldown', turns: [], allowFollowups: false };
+    }
+    const coachContext = this.buildCoachContext(context.screen ?? 'Today', context);
+    return coachRuntime.startDialog(intent, coachContext);
+  }
+
+  async requestCoachDialogContinue(dialogId: string, reply: string): Promise<CoachDialogResponse> {
+    if (!this.isCoachAvailable()) {
+      return { dialogId, status: 'cooldown', turns: [], allowFollowups: false };
+    }
+    return coachRuntime.continueDialog(dialogId, reply);
+  }
+
+  async requestCoachDialogEnd(dialogId: string) {
+    if (!this.isCoachAvailable()) return;
+    return coachRuntime.endDialog(dialogId);
+  }
+}
+
+export const uiRuntimeAdapter = new UiRuntimeAdapter();

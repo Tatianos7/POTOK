@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {readFile} from 'node:fs/promises';
+import {readFile,rm} from 'node:fs/promises';
+import os from 'node:os';
+import {materializeHistoricalRuntime} from './historical-runtime.mjs';
 import {createHash} from 'node:crypto';
 import {validateIdentities, browserArgs, verifyIdentityScope} from './private-browser-policy.mjs';
 import {runtimeInputs, manifestHash, dockerfile} from './private-browser-runtime.mjs';
@@ -32,8 +34,10 @@ test('lifecycle allowance is exact and tied to only two users/profiles', () => {
 });
 test('runtime packages only reviewed public source and immutable lock inputs, never private backup/env', async () => {
   const root = fileURLToPath(new URL('../../../', import.meta.url));
-  const result = await runtimeInputs(root);
   const manifest = await readFile(new URL('./private-browser-runtime-inputs.json', import.meta.url));
+  const materialized=await materializeHistoricalRuntime(root,os.tmpdir());let result;
+  try{result=await runtimeInputs(materialized.directory);if(materialized.changed)await assert.rejects(()=>runtimeInputs(root),/Public runtime input changed/);else assert.deepEqual(await runtimeInputs(root),result);}
+  finally{await rm(materialized.directory,{recursive:true,force:true});}
   assert.equal(createHash('sha256').update(manifest).digest('hex'), manifestHash);
   assert(result.entries.every(e => e.path.startsWith('src/') || ['package.json', 'package-lock.json'].includes(e.path) || e.path.startsWith('scripts/security/')));
   assert(result.entries.every(e => !/\.env|roles\.sql|data\.sql|schema\.sql|backup/i.test(e.path)));

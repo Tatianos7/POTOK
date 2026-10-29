@@ -1,14 +1,18 @@
 {
   "protocol": "potok-release-review-packet-v1",
-  "clientCommit": "455deef591456222e08eced30d3a7ba7bf9e242a",
+  "clientCommit": "996a81c30906000b9cb6ffe88456a98b55cb692f",
   "clientFiles": [
     {
       "path": "src/services/programDeliveryService.ts",
-      "sha256": "43a889a7d304b550f4717c5115d4950e02cdcdd8bdc5fef06922885dd842f3f3"
+      "sha256": "9577dea52dfc2471cb4f5db0e2371969335bc19ebed447b1f05fc904982465be"
     },
     {
       "path": "src/services/programExecutionService.ts",
       "sha256": "1d4567d603e82ac857ac83fc2e29dae89374d700984c66bfc34ea84d92c680b5"
+    },
+    {
+      "path": "src/services/uiRuntimeAdapter.ts",
+      "sha256": "c7a190ea2c77138b6f17a56684ca8541691fd1f59ddfde98240fd1a0c8f96ea8"
     },
     {
       "path": ".node-version",

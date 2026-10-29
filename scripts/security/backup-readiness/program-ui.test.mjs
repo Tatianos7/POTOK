@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import fs from 'node:fs';
+import ts from 'typescript';
+import {createProgramGateway,programBrowserFailure} from './program-ui-worker.mjs';
+const a='11111111-1111-4111-8111-111111111111',b='22222222-2222-4222-8222-222222222222',id='33333333-3333-4333-8333-333333333333';
+function fixture({rows=[],rpcError=null,foreign=false,swap=false,updateError=null,unconfirmed=false}={}){
+ const calls=[];let auth=0;const client={auth:{getUser:async()=>({data:{user:{id:swap&&auth++>0?b:a}},error:null})},rpc:async(name,args)=>{calls.push({rpc:name,args});return {data:rows,error:rpcError};},from(table){const c={table,filters:[],body:null};calls.push(c);const q={select(){return q;},eq(k,v){c.filters.push([k,v]);return q;},limit(){return q;},update(body){c.body=body;return q;},then(resolve,reject){return Promise.resolve({data:c.body?(unconfirmed?[]:[{id}]):foreign?[]:[{id,user_id:a}],error:c.body?updateError:null}).then(resolve,reject);}};return q;}};
+ const exports={},source=fs.readFileSync('src/services/programDeliveryService.ts','utf8'),deps={'../lib/supabaseClient':{supabase:client},'./programExecutionService':{programExecutionService:{}},'./profileService':{profileService:{getProfile:async()=>({is_admin:false,has_premium:false})}},'./entitlementService':{entitlementService:{}}};
+ new Function('require','exports',ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText)(name=>{assert(Object.hasOwn(deps,name));return deps[name];},exports);return {s:exports.programDeliveryService,calls};
+}
+const row={program_id:id,program_type:'nutrition',status:'active',program_version:1};
+test('actual service selects one active/paused RPC row; empty and retired-only lists stay empty',async()=>{for(const status of ['active','paused']){const f=fixture({rows:[{...row,status},{...row,status:'completed'}]});assert.deepEqual((await f.s.getActiveProgram('nutrition')).program,{...row,status});assert.deepEqual(f.calls[0].args,{p_program_type:'nutrition'});}for(const rows of [[],[{...row,status:'draft'}],[{...row,status:'completed'}]])assert.equal((await fixture({rows}).s.getActiveProgram('nutrition')).program,null);});
+test('malformed, cross-type and ambiguous active lists fail rather than masquerading as an empty screen',async()=>{for(const rows of [null,row,[{...row,program_id:'forged'}],[{...row,program_type:'training'}],[row,{...row,program_id:b}]])await assert.rejects(()=>fixture({rows}).s.getActiveProgram('nutrition'));const e=Error('RPC unavailable');await assert.rejects(()=>fixture({rpcError:e}).s.getActiveProgram('nutrition'),e);});
+test('pause/resume confirm only a bounded owner status PATCH and never write protected history',async()=>{for(const action of ['pauseProgram','resumeProgram']){const f=fixture();await f.s[action](id,'nutrition','manual_pause');const writes=f.calls.filter(c=>c.body);assert.equal(writes.length,1);assert.equal(writes[0].table,'nutrition_programs');assert.deepEqual(writes[0].body,{status:action==='pauseProgram'?'paused':'active'});assert.deepEqual(writes[0].filters,[['id',id],['user_id',a]]);assert(f.calls.every(c=>c.table==='nutrition_programs'));}});
+test('foreign targets, account switch, failed or zero-row writes never return successful UI actions',async()=>{for(const options of [{foreign:true},{swap:true},{updateError:Error('Denied')},{unconfirmed:true}]){const f=fixture(options);await assert.rejects(()=>f.s.pauseProgram(id,'nutrition','manual_pause'));assert.equal(f.calls.filter(c=>c.body).length,options.foreign||options.swap?0:1);}const f=fixture();await assert.rejects(()=>f.s.resumeProgram('bad','nutrition'));assert.equal(f.calls.length,0);});
+test('browser gateway rejects unlisted writes, foreign filters, forged fields and remote origins before upstream',async()=>{
+ const gateway=createProgramGateway({mode:'private',users:[{id:a},{id:b}],manifest:{programs:[{id,owner:0,type:'nutrition'}]}});await gateway.start();
+ const base='http://127.0.0.1:13004/rest/v1/',own='nutrition_programs?id=eq.'+id+'&user_id=eq.'+a;
+ try{
+  for(const route of ['program_explainability','program_guard_events','rpc/start_purchase','rpc/generate_program'])assert.equal((await fetch(base+route,{method:'POST',body:'{}'})).status,404);
+  assert.equal((await fetch(base+own.replace(a,b),{method:'PATCH',body:'{"status":"paused"}'})).status,404);
+  for(const body of [{plan_payload:{}},{status:'completed'},{status:'paused',program_version:2}])assert.equal((await fetch(base+own,{method:'PATCH',body:JSON.stringify(body)})).status,400);
+  assert.equal((await fetch(base+own,{method:'OPTIONS',headers:{Origin:'https://example.invalid','Access-Control-Request-Method':'PATCH'}})).status,403);
+  assert.equal((await fetch(base+own,{method:'OPTIONS',headers:{Origin:'http://127.0.0.1:13005','Access-Control-Request-Method':'PATCH','Access-Control-Request-Headers':'authorization,content-type'}})).status,204);
+  assert.equal(gateway.patches,0);
+ }finally{await gateway.close();}
+});
+
+test('browser failure classification exposes only bounded flags and never error contents',()=>{
+ const secret='private-token-and-user-row';
+ for(const error of [Object.assign(Error(secret),{name:'TimeoutError'}),Object.assign(Error(secret),{code:'ERR_ASSERTION'}),Error('Target closed '+secret),Error('page crashed '+secret)]){
+  const r=programBrowserFailure(error);assert.deepEqual(Object.keys(r),['timeout','assertion','browserClosed','pageCrashed']);assert(Object.values(r).every(v=>typeof v==='boolean'));assert(!JSON.stringify(r).includes(secret));assert(Object.values(r).some(Boolean));
+ }
+});
+
+test('Playwright 1.40 timeout messages classify even when Error.name remains Error',()=>{assert.equal(programBrowserFailure(Error('page.waitForFunction: Timeout 25000ms exceeded.')).timeout,true);});
+test('Auth reload admission refuses even owner fixture PATCH before upstream',async()=>{const g=createProgramGateway({mode:'private',authReloadOnly:true,users:[{id:a},{id:b}],manifest:{programs:[{id,owner:0,type:'nutrition'}]}});await g.start();try{const {request}=await import('node:http');const status=await new Promise((resolve,reject)=>{const r=request('http://127.0.0.1:13004/rest/v1/nutrition_programs?id=eq.'+id+'&user_id=eq.'+a,{method:'PATCH',agent:false},response=>{response.resume();response.on('end',()=>resolve(response.statusCode));});r.on('error',reject);r.end(JSON.stringify({status:'paused'}));});assert.equal(status,404);assert.equal(g.patches,0);}finally{await g.close();}});

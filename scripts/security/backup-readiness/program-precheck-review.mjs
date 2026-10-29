@@ -1,0 +1,28 @@
+// Read-only classification of the exact existing Mac candidate precheck; no installer or browser.
+import fs from "node:fs";import p from "node:path";import cp from "node:child_process";import crypto from "node:crypto";import {pathToFileURL} from "node:url";import {isDeepStrictEqual as eq} from "node:util";
+
+export async function main(args){
+let stage="inputs";
+try{
+if(args.length!==2||args[0]!=="--inspect-local-precheck")throw Error();
+const base=fs.realpathSync(args[1]);if(base!==fs.realpathSync(p.join(process.env.HOME,"POTOK_BACKUP_2026-10-24")))throw Error();const hash=b=>crypto.createHash("sha256").update(b).digest("hex");
+const tool=fs.readdirSync(base).filter(n=>n.startsWith("potok-tmpfs-fix-tool.")).map(n=>p.join(base,n)).find(d=>fs.existsSync(p.join(d,"PACKAGE-SHA256SUMS.txt"))&&hash(fs.readFileSync(p.join(d,"PACKAGE-SHA256SUMS.txt")))==="75c65788c909a8ad6b063649c8f2a4f473b1a33e242c2aa621f13a1e5d26a5c1");
+if(!tool)throw Error();for(const line of fs.readFileSync(p.join(tool,"PACKAGE-SHA256SUMS.txt"),"utf8").trim().split("\n")){const [h,n]=line.split("  ");const f=p.join(tool,n);if(!fs.lstatSync(f).isFile()||hash(fs.readFileSync(f))!==h)throw Error();}
+const load=n=>import(pathToFileURL(p.join(tool,"scripts/security",n)));const st=await load("backup-readiness/storage-preflight.mjs"),pr=await load("backup-readiness/post-acl-reads.mjs"),ca=await load("backup-readiness/candidate-rights.mjs"),checks=await load("accumulated/checks.mjs"),final=await load("accumulated/restored-twelve.mjs");
+const endpoint=cp.execFileSync("docker",["context","inspect","desktop-linux","--format","{{.Endpoints.docker.Host}}"],{encoding:"utf8"}).trim();if(!endpoint.startsWith("unix:///"))throw Error();
+const id="8ea4ab28ee60efd0c157ec0f6a9d1fa24f02ffd0c58b7a36c30a47a570785989";
+const c=JSON.parse(cp.execFileSync("docker",["--host",endpoint,"inspect",id],{encoding:"utf8"}))[0];if(c.Id!==id||!c.State.Running||c.HostConfig.NetworkMode!=="none"||c.Image!=="sha256:40868dfbce8c3a901448991069b7bcabbe14e8f8105ef609af22afce79b2dc44")throw Error();
+const sql=t=>{if(!/\bBEGIN\s+(?:ISOLATION LEVEL REPEATABLE READ\s+)?READ ONLY\s*;/i.test(t))throw Error();return cp.execFileSync("docker",["--host",endpoint,"exec","-i",id,"sh","-c","PGPASSWORD=\"$POSTGRES_PASSWORD\" exec psql -X -w -qAt -h /tmp -U postgres -d postgres --set ON_ERROR_STOP=1"],{input:t,encoding:"utf8",stdio:["pipe","pipe","pipe"],timeout:120000,maxBuffer:33554432}).trim();};
+const q=String.fromCharCode(39),ro=t=>"BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY;SET LOCAL search_path=pg_catalog,pg_temp;SET LOCAL timezone="+q+"UTC"+q+";SET LOCAL datestyle="+q+"ISO,YMD"+q+";SET LOCAL extra_float_digits=3;SET LOCAL statement_timeout="+q+"120s"+q+";"+t+";ROLLBACK;";
+const read=f=>JSON.parse(fs.readFileSync(f,"utf8")),prior=p.join(base,"program-client-KTEgS1"),old=read(p.join(prior,"after.json")),oldStorage=read(p.join(prior,"storage-after.json"));
+const inventory=read(p.join(tool,"scripts/security/backup-readiness/inventory-20261027.json")),excluded=new Set(inventory.exclusions.map(t=>t.schema+"."+t.name)),tables=inventory.tables.filter(t=>!excluded.has(t.schema+"."+t.name)).map(({schema,name})=>({schema,name}));if(tables.length!==112)throw Error();const users=read(p.join(base,"private-auth-ab-vDuXtY/result.json")).users;
+stage="storage-read";const storage=JSON.parse(sql(st.storageSQL));let storageFilesValid=true;try{await st.verifyStorageFiles(base,storage);}catch{storageFilesValid=false;}
+stage="protected-read";const current={capture:JSON.parse(sql(ca.candidateCaptureSQL(tables))),protected:JSON.parse(sql(ro(pr.protectedSnapshotSQL(tables,users))))};
+stage="contracts-read";let permissionChecks=null,finalContractsValid=true;try{permissionChecks=JSON.parse(sql(ro("SELECT to_jsonb(q) FROM ("+checks.permissionQuery()+") q")));}catch{}try{sql(ro(final.followupFinalSQL));}catch{finalContractsValid=false;}
+const dir=fs.mkdtempSync(p.join(base,"program-precheck-review-"));fs.chmodSync(dir,0o700);for(const [n,v] of [["current.json",current],["storage.json",storage]])fs.writeFileSync(p.join(dir,n),JSON.stringify(v,null,2),{mode:0o600,flag:"wx"});
+const diff=(a,b,keys)=>keys.filter(k=>!eq(a?.[k],b?.[k]));const security=["aclSha256","columnAclSha256","shapeSha256","rights","tables","clientRoles","candidateNamespaces","actor","actorSuper","replicationRole","authorityRows"];
+const oldRelations=new Map(oldStorage.catalog.relations.map(r=>[r.oid,r])),relationFields=new Set();for(const r of storage.catalog.relations){const a=oldRelations.get(r.oid);if(!a){relationFields.add("RELATION_SET_CHANGED");continue;}for(const k of Object.keys(r))if(!eq(a[k],r[k]))relationFields.add(k);}if(oldRelations.size!==storage.catalog.relations.length)relationFields.add("RELATION_SET_CHANGED");
+console.log(JSON.stringify({storageChangedFields:diff(oldStorage,storage,Object.keys(oldStorage)),storageRelationChangedFields:[...relationFields],storageFilesValid,protectedChangedFields:diff(old.protected,current.protected,["protected","userIds","identitiesPresent","authMetadata"]),changedTables:current.protected.protected.filter(t=>!eq(t,old.protected.protected.find(x=>x.schema===t.schema&&x.name===t.name))).map(t=>t.schema+"."+t.name),securityChangedFields:diff(old.capture,current.capture,security),failedPermissionChecks:permissionChecks?Object.keys(permissionChecks).filter(k=>permissionChecks[k]!==true):null,finalContractsValid,readOnly:true,evidenceFolder:p.basename(dir)},null,2));
+}catch{console.error("READONLY_PRECHECK_STOPPED: "+stage);process.exitCode=1;}
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(p.resolve(process.argv[1])).href)await main(process.argv.slice(2));

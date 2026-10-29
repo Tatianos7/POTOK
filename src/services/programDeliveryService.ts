@@ -80,7 +80,15 @@ class ProgramDeliveryService {
       p_program_type: programType ?? null,
     });
     if (error) throw error;
-    return { tier, program: data };
+    if (!Array.isArray(data)) throw new Error('Некорректный ответ списка программ');
+    const candidates = data.filter((row) => row?.status === 'active' || row?.status === 'paused');
+    if (candidates.some((row) => !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(row.program_id)
+      || !['nutrition', 'training'].includes(row.program_type)
+      || (programType !== undefined && row.program_type !== programType))) {
+      throw new Error('Некорректная область программы');
+    }
+    if (candidates.length > 1) throw new Error('Найдено несколько текущих программ. Выберите тип программы.');
+    return { tier, program: candidates[0] ?? null };
   }
 
   async getProgramPhases(programId: string) {
@@ -193,49 +201,30 @@ class ProgramDeliveryService {
     return { adaptationApplied: false as const };
   }
 
-  async pauseProgram(programId: string, programType: ProgramType, reason: string) {
+  private async setProgramStatus(programId: string, programType: ProgramType, status: 'active' | 'paused') {
     if (!supabase) throw new Error('Supabase не инициализирован');
-    await supabase
-      .from(programType === 'nutrition' ? 'nutrition_programs' : 'training_programs')
-      .update({ status: 'paused' })
-      .eq('id', programId);
+    if (!['nutrition', 'training'].includes(programType)
+      || !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(programId)) throw new Error('Некорректная программа');
+    const userId = await this.getSessionUserId();
+    const table = programType === 'nutrition' ? 'nutrition_programs' : 'training_programs';
+    const target = await supabase.from(table).select('id,user_id').eq('id', programId).eq('user_id', userId).limit(2);
+    if (target.error) throw target.error;
+    if (target.data?.length !== 1 || target.data[0].id !== programId || target.data[0].user_id !== userId) {
+      throw new Error('Программа недоступна для изменения');
+    }
+    if (await this.getSessionUserId() !== userId) throw new Error('Аккаунт изменился. Откройте программу заново.');
+    const saved = await supabase.from(table).update({ status }).eq('id', programId).eq('user_id', userId).select('id');
+    if (saved.error) throw saved.error;
+    if (saved.data?.length !== 1 || saved.data[0].id !== programId) throw new Error('Изменение программы не подтверждено');
+  }
 
-    await supabase.from('program_guard_events').insert({
-      program_id: programId,
-      program_type: programType,
-      risk_level: 'caution',
-      flags: ['manual_pause'],
-      blocked_actions: ['program_delivery'],
-    });
-
-    const { data: program } = await supabase
-      .from(programType === 'nutrition' ? 'nutrition_programs' : 'training_programs')
-      .select('program_version,knowledge_version_ref')
-      .eq('id', programId)
-      .maybeSingle();
-
-    await supabase.from('program_explainability').insert({
-      program_id: programId,
-      program_type: programType,
-      version: Number(program?.program_version ?? 1),
-      decision_ref: 'why_paused',
-      knowledge_refs: program?.knowledge_version_ref ?? {},
-      confidence: (program?.knowledge_version_ref as any)?.effective_confidence ?? null,
-      guard_notes: {
-        reason_code: 'manual_pause',
-        diff_summary: { status: 'paused' },
-        safety_notes: { reason },
-      },
-    });
-
+  async pauseProgram(programId: string, programType: ProgramType, _reason: string) {
+    // Client-owned status annotation only; protected history/guard records belong to the server.
+    await this.setProgramStatus(programId, programType, 'paused');
   }
 
   async resumeProgram(programId: string, programType: ProgramType) {
-    if (!supabase) throw new Error('Supabase не инициализирован');
-    await supabase
-      .from(programType === 'nutrition' ? 'nutrition_programs' : 'training_programs')
-      .update({ status: 'active' })
-      .eq('id', programId);
+    await this.setProgramStatus(programId, programType, 'active');
   }
 
   async submitFeedback(input: ProgramFeedbackInput) {
@@ -301,8 +290,8 @@ class ProgramDeliveryService {
     await this.refresh();
   }
 
-  async explain(): Promise<ProgramExplainabilityDTO> {
-    const { program, tier } = await this.getActiveProgram();
+  async explain(programType?: ProgramType): Promise<ProgramExplainabilityDTO> {
+    const { program, tier } = await this.getActiveProgram(programType);
     const programId = program?.id ?? program?.program_id ?? program?.programId;
     if (!programId) {
       return {
