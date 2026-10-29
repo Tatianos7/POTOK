@@ -47,7 +47,7 @@ jobs:
       - name: Fixed target preparation and unchanged exact source plan
         run: node scripts/security/release-packet/target-plan.mjs --verify
       - name: Fail-closed recovery and source artifact policies
-        run: node --test scripts/security/release-packet/state.test.mjs scripts/security/release-packet/target-plan.test.mjs
+        run: node --test scripts/security/release-packet/state.test.mjs scripts/security/release-packet/target-plan.test.mjs scripts/security/backup-readiness/fresh-storage-files.test.mjs
       - name: Metadata HTTP policy and pinned read-only extension scan
         run: node --test scripts/security/managed-boundary/http-profile.test.mjs
       - name: Private backup scope and comparison contracts

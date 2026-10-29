@@ -116,3 +116,20 @@ STOP до locks и данные в disposable PG17: nullable addition, same-coun
 row counts/scope, порядок и duplicates, полный ROLLBACK. Положительный native
 результат фиксируется в Draft PR после фактического завершения; тесты не выполняют
 новые locks/content scans на POTOK и не доказывают managed release/recovery.
+
+## Fresh private backup owner progress
+
+Owner pre-release-backup-2026-10-29.eDWkmR: roles.sql 358 B, schema.sql 243 KiB,
+data.sql 7.9 MiB; all three original SHA256 checks passed. New read-only Storage
+inventory reports 63 objects (22/3/38), and all three CLI downloads finished.
+These are creation/download receipts, not new restore or binary verification.
+
+fresh-storage-files.mjs --verify-downloaded BACKUP compares the saved inventory
+with a fresh independent post-download capture, enforces exact doubled-bucket CLI
+layout, safe regular paths, exact file set/sizes and unique object identities,
+streams SHA256 and detects size/mtime/ctime changes during hashing. Only after
+all checks does it write new storage-manifest.json/storage-sha256.json with wx;
+private errors are not printed. Synthetic success/negative cases passed. A SHA
+computed from a downloaded file is local integrity evidence, not an independent
+provider checksum. SQL-dump/Storage consistency, current full-scope backup and
+new recovery verification remain separate; no acceptance or application replay.
