@@ -164,3 +164,36 @@ psql sessions). The revised reader binds each inspected fixed container to its
 known Unix socket, passes that socket as a positional shell argument and rejects
 other IDs. There is no TCP/alternate-socket fallback or database change. A regression
 test covers both socket routes and target rejection; the metadata SQL is unchanged.
+
+
+## Reviewed Auth continuity admission (2026-10-29)
+
+Owner auth-metadata-review-XVMqYO reports no logical category changes against
+saved pre-Auth-install definitions, no added/removed objects, unchanged complete
+raw columns/routines, and only relpages/reltuples differences between the two
+local databases. Neither current raw hash matches the old client hash. Therefore
+this does NOT establish which raw fields changed historically from that hash;
+no old snapshot is edited, rehashed or claimed to match.
+
+An explicit fourth CLI argument admits that exact reviewed local evidence folder.
+The ordinary three-argument guard remains unchanged. The reviewed mode requires
+all six saved install-time logical Auth categories to match independently in the
+reviewed candidate, original and fresh live observation. Complete raw catalog
+objects must agree between reviewed original/candidate/live except ONLY relpages
+and reltuples, the observed planner estimates documented by PostgreSQL 17. Other
+maintenance fields (including relallvisible/relfrozenxid/relminmxid), physical file
+identity, grants, owner, RLS, columns and function properties remain exact.
+The live raw hash must match the separately captured protected snapshot; a race
+stops admission. All non-Auth-hash protected fields and the existing security
+capture guard are checked unchanged against program-client-KTEgS1 and again
+before/after the test. Evidence records the historical hashes and detailed raw
+observations, plus the exact two exclusions; there is no blanket metadata waiver.
+
+First use --inspect-reviewed-program-precheck BASE PROGRAM_CLIENT REVIEW_DIR:
+read-only contracts/content/files/Auth checks, no browser/OTP/fixture/SQL writes.
+Only after this result passes can the same explicit reviewed admission be used
+with --run-private-program-ui. That gate still must pass actual browser actions,
+exact cleanup and independent postchecks. Production is untouched; full Mac UI
+acceptance and release remain pending. Tests reject changed definitions/ACLs/RLS,
+functions, object additions/removals, all other raw fields, unrelated rows/account
+IDs/security, write-mode/superuser observations and mismatched raw captures.
