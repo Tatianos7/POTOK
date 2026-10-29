@@ -91,3 +91,34 @@ test('explicit demo entitlement renders seven-day read-only preview without lega
   assert.equal((html.match(/aria-label="(?:Пн|Вт|Ср|Чт|Пт|Сб|Вс) \d\d\.\d\d"/g) ?? []).length, 7);
   assert.doesNotMatch(html, /14 дней|Съел\(а\)|Не ел\(а\)|Было что-то ещё|Заменить блюдо/);
 });
+
+test('embedded demo Home renders the weekly preview in place without a redirect', () => {
+  const html = renderToStaticMarkup(<MemoryRouter initialEntries={['/']}>
+    <Today currentUserId="10000000-0000-4000-8000-000000000001"
+      embeddedInAppShell demoPremiumAccess />
+  </MemoryRouter>);
+  assert.match(html, /Локальный предпросмотр · демо/);
+  assert.match(html, /Активная неделя/);
+  assert.doesNotMatch(html, /Съел\(а\)|Не ел\(а\)|Было что-то ещё|Заменить блюдо/);
+});
+
+test('embedded Home cannot enable demo meals without explicit demo entitlement or account', () => {
+  for (const props of [
+    { currentUserId: 'account-A', embeddedInAppShell: true },
+    { embeddedInAppShell: true, demoPremiumAccess: true },
+  ]) {
+    const html = renderToStaticMarkup(<MemoryRouter initialEntries={['/']}>
+      <Today {...props} />
+    </MemoryRouter>);
+    assert.doesNotMatch(html, /Локальный предпросмотр · демо|Овсянка, банан, йогурт/);
+  }
+});
+
+test('embedded verified Premium keeps the paid read gate even with a stale demo flag', () => {
+  const html = renderToStaticMarkup(<MemoryRouter initialEntries={['/']}>
+    <Today currentUserId="10000000-0000-4000-8000-000000000001"
+      embeddedInAppShell verifiedPremium demoPremiumAccess />
+  </MemoryRouter>);
+  assert.match(html, /Персональный недельный план сейчас недоступен/);
+  assert.doesNotMatch(html, /Локальный предпросмотр · демо|Овсянка, банан, йогурт/);
+});

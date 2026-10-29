@@ -38,6 +38,9 @@ jobs:
           VITE_SUPABASE_URL: ''
           VITE_SUPABASE_ANON_KEY: ''
 
+      - name: Home demo navigation and weekly preview regressions
+        run: npx --no-install tsx --test src/pages/__tests__/TodayNutritionWeekPreview.test.tsx
+
       - name: Diary contract tests
         run: npm run test:diary
 
