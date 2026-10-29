@@ -132,3 +132,27 @@ Every SQL command must declare a read-only transaction; the underlying pinned
 queries are unchanged. Raw evidence stays in a new owner-only local folder.
 Only changed field/table names, file-validity and contract booleans are printed.
 A mismatch does not authorize updating the baseline or bypassing the full gate.
+
+## Isolated Auth metadata mismatch
+
+Owner read-only program-precheck-review-rDmzEe found original files valid, no
+protected table/content or account-ID changes, no security capture changes,
+no failed permission checks and passing final contracts. Only authMetadata
+(the full raw pg_class/pg_attribute/pg_proc hash) differs. This is not yet
+proof of a schema/security change or permission to bypass the guard.
+
+program-auth-metadata-review.mjs compares the candidate with the saved original
+logical Auth definition query from private-auth.mjs (unchanged 7b0cac6c pin),
+and reads the original preserved local database's full raw Auth catalog. It
+reports whether that raw catalog exactly matches the recorded client reference
+hash before using it to identify differing categories/fields. If it does not
+match, the tool cannot establish an exact raw reference and does not bless one.
+Raw evidence remains private; no snapshots are replaced, SQL writes executed,
+browser started, OTP sent, migrations or metadata corrections applied.
+
+PostgreSQL 17 documents relpages/reltuples/relallvisible as planner estimates
+updated by VACUUM/ANALYZE, and relfrozenxid/relminmxid as maintenance state:
+https://www.postgresql.org/docs/17/catalog-pg-class.html . These are possible
+sources of drift, not assumed explanations until the exact local comparison.
+The diagnostic reports security and definition differences equally and performs
+no exclusion or normalization of catalog fields.
