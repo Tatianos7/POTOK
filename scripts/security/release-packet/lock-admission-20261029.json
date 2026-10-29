@@ -1,0 +1,712 @@
+{
+  "protocol": "potok-managed-lock-review-v1",
+  "projectRef": "dtsdnhbcwpbfrhcazqkb",
+  "observedAt": "2026-10-29T10:49:57.918626+00:00",
+  "inventoryTables": 116,
+  "writeBlockingTables": 112,
+  "ddlOnlyTables": 4,
+  "locks": [
+    {
+      "schema": "auth",
+      "name": "audit_log_entries",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "custom_oauth_providers",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "flow_state",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "identities",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "instances",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "mfa_amr_claims",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "mfa_challenges",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "mfa_factors",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "mfa_recovery_code_sets",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "mfa_recovery_codes",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "oauth_authorizations",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "oauth_client_states",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "oauth_clients",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "oauth_consents",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "one_time_tokens",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "refresh_tokens",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "saml_providers",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "saml_relay_states",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "schema_migrations",
+      "mode": "ACCESS SHARE",
+      "blocksConcurrentWrites": false
+    },
+    {
+      "schema": "auth",
+      "name": "scim_tokens",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "scim_users",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "sessions",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "sso_domains",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "sso_providers",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "users",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "webauthn_challenges",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "auth",
+      "name": "webauthn_credentials",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "ai_coaching_events",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "ai_generation_params",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "ai_guard_logs",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "ai_long_term_memory",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "ai_meal_plans",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "ai_quality_metrics",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "ai_recommendations",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "ai_training_plans",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "ai_trust_scores",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "analytics_events",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "billing_events",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "entitlements",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "exercise_categories",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "exercise_definition_media",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "exercise_definitions",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "exercise_muscles",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "exercises",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "favorite_products",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "feature_flags",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "food_alias_apply_audit",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "food_aliases",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "food_diary_entries",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "food_import_batches",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "food_import_conflicts",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "food_import_staging",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "food_missing_food_drafts",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "food_missing_review_queue",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "food_search_events",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "food_search_review_queue",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "foods",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "goal_trajectory",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "habit_logs",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "habits",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "meal_entry_notes",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "measurement_history",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "measurement_photo_assets",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "measurement_photo_deletions",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "measurement_photo_history",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "muscles",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "notification_history",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "nutrition_programs",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_3d_angles",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_3d_joints",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_3d_metrics",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_3d_sessions",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_angles",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_biomechanics",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_deviations",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_feedback_events",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_frames",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_guard_flags",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_joints",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_load_estimates",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_quality_scores",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_risk_assessments",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_sessions",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "pose_voice_cues",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "program_adaptations",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "program_blocks",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "program_days",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "program_explainability",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "program_feedback",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "program_generation_jobs",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "program_guard_events",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "program_phases",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "program_sessions",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "program_versions",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "recipe_ingredients",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "recipe_notes",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "recipes",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "subscriptions",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "training_programs",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "user_exercise_media",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "user_goals",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "user_measurements",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "user_profiles",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "user_state",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "workout_day_notes",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "workout_days",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "workout_entries",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "public",
+      "name": "workout_entry_notes",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "storage",
+      "name": "buckets",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "storage",
+      "name": "buckets_analytics",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "storage",
+      "name": "buckets_vectors",
+      "mode": "ACCESS SHARE",
+      "blocksConcurrentWrites": false
+    },
+    {
+      "schema": "storage",
+      "name": "migrations",
+      "mode": "ACCESS SHARE",
+      "blocksConcurrentWrites": false
+    },
+    {
+      "schema": "storage",
+      "name": "objects",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "storage",
+      "name": "s3_multipart_uploads",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "storage",
+      "name": "s3_multipart_uploads_parts",
+      "mode": "SHARE ROW EXCLUSIVE",
+      "blocksConcurrentWrites": true
+    },
+    {
+      "schema": "storage",
+      "name": "vector_indexes",
+      "mode": "ACCESS SHARE",
+      "blocksConcurrentWrites": false
+    }
+  ],
+  "originalUniformEnvelopeExecutable": false,
+  "remainingRequirement": "Review explicit provider-maintenance exclusion for four managed tables; ACCESS SHARE does not freeze their contents. Preserve all 116 old-column row checks and require a fresh observation at execution.",
+  "hostedLocksAttempted": false,
+  "includesRunner": false,
+  "mayApply": false,
+  "releaseReady": false
+}
