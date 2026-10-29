@@ -89,3 +89,31 @@ supabase_admin default TRUNCATE записи могут остаться; кон
 Для этого нужен отдельный точный forward/client window/recovery approval и
 post-commit acceptance. Внешняя зашифрованная копия остаётся владельческой задачей
 на вечер; её шифрование/облачное сохранение ещё не подтверждены.
+
+## Разрешённая попытка через connector и независимая сверка
+
+Владелец отдельно разрешил необходимую безопасную репетицию после предъявления
+точного SQL SHA256 96aa896dbd00855ecd3750e0ef2fd57ab50eeb6aa74579f737a5247e1d627592.
+Permanent deployment/COMMIT/client publication этим не разрешены.
+
+Перед попыткой exact bytes/SHA проверены; get_project вернул POTOK / ACTIVE_HEALTHY /
+17.6.1.063. Exact readonly baseline/shape guard прошёл, managed write lock holders
+в момент наблюдения=0. Затем единственный вызов execute_sql с exact approved batch
+вернул transport error Invalid or expired requestState, без SQL execution receipt.
+Не считать его ни SQL failure с известным местом остановки, ни успешной репетицией,
+ни доказательством, что сервер вообще начал выполнение. Автоматического повтора нет.
+
+На новом соединении 29 октября 15:01:26 по Москве: pg_trgm/public, candidate
+namespaces=[], matching rehearsal sessions=[], other strong write lock holders=[].
+Далее exact независимый after-file прошёл и вернул дополнительный readonly marker
+TARGET_REHEARSAL_INDEPENDENT_BASELINE_OK: 81 public tables, 63 client TRUNCATE,
+origin. Проверки baseline public metadata/116 shapes/owners прошли. Это подтверждает
+исходное metadata состояние и отсутствие наблюдаемых зависших locks/транзакции,
+не является receipt выполнения twelve candidates и не объявляется новым полным
+сравнением содержимого всех строк после transport failure.
+
+Следующий запуск возможен только как отдельно инициированная владельцем попытка
+того же exact batch через ранее работающий CLI Management path, с проверкой fixed
+linked target/версии/bytes, fresh readonly admission и обязательным independent
+after-check даже при ошибке. Приватные stdout/stderr сохранить на Mac, в чат только
+exit/status; никаких broad cleanup, изменённых bodies или постоянного применения.
