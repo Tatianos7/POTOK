@@ -240,3 +240,17 @@ altered/disabled/different-table trigger fixtures. It uses only a read-only SQL
 transaction and simulates the pre-install trigger-set delta in memory, never
 claiming to recreate private owner evidence. Native success is required before
 giving the owner another revised precheck command.
+
+## Owner Mac acceptance — 29 October 2026
+
+The native PG JSON/trigger check and all seven workflows on exact head 8706594
+passed. Owner program-reviewed-precheck-ZYv4ss then returned
+PROGRAM_REVIEWED_AUTH_PRECHECK_OK with all 22 package hashes valid.
+The full owner program-ui-izBBNW returned PROGRAM_UI_TMP_FREE_MIB: 478 and
+PRIVATE_PROGRAM_UI_OK: actual Login/MyProgram with two existing OTP users,
+owned nutrition rendering, four pause/resume button actions and reload, foreign
+read denied, generator disabled, exact fixture cleanup and original data/security
+preserved. This closes the bounded Mac nutrition-program UI gate; do not replay
+it. Training/day-action UI, whole-product acceptance and hosted release are not
+claimed. Remaining release/recovery work and preserved related receipts are in
+local-acceptance-checkpoint-20261029.md. No hosted mutation or release approval.

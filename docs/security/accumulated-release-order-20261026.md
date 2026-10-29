@@ -134,3 +134,14 @@ Mac-результаты: 112 выбранных таблиц совпали п�
 ## Подтверждённая API-приёмка и остановка публичной сборки браузера — 28 октября
 
 Владелец подтвердил POST_ACL_EXISTING_READS_OK на исправленной копии: два прежних аккаунта вошли реальным OTP, own/foreign profile checks и 243 SELECT observations прошли, текущие защищённые строки/metadata/ACL и полный набор Auth account IDs сохранились. UI и affected write flows этим не закрыты. Браузерного образа/контейнера при проверке не найдено; публичная сборка прошла SHA guards, но остановлена ровно через 1200 секунд при fallback-загрузке Chromium. База не подключалась. `public-browser-build-recovery-20261028.md` готовит отдельное cache-enabled продолжение с часовым пределом и тем же source/image contract, без повторного скачивания архива, reset/clean или изменений аккаунтов. Готовность браузера ещё не подтверждена.
+
+## Актуальная локальная контрольная точка — 29 октября
+
+Владелец подтвердил PRIVATE_PROGRAM_UI_OK в program-ui-izBBNW после read-only
+PROGRAM_REVIEWED_AUTH_PRECHECK_OK в program-reviewed-precheck-ZYv4ss. Настоящие
+Login/MyProgram, own nutrition, четыре pause/resume/reload, foreign denial,
+exact cleanup и сохранность данных/прав прошли на исправленном кандидате.
+Предыдущие остановки не являются текущим статусом этого UI gate. Сводка остальных
+владельческих receipts, границ и трёх оставшихся release/recovery шагов —
+local-acceptance-checkpoint-20261029.md. Закрытые локальные тесты не повторять;
+hosted внедрение, точное одобрение и рабочие postchecks остаются отдельными.
