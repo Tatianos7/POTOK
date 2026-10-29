@@ -77,3 +77,23 @@ the ordinary user's RLS-protected API; no write route or database grant is
 added. All assertions and independent preservation/cleanup checks remain.
 A new owner run requires the revised pinned package after CI verification;
 there is no automatic retry of the stopped run.
+
+## Auth-only reload admission after the second Mac stop
+
+Owner run program-ui-MzDK4M passed the first owner's pause/resume (two PATCHes)
+and stopped at reload-program-0. Protected contents and Storage match, with no
+cleanup SQL error. A separate credential-free Chromium reload probe and a
+credential-free Vite/Login/MyProgram import/reload probe both passed without
+network failures. These probes do not prove authenticated UI recovery.
+
+The new --inspect-private-program-auth-reload mode performs real OTP for only
+the original two receipt-bound synthetic accounts and observes AuthProvider and
+MyProgram restoration after reload. It does not seed programs, execute SQL writes,
+or allow any Data API PATCH/INSERT/DELETE. The gateway rejects all parent PATCHes
+in this mode. OTP/verify/logout still modify the synthetic Auth sessions; this is
+not a zero-database-write claim. Before/after original content/security/Storage
+checks remain mandatory. Failure retains evidence with no automatic retry.
+The ordinary full program UI assertions are unchanged. Diagnostics now distinguish
+probe initialization, Auth status and bounded Chromium network failure codes.
+Playwright 1.40 TimeoutError inherits Error.name, so timeout recognition also checks
+the bounded timeout message signature without printing the original exception.

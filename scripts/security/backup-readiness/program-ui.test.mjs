@@ -33,3 +33,6 @@ test('browser failure classification exposes only bounded flags and never error 
   const r=programBrowserFailure(error);assert.deepEqual(Object.keys(r),['timeout','assertion','browserClosed','pageCrashed']);assert(Object.values(r).every(v=>typeof v==='boolean'));assert(!JSON.stringify(r).includes(secret));assert(Object.values(r).some(Boolean));
  }
 });
+
+test('Playwright 1.40 timeout messages classify even when Error.name remains Error',()=>{assert.equal(programBrowserFailure(Error('page.waitForFunction: Timeout 25000ms exceeded.')).timeout,true);});
+test('Auth reload admission refuses even owner fixture PATCH before upstream',async()=>{const g=createProgramGateway({mode:'private',authReloadOnly:true,users:[{id:a},{id:b}],manifest:{programs:[{id,owner:0,type:'nutrition'}]}});await g.start();try{const {request}=await import('node:http');const status=await new Promise((resolve,reject)=>{const r=request('http://127.0.0.1:13004/rest/v1/nutrition_programs?id=eq.'+id+'&user_id=eq.'+a,{method:'PATCH',agent:false},response=>{response.resume();response.on('end',()=>resolve(response.statusCode));});r.on('error',reject);r.end(JSON.stringify({status:'paused'}));});assert.equal(status,404);assert.equal(g.patches,0);}finally{await g.close();}});
