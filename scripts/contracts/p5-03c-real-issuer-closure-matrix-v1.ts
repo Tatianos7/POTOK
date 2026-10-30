@@ -11,6 +11,7 @@ import { foodReviewProposalDigestV1 } from '../../src/server/foodEvidenceReviewR
 import { verifyFoodEvidenceReceiptV1 } from '../../src/server/foodEvidenceReviewGatewayV1';
 import { verifyNonFoodReceiptV1 } from '../../src/server/nonFoodEvidenceV1';
 import { transformIssuer } from './p5-03c-build-disposable-issuers';
+import { verifyClosureCommittedReceiptV1 } from '../../src/server/accountClosureOwnerRequestV1';
 
 interface DB {
   sql(statement: string): Promise<string>;
@@ -34,21 +35,27 @@ function reviewFunction(sql: string, signature: string): string {
   return sql.slice(start, end + 3).replace('CREATE FUNCTION ', 'CREATE OR REPLACE FUNCTION ');
 }
 
-export async function runRealIssuerClosureMatrixV1(t: TestContext, db: DB) {
+export async function runRealIssuerClosureMatrixV1(t: TestContext, db: DB, options: { draft?: boolean } = {}) {
   const { sql, asUser } = db;
   let key = 700000;
+  let namespace = 'potok_closure_candidate';
   const inventory = () => sql(`SELECT jsonb_build_array(${tables.map(n => `(SELECT count(*) FROM ${n})`).join(',')})`);
-  const provision = async (n: number, active = true) => {
+  const provision = async (n: number, active = true, reviewer = true) => {
     const who = id(n);
     await sql(`INSERT INTO auth.users VALUES(${quote(who)},false);
       INSERT INTO auth.sessions VALUES(${quote(id(n + 100))},${quote(who)},NULL);
-      INSERT INTO public.user_profiles(user_id) VALUES(${quote(who)});
-      SELECT potok_control.grant_entitlement_v2(${quote(who)},'admin',NULL,'synthetic-local-test','closure matrix fixture');`);
-    if (active) await sql(`INSERT INTO potok_closure_candidate.accounts_v1(account_id,state) VALUES(${quote(who)},'ACTIVE')`);
+      INSERT INTO public.user_profiles(user_id) VALUES(${quote(who)});`);
+    if (reviewer) await sql(`SELECT potok_control.grant_entitlement_v2(${quote(who)},'admin',NULL,'synthetic-local-test','closure matrix fixture')`);
+    if (active) await sql(`INSERT INTO ${namespace}.accounts_v1(account_id,state) VALUES(${quote(who)},'ACTIVE')`);
     return who;
   };
-  const close = (who: string, suffix = '') => sql(`BEGIN; ${suffix}
-    SELECT potok_closure_candidate.begin_closure_v1(${quote(who)},${quote(id(++key))}); COMMIT;`);
+  const closureCall = (who: string, closureKey: string) => options.draft && namespace === 'potok_closure'
+    ? `SELECT public.account_closure_begin_v1(${quote(JSON.stringify({ contract: 'potok-account-closure-request-v1', closureKey }))})`
+    : `SELECT potok_closure_candidate.begin_closure_v1(${quote(who)},${quote(closureKey)})`;
+  const close = (who: string, suffix = '') => {
+    const call = closureCall(who, id(++key));
+    return options.draft && namespace === 'potok_closure' ? asUser(`${suffix} ${call}`, who) : sql(`BEGIN; ${suffix} ${call}; COMMIT;`);
+  };
   const prepare = async (kind: 'food' | 'nonfood') => {
     const n = ++key;
     if (kind === 'food') {
@@ -109,15 +116,31 @@ export async function runRealIssuerClosureMatrixV1(t: TestContext, db: DB) {
   });
 
   const authorityBefore = await sql("SELECT pg_get_functiondef('potok_food_evidence.authority_v1()'::regprocedure)");
-  await t.test('real issuer matrix: mount strict candidate after entry authority, preserving trusted authority bytes', async () => {
-    for (const [file, signature, anchor] of specs) {
-      const original = await readFile(`supabase/migration_drafts/${file}`, 'utf8');
-      await sql(reviewFunction(transformIssuer(original, signature, anchor), signature));
+  await t.test(options.draft ? 'real issuer matrix: install guarded persistent SQL draft, preserving trusted authority bytes'
+    : 'real issuer matrix: mount strict candidate after entry authority, preserving trusted authority bytes', async () => {
+    if (options.draft) {
+      const draft = await readFile('supabase/migration_drafts/account_closure_admission_v1.sql', 'utf8');
+      await assert.rejects(sql(draft), /EXPLICIT_CLOSURE_STAGING_TARGET_REQUIRED/);
+      assert.equal(await sql("SELECT to_regnamespace('potok_closure') IS NULL"), 't');
+      const original = await sql("SELECT pg_get_functiondef('public.food_evidence_review_v1(text)'::regprocedure)");
+      await sql(original.replace('BEGIN', 'BEGIN\n -- synthetic source drift'));
+      try {
+        await assert.rejects(sql("SET potok_closure.rollout_target='staging:ozidryfvhkcbtpnulakq';" + draft), /REVIEWED_ISSUER_DEFINITION_REQUIRED/);
+        assert.equal(await sql("SELECT to_regnamespace('potok_closure') IS NULL"), 't', 'failed install is atomic');
+      } finally { await sql(original); }
+      await sql("SET potok_closure.rollout_target='staging:ozidryfvhkcbtpnulakq';" + draft);
+      namespace = 'potok_closure';
+      assert.equal(await sql('SELECT count(*) FROM potok_closure.accounts_v1'), '0', 'no implicit ACTIVE/backfill');
+    } else {
+      for (const [file, signature, anchor] of specs) {
+        const original = await readFile(`supabase/migration_drafts/${file}`, 'utf8');
+        await sql(reviewFunction(transformIssuer(original, signature, anchor), signature));
+      }
     }
     assert.equal(await sql("SELECT pg_get_functiondef('potok_food_evidence.authority_v1()'::regprocedure)"), authorityBefore);
     for (const role of ['anon', 'authenticated', 'service_role']) {
-      await assert.rejects(sql(`SET ROLE ${role}; SELECT potok_closure_candidate.assert_active_v1(${quote(id(30))})`), /permission denied/);
-      await assert.rejects(sql(`SET ROLE ${role}; SELECT potok_closure_candidate.begin_closure_v1(${quote(id(30))},${quote(id(700))})`), /permission denied/);
+      await assert.rejects(sql(`SET ROLE ${role}; SELECT ${namespace}.assert_active_v1(${options.draft ? '' : quote(id(30))})`), /permission denied/);
+      if (!options.draft) await assert.rejects(sql(`SET ROLE ${role}; SELECT potok_closure_candidate.begin_closure_v1(${quote(id(30))},${quote(id(700))})`), /permission denied/);
     }
   });
 
@@ -157,20 +180,22 @@ export async function runRealIssuerClosureMatrixV1(t: TestContext, db: DB) {
         await waitFor(app, 'sleep');
         closure = close(who, `SET LOCAL application_name=${quote(closingApp)};`);
         await waitFor(closingApp, 'lock');
-        assert.equal(await sql(`SELECT state FROM potok_closure_candidate.accounts_v1 WHERE account_id=${quote(who)}`), 'ACTIVE');
+        assert.equal(await sql(`SELECT state FROM ${namespace}.accounts_v1 WHERE account_id=${quote(who)}`), 'ACTIVE');
       } finally {
         const result = await issued; if ('error' in result) throw result.error;
         await req.verify(who, JSON.parse(result.value));
         if (closure) await closure;
       }
-      assert.equal(await sql(`SELECT state FROM potok_closure_candidate.accounts_v1 WHERE account_id=${quote(who)}`), 'CLOSING');
+      assert.equal(await sql(`SELECT state FROM ${namespace}.accounts_v1 WHERE account_id=${quote(who)}`), 'CLOSING');
       await assert.rejects(asUser(req.call, who), /ACCOUNT_NOT_ACTIVE/);
     });
     await t.test(`real ${kind} issuer: closure-first session blocks issuance then rejects with zero artifacts`, async () => {
       const who = await provision(35 + index * 5), req = await prepare(kind), before = await inventory();
       const app = `closure_first_${kind}`, waitingApp = `issuer_wait_${kind}`;
-      const holder = sql(`BEGIN; SET LOCAL application_name=${quote(app)};
-        SELECT potok_closure_candidate.begin_closure_v1(${quote(who)},${quote(id(++key))}); SELECT pg_sleep(4); COMMIT;`);
+      const holder = options.draft
+        ? asUser(`SET LOCAL application_name=${quote(app)}; ${closureCall(who, id(++key))}; SELECT pg_sleep(4)`, who)
+        : sql(`BEGIN; SET LOCAL application_name=${quote(app)};
+          ${closureCall(who, id(++key))}; SELECT pg_sleep(4); COMMIT;`);
       let attempted: Promise<void> | undefined;
       try {
         await waitFor(app, 'sleep');
@@ -207,4 +232,58 @@ export async function runRealIssuerClosureMatrixV1(t: TestContext, db: DB) {
       assert.notEqual(JSON.parse(ra).event.eventId, JSON.parse(rb).event.eventId);
     }
   });
+  if (options.draft) {
+    await t.test('persistent draft: ordinary non-admin owner can close only self, exact-key recovery is stable', async () => {
+      const who = await provision(45, true, false), other = await provision(46, true, false);
+      assert.equal(await sql(`SELECT potok_control.is_effective_entitlement_v2(${quote(who)},'admin',clock_timestamp())`), 'f');
+      const closureKey = 'ABCDEFAB-1234-4123-8123-ABCDEFABCDEF';
+      const payload = { contract: 'potok-account-closure-request-v1', closureKey };
+      const call = closureCall(who, closureKey);
+      const first = JSON.parse(await asUser(call, who));
+      verifyClosureCommittedReceiptV1(first, who, closureKey);
+      assert.deepEqual(JSON.parse(await asUser(call, who)), first, 'recover lost response with the original key');
+      await assert.rejects(asUser(closureCall(who, id(++key)), who), /CLOSURE_CONFLICT/);
+      await assert.rejects(asUser(`SELECT public.account_closure_begin_v1(${quote(JSON.stringify({ ...payload, accountId: who }))})`, other), /EXACT_FIELDS_REQUIRED/);
+      assert.equal(await sql(`SELECT state FROM potok_closure.accounts_v1 WHERE account_id=${quote(other)}`), 'ACTIVE');
+      await assert.rejects(asUser(call, who, { sub: other }), /LIVE_AUTH_SESSION_REQUIRED/);
+      await assert.rejects(sql(`UPDATE potok_closure.accounts_v1 SET state='ACTIVE',closure_key=NULL,revision=revision+1 WHERE account_id=${quote(who)}`), /CLOSURE_TRANSITION_INVALID/);
+    });
+    await t.test('persistent draft: raw privileges, FORCE RLS and authenticated RPC grant are explicit', async () => {
+      for (const role of ['anon', 'authenticated', 'service_role']) {
+        await assert.rejects(sql(`SET ROLE ${role}; SELECT * FROM potok_closure.accounts_v1`), /permission denied/);
+        await assert.rejects(sql(`SET ROLE ${role}; INSERT INTO potok_closure.accounts_v1(account_id,state) VALUES(${quote(id(1))},'ACTIVE')`), /permission denied/);
+        await assert.rejects(sql(`SET ROLE ${role}; SELECT potok_closure.owner_v1()`), /permission denied/);
+        if (role !== 'authenticated') await assert.rejects(sql(`SET ROLE ${role}; SELECT public.account_closure_begin_v1('{}')`), /permission denied/);
+      }
+      assert.equal(await sql("SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid='potok_closure.accounts_v1'::regclass"), 't');
+    });
+    await t.test('persistent draft: expired/revoked Auth, absent account and duplicate request keys fail closed', async () => {
+      const who = await provision(47, true, false), missing = await provision(48, false, false);
+      const call = closureCall(who, id(++key));
+      await assert.rejects(asUser(call, who, { exp: 0 }), /JWT_EXPIRED/);
+      await assert.rejects(asUser(call, who, { role: 'service_role' }), /CLOSURE_AUTH_REQUIRED/);
+      await assert.rejects(asUser(call, who, { session_id: id(999) }), /LIVE_AUTH_SESSION_REQUIRED/);
+      await assert.rejects(asUser(call, missing), /ACCOUNT_UNVERIFIED/);
+      const duplicate = `{"contract":"potok-account-closure-request-v1","closureKey":"${id(++key)}","closureKey":"${id(++key)}"}`;
+      await assert.rejects(asUser(`SELECT public.account_closure_begin_v1(${quote(duplicate)})`, who), /DUPLICATE_JSON_KEY/);
+      await sql(`UPDATE auth.sessions SET not_after=clock_timestamp()-interval '1 second' WHERE user_id=${quote(who)}`);
+      await assert.rejects(asUser(call, who), /LIVE_AUTH_SESSION_REQUIRED/);
+      assert.equal(await sql(`SELECT state FROM potok_closure.accounts_v1 WHERE account_id=${quote(who)}`), 'ACTIVE');
+    });
+    await t.test('persistent draft: concurrent owner same-key requests converge; different-key requests conflict', async () => {
+      const who = await provision(49, true, false), call = closureCall(who, id(++key));
+      const replies = await Promise.all([asUser(call, who), asUser(call, who)]);
+      assert.deepEqual(JSON.parse(replies[0]), JSON.parse(replies[1]));
+      const second = await provision(50, true, false);
+      const results = await Promise.allSettled([asUser(closureCall(second, id(++key)), second), asUser(closureCall(second, id(++key)), second)]);
+      assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+      assert.ok(results.some(r => r.status === 'rejected' && /CLOSURE_CONFLICT/.test(String(r.reason))));
+    });
+    await t.test('persistent draft: COMMIT-time expiry and explicit rollback preserve ACTIVE and the original revision', async () => {
+      const who = await provision(51, true, false), call = closureCall(who, id(++key));
+      await assert.rejects(asUser(`${call}; SELECT pg_sleep(3)`, who, { exp: Math.floor(Date.now()/1000) + 2 }), /JWT_EXPIRED/);
+      await assert.rejects(asUser(`${call}; DO $$ BEGIN RAISE EXCEPTION 'CLOSURE_FORCED_ROLLBACK'; END $$`, who), /CLOSURE_FORCED_ROLLBACK/);
+      assert.equal(await sql(`SELECT state||':'||revision::text||':'||(closure_key IS NULL)::text FROM potok_closure.accounts_v1 WHERE account_id=${quote(who)}`), 'ACTIVE:1:true');
+    });
+  }
 }

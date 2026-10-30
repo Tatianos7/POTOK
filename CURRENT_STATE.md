@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Persistent admission preparation — 2026-10-30
+
+- Prepared an inactive SQL draft for private trusted account state, owner-only ACTIVE-to-CLOSING requests and admission inside the original Food/Nonfood public issuers.
+- Pinned prerequisite: #254 at `8a0e362caeb9b67b2feaadf9b275facba4ac6a43`, all four CI workflows passed; native matrix 49/49 with zero skips.
+- New CI tests the actual persistent draft and preserves the existing disposable candidate as a separate regression mode.
+- No automatic ACTIVE backfill, real source approval, live SQL, app endpoint, merge, deployment or generator activation. Global closure and erasure remain incomplete.
+- See [persistent draft scope and release gates](docs/architecture/p5-03c-persistent-admission-draft-20261030.md).
+
 ## P5-03C implementation checkpoint — 2026-10-30
 
 - Generator/source preparation PR #253 passed both exact-head CI workflows at `a166717d8d139323b45e6fdf691b6adf4d15d510`.
