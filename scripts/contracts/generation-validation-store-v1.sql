@@ -108,12 +108,12 @@ CREATE TRIGGER validation_warnings_no_truncate BEFORE TRUNCATE ON potok_nutritio
   FOR EACH STATEMENT EXECUTE FUNCTION potok_nutrition.validation_store_immutable_v1();
 
 -- One STABLE SELECT, no FOR UPDATE, ledger insertion or status change. Owner-only
--- disposable reader, never an application channel or entitlement authorization.
+-- internal owner-context helper; gateway admission is a separate boundary.
 CREATE FUNCTION potok_nutrition.read_generation_validation_source_v1(request_id uuid,proposal_sha bytea)
 RETURNS text LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=pg_catalog AS $fn$
 DECLARE result text;
 BEGIN
-  IF session_user<>'postgres' OR current_user<>'postgres' THEN
+  IF current_user<>'postgres' THEN
     RAISE EXCEPTION 'PROTECTED_VALIDATION_READER_NOT_BOUND' USING ERRCODE='42501';
   END IF;
   IF request_id IS NULL OR proposal_sha IS NULL OR octet_length(proposal_sha)<>32 THEN
