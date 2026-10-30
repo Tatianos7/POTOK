@@ -16,13 +16,18 @@ export async function runNonFoodAcceptanceV1(t:TestContext,db:DB) {
   await verifyNonFoodReceiptV1(raw,user,value);return value;};
  const current=async(d:string)=>JSON.parse(await asUser(`SELECT public.nonfood_evidence_current_v1(${quote(d)})`));
  let d:Receipt;
- await t.test('nonfood preflight refuses unmarked target atomically; marked own cluster installs/postchecks',async()=>{
+ if(process.env.POTOK_NONFOOD_STAGING_INSTALL_ACCEPTANCE==='1') {
+  const {installClosedNonfoodStagingV1}=await import('./nonfood-staging-install-native-v1');
+  await installClosedNonfoodStagingV1(t,db);
+  await sql(await readFile('supabase/migration_drafts/nonfood_reviewed_evidence_v1.postcheck.sql','utf8'));
+ } else await t.test('nonfood preflight refuses unmarked target atomically; marked own cluster installs/postchecks',async()=>{
   await assert.rejects(sql(file),/NONFOOD_DISPOSABLE_PREFLIGHT_REQUIRED/);
   assert.equal(await sql("SELECT to_regnamespace('potok_nonfood') IS NULL"),'t');
   const marker="SET potok_nonfood.test_target='disposable-postgresql-only';";
   await sql(marker+await readFile('supabase/migration_drafts/nonfood_reviewed_evidence_v1.preflight.sql','utf8'));
   await sql(marker+file);await sql(await readFile('supabase/migration_drafts/nonfood_reviewed_evidence_v1.postcheck.sql','utf8'));
  });
+ assert.equal(await sql("SELECT to_regnamespace('potok_nonfood') IS NOT NULL"),'t','nonfood installation must succeed before dependent scenarios');
  await t.test('nonfood real authority/session/role/actor checks and strict SQL raw boundary reject',async()=>{
   await assert.rejects(review(req,id(3)),/VERIFIED_ADMIN_REQUIRED/);
   await assert.rejects(review(req,id(4)),/LIVE_AUTH_SESSION_REQUIRED/);

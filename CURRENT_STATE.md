@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Closed Nonfood Staging installer — 2026-10-30
+
+- Added a separate inactive Staging installer with all application RPC access revoked. Original disposable SQL is unchanged; table/issuer/history bodies are byte-identical, except the removed client EXECUTE opening.
+- Pins all 13 referenced/transitive Food helper bodies plus owner/security/search_path metadata, checks role isolation and refuses existing namespace/orphan RPCs. Target markers are acknowledgments, not authorization.
+- Closed-install postcheck requires empty tables, FORCE RLS, RESTRICT dependencies and closed client RPCs. Native CI verifies denial/atomic drift handling, then opens only the disposable fixture to run the existing full issuer/closure/registration scenarios.
+- No Supabase apply, real evidence, catalog publication, client gateway binding or generator activation. Retention/legal approval, live Auth/OTP/PostgREST and reviewed runtime opening are unresolved; this package is not a production rollout or erasure implementation.
+
 ## Staging food-schema compatibility — 2026-10-30
 
 - Live read-only inventory found 12/14 required food identity columns; is_searchable/needs_review are absent. Existing Food/Nonfood evidence, closure and registration packages are not installed.
