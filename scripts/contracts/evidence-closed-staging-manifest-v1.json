@@ -1,0 +1,36 @@
+{
+  "contract": "potok-closed-evidence-staging-bundle-v1",
+  "sourceCommit": "5062132a78b863d2630533e6d3a86526680a539b",
+  "parts": [
+    {
+      "path": "supabase/migration_drafts/food_evidence_admission_columns_v1.sql",
+      "sha256": "624b60b133ee2b22ff3535bb312df6a1df3affc39c739eb1980154559a96bb60",
+      "transaction": true
+    },
+    {
+      "path": "supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.sql",
+      "sha256": "0ac2a0de2f118cd111c1518d5180eb6f6c9313eff522591014a63552287f9d82",
+      "transaction": true
+    },
+    {
+      "path": "supabase/migration_drafts/nonfood_reviewed_evidence_v1_staging.sql",
+      "sha256": "903aa7f30e9503d8b7de41071bca2e9e91f90f72e35f2c362d52c2c228a4ab36",
+      "transaction": true
+    },
+    {
+      "path": "supabase/migration_drafts/nonfood_reviewed_evidence_v1_staging.postcheck.sql",
+      "sha256": "751caa919ea29ed0eb1ab645864639b639dec36c12d23878d14ca9aa7a22b8d3",
+      "transaction": false
+    },
+    {
+      "path": "supabase/migration_drafts/account_closure_admission_v1.sql",
+      "sha256": "b5f9064a5f00f9503b44761d1e09f1488d03b5379d798dbc8d2d8f5340cd291e",
+      "transaction": true
+    },
+    {
+      "path": "supabase/migration_drafts/account_state_registration_v1.sql",
+      "sha256": "ad677a04a086ad03f2e59b01ac189651b93361aea69de6e3533d5ead09601765",
+      "transaction": true
+    }
+  ]
+}

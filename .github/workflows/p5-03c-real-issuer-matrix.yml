@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [candidate, persistent-draft, registration-draft]
+        mode: [candidate, persistent-draft, registration-draft, bundle-draft]
     name: Real issuers (${{ matrix.mode }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -39,8 +39,10 @@ jobs:
           node --test scripts/contracts/p5-03c-persistent-admission-source.test.mjs
           node --test scripts/contracts/p5-03c-account-registration-source.test.mjs
           node --test scripts/contracts/nonfood-staging-source.test.mjs
+          node --test scripts/contracts/evidence-closed-staging-bundle-source.test.mjs
+          npx --no-install tsc --noEmit --target es2022 --module esnext --moduleResolution bundler --skipLibCheck --esModuleInterop scripts/contracts/evidence-closed-staging-bundle-native-v1.ts
           npx --no-install tsc --noEmit --target es2022 --module esnext --moduleResolution bundler --skipLibCheck --esModuleInterop scripts/contracts/nonfood-staging-install-native-v1.ts
           npx --no-install tsc --noEmit --target es2022 --module esnext --moduleResolution bundler --skipLibCheck --esModuleInterop scripts/contracts/p5-03c-real-issuer-closure-matrix-v1.ts
       - name: Actual issuers, trusted prerequisites, native multi-session closure matrix
         run: |
-          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 POTOK_FOOD_ADMISSION_COLUMNS_ACCEPTANCE=${{ matrix.mode == 'registration-draft' && '1' || '0' }} POTOK_NONFOOD_STAGING_INSTALL_ACCEPTANCE=${{ matrix.mode == 'registration-draft' && '1' || '0' }} POTOK_NONFOOD_ACCEPTANCE=1 POTOK_CLOSURE_REAL_ISSUER_MATRIX=1 POTOK_CLOSURE_DRAFT_ACCEPTANCE=${{ matrix.mode != 'candidate' && '1' || '0' }} POTOK_ACCOUNT_REGISTRATION_ACCEPTANCE=${{ matrix.mode == 'registration-draft' && '1' || '0' }} node --import tsx --test --test-isolation=none scripts/contracts/food-evidence-disposable-db-v1.test.ts
+          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 POTOK_EVIDENCE_CLOSED_BUNDLE_ACCEPTANCE=${{ matrix.mode == 'bundle-draft' && '1' || '0' }} POTOK_FOOD_ADMISSION_COLUMNS_ACCEPTANCE=${{ matrix.mode == 'registration-draft' && '1' || '0' }} POTOK_NONFOOD_STAGING_INSTALL_ACCEPTANCE=${{ matrix.mode == 'registration-draft' && '1' || '0' }} POTOK_NONFOOD_ACCEPTANCE=1 POTOK_CLOSURE_REAL_ISSUER_MATRIX=1 POTOK_CLOSURE_DRAFT_ACCEPTANCE=${{ matrix.mode != 'candidate' && '1' || '0' }} POTOK_ACCOUNT_REGISTRATION_ACCEPTANCE=${{ matrix.mode == 'registration-draft' && '1' || '0' }} node --import tsx --test --test-isolation=none scripts/contracts/food-evidence-disposable-db-v1.test.ts

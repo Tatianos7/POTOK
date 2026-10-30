@@ -26,6 +26,7 @@ const quote = (value: string): string => `'${value.replace(/'/g,"''")}'`;
 const raw = JSON.stringify;
 const migrationPath = 'supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.sql';
 const admissionColumns = process.env.POTOK_FOOD_ADMISSION_COLUMNS_ACCEPTANCE === '1';
+const bundleAcceptance = process.env.POTOK_EVIDENCE_CLOSED_BUNDLE_ACCEPTANCE === '1';
 
 test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability and REAL multi-session concurrency', { skip:requireDatabase ? false : skip, timeout:180_000 }, async t => {
   if (skip) assert.fail(skip);
@@ -33,11 +34,12 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
   const data = join(root,'data'), socket = join(root,'socket'), port = '54329';
   await mkdir(socket,{ mode:0o700 });
   let started = false;
-  const sql = async (statement: string): Promise<string> => {
-    const result = await run('psql',['-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',socket,'-p',port,'-U','postgres','-d','postgres','-c',statement],
+  const sqlAs = async (role: string, statement: string): Promise<string> => {
+    const result = await run('psql',['-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',socket,'-p',port,'-U',role,'-d','postgres','-c',statement],
       { env, timeout:30_000, maxBuffer:4_194_304 });
     return result.stdout.trim();
   };
+  const sql = (statement: string): Promise<string> => sqlAs('postgres',statement);
   const claims = (user: string, overrides: Record<string,unknown> = {}): string => raw({ role:'authenticated', sub:user,
     session_id:id(Number(user.slice(-12))+100), exp:Math.floor(Date.now()/1000)+3600, ...overrides });
   const asUser = async (statement: string, user = actor, overrides: Record<string,unknown> = {}): Promise<string> => sql(
@@ -52,9 +54,16 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
   const projection = async () => JSON.parse(await asUser(`SELECT public.food_evidence_current_v1(${quote(foodId)},'raw')`)) as {
     canonicalRevision:{ revisionId:string }; canonicalUsable:boolean; nutritionUsable:boolean; canonicalInvalidation:string|null };
   try {
-    await run('initdb',['-D',data,'-U','postgres','--auth-local=trust','--auth-host=reject','--encoding=UTF8','--no-locale'],{ env, timeout:30_000 });
+    const bootstrapUser = bundleAcceptance ? 'fixture_bootstrap_super' : 'postgres';
+    await run('initdb',['-D',data,'-U',bootstrapUser,'--auth-local=trust','--auth-host=reject','--encoding=UTF8','--no-locale'],{ env, timeout:30_000 });
     await run('pg_ctl',['-D',data,'-l',join(root,'server.log'),'-o',`-k ${socket} -p ${port} -c listen_addresses='' -c unix_socket_permissions=0700`,'-w','start'],{ env, timeout:30_000 });
     started = true;
+    if (bundleAcceptance) {
+      // PostgreSQL's bootstrap role cannot lose SUPERUSER. Use a separate initial
+      // role so the tested postgres can later match Supabase's managed privileges.
+      await run('psql',['-X','-q','-v','ON_ERROR_STOP=1','-h',socket,'-p',port,'-U',bootstrapUser,'-d','postgres','-c',
+        'CREATE ROLE postgres LOGIN SUPERUSER; ALTER DATABASE postgres OWNER TO postgres;'],{env,timeout:30_000});
+    }
     // MAINTAIN appears in the existing reviewed trusted-entitlement prerequisite package.
     assert.ok(Number(await sql('SHOW server_version_num'))>=170000,'Existing trusted-entitlement package requires PostgreSQL 17+; do not modify it for testing');
     await sql(`CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;
@@ -66,7 +75,7 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
       GRANT USAGE ON SCHEMA auth TO anon,authenticated,service_role;
       CREATE TABLE public.user_profiles(id_user uuid PRIMARY KEY,is_admin boolean NOT NULL DEFAULT false);
       CREATE TABLE public.foods(id uuid PRIMARY KEY,canonical_food_id uuid,stable_food_id text,source text,created_by_user_id uuid,
-        ${admissionColumns ? '' : 'is_searchable boolean,needs_review boolean,'}name text,name_original text,normalized_name text,brand text,normalized_brand text,barcode text,aliases text[]);
+        ${admissionColumns || bundleAcceptance ? '' : 'is_searchable boolean,needs_review boolean,'}name text,name_original text,normalized_name text,brand text,normalized_brand text,barcode text,aliases text[]);
       CREATE TABLE public.food_aliases(id uuid PRIMARY KEY,canonical_food_id uuid,alias text);
       CREATE TABLE public.food_diary_entries(id uuid PRIMARY KEY,calories numeric,protein numeric,fat numeric,carbs numeric);
       INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,created_by_user_id,name,name_original,normalized_name,brand,normalized_brand,barcode,aliases)
@@ -75,7 +84,7 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
     if (admissionColumns) {
       const { runFoodAdmissionColumnsV1 } = await import('./food-evidence-admission-columns-native-v1');
       await runFoodAdmissionColumnsV1(t,{sql});
-    } else {
+    } else if (!bundleAcceptance) {
       await sql('UPDATE public.foods SET is_searchable=true,needs_review=false');
     }
     const migration = await readFile(migrationPath,'utf8');
@@ -107,6 +116,11 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
       assert.equal(await sql("SELECT to_regnamespace('potok_food_evidence') IS NULL"),'t');
       await sql('ALTER TABLE public.user_profiles RENAME COLUMN id_user TO user_id');
     });
+    if (bundleAcceptance) {
+      const {runClosedEvidenceBundleV1}=await import('./evidence-closed-staging-bundle-native-v1');
+      await runClosedEvidenceBundleV1(t,{sql,asRole:sqlAs});
+      return; // separate complete-package mode; original modes still run their full suites
+    }
     await t.test('matching schema alone is not rollout authorization: explicit owner target acknowledgement required',async () => {
       await assert.rejects(sql(migration),/EXPLICIT_STAGING_ROLLOUT_TARGET_REQUIRED/);
       assert.equal(await sql("SELECT to_regnamespace('potok_food_evidence') IS NULL"),'t');

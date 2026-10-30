@@ -1,5 +1,23 @@
 # POTOK current state
 
+## Closed package installed in Staging — 2026-10-30
+
+- After explicit owner approval, applied PR #259 code at `69b948a683ea4c047ea7b78d6e033401da610d12` only to POTOK Staging `ozidryfvhkcbtpnulakq`. Migration history records `20261030165008_evidence_closed_staging_bundle_v1`; SQL SHA256 `a9a1e0852c1b13ec717fbde5227e08c911898944e2832dbbc9c00fd1e572d572`.
+- Live postcheck: all 38 function bodies/owners/security/search paths match the approved package; all 16 new tables are empty with ENABLE/FORCE RLS and no client table/column access. All seven application RPCs have zero effective EXECUTE grants for anon/authenticated/service_role.
+- New registration hook is installed/enabled and bound to the exact function. Existing three Auth accounts received no state, provenance, permits or privilege changes. Recovery was not required or executed.
+- Before/after counts and SHA256 content aggregates match for all nine checked existing relations: Auth users/sessions, foods, aliases, diary, recipes, ingredients, favorites and profiles. All 2,200 foods have unknown admission flags; none was approved or published.
+- Security advisors introduced no new WARN/ERROR findings. Thirteen additional INFO notices reflect intentionally policy-free private Food/Nonfood tables protected by FORCE RLS and denied client access; existing warnings remain separate work.
+- Earlier checkpoints below describe preparation before this approved apply. Production, merge/deploy, real source review, evidence issuance, runtime opening and generator activation were not part of the action.
+- Actual Supabase Auth signup/OTP and signed-JWT PostgREST acceptance remain NOT VERIFIED. Next: controlled real-transport acceptance without blanket RPC opening or legacy ACTIVE backfill; then actual product/water evidence and the selected recipe pilot. ACCOUNT_CLOSURE_IMPLEMENTED=false; LIVE_ERASURE_VERIFIED=false.
+
+## Atomic closed evidence package — 2026-10-30
+
+- Added an offline composer and explicit SHA256 component manifest, plus reproducible reviewable SQL for admission columns, Food, closed Nonfood, account admission and Auth-state registration in one transaction.
+- Original component bodies stay unchanged; only their verified outer transaction wrappers are removed. All seven Food/Nonfood/owner-closure RPCs are revoked before the single COMMIT, preventing any client-opening interval between component installs.
+- Separate bundle-draft native mode reproduces missing food columns and three synthetic legacy accounts, checks late/final rollback, actual cross-session visibility, closed endpoints, signup coexistence/rollback and replay. Other 49/54/76-test modes remain active.
+- Prepared a separately authorized recovery candidate: bind the exact registration hook and suspend its owned function body while retaining closed RPCs/all data. Native bundle mode reproduces Staging's non-superuser SQL actor with TRIGGER rights but no Auth-table ownership. New Auth users then have missing account state; no ACTIVE fallback is introduced.
+- No live Supabase application, existing-account approval, source approval, generator activation or retention/erasure completion. Real Auth/OTP/PostgREST remains unverified; installing the hook requires explicit owner review because failure can block signup.
+
 ## Closed Nonfood Staging installer — 2026-10-30
 
 - Added a separate inactive Staging installer with all application RPC access revoked. Original disposable SQL is unchanged; table/issuer/history bodies are byte-identical, except the removed client EXECUTE opening.
