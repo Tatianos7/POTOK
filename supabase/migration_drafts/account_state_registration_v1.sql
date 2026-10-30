@@ -21,7 +21,7 @@ BEGIN
   AND attname='created_at' AND atttypid='timestamptz'::regtype AND NOT attisdropped) THEN
   RAISE EXCEPTION 'AUTH_CREATION_BINDING_REQUIRED';
  END IF;
- SELECT encode(extensions.digest(convert_to(coalesce(string_agg(pg_get_triggerdef(t.oid)||':'||
+ SELECT encode(extensions.digest(convert_to(coalesce(string_agg(pg_get_triggerdef(t.oid)||':'||t.tgenabled||':'||pg_get_userbyid(p.proowner)||':'||p.prosecdef::text||':'||coalesce(array_to_string(p.proconfig,','),'')||':'||
   encode(extensions.digest(convert_to(p.prosrc,'UTF8'),'sha256'),'hex'),E'\n' ORDER BY t.tgname),''),'UTF8'),'sha256'),'hex')
  INTO actual FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid
  WHERE t.tgrelid='auth.users'::regclass AND NOT t.tgisinternal;
@@ -33,14 +33,14 @@ END $preflight$;
 CREATE TABLE potok_closure.registration_permits_v1(
  permit_id uuid PRIMARY KEY,
  account_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE RESTRICT,
- expected_created_at timestamptz NOT NULL,
+ expected_created_at timestamptz NOT NULL CHECK(isfinite(expected_created_at)),
  reviewed_source_sha256 text NOT NULL CHECK(reviewed_source_sha256 ~ '^[a-f0-9]{64}$'),
- expires_at timestamptz NOT NULL
+ expires_at timestamptz NOT NULL CHECK(isfinite(expires_at))
 );
 CREATE TABLE potok_closure.registration_records_v1(
  account_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE RESTRICT,
  origin text NOT NULL CHECK(origin IN ('NEW_AUTH_INSERT','REVIEWED_EXISTING')),
- auth_created_at timestamptz NOT NULL,
+ auth_created_at timestamptz NOT NULL CHECK(isfinite(auth_created_at)),
  permit_id uuid UNIQUE REFERENCES potok_closure.registration_permits_v1(permit_id) ON DELETE RESTRICT,
  CHECK((origin='NEW_AUTH_INSERT' AND permit_id IS NULL) OR (origin='REVIEWED_EXISTING' AND permit_id IS NOT NULL))
 );
@@ -85,7 +85,7 @@ END $$;
 CREATE FUNCTION potok_closure.register_reviewed_existing_v1(p_permit uuid) RETURNS jsonb
 LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=pg_catalog AS $$
 DECLARE permit potok_closure.registration_permits_v1%ROWTYPE;
- record potok_closure.registration_records_v1%ROWTYPE;
+ registration potok_closure.registration_records_v1%ROWTYPE;
  state_row potok_closure.accounts_v1%ROWTYPE;
  created timestamptz; anonymous_user boolean;
 BEGIN
@@ -102,10 +102,10 @@ BEGIN
  PERFORM pg_advisory_xact_lock(hashtextextended('potok-closure-v1:'||permit.account_id::text,0));
  SELECT * INTO state_row FROM potok_closure.accounts_v1 WHERE account_id=permit.account_id FOR UPDATE;
  IF FOUND AND state_row.state<>'ACTIVE' THEN RAISE EXCEPTION 'ACCOUNT_NOT_ACTIVE' USING ERRCODE='42501'; END IF;
- SELECT * INTO record FROM potok_closure.registration_records_v1 WHERE account_id=permit.account_id;
+ SELECT * INTO registration FROM potok_closure.registration_records_v1 WHERE account_id=permit.account_id;
  IF permit.expires_at<=clock_timestamp() THEN RAISE EXCEPTION 'REGISTRATION_PERMIT_EXPIRED' USING ERRCODE='42501'; END IF;
- IF record.account_id IS NOT NULL THEN
-  IF record.origin<>'REVIEWED_EXISTING' OR record.permit_id IS DISTINCT FROM p_permit OR state_row.account_id IS NULL THEN
+ IF registration.account_id IS NOT NULL THEN
+  IF registration.origin<>'REVIEWED_EXISTING' OR registration.permit_id IS DISTINCT FROM p_permit OR state_row.account_id IS NULL THEN
    RAISE EXCEPTION 'REGISTRATION_CONFLICT' USING ERRCODE='PT409';
   END IF;
  ELSE

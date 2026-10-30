@@ -21,10 +21,10 @@ export async function runAccountStateRegistrationV1(t: TestContext, { sql, asUse
     CREATE FUNCTION public.synthetic_signup_trigger() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
       BEGIN INSERT INTO public.synthetic_signup_audit VALUES(NEW.id); RETURN NEW; END $$;
     CREATE TRIGGER synthetic_existing_signup AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.synthetic_signup_trigger();`);
-  for (const n of [60,61,62,66,67]) await sql(`INSERT INTO auth.users(id,is_anonymous) VALUES(${q(id(n))},${n===62});
+  for (const n of [60,61,62,66,67,70]) await sql(`INSERT INTO auth.users(id,is_anonymous) VALUES(${q(id(n))},${n===62});
     INSERT INTO auth.sessions VALUES(${q(id(n+100))},${q(id(n))},NULL);
     INSERT INTO public.user_profiles(user_id) VALUES(${q(id(n))})`);
-  const inventorySql = `SELECT encode(extensions.digest(convert_to(coalesce(string_agg(pg_get_triggerdef(t.oid)||':'||
+  const inventorySql = `SELECT encode(extensions.digest(convert_to(coalesce(string_agg(pg_get_triggerdef(t.oid)||':'||t.tgenabled||':'||pg_get_userbyid(p.proowner)||':'||p.prosecdef::text||':'||coalesce(array_to_string(p.proconfig,','),'')||':'||
     encode(extensions.digest(convert_to(p.prosrc,'UTF8'),'sha256'),'hex'),E'\n' ORDER BY t.tgname),''),'UTF8'),'sha256'),'hex')
     FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid WHERE t.tgrelid='auth.users'::regclass AND NOT t.tgisinternal`;
   const draft = await readFile('supabase/migration_drafts/account_state_registration_v1.sql','utf8');
@@ -35,6 +35,10 @@ export async function runAccountStateRegistrationV1(t: TestContext, { sql, asUse
     await assert.rejects(sql(prefix+"SET potok_closure.reviewed_auth_triggers_sha256='unreviewed';"+draft),/REVIEWED_AUTH_TRIGGER_INVENTORY_REQUIRED/);
     assert.equal(await sql("SELECT to_regclass('potok_closure.registration_records_v1') IS NULL"),'t');
     const observed = await sql(inventorySql); // synthetic fixture's explicitly accepted inventory
+    await sql('ALTER TABLE auth.users DISABLE TRIGGER synthetic_existing_signup');
+    try {
+      await assert.rejects(sql(prefix+`SET potok_closure.reviewed_auth_triggers_sha256=${q(observed)};`+draft),/REVIEWED_AUTH_TRIGGER_INVENTORY_REQUIRED/);
+    } finally { await sql('ALTER TABLE auth.users ENABLE TRIGGER synthetic_existing_signup'); }
     await sql(prefix+`SET potok_closure.reviewed_auth_triggers_sha256=${q(observed)};`+draft);
     assert.equal(await sql('SELECT count(*) FROM potok_closure.accounts_v1'),before);
     assert.equal(await sql('SELECT count(*) FROM potok_closure.registration_records_v1'),'0');
@@ -81,6 +85,7 @@ export async function runAccountStateRegistrationV1(t: TestContext, { sql, asUse
     await assert.rejects(sql(register(819999)),/REVIEWED_REGISTRATION_PERMIT_REQUIRED/);
     await permit(61,810061,"clock_timestamp()-interval '1 second'");
     await assert.rejects(sql(register(810061)),/REGISTRATION_PERMIT_EXPIRED/);
+    await assert.rejects(permit(61,810261,"'infinity'::timestamptz"),/check constraint/);
     await permit(61,810161,undefined,"created_at+interval '1 second'");
     await assert.rejects(sql(register(810161)),/REGISTRATION_AUTH_BINDING_MISMATCH/);
     await permit(62,810062);
@@ -116,5 +121,29 @@ export async function runAccountStateRegistrationV1(t: TestContext, { sql, asUse
     await assert.rejects(sql(register(810045)),/ACCOUNT_NOT_ACTIVE/);
     assert.equal(await state(45),'CLOSING');
     await close(63); assert.equal(await state(63),'CLOSING');
+  });
+  await t.test('registration draft: real registration-versus-owner-closure race commits registration before CLOSING, never reopens',async()=>{
+    await permit(70,810070);
+    const observed=async(app:string,condition:string)=>{
+      const end=Date.now()+2500;
+      while(Date.now()<end) {
+        if(await sql(`SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE application_name=${q(app)} AND ${condition})`)==='t')return;
+        await new Promise(resolve=>setTimeout(resolve,20));
+      }
+      assert.fail('Expected actual PostgreSQL wait for '+app);
+    };
+    const holder=sql(`BEGIN; SET LOCAL application_name='registration_holder'; ${register(810070)}; SELECT pg_sleep(4); COMMIT;`);
+    const settled=holder.then(value=>({value}),error=>({error}));
+    let closing:Promise<string>|undefined;
+    try {
+      await observed('registration_holder',"wait_event='PgSleep'");
+      closing=asUser(`SET LOCAL application_name='registration_closer'; SELECT public.account_closure_begin_v1(${q(JSON.stringify({contract:'potok-account-closure-request-v1',closureKey:id(800070)}))})`,id(70));
+      await observed('registration_closer',"wait_event_type='Lock'");
+    } finally {
+      const result=await settled;if('error'in result)throw result.error;
+      if(closing)await closing;
+    }
+    assert.equal(await state(70),'CLOSING');
+    await assert.rejects(sql(register(810070)),/ACCOUNT_NOT_ACTIVE/);
   });
 }
