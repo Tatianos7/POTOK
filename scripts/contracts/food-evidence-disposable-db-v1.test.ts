@@ -25,6 +25,7 @@ const requireDatabase = process.env.POTOK_FOOD_EVIDENCE_REQUIRE_DB === '1';
 const quote = (value: string): string => `'${value.replace(/'/g,"''")}'`;
 const raw = JSON.stringify;
 const migrationPath = 'supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.sql';
+const admissionColumns = process.env.POTOK_FOOD_ADMISSION_COLUMNS_ACCEPTANCE === '1';
 
 test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability and REAL multi-session concurrency', { skip:requireDatabase ? false : skip, timeout:180_000 }, async t => {
   if (skip) assert.fail(skip);
@@ -65,13 +66,20 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
       GRANT USAGE ON SCHEMA auth TO anon,authenticated,service_role;
       CREATE TABLE public.user_profiles(id_user uuid PRIMARY KEY,is_admin boolean NOT NULL DEFAULT false);
       CREATE TABLE public.foods(id uuid PRIMARY KEY,canonical_food_id uuid,stable_food_id text,source text,created_by_user_id uuid,
-        is_searchable boolean,needs_review boolean,name text,name_original text,normalized_name text,brand text,normalized_brand text,barcode text,aliases text[]);
+        ${admissionColumns ? '' : 'is_searchable boolean,needs_review boolean,'}name text,name_original text,normalized_name text,brand text,normalized_brand text,barcode text,aliases text[]);
       CREATE TABLE public.food_aliases(id uuid PRIMARY KEY,canonical_food_id uuid,alias text);
       CREATE TABLE public.food_diary_entries(id uuid PRIMARY KEY,calories numeric,protein numeric,fat numeric,carbs numeric);
-      INSERT INTO public.foods VALUES (${quote(foodId)},${quote(foodId)},'synthetic_root','core',NULL,true,false,'Synthetic food',NULL,'synthetic food',NULL,NULL,NULL,'{}');
+      INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,created_by_user_id,name,name_original,normalized_name,brand,normalized_brand,barcode,aliases)
+        VALUES (${quote(foodId)},${quote(foodId)},'synthetic_root','core',NULL,'Synthetic food',NULL,'synthetic food',NULL,NULL,NULL,'{}');
       INSERT INTO public.food_diary_entries VALUES (${quote(id(70))},123.45,1.23,2.34,3.45);`);
+    if (admissionColumns) {
+      const { runFoodAdmissionColumnsV1 } = await import('./food-evidence-admission-columns-native-v1');
+      await runFoodAdmissionColumnsV1(t,{sql});
+    } else {
+      await sql('UPDATE public.foods SET is_searchable=true,needs_review=false');
+    }
     const migration = await readFile(migrationPath,'utf8');
-    const before = await sql(`SELECT jsonb_build_object('foods',(SELECT jsonb_agg(to_jsonb(f)) FROM public.foods f),
+    const contentSnapshot = () => sql(`SELECT jsonb_build_object('foods',(SELECT jsonb_agg(to_jsonb(f)) FROM public.foods f),
       'aliases',(SELECT jsonb_agg(to_jsonb(f)) FROM public.food_aliases f),'diary',(SELECT jsonb_agg(to_jsonb(f)) FROM public.food_diary_entries f))`);
     await t.test('Main preflight rejects legacy schema and leaves no partial objects',async () => {
       await assert.rejects(sql(migration),/STAGING_TRUSTED_INFRASTRUCTURE_REQUIRED_NO_MAIN_FALLBACK/);
@@ -104,6 +112,20 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
       assert.equal(await sql("SELECT to_regnamespace('potok_food_evidence') IS NULL"),'t');
     });
     await sql("SET potok_food_evidence.rollout_target='staging:ozidryfvhkcbtpnulakq';\n"+migration);
+    if (admissionColumns) {
+      await t.test('admission columns: actual evidence reader rejects NULL and partial flags',async()=>{
+        const read=()=>sql(`SELECT potok_food_evidence.shared_food_v1(${quote(foodId)})`);
+        await assert.rejects(read(),/SHARED_CANONICAL_ROOT_REQUIRED/);
+        await sql(`UPDATE public.foods SET is_searchable=true WHERE id=${quote(foodId)}`);
+        await assert.rejects(read(),/SHARED_CANONICAL_ROOT_REQUIRED/);
+        await sql(`UPDATE public.foods SET needs_review=true WHERE id=${quote(foodId)}`);
+        await assert.rejects(read(),/SHARED_CANONICAL_ROOT_REQUIRED/);
+        // Explicit synthetic fixture decision only; the installer never does this.
+        await sql(`UPDATE public.foods SET needs_review=false WHERE id=${quote(foodId)}`);
+        assert.equal(JSON.parse(await read()).id,foodId);
+      });
+    }
+    const before = await contentSnapshot(); // after explicit synthetic admission setup, before any issuer call
     for (const n of [1,2,3,4]) {
       await sql(`INSERT INTO auth.users VALUES(${quote(id(n))},${n===4});
         INSERT INTO auth.sessions VALUES(${quote(id(n+100))},${quote(id(n))},NULL);
