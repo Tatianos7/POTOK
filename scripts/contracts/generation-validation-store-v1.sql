@@ -67,18 +67,22 @@ CREATE FUNCTION potok_nutrition.validation_store_insert_binding_v1()
 RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $fn$
 DECLARE request_record record; input_record record;
 BEGIN
+  -- Serialize inserts against request status changes; not an Auth/closure fence.
+  SELECT account_id,generation_input_digest,status INTO STRICT request_record
+    FROM potok_nutrition.adaptive_nutrition_generation_requests_v2
+    WHERE request_operation_id=NEW.request_operation_id FOR SHARE;
+  IF request_record.status NOT IN ('REQUESTED','GENERATING') THEN
+    RAISE EXCEPTION 'VALIDATION_REQUEST_BINDING_MISMATCH' USING ERRCODE='23514';
+  END IF;
   IF TG_TABLE_NAME='generation_validation_inputs_v1' THEN
-    SELECT account_id,generation_input_digest,status INTO STRICT request_record
-      FROM potok_nutrition.adaptive_nutrition_generation_requests_v2
-      WHERE request_operation_id=NEW.request_operation_id;
-    IF request_record.account_id<>NEW.account_id OR request_record.generation_input_digest<>NEW.generation_input_digest
-       OR request_record.status NOT IN ('REQUESTED','GENERATING') THEN
+    IF request_record.account_id<>NEW.account_id OR request_record.generation_input_digest<>NEW.generation_input_digest THEN
       RAISE EXCEPTION 'VALIDATION_REQUEST_BINDING_MISMATCH' USING ERRCODE='23514';
     END IF;
   ELSE
-    SELECT validation_evidence_raw,policies_raw INTO STRICT input_record
+    SELECT account_id,generation_input_digest,validation_evidence_raw,policies_raw INTO STRICT input_record
       FROM potok_nutrition.generation_validation_inputs_v1 WHERE request_operation_id=NEW.request_operation_id;
-    IF NOT COALESCE(NEW.warning_evidence_raw::jsonb->>'validationEvidenceDigest'=input_record.validation_evidence_raw::jsonb->>'digest',false)
+    IF input_record.account_id<>request_record.account_id OR input_record.generation_input_digest<>request_record.generation_input_digest
+       OR NOT COALESCE(NEW.warning_evidence_raw::jsonb->>'validationEvidenceDigest'=input_record.validation_evidence_raw::jsonb->>'digest',false)
        OR NOT COALESCE(NEW.warning_evidence_raw::jsonb->>'validationPoliciesDigest'=input_record.policies_raw::jsonb->>'digest',false) THEN
       RAISE EXCEPTION 'VALIDATION_WARNING_BINDING_MISMATCH' USING ERRCODE='23514';
     END IF;

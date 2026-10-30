@@ -159,6 +159,59 @@ test('native PostgreSQL storage/reader/real validator acceptance', { skip: !nati
   await t.test('forged account binding cannot be stored for another request', () => {
     denied(inputInsert(literal(id(999))), /VALIDATION_REQUEST_BINDING_MISMATCH/);
   });
+  await t.test('new warning insertion is denied after terminal status', () => {
+    denied("BEGIN;UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET status='ACTIVE';"+
+      warningInsert(f.warningRaw, 'e'.repeat(64))+'ROLLBACK;', /VALIDATION_REQUEST_BINDING_MISMATCH/);
+    assert.ok(ok(read()));
+  });
+  await t.test('actual insert waits for concurrent terminal transition then rejects without a new row', async () => {
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn('psql', args, { env: { ...process.env, PGCONNECT_TIMEOUT: '5', PGSSLMODE: 'disable' } });
+      let output = ''; let stderr = ''; let attempted = false;
+      child.stdout.on('data', chunk => {
+        output += String(chunk);
+        if (!attempted && output.includes('STATUS_LOCKED')) {
+          attempted = true;
+          try { denied(warningInsert(f.warningRaw, 'e'.repeat(64)), /VALIDATION_REQUEST_BINDING_MISMATCH/); }
+          catch (error) { reject(error); }
+        }
+      });
+      child.stderr.on('data', chunk => { stderr += String(chunk); });
+      child.on('error', reject);
+      child.on('close', exit => {
+        try { assert.equal(exit, 0, stderr); assert.ok(attempted); resolve(); } catch (error) { reject(error); }
+      });
+      child.stdin.end("BEGIN;UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET status='ACTIVE';"+
+        "SELECT 'STATUS_LOCKED';SELECT pg_sleep(1);COMMIT;");
+    });
+    assert.equal(ok('SELECT count(*) FROM potok_nutrition.generation_validation_warnings_v1;'), '1');
+    ok("UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET status='REQUESTED';");
+  });
+  await t.test('terminal transition cannot pass an already admitted uncommitted source insert', async () => {
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn('psql', args, { env: { ...process.env, PGCONNECT_TIMEOUT: '5', PGSSLMODE: 'disable' } });
+      let output = ''; let stderr = ''; let attempted = false;
+      child.stdout.on('data', chunk => {
+        output += String(chunk);
+        if (!attempted && output.includes('INSERT_LOCKED')) {
+          attempted = true;
+          try {
+            denied("BEGIN;SET LOCAL lock_timeout='200ms';UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET status='ACTIVE';ROLLBACK;", /lock timeout/);
+          } catch (error) { reject(error); }
+        }
+      });
+      child.stderr.on('data', chunk => { stderr += String(chunk); });
+      child.on('error', reject);
+      child.on('close', exit => {
+        try { assert.equal(exit, 0, stderr); assert.ok(attempted); resolve(); } catch (error) { reject(error); }
+      });
+      child.stdin.end('BEGIN;'+warningInsert(f.warningRaw, 'e'.repeat(64))+"SELECT 'INSERT_LOCKED';SELECT pg_sleep(2);COMMIT;");
+    });
+    assert.equal(ok('SELECT count(*) FROM potok_nutrition.generation_validation_warnings_v1;'), '2');
+    ok("UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET status='ACTIVE';");
+    assert.equal(ok(read()), '');
+    ok("UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET status='REQUESTED';");
+  });
   await t.test('reader snapshot is consistent while another session changes current heads', async () => {
     await new Promise<void>((resolve, reject) => {
       const child = spawn('psql', args, { env: { ...process.env, PGCONNECT_TIMEOUT: '5', PGSSLMODE: 'disable' } });
