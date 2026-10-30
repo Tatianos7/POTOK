@@ -1,5 +1,16 @@
 # POTOK current state
 
+## P5-03C implementation checkpoint — 2026-10-30
+
+- Generator/source preparation PR #253 passed both exact-head CI workflows at `a166717d8d139323b45e6fdf691b6adf4d15d510`.
+- This separate branch continues the existing issuer dependency #183; it is not a merge of the generation stack.
+- Implemented a native disposable matrix over real Food/Nonfood issuers and existing trusted-entitlement prerequisites; corrected the old two-authority-check source transformer.
+- Real SQL drafts, live account state, source approvals and runtime remain unchanged. ACCOUNT_CLOSURE_IMPLEMENTED=false; LIVE_ERASURE_VERIFIED=false.
+- Local native execution is unavailable; native results must be read from exact-head CI. See [matrix scope and next gate](docs/architecture/p5-03c-real-issuer-matrix-20261030.md).
+- Generator inactive, PLAN != FACT; real purchase verification stays after generation (#198).
+
+## Historical checkpoint
+
 Checkpoint date: 2026-10-03
 
 - GitHub `master` at this checkpoint: `25166665fee11465af867d1731e6818549c2bca0`.
