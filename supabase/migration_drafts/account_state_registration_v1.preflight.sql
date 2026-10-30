@@ -8,7 +8,7 @@ SELECT t.tgname,t.tgenabled,pg_get_triggerdef(t.oid) AS trigger_definition,p.oid
  encode(extensions.digest(convert_to(p.prosrc,'UTF8'),'sha256'),'hex') AS function_sha256
 FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid
 WHERE t.tgrelid='auth.users'::regclass AND NOT t.tgisinternal ORDER BY t.tgname;
-SELECT encode(extensions.digest(convert_to(coalesce(string_agg(pg_get_triggerdef(t.oid)||':'||t.tgenabled||':'||pg_get_userbyid(p.proowner)||':'||p.prosecdef::text||':'||coalesce(array_to_string(p.proconfig,','),'')||':'||
+SELECT encode(extensions.digest(convert_to(coalesce(string_agg(pg_get_triggerdef(t.oid)||':'||t.tgenabled::text||':'||pg_get_userbyid(p.proowner)::text||':'||p.prosecdef::text||':'||coalesce(array_to_string(p.proconfig,','),'')||':'||
  encode(extensions.digest(convert_to(p.prosrc,'UTF8'),'sha256'),'hex'),E'\n' ORDER BY t.tgname),''),'UTF8'),'sha256'),'hex')
  AS auth_trigger_inventory_sha256
 FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid

@@ -24,7 +24,7 @@ export async function runAccountStateRegistrationV1(t: TestContext, { sql, asUse
   for (const n of [60,61,62,66,67,70]) await sql(`INSERT INTO auth.users(id,is_anonymous) VALUES(${q(id(n))},${n===62});
     INSERT INTO auth.sessions VALUES(${q(id(n+100))},${q(id(n))},NULL);
     INSERT INTO public.user_profiles(user_id) VALUES(${q(id(n))})`);
-  const inventorySql = `SELECT encode(extensions.digest(convert_to(coalesce(string_agg(pg_get_triggerdef(t.oid)||':'||t.tgenabled||':'||pg_get_userbyid(p.proowner)||':'||p.prosecdef::text||':'||coalesce(array_to_string(p.proconfig,','),'')||':'||
+  const inventorySql = `SELECT encode(extensions.digest(convert_to(coalesce(string_agg(pg_get_triggerdef(t.oid)||':'||t.tgenabled::text||':'||pg_get_userbyid(p.proowner)::text||':'||p.prosecdef::text||':'||coalesce(array_to_string(p.proconfig,','),'')||':'||
     encode(extensions.digest(convert_to(p.prosrc,'UTF8'),'sha256'),'hex'),E'\n' ORDER BY t.tgname),''),'UTF8'),'sha256'),'hex')
     FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid WHERE t.tgrelid='auth.users'::regclass AND NOT t.tgisinternal`;
   const draft = await readFile('supabase/migration_drafts/account_state_registration_v1.sql','utf8');
@@ -45,6 +45,8 @@ export async function runAccountStateRegistrationV1(t: TestContext, { sql, asUse
     assert.equal(await state(60),'ABSENT');
     await sql(await readFile('supabase/migration_drafts/account_state_registration_v1.preflight.sql','utf8'));
   });
+  assert.equal(await sql("SELECT to_regclass('potok_closure.registration_records_v1') IS NOT NULL"),'t',
+    'Registration installation must succeed before any dependent scenario runs');
   await t.test('registration draft: real Auth INSERT event creates state and provenance atomically, with no admin/Premium grant',async()=>{
     await sql(`SET ROLE fixture_auth_server; INSERT INTO auth.users(id,is_anonymous,created_at) VALUES(${q(id(63))},false,clock_timestamp())`);
     await sql(`INSERT INTO auth.sessions VALUES(${q(id(163))},${q(id(63))},NULL); INSERT INTO public.user_profiles(user_id) VALUES(${q(id(63))})`);

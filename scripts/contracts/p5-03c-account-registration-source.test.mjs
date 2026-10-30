@@ -11,6 +11,8 @@ test('registration installer binds the reviewed account-admission code and exact
   }
   assert.match(registration,/REVIEWED_AUTH_TRIGGER_INVENTORY_REQUIRED/);
   assert.match(registration,/EXPLICIT_REGISTRATION_STAGING_TARGET_REQUIRED/);
+  assert.match(registration,/t\.tgenabled::text/,'PostgreSQL internal char must be cast explicitly');
+  assert.match(readFileSync('supabase/migration_drafts/account_state_registration_v1.preflight.sql','utf8'),/t\.tgenabled::text/);
 });
 test('new Auth registration is INSERT-only and separate from owner-reviewed existing accounts',()=>{
   assert.match(registration,/AFTER INSERT ON auth\.users/);
