@@ -53,9 +53,16 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
   const projection = async () => JSON.parse(await asUser(`SELECT public.food_evidence_current_v1(${quote(foodId)},'raw')`)) as {
     canonicalRevision:{ revisionId:string }; canonicalUsable:boolean; nutritionUsable:boolean; canonicalInvalidation:string|null };
   try {
-    await run('initdb',['-D',data,'-U','postgres','--auth-local=trust','--auth-host=reject','--encoding=UTF8','--no-locale'],{ env, timeout:30_000 });
+    const bootstrapUser = bundleAcceptance ? 'fixture_bootstrap_super' : 'postgres';
+    await run('initdb',['-D',data,'-U',bootstrapUser,'--auth-local=trust','--auth-host=reject','--encoding=UTF8','--no-locale'],{ env, timeout:30_000 });
     await run('pg_ctl',['-D',data,'-l',join(root,'server.log'),'-o',`-k ${socket} -p ${port} -c listen_addresses='' -c unix_socket_permissions=0700`,'-w','start'],{ env, timeout:30_000 });
     started = true;
+    if (bundleAcceptance) {
+      // PostgreSQL's bootstrap role cannot lose SUPERUSER. Use a separate initial
+      // role so the tested postgres can later match Supabase's managed privileges.
+      await run('psql',['-X','-q','-v','ON_ERROR_STOP=1','-h',socket,'-p',port,'-U',bootstrapUser,'-d','postgres','-c',
+        'CREATE ROLE postgres LOGIN SUPERUSER; ALTER DATABASE postgres OWNER TO postgres;'],{env,timeout:30_000});
+    }
     // MAINTAIN appears in the existing reviewed trusted-entitlement prerequisite package.
     assert.ok(Number(await sql('SHOW server_version_num'))>=170000,'Existing trusted-entitlement package requires PostgreSQL 17+; do not modify it for testing');
     await sql(`CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN; CREATE ROLE service_role NOLOGIN BYPASSRLS;
