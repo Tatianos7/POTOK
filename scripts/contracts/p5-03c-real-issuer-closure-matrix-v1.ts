@@ -286,4 +286,9 @@ export async function runRealIssuerClosureMatrixV1(t: TestContext, db: DB, optio
       assert.equal(await sql(`SELECT state||':'||revision::text||':'||(closure_key IS NULL)::text FROM potok_closure.accounts_v1 WHERE account_id=${quote(who)}`), 'ACTIVE:1:true');
     });
   }
+  if (process.env.POTOK_ACCOUNT_REGISTRATION_ACCEPTANCE === '1') {
+    assert.ok(options.draft, 'registration requires the actual persistent closure SQL');
+    const { runAccountStateRegistrationV1 } = await import('./p5-03c-account-registration-native-v1');
+    await runAccountStateRegistrationV1(t, { sql, asUser });
+  }
 }
