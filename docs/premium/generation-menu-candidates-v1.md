@@ -1,0 +1,26 @@
+# Menu options from a pinned recipe catalog (inactive)
+
+`createGenerationMenuCandidatePreparerV1` prepares alternative meal snapshots for every required slot in the seven-day distribution. It uses the published candidate manifest, the existing independently reviewed component/plan eligibility evidence, preference/safety snapshots and pinned composition/balance policies. No catalog entry or review flag comes from a browser or generator result.
+
+The source port `loadPreparationRaw(requestOperationId)` must eventually be backed by admitted, current server storage. The current change adds no database reader, credentials or runtime wiring. A missing source yields `BLOCKED_SOURCE_MISSING`; a malformed or mismatched source throws without fallback. Valid hashes establish integrity, not independent publication approval. Do not connect an untrusted JSON provider to this port.
+
+The primitive raw source has exactly `contract: potok-generation-menu-candidate-source-v1`, `requestOperationId`, `contextRaw`, `policiesRaw`, `goalProfile` and `slotRevisions`. The first two raw payloads use the existing trusted validation context and policy formats. Goal profile and allocated snapshot revisions are trusted preparation inputs, not inferred from calorie targets. Slot revisions cover exactly the required slots; no identity or publication/evidence revision is minted. Every source is duplicate-aware and capped at eight million UTF-16 code units.
+
+For each slot the provider:
+
+1. Reuses the existing candidate authority check for hard recipe/ingredient/meal-type/dietary exclusions, allergens and intolerances. Soft dislikes do not become bans. Blocked accessibility is excluded.
+2. Requires the catalog tuple to have independent slot-bound component evidence and plan eligibility. A published entry alone is insufficient.
+3. Enumerates the reviewed portion interval on the existing zero-origin increment grid, using fixed-point integers. It reuses `scalePremiumRecipeCollectionV1` for ingredients, nutrition and serving multiplier. Prepared-food grams use only an explicitly known recipe yield with the existing rounded ratio; ingredient mass never substitutes for cooked yield. Unknown cooked yield remains null, while unknown servings or unresolved recipe data fail existing decoders.
+4. Rejects portions requiring fractional discrete ingredients, zero after rounding or values outside the existing numeric representation. It does not round to an invented piece count or alter the portion rules.
+5. Enumerates the pinned role patterns, reusing `composeAdaptiveMealV1` for complete anchors, required sides, incompatible pairings, recipe uniqueness and component limits. Checks both slot nutrition/distribution bounds and independently evidenced protein/produce requirements.
+6. Deduplicates meal digests and sorts deterministically by isolated composition score, then digest. The existing composition weights apply; this is not whole-day/week optimization or a soft-preference optimizer.
+
+Each option retains its actual snapshot, COMPLETE_RECIPE/COMPOSED_MEAL classification, the original Graph V2 component evidence bindings and an explicitly named isolated composition score. Revisions/digests of the input, manifest, validation evidence and policies remain bound in the result. Outputs are recursively frozen. Exclusions identify the slot, recipe, portion where relevant and reason. Missing complete combinations receive `NO_COMPLETE_MENU_OPTION` for the affected slot.
+
+`PREPARED` means every required slot has at least one prepared option. `INCOMPLETE` exposes empty slots and exclusions. Neither status certifies a day or week. Raw weekly repeat caps, goal fit, warnings, source currentness, entitlement and final trusted acceptance remain independently required. The provider does not fabricate warning signals or Graph decision/optimization receipts to make a menu appear complete.
+
+Work bounds are explicit implementation limits, not nutrition policies: at most 512 manifest entries, 64 required slots, 64 reviewed portion points per recipe, 64 admitted component portions per slot, 1024 composition combinations per slot, 8192 total combinations and 16384 exclusion rows. Crossing any limit returns only `RESOURCE_LIMIT_REACHED` and the request ID, without a silently truncated partial pool. Raising limits or adding a streaming optimizer requires separate implementation and validation.
+
+Tests use synthetic sources, including an independently validated seven-day fixture whose single-option snapshots/evidence are reproduced byte-for-byte, additional portions, partial anchor plus side, incompatible pairing, preferences/safety, discrete increments, unknown cooked yield, missing/mismatched evidence and atomic work limits. This does not publish or certify the real recipe catalog.
+
+Next integration: assemble and validate day alternatives with independently sourced warning evidence, supply them to the bounded week search, and project the selected proposal with real generation/optimization receipts for final trusted validation. Actual approved catalog publication, recipe yields and policy bodies must be available from admitted sources before activation. No Edge activation, database writes, client UI changes, PLAN→FACT writes or Graph V1 changes are included.
