@@ -96,10 +96,13 @@ jobs:
           node --import tsx --test \
             scripts/contracts/generation-validation-store-v1.test.ts \
             scripts/contracts/generation-validation-admission-v1.test.ts \
+            src/server/__tests__/generationDayOptionsV1.test.ts \
             src/server/__tests__/generationMenuCandidatesV1.test.ts \
             src/server/__tests__/generationWeekSearchV1.test.ts \
             src/server/__tests__/generationValidationAdapterV1.test.ts \
             src/server/__tests__/generationValidationAuthorityLoaderV1.test.ts \
+            src/utils/__tests__/preparedGenerationBoundariesV2.test.ts \
+            src/utils/__tests__/adaptiveNutritionMealBalanceV1.test.ts \
             src/utils/__tests__/trustedGeneratedWeekValidatorV1.test.ts \
             src/utils/__tests__/trustedValidationPoliciesV1.test.ts \
             src/utils/__tests__/trustedValidationEvidenceV1.test.ts \

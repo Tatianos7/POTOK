@@ -1352,10 +1352,18 @@ async function validateWeekRawOwnedBoundaryV2(weekRaw: string, pinnedManifestRaw
   if (row.contract !== weekValidatorInputContractV2 || !Array.isArray(row.days)) {
     throw new Error('unsupported_week_validation_input_v2');
   }
+  const { days, axes } = await normalizeDaysAxesV2(row.days, manifest);
+  const input = decodeWeekInput({ ...row, contract: weekValidatorInputContractV1, days }, canonicalTimezoneV2);
+  return freezeOwned(await validateWeekOwned(input, axes, weekValue, onDay));
+}
+
+
+// Shared V2 manifest/axes admission; V1 decoders and validation behavior are unchanged.
+async function normalizeDaysAxesV2(values: unknown[], manifest: AdaptiveNutritionCandidateManifestV2) {
   const axes = new Map<string, MealComponentEvidenceV2>();
   const slots = new Set<string>();
   const days = [];
-  for (const value of row.days) {
+  for (const value of values) {
     const day = record(value, ['contract', 'date', 'timezone', 'goalRevision', 'targetPolicyRevision', 'planRevision',
       'compositionPolicyRevision', 'balancePolicy', 'requiredSlots', 'meals', 'goalTarget', 'distributionBounds'], 'axes_day');
     if (!Array.isArray(day.meals)) throw new Error('invalid_axes_meals');
@@ -1380,8 +1388,20 @@ async function validateWeekRawOwnedBoundaryV2(weekRaw: string, pinnedManifestRaw
     }
     days.push({ ...day, meals });
   }
-  const input = decodeWeekInput({ ...row, contract: weekValidatorInputContractV1, days }, canonicalTimezoneV2);
-  return freezeOwned(await validateWeekOwned(input, axes, weekValue, onDay));
+  return { days, axes };
+}
+
+/** Same V2 day traversal/receipt as the child of validateWeekSnapshotWithChildResultsRawV2. */
+export async function validateDaySnapshotRawV2(dayRaw: string, pinnedManifestRaw: string): Promise<ValidatorResultV1> {
+  if (typeof dayRaw !== 'string' || typeof pinnedManifestRaw !== 'string') {
+    throw new Error('accessibility_axes_raw_string_required');
+  }
+  const day = parseAxesRaw(dayRaw);
+  const manifestOwned = parseAxesRaw(pinnedManifestRaw);
+  const { decodeAdaptiveNutritionCandidateManifestV2 } = await import('./adaptiveNutritionAuthoritiesV1');
+  const manifest = await decodeAdaptiveNutritionCandidateManifestV2(manifestOwned);
+  const { days } = await normalizeDaysAxesV2([day], manifest);
+  return freezeOwned(await validateDayOwned(decodeDayInput(days[0], canonicalTimezoneV2)));
 }
 
 function decodeOptimizationCandidate(value: unknown, policyRevision: string): OptimizationCandidateV1 {
