@@ -1,0 +1,7 @@
+USDA ARS SR28 Documentation and User Guide, September 2015, slightly revised May 2016.
+PDF page 20 (zero-based 19), printed page 13, Carbohydrate.
+Factual summary: carbohydrate by difference includes total dietary fiber; the guide describes available carbohydrate calculation excluding fiber.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/sr28_doc.pdf
+Retrieved 2026-10-30; direct official PDF text checked.
+This capture verifies SR28 source semantics; it does not issue a POTOK policy approval.
+

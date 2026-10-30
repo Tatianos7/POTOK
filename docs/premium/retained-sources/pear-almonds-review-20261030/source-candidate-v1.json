@@ -1,0 +1,160 @@
+{
+  "contract": "potok-real-recipe-source-candidate-v1",
+  "status": "SOURCE_CANDIDATE_NOT_APPROVED",
+  "preparedDate": "2026-10-30",
+  "sourceWorkbook": {
+    "libraryFileId": "libfile_c0de428477888191a8e0520bece178e3",
+    "fileSha256": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+    "recipeId": "pear_almonds",
+    "sourceStatus": "READY_FOR_REVIEW",
+    "sourceDeclaredServings": "1",
+    "referenceNutrition": {
+      "calories": "218.4",
+      "protein": "4.9",
+      "fat": "10.2",
+      "carbs": "31.7",
+      "fiber": "8.1"
+    },
+    "modified": false
+  },
+  "scope": "Parallel preparation of an existing workbook snack; does not replace the owner-selected oatmeal pilot or reopen dairy NO-GO.",
+  "mapping": {
+    "referencedPolicyVersion": "potok-source-total-including-fiber-to-available-v1",
+    "parentHead": "dc3ed6e8bb4f0cfb0534b5d632dee0018856040c",
+    "parentPackagePath": "docs/premium/retained-sources/p5-03/source-review-package-v1.json",
+    "parentPackageSha256": "cc0451eaf137d4cd85bd2457fe72dd7584bd0bcf6a2405d13a4e75bc7280926b",
+    "parentDefinitionBindings": [
+      "2df54b8797988ca8436df4c76735115ec117c8b955c93c3b3e05a7b60ba17a47",
+      "41d86b1563b1948198500fd2e5c2a3ab077e02983eb60dfe4ab4528214fb502a"
+    ],
+    "sourceSemantics": "TOTAL_CARBOHYDRATE_BY_DIFFERENCE_INCLUDING_FIBER",
+    "candidateSemantics": "AVAILABLE_CARBOHYDRATES_EXCLUDING_FIBER",
+    "formula": "sourceTotalCarbohydrate - sourceFiber",
+    "calories": "KEEP_SOURCE_ENERGY; no 4/4/9 replacement",
+    "foodSpecificApproval": false,
+    "semanticsCapture": {
+      "path": "sr28-carbohydrate-semantics.txt",
+      "sha256": "27c10aae0fa069bc3b38335b8caa9da367068081f80ba310877cd83eb52578fc",
+      "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/sr28_doc.pdf",
+      "pdfPageOneBased": 20,
+      "printedPage": 13
+    }
+  },
+  "ingredients": [
+    {
+      "authoringIngredientId": "pear_almonds_ing_01",
+      "displayName": "Груша свежая",
+      "inputEdibleGrams": "180.000",
+      "sourceCode": "NDB09252",
+      "sourceTitle": "Pears, raw",
+      "sourceVersion": "USDA SR28 (2015)",
+      "basis": "PER_100_G_EDIBLE",
+      "sourceFacts": {
+        "calories": "57",
+        "protein": "0.36",
+        "fat": "0.14",
+        "totalCarbohydrate": "15.23",
+        "fiber": "3.1"
+      },
+      "candidatePer100G": {
+        "calories": "57.000",
+        "protein": "0.360",
+        "fat": "0.140",
+        "carbs": "12.130",
+        "fiber": "3.100"
+      },
+      "source": {
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg09.pdf",
+        "pdfPageOneBased": 707,
+        "capturePath": "pear-usda-sr28-09252.txt",
+        "captureSha256": "949067dbe5c57df0a8aeb80b0854f50bcf14ef42cf4eeb6171a17befa0b990de",
+        "upstreamDocumentSha256": null
+      },
+      "applicabilityReviewRequired": [
+        "Fresh raw pear, not dried/canned/Asian/specific cultivar substitution",
+        "Confirm skin retained and stem/core/seeds removed before weighing",
+        "180 g must already mean edible portion; do not subtract refuse again"
+      ],
+      "canonicalFoodId": null,
+      "reviewedNutritionEvidenceRevision": null
+    },
+    {
+      "authoringIngredientId": "pear_almonds_ing_02",
+      "displayName": "Миндаль сырой несолёный",
+      "inputEdibleGrams": "20.000",
+      "sourceCode": "NDB12061",
+      "sourceTitle": "Nuts, almonds",
+      "sourceVersion": "USDA SR28 (2015)",
+      "basis": "PER_100_G_EDIBLE",
+      "sourceFacts": {
+        "calories": "579",
+        "protein": "21.15",
+        "fat": "49.93",
+        "totalCarbohydrate": "21.55",
+        "fiber": "12.5"
+      },
+      "candidatePer100G": {
+        "calories": "579.000",
+        "protein": "21.150",
+        "fat": "49.930",
+        "carbs": "9.050",
+        "fiber": "12.500"
+      },
+      "source": {
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg12.pdf",
+        "pdfPageOneBased": 18,
+        "capturePath": "almonds-usda-sr28-12061.txt",
+        "captureSha256": "e665282636d8fc4c3a69f8106872c97ec3f008f55253beabb6189d4ff5ae7816",
+        "upstreamDocumentSha256": null
+      },
+      "applicabilityReviewRequired": [
+        "Generic row does not itself attest a particular raw unsalted retail product",
+        "Confirm edible shelled kernels, raw unsalted, no glaze/oil/flavor additions",
+        "20 g must already mean edible kernels; do not apply the source's shell refuse percentage"
+      ],
+      "canonicalFoodId": null,
+      "reviewedNutritionEvidenceRevision": null
+    }
+  ],
+  "referenceInputCalculation": {
+    "status": "UNAPPROVED_SOURCE_INPUT_CALCULATION",
+    "sourceTotalCarbohydrate": "31.724",
+    "candidateAvailableCarbohydrate": "23.644",
+    "fiber": "8.080",
+    "calories": "218.400",
+    "protein": "4.878",
+    "fat": "10.238",
+    "referenceCarbsRounded1dp": "31.7",
+    "candidateAvailableCarbsRounded1dp": "23.6",
+    "semanticFinding": "Workbook ref_carbs_g matches total including fiber, not the candidate POTOK available-carbohydrate calculation.",
+    "inputMassSumG": "200.000",
+    "measuredFinishedYieldG": null,
+    "measuredServingMassG": null,
+    "confirmedServings": null,
+    "reviewedRecipeNutrition": null
+  },
+  "requiredHumanEvidence": {
+    "status": "NOT_EXECUTED",
+    "record": [
+      "Actual pear edible state/skin and almond package/product identity",
+      "Measured 180 g edible pear and 20 g edible shelled almonds",
+      "Plate/container tare and assembled food net weight, without substituting input mass sum",
+      "Actual served portion count and residue",
+      "Observed assembly result and any ingredient substitution"
+    ],
+    "allergenReview": "Existing workbook flag TREE_NUTS / ALMOND requires review; no allergen-free claim",
+    "portionPolicy": null
+  },
+  "gates": {
+    "canonicalBindingsReady": false,
+    "sourceApplicabilityApproved": false,
+    "foodEvidenceIssued": false,
+    "allergenReviewApproved": false,
+    "dietaryReviewApproved": false,
+    "portionPolicyApproved": false,
+    "assemblyTestPassed": false,
+    "recipePublicationApproved": false,
+    "manifestReady": false,
+    "generatorActivated": false
+  }
+}

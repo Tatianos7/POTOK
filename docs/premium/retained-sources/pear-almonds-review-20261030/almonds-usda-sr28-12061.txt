@@ -1,0 +1,11 @@
+USDA ARS, Standard Reference Release 28 (2015).
+NDB 12061; Nuts, almonds; Prunus dulcis.
+PDF page 18 (zero-based 17); Mean per 100 g edible portion.
+Energy kcal 579; protein g 21.15; total lipid g 49.93;
+carbohydrate by difference g 21.55; total dietary fiber g 12.5.
+Refuse: 60% shells. Recipe grams must be shelled edible kernels, not in-shell mass.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg12.pdf
+Retrieved 2026-10-30; direct PDF text checked; page screenshot retrieved.
+Generic row title does not by itself attest an actual raw unsalted retail product.
+Short factual transcription only; no upstream PDF-byte hash captured.
+
