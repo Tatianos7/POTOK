@@ -12,12 +12,14 @@ table/schema privileges revoked. There is no ACTIVE backfill or signup hook.
 Only trusted, separately reviewed registration may create ACTIVE state. Missing
 state blocks issuance. The SQL owner remains an operational trust boundary.
 
-The draft patches the two existing public issuer bodies in one atomic transaction,
+The draft supplies explicit definitions of the two existing public issuer bodies in one atomic transaction,
 after verifying their exact source hashes, SECURITY DEFINER metadata, fixed search
 path and owner. It inserts a private no-argument admission call after the first
 trusted authority check. The later authority check, signatures, owners, privileges,
 nutrient arithmetic, receipts and source bytes remain unchanged. Direct calls to
 the original public issuers therefore use the same admission gate.
+An exact byte comparison removes the added admission call and proves the remaining
+definitions equal the original source; no source-text rewriting runs at installation.
 
 `public.account_closure_begin_v1(text)` accepts the existing two-field owner
 request contract. It derives the target exclusively from live `auth.uid()` and

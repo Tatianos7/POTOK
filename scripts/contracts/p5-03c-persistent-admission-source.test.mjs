@@ -23,6 +23,22 @@ test('new state has no implicit ACTIVE population, CLOSED/erasure path or client
   assert.match(draft, /REVOKE ALL ON potok_closure\.accounts_v1 FROM PUBLIC,anon,authenticated,service_role/);
   assert.match(draft, /EXPLICIT_CLOSURE_STAGING_TARGET_REQUIRED/);
 });
+test('explicit issuer definitions preserve every original byte except the one admission call', () => {
+  for (const [file, name] of [['food_reviewed_evidence_v1_phase2b.sql', 'food'], ['nonfood_reviewed_evidence_v1.sql', 'nonfood']]) {
+    const source = readFileSync('supabase/migration_drafts/' + file, 'utf8');
+    const signature = `FUNCTION public.${name}_evidence_review_v1(`;
+    const slice = (sql, prefix) => {
+      const start = sql.indexOf(prefix + signature);
+      assert.ok(start >= 0);
+      return sql.slice(start, sql.indexOf('$$;', sql.indexOf('AS $$', start)) + 3);
+    };
+    const original = slice(source, 'CREATE ');
+    const proposed = slice(draft, 'CREATE OR REPLACE ');
+    assert.equal(proposed.split('PERFORM potok_closure.assert_active_v1();').length, 2);
+    assert.equal(proposed.replace('\n  PERFORM potok_closure.assert_active_v1();', '').replace('CREATE OR REPLACE ', 'CREATE '), original);
+  }
+  assert.doesNotMatch(draft, /EXECUTE\s+definition/i);
+});
 test('owner derives from live Auth, with the shared gate before state locks and a deferred fresh-auth guard', () => {
   const owner = draft.slice(draft.indexOf('CREATE FUNCTION potok_closure.owner_v1()'), draft.indexOf('CREATE FUNCTION potok_closure.assert_active_v1()'));
   assert.match(owner, /actor uuid:=auth\.uid\(\)/);
