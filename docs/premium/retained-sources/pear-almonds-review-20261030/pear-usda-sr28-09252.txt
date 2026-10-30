@@ -1,0 +1,10 @@
+USDA ARS, Standard Reference Release 28 (2015).
+NDB 09252; Pears, raw; Pyrus communis.
+PDF page 707 (zero-based 706); Mean per 100 g edible portion.
+Energy kcal 57; protein g 0.36; total lipid g 0.14;
+carbohydrate by difference g 15.23; total dietary fiber g 3.1.
+Refuse: 10% stem, core and seeds. Recipe grams must already be edible portion.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg09.pdf
+Retrieved 2026-10-30; direct PDF text checked; page screenshot retrieved.
+Short factual transcription only; no upstream PDF-byte hash captured.
+
