@@ -106,7 +106,7 @@ test('native PostgreSQL storage/reader/real validator acceptance', { skip: !nati
     const before = ok('SELECT row_to_json(r)::text FROM potok_nutrition.adaptive_nutrition_generation_requests_v2 r;');
     assert.ok(ok('BEGIN READ ONLY;'+read()+'ROLLBACK;'));
     assert.equal(ok('SELECT row_to_json(r)::text FROM potok_nutrition.adaptive_nutrition_generation_requests_v2 r;'), before);
-    assert.equal(ok("SELECT prosecdef::text||':'||provolatile FROM pg_proc WHERE oid='potok_nutrition.read_generation_validation_source_v1(uuid,bytea)'::regprocedure;"), 'false:s');
+    assert.equal(ok("SELECT prosecdef::text||':'||provolatile::text FROM pg_proc WHERE oid='potok_nutrition.read_generation_validation_source_v1(uuid,bytea)'::regprocedure;"), 'false:s');
   });
   for (const role of ['anon','authenticated','service_role']) {
     await t.test(`${role} cannot read/write stored sources or execute reader`, () => {
@@ -119,7 +119,12 @@ test('native PostgreSQL storage/reader/real validator acceptance', { skip: !nati
     await t.test(`${table} denies owner UPDATE/DELETE/TRUNCATE and has forced RLS`, () => {
       denied(`UPDATE potok_nutrition.${table} SET source_receipt_ref='replaced';`, /VALIDATION_HISTORY_IMMUTABLE/);
       denied(`DELETE FROM potok_nutrition.${table};`, /VALIDATION_HISTORY_IMMUTABLE/);
-      denied(`TRUNCATE potok_nutrition.${table};`, /VALIDATION_HISTORY_IMMUTABLE/);
+      // PostgreSQL's FK admission can reject input-only TRUNCATE before triggers.
+      denied(`TRUNCATE potok_nutrition.${table};`, /VALIDATION_HISTORY_IMMUTABLE|foreign key constraint/);
+      if (table === 'generation_validation_inputs_v1') {
+        denied('TRUNCATE potok_nutrition.generation_validation_inputs_v1, potok_nutrition.generation_validation_warnings_v1;', /VALIDATION_HISTORY_IMMUTABLE/);
+        denied('TRUNCATE potok_nutrition.generation_validation_inputs_v1 CASCADE;', /VALIDATION_HISTORY_IMMUTABLE/);
+      }
       assert.equal(ok(`SELECT relrowsecurity::text||':'||relforcerowsecurity::text FROM pg_class WHERE oid='potok_nutrition.${table}'::regclass;`), 'true:true');
     });
   }
