@@ -100,4 +100,20 @@ export async function runClosedEvidenceBundleV1(t:TestContext,{sql}:DB) {
   assert.equal(await content(),after);assert.equal(await metadata(),metaAfter);
   for(const call of calls)await assert.rejects(sql('SET ROLE authenticated;SELECT '+call),/permission denied/);
  });
+ await t.test('closed bundle: guarded recovery preserves records and other signup hooks while keeping RPCs closed',async()=>{
+  const recovery=await readFile('supabase/migration_drafts/evidence_closed_staging_bundle_v1.recovery.sql','utf8');
+  await assert.rejects(sql(recovery),/EVIDENCE_BUNDLE_RECOVERY_TARGET_OWNER_REQUIRED/);
+  const records=()=>sql('SELECT jsonb_build_array((SELECT jsonb_agg(to_jsonb(a)) FROM potok_closure.accounts_v1 a),(SELECT jsonb_agg(to_jsonb(r)) FROM potok_closure.registration_records_v1 r))');
+  const beforeRecovery=await records();
+  await sql("SET potok_evidence.recovery_target='staging:ozidryfvhkcbtpnulakq';"+recovery);
+  assert.equal(await records(),beforeRecovery);
+  assert.equal(await sql("SELECT tgenabled FROM pg_trigger WHERE tgrelid='auth.users'::regclass AND tgname='potok_closure_register_new_auth_v1'"),'D');
+  assert.equal(await sql("SELECT tgenabled FROM pg_trigger WHERE tgrelid='auth.users'::regclass AND tgname='synthetic_existing_signup'"),'O');
+  const afterRecovery=id(910006);
+  await sql(`SET ROLE fixture_auth_server;INSERT INTO auth.users(id,is_anonymous,created_at) VALUES(${q(afterRecovery)},false,clock_timestamp())`);
+  assert.equal(await sql(`SELECT count(*) FROM public.synthetic_bundle_signup_audit WHERE account_id=${q(afterRecovery)}`),'1');
+  assert.equal(await sql(`SELECT count(*) FROM potok_closure.accounts_v1 WHERE account_id=${q(afterRecovery)}`),'0');
+  assert.equal(await records(),beforeRecovery);
+  for(const call of calls)await assert.rejects(sql('SET ROLE authenticated;SELECT '+call),/permission denied/);
+ });
 }
