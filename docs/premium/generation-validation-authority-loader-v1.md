@@ -39,15 +39,17 @@ No database client, credentials, RPC name, schema creation, secret, query execut
 or live implementation of that store is provided.
 
 The source raw package binds the exact durable request/account and evaluated
-proposal SHA. It supplies input, manifest, preference and safety as stored
-`canonicalHex` plus independent `storageSha256`, alongside existing raw validation
-evidence, policies and warnings. Every prerequisite must be explicit; a null
+proposal SHA. Input carries stored `canonicalHex` and its existing
+`generationInputDigest`; manifest, preference and safety carry stored
+`canonicalHex` plus `storageSha256`. Existing raw validation evidence, policies
+and warnings remain separate. Every prerequisite must be explicit; a null
 source yields unavailable, never a default policy or fabricated publication.
 Malformed supplied shapes/hex/raw JSON raise errors. No successful source cache
 is retained; exceptions propagate without hidden retries.
 
-For each complete source, verify stored bytes/digest, strict UTF-8 and duplicate
-JSON before interpreting content. Only JSON.parse-owned data reaches existing
+For complete sources, verify strict UTF-8/duplicate JSON and the appropriate
+existing digest domain. Manifest/preference/safety storage SHA is verified before
+interpretation; the typed input digest is checked after strict decoding. Only JSON.parse-owned data reaches existing
 domain decoders/seal functions. Manifest/preference/safety content without digest
 is projected to the existing strict consumer snapshot, and existing canonical
 encoders must reproduce the original bytes exactly. The normalized generation
@@ -67,11 +69,16 @@ Consumer decoders expect their existing computed digest fields. The loader
 computes these using existing domains only after checking stored source integrity;
 it issues no review, publication, UUID, revision or receipt.
 
-In particular, `generation_input_digest` in storage hashes the canonical input
-bytes. `trustedGenerationInputDigestV1` hashes the existing `{contract,input}`
-envelope. They are not interchangeable. The loader verifies storage SHA first and
-then independently derives the existing consumer digest for #245. No DB digest
-domain, schema or value is rewritten.
+The actual `adaptive_nutrition_request_generation_v2` definition was also inspected.
+Its `generation_input_digest` already hashes the existing `{contract,input}`
+envelope, matching `trustedGenerationInputDigestV1`. Verify that stored digest
+directly; a raw byte SHA cannot substitute for it. The raw-storage SHA domain
+applies to manifest/preference/safety, not to this request input field. No new
+input checksum column or DB digest/domain rewrite is required.
+
+A prior draft in this PR incorrectly described the input checksum as raw-byte
+SHA. The correction follows the actual Staging writer definition and adds the
+regression that rejects a raw SHA substituted for the stored typed-input digest.
 
 Integrity is not provenance: replacing an entire trusted source and its hashes
 can produce consistent data. The future store must authenticate the actor,

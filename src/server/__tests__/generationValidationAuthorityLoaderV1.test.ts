@@ -24,7 +24,7 @@ function changed(source: StoredGenerationCanonicalV1, change: (value: Record<str
 async function source(f: FullFixture): Promise<GenerationValidationSourceV1> {
   return { contract: generationValidationSourceContractV1, requestOperationId: f.context.input.operation.requestId,
     accountId: f.context.input.accountId, evaluatedPlanRawSha256: hash(f.planRaw),
-    input: stored(Buffer.from(canonicalJsonV1(f.context.input, 'SAFE_INTEGER'))),
+    input: { canonicalHex: Buffer.from(canonicalJsonV1(f.context.input, 'SAFE_INTEGER')).toString('hex'), generationInputDigest: f.evidence.generationInputDigest },
     manifest: stored(await adaptiveNutritionCandidateManifestCanonicalBytesV2(f.context.manifest)),
     preference: stored(await nutritionPreferenceSnapshotCanonicalBytesV1(f.context.preference)),
     safety: stored(await nutritionSafetySnapshotCanonicalBytesV1(f.context.safety)),
@@ -46,8 +46,9 @@ test('stored canonical sources project through loader and real validator without
   } });
   const raw = await port.loadForProposalRaw(s.requestOperationId, s.evaluatedPlanRawSha256);
   assert.ok(raw); const envelope = JSON.parse(raw);
-  // PostgreSQL storage hashes canonical input bytes; consumer hashes {contract,input}.
-  assert.notEqual(s.input!.storageSha256, f.evidence.generationInputDigest);
+  // Actual DB request digest already hashes {contract,input}; other storage uses raw SHA.
+  assert.equal(s.input!.generationInputDigest, f.evidence.generationInputDigest);
+  assert.notEqual(hash(Buffer.from(s.input!.canonicalHex, 'hex')), s.input!.generationInputDigest);
   assert.equal(envelope.generationInputDigest, f.evidence.generationInputDigest);
   const context = JSON.parse(envelope.trustedContextRaw);
   assert.deepEqual(JSON.parse(context.candidateManifestRaw), f.context.manifest);
@@ -73,29 +74,31 @@ for (const field of ['input', 'manifest', 'preference', 'safety', 'validationEvi
 
 for (const field of ['input', 'manifest', 'preference', 'safety'] as const) {
   test(`${field} storage bytes cannot use a mismatching digest`, async () => {
-    const f = await fullFixture(); const s = await source(f); s[field]!.storageSha256 = 'f'.repeat(64);
+    const f = await fullFixture(); const s = await source(f); if (field === 'input') s.input!.generationInputDigest = 'f'.repeat(64);
+    else s[field]!.storageSha256 = 'f'.repeat(64);
     await assert.rejects(run(s, f), code('STORAGE_DIGEST_MISMATCH'));
   });
   test(`${field} rehashed noncanonical bytes are not silently normalized`, async () => {
     const f = await fullFixture(); const s = await source(f);
-    s[field] = stored(Buffer.concat([Buffer.from(s[field]!.canonicalHex, 'hex'), Buffer.from('\n')]));
+    const altered = stored(Buffer.concat([Buffer.from(s[field]!.canonicalHex, 'hex'), Buffer.from('\n')]));
+    if (field === 'input') s.input!.canonicalHex = altered.canonicalHex; else s[field] = altered;
     await assert.rejects(run(s, f), code('STORAGE_CANONICAL_MISMATCH'));
   });
 }
 
-test('storage input digest and typed generation input digest cannot substitute for one another', async () => {
-  const f = await fullFixture(); const s = await source(f); s.input!.storageSha256 = f.evidence.generationInputDigest;
+test('raw byte SHA cannot replace the stored typed generation input digest', async () => {
+  const f = await fullFixture(); const s = await source(f); s.input!.generationInputDigest = hash(Buffer.from(s.input!.canonicalHex, 'hex'));
   await assert.rejects(run(s, f), code('STORAGE_DIGEST_MISMATCH'));
 });
 
 test('stored UTF-8 BOM cannot be silently stripped from canonical input bytes', async () => {
   const f = await fullFixture(); const s = await source(f);
-  s.input = stored(Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(s.input!.canonicalHex, 'hex')]));
+  s.input!.canonicalHex = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(s.input!.canonicalHex, 'hex')]).toString('hex');
   await assert.rejects(run(s, f));
 });
 
 test('malformed stored UTF-8 is rejected instead of decoded with replacement characters', async () => {
-  const f = await fullFixture(); const s = await source(f); s.input = stored(Buffer.from([0xc3, 0x28]));
+  const f = await fullFixture(); const s = await source(f); s.input!.canonicalHex = Buffer.from([0xc3, 0x28]).toString('hex');
   await assert.rejects(run(s, f), /encoded data|encoding/i);
 });
 
@@ -125,7 +128,7 @@ test('duplicate keys in source and stored input rejected before parsing loses th
   await assert.rejects(loader(JSON.stringify(s).replace('{', '{"accountId":"duplicate",'))
     .loadForProposalRaw(s.requestOperationId, s.evaluatedPlanRawSha256), /duplicate/i);
   const raw = Buffer.from(s.input!.canonicalHex, 'hex').toString('utf8').replace('{', '{"accountId":"duplicate",');
-  s.input = stored(Buffer.from(raw)); await assert.rejects(run(s, f), /duplicate/i);
+  s.input!.canonicalHex = Buffer.from(raw).toString('hex'); await assert.rejects(run(s, f), /duplicate/i);
 });
 
 test('stored content with an added self-declared digest is rejected instead of treated as publication', async () => {

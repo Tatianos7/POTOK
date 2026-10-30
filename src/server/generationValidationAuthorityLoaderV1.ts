@@ -12,12 +12,13 @@ import {
 
 export const generationValidationSourceContractV1 = 'potok-generation-validation-source-v1' as const;
 export interface StoredGenerationCanonicalV1 { canonicalHex: string; storageSha256: string }
+export interface StoredGenerationInputV1 { canonicalHex: string; generationInputDigest: string }
 export interface GenerationValidationSourceV1 {
   contract: typeof generationValidationSourceContractV1;
   requestOperationId: string;
   accountId: string;
   evaluatedPlanRawSha256: string;
-  input: StoredGenerationCanonicalV1 | null;
+  input: StoredGenerationInputV1 | null;
   manifest: StoredGenerationCanonicalV1 | null;
   preference: StoredGenerationCanonicalV1 | null;
   safety: StoredGenerationCanonicalV1 | null;
@@ -71,16 +72,28 @@ function descriptor(value: unknown): StoredGenerationCanonicalV1 {
   }
   return { canonicalHex: row.canonicalHex, storageSha256: row.storageSha256 };
 }
+function inputDescriptor(value: unknown): StoredGenerationInputV1 {
+  const row = record(value, ['canonicalHex', 'generationInputDigest']);
+  if (typeof row.canonicalHex !== 'string' || !hex.test(row.canonicalHex)
+    || typeof row.generationInputDigest !== 'string' || !digest.test(row.generationInputDigest)) {
+    throw new GenerationValidationSourceErrorV1('INVALID_SOURCE_PACKAGE');
+  }
+  return { canonicalHex: row.canonicalHex, generationInputDigest: row.generationInputDigest };
+}
+function decodeBytes(canonicalHex: string): { raw: string; value: unknown; canonicalHex: string } {
+  const bytes = Uint8Array.from(canonicalHex.match(/../g)!, byte => parseInt(byte, 16));
+  // Preserve a BOM as content so the strict JSON/canonical boundary rejects it;
+  // the default decoder would silently strip those stored bytes.
+  const raw = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
+  return { raw, value: parse(raw), canonicalHex };
+}
 async function stored(value: unknown): Promise<{ raw: string; value: unknown; canonicalHex: string }> {
   const row = descriptor(value);
   const bytes = Uint8Array.from(row.canonicalHex.match(/../g)!, byte => parseInt(byte, 16));
   if (await adaptiveNutritionSha256HexV1(bytes) !== row.storageSha256) {
     throw new GenerationValidationSourceErrorV1('STORAGE_DIGEST_MISMATCH');
   }
-  // Preserve a BOM as content so the strict JSON/canonical boundary rejects it;
-  // the default decoder would silently strip those stored bytes.
-  const raw = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
-  return { raw, value: parse(raw), canonicalHex: row.canonicalHex };
+  return decodeBytes(row.canonicalHex);
 }
 
 /** Inactive storage-to-consumer projection; no credentials, SQL execution or writes. */
@@ -103,14 +116,22 @@ export function createGenerationValidationAuthorityLoaderV1(store: GenerationVal
       for (const field of ['validationEvidenceRaw', 'policiesRaw', 'warningEvidenceRaw'] as const) {
         if (row[field] !== null) parse(row[field] as string);
       }
-      for (const field of ['input', 'manifest', 'preference', 'safety'] as const) {
+      if (row.input !== null) inputDescriptor(row.input);
+      for (const field of ['manifest', 'preference', 'safety'] as const) {
         if (row[field] !== null) descriptor(row[field]);
       }
       if (sourceKeys.some(key => row[key] === null)) return null;
-      const inputSource = await stored(row.input);
+      const inputRecord = inputDescriptor(row.input);
+      const inputSource = decodeBytes(inputRecord.canonicalHex);
       const input = decodeTrustedGenerationInputRawV1(inputSource.raw);
       if (canonicalJsonV1(input, 'SAFE_INTEGER') !== inputSource.raw) {
         throw new GenerationValidationSourceErrorV1('STORAGE_CANONICAL_MISMATCH');
+      }
+      // Actual generation_requests_v2.generation_input_digest uses the existing
+      // {contract,input} domain, unlike manifest/preference/safety storage hashes.
+      const generationInputDigest = await trustedGenerationInputDigestV1(input);
+      if (generationInputDigest !== inputRecord.generationInputDigest) {
+        throw new GenerationValidationSourceErrorV1('STORAGE_DIGEST_MISMATCH');
       }
       if (input.accountId !== row.accountId || input.operation.requestId !== requestOperationId) {
         throw new GenerationValidationSourceErrorV1('SOURCE_BINDING_MISMATCH');
@@ -141,7 +162,7 @@ export function createGenerationValidationAuthorityLoaderV1(store: GenerationVal
         trustedValidationEvidenceRaw: row.validationEvidenceRaw });
       await decodeTrustedValidationPoliciesRawV2(row.policiesRaw as string, trustedContextRaw);
       return JSON.stringify({ contract: generationValidationAuthorityContractV1, requestOperationId,
-        accountId: input.accountId, generationInputDigest: await trustedGenerationInputDigestV1(input),
+        accountId: input.accountId, generationInputDigest,
         evaluatedPlanRawSha256: proposalRawSha256, trustedContextRaw,
         pinnedPoliciesRaw: row.policiesRaw, pinnedWarningEvidenceRaw: row.warningEvidenceRaw });
     },

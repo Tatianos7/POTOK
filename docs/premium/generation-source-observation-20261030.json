@@ -344,8 +344,10 @@
   "sourceFormatInspection": {
     "functions": [
       "initialize_nutrition_authorities_v1",
-      "publish_candidate_manifest_v2"
+      "publish_candidate_manifest_v2",
+      "public.adaptive_nutrition_request_generation_v2"
     ],
-    "observed": "canonical_bytes store JSON content without top-level digest; canonical_digest is SHA256 of those exact bytes; TS consumer snapshots require existing recomputed digest fields. Trusted generation input consumer digest uses a distinct {contract,input} domain."
+    "observed": "Authority/manifest canonical_bytes contain content without top-level digest; their canonical_digest is raw-byte SHA256. Actual request writer stores generation_input_digest in the existing {contract,input} domain, matching the TypeScript consumer. These storage fields use distinct existing domains and must not be conflated.",
+    "requestWriterDefinitionMd5": "fc6cd68806591c9773ff855e06b834be"
   }
 }
