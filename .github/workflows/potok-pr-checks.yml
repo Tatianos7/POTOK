@@ -95,6 +95,7 @@ jobs:
         run: |
           node --import tsx --test \
             src/server/__tests__/generationValidationAdapterV1.test.ts \
+            src/server/__tests__/generationValidationAuthorityLoaderV1.test.ts \
             src/utils/__tests__/trustedGeneratedWeekValidatorV1.test.ts \
             src/utils/__tests__/trustedValidationPoliciesV1.test.ts \
             src/utils/__tests__/trustedValidationEvidenceV1.test.ts \

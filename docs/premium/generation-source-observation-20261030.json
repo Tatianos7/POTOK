@@ -1,0 +1,353 @@
+{
+  "observedOn": "2026-10-30",
+  "evidenceKind": "read-only-system-catalog-and-aggregate-count-observation",
+  "limits": [
+    "No user rows, auth identities, tokens, recipes or generation request contents read",
+    "No generation, provisioning, load_generation_request_v2 or mutation RPC invoked",
+    "Zero counts describe observed staging state only; no readiness or publication receipt",
+    "Production relation/function scope is potok_nutrition plus public adaptive_nutrition* relations and the two named public generation functions"
+  ],
+  "production": {
+    "project": "POTOK",
+    "functions": [
+      {
+        "name": "acquire_shared_account_gate_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_account_id uuid",
+        "definition_md5": "6febe566e6f4c6004d30ccf7988713f7",
+        "security_definer": false
+      }
+    ],
+    "relations": []
+  },
+  "staging": {
+    "project": "POTOK Staging",
+    "functions": [
+      {
+        "name": "acquire_shared_account_gate_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_account_id uuid",
+        "definition_md5": "6febe566e6f4c6004d30ccf7988713f7",
+        "security_definer": false
+      },
+      {
+        "name": "activate_generated_week_gateway_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_request_operation_id uuid",
+        "definition_md5": "54f254a5547d24f6a128221c512a5937",
+        "security_definer": true
+      },
+      {
+        "name": "activate_generated_week_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_generation_operation_id uuid, p_activation_idempotency_key uuid, p_expected_plan_revision uuid",
+        "definition_md5": "b43007de02ad84b06a5a4e96df2ad314",
+        "security_definer": false
+      },
+      {
+        "name": "advance_goal_revision_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "",
+        "definition_md5": "c91dd403323d4d3f7837c1511db0def3",
+        "security_definer": false
+      },
+      {
+        "name": "assert_generation_request_current_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_request_operation_id uuid",
+        "definition_md5": "c7e046704d32a1e42513ebfedd410ba7",
+        "security_definer": false
+      },
+      {
+        "name": "canonical_jsonb_text_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_value jsonb",
+        "definition_md5": "b8f7388f7e4db45135a26392a197a504",
+        "security_definer": false
+      },
+      {
+        "name": "commit_prevalidated_plan_transition_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_account_id uuid, p_selection_id uuid, p_idempotency_key text, p_contract_version text, p_action_type text, p_canonical_request bytea, p_digest_version text, p_request_digest bytea, p_expected_plan_revision uuid, p_expected_goal_revision uuid, p_expected_history_revision uuid, p_expected_diary_revision uuid, p_new_plan_revision uuid, p_new_history_revision uuid, p_goal_snapshot jsonb, p_graph_snapshot jsonb, p_snapshot_encoding_version text, p_graph_digest bytea, p_event jsonb",
+        "definition_md5": "7cdbbf328ea45d0c3f9b3719f6b2e329",
+        "security_definer": true
+      },
+      {
+        "name": "create_preference_successor_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_account_id uuid, p_expected_head_revision uuid, p_new_head_revision uuid, p_snapshot_canonical bytea, p_operation_id uuid",
+        "definition_md5": "b750fe5046bdbfe2fe01022b9bf338b1",
+        "security_definer": true
+      },
+      {
+        "name": "create_safety_successor_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_account_id uuid, p_expected_head_revision uuid, p_new_head_revision uuid, p_snapshot_canonical bytea, p_operation_id uuid",
+        "definition_md5": "bd429a4cb21d0b52286c9e4c0550a322",
+        "security_definer": true
+      },
+      {
+        "name": "current_candidate_manifest_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "",
+        "definition_md5": "fcffdbb4c7d4ae24c1bb22216a06b77c",
+        "security_definer": true
+      },
+      {
+        "name": "generation_request_status_json_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_request_operation_id uuid, p_status text, p_reason_code text",
+        "definition_md5": "ce062b599c1bfae2847444085c3e0e49",
+        "security_definer": false
+      },
+      {
+        "name": "initialize_nutrition_authorities_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_account_id uuid, p_head_revision uuid, p_preference_canonical bytea, p_safety_canonical bytea, p_operation_id uuid",
+        "definition_md5": "b7c4ac8bfc7cbbe5379859948c9cec93",
+        "security_definer": true
+      },
+      {
+        "name": "json_has_duplicate_keys_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_value json",
+        "definition_md5": "fa3beb15806d75572c00b728065a5474",
+        "security_definer": false
+      },
+      {
+        "name": "jsonb_has_exact_keys_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_value jsonb, p_keys text[]",
+        "definition_md5": "2c4d3fd1db7468b2bf5f6c5471ee5e0e",
+        "security_definer": false
+      },
+      {
+        "name": "load_generation_request_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_request_operation_id uuid",
+        "definition_md5": "a8e13776b8d994632a1751661080153a",
+        "security_definer": true
+      },
+      {
+        "name": "protect_diary_projection_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "",
+        "definition_md5": "3904930613b29ae317e7f79e4fd6a81c",
+        "security_definer": false
+      },
+      {
+        "name": "protect_generation_request_identity_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "",
+        "definition_md5": "c9394f1805a7d5506e19551047f63aba",
+        "security_definer": false
+      },
+      {
+        "name": "protect_legacy_meal_selection_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "",
+        "definition_md5": "71d9f464ee916670c24b53a7215fe3a6",
+        "security_definer": false
+      },
+      {
+        "name": "protect_operation_receipt_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "",
+        "definition_md5": "1c2d5a814e07a9189aca34da498522ef",
+        "security_definer": false
+      },
+      {
+        "name": "protect_selection_v1_fields",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "",
+        "definition_md5": "f9f75a97c9cf682a8b2fec6b2a711719",
+        "security_definer": false
+      },
+      {
+        "name": "publish_candidate_manifest_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_manifest_canonical bytea, p_expected_head_revision uuid, p_new_head_revision uuid, p_publication_operation_id uuid",
+        "definition_md5": "e7dd4404c3b5f37874b0df832c8257c5",
+        "security_definer": true
+      },
+      {
+        "name": "record_generated_week_gateway_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_request_operation_id uuid, p_generated_week_plan_canonical bytea",
+        "definition_md5": "5fd64cda62b11056e1772dbfd95f471d",
+        "security_definer": true
+      },
+      {
+        "name": "record_generated_week_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_account_id uuid, p_selection_id uuid, p_idempotency_key uuid, p_generation_input_canonical bytea, p_generated_week_plan_canonical bytea",
+        "definition_md5": "eeeb888ce0ca04af52e738e5bab6fe6f",
+        "security_definer": false
+      },
+      {
+        "name": "reject_immutable_change_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "",
+        "definition_md5": "3b247b7304836fea34456bdeffed858a",
+        "security_definer": false
+      },
+      {
+        "name": "reject_immutable_change_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "",
+        "definition_md5": "9ca39b46b0bc6e87aee3dcbe72203171",
+        "security_definer": false
+      },
+      {
+        "name": "require_canonical_json_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_canonical_bytes bytea",
+        "definition_md5": "3208509c28f4cf257b1e83b9ddd2f80a",
+        "security_definer": false
+      },
+      {
+        "name": "settle_generation_request_failure_v2",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "p_request_operation_id uuid, p_status text, p_reason_code text",
+        "definition_md5": "50fb05e4c70a2246903686ffdad59e95",
+        "security_definer": false
+      },
+      {
+        "name": "validate_selection_calendar_v1",
+        "owner": "postgres",
+        "schema": "potok_nutrition",
+        "arguments": "",
+        "definition_md5": "2b219b6e14945a5a631dcc7bacd593ad",
+        "security_definer": false
+      },
+      {
+        "name": "adaptive_nutrition_generation_status_v2",
+        "owner": "postgres",
+        "schema": "public",
+        "arguments": "p_request_operation_id uuid",
+        "definition_md5": "0a9556ef6d1106fcd8c49a84fa568a0f",
+        "security_definer": true
+      },
+      {
+        "name": "adaptive_nutrition_request_generation_v2",
+        "owner": "postgres",
+        "schema": "public",
+        "arguments": "p_protocol_version text, p_idempotency_key uuid",
+        "definition_md5": "fc6cd68806591c9773ff855e06b834be",
+        "security_definer": true
+      }
+    ],
+    "relations": [
+      {
+        "name": "adaptive_nutrition_candidate_manifest_entries_v2",
+        "schema": "potok_nutrition"
+      },
+      {
+        "name": "adaptive_nutrition_candidate_manifest_head_v2",
+        "schema": "potok_nutrition"
+      },
+      {
+        "name": "adaptive_nutrition_candidate_manifests_v2",
+        "schema": "potok_nutrition"
+      },
+      {
+        "name": "adaptive_nutrition_generation_policy_head_v2",
+        "schema": "potok_nutrition"
+      },
+      {
+        "name": "adaptive_nutrition_generation_requests_v2",
+        "schema": "potok_nutrition"
+      },
+      {
+        "name": "adaptive_nutrition_goal_targets_v1",
+        "schema": "potok_nutrition"
+      },
+      {
+        "name": "nutrition_authority_heads_v1",
+        "schema": "potok_nutrition"
+      },
+      {
+        "name": "nutrition_preference_snapshots_v1",
+        "schema": "potok_nutrition"
+      },
+      {
+        "name": "nutrition_safety_snapshots_v1",
+        "schema": "potok_nutrition"
+      },
+      {
+        "name": "validated_plan_replacement_offers_v1",
+        "schema": "potok_nutrition"
+      },
+      {
+        "name": "adaptive_nutrition_events",
+        "schema": "public"
+      },
+      {
+        "name": "adaptive_nutrition_graph_revisions",
+        "schema": "public"
+      },
+      {
+        "name": "adaptive_nutrition_operations",
+        "schema": "public"
+      }
+    ],
+    "counts": {
+      "goal_targets": 0,
+      "policy_heads": 0,
+      "authority_heads": 0,
+      "safety_snapshots": 0,
+      "candidate_manifests": 0,
+      "generation_requests": 0,
+      "preference_snapshots": 0,
+      "candidate_manifest_heads": 0
+    }
+  },
+  "loaderFunctionInspection": {
+    "project": "POTOK Staging",
+    "function": "potok_nutrition.load_generation_request_v2(uuid)",
+    "definition_md5": "a8e13776b8d994632a1751661080153a",
+    "observedStatements": [
+      "SELECT ... FOR UPDATE",
+      "INSERT INTO public.adaptive_nutrition_operations",
+      "UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2"
+    ],
+    "executed": false
+  },
+  "sourceFormatInspection": {
+    "functions": [
+      "initialize_nutrition_authorities_v1",
+      "publish_candidate_manifest_v2",
+      "public.adaptive_nutrition_request_generation_v2"
+    ],
+    "observed": "Authority/manifest canonical_bytes contain content without top-level digest; their canonical_digest is raw-byte SHA256. Actual request writer stores generation_input_digest in the existing {contract,input} domain, matching the TypeScript consumer. These storage fields use distinct existing domains and must not be conflated.",
+    "requestWriterDefinitionMd5": "fc6cd68806591c9773ff855e06b834be"
+  }
+}
