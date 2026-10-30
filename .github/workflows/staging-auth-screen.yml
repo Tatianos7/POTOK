@@ -1,0 +1,30 @@
+name: Staging Auth phone screen checks
+on:
+  pull_request:
+    paths:
+      - 'tools/staging-auth-check/**'
+      - '.github/workflows/staging-auth-screen.yml'
+permissions:
+  contents: read
+jobs:
+  screen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node --test tools/staging-auth-check/flow.test.mjs
+      - name: Build standalone screen with synthetic public config only
+        run: npx --no-install vite build --config tools/staging-auth-check/vite.config.mjs
+        env:
+          POTOK_STAGING_PUBLIC_KEY: sb_publishable_synthetic_test_only_123
+      - run: npx --no-install playwright install --with-deps chromium
+      - name: Phone viewports with intercepted synthetic Auth only
+        run: node --test tools/staging-auth-check/browser.test.mjs

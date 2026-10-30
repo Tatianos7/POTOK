@@ -1,5 +1,11 @@
 # POTOK current state
 
+## Phone-based Auth transport check preparation — 2026-10-30
+
+- Owner can test only on a phone. Prepared a standalone Staging-only screen outside the main app build, using the existing locked Supabase SDK with session persistence, auto-refresh and URL session detection disabled.
+- Explicit user email/signup consent and code entry precede server getUser validation, ordinary entitlement checks and GET-only closed-RPC probes. No email/code/session/user identifier is included in the result summary; errors are sanitized. Server account registration remains an independent check, not a client assertion.
+- No screen hosting/publication, real email request, new Auth user, new provider, RPC opening or database change is performed by this preparation. A separate private test address is required for phone access; current GitHub Pages must not be republished from the stacked backend branch.
+
 ## Closed package installed in Staging — 2026-10-30
 
 - After explicit owner approval, applied PR #259 code at `69b948a683ea4c047ea7b78d6e033401da610d12` only to POTOK Staging `ozidryfvhkcbtpnulakq`. Migration history records `20261030165008_evidence_closed_staging_bundle_v1`; SQL SHA256 `a9a1e0852c1b13ec717fbde5227e08c911898944e2832dbbc9c00fd1e572d572`.
