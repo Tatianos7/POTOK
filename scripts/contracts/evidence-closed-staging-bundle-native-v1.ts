@@ -19,6 +19,7 @@ export async function runClosedEvidenceBundleV1(t:TestContext,{sql,asRole}:DB) {
  // Match the observed managed boundary: SQL postgres can attach a trigger but
  // neither owns Auth nor inherits its owner, and is not a superuser.
  await sql(`CREATE ROLE fixture_managed_auth_owner NOLOGIN;
+  GRANT USAGE ON SCHEMA auth TO fixture_managed_auth_owner;
   ALTER ROLE anon LOGIN;ALTER ROLE authenticated LOGIN;ALTER ROLE service_role LOGIN;
   ALTER TABLE auth.users OWNER TO fixture_managed_auth_owner;
   GRANT SELECT,INSERT,UPDATE,DELETE,REFERENCES,TRIGGER ON auth.users TO postgres;
