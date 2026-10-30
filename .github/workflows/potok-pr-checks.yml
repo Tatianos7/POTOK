@@ -90,3 +90,12 @@ jobs:
           npx --no-install tsx --test \
             scripts/contracts/p5-03-cottage-cheese-apple-evidence.test.ts \
             scripts/contracts/p5-03b-oatmeal-apple-evidence.test.ts
+
+      - name: Request-bound generation validation and trusted validator regressions
+        run: |
+          node --import tsx --test \
+            src/server/__tests__/generationValidationAdapterV1.test.ts \
+            src/utils/__tests__/trustedGeneratedWeekValidatorV1.test.ts \
+            src/utils/__tests__/trustedValidationPoliciesV1.test.ts \
+            src/utils/__tests__/trustedValidationEvidenceV1.test.ts \
+            src/utils/__tests__/trustedMealWarningEvidenceV1.test.ts
