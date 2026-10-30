@@ -4,7 +4,7 @@
 
 - Owner can test only on a phone. Prepared a standalone Staging-only screen outside the main app build, using the existing locked Supabase SDK with session persistence, auto-refresh and URL session detection disabled.
 - Explicit user email/signup consent and code entry precede server getUser validation, ordinary entitlement checks and GET-only closed-RPC probes. No email/code/session/user identifier is included in the result summary; errors are sanitized. Server account registration remains an independent check, not a client assertion.
-- No screen hosting/publication, real email request, new Auth user, new provider, RPC opening or database change is performed by this preparation. A separate private test address is required for phone access; current GitHub Pages must not be republished from the stacked backend branch.
+- Added single-file offline packaging with hashed CSP, so a separate host may be avoidable. CI checks both served and file-based flows; actual Android file-handler compatibility remains to be confirmed on the owner's phone. No hosting/provider, real email request, Auth user, RPC opening or database change is performed by preparation. Current GitHub Pages must not be republished from the stacked backend branch.
 
 ## Closed package installed in Staging — 2026-10-30
 

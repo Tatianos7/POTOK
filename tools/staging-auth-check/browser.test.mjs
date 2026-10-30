@@ -20,12 +20,12 @@ test('phone screen: explicit OTP flow, memory-only session, server validation an
  const address=`http://127.0.0.1:${server.address().port}`;
  const browser=await chromium.launch({headless:true});
  try{
-  for(const width of [320,390,430]){
+  for(const source of [address+'/',new URL('file://'+resolve('reports/POTOK_STAGING_AUTH_CHECK.html')).href])for(const width of [320,390,430]){
    const context=await browser.newContext({viewport:{width,height:844}}),page=await context.newPage();
    const network=[],errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.route('**/*',async route=>{
     const request=route.request(),url=new URL(request.url());
-    if(url.origin===address){await route.continue();return;}
+    if(url.origin===address||url.protocol==='file:'){await route.continue();return;}
     assert.equal(url.origin,'https://ozidryfvhkcbtpnulakq.supabase.co','no foreign request');
     network.push({path:url.pathname,method:request.method()});
     const cors={'access-control-allow-origin':'*','access-control-allow-headers':'apikey,authorization,content-type,x-client-info,x-supabase-api-version','access-control-allow-methods':'GET,POST,OPTIONS'};
@@ -51,7 +51,7 @@ test('phone screen: explicit OTP flow, memory-only session, server validation an
     assert.ok(url.pathname.startsWith('/rest/v1/rpc/'));
     await fulfill(404,{code:'PGRST202',message:'synthetic closed endpoint'});
    });
-   await page.goto(address+'/');
+   await page.goto(source);
    assert.equal(network.length,0,'opening screen must not send email or other requests');
    await page.locator('#email').fill('screen-test@example.invalid');await page.locator('#consent').check();
    await page.locator('#send').click();await page.locator('#code-step').waitFor({state:'visible'});
@@ -59,8 +59,8 @@ test('phone screen: explicit OTP flow, memory-only session, server validation an
    await page.waitForFunction(()=>document.getElementById('rpc-result')?.textContent.includes('7 из 7'));
    assert.equal(await page.locator('#code').inputValue(),'');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
-   assert.deepEqual(await page.evaluate(()=>Object.keys(localStorage)),[]);
-   assert.deepEqual(await page.evaluate(()=>Object.keys(sessionStorage)),[]);
+   assert.deepEqual(await page.evaluate(()=>{try{return Object.keys(localStorage);}catch{return [];}}),[]);
+   assert.deepEqual(await page.evaluate(()=>{try{return Object.keys(sessionStorage);}catch{return [];}}),[]);
    assert.ok(network.some(r=>r.path==='/auth/v1/user'));
    assert.equal(network.filter(r=>r.path.startsWith('/rest/v1/rpc/')&&r.path!=='/rest/v1/rpc/has_verified_entitlement_v2'&&r.method==='GET').length,7);
    assert.equal((await page.locator('body').innerText()).includes('synthetic-refresh'),false);
