@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Staging food-schema compatibility — 2026-10-30
+
+- Live read-only inventory found 12/14 required food identity columns; is_searchable/needs_review are absent. Existing Food/Nonfood evidence, closure and registration packages are not installed.
+- Added an inactive guarded two-column schema draft. Both nullable booleans have no default: existing/new products receive no inferred search/review approval. No backfill, client permission, policy, source, nutrition or diary mutation is included.
+- Registration-mode native CI starts from that missing-column shape and checks atomic target/owner/drift rejection, preservation and denial by the actual evidence reader. Other original matrix modes remain enabled.
+- Nonfood still has a disposable-only installer. Persistent rollout, real Auth/OTP/PostgREST, existing-account decisions and retention/erasure remain separate unresolved gates. No Supabase write, rollout, merge or generator activation occurred.
+
 ## Trusted registration preparation — 2026-10-30
 
 - Prepared a separate inactive registration draft: new Auth INSERT provenance and an SQL-owner-only reviewed permit path for existing accounts, with no bulk backfill or client registration endpoint.
