@@ -1,0 +1,22 @@
+<!doctype html><html lang="ru"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer"><meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://ozidryfvhkcbtpnulakq.supabase.co; base-uri 'none'; form-action 'none'; object-src 'none'">
+<title>POTOK — тест входа</title></head><body>
+<main><header><strong>ПОТОК</strong><span class="badge">STAGING · ТЕСТ</span></header>
+<h1>Проверим вход<br>по email-коду</h1>
+<p class="intro">Вход в существующий аккаунт Staging. Новый аккаунт автоматически не создаётся.</p>
+<section id="email-step" class="card"><label for="email">Почта существующего аккаунта</label>
+<input id="email" type="email" inputmode="email" autocomplete="off" placeholder="Твой email в Staging" maxlength="254">
+<label class="consent"><input id="consent" type="checkbox"><span>Это моя почта. Разрешаю отправить код для входа в существующий аккаунт Staging.</span></label>
+<button id="send" type="button" disabled>Получить код</button></section>
+<section id="code-step" class="card" hidden><label for="code">Код из письма</label>
+<input id="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" pattern="[0-9]{6,10}" placeholder="Код">
+<p class="hint">Вводи код только здесь. В чат его отправлять не нужно.</p>
+<button id="verify" type="button">Проверить вход</button></section>
+<p id="message" role="status" aria-live="polite"></p>
+<section id="result" class="card" hidden><h2>Результат проверки</h2><ul><li id="session-result"></li><li id="rights-result"></li><li id="rpc-result"></li></ul><p id="server-result" class="hint"></p></section>
+<button id="finish" class="secondary" type="button" hidden>Завершить тестовую сессию</button>
+<section id="done" class="card" hidden><h2>Сессия завершена</h2><p>Можно закрыть вкладку и сообщить, какой результат показал экран.</p></section>
+<footer>Почта и код отправляются напрямую в Supabase Staging. Сессия не сохраняется в хранилище браузера. Проверка не подтверждает готовность всего генератора.</footer>
+</main><script type="module" src="./main.mjs"></script></body></html>
