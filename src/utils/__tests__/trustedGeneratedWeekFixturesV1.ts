@@ -414,7 +414,7 @@ async function rejected(f:FullFixture,code?:string) {
 
 // Test-only explicit DTO projection: receipts are the existing validators' actual results,
 // not copied output fields or hashes invented by a synthetic generator.
-async function fixtureValidationResults(f: FullFixture) {
+function fixtureWeekValidationInput(f: FullFixture) {
   const { input, manifest, preference, safety } = f.context;
   const balance = f.policies.balance.policy;
   const composition = f.policies.composition.policy;
@@ -454,12 +454,14 @@ async function fixtureValidationResults(f: FullFixture) {
       meals,goalTarget:input.goalNutritionTarget,distributionBounds:distribution.distributionBounds};
   });
   const fallback=f.evidence.ordinaryFallback;
-  return validateWeekSnapshotWithChildResultsRawV2(JSON.stringify({contract:weekValidatorInputContractV2,
+  return {contract:weekValidatorInputContractV2,
     weekAnchor:f.plan.weekStartLocal,timezone:f.plan.timezone,goalRevision:input.goalNutritionTarget.goalRevision,
     targetPolicyRevision:input.goalNutritionTarget.targetPolicyRevision,planRevision:f.plan.proposedPlanRevision,
     compositionPolicyRevision:input.compositionPolicyRevision,balancePolicy:balance,days,
-    ordinaryFallbackProof:{candidatePoolDigest:fallback.candidatePoolDigest,status:fallback.status,ordinaryWeekDigest:fallback.ordinaryWeekDigest}}),
-  f.rawContext.candidateManifestRaw);
+    ordinaryFallbackProof:{candidatePoolDigest:fallback.candidatePoolDigest,status:fallback.status,ordinaryWeekDigest:fallback.ordinaryWeekDigest}};
+}
+async function fixtureValidationResults(f: FullFixture) {
+  return validateWeekSnapshotWithChildResultsRawV2(JSON.stringify(fixtureWeekValidationInput(f)), f.rawContext.candidateManifestRaw);
 }
 async function bindFixtureValidationDigests(f: FullFixture) {
   const results=await fixtureValidationResults(f);
@@ -472,5 +474,5 @@ async function bindFixtureValidationDigests(f: FullFixture) {
 }
 
 
-export { fullFixture, check, id, h, resignPlan, rejected, useRecipe, withoutDigest, fixtureSeal, resignEntry, resignSet, bindFixtureValidationDigests, fixtureValidationResults };
+export { fullFixture, check, id, h, resignPlan, rejected, useRecipe, withoutDigest, fixtureSeal, resignEntry, resignSet, bindFixtureValidationDigests, fixtureValidationResults, fixtureWeekValidationInput };
 export type { FullFixture, FixtureState };
