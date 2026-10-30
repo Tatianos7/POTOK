@@ -1,4 +1,4 @@
-name: Generation validation storage disposable PostgreSQL
+name: Generation validation storage and admission PostgreSQL
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -10,6 +10,11 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [store, admission]
+    name: PostgreSQL ${{ matrix.suite }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -32,7 +37,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Actual PostgreSQL storage, reader and trusted validator chain
-        run: node --import tsx --test scripts/contracts/generation-validation-store-v1.test.ts
+        run: node --import tsx --test scripts/contracts/generation-validation-${{ matrix.suite }}-v1.test.ts
         env:
           POTOK_GENERATION_STORE_NATIVE: '1'
           PGPASSWORD: disposable-generation-only
