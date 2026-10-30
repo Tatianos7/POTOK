@@ -1,0 +1,32 @@
+name: P5-03C real issuer closure matrix
+on:
+  pull_request:
+    paths:
+      - 'scripts/contracts/*evidence*'
+      - 'scripts/contracts/p5-03c-*'
+      - 'supabase/migration_drafts/*evidence*'
+      - '.github/workflows/p5-03c-real-issuer-matrix.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-issuers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: postgres:17.6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Strict source transformation and unchanged real-issuer lock order
+        run: node --import tsx --test scripts/contracts/p5-03c-build-disposable-issuers.test.ts scripts/contracts/p5-03c-issuer-lock-order-v1.test.ts
+      - name: Actual issuers, trusted prerequisites, native multi-session closure matrix
+        run: |
+          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 POTOK_NONFOOD_ACCEPTANCE=1 POTOK_CLOSURE_REAL_ISSUER_MATRIX=1 node --import tsx --test --test-isolation=none scripts/contracts/food-evidence-disposable-db-v1.test.ts

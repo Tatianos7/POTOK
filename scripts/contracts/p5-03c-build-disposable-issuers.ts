@@ -36,7 +36,9 @@ export function transformIssuer(sql: string, functionName: string, anchor: strin
   if (bodyStart < 0 || bodyEnd < 0) throw new Error('Issuer body not found');
   const body = sql.slice(bodyStart + 5, bodyEnd);
   const first = body.indexOf(anchor);
-  if (first < 0 || body.indexOf(anchor, first + 1) !== -1) {
+  // Both real issuers check authority on entry and again after catalog waits.
+  // Admit closure only after the entry check; preserve the later check verbatim.
+  if (first < 0 || body.split(anchor).length !== 3 || !body.slice(0, first).trimEnd().endsWith('BEGIN')) {
     throw new Error('Authority anchor missing or ambiguous: ' + functionName);
   }
   if (/potok_closure_candidate|potok_closure\.assert_active_v1/.test(body)) {

@@ -26,6 +26,7 @@ test('disposable SQL generation inserts account admission after verified authori
       const catalogAt = issuer.indexOf(index === 0 ? "'potok-food-evidence-v1:'" : "'potok-nonfood-v1:catalog'");
       assert.ok(authorityAt >= 0 && admissionAt > authorityAt && catalogAt > admissionAt);
       assert.equal(candidate.split('potok_closure_candidate.assert_active_v1(actor)').length, 2);
+      assert.equal(candidate.split(anchor).length, 3, 'both real authority checks are preserved');
       assert.equal(candidate.replace(/\n  -- DISPOSABLE-ONLY candidate; held until transaction end\.\n  PERFORM potok_closure_candidate\.assert_active_v1\(actor\);/, ''), original);
       assert.throws(() => transformIssuer(candidate, functionName, anchor), /already contains/);
     }
@@ -38,5 +39,7 @@ test('fail closed when authority anchor is missing or actor binding changes', ()
   const [name, functionName, anchor] = specs[0];
   const original = readFileSync('supabase/migration_drafts/' + name, 'utf8');
   assert.throws(() => transformIssuer(original.replace(anchor, 'PERFORM 1;'), functionName, anchor), /anchor missing/);
-  assert.throws(() => transformIssuer(original.replace('DECLARE actor uuid:=auth.uid();', 'DECLARE actor uuid;'), functionName, anchor), /actor binding changed/);
+  assert.throws(() => transformIssuer(original.replaceAll('DECLARE actor uuid:=auth.uid();', 'DECLARE actor uuid;'), functionName, anchor), /actor binding changed/);
+  assert.throws(() => transformIssuer(original.replace(anchor, anchor + anchor), functionName, anchor), /anchor missing or ambiguous/);
+  assert.throws(() => transformIssuer(original.replace(anchor, 'PERFORM 1;' + anchor), functionName, anchor), /anchor missing or ambiguous/);
 });
