@@ -96,6 +96,7 @@ jobs:
           node --import tsx --test \
             scripts/contracts/generation-validation-store-v1.test.ts \
             scripts/contracts/generation-validation-admission-v1.test.ts \
+            src/server/__tests__/generationMenuCandidatesV1.test.ts \
             src/server/__tests__/generationWeekSearchV1.test.ts \
             src/server/__tests__/generationValidationAdapterV1.test.ts \
             src/server/__tests__/generationValidationAuthorityLoaderV1.test.ts \
