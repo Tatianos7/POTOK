@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Atomic closed evidence package — 2026-10-30
+
+- Added an offline composer and explicit SHA256 component manifest, plus reproducible reviewable SQL for admission columns, Food, closed Nonfood, account admission and Auth-state registration in one transaction.
+- Original component bodies stay unchanged; only their verified outer transaction wrappers are removed. All seven Food/Nonfood/owner-closure RPCs are revoked before the single COMMIT, preventing any client-opening interval between component installs.
+- Separate bundle-draft native mode reproduces missing food columns and three synthetic legacy accounts, checks late/final rollback, actual cross-session visibility, closed endpoints, signup coexistence/rollback and replay. Other 49/54/76-test modes remain active.
+- No live Supabase application, existing-account approval, source approval, generator activation or retention/erasure completion. Real Auth/OTP/PostgREST remains unverified; installing the hook requires explicit owner review because failure can block signup.
+
 ## Closed Nonfood Staging installer — 2026-10-30
 
 - Added a separate inactive Staging installer with all application RPC access revoked. Original disposable SQL is unchanged; table/issuer/history bodies are byte-identical, except the removed client EXECUTE opening.

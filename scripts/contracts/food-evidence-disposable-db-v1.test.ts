@@ -26,6 +26,7 @@ const quote = (value: string): string => `'${value.replace(/'/g,"''")}'`;
 const raw = JSON.stringify;
 const migrationPath = 'supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.sql';
 const admissionColumns = process.env.POTOK_FOOD_ADMISSION_COLUMNS_ACCEPTANCE === '1';
+const bundleAcceptance = process.env.POTOK_EVIDENCE_CLOSED_BUNDLE_ACCEPTANCE === '1';
 
 test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability and REAL multi-session concurrency', { skip:requireDatabase ? false : skip, timeout:180_000 }, async t => {
   if (skip) assert.fail(skip);
@@ -66,7 +67,7 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
       GRANT USAGE ON SCHEMA auth TO anon,authenticated,service_role;
       CREATE TABLE public.user_profiles(id_user uuid PRIMARY KEY,is_admin boolean NOT NULL DEFAULT false);
       CREATE TABLE public.foods(id uuid PRIMARY KEY,canonical_food_id uuid,stable_food_id text,source text,created_by_user_id uuid,
-        ${admissionColumns ? '' : 'is_searchable boolean,needs_review boolean,'}name text,name_original text,normalized_name text,brand text,normalized_brand text,barcode text,aliases text[]);
+        ${admissionColumns || bundleAcceptance ? '' : 'is_searchable boolean,needs_review boolean,'}name text,name_original text,normalized_name text,brand text,normalized_brand text,barcode text,aliases text[]);
       CREATE TABLE public.food_aliases(id uuid PRIMARY KEY,canonical_food_id uuid,alias text);
       CREATE TABLE public.food_diary_entries(id uuid PRIMARY KEY,calories numeric,protein numeric,fat numeric,carbs numeric);
       INSERT INTO public.foods(id,canonical_food_id,stable_food_id,source,created_by_user_id,name,name_original,normalized_name,brand,normalized_brand,barcode,aliases)
@@ -75,7 +76,7 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
     if (admissionColumns) {
       const { runFoodAdmissionColumnsV1 } = await import('./food-evidence-admission-columns-native-v1');
       await runFoodAdmissionColumnsV1(t,{sql});
-    } else {
+    } else if (!bundleAcceptance) {
       await sql('UPDATE public.foods SET is_searchable=true,needs_review=false');
     }
     const migration = await readFile(migrationPath,'utf8');
@@ -107,6 +108,11 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
       assert.equal(await sql("SELECT to_regnamespace('potok_food_evidence') IS NULL"),'t');
       await sql('ALTER TABLE public.user_profiles RENAME COLUMN id_user TO user_id');
     });
+    if (bundleAcceptance) {
+      const {runClosedEvidenceBundleV1}=await import('./evidence-closed-staging-bundle-native-v1');
+      await runClosedEvidenceBundleV1(t,{sql});
+      return; // separate complete-package mode; original modes still run their full suites
+    }
     await t.test('matching schema alone is not rollout authorization: explicit owner target acknowledgement required',async () => {
       await assert.rejects(sql(migration),/EXPLICIT_STAGING_ROLLOUT_TARGET_REQUIRED/);
       assert.equal(await sql("SELECT to_regnamespace('potok_food_evidence') IS NULL"),'t');
