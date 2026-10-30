@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import type {TestContext} from 'node:test';
 import {readFile} from 'node:fs/promises';
 import {id} from '../../src/server/__tests__/foodEvidenceFixturesV1';
-interface DB {sql(statement:string):Promise<string>}
+interface DB {sql(statement:string):Promise<string>;asRole(role:string,statement:string):Promise<string>}
 const q=(s:string)=>`'${s.replace(/'/g,"''")}'`;
-export async function runClosedEvidenceBundleV1(t:TestContext,{sql}:DB) {
+export async function runClosedEvidenceBundleV1(t:TestContext,{sql,asRole}:DB) {
  const bundle=await readFile('supabase/migration_drafts/evidence_closed_staging_bundle_v1.sql','utf8');
  // Synthetic Auth transport and legacy identities, never real Supabase accounts.
  await sql(`ALTER TABLE auth.users ADD COLUMN created_at timestamptz DEFAULT clock_timestamp();
-  CREATE ROLE fixture_auth_server NOLOGIN;
+  CREATE ROLE fixture_auth_server LOGIN;
   GRANT USAGE ON SCHEMA auth TO fixture_auth_server;GRANT INSERT ON auth.users TO fixture_auth_server;
   CREATE TABLE public.synthetic_bundle_signup_audit(account_id uuid PRIMARY KEY);
   CREATE FUNCTION public.synthetic_bundle_signup() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
@@ -19,6 +19,7 @@ export async function runClosedEvidenceBundleV1(t:TestContext,{sql}:DB) {
  // Match the observed managed boundary: SQL postgres can attach a trigger but
  // neither owns Auth nor inherits its owner, and is not a superuser.
  await sql(`CREATE ROLE fixture_managed_auth_owner NOLOGIN;
+  ALTER ROLE anon LOGIN;ALTER ROLE authenticated LOGIN;ALTER ROLE service_role LOGIN;
   ALTER TABLE auth.users OWNER TO fixture_managed_auth_owner;
   GRANT SELECT,INSERT,UPDATE,DELETE,REFERENCES,TRIGGER ON auth.users TO postgres;
   ALTER ROLE postgres NOSUPERUSER BYPASSRLS;`);
@@ -46,7 +47,7 @@ export async function runClosedEvidenceBundleV1(t:TestContext,{sql}:DB) {
   await unchanged();
  });
  await t.test('closed bundle: a client role cannot install the package with copied markers',async()=>{
-  await assert.rejects(sql('SET ROLE authenticated;'+prefix+bundle),/EVIDENCE_BUNDLE_SQL_OWNER_REQUIRED/);
+  await assert.rejects(asRole('authenticated',prefix+bundle),/EVIDENCE_BUNDLE_SQL_OWNER_REQUIRED/);
   await unchanged();
  });
  await t.test('closed bundle: late Auth inventory mismatch rolls back all earlier schema/components',async()=>{
@@ -85,11 +86,11 @@ export async function runClosedEvidenceBundleV1(t:TestContext,{sql}:DB) {
  const calls=["public.food_evidence_review_v1('{}')","public.food_evidence_receipt_v1(null::uuid)","public.food_evidence_current_v1(null::uuid,'raw')","public.nonfood_evidence_review_v1('{}')","public.nonfood_evidence_receipt_v1(null::uuid)","public.nonfood_evidence_current_v1(null::uuid)","public.account_closure_begin_v1('{}')"];
  await t.test('closed bundle: all seven application RPCs deny every client role after commit',async()=>{
   for(const role of ['anon','authenticated','service_role'])for(const call of calls)
-   await assert.rejects(sql(`SET ROLE ${role};SELECT ${call}`),/permission denied/);
+   await assert.rejects(asRole(role,`SELECT ${call}`),/permission denied for function/);
  });
  await t.test('closed bundle: actual new Auth INSERT coexists with old hook, with no privilege or legacy-state grant',async()=>{
   const who=id(910004);
-  await sql(`SET ROLE fixture_auth_server;INSERT INTO auth.users(id,is_anonymous,created_at) VALUES(${q(who)},false,clock_timestamp())`);
+  await asRole('fixture_auth_server',`INSERT INTO auth.users(id,is_anonymous,created_at) VALUES(${q(who)},false,clock_timestamp())`);
   assert.equal(await sql(`SELECT state FROM potok_closure.accounts_v1 WHERE account_id=${q(who)}`),'ACTIVE');
   assert.equal(await sql(`SELECT origin FROM potok_closure.registration_records_v1 WHERE account_id=${q(who)}`),'NEW_AUTH_INSERT');
   assert.equal(await sql('SELECT count(*) FROM potok_closure.accounts_v1'),'1');
@@ -97,7 +98,7 @@ export async function runClosedEvidenceBundleV1(t:TestContext,{sql}:DB) {
   assert.equal(await sql('SELECT count(*) FROM potok_control.access_attestations'),'0');
   assert.equal(await sql(`SELECT count(*) FROM public.user_profiles WHERE user_id=${q(who)}`),'0');
   const bad=id(910005);
-  await assert.rejects(sql(`SET ROLE fixture_auth_server;INSERT INTO auth.users(id,is_anonymous,created_at) VALUES(${q(bad)},false,NULL)`),/AUTH_CREATION_BINDING_REQUIRED/);
+  await assert.rejects(asRole('fixture_auth_server',`INSERT INTO auth.users(id,is_anonymous,created_at) VALUES(${q(bad)},false,NULL)`),/AUTH_CREATION_BINDING_REQUIRED/);
   assert.equal(await sql(`SELECT count(*) FROM auth.users WHERE id=${q(bad)}`),'0');
   assert.equal(await sql(`SELECT count(*) FROM public.synthetic_bundle_signup_audit WHERE account_id=${q(bad)}`),'0');
  });
@@ -105,7 +106,7 @@ export async function runClosedEvidenceBundleV1(t:TestContext,{sql}:DB) {
   const after=await content(),metaAfter=await metadata();
   await assert.rejects(sql(prefix+bundle),/FOOD_ADMISSION_EXISTING_COLUMNS_REQUIRE_REVIEW/);
   assert.equal(await content(),after);assert.equal(await metadata(),metaAfter);
-  for(const call of calls)await assert.rejects(sql('SET ROLE authenticated;SELECT '+call),/permission denied/);
+  for(const call of calls)await assert.rejects(asRole('authenticated','SELECT '+call),/permission denied for function/);
  });
  await t.test('closed bundle: guarded recovery preserves records and other signup hooks while keeping RPCs closed',async()=>{
   const recovery=await readFile('supabase/migration_drafts/evidence_closed_staging_bundle_v1.recovery.sql','utf8');
@@ -119,10 +120,10 @@ export async function runClosedEvidenceBundleV1(t:TestContext,{sql}:DB) {
   assert.equal(await sql("SELECT strpos(prosrc,'EVIDENCE_BUNDLE_RECOVERY_SUSPENDED')>0 FROM pg_proc WHERE oid='potok_closure.register_new_auth_v1()'::regprocedure"),'t');
   assert.equal(await sql("SELECT tgenabled FROM pg_trigger WHERE tgrelid='auth.users'::regclass AND tgname='synthetic_existing_signup'"),'O');
   const afterRecovery=id(910006);
-  await sql(`SET ROLE fixture_auth_server;INSERT INTO auth.users(id,is_anonymous,created_at) VALUES(${q(afterRecovery)},false,clock_timestamp())`);
+  await asRole('fixture_auth_server',`INSERT INTO auth.users(id,is_anonymous,created_at) VALUES(${q(afterRecovery)},false,clock_timestamp())`);
   assert.equal(await sql(`SELECT count(*) FROM public.synthetic_bundle_signup_audit WHERE account_id=${q(afterRecovery)}`),'1');
   assert.equal(await sql(`SELECT count(*) FROM potok_closure.accounts_v1 WHERE account_id=${q(afterRecovery)}`),'0');
   assert.equal(await records(),beforeRecovery);
-  for(const call of calls)await assert.rejects(sql('SET ROLE authenticated;SELECT '+call),/permission denied/);
+  for(const call of calls)await assert.rejects(asRole('authenticated','SELECT '+call),/permission denied for function/);
  });
 }

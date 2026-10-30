@@ -34,11 +34,12 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
   const data = join(root,'data'), socket = join(root,'socket'), port = '54329';
   await mkdir(socket,{ mode:0o700 });
   let started = false;
-  const sql = async (statement: string): Promise<string> => {
-    const result = await run('psql',['-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',socket,'-p',port,'-U','postgres','-d','postgres','-c',statement],
+  const sqlAs = async (role: string, statement: string): Promise<string> => {
+    const result = await run('psql',['-X','-q','-A','-t','-v','ON_ERROR_STOP=1','-h',socket,'-p',port,'-U',role,'-d','postgres','-c',statement],
       { env, timeout:30_000, maxBuffer:4_194_304 });
     return result.stdout.trim();
   };
+  const sql = (statement: string): Promise<string> => sqlAs('postgres',statement);
   const claims = (user: string, overrides: Record<string,unknown> = {}): string => raw({ role:'authenticated', sub:user,
     session_id:id(Number(user.slice(-12))+100), exp:Math.floor(Date.now()/1000)+3600, ...overrides });
   const asUser = async (statement: string, user = actor, overrides: Record<string,unknown> = {}): Promise<string> => sql(
@@ -117,7 +118,7 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
     });
     if (bundleAcceptance) {
       const {runClosedEvidenceBundleV1}=await import('./evidence-closed-staging-bundle-native-v1');
-      await runClosedEvidenceBundleV1(t,{sql});
+      await runClosedEvidenceBundleV1(t,{sql,asRole:sqlAs});
       return; // separate complete-package mode; original modes still run their full suites
     }
     await t.test('matching schema alone is not rollout authorization: explicit owner target acknowledgement required',async () => {
