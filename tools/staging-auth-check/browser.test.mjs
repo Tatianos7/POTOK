@@ -8,8 +8,8 @@ const root=resolve('reports/staging-auth-check-dist');
 const server=createServer(async(req,res)=>{
  try{
   const path=resolve(root,'.'+new URL(req.url,'http://localhost').pathname);
-  if(!path.startsWith(root+'/'))throw Error('path');
-  const file=path.endsWith('/')?path+'index.html':path;
+  if(path!==root&&!path.startsWith(root+'/'))throw Error('path');
+  const file=path===root?resolve(root,'index.html'):path;
   const data=await readFile(file);
   res.setHeader('Content-Type',({'.html':'text/html','.js':'text/javascript','.css':'text/css'})[extname(file)]??'application/octet-stream');
   res.end(data);
@@ -28,7 +28,7 @@ test('phone screen: explicit OTP flow, memory-only session, server validation an
     if(url.origin===address){await route.continue();return;}
     assert.equal(url.origin,'https://ozidryfvhkcbtpnulakq.supabase.co','no foreign request');
     network.push({path:url.pathname,method:request.method()});
-    const cors={'access-control-allow-origin':'*','access-control-allow-headers':'*','access-control-allow-methods':'GET,POST,OPTIONS'};
+    const cors={'access-control-allow-origin':'*','access-control-allow-headers':'apikey,authorization,content-type,x-client-info,x-supabase-api-version','access-control-allow-methods':'GET,POST,OPTIONS'};
     if(request.method()==='OPTIONS'){await route.fulfill({status:204,headers:cors});return;}
     const fulfill=(status,json)=>route.fulfill({status,headers:{...cors,'content-type':'application/json'},body:JSON.stringify(json)});
     const user={id:'00000000-0000-4000-8000-000000000999',is_anonymous:false,app_metadata:{provider:'email'},user_metadata:{},aud:'authenticated'};
