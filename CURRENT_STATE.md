@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Trusted registration preparation — 2026-10-30
+
+- Prepared a separate inactive registration draft: new Auth INSERT provenance and an SQL-owner-only reviewed permit path for existing accounts, with no bulk backfill or client registration endpoint.
+- Preserves CLOSING, admin/Premium authority and existing issuer arithmetic; no real permits or ACTIVE decisions were authored.
+- Prepared read-only Auth trigger/role/schema inventory and a concrete [Staging review/acceptance packet](docs/architecture/p5-03c-registration-staging-packet-20261030.md).
+- Native CI retains #255's candidate/persistent regression modes and adds registration-draft scenarios. Exact-head CI is the native verification authority.
+- No live SQL, Auth hook installation, Staging/production write, merge, activation or PLAN-to-FACT change.
+
 ## Persistent admission preparation — 2026-10-30
 
 - Prepared an inactive SQL draft for private trusted account state, owner-only ACTIVE-to-CLOSING requests and admission inside the original Food/Nonfood public issuers.
