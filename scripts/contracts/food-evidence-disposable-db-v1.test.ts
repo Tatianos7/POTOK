@@ -350,7 +350,7 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
     if (process.env.POTOK_CLOSURE_REAL_ISSUER_MATRIX === '1') {
       assert.equal(process.env.POTOK_NONFOOD_ACCEPTANCE, '1', 'both unchanged real issuers must be installed');
       const { runRealIssuerClosureMatrixV1 } = await import('./p5-03c-real-issuer-closure-matrix-v1');
-      await runRealIssuerClosureMatrixV1(t, { sql, asUser });
+      await runRealIssuerClosureMatrixV1(t, { sql, asUser }, { draft: process.env.POTOK_CLOSURE_DRAFT_ACCEPTANCE === '1' });
     }
   } finally {
     if (started) await run('pg_ctl',['-D',data,'-m','immediate','-w','stop'],{ env, timeout:30_000 });
