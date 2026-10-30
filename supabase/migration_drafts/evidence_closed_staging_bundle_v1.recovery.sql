@@ -1,5 +1,6 @@
 -- INACTIVE recovery candidate. Requires separate explicit Staging authorization.
--- Preserve all account/provenance/evidence data. Disable only the reviewed new hook.
+-- Preserve all account/provenance/evidence data. Suspend only our reviewed hook body.
+-- Managed Supabase postgres has TRIGGER but does not own auth.users.
 BEGIN;
 SET LOCAL lock_timeout='2s';
 SET LOCAL statement_timeout='10s';
@@ -18,6 +19,15 @@ BEGIN
   RAISE EXCEPTION 'EVIDENCE_BUNDLE_REVIEWED_RECOVERY_HOOK_REQUIRED';
  END IF;
 END $recovery$;
-ALTER TABLE auth.users DISABLE TRIGGER potok_closure_register_new_auth_v1;
+CREATE OR REPLACE FUNCTION potok_closure.register_new_auth_v1() RETURNS trigger
+LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog AS $$
+BEGIN
+ -- EVIDENCE_BUNDLE_RECOVERY_SUSPENDED: no state creation; missing state fails closed.
+ IF TG_TABLE_SCHEMA<>'auth' OR TG_TABLE_NAME<>'users' OR TG_OP<>'INSERT' THEN
+  RAISE EXCEPTION 'AUTH_INSERT_EVENT_REQUIRED';
+ END IF;
+ RETURN NEW;
+END $$;
+REVOKE ALL ON FUNCTION potok_closure.register_new_auth_v1() FROM PUBLIC,anon,authenticated,service_role;
 REVOKE ALL ON FUNCTION public.food_evidence_review_v1(text),public.food_evidence_receipt_v1(uuid),public.food_evidence_current_v1(uuid,text),public.nonfood_evidence_review_v1(text),public.nonfood_evidence_receipt_v1(uuid),public.nonfood_evidence_current_v1(uuid),public.account_closure_begin_v1(text) FROM PUBLIC,anon,authenticated,service_role;
 COMMIT;

@@ -16,6 +16,13 @@ export async function runClosedEvidenceBundleV1(t:TestContext,{sql}:DB) {
    BEGIN INSERT INTO public.synthetic_bundle_signup_audit VALUES(NEW.id);RETURN NEW;END $$;
   CREATE TRIGGER synthetic_existing_signup AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.synthetic_bundle_signup();`);
  for(const n of [910001,910002,910003])await sql(`INSERT INTO auth.users(id) VALUES(${q(id(n))});INSERT INTO public.user_profiles(user_id) VALUES(${q(id(n))});`);
+ // Match the observed managed boundary: SQL postgres can attach a trigger but
+ // neither owns Auth nor inherits its owner, and is not a superuser.
+ await sql(`CREATE ROLE fixture_managed_auth_owner NOLOGIN;
+  ALTER TABLE auth.users OWNER TO fixture_managed_auth_owner;
+  GRANT SELECT,INSERT,UPDATE,DELETE,REFERENCES,TRIGGER ON auth.users TO postgres;
+  ALTER ROLE postgres NOSUPERUSER BYPASSRLS;`);
+ assert.equal(await sql("SELECT NOT (SELECT rolsuper FROM pg_roles WHERE rolname=current_user) AND NOT pg_has_role(current_user,(SELECT relowner FROM pg_class WHERE oid='auth.users'::regclass),'USAGE') AND has_table_privilege(current_user,'auth.users','TRIGGER')"),'t');
  const inventorySql=`SELECT encode(extensions.digest(convert_to(coalesce(string_agg(pg_get_triggerdef(t.oid)||':'||t.tgenabled::text||':'||pg_get_userbyid(p.proowner)::text||':'||p.prosecdef::text||':'||coalesce(array_to_string(p.proconfig,','),'')||':'||encode(extensions.digest(convert_to(p.prosrc,'UTF8'),'sha256'),'hex'),E'\n' ORDER BY t.tgname),''),'UTF8'),'sha256'),'hex') FROM pg_trigger t JOIN pg_proc p ON p.oid=t.tgfoid WHERE t.tgrelid='auth.users'::regclass AND NOT t.tgisinternal`;
  const observed=await sql(inventorySql); // Explicitly reviewed SYNTHETIC trigger fixture only.
  const target="SET potok_evidence.bundle_target='staging:ozidryfvhkcbtpnulakq';";
@@ -103,11 +110,13 @@ export async function runClosedEvidenceBundleV1(t:TestContext,{sql}:DB) {
  await t.test('closed bundle: guarded recovery preserves records and other signup hooks while keeping RPCs closed',async()=>{
   const recovery=await readFile('supabase/migration_drafts/evidence_closed_staging_bundle_v1.recovery.sql','utf8');
   await assert.rejects(sql(recovery),/EVIDENCE_BUNDLE_RECOVERY_TARGET_OWNER_REQUIRED/);
+  await assert.rejects(sql('ALTER TABLE auth.users DISABLE TRIGGER potok_closure_register_new_auth_v1'),/must be owner/);
   const records=()=>sql('SELECT jsonb_build_array((SELECT jsonb_agg(to_jsonb(a)) FROM potok_closure.accounts_v1 a),(SELECT jsonb_agg(to_jsonb(r)) FROM potok_closure.registration_records_v1 r))');
   const beforeRecovery=await records();
   await sql("SET potok_evidence.recovery_target='staging:ozidryfvhkcbtpnulakq';"+recovery);
   assert.equal(await records(),beforeRecovery);
-  assert.equal(await sql("SELECT tgenabled FROM pg_trigger WHERE tgrelid='auth.users'::regclass AND tgname='potok_closure_register_new_auth_v1'"),'D');
+  assert.equal(await sql("SELECT tgenabled FROM pg_trigger WHERE tgrelid='auth.users'::regclass AND tgname='potok_closure_register_new_auth_v1'"),'O');
+  assert.equal(await sql("SELECT strpos(prosrc,'EVIDENCE_BUNDLE_RECOVERY_SUSPENDED')>0 FROM pg_proc WHERE oid='potok_closure.register_new_auth_v1()'::regprocedure"),'t');
   assert.equal(await sql("SELECT tgenabled FROM pg_trigger WHERE tgrelid='auth.users'::regclass AND tgname='synthetic_existing_signup'"),'O');
   const afterRecovery=id(910006);
   await sql(`SET ROLE fixture_auth_server;INSERT INTO auth.users(id,is_anonymous,created_at) VALUES(${q(afterRecovery)},false,clock_timestamp())`);

@@ -5,7 +5,7 @@
 - Added an offline composer and explicit SHA256 component manifest, plus reproducible reviewable SQL for admission columns, Food, closed Nonfood, account admission and Auth-state registration in one transaction.
 - Original component bodies stay unchanged; only their verified outer transaction wrappers are removed. All seven Food/Nonfood/owner-closure RPCs are revoked before the single COMMIT, preventing any client-opening interval between component installs.
 - Separate bundle-draft native mode reproduces missing food columns and three synthetic legacy accounts, checks late/final rollback, actual cross-session visibility, closed endpoints, signup coexistence/rollback and replay. Other 49/54/76-test modes remain active.
-- Prepared and tested a separately authorized recovery candidate: bind the exact registration hook, disable only that hook and retain closed RPCs/all existing data. New Auth users then have missing account state; no ACTIVE fallback is introduced.
+- Prepared a separately authorized recovery candidate: bind the exact registration hook and suspend its owned function body while retaining closed RPCs/all data. Native bundle mode reproduces Staging's non-superuser SQL actor with TRIGGER rights but no Auth-table ownership. New Auth users then have missing account state; no ACTIVE fallback is introduced.
 - No live Supabase application, existing-account approval, source approval, generator activation or retention/erasure completion. Real Auth/OTP/PostgREST remains unverified; installing the hook requires explicit owner review because failure can block signup.
 
 ## Closed Nonfood Staging installer — 2026-10-30
