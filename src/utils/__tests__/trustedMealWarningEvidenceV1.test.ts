@@ -439,11 +439,11 @@ test('empty required-slot package admits an explicit empty set, no synthesized s
  const set=sealSet({contract:trustedMealWarningEvidenceSetContractV1,validationEvidenceDigest:empty.digest,validationPoliciesDigest:policies.digest,entries:[]});
  assert.deepEqual(await decodeTrustedMealWarningEvidenceSetRawV1(JSON.stringify(set),JSON.stringify(policies),rawContext,emptyPlanRaw),set);
 });
-test('runtime/AST export audit: five raw-only functions, four constants; policy integration uses RawV2 only',()=>{
+test('runtime/AST export audit: six raw-only functions, four constants; policy integration uses RawV2 only',()=>{
  const functions=Object.entries(warningModule).filter(([,v])=>typeof v==='function').map(([k])=>k).sort();
- assert.deepEqual(functions,['decodeMealWarningEvidenceRawV1','decodeTrustedMealWarningEvidenceSetRawV1',
+ assert.deepEqual(functions,['decodePreparedMealWarningEvidenceRawV2','decodeMealWarningEvidenceRawV1','decodeTrustedMealWarningEvidenceSetRawV1',
   'mealWarningEvidenceCanonicalBytesRawV1','trustedMealWarningEvidenceSetCanonicalBytesRawV1','assertTrustedMealWarningEvidenceSetPinnedRawV1'].sort());
- assert.equal(Object.keys(warningModule).length,9);
+ assert.equal(Object.keys(warningModule).length,10);
  const source=readFileSync(new URL('../trustedMealWarningEvidenceV1.ts',import.meta.url),'utf8');
  const ast=ts.createSourceFile('warning.ts',source,ts.ScriptTarget.Latest,true);
  for(const node of ast.statements) if(ts.isFunctionDeclaration(node)&&node.modifiers?.some(m=>m.kind===ts.SyntaxKind.ExportKeyword)) {
