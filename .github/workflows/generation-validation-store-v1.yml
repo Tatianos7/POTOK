@@ -1,0 +1,38 @@
+name: Generation validation storage disposable PostgreSQL
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: generation-validation-store-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: disposable-generation-only
+          POSTGRES_DB: potok_generation_store_disposable
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d potok_generation_store_disposable"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Actual PostgreSQL storage, reader and trusted validator chain
+        run: node --import tsx --test scripts/contracts/generation-validation-store-v1.test.ts
+        env:
+          POTOK_GENERATION_STORE_NATIVE: '1'
+          PGPASSWORD: disposable-generation-only
