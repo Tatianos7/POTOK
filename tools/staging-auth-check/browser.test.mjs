@@ -33,7 +33,7 @@ test('phone screen: explicit OTP flow, memory-only session, server validation an
     const fulfill=(status,json)=>route.fulfill({status,headers:{...cors,'content-type':'application/json'},body:JSON.stringify(json)});
     const user={id:'00000000-0000-4000-8000-000000000999',is_anonymous:false,app_metadata:{provider:'email'},user_metadata:{},aud:'authenticated'};
     if(url.pathname==='/auth/v1/otp'){
-     assert.equal(request.method(),'POST');assert.equal(request.postDataJSON().create_user,true);
+     assert.equal(request.method(),'POST');assert.equal(request.postDataJSON().create_user,false);
      await fulfill(200,{});return;
     }
     if(url.pathname==='/auth/v1/verify'){

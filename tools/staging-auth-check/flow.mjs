@@ -19,7 +19,8 @@ export function validPublicKey(key){
  }catch{return false;}
 }
 const fail=code=>{throw new Error(code);};
-export function createAcceptanceFlow({client,now=()=>Date.now()}){
+export function createAcceptanceFlow({client,now=()=>Date.now(),intent='existing'}){
+ if(!['existing','signup'].includes(intent))fail('STATE_INVALID');
  let phase='email',email='',busy=false,nextSend=0,report=null;
  let verified=false;
  const summary=()=>({phase,busy,resendIn:Math.max(0,Math.ceil((nextSend-now())/1000)),report});
@@ -29,7 +30,7 @@ export function createAcceptanceFlow({client,now=()=>Date.now()}){
   if(now()<nextSend)fail('COOLDOWN');
   if(!consent||typeof address!=='string'||!/^\S+@\S+\.\S+$/.test(address.trim())||address.length>254)fail('EMAIL_REQUIRED');
   email=address.trim();nextSend=now()+60000;
-  let result;try{result=await client.auth.signInWithOtp({email,options:{shouldCreateUser:true}});}catch{fail('DELIVERY_UNAVAILABLE');}
+  let result;try{result=await client.auth.signInWithOtp({email,options:{shouldCreateUser:intent==='signup'}});}catch{fail('DELIVERY_UNAVAILABLE');}
   if(result.error)fail(result.error.status===429?'RATE_LIMIT':'DELIVERY_UNAVAILABLE');
   phase='code';return summary();
  });}
@@ -45,14 +46,16 @@ export function createAcceptanceFlow({client,now=()=>Date.now()}){
   const user=userResponse.data?.user;
   if(userResponse.error||!user?.id||user.is_anonymous!==false)fail('SESSION_UNVERIFIED');
   verified=true;phase='checks';
-  report={contract:'potok-staging-auth-transport-check-v1',sessionVerified:true,
-   accountState:'NOT_CHECKED',emailDelivery:'CODE_RECEIVED',normalRights:false,closedRpcCount:0,
-   completed:false,serverRegistration:'PENDING_INDEPENDENT_SERVER_CHECK'};
+  report={contract:'potok-staging-auth-transport-check-v1',intent,sessionVerified:true,
+   accountState:'NOT_CHECKED',emailDelivery:'CODE_RECEIVED',normalRights:false,rightsVerified:false,existingRights:{},closedRpcCount:0,
+   completed:false,serverRegistration:intent==='signup'?'PENDING_INDEPENDENT_SERVER_CHECK':'NOT_TESTED_EXISTING_LOGIN'};
   for(const capability of ['admin','premium']){
    let r;try{r=await client.rpc('has_verified_entitlement_v2',{p_capability:capability},{get:true});}catch{fail('RIGHTS_UNVERIFIED');}
-   if(r.error||r.data!==false)fail('RIGHTS_UNVERIFIED');
+   if(r.error||typeof r.data!=='boolean'||(intent==='signup'&&r.data!==false))fail('RIGHTS_UNVERIFIED');
+   report.existingRights[capability]=r.data;
   }
-  report.normalRights=true;
+  report.rightsVerified=true;
+  report.normalRights=!report.existingRights.admin&&!report.existingRights.premium;
   for(const [name,args] of CLOSED_CALLS){
    // GET only: this must never submit an evidence proposal or closure mutation.
    let r;try{r=await client.rpc(name,args,{get:true});}catch{fail('RPC_UNVERIFIED');}

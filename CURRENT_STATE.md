@@ -1,5 +1,10 @@
 # POTOK current state
 
+## Existing-email test steering — 2026-10-30
+
+- Owner has no additional email and recognized an existing masked Staging address. The phone screen now defaults to existing login with shouldCreateUser=false; it cannot silently create a new account when an address is absent.
+- Existing admin/Premium booleans are read and shown as existing rights, not interpreted as newly granted privileges. New-signup checks remain separate and are not marked passed by an existing-login result. No email or OTP is embedded in source/results.
+
 ## Phone-based Auth transport check preparation — 2026-10-30
 
 - Owner can test only on a phone. Prepared a standalone Staging-only screen outside the main app build, using the existing locked Supabase SDK with session persistence, auto-refresh and URL session detection disabled.

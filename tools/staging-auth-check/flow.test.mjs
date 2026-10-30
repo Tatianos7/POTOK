@@ -24,7 +24,7 @@ test('sending is explicit, single-flight and cooldown-bound, with no automatic i
  await assert.rejects(flow.send('test@example.invalid',false),/EMAIL_REQUIRED/);
  const pending=flow.send(' test@example.invalid ',true);
  await assert.rejects(flow.send('test@example.invalid',true),/BUSY/);await pending;
- assert.deepEqual(f.calls[0],['send',{email:'test@example.invalid',options:{shouldCreateUser:true}}]);
+ assert.deepEqual(f.calls[0],['send',{email:'test@example.invalid',options:{shouldCreateUser:false}}]);
  await assert.rejects(flow.send('test@example.invalid',true),/COOLDOWN/);
  time+=60000;await flow.send('test@example.invalid',true);
  assert.equal(f.calls.filter(c=>c[0]==='send').length,2);
@@ -34,7 +34,7 @@ test('actual Auth validation precedes read-only RPC probes; summary contains no 
  await flow.send('test@example.invalid',true);await flow.verify('123456');
  assert.equal(flow.summary().phase,'done');assert.equal(flow.summary().report.closedRpcCount,7);
  assert.equal(flow.summary().report.accountState,'NOT_CHECKED');
- assert.equal(flow.summary().report.serverRegistration,'PENDING_INDEPENDENT_SERVER_CHECK');
+ assert.equal(flow.summary().report.serverRegistration,'NOT_TESTED_EXISTING_LOGIN');
  assert.ok(f.calls.findIndex(c=>c[0]==='getUser')<f.calls.findIndex(c=>c[0]==='rpc'));
  assert.ok(f.calls.filter(c=>c[0]==='rpc').every(c=>c[3].get===true));
  const safe=JSON.stringify(flow.summary());
@@ -55,10 +55,20 @@ test('unexpected privilege, expiry, missing authentication or an opened RPC neve
  for(const result of [{data:true,status:200,error:null},{data:null,status:401,error:{code:'42501'}},{data:null,status:405,error:{code:'25006'}},{data:{},status:200,error:null}]){
   const f=fixture(),original=f.client.rpc;
   f.client.rpc=async(name,...args)=>name==='has_verified_entitlement_v2'?(result.data===true?result:original(name,...args)):result;
-  const flow=createAcceptanceFlow({client:f.client});await flow.send('test@example.invalid',true);
+  const flow=createAcceptanceFlow({client:f.client,intent:'signup'});await flow.send('test@example.invalid',true);
   await assert.rejects(flow.verify('123456'),/RIGHTS_UNVERIFIED|RPC_UNVERIFIED/);
   assert.equal(flow.summary().report.completed,false);await flow.finish();
  }
+});
+test('existing login reads existing privileges without treating them as a new grant or new registration',async()=>{
+ const f=fixture();const original=f.client.rpc;
+ f.client.rpc=async(name,...args)=>name==='has_verified_entitlement_v2'?{data:true,error:null,status:200}:original(name,...args);
+ const flow=createAcceptanceFlow({client:f.client});await flow.send('test@example.invalid',true);await flow.verify('123456');
+ assert.equal(flow.summary().report.completed,true);
+ assert.deepEqual(flow.summary().report.existingRights,{admin:true,premium:true});
+ assert.equal(flow.summary().report.normalRights,false);
+ assert.equal(flow.summary().report.serverRegistration,'NOT_TESTED_EXISTING_LOGIN');
+ assert.equal(f.calls[0][1].options.shouldCreateUser,false);
 });
 test('delivery/OTP errors are sanitized; invalid input and transport failures do not start probes',async()=>{
  const f=fixture({auth:{signInWithOtp:async()=>({error:{status:429,message:'private transport body'}})}});
