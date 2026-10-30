@@ -56,7 +56,10 @@ test('phone screen: explicit OTP flow, memory-only session, server validation an
    await page.locator('#email').fill('screen-test@example.invalid');await page.locator('#consent').check();
    await page.locator('#send').click();await page.locator('#code-step').waitFor({state:'visible'});
    await page.locator('#code').fill('123456');await page.locator('#verify').click();
-   await page.waitForFunction(()=>document.getElementById('rpc-result')?.textContent.includes('7 из 7'));
+   const deadline=Date.now()+10000;
+   while(Date.now()<deadline && !(await page.locator('#rpc-result').textContent()).includes('7 из 7'))
+    await new Promise(r=>setTimeout(r,25));
+   assert.ok((await page.locator('#rpc-result').textContent()).includes('7 из 7'),await page.locator('#message').textContent());
    assert.equal(await page.locator('#code').inputValue(),'');
    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true);
    assert.deepEqual(await page.evaluate(()=>{try{return Object.keys(localStorage);}catch{return [];}}),[]);
