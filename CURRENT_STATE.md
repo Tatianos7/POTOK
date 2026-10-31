@@ -1,5 +1,12 @@
 # POTOK current state
 
+## First bounded real recipe review batch — 2026-10-31
+
+- Selected the existing owner pilot oatmeal_with_apple and previously prepared pear_almonds for the first source/measurement batch, reusing exact parent package hashes. No replacement of the pilot by the different workbook oatmeal_apple_cinnamon identity. This two-recipe batch is not weekly catalog coverage.
+- Recorded remaining physical measurements and review gates. Input mass sums (370 g oats/water/apple and 200 g pear/almonds) remain distinct from measured cooked/assembled yield; declared one-serving source values are not confirmed servings. No new nutrition engine, authority path or publication claim.
+- Held two boiled-egg snack candidates: their authoring egg vectors match official SR28 raw whole egg NDB01123 (143 kcal/100 g), while instructions require boiled eggs. Official NDB01129 hard-boiled vector differs (155 kcal/100 g). Retained official page-402/page-384 facts and PDF hash. Two whole eggs and reference 100 g cannot establish measured cooked edible mass; no automatic vector replacement or fractional egg rule.
+- Existing private report contains exact batch observations. Source workbooks, live DB, portion evidence and runtime remain unchanged; generator inactive.
+
 ## Salt and water authoring review — 2026-10-31
 
 - Inspected the same byte-pinned real master. Salt: 71 rows/70 recipes, 45 numeric gram quantities, 26 missing (14 optional and 12 required). Optional/to-taste flags are not permission to omit ingredients or set unknown mass to zero.
