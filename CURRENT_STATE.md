@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Validated proposal to existing record/recovery worker — 2026-10-31
+
+- Added inactive backend provider/validator bindings from the actual catalog/day/week/projection pipeline to the existing V2 worker. Pin loaded request/input/manifest canonical bytes before awaits; compare preparation and independent-authority snapshots to that loaded request. Reject malformed UTF8/hex, duplicate keys and noncanonical JSON before source access.
+- Serialize the proposal canonically before independent validation; preserve those exact accepted bytes through final validation and the existing record/activation worker. Final validation reloads independent authority rather than trusting cached generator acceptance. Revoked authority or changed snapshots prevent recording.
+- Fixed meal-component ingredient comparison to tolerate canonical object-key ordering while preserving array order, exact quantities and rejection of extra properties. This is required to decode the same validated plan after canonical storage serialization.
+- Added synthetic integration tests through the real proposal/validator/worker, including null measured yields/grams, same-request recovery after lost record/activation replies, terminal-state reuse and record-time conflict. Persistence RPCs are simulated: this is not live database or deployment evidence.
+- Actual source/decision-trace/authority storage adapters and privileged gateway runtime mounting remain outstanding. Exact Graph V2 readback and client opening remain separate work; ACTIVE status alone must not stand in for confirmed menu readback. No live DB mutation, deployment, activation or FACT write; cooking remains deferred.
+
 ## Selected week to independently validated proposal — 2026-10-31
 
 - Added an inactive mechanical projection from the existing V2 weekly selection to Graph V2 and GeneratedWeekPlan V1. Uses actual child meal/day/week validator receipts, unchanged selected meal snapshots and independently decoded component evidence; reuses existing graph seal/bind functions. No invented IDs, portions, yields or new nutrition engine.
@@ -14,7 +22,7 @@
 - Retain unknown measured yield/serving grams; use only grounded composition/serving definitions and label calculated nutrition at the appropriate future presentation boundary. This steering does not approve missing canonical evidence, raw/cooked substitutions, invented portions, public catalog publication or generator activation.
 - Implemented request continuity in the existing inactive worker/status path: validate and pin the request/dependencies before awaits; bind load/record/activation/status replies to that request; require exact proposal bytes through validator and record; do not activate again when record already returns ACTIVE. GENERATED/ACTIVATING recovery still skips generation/record.
 - Transport failures still require same-request status recovery; no blind record retry or FACT effect. These checks complement independent validation and DB authority checks; they do not themselves authenticate a validator or establish a durable commit.
-- Production/Staging deployment, Edge/generator binding and activation remain unchanged. Next generation implementation still needs proposal projection/provider and independent trusted-validator binding before a real menu can be delivered. Purchase verification remains after generation (#198).
+- Production/Staging deployment, Edge/generator binding and activation remain unchanged. Proposal projection and inactive provider/validator bindings are now implemented above; real runtime storage/gateway mounting and exact readback/client opening remain outstanding before a real menu can be delivered. Purchase verification remains after generation (#198).
 
 ## First bounded real recipe review batch — 2026-10-31
 

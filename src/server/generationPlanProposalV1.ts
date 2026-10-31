@@ -8,7 +8,7 @@ import {decodeTrustedValidationEvidenceV1} from '../utils/trustedValidationEvide
 import {trustedValidationPoliciesRawBoundaryContractV2} from '../utils/trustedValidationPoliciesV1';
 import {validateWeekSnapshotWithChildResultsRawV2, type WeekValidationInputV1} from '../utils/adaptiveNutritionMealBalanceV1';
 import type {GraphNutritionV1} from '../utils/adaptiveNutritionGraphV1';
-import {assertRawJsonWithoutDuplicateKeysV1,adaptiveNutritionSha256HexV1} from '../utils/adaptiveNutritionWireV1';
+import {assertRawJsonWithoutDuplicateKeysV1,adaptiveNutritionSha256HexV1,canonicalJsonV1} from '../utils/adaptiveNutritionWireV1';
 
 export const generationDecisionTraceContractV1='potok-generation-plan-decision-trace-v1' as const;
 /** Existing producer decision metadata, not reviewer/policy/warning authority. Never fill absent digests with placeholders. */
@@ -109,7 +109,8 @@ export async function projectGenerationWeekRawV1(requestOperationId:string,weekR
     optimizationPolicyRevision:input.optimizationPolicyRevision,generationPolicyRevision:input.generationPolicyRevision,
     days,weekValidationResultDigest:results.week.subjectDigest,weekOptimizationResultDigest:trace.weekOptimizationResultDigest as string});
   const plan=await bindGeneratedWeekPlanV1(input,graph);
-  const generatedPlanRaw=JSON.stringify(plan);
+  // Canonicalize before independent raw-byte validation, never afterwards at record time.
+  const generatedPlanRaw=canonicalJsonV1(plan,'SAFE_INTEGER');
   if(generatedPlanRaw.length>8_000_000)throw Error('PROJECTION_PLAN_TOO_LARGE');
   return Object.freeze({status:'PROJECTED' as const,generatedPlanRaw});
 }
