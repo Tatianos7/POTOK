@@ -69,7 +69,10 @@ test('native request-only preparation starts without final warnings; proposal va
   await t.test('current Premium/selection/manifest and terminal status are still enforced',()=>{
     denied("BEGIN;UPDATE potok_control.access_attestations SET valid_until=statement_timestamp()-interval '1 minute';"+workerSession+read+'ROLLBACK;',/VERIFIED_PREMIUM_REQUIRED/);
     denied("BEGIN;UPDATE public.user_premium_plan_selections SET origin_lineage='{}';"+workerSession+read+'ROLLBACK;',/SOURCE_PROVENANCE_UNAVAILABLE/);
-    denied(`BEGIN;UPDATE potok_nutrition.adaptive_nutrition_candidate_manifest_head_v2 SET current_manifest_revision=${literal(id(999))};`+workerSession+read+'ROLLBACK;',/GENERATION_REQUEST_STALE_MANIFEST/);
+    denied(`BEGIN;UPDATE potok_nutrition.adaptive_nutrition_candidate_manifest_head_v2 SET current_manifest_revision=${literal(id(999))};`+workerSession+read+'ROLLBACK;',/query returned no rows/);
+    denied(`BEGIN;INSERT INTO potok_nutrition.adaptive_nutrition_candidate_manifests_v2
+      SELECT ${literal(id(999))},publication_state,canonical_bytes,canonical_digest FROM potok_nutrition.adaptive_nutrition_candidate_manifests_v2;
+      UPDATE potok_nutrition.adaptive_nutrition_candidate_manifest_head_v2 SET current_manifest_revision=${literal(id(999))};`+workerSession+read+'ROLLBACK;',/GENERATION_REQUEST_STALE_MANIFEST/);
     denied("BEGIN;UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET status='ACTIVE';"+workerSession+read+'ROLLBACK;',/SOURCE_PROVENANCE_UNAVAILABLE/);
     assert.ok(ok(workerSession+read));
   });
