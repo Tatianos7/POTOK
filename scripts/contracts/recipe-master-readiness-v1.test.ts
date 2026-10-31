@@ -5,7 +5,7 @@ function fixture() {
   const sheets = Object.fromEntries(recipeMasterSheetsV1.map(name => [name, [] as Record<string, unknown>[]]));
   sheets['01_Рецепты'] = [{ recipe_id: 'one', name_ru: 'Synthetic', status: 'READY_FOR_REVIEW', servings: 1,
     total_weight_g: null, ref_fiber_g: 0, owner_notes: 'No assumed yield' }, { recipe_id: 'example_one', status: 'DRAFT' }];
-  sheets['02_Ингредиенты'] = [{ ingredient_row_id: 'i1', recipe_id: 'one', weight_g: 10, canonical_status: 'UNRESOLVED', food_stable_id: null },
+  sheets['02_Ингредиенты'] = [{ ingredient_row_id: 'i1', recipe_id: 'one', ingredient_name_ru: 'Synthetic ingredient', weight_g: 10, canonical_status: 'UNRESOLVED', food_stable_id: null },
     { ingredient_row_id: 'example_i', recipe_id: 'example_one' }];
   return sheets;
 }
@@ -23,7 +23,7 @@ test('APPROVED text and complete numeric fields cannot create runtime publicatio
   Object.assign(s['02_Ингредиенты'][0], { canonical_status: 'RESOLVED', food_stable_id: 'synthetic' });
   const r = inspectRecipeMasterRowsV1(s); assert.equal(r.runtimePublishable, false);
   assert.ok(r.recipes[0].issues.includes('INDEPENDENT_RUNTIME_PUBLICATION_EVIDENCE_REQUIRED'));
-  assert.equal(r.ingredientReviewQueue.blockedIngredientRows, 1); // missing name still requires repair
+  assert.equal(r.ingredientReviewQueue.blockedIngredientRows, 0);
 });
 test('keeps unknown, zero, text, negative and nonfinite servings/weights distinct from valid quantities', () => {
   for (const value of [null, 0, -1, '1', NaN, Infinity]) {
