@@ -1,0 +1,11 @@
+Official source: USDA National Nutrient Database for Standard Reference, Release 28 (2015).
+URL: https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/reports/sr28fg02.pdf
+PDF page 22 (one-based), NDB 02047, Salt, table.
+Basis: 100 grams edible portion.
+Energy kcal: 0
+Protein g: 0.00
+Total lipid (fat) g: 0.00
+Carbohydrate, by difference g: 0.00
+Fiber, total dietary g: 0.0
+Mean values were checked against the official PDF on 2026-10-31.
+These explicit source zeros do not establish a retail-product match, zero ingredient mass, absence of sodium, cooking retention or publication approval.

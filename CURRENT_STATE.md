@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Salt and water authoring review — 2026-10-31
+
+- Inspected the same byte-pinned real master. Salt: 71 rows/70 recipes, 45 numeric gram quantities, 26 missing (14 optional and 12 required). Optional/to-taste flags are not permission to omit ingredients or set unknown mass to zero.
+- Water: 64 rows/62 recipes, all volume units ML; 51 recorded gram values equal those volumes and 13 gram values are absent. Preserved recorded values without issuing density approval/converting missing grams. Drained/evaporated process input cannot be assigned as finished recipe yield.
+- Prepared official SR28 NDB02047 page-22 salt facts with actual PDF/capture hashes; reused existing NDB14411 water capture and pinned its existing source package. Explicit source zeros do not prove all-zero ingredient mass, a retail match or source issuance. Water retains the previously selected typed nonfood review path; no new authority mechanism.
+- All salt/water bindings remain unresolved with no stable IDs or receipts. Recipe publication, portions, output weights, database contents and generator activation unchanged. Existing private readiness report carries the detailed observations; public source package contains aggregates only.
+
 ## Real master execution and first ingredient group — 2026-10-31
 
 - Materialized the latest saved master, 393790 bytes; SHA256 matches `9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5`. Extracted original values read-only and ran the actual review-queue implementation: 132 real recipes, 730 ingredient rows, 216 literal-name groups; all 730 require review. Workbook unchanged.
