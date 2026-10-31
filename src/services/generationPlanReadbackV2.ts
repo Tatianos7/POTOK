@@ -73,13 +73,13 @@ export class GenerationPlanReadbackServiceV2 {
     if (!this.enabled() || !this.client) return {kind:'unavailable'};
     if (typeof pinned !== 'string' || !uuid.test(pinned)) return {kind:'invalid-request'};
     try {
-      if (!await this.authenticated(session)) return {kind:'session-stale'};
+      if (!await this.authenticated(session) || session !== this.current || !this.enabled()) return {kind:'session-stale'};
       const {data,error} = await this.client.rpc('adaptive_nutrition_read_generation_plan_v2',{p_request_operation_id:pinned});
       let result: GenerationPlanReadResultV2;
       if (error) result = {kind:'unavailable'};
       else {try {result = await decodeGenerationPlanReadbackV2(data,session.accountId,pinned);}
         catch {result = {kind:'invalid-server-response'};}}
-      if (!await this.authenticated(session)) return {kind:'session-stale'};
+      if (!await this.authenticated(session) || session !== this.current || !this.enabled()) return {kind:'session-stale'};
       return result;
     } catch {return {kind:session === this.current && this.enabled() ? 'unavailable' : 'session-stale'};}
   }

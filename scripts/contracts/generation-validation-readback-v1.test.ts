@@ -80,6 +80,8 @@ test('native request readback uses actual draft and existing canonical/current-h
     ['revoked Premium',"UPDATE potok_control.access_attestations SET valid_until=statement_timestamp()-interval '1 minute';",'denied'],
     ['generation rejected',"UPDATE public.adaptive_nutrition_operations SET outcome='rejected' WHERE action_type='PLAN_GENERATED_V2';",'unavailable'],
     ['activation absent',"DELETE FROM public.adaptive_nutrition_operations WHERE action_type='PLAN_ACTIVATED_V2';",'unavailable'],
+    ['activation rejected',"UPDATE public.adaptive_nutrition_operations SET outcome='rejected' WHERE action_type='PLAN_ACTIVATED_V2';",'unavailable'],
+    ['input digest corrupted',"UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET generation_input_digest=decode(repeat('ff',32),'hex');",'unavailable'],
     ['activation references other generation',`UPDATE public.adaptive_nutrition_operations SET canonical_request=convert_to('{"expectedPlanRevision":null,"generationOperationId":"${id(999)}"}','UTF8') WHERE action_type='PLAN_ACTIVATED_V2';`,'unavailable'],
     ['wrong graph digest',"UPDATE public.adaptive_nutrition_graph_revisions SET content_digest=decode(repeat('ff',32),'hex');",'unavailable'],
     ['wrong stored canonical graph',"UPDATE public.adaptive_nutrition_graph_revisions SET graph_canonical_bytes=convert_to('{}','UTF8');",'unavailable'],

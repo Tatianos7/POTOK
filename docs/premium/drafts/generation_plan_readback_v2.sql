@@ -56,6 +56,10 @@ BEGIN
     'encoding','potok-adaptive-nutrition-graph-v2-canonical-json-v1',
     'contract','adaptive_nutrition_graph_v2','graph',v_plan->'graph')),'UTF8');
   IF v_generated.canonical_request IS DISTINCT FROM v_state.generation_input_canonical
+    OR v_input->>'contract' IS DISTINCT FROM 'potok-adaptive-trusted-generation-input-v1'
+    OR v_state.generation_input_digest IS DISTINCT FROM extensions.digest(convert_to(
+      potok_nutrition.canonical_jsonb_text_v1(jsonb_build_object(
+        'contract','potok-adaptive-trusted-generation-input-v1','input',v_input)),'UTF8'),'sha256')
     OR v_plan->>'contract' IS DISTINCT FROM 'potok-adaptive-generated-week-plan-v1'
     OR v_plan->>'generationInputDigest' IS DISTINCT FROM encode(v_state.generation_input_digest,'hex')
     OR v_plan->>'deterministicContentDigest' IS DISTINCT FROM encode(extensions.digest(convert_to(
@@ -81,6 +85,7 @@ BEGIN
     OR v_graph.generation_input_digest IS DISTINCT FROM extensions.digest(v_generated.canonical_request,'sha256')
     OR v_graph.generation_operation_id IS DISTINCT FROM v_generated.operation_id
     OR v_graph.activation_operation_id IS DISTINCT FROM v_activation.operation_id
+    OR v_activation_request->>'contract' IS DISTINCT FROM 'potok-adaptive-activate-generated-week-v2'
     OR v_activation_request->>'generationOperationId' IS DISTINCT FROM v_generated.operation_id::text
     OR v_activation_request->'expectedPlanRevision' IS DISTINCT FROM 'null'::jsonb
     OR v_activation.result_plan_revision IS DISTINCT FROM v_state.proposed_plan_revision
@@ -88,6 +93,8 @@ BEGIN
     OR v_activation.result_digest IS DISTINCT FROM extensions.digest(v_activation.result_canonical,'sha256')
     OR potok_nutrition.require_canonical_json_v2(v_activation.result_canonical) IS DISTINCT FROM v_activation.result_references
     OR v_activation.result_references->>'contract' IS DISTINCT FROM 'potok-adaptive-plan-activated-v2'
+    OR v_activation.result_references->>'kind' IS DISTINCT FROM 'settled'
+    OR v_activation.result_references->>'outcome' IS DISTINCT FROM 'accepted'
     OR v_activation.result_references->>'operation_id' IS DISTINCT FROM v_activation.operation_id::text
     OR v_activation.result_references->>'selection_id' IS DISTINCT FROM v_state.selection_id::text
     OR v_activation.result_references->>'plan_revision' IS DISTINCT FROM v_state.proposed_plan_revision::text
