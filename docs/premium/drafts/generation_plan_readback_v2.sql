@@ -33,6 +33,7 @@ BEGIN
   SELECT * INTO v_state FROM potok_nutrition.adaptive_nutrition_generation_requests_v2
     WHERE account_id=v_actor AND request_operation_id=p_request_operation_id;
   IF NOT FOUND THEN RETURN jsonb_build_object('kind','not_found'); END IF;
+  IF v_state.status IN ('REJECTED','CONFLICT') THEN RETURN jsonb_build_object('kind','unavailable'); END IF;
   IF v_state.status IS DISTINCT FROM 'ACTIVE' THEN RETURN jsonb_build_object('kind','not_ready'); END IF;
   -- Null revision/digest invokes the existing current-head/Premium reader, never its history path.
   v_read := public.adaptive_nutrition_read_graph_v2(v_state.selection_id,NULL,NULL);

@@ -75,6 +75,8 @@ test('native request readback uses actual draft and existing canonical/current-h
   });
   const mutations:[string,string,string][]=[
     ['request merely GENERATED',"UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET status='GENERATED';",'not_ready'],
+    ['request rejected',"UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET status='REJECTED';",'unavailable'],
+    ['request conflicted',"UPDATE potok_nutrition.adaptive_nutrition_generation_requests_v2 SET status='CONFLICT';",'unavailable'],
     ['noncurrent active head',`UPDATE public.user_premium_plan_selections SET plan_revision=${literal(id(999))};`,'unavailable'],
     ['retired selection',"UPDATE public.user_premium_plan_selections SET status='retired';",'unavailable'],
     ['revoked Premium',"UPDATE potok_control.access_attestations SET valid_until=statement_timestamp()-interval '1 minute';",'denied'],
