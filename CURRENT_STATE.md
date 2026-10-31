@@ -1,5 +1,15 @@
 # POTOK current state
 
+## Explicit request-to-confirmed-menu flow — 2026-10-31
+
+- Connected authenticated generation request/status calls to the existing confirmed-readback controller and seven-day menu view in a separate inactive explicit-action flow. Mounting the component performs no generation request. Client/gates default off; no route, Edge or server worker is activated.
+- Keep the original idempotency key while an initial reply is uncertain; explicit recovery replays only that key. Once the request ID is known, start/refresh use bound status lookup rather than a new request. ACTIVE status still requires independently decoded readback before ready. No automatic retries, polling or disk persistence.
+- Preserve non-secret recovery handles across stop/account changes within the controller and support explicit restore into another controller; scope/account mismatches cannot replace an unresolved operation. Recheck Auth/gate after awaits; stopped/superseded replies cannot publish a menu.
+- Added a combined protocol integration harness spanning request, actual catalog/day/week/projection/independent validation/worker, exact recorded proposal, client readback and seven-day rendering. The request/ledger/gateway/read RPCs in this harness are synthetic stand-ins; this is not full real-database or Staging acceptance. Existing dedicated native PostgreSQL storage/admission/readback suites remain separate evidence.
+- Reused the existing worker fixture through an extracted shared test helper. Cover uncertain request, lost record/activation replies, missing authority, conflict/rejection, missing confirmed readback, stop/account/gate races and no duplicate request creation.
+- Still required: real producer/storage/authority/gateway runtime mounting, reviewed SQL application, mounting the prepared flow and end-to-end Staging acceptance on the installed path. All work remains in Draft PRs; no live database mutation, deployment, activation or FACT write. Cooking stays deferred.
+
+
 ## Request-bound confirmed Graph V2 readback and inactive menu entry — 2026-10-31
 
 - Added a review-only authenticated read RPC bound to an owned generation request. Requires current Premium, ACTIVE request, the current selection head and accepted generation/activation records; compares canonical graph bytes, plan/input storage hashes, graph digest and activation references. Calls the existing Graph V2 reader in current-head mode; never uses historical/exact-read fallback to open a superseded menu. No tables, data or write functions added.
