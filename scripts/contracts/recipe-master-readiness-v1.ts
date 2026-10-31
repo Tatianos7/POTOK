@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import XLSX from 'xlsx';
+import { buildRecipeIngredientReviewQueueV1 } from './recipe-master-review-queue-v1';
 
 type Row = Record<string, unknown>;
 export const recipeMasterSheetsV1 = ['00_Инструкция', '01_Рецепты', '02_Ингредиенты', '03_Шаги',
@@ -68,6 +69,7 @@ export function inspectRecipeMasterRowsV1(sheets: Record<string, Row[]>) {
       orphanIngredients: orphanIngredients.length,
       steps: sheets['03_Шаги'].filter(r => ids.has(text(r.recipe_id))).length },
     recipes: rows,
+    ingredientReviewQueue: buildRecipeIngredientReviewQueueV1(ingredients),
   };
 }
 

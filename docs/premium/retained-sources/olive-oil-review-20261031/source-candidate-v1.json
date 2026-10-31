@@ -1,0 +1,118 @@
+{
+  "contract": "potok-authoring-ingredient-source-review-v1",
+  "status": "SOURCE_CANDIDATE_NOT_APPROVED",
+  "preparedDate": "2026-10-31",
+  "sourceWorkbook": {
+    "filename": "POTOK_recipe_master_v1_007(3).xlsx",
+    "sha256": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+    "bytes": 393790
+  },
+  "scan": {
+    "recipes": 132,
+    "ingredientRows": 730,
+    "blockedIngredientRows": 730,
+    "literalNameGroups": 216
+  },
+  "ingredientLabel": "Масло оливковое",
+  "affectedRecipes": 71,
+  "ingredientRows": 71,
+  "sourceQuantities": {
+    "unit": "G",
+    "amountEqualsWeightG": true,
+    "distribution": [
+      {
+        "grams": 5,
+        "rows": 23
+      },
+      {
+        "grams": 10,
+        "rows": 45
+      },
+      {
+        "grams": 15,
+        "rows": 2
+      },
+      {
+        "grams": 20,
+        "rows": 1
+      }
+    ],
+    "unitConversionPerformed": false
+  },
+  "source": {
+    "version": "USDA SR28 (2015)",
+    "record": "NDB04053",
+    "title": "Oil, olive, salad or cooking",
+    "basis": "PER_100_G_EDIBLE",
+    "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/reports/sr28fg04.pdf",
+    "pdfPageOneBased": 302,
+    "pdfSha256": "cf7dabfc8558d85d190d014a2b68bca7967441e7e32bf4aa78208725f6ac5400",
+    "capturePath": "sr28-04053-facts.txt",
+    "captureSha256": "daf41f25245787bc6595569a904e9f027f149d58b409ec4c3a8fde5a08eb586e",
+    "facts": {
+      "calories": "884",
+      "protein": "0.00",
+      "fat": "100.00",
+      "totalCarbohydrate": "0.00",
+      "fiber": "0.0"
+    }
+  },
+  "workbookFdcIdClaim": {
+    "value": "171413",
+    "independentlyVerified": false
+  },
+  "stagingExactNameObservation": {
+    "project": "ozidryfvhkcbtpnulakq",
+    "date": "2026-10-31",
+    "sharedCoreBrandCandidates": 1,
+    "completeFiveNutrientCandidates": 0,
+    "bindingEstablished": false
+  },
+  "candidateInputContributions": [
+    {
+      "grams": 5,
+      "calories": "44.200",
+      "protein": "0.000",
+      "fat": "5.000",
+      "carbs": "0.000",
+      "fiber": "0.000"
+    },
+    {
+      "grams": 10,
+      "calories": "88.400",
+      "protein": "0.000",
+      "fat": "10.000",
+      "carbs": "0.000",
+      "fiber": "0.000"
+    },
+    {
+      "grams": 15,
+      "calories": "132.600",
+      "protein": "0.000",
+      "fat": "15.000",
+      "carbs": "0.000",
+      "fiber": "0.000"
+    },
+    {
+      "grams": 20,
+      "calories": "176.800",
+      "protein": "0.000",
+      "fat": "20.000",
+      "carbs": "0.000",
+      "fiber": "0.000"
+    }
+  ],
+  "limitations": [
+    "GENERIC_SOURCE_NOT_A_RETAIL_PRODUCT_MATCH",
+    "SOURCE_IDENTITY_AND_NUTRITION_EVIDENCE_NOT_ISSUED",
+    "COOKING_OIL_RETENTION_NOT_MEASURED",
+    "RECIPE_PORTIONS_AND_YIELD_NOT_ESTABLISHED",
+    "ALLERGEN_DIETARY_COMPOSITION_REVIEW_REQUIRED",
+    "NO_RECIPE_PUBLICATION_OR_MANIFEST"
+  ],
+  "canonicalFoodId": null,
+  "reviewReceipt": null,
+  "runtimePublishable": false,
+  "sourceWorkbookModified": false,
+  "databaseModified": false
+}

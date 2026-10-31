@@ -1,0 +1,133 @@
+{
+  "contract": "potok-first-real-source-review-batch-v1",
+  "status": "PREPARATION_NOT_APPROVED",
+  "date": "2026-10-31",
+  "sourceWorkbookSha256": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+  "selectionReason": "Reuse the owner-selected cooking pilot and previously prepared pear/almond sources, with a small ingredient set and no dairy NO-GO bypass. This is source/measurement triage, not a complete weekly catalog.",
+  "sourcePackages": [
+    {
+      "path": "docs/premium/retained-sources/p5-03b/source-package-v1.json",
+      "sha256": "a616ff3a01c499bc1938e5bf476182ecadc1a1053da243cb6cff651bae80f137"
+    },
+    {
+      "path": "docs/premium/retained-sources/pear-almonds-review-20261030/source-candidate-v1.json",
+      "sha256": "35aaf1a74e8b988a1b775a5291f533d67b3cfa7383e2b5b714acf4a263bccb92"
+    }
+  ],
+  "selected": [
+    {
+      "recipeId": "oatmeal_with_apple",
+      "sourceIdentity": "EXISTING_REPOSITORY_OWNER_SELECTED_PILOT",
+      "notEquivalentWorkbookRecipeId": "oatmeal_apple_cinnamon",
+      "sourceDeclaredServings": 1,
+      "physicalCheck": "COOKING_REQUIRED",
+      "inputComponents": [
+        {
+          "label": "dry plain rolled oats",
+          "grams": "50"
+        },
+        {
+          "label": "plain potable water",
+          "grams": "200"
+        },
+        {
+          "label": "edible raw apple with skin, core and stem removed, added after cooking",
+          "grams": "120"
+        }
+      ],
+      "inputMassSumG": "370",
+      "measuredFinishedYieldG": null,
+      "measuredServedMassG": null,
+      "confirmedServings": null,
+      "remainingReview": [
+        "PHYSICAL_COOKING_AND_WATER_RETENTION",
+        "PRODUCT_STATE_AND_APPLICABILITY_REVIEW",
+        "INDEPENDENT_FOOD_NONFOOD_EVIDENCE",
+        "ALLERGEN_DIETARY_COMPOSITION_REVIEW",
+        "CONFIRMED_PORTION_POLICY",
+        "RECIPE_PUBLICATION_AND_MANIFEST"
+      ],
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "pear_almonds",
+      "sourceIdentity": "EXACT_WORKBOOK_RECIPE_AND_PINNED_PREPARED_PACKAGE",
+      "sourceDeclaredServings": 1,
+      "physicalCheck": "ASSEMBLY_REQUIRED",
+      "inputComponents": [
+        {
+          "label": "edible pear after core/stem removal",
+          "grams": "180"
+        },
+        {
+          "label": "raw unsalted shelled almonds",
+          "grams": "20"
+        }
+      ],
+      "inputMassSumG": "200",
+      "measuredFinishedYieldG": null,
+      "measuredServedMassG": null,
+      "confirmedServings": null,
+      "remainingReview": [
+        "PHYSICAL_ASSEMBLY",
+        "SOURCE_TOTAL_VS_AVAILABLE_CARBS_FINDING_REVIEW",
+        "PRODUCT_STATE_AND_APPLICABILITY_REVIEW",
+        "INDEPENDENT_FOOD_NONFOOD_EVIDENCE",
+        "ALLERGEN_DIETARY_COMPOSITION_REVIEW",
+        "CONFIRMED_PORTION_POLICY",
+        "RECIPE_PUBLICATION_AND_MANIFEST"
+      ],
+      "runtimePublishable": false
+    }
+  ],
+  "heldCandidates": [
+    {
+      "recipeId": "boiled_eggs_cucumber",
+      "status": "HOLD_RAW_COOKED_REFERENCE_CONFLICT",
+      "requiredState": "HARD_BOILED_EDIBLE",
+      "workbookReferenceStateFinding": "NUMERIC_VECTOR_MATCHES_RAW_WHOLE_EGG_RECORD",
+      "workbookEggReferencePer100G": {
+        "calories": "143",
+        "protein": "12.56",
+        "fat": "9.51",
+        "carbs": "0.72",
+        "fiber": "0.0"
+      },
+      "countRule": "TWO_WHOLE_DISCRETE_EGGS; NO_FRACTIONAL_EGG",
+      "sourceReferenceEggMassG": "100",
+      "measuredCookedEggMassG": null,
+      "automaticSourceReplacement": false
+    },
+    {
+      "recipeId": "boiled_eggs_cherry_tomatoes",
+      "status": "HOLD_RAW_COOKED_REFERENCE_CONFLICT",
+      "requiredState": "HARD_BOILED_EDIBLE",
+      "workbookReferenceStateFinding": "NUMERIC_VECTOR_MATCHES_RAW_WHOLE_EGG_RECORD",
+      "workbookEggReferencePer100G": {
+        "calories": "143",
+        "protein": "12.56",
+        "fat": "9.51",
+        "carbs": "0.72",
+        "fiber": "0.0"
+      },
+      "countRule": "TWO_WHOLE_DISCRETE_EGGS; NO_FRACTIONAL_EGG",
+      "sourceReferenceEggMassG": "100",
+      "measuredCookedEggMassG": null,
+      "automaticSourceReplacement": false
+    }
+  ],
+  "eggConflictSource": {
+    "capturePath": "docs/premium/retained-sources/first-batch-review-20261031/egg-state-facts.txt",
+    "captureSha256": "8673cd171fc09fb70b1324f085c54eae0b145ad4c0067afa96a6568ad6fbec06",
+    "pdfSha256": "10c238291008ab06e351188c6170c042d12068fe1b569ebe67d80649a8b3a30c",
+    "rawNdbId": "01123",
+    "rawPdfPageOneBased": 402,
+    "cookedNdbId": "01129",
+    "cookedPdfPageOneBased": 384,
+    "fdcIdIdentityVerified": false
+  },
+  "weeklyCatalogReady": false,
+  "generatorActivated": false,
+  "sourceWorkbookModified": false,
+  "databaseModified": false
+}

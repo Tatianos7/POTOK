@@ -1,0 +1,187 @@
+{
+  "contract": "potok-authoring-salt-water-source-review-v1",
+  "status": "SOURCE_CANDIDATES_NOT_APPROVED",
+  "date": "2026-10-31",
+  "sourceWorkbook": {
+    "filename": "POTOK_recipe_master_v1_007(3).xlsx",
+    "sha256": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+    "bytes": 393790
+  },
+  "groups": [
+    {
+      "label": "Соль",
+      "ingredientRows": 71,
+      "affectedRecipes": 70,
+      "recordedPositiveGramRows": 45,
+      "missingGramRows": 26,
+      "missingGramsOptionalRows": 14,
+      "missingGramsRequiredRows": 12,
+      "recordedGramDistribution": [
+        {
+          "grams": 1,
+          "rows": 1
+        },
+        {
+          "grams": 2,
+          "rows": 31
+        },
+        {
+          "grams": 3,
+          "rows": 13
+        }
+      ],
+      "unitCounts": {
+        "(missing)": 12,
+        "TSP": 14,
+        "G": 45
+      },
+      "allBindingsUnresolved": true,
+      "stableIdCount": 0,
+      "quantityConversionsPerformed": false,
+      "physicalRetainedYieldG": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "source": {
+        "record": "NDB02047",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 22,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/reports/sr28fg02.pdf",
+        "pdfSha256": "a3671c827247adbcc806c7a3db05eed074c7ade10540dc01db70c47cbae9d6a4",
+        "retainedPath": "docs/premium/retained-sources/salt-water-review-20261031/sr28-02047-facts.txt",
+        "captureSha256": "6b11c954882b9a89a717184a0644179a605bacf734ad96f79d27bfc8bb58b83d",
+        "facts": {
+          "calories": "0",
+          "protein": "0.00",
+          "fat": "0.00",
+          "totalCarbohydrate": "0.00",
+          "fiber": "0.0"
+        }
+      },
+      "remainingReview": [
+        "UNKNOWN_SALT_GRAMS_NOT_ZERO",
+        "OPTIONAL_DOES_NOT_AUTHORIZE_OMISSION",
+        "TABLE_SALT_SOURCE_NOT_ALL_SEASONINGS_OR_RETAIL_SALTS",
+        "TYPED_REPRESENTATION_REVIEW_NO_ZERO_MACRO_FOOD_BYPASS",
+        "SALT_MASS_AND_SODIUM_NOT_ABSENT_BECAUSE_MACROS_ZERO"
+      ]
+    },
+    {
+      "label": "Вода",
+      "ingredientRows": 64,
+      "affectedRecipes": 62,
+      "recordedPositiveGramRows": 51,
+      "missingGramRows": 13,
+      "missingGramsOptionalRows": 0,
+      "missingGramsRequiredRows": 13,
+      "recordedGramDistribution": [
+        {
+          "grams": 50,
+          "rows": 3
+        },
+        {
+          "grams": 100,
+          "rows": 6
+        },
+        {
+          "grams": 150,
+          "rows": 2
+        },
+        {
+          "grams": 200,
+          "rows": 3
+        },
+        {
+          "grams": 210,
+          "rows": 1
+        },
+        {
+          "grams": 240,
+          "rows": 9
+        },
+        {
+          "grams": 280,
+          "rows": 3
+        },
+        {
+          "grams": 300,
+          "rows": 3
+        },
+        {
+          "grams": 320,
+          "rows": 2
+        },
+        {
+          "grams": 360,
+          "rows": 1
+        },
+        {
+          "grams": 480,
+          "rows": 1
+        },
+        {
+          "grams": 680,
+          "rows": 1
+        },
+        {
+          "grams": 1000,
+          "rows": 3
+        },
+        {
+          "grams": 1200,
+          "rows": 1
+        },
+        {
+          "grams": 1500,
+          "rows": 7
+        },
+        {
+          "grams": 1800,
+          "rows": 4
+        },
+        {
+          "grams": 3000,
+          "rows": 1
+        }
+      ],
+      "unitCounts": {
+        "ML": 64
+      },
+      "allBindingsUnresolved": true,
+      "stableIdCount": 0,
+      "quantityConversionsPerformed": false,
+      "physicalRetainedYieldG": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "source": {
+        "record": "NDB14411",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 752,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg14.pdf",
+        "retainedPath": "docs/premium/retained-sources/p5-03b/water-usda-sr28-14411.txt",
+        "captureSha256": "5a3e857547b56df38ffebf1d0ce882a7eea8b8111bdb4d07b7422c8d79922b26",
+        "parentPackagePath": "docs/premium/retained-sources/p5-03b/source-package-v1.json",
+        "parentPackageSha256": "a616ff3a01c499bc1938e5bf476182ecadc1a1053da243cb6cff651bae80f137",
+        "verification": "REUSED_EXISTING_RETAINED_SOURCE; no new upstream PDF byte verification",
+        "facts": {
+          "calories": "0",
+          "protein": "0.00",
+          "fat": "0.00",
+          "totalCarbohydrate": "0.00",
+          "fiber": "0.0"
+        }
+      },
+      "sourceRecordedGramsEqualMlOnKnownRows": true,
+      "preferredRepresentation": "EXISTING_REVIEWED_APPROVED_NON_FOOD_PATH; NOT_YET_ISSUED",
+      "remainingReview": [
+        "PLAIN_POTABLE_WATER_SCOPE_NOT_ARBITRARY_LIQUIDS",
+        "RECORDED_VOLUME_IS_NOT_MEASURED_GRAMS",
+        "RECORDED_ML_EQUALS_G_IS_NOT_DENSITY_APPROVAL",
+        "DRAINED_OR_EVAPORATED_INPUT_IS_NOT_FINISHED_YIELD",
+        "NONFOOD_SOURCE_AND_DEFINITION_EVIDENCE_NOT_ISSUED"
+      ]
+    }
+  ],
+  "sourceWorkbookModified": false,
+  "databaseModified": false,
+  "generatorActivated": false
+}

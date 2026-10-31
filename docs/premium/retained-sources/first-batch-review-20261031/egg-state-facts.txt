@@ -1,0 +1,9 @@
+Official source: USDA National Nutrient Database for Standard Reference, Release 28 (2015).
+URL: https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/reports/sr28fg01.pdf
+Basis for both records: 100 grams edible portion, excluding shell.
+PDF page 402 (one-based): NDB 01123, Egg, whole, raw, fresh.
+Energy kcal: 143; protein g: 12.56; fat g: 9.51; carbohydrate by difference g: 0.72; fiber g: 0.0.
+PDF page 384 (one-based): NDB 01129, Egg, whole, cooked, hard-boiled.
+Energy kcal: 155; protein g: 12.58; fat g: 10.61; carbohydrate by difference g: 1.12; fiber g: 0.0.
+Checked directly against official PDF Mean columns on 2026-10-31.
+Different raw/cooked reference vectors are not interchangeable. These are source facts, not a cooking conversion factor, measured mass for two eggs, retail-product approval or recipe nutrition revision.
