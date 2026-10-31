@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Real ingredient review queue — 2026-10-31
+
+- Owner's Android Staging check showed server-confirmed existing-account login, Admin=false, Premium=false, all seven closed RPC probes denied, and local test-session completion. This confirms existing-login transport, not new signup, recipe readiness or generator activation.
+- Offline master inspection now includes a row-addressable ingredient review queue ranked by distinct affected recipes, then source-row count. Literal authoring labels group review work only; spelling variants are separate and no food identity/state/brand is inferred.
+- Each repair target retains its recipe/ingredient row IDs, filtered-input index, recorded grams/status/stable ID and explicit missing-data reasons. Quantities are never summed across recipes; source rows are not rewritten or approved. Blank names, invalid grams and inconsistent RESOLVED rows remain visible; repeated/missing row IDs fail closed.
+- The queue is preparation for independent ingredient review. Empty queue and workbook APPROVED text cannot establish publication. Actual source export execution and live recipe publication are not claimed by synthetic tests. Cooking/assembly, portions, allergens, nutrition evidence and varied weekly coverage remain required.
+- No database write, runtime binding, merge, deployment or generator activation. Purchase verification remains after generation (#198).
+
 ## Generation recovery checkpoint — 2026-10-30
 
 This branch records source preparation only; it does not update the deployed application.

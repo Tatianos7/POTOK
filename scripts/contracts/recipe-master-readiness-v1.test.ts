@@ -14,12 +14,16 @@ test('counts source rows, excludes explicit examples and preserves statuses with
   assert.equal(r.summary.recipes, 1); assert.equal(r.summary.excludedExamples, 1); assert.equal(r.summary.ingredients, 1);
   assert.equal(r.summary.missingRecordedYield, 1); assert.equal(r.summary.missingReferenceFiber, 0);
   assert.equal(r.runtimePublishable, false); assert.equal(JSON.stringify(source), before);
+  assert.equal(r.ingredientReviewQueue.blockedIngredientRows, 1);
+  assert.equal(r.ingredientReviewQueue.entries[0].rows[0].ingredientRowId, 'i1');
+  assert.equal(r.ingredientReviewQueue.entries[0].rows[0].recipeId, 'one');
 });
 test('APPROVED text and complete numeric fields cannot create runtime publication evidence', () => {
   const s = fixture(); Object.assign(s['01_Рецепты'][0], { status: 'APPROVED', total_weight_g: 10 });
   Object.assign(s['02_Ингредиенты'][0], { canonical_status: 'RESOLVED', food_stable_id: 'synthetic' });
   const r = inspectRecipeMasterRowsV1(s); assert.equal(r.runtimePublishable, false);
   assert.ok(r.recipes[0].issues.includes('INDEPENDENT_RUNTIME_PUBLICATION_EVIDENCE_REQUIRED'));
+  assert.equal(r.ingredientReviewQueue.blockedIngredientRows, 1); // missing name still requires repair
 });
 test('keeps unknown, zero, text, negative and nonfinite servings/weights distinct from valid quantities', () => {
   for (const value of [null, 0, -1, '1', NaN, Infinity]) {
@@ -35,4 +39,5 @@ test('rejects duplicate identities, missing tabs and non-text identities', () =>
 test('does not hide orphan ingredients or empty ingredient lists', () => {
   const s = fixture(); s['02_Ингредиенты'][0].recipe_id = 'unknown'; const r = inspectRecipeMasterRowsV1(s);
   assert.equal(r.summary.orphanIngredients, 1); assert.ok(r.recipes[0].issues.includes('INGREDIENTS_MISSING'));
+  assert.equal(r.ingredientReviewQueue.blockedIngredientRows, 0); // orphan remains a separate structural blocker
 });
