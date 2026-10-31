@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Selected week to independently validated proposal — 2026-10-31
+
+- Added an inactive mechanical projection from the existing V2 weekly selection to Graph V2 and GeneratedWeekPlan V1. Uses actual child meal/day/week validator receipts, unchanged selected meal snapshots and independently decoded component evidence; reuses existing graph seal/bind functions. No invented IDs, portions, yields or new nutrition engine.
+- Connected actual catalog/day/week preparation, proposal projection and the existing request-bound independent validation adapter. Preparation failures, missing decision trace, missing authority and independent rejection expose no accepted proposal; there is no writer/activation port. A validated proposal is not a durable receipt or ACTIVE state.
+- Existing producer decision metadata must be separately supplied and bound to the exact request/week bytes; absent optimization/decision digests are never replaced with placeholders. This port is not a new policy/reviewer authority. Its real producer/storage runtime binding remains outstanding alongside live independent authority, provider/gateway wiring and activation.
+- Added actual synthetic pipeline tests, including known source servings with null cooked yield/null assigned grams passing through the real independent validator. Cooking remains deferred per owner steering. Test fixture construction now supports unknown yield without fabricating assigned grams.
+- No live database operation, catalog publication, Edge deployment, runtime activation, Graph V1 change or FACT write.
+
 ## Continue generation without mandatory home cooking — owner steering, 2026-10-31
 
 - Owner explicitly deferred broad cooking/culinary testing and mutable recipe refinement to a month-long application test. Cooking is not a global prerequisite for continued server/client implementation. Earlier batch protocols below are historical preparation, not an instruction to stop development.
