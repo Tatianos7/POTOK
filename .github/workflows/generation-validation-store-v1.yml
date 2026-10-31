@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [store, admission]
+        suite: [store, admission, readback]
     name: PostgreSQL ${{ matrix.suite }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

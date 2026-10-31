@@ -108,6 +108,8 @@ jobs:
             src/server/__tests__/generationDayOptionsV1.test.ts \
             src/server/__tests__/generationPlanProposalV1.test.ts \
             src/server/__tests__/generationWorkerBindingsV1.test.ts \
+            src/services/__tests__/generationPlanReadbackV2.test.ts \
+            src/components/__tests__/GenerationPlanMenuV2.test.tsx \
             src/server/__tests__/generationMenuCandidatesV1.test.ts \
             src/server/__tests__/generationWeekSearchV1.test.ts \
             src/server/__tests__/generationValidationAdapterV1.test.ts \
