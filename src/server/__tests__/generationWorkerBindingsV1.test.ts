@@ -54,7 +54,7 @@ async function fixture(options:{revokeBeforeRecord?:boolean;driftBeforeRecord?:b
       return JSON.stringify({contract:generationValidationAuthorityContractV1,requestOperationId:r,accountId:f.context.input.accountId,
         generationInputDigest:f.evidence.generationInputDigest,evaluatedPlanRawSha256:digest,trustedContextRaw:contextRaw,pinnedPoliciesRaw:f.policiesRaw,pinnedWarningEvidenceRaw:f.warningRaw});
     }});
-  const client:GenerationRpcClientV2={async rpc<T>(name,args){
+  const client:GenerationRpcClientV2={async rpc<T>(name:string,args:Record<string,unknown>){
     calls.push({name,args:structuredClone(args)});assert.equal(args.p_request_operation_id,request);
     if(name===record){
       if(options.recordConflict)status='CONFLICT';else{
