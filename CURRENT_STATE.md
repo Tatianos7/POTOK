@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Continue generation without mandatory home cooking — owner steering, 2026-10-31
+
+- Owner explicitly deferred broad cooking/culinary testing and mutable recipe refinement to a month-long application test. Cooking is not a global prerequisite for continued server/client implementation. Earlier batch protocols below are historical preparation, not an instruction to stop development.
+- Retain unknown measured yield/serving grams; use only grounded composition/serving definitions and label calculated nutrition at the appropriate future presentation boundary. This steering does not approve missing canonical evidence, raw/cooked substitutions, invented portions, public catalog publication or generator activation.
+- Implemented request continuity in the existing inactive worker/status path: validate and pin the request/dependencies before awaits; bind load/record/activation/status replies to that request; require exact proposal bytes through validator and record; do not activate again when record already returns ACTIVE. GENERATED/ACTIVATING recovery still skips generation/record.
+- Transport failures still require same-request status recovery; no blind record retry or FACT effect. These checks complement independent validation and DB authority checks; they do not themselves authenticate a validator or establish a durable commit.
+- Production/Staging deployment, Edge/generator binding and activation remain unchanged. Next generation implementation still needs proposal projection/provider and independent trusted-validator binding before a real menu can be delivered. Purchase verification remains after generation (#198).
+
 ## First bounded real recipe review batch — 2026-10-31
 
 - Selected the existing owner pilot oatmeal_with_apple and previously prepared pear_almonds for the first source/measurement batch, reusing exact parent package hashes. No replacement of the pilot by the different workbook oatmeal_apple_cinnamon identity. This two-recipe batch is not weekly catalog coverage.
