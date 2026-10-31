@@ -1,5 +1,15 @@
 # POTOK current state
 
+## SQL-backed producer metadata and prepared-meal warning sources — 2026-10-31
+
+- Added admitted SQL ports for existing preparation metadata and per-meal warning DTOs. Fixed parameterized lookups pin request/input or request/slot/meal/evidence/policy identity, verify stored raw SHA/UTF8/duplicate-aware JSON and preserve exact payload text. Missing/revoked data remains unavailable, never a default profile/revision allocation or all-false warning signal set.
+- Added an inactive stored-producer worker assembly: request-only context, metadata, per-option warnings and final independent proposal authority all use the admitted SQL source connection. Actual decision-trace production remains explicit; no connection, role switch, writer, automatic assessment or route/flag is enabled.
+- Prepared an unapplied extension candidate with two empty forced-RLS private source/revocation tables, owner-only immutable admission guards and one private reader grant (three exact readers total after both PR268 and this extension). Storage registration is not proof of food review or warning assessment. No publisher API or app/service/reader table-write grant is supplied.
+- Admission binds rows to current Premium/request/input provenance, exact metadata slot coverage, explicit warning signals and the existing warning digest domain; readers recheck currentness/root and row revocation. Stored metadata/warnings do not replace independent final proposal validation. No commit-time source-revocation fence is claimed.
+- Tests use synthetic owner-admitted fixture assessments and a simulated persistence gateway; PostgreSQL really stores/guards/reads the producer rows and the actual preparation/validator/worker code consumes them. No real recipe/warning assessment, source publication or installed-path Staging E2E is claimed.
+- Staging remains at the approved empty PR267 source storage. PR268's request-only reader and this producer extension remain unapplied. Actual producer computation/publication, decision metadata and runtime/gateway mounting remain required before activation; cooking stays deferred.
+
+
 ## Request-only SQL preparation context — 2026-10-31
 
 - Removed the preparation circularity: the proposal-bound validation reader requires a final plan SHA and warning package, while initial candidate preparation now has a separate request-only context reader candidate. It requires the same admitted SQL session/current Premium/request/selection/head gates and unrevoked input-storage provenance. It returns no proposal approval, evaluated-plan SHA or fabricated warning evidence.
