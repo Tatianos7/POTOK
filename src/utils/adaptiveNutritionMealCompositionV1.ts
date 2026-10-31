@@ -303,7 +303,9 @@ function normalizeCandidate(value: unknown): MealComponentCandidateV1 {
       throw new Error('meal_component_discrete_increment_violation');
     }
   }
-  if (JSON.stringify(row.ingredients) !== JSON.stringify(expected.ingredients)) {
+  // Canonical database JSON sorts object keys. Preserve exact values/array order,
+  // but do not make ingredient identity depend on object insertion order.
+  if (canonicalJson(row.ingredients) !== canonicalJson(expected.ingredients)) {
     throw new Error('meal_component_ingredients_mismatch');
   }
   const nutrition = requireNutrition(row.nutrition, 'meal_component_nutrition');
