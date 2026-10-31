@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Real master execution and first ingredient group — 2026-10-31
+
+- Materialized the latest saved master, 393790 bytes; SHA256 matches `9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5`. Extracted original values read-only and ran the actual review-queue implementation: 132 real recipes, 730 ingredient rows, 216 literal-name groups; all 730 require review. Workbook unchanged.
+- First group: olive oil, 71 rows/recipes. All grams are positive and equal recorded amounts; 5/10/15/20 g distributions are 23/45/2/1. All bindings remain unresolved. No conversion or brand/state inference.
+- Checked official SR28 NDB04053 PDF page 302 and retained its five nutrient facts/source PDF hash. Prepared input contributions only, preserving 884 kcal/100 g source energy. FDC171413 workbook claim is not independently verified. Oil retention in cooked food remains unmeasured; no recipe nutrition/portion/yield approval.
+- Staging read-only exact shared-name observation: one candidate, zero complete five-nutrient vectors. No binding or DB mutation. Existing private readiness report updated; recipe details/rows are not committed to public GitHub. Source preparation is not issued evidence/publication, and generator stays inactive.
+
 ## Real ingredient review queue — 2026-10-31
 
 - Owner's Android Staging check showed server-confirmed existing-account login, Admin=false, Premium=false, all seven closed RPC probes denied, and local test-session completion. This confirms existing-login transport, not new signup, recipe readiness or generator activation.

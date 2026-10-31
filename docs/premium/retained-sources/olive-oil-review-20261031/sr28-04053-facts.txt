@@ -1,0 +1,11 @@
+Official source: USDA National Nutrient Database for Standard Reference, Release 28 (2015).
+URL: https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/reports/sr28fg04.pdf
+PDF page 302 (one-based), NDB 04053, Oil, olive, salad or cooking.
+Basis: 100 grams edible portion. Refuse: 0%.
+Energy kcal: 884
+Protein g: 0.00
+Total lipid (fat) g: 100.00
+Carbohydrate, by difference g: 0.00
+Fiber, total dietary g: 0.0
+This short factual transcription was checked against the official PDF on 2026-10-31.
+It does not establish a brand match, cooking retention, canonical identity or approval.

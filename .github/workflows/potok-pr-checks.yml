@@ -95,6 +95,7 @@ jobs:
         run: |
           node --import tsx --test \
             scripts/contracts/pear-almonds-source-candidate-v1.test.ts \
+            scripts/contracts/olive-oil-source-candidate-v1.test.ts \
             scripts/contracts/recipe-master-readiness-v1.test.ts \
             scripts/contracts/recipe-master-review-queue-v1.test.ts \
             scripts/contracts/generation-validation-store-v1.test.ts \
