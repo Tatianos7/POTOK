@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Request-bound confirmed Graph V2 readback and inactive menu entry — 2026-10-31
+
+- Added a review-only authenticated read RPC bound to an owned generation request. Requires current Premium, ACTIVE request, the current selection head and accepted generation/activation records; compares canonical graph bytes, plan/input storage hashes, graph digest and activation references. Calls the existing Graph V2 reader in current-head mode; never uses historical/exact-read fallback to open a superseded menu. No tables, data or write functions added.
+- Added a separate inactive Graph V2 client reader/controller and menu component. The client verifies response identity, Graph V2 structure and digest; rechecks Auth and gate after asynchronous reads. Signout, account/request/day change, stopped or superseded requests cannot publish a late menu. Default client/gate remain disabled; no V1 fallback, mutation runtime reuse or route activation.
+- The prepared read-only menu shows all seven days, source recipe names/assigned servings and calculated nutrition; unknown portion grams stay unknown. PLAN remains distinct from diary FACT, and no consumption controls/writes are introduced.
+- Tests cover client/controller/view rejection and lifecycle behavior plus a dedicated native PostgreSQL readback matrix. The native harness uses minimal synthetic persistence rows with the actual canonical/current-head/Premium function definitions and the new draft, not a real worker deployment or live user data.
+- Still required before release: real catalog/source/decision-trace/authority runtime mounting, privileged gateway integration, applying the reviewed RPC package with approval, mounting the prepared V2 entry in the request flow and end-to-end Staging acceptance. No database mutation, deployment or feature activation in this change. Cooking remains deferred.
+
 ## Validated proposal to existing record/recovery worker — 2026-10-31
 
 - Added inactive backend provider/validator bindings from the actual catalog/day/week/projection pipeline to the existing V2 worker. Pin loaded request/input/manifest canonical bytes before awaits; compare preparation and independent-authority snapshots to that loaded request. Reject malformed UTF8/hex, duplicate keys and noncanonical JSON before source access.
