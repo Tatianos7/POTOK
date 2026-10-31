@@ -1,5 +1,15 @@
 # POTOK current state
 
+## Admitted SQL authority assembly and installable empty source storage — 2026-10-31
+
+- Added an inactive backend assembly using the existing admitted SQL source reader and storage-to-authority loader for both generator-side independent validation and the final pre-record check. Keeps source/preparation warnings/producer decisions explicit; opens no connection and performs no role impersonation or owner-reader fallback. Runtime defaults off and rechecks its gate at each gateway/SQL boundary.
+- Prepared a distinct transactional installable source-storage review package and read-only preflight, preserving the function implementations from the disposable storage/admission candidates. Creates four empty forced-RLS private tables, immutable history guards and a NOLOGIN least-privilege reader role with one admitted function. Publishes no real source, manifest, recipe, warning, entitlement or policy and changes no existing gateway.
+- Installation verifies exact owner/config/body hashes of six current gate/canonical prerequisites, refuses existing/partial installations and verifies RLS/table-denial/reader allowlist before commit. Original disposable-only files retain their fixed guards unchanged.
+- Staging read-only inspection: request/manifest foundations exist; source inputs/warnings/receipt bindings and reader role are absent; the candidate manifest table contains zero rows. Six prerequisite hashes/configurations match. No live mutation was performed. A populated, reviewed source catalog and actual preparation/producer ports are still needed for live weekly-menu acceptance; cooking remains deferred.
+- Added local assembly tests and a native PostgreSQL install/reader/pipeline test using actual admitted SQL and real generator/independent-validator code with synthetic fixture sources. Persistence/activation gateway calls in this test remain simulated; no full real-database/Staging E2E or receipt-revocation-versus-commit fence is claimed.
+- Still required before activation: separately approved installation, source/decision publication and runtime mounting, gateway integration (including commit-time source provenance/currentness where required), prepared client mounting and installed-path Staging acceptance. No deployment, feature activation, FACT write or automatic publisher is included.
+
+
 ## Explicit request-to-confirmed-menu flow — 2026-10-31
 
 - Connected authenticated generation request/status calls to the existing confirmed-readback controller and seven-day menu view in a separate inactive explicit-action flow. Mounting the component performs no generation request. Client/gates default off; no route, Edge or server worker is activated.
