@@ -3,9 +3,10 @@ import {
   sealNutritionPreferenceSnapshotV1, nutritionPreferenceSnapshotCanonicalBytesV1,
   sealNutritionSafetySnapshotV1, nutritionSafetySnapshotCanonicalBytesV1,
 } from '../utils/adaptiveNutritionAuthoritiesV1';
-import { decodeTrustedGenerationInputRawV1, trustedGenerationInputDigestV1 } from '../utils/adaptiveNutritionGraphV2';
+import { decodeTrustedGenerationInputRawV1, trustedGenerationInputDigestV1, type TrustedGenerationInputV1 } from '../utils/adaptiveNutritionGraphV2';
 import { assertRawJsonWithoutDuplicateKeysV1, adaptiveNutritionSha256HexV1, canonicalJsonV1 } from '../utils/adaptiveNutritionWireV1';
 import { decodeTrustedValidationPoliciesRawV2, trustedValidationPoliciesRawBoundaryContractV2 } from '../utils/trustedValidationPoliciesV1';
+import {decodeTrustedValidationEvidenceV1} from '../utils/trustedValidationEvidenceV1';
 import {
   generationValidationAuthorityContractV1, type GenerationValidationAuthorityPortV1,
 } from './generationValidationAdapterV1';
@@ -96,6 +97,76 @@ async function stored(value: unknown): Promise<{ raw: string; value: unknown; ca
   return decodeBytes(row.canonicalHex);
 }
 
+export const generationPreparationContextSourceContractV1='potok-generation-preparation-context-source-v1' as const;
+const contextSourceKeys=['contract','requestOperationId','accountId','input','manifest','preference','safety','validationEvidenceRaw','policiesRaw'] as const;
+export interface StoredGenerationContextProjectionV1 {
+  readonly input:TrustedGenerationInputV1;
+  readonly generationInputDigest:string;
+  readonly trustedContextRaw:string;
+  readonly policiesRaw:string;
+  readonly requiredSlotIds:readonly string[];
+}
+function admitContextFields(row:Record<string,unknown>):void {
+  for(const field of ['validationEvidenceRaw','policiesRaw'] as const)if(row[field]!==null)parse(row[field] as string);
+  if(row.input!==null)inputDescriptor(row.input);
+  for(const field of ['manifest','preference','safety'] as const)if(row[field]!==null)descriptor(row[field]);
+}
+async function decodeStoredContext(row:Record<string,unknown>,requestOperationId:string):Promise<StoredGenerationContextProjectionV1> {
+  const inputRecord = inputDescriptor(row.input);
+  const inputSource = decodeBytes(inputRecord.canonicalHex);
+  const input = decodeTrustedGenerationInputRawV1(inputSource.raw);
+  if (canonicalJsonV1(input, 'SAFE_INTEGER') !== inputSource.raw) {
+    throw new GenerationValidationSourceErrorV1('STORAGE_CANONICAL_MISMATCH');
+  }
+  // Actual generation_requests_v2.generation_input_digest uses the existing
+  // {contract,input} domain, unlike manifest/preference/safety storage hashes.
+  const generationInputDigest = await trustedGenerationInputDigestV1(input);
+  if (generationInputDigest !== inputRecord.generationInputDigest) {
+    throw new GenerationValidationSourceErrorV1('STORAGE_DIGEST_MISMATCH');
+  }
+  if (input.accountId !== row.accountId || input.operation.requestId !== requestOperationId) {
+    throw new GenerationValidationSourceErrorV1('SOURCE_BINDING_MISMATCH');
+  }
+  const manifestSource = await stored(row.manifest);
+  const preferenceSource = await stored(row.preference);
+  const safetySource = await stored(row.safety);
+  // Only parser-owned DB content enters existing seal functions. These compute
+  // existing content digests; they confer no approval, publication or provenance.
+  const manifest = await sealAdaptiveNutritionCandidateManifestV2(manifestSource.value as Parameters<typeof sealAdaptiveNutritionCandidateManifestV2>[0]);
+  const preference = await sealNutritionPreferenceSnapshotV1(preferenceSource.value as Parameters<typeof sealNutritionPreferenceSnapshotV1>[0]);
+  const safety = await sealNutritionSafetySnapshotV1(safetySource.value as Parameters<typeof sealNutritionSafetySnapshotV1>[0]);
+  if (bytesHex(await adaptiveNutritionCandidateManifestCanonicalBytesV2(manifest)) !== manifestSource.canonicalHex
+    || bytesHex(await nutritionPreferenceSnapshotCanonicalBytesV1(preference)) !== preferenceSource.canonicalHex
+    || bytesHex(await nutritionSafetySnapshotCanonicalBytesV1(safety)) !== safetySource.canonicalHex) {
+    throw new GenerationValidationSourceErrorV1('STORAGE_CANONICAL_MISMATCH');
+  }
+  if (manifest.manifestRevision !== input.candidateManifestRevision || manifest.digest !== input.candidateManifestDigest
+    || preference.accountId !== input.accountId || preference.revisionId !== input.preferenceRevision
+    || safety.accountId !== input.accountId || safety.revisionId !== input.safetyRevision) {
+    throw new GenerationValidationSourceErrorV1('SOURCE_BINDING_MISMATCH');
+  }
+  // This is serialization of our own raw-string wrapper and parser-owned,
+  // strictly decoded snapshots. It is not JSON.stringify(arbitraryObject).
+  const trustedContextRaw = JSON.stringify({ contract: trustedValidationPoliciesRawBoundaryContractV2,
+    trustedGenerationInputRaw: inputSource.raw, candidateManifestRaw: JSON.stringify(manifest),
+    preferenceSnapshotRaw: JSON.stringify(preference), safetySnapshotRaw: JSON.stringify(safety),
+    trustedValidationEvidenceRaw: row.validationEvidenceRaw });
+  await decodeTrustedValidationPoliciesRawV2(row.policiesRaw as string, trustedContextRaw);
+  const evidence=await decodeTrustedValidationEvidenceV1(parse(row.validationEvidenceRaw as string),{input,manifest,preference,safety});
+  return Object.freeze({input,generationInputDigest,trustedContextRaw,policiesRaw:row.policiesRaw as string,
+    requiredSlotIds:Object.freeze(evidence.distributionPolicy.days.flatMap(day=>day.requiredSlots.map(slot=>slot.slotId)))});
+}
+/** Request-only context projection, never a proposal validation authority or fabricated warning package. */
+export async function decodeGenerationPreparationContextRawV1(snapshotRaw:string,requestOperationId:string):Promise<StoredGenerationContextProjectionV1|null> {
+  if(typeof requestOperationId!=='string'||!uuid.test(requestOperationId))throw new GenerationValidationSourceErrorV1('INVALID_SOURCE_ARGUMENT');
+  const row=record(parse(snapshotRaw),contextSourceKeys);
+  if(row.contract!==generationPreparationContextSourceContractV1||row.requestOperationId!==requestOperationId
+    ||typeof row.accountId!=='string'||!uuid.test(row.accountId))throw new GenerationValidationSourceErrorV1('SOURCE_BINDING_MISMATCH');
+  admitContextFields(row);
+  if(contextSourceKeys.some(key=>row[key]===null))return null;
+  return decodeStoredContext(row,requestOperationId);
+}
+
 /** Inactive storage-to-consumer projection; no credentials, SQL execution or writes. */
 export function createGenerationValidationAuthorityLoaderV1(store: GenerationValidationSourceStoreV1): GenerationValidationAuthorityPortV1 {
   return Object.freeze({
@@ -113,54 +184,10 @@ export function createGenerationValidationAuthorityLoaderV1(store: GenerationVal
       }
       // Null means an explicitly missing row/source, never implicit defaults. Reject
       // malformed provided values even when a different prerequisite is absent.
-      for (const field of ['validationEvidenceRaw', 'policiesRaw', 'warningEvidenceRaw'] as const) {
-        if (row[field] !== null) parse(row[field] as string);
-      }
-      if (row.input !== null) inputDescriptor(row.input);
-      for (const field of ['manifest', 'preference', 'safety'] as const) {
-        if (row[field] !== null) descriptor(row[field]);
-      }
+      admitContextFields(row);
+      if(row.warningEvidenceRaw!==null)parse(row.warningEvidenceRaw as string);
       if (sourceKeys.some(key => row[key] === null)) return null;
-      const inputRecord = inputDescriptor(row.input);
-      const inputSource = decodeBytes(inputRecord.canonicalHex);
-      const input = decodeTrustedGenerationInputRawV1(inputSource.raw);
-      if (canonicalJsonV1(input, 'SAFE_INTEGER') !== inputSource.raw) {
-        throw new GenerationValidationSourceErrorV1('STORAGE_CANONICAL_MISMATCH');
-      }
-      // Actual generation_requests_v2.generation_input_digest uses the existing
-      // {contract,input} domain, unlike manifest/preference/safety storage hashes.
-      const generationInputDigest = await trustedGenerationInputDigestV1(input);
-      if (generationInputDigest !== inputRecord.generationInputDigest) {
-        throw new GenerationValidationSourceErrorV1('STORAGE_DIGEST_MISMATCH');
-      }
-      if (input.accountId !== row.accountId || input.operation.requestId !== requestOperationId) {
-        throw new GenerationValidationSourceErrorV1('SOURCE_BINDING_MISMATCH');
-      }
-      const manifestSource = await stored(row.manifest);
-      const preferenceSource = await stored(row.preference);
-      const safetySource = await stored(row.safety);
-      // Only parser-owned DB content enters existing seal functions. These compute
-      // existing content digests; they confer no approval, publication or provenance.
-      const manifest = await sealAdaptiveNutritionCandidateManifestV2(manifestSource.value as Parameters<typeof sealAdaptiveNutritionCandidateManifestV2>[0]);
-      const preference = await sealNutritionPreferenceSnapshotV1(preferenceSource.value as Parameters<typeof sealNutritionPreferenceSnapshotV1>[0]);
-      const safety = await sealNutritionSafetySnapshotV1(safetySource.value as Parameters<typeof sealNutritionSafetySnapshotV1>[0]);
-      if (bytesHex(await adaptiveNutritionCandidateManifestCanonicalBytesV2(manifest)) !== manifestSource.canonicalHex
-        || bytesHex(await nutritionPreferenceSnapshotCanonicalBytesV1(preference)) !== preferenceSource.canonicalHex
-        || bytesHex(await nutritionSafetySnapshotCanonicalBytesV1(safety)) !== safetySource.canonicalHex) {
-        throw new GenerationValidationSourceErrorV1('STORAGE_CANONICAL_MISMATCH');
-      }
-      if (manifest.manifestRevision !== input.candidateManifestRevision || manifest.digest !== input.candidateManifestDigest
-        || preference.accountId !== input.accountId || preference.revisionId !== input.preferenceRevision
-        || safety.accountId !== input.accountId || safety.revisionId !== input.safetyRevision) {
-        throw new GenerationValidationSourceErrorV1('SOURCE_BINDING_MISMATCH');
-      }
-      // This is serialization of our own raw-string wrapper and parser-owned,
-      // strictly decoded snapshots. It is not JSON.stringify(arbitraryObject).
-      const trustedContextRaw = JSON.stringify({ contract: trustedValidationPoliciesRawBoundaryContractV2,
-        trustedGenerationInputRaw: inputSource.raw, candidateManifestRaw: JSON.stringify(manifest),
-        preferenceSnapshotRaw: JSON.stringify(preference), safetySnapshotRaw: JSON.stringify(safety),
-        trustedValidationEvidenceRaw: row.validationEvidenceRaw });
-      await decodeTrustedValidationPoliciesRawV2(row.policiesRaw as string, trustedContextRaw);
+      const {input,generationInputDigest,trustedContextRaw}=await decodeStoredContext(row,requestOperationId);
       return JSON.stringify({ contract: generationValidationAuthorityContractV1, requestOperationId,
         accountId: input.accountId, generationInputDigest,
         evaluatedPlanRawSha256: proposalRawSha256, trustedContextRaw,
