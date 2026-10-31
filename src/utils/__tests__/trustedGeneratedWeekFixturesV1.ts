@@ -189,7 +189,7 @@ async function evaluatedPlanFixture(input: TrustedGenerationInputV1, evidence: T
         pairingTags:entry.pairingTags,incompatiblePairingTags:entry.incompatiblePairingTags,repeatFamily:entry.repeatFamily,
         energyClass:entry.energyClass,beverageClass:entry.beverageClass},recipeRevision:entry.recipeRevisionId,
         portionRevision:entry.portionRevisionId,recipe,assignedPortion:{source:'potok_generator',portionRevisionId:entry.portionRevisionId,
-          assignedServings:assigned,servingMultiplier:scaled.scaleFactor,assignedGrams:assigned==='1.000'?'100.000':'200.000'},
+          assignedServings:assigned,servingMultiplier:scaled.scaleFactor,assignedGrams:recipe.baseYield.totalYieldGrams===null?null:assigned==='1.000'?'100.000':'200.000'},
         ingredients:scaled.ingredients,nutrition:scaled.nutrition};
       const high={calories:'9999.000',protein:'9999.000',fat:'9999.000',carbs:'9999.000',fiber:'9999.000'};
       const result=await composeAdaptiveMealV1({mealSlotId:required.slotId,mealSnapshotRevision:id(80+required.sortOrder),
