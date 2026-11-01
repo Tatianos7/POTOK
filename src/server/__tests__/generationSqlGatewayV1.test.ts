@@ -1,3 +1,4 @@
+import {createRestrictedGenerationSqlGatewayV1,restrictedGenerationLoadSqlV1,restrictedGenerationRecordSqlV1} from '../generationSqlGatewayV1';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {createGenerationSqlGatewayV1,generationLoadGatewaySqlV1,generationRecordGatewaySqlV1,generationActivateGatewaySqlV1} from '../generationSqlGatewayV1';
@@ -47,4 +48,13 @@ test('caller argument replacement during an await cannot redirect the pinned ope
   const client=createGenerationSqlGatewayV1({async query(_s,p){pinned=p;return new Promise(r=>{complete=r;});}},()=>true);
   const supplied={...args};const pending=client.rpc('activate_generated_week_gateway_v2',supplied);supplied.p_request_operation_id='00000000-0000-4000-8000-000000000002';
   complete({rows:[{result_raw:response}]});assert.equal((await pending).error,null);assert.deepEqual(pinned,[request]);
+});
+
+test('restricted login path uses its own exact identity and never substitutes the broad service-role query',async()=>{
+  const calls:string[]=[];const client=createRestrictedGenerationSqlGatewayV1({async query(statement){calls.push(statement);return {rows:[{result_raw:statement===restrictedGenerationLoadSqlV1?loaded:response}]};}},()=>true);
+  assert.equal((await client.rpc('load_generation_request_v2',args)).error,null);
+  assert.equal((await client.rpc('record_generated_week_gateway_v2',{...args,p_generated_week_plan_canonical:'\\x7b7d'})).error,null);
+  assert.deepEqual(calls,[restrictedGenerationLoadSqlV1,restrictedGenerationRecordSqlV1]);
+  assert.match(calls[0],/current_user='potok_generation_gateway_v1'/);assert.match(calls[0],/session_user=current_user/);
+  assert.doesNotMatch(calls[0],/current_user='service_role'/);assert.notEqual(calls[0],generationLoadGatewaySqlV1);
 });

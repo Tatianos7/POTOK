@@ -19,7 +19,8 @@ const failure=(code:string)=>Object.freeze({data:null,error:Object.freeze({code}
  * No HTTP schema exposure, connection, credentials, retries, owner fallback, source
  * reader, internal writer or arbitrary SQL/RPC selector is exposed by this adapter.
  */
-export function createGenerationSqlGatewayV1(client:GenerationGatewaySqlClientV1,enabled:()=>boolean=()=>false):GenerationRpcClientV2{
+type Statements={load:string;record:string;activate:string};
+function gateway(client:GenerationGatewaySqlClientV1,enabled:()=>boolean,statements:Statements):GenerationRpcClientV2{
   const assertEnabled=()=>{if(enabled()!==true)throw new GenerationEdgeErrorV2('GENERATION_RUNTIME_DISABLED',503);};
   return Object.freeze({async rpc<T>(name:string,args:Record<string,unknown>){
     assertEnabled();
@@ -32,7 +33,7 @@ export function createGenerationSqlGatewayV1(client:GenerationGatewaySqlClientV1
     const request=args.p_request_operation_id,bytea=args.p_generated_week_plan_canonical;
     if(typeof request!=='string'||!uuid.test(request)||(record&&(typeof bytea!=='string'||bytea.length>16_000_002||!canonicalBytea.test(bytea))))
       throw new GenerationEdgeErrorV2('INVALID_GENERATION_GATEWAY_ARGUMENTS',400);
-    const sql=record?generationRecordGatewaySqlV1:name==='load_generation_request_v2'?generationLoadGatewaySqlV1:generationActivateGatewaySqlV1;
+    const sql=record?statements.record:name==='load_generation_request_v2'?statements.load:statements.activate;
     const parameters=Object.freeze(record?[request,(bytea as string).slice(2)]:[request]);
     let result:Awaited<ReturnType<GenerationGatewaySqlClientV1['query']>>;
     try{result=await client.query(sql,parameters);}catch{return failure('GENERATION_GATEWAY_SQL_UNAVAILABLE');}
@@ -45,4 +46,18 @@ export function createGenerationSqlGatewayV1(client:GenerationGatewaySqlClientV1
       return Object.freeze({data:Object.freeze(value) as T,error:null});
     }catch{return failure('GENERATION_GATEWAY_SQL_RESPONSE_INVALID');}
   }});
+}
+
+/** Existing service-role transport remains explicit and unchanged. */
+export function createGenerationSqlGatewayV1(client:GenerationGatewaySqlClientV1,enabled:()=>boolean=()=>false):GenerationRpcClientV2{
+  return gateway(client,enabled,{load:generationLoadGatewaySqlV1,record:generationRecordGatewaySqlV1,activate:generationActivateGatewaySqlV1});
+}
+const restrictedIdentity="current_user='potok_generation_gateway_v1' AND session_user=current_user AND EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname=session_user AND rolcanlogin AND NOT rolsuper AND NOT rolbypassrls AND NOT rolinherit AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolreplication) AND NOT EXISTS (SELECT FROM pg_catalog.pg_auth_members WHERE member=(SELECT oid FROM pg_catalog.pg_roles WHERE rolname=session_user))";
+const restricted=(call:string)=>`SELECT CASE WHEN ${restrictedIdentity} THEN ${call} ELSE NULL END AS result_raw`;
+export const restrictedGenerationLoadSqlV1=restricted('potok_nutrition.load_generation_request_v2($1::uuid)');
+export const restrictedGenerationRecordSqlV1=restricted("potok_nutrition.record_generated_week_gateway_v2($1::uuid,pg_catalog.decode($2::text,'hex'))");
+export const restrictedGenerationActivateSqlV1=restricted('potok_nutrition.activate_generated_week_gateway_v2($1::uuid)');
+/** Candidate for the separately reviewed narrow login role; no service_role membership or fallback. */
+export function createRestrictedGenerationSqlGatewayV1(client:GenerationGatewaySqlClientV1,enabled:()=>boolean=()=>false):GenerationRpcClientV2{
+  return gateway(client,enabled,{load:restrictedGenerationLoadSqlV1,record:restrictedGenerationRecordSqlV1,activate:restrictedGenerationActivateSqlV1});
 }
