@@ -1,0 +1,44 @@
+{
+  "observedOn": "2026-11-01",
+  "targetProjectId": "ozidryfvhkcbtpnulakq",
+  "access": "READ_ONLY",
+  "scope": "INSTALLATION_BASELINE_ONLY",
+  "checks": {
+    "owner_utf8": true,
+    "reader_role": true,
+    "goal_columns": true,
+    "readback_tables": true,
+    "readback_columns": true,
+    "reader_allowlist": true,
+    "new_tables_absent": true,
+    "source_storage_rls": true,
+    "new_functions_absent": true,
+    "potok_nutrition.canonical_jsonb_text_v1(jsonb)": true,
+    "potok_nutrition.json_has_duplicate_keys_v1(json)": true,
+    "potok_nutrition.require_canonical_json_v2(bytea)": true,
+    "potok_nutrition.acquire_shared_account_gate_v1(uuid)": true,
+    "public.adaptive_nutrition_read_graph_v2(uuid,uuid,text)": true,
+    "potok_nutrition.assert_generation_request_current_v2(uuid)": true,
+    "potok_control.is_effective_entitlement_v2(uuid,text,timestamptz)": true,
+    "potok_nutrition.read_generation_validation_source_v1(uuid,bytea)": true,
+    "potok_nutrition.read_admitted_generation_validation_source_v1(uuid,bytea)": true
+  },
+  "contract": "potok-generation-staging-baseline-v1",
+  "mayApply": false,
+  "activationReady": false,
+  "extensionBaselineReady": true,
+  "sourceCounts": {
+    "inputs": 0,
+    "warnings": 0,
+    "bindings": 0,
+    "revocations": 0
+  },
+  "publishedManifestCount": 0,
+  "readerExecuteFunctions": [
+    "potok_nutrition.read_admitted_generation_validation_source_v1(uuid,bytea)"
+  ],
+  "limits": [
+    "Metadata and aggregate counts only; no user records or credentials.",
+    "This is a dated observation, not a current authorization, deployment or activation receipt."
+  ]
+}
