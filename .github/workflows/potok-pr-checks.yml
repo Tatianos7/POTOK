@@ -111,6 +111,7 @@ jobs:
             src/server/__tests__/generationAdmittedWorkerV1.test.ts \
             src/server/__tests__/generationPreparationSourceV1.test.ts \
             src/server/__tests__/generationProducerSourcesV1.test.ts \
+            src/server/__tests__/generationMealWarningAssessmentV1.test.ts \
             src/services/__tests__/generationPlanReadbackV2.test.ts \
             src/services/__tests__/generationRequestFlowV2.test.ts \
             src/services/__tests__/generationRequestFlowV2.integration.test.ts \
