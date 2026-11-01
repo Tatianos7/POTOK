@@ -1,5 +1,5 @@
 import {GenerationEdgeErrorV2,type GenerationProposalProviderV2,type TrustedGenerationValidatorV2} from '../../supabase/functions/adaptive-nutrition-generate-v2/contracts';
-import {createValidatedGenerationProposalV1,createSelectionBoundGenerationProposalV1,createOptimizedGenerationProposalV1,
+import {createValidatedGenerationProposalV1,createSelectionBoundGenerationProposalV1,createOptimizedGenerationProposalV1,createConvenienceBoundedGenerationProposalV1,
   type GenerationDecisionTracePortV1,type GenerationSelectionDecisionPortV1} from './generationPlanProposalV1';
 import type {GenerationPreparationWarningPortV1} from './generationDayOptionsV1';
 import type {GenerationWeekOptimizationConfigV1} from './generationWeekOptimizationV1';
@@ -127,4 +127,14 @@ export function createOptimizedGenerationWorkerBindingsV1(source:GenerationMenuC
   const owned=Object.freeze({policyRaw:optimization.policyRaw,metrics:optimization.metrics});
   return workerBindings(source,authority,(scopedSource,scopedAuthority)=>
     createOptimizedGenerationProposalV1(scopedSource,warnings,owned,decisions,scopedAuthority),limitsRaw);
+}
+/** Same inactive worker with explicit robust convenience comparison, never a legacy fallback. */
+export function createConvenienceBoundedGenerationWorkerBindingsV1(source:GenerationMenuCandidateSourcePortV1,
+  warnings:GenerationPreparationWarningPortV1,optimization:GenerationWeekOptimizationConfigV1,
+  decisions:GenerationSelectionDecisionPortV1,authority:GenerationValidationAuthorityPortV1,limitsRaw?:string){
+  if(!optimization||typeof optimization.policyRaw!=='string'||!optimization.metrics
+    ||typeof optimization.metrics.assessWeekRaw!=='function')throw Error('INVALID_WEEK_OPTIMIZATION_CONFIG');
+  const owned=Object.freeze({policyRaw:optimization.policyRaw,metrics:optimization.metrics});
+  return workerBindings(source,authority,(scopedSource,scopedAuthority)=>
+    createConvenienceBoundedGenerationProposalV1(scopedSource,warnings,owned,decisions,scopedAuthority),limitsRaw);
 }

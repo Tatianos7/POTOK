@@ -7,6 +7,7 @@ import {generationWeekSearchContractV1,type GenerationWeekSearchResultV1} from '
 
 export const generationWeekMetricsContractV1='potok-generation-week-metrics-v1';
 export const generationWeekOptimizationResultContractV1='potok-generation-week-optimization-result-v1';
+export const generationWeekOptimizationResultContractV2='potok-generation-week-optimization-result-v2';
 export interface GenerationWeekMetricsPortV1 {
   /** Independently sourced metrics for this exact week/input/policy. Null means unknown.
    * No proposed authority, fabricated convenience score or default assessment revision.
@@ -23,6 +24,17 @@ export type GenerationWeekOptimizationResultV1=(Feasible&{
 })|Exclude<GenerationWeekSearchResultV1,Feasible>|Readonly<{
   status:'BLOCKED_OPTIMIZATION_METRICS';evaluated:number;totalCombinations:number;
 }>;
+export interface GenerationScoreBoundsV1 {readonly minimum:string;readonly maximum:string}
+export type GenerationWeekBoundedResultV1=(Feasible&{
+  scope:'BEST_IN_VALIDATED_POOL'|'BEST_EVALUATED_PREFIX';score:string|null;scoreBounds:GenerationScoreBoundsV1;
+  unknownMetrics:readonly 'convenience'[];optimizationReceiptRaw:string;optimizationResultDigest:string;
+})|Exclude<GenerationWeekOptimizationResultV1,Feasible>|Readonly<{
+  status:'BLOCKED_OPTIMIZATION_UNCERTAINTY';evaluated:number;totalCombinations:number;
+}>;
+type InternalResult=(Feasible&{scope:'BEST_IN_VALIDATED_POOL'|'BEST_EVALUATED_PREFIX';score:string|null;
+  scoreBounds?:GenerationScoreBoundsV1;unknownMetrics?:readonly 'convenience'[];
+  optimizationReceiptRaw:string;optimizationResultDigest:string;})
+  |Exclude<GenerationWeekBoundedResultV1,Feasible>;
 const metricKeys=['targetFit','diversity','convenience','shoppingReuse'] as const;
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 function parse(raw:string):unknown{
@@ -50,14 +62,17 @@ function minor(value:unknown):bigint{
 }
 const decimal=(value:bigint)=>`${value/1000n}.${String(value%1000n).padStart(3,'0')}`;
 interface Evaluation {weekRawSha256:string;validationStatus:string;validationResultDigest:string;
-  score:string|null;metricAssessmentRawSha256:string|null;assessmentRevision:string|null;}
+  score:string|null;metricAssessmentRawSha256:string|null;assessmentRevision:string|null;
+  scoreBounds?:GenerationScoreBoundsV1;unknownMetrics?:'convenience'[];}
+interface Candidate {sha:string;rank:number;indexes:number[];score:bigint|null;
+  minimum:bigint;maximum:bigint;unknownMetrics:'convenience'[];}
 
 /** Bounded, deterministic weighted comparison of actual validated weeks. Raw input and
  * manifest use the existing search contract; optimization policy and metrics are explicit.
  * This never returns database acceptance or independently admits its metric source.
  */
-export async function optimizeGenerationWeekRawV1(searchRaw:string,pinnedManifestRaw:string,
-  policyRaw:string,trustedInputRaw:string,metricsPort:GenerationWeekMetricsPortV1):Promise<GenerationWeekOptimizationResultV1>{
+async function compareWeeks(searchRaw:string,pinnedManifestRaw:string,
+  policyRaw:string,trustedInputRaw:string,metricsPort:GenerationWeekMetricsPortV1,boundConvenience:boolean):Promise<InternalResult>{
   const search=record(parse(searchRaw),['contract','weekHeader','dayOptions','maxEvaluations']);
   const manifestOwned=parse(pinnedManifestRaw);const policy=decodeOptimizationPolicyV1(parse(policyRaw));
   const input=decodeTrustedGenerationInputRawV1(trustedInputRaw);
@@ -84,7 +99,7 @@ export async function optimizeGenerationWeekRawV1(searchRaw:string,pinnedManifes
   const pinnedGoal=canonicalJsonV1(input.goalNutritionTarget,'SAFE_INTEGER');
   const totalCombinations=options.reduce((n,pool)=>n*pool.length,1),limit=Math.min(search.maxEvaluations as number,totalCombinations);
   const indexes=Array<number>(7).fill(0),evaluations:Evaluation[]=[],assessments=new Map<string,string>();
-  let best:{weekRaw:string;sha:string;validation:ValidatorResultV1;indexes:number[];score:bigint}|null=null;
+  let best:Candidate|null=null,bestValidation:ValidatorResultV1|null=null;const candidates:Candidate[]=[];
   for(let evaluated=1;evaluated<=limit;evaluated++){
     const selectedDays=options.map((pool,i)=>pool[indexes[i]]);
     for(const value of selectedDays){
@@ -112,30 +127,74 @@ export async function optimizeGenerationWeekRawV1(searchRaw:string,pinnedManifes
         ||typeof facts.assessmentRevision!=='string'||!uuid.test(facts.assessmentRevision))throw Error('WEEK_OPTIMIZATION_METRICS_BINDING_MISMATCH');
       const metrics=record(facts.metrics,metricKeys);
       for(const key of metricKeys)if(metrics[key]!==null)minor(metrics[key]);
-      if(metricKeys.some(k=>metrics[k]===null))return freeze({status:'BLOCKED_OPTIMIZATION_METRICS',evaluated,totalCombinations});
+      if(metricKeys.some(k=>metrics[k]===null&&(!boundConvenience||k!=='convenience')))
+        return freeze({status:'BLOCKED_OPTIMIZATION_METRICS',evaluated,totalCombinations});
       const assessment=canonicalJsonV1(facts,'SAFE_INTEGER');
       if(assessments.has(sha)&&assessments.get(sha)!==assessment)throw Error('WEEK_OPTIMIZATION_METRICS_DRIFT');
       assessments.set(sha,assessment);
       // Same fixed-point weighting and rounding as the existing V1 meal optimizer.
-      const score=(metricKeys.reduce((sum,key)=>sum+minor(metrics[key])*minor(policy.weights[key]),0n)+500n)/1000n;
-      entry.score=decimal(score);entry.metricAssessmentRawSha256=await rawHash(raw);entry.assessmentRevision=facts.assessmentRevision;
-      const rank=validation.status==='VALID'?0:1,bestRank=best?.validation.status==='VALID'?0:1;
-      if(!best||rank<bestRank||(rank===bestRank&&(score>best.score||(score===best.score&&sha<best.sha))))
-        best={weekRaw,sha,validation,indexes:[...indexes],score};
+      const unknown=metrics.convenience===null;
+      const known=metricKeys.reduce((sum,key)=>metrics[key]===null?sum:sum+minor(metrics[key])*minor(policy.weights[key]),0n);
+      const minimum=(known+500n)/1000n,maximum=(known+(unknown?1000n*minor(policy.weights.convenience):0n)+500n)/1000n;
+      const score=unknown?null:minimum;
+      entry.score=score===null?null:decimal(score);entry.metricAssessmentRawSha256=await rawHash(raw);entry.assessmentRevision=facts.assessmentRevision;
+      const rank=validation.status==='VALID'?0:1;
+      const candidate:Candidate={sha,rank,indexes:[...indexes],score,minimum,maximum,unknownMetrics:unknown?['convenience']:[]};
+      if(boundConvenience){
+        entry.scoreBounds={minimum:decimal(minimum),maximum:decimal(maximum)};entry.unknownMetrics=candidate.unknownMetrics;
+        candidates.push(candidate);
+      }
+      // Any robust winner must maximize the lower bound within the preferred status.
+      // This is only a prospective winner; upper-bound dominance is proved below.
+      if(!best||rank<best.rank||(rank===best.rank&&(minimum>best.minimum||(minimum===best.minimum&&sha<best.sha)))){
+        best=candidate;bestValidation=validation;
+      }
     }
     evaluations.push(entry);
     for(let i=6;i>=0;i--){indexes[i]++;if(indexes[i]<options[i].length)break;indexes[i]=0;}
   }
+  if(boundConvenience&&best){
+    const winner=best;
+    // A winner must defeat every same-priority competitor for every admissible score.
+    // Equality is safe only when the existing deterministic SHA tie break also wins.
+    if(!candidates.every(other=>other.rank!==winner.rank||winner.sha===other.sha||winner.minimum>other.maximum
+      ||(winner.minimum===other.maximum&&winner.sha<other.sha)))
+      return freeze({status:'BLOCKED_OPTIMIZATION_UNCERTAINTY',evaluated:limit,totalCombinations});
+  }
   if(!best)return freeze({status:limit<totalCombinations?'SEARCH_LIMIT_REACHED':'NO_FEASIBLE_WEEK_IN_POOL',evaluated:limit,totalCombinations});
+  if(!bestValidation)throw Error('INVALID_WEEK_OPTIMIZATION_RESULT');
   const scope=limit===totalCombinations?'BEST_IN_VALIDATED_POOL':'BEST_EVALUATED_PREFIX';
-  const content={contract:generationWeekOptimizationResultContractV1,requestOperationId:input.operation.requestId,generationInputDigest,
+  const contract=boundConvenience?generationWeekOptimizationResultContractV2:generationWeekOptimizationResultContractV1;
+  const bounds={minimum:decimal(best.minimum),maximum:decimal(best.maximum)};
+  const content={contract,requestOperationId:input.operation.requestId,generationInputDigest,
     optimizationPolicyRevision:policy.policyRevision,optimizationPolicy:policy,candidateManifestDigest:manifest.digest,
     searchInputRawSha256:await rawHash(searchRaw),scope,evaluated:limit,totalCombinations,maxEvaluations:search.maxEvaluations,
-    evaluations,selectedWeekRawSha256:best.sha,selectedOptionIndexes:best.indexes,selectedScore:decimal(best.score)};
-  const digest=await contentHash({contract:generationWeekOptimizationResultContractV1,
-    encoding:'potok-generation-week-optimization-result-canonical-json-v1',result:content});
+    evaluations,selectedWeekRawSha256:best.sha,selectedOptionIndexes:best.indexes,selectedScore:best.score===null?null:decimal(best.score),
+    ...(boundConvenience?{comparison:'ROBUST_CONVENIENCE_BOUNDS',selectedScoreBounds:bounds,unknownMetrics:best.unknownMetrics}:{})};
+  const digest=await contentHash({contract,
+    encoding:boundConvenience?'potok-generation-week-optimization-result-canonical-json-v2':'potok-generation-week-optimization-result-canonical-json-v1',result:content});
   const optimizationReceiptRaw=canonicalJsonV1({...content,digest},'SAFE_INTEGER');
   if(optimizationReceiptRaw.length>8_000_000)throw Error('WEEK_OPTIMIZATION_RECEIPT_TOO_LARGE');
-  return freeze({status:'FEASIBLE_PROPOSAL',evaluated:limit,totalCombinations,optionIndexes:best.indexes,weekRaw:best.weekRaw,
-    validation:best.validation,scope,score:decimal(best.score),optimizationReceiptRaw,optimizationResultDigest:digest});
+  const weekRaw=JSON.stringify({...header,days:options.map((pool,i)=>pool[best!.indexes[i]])});
+  return freeze({status:'FEASIBLE_PROPOSAL',evaluated:limit,totalCombinations,optionIndexes:best.indexes,weekRaw,
+    validation:bestValidation,scope,score:best.score===null?null:decimal(best.score),optimizationReceiptRaw,optimizationResultDigest:digest,
+    ...(boundConvenience?{scoreBounds:bounds,unknownMetrics:best.unknownMetrics}:{})});
+}
+
+/** Strict V1 remains unchanged: all four metrics are required. */
+export async function optimizeGenerationWeekRawV1(searchRaw:string,manifestRaw:string,policyRaw:string,inputRaw:string,
+  metrics:GenerationWeekMetricsPortV1):Promise<GenerationWeekOptimizationResultV1>{
+  const result=await compareWeeks(searchRaw,manifestRaw,policyRaw,inputRaw,metrics,false);
+  if(result.status==='BLOCKED_OPTIMIZATION_UNCERTAINTY')throw Error('INVALID_STRICT_OPTIMIZATION_RESULT');
+  if(result.status!=='FEASIBLE_PROPOSAL')return result;
+  if(typeof result.score!=='string')throw Error('INVALID_STRICT_OPTIMIZATION_RESULT');
+  return freeze({...result,score:result.score});
+}
+/** Explicit uncertainty mode: no estimated convenience value, reweighting or fallback. */
+export async function optimizeGenerationWeekWithConvenienceBoundsRawV1(searchRaw:string,manifestRaw:string,policyRaw:string,inputRaw:string,
+  metrics:GenerationWeekMetricsPortV1):Promise<GenerationWeekBoundedResultV1>{
+  const result=await compareWeeks(searchRaw,manifestRaw,policyRaw,inputRaw,metrics,true);
+  if(result.status!=='FEASIBLE_PROPOSAL')return result;
+  if(!result.scoreBounds||!result.unknownMetrics)throw Error('INVALID_BOUNDED_OPTIMIZATION_RESULT');
+  return freeze({...result,scoreBounds:result.scoreBounds,unknownMetrics:result.unknownMetrics});
 }
