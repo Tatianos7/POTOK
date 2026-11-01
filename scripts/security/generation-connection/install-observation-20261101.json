@@ -1,0 +1,232 @@
+{
+  "contract": "potok-generation-runtime-login-install-observation-v1",
+  "targetProjectId": "ozidryfvhkcbtpnulakq",
+  "approvedPr": 282,
+  "approvedCommit": "03e7b5681023a36a0e225f8404c1b82b220672ff",
+  "sourcePath": "docs/premium/drafts/generation_runtime_logins_v1.sql",
+  "sourceSha256": "3350df015b5c0f4839c9ca440ff39178d942696b5ce5a2961fb47c50e98619c0",
+  "ownerInstruction": "Продолжи работу",
+  "authorizationContext": "Immediate response to the bounded PR282 Staging permission-application question, keeping generation inactive.",
+  "migrationName": "generation_staging_runtime_logins_v1",
+  "baseline": {
+    "pins": [
+      {
+        "matches": true,
+        "signature": "potok_nutrition.activate_generated_week_gateway_v2(uuid)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.load_generation_request_v2(uuid)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.read_admitted_generation_goal_preparation_source_v1(uuid)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.read_admitted_generation_preparation_source_v1(uuid)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.read_admitted_generation_producer_source_v1(uuid,text,bytea,uuid,bytea,bytea,bytea)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.read_admitted_generation_validation_source_v1(uuid,bytea)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.record_generated_week_gateway_v2(uuid,bytea)"
+      }
+    ],
+    "roles": [
+      {
+        "name": "potok_generation_reader_v1",
+        "login": false,
+        "config": null,
+        "inherit": false,
+        "createDb": false,
+        "bypassRls": false,
+        "superuser": false,
+        "createRole": false,
+        "replication": false,
+        "connectionLimit": -1
+      }
+    ],
+    "counts": {
+      "finalWarnings": 0,
+      "validationInputs": 0,
+      "preparationSources": 0,
+      "publishedManifests": 0,
+      "publishedPolicyHeads": 0
+    },
+    "session": "postgres",
+    "operator": "postgres",
+    "observedAt": "2026-11-01T17:53:13.369181+00:00",
+    "memberships": [
+      {
+        "set": false,
+        "admin": true,
+        "member": "postgres",
+        "grantor": "supabase_admin",
+        "inherit": false,
+        "grantedRole": "potok_generation_reader_v1"
+      }
+    ],
+    "readerFunctions": [
+      "potok_nutrition.read_admitted_generation_goal_preparation_source_v1(uuid)",
+      "potok_nutrition.read_admitted_generation_preparation_source_v1(uuid)",
+      "potok_nutrition.read_admitted_generation_producer_source_v1(uuid,text,bytea,uuid,bytea,bytea,bytea)",
+      "potok_nutrition.read_admitted_generation_validation_source_v1(uuid,bytea)"
+    ],
+    "readerTableAccess": 0,
+    "operatorCreateRole": true,
+    "operatorCanGrantConnect": true
+  },
+  "postcheck": {
+    "pins": [
+      {
+        "matches": true,
+        "signature": "potok_nutrition.activate_generated_week_gateway_v2(uuid)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.load_generation_request_v2(uuid)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.read_admitted_generation_goal_preparation_source_v1(uuid)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.read_admitted_generation_preparation_source_v1(uuid)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.read_admitted_generation_producer_source_v1(uuid,text,bytea,uuid,bytea,bytea,bytea)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.read_admitted_generation_validation_source_v1(uuid,bytea)"
+      },
+      {
+        "matches": true,
+        "signature": "potok_nutrition.record_generated_week_gateway_v2(uuid,bytea)"
+      }
+    ],
+    "roles": [
+      {
+        "name": "potok_generation_gateway_v1",
+        "login": true,
+        "config": [
+          "search_path=pg_catalog",
+          "statement_timeout=30s",
+          "lock_timeout=5s",
+          "idle_in_transaction_session_timeout=10s"
+        ],
+        "connect": true,
+        "inherit": false,
+        "createDb": false,
+        "bypassRls": false,
+        "superuser": false,
+        "createRole": false,
+        "replication": false,
+        "schemaUsage": true,
+        "schemaCreate": false,
+        "connectionLimit": 2
+      },
+      {
+        "name": "potok_generation_reader_v1",
+        "login": true,
+        "config": [
+          "search_path=pg_catalog",
+          "statement_timeout=30s",
+          "lock_timeout=5s",
+          "idle_in_transaction_session_timeout=10s"
+        ],
+        "connect": true,
+        "inherit": false,
+        "createDb": false,
+        "bypassRls": false,
+        "superuser": false,
+        "createRole": false,
+        "replication": false,
+        "schemaUsage": true,
+        "schemaCreate": false,
+        "connectionLimit": 2
+      }
+    ],
+    "counts": {
+      "finalWarnings": 0,
+      "validationInputs": 0,
+      "preparationSources": 0,
+      "publishedManifests": 0,
+      "publishedPolicyHeads": 0
+    },
+    "functions": [
+      {
+        "role": "potok_generation_reader_v1",
+        "allowlist": [
+          "potok_nutrition.read_admitted_generation_goal_preparation_source_v1(uuid)",
+          "potok_nutrition.read_admitted_generation_preparation_source_v1(uuid)",
+          "potok_nutrition.read_admitted_generation_producer_source_v1(uuid,text,bytea,uuid,bytea,bytea,bytea)",
+          "potok_nutrition.read_admitted_generation_validation_source_v1(uuid,bytea)"
+        ]
+      },
+      {
+        "role": "potok_generation_gateway_v1",
+        "allowlist": [
+          "potok_nutrition.activate_generated_week_gateway_v2(uuid)",
+          "potok_nutrition.load_generation_request_v2(uuid)",
+          "potok_nutrition.record_generated_week_gateway_v2(uuid,bytea)"
+        ]
+      }
+    ],
+    "observedAt": "2026-11-01T17:55:10.665725+00:00",
+    "privileges": [
+      {
+        "role": "potok_generation_reader_v1",
+        "tableRights": 0,
+        "ownedSchemas": 0,
+        "ownedFunctions": 0,
+        "ownedRelations": 0
+      },
+      {
+        "role": "potok_generation_gateway_v1",
+        "tableRights": 0,
+        "ownedSchemas": 0,
+        "ownedFunctions": 0,
+        "ownedRelations": 0
+      }
+    ],
+    "memberships": [
+      {
+        "set": false,
+        "admin": true,
+        "member": "postgres",
+        "grantor": "supabase_admin",
+        "inherit": false,
+        "grantedRole": "potok_generation_reader_v1"
+      },
+      {
+        "set": false,
+        "admin": true,
+        "member": "postgres",
+        "grantor": "supabase_admin",
+        "inherit": false,
+        "grantedRole": "potok_generation_gateway_v1"
+      }
+    ]
+  },
+  "advisoryDelta": [],
+  "edgeFunctionCountAfter": 0,
+  "scope": {
+    "passwordsReadOrProvisioned": false,
+    "realPasswordLoginTested": false,
+    "managedTlsVerified": false,
+    "generatorActivated": false,
+    "sourcesPublished": false,
+    "edgeDeployed": false,
+    "productionOperated": false
+  }
+}

@@ -1,5 +1,12 @@
 # POTOK current state
 
+## PR282 restricted runtime login package installed — 2026-11-01
+
+- Owner instructed “Продолжи работу” in immediate response to the bounded PR282 permission-application question. Applied only the exact Staging package from commit 03e7b5681023a36a0e225f8404c1b82b220672ff; SQL SHA256 3350df015b5c0f4839c9ca440ff39178d942696b5ce5a2961fb47c50e98619c0. Migration: generation_staging_runtime_logins_v1. Prior candidate/NOLOGIN observations below are historical.
+- Fresh source/role/function preflight passed; applied in one guarded transaction. Independent committed-state postcheck confirms LOGIN for the existing four-function reader and new three-function gateway role, NOINHERIT/NOSUPERUSER/NOBYPASSRLS/no admin capabilities, two-connection limits, pg_catalog search_path and 30/5/10-second statement/lock/idle transaction defaults. No application table/sequence privileges or object ownership for either role; no outbound role memberships.
+- Managed owner-only ADMIN memberships remain with INHERIT/SET false. All seven retained function body/configuration pins remain unchanged. Source/catalog/policy counts remain zero; Edge inventory empty; advisory delta empty. No password was read/generated/provisioned and no real password/TLS connection or ordinary-account menu acceptance is claimed.
+- Actual secure credential configuration, verified TLS/connection/pool lifecycle and admitted sources remain needed before runtime mounting and separately approved activation. No Edge deployment, generator activation, FACT write, master merge or Production operation. See docs/premium/generation-runtime-logins-install-20261101.md. Cooking remains deferred.
+
 ## Restricted login and connection-verification candidate — 2026-11-01
 
 - Fresh read-only Staging metadata confirms the source reader remains NOLOGIN, owns no relation and has no application table/sequence rights; its one inbound membership is the managed postgres administration grant (supabase_admin grantor, ADMIN true, INHERIT/SET false). The narrow gateway role does not exist. Seven retained reader/gateway function hashes match the runtime-login candidate baseline.
