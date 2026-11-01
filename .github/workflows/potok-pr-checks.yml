@@ -41,6 +41,9 @@ jobs:
       - name: Pinned generation Staging package review
         run: node --test scripts/security/generation-staging-package/build.test.mjs
 
+      - name: Generation connection verifier regressions
+        run: node --test scripts/security/generation-connection/verify.test.mjs
+
       - name: Diary contract tests
         run: npm run test:diary
 

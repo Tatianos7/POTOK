@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Restricted login and connection-verification candidate — 2026-11-01
+
+- Fresh read-only Staging metadata confirms the source reader remains NOLOGIN, owns no relation and has no application table/sequence rights; its one inbound membership is the managed postgres administration grant (supabase_admin grantor, ADMIN true, INHERIT/SET false). The narrow gateway role does not exist. Seven retained reader/gateway function hashes match the runtime-login candidate baseline.
+- Prepared an unapplied transactional candidate enabling reader LOGIN with its same four readers and creating a separate LOGIN gateway role with exactly three function grants, no inherited roles, no service_role membership and no table/sequence rights. Sets per-role connection limits and bounded default timeouts; no password is supplied/generated/read, no source row or generator activation occurs. This is outside the earlier PR278 installation authorization and requires separate specific approval.
+- Added an explicit restricted gateway/worker path; old service-role factories remain unchanged. Added a SELECT-only direct-Staging psql verifier with fixed role/host/database selectors, verify-full CA/hostname validation, private password-file metadata checks, sanitized environment/errors and ten connection checks. No credential bytes are read/logged by the script.
+- New native login suite uses actual SCRAM/password TCP sessions in a fixed disposable database and real retained reader/gateway bodies. Loopback TLS is intentionally off, so its TLS/readiness check remains false; this is not a real Supabase credential/TLS acceptance receipt. See docs/premium/generation-runtime-connections-v1.md.
+- No live role, grant, secret, schema, route or deployment change; source publication, real connection/secret configuration and installed-path menu acceptance remain outstanding. Generator inactive; cooking deferred.
+
 ## Fixed SQL gateway transport — 2026-11-01
 
 - Added a default-disabled direct SQL adapter for exactly load/record/activate gateway functions and a composition with the SQL-backed weighted worker. Uses bound UUID/hex parameters and preserves exact bytes. No private-schema HTTP exposure, SQL connection, credentials, role changes, retries, direct table access or internal writer fallback is supplied.
