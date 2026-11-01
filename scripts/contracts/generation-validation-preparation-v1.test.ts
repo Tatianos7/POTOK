@@ -11,7 +11,11 @@ import {generationPreparationMetadataFixtureV1} from '../../src/server/__tests__
 import {generationPreparationPortsFixtureV1} from '../../src/server/__tests__/generationAdmittedWorkerFixturesV1';
 import {generationWorkerFixtureV1} from '../../src/server/__tests__/generationWorkerBindingsFixturesV1';
 import {canonicalJsonV1} from '../../src/utils/adaptiveNutritionWireV1';
-import {id} from '../../src/utils/__tests__/trustedGeneratedWeekFixturesV1';
+import {id,fixtureWeekValidationInput} from '../../src/utils/__tests__/trustedGeneratedWeekFixturesV1';
+import {createSqlGenerationWeekMetricProducerV1,generationWeekMetricPolicyContractV1,generationWeekConvenienceContractV1} from '../../src/server/generationWeekMetricProducerV1';
+import {optimizeGenerationWeekRawV1} from '../../src/server/generationWeekOptimizationV1';
+import {generationWeekSearchContractV1} from '../../src/server/generationWeekSearchV1';
+import {optimizationPolicyContractV1} from '../../src/utils/adaptiveNutritionMealBalanceV1';
 const native=process.env.POTOK_GENERATION_STORE_NATIVE==='1';
 const extension=readFileSync(new URL('../../docs/premium/drafts/generation_preparation_source_v1.sql',import.meta.url),'utf8');
 const workerSession='SET SESSION AUTHORIZATION potok_generation_reader_v1;';
@@ -46,6 +50,18 @@ test('native request-only preparation starts without final warnings; proposal va
   }};
   const metadata={async loadMetadataRaw(r:string,digest:string){assert.equal(r,input.operation.requestId);assert.equal(digest,f.evidence.generationInputDigest);return generationPreparationMetadataFixtureV1(f);}};
   const ports=await generationPreparationPortsFixtureV1(f);
+  const metricPolicyRaw=JSON.stringify({contract:generationWeekMetricPolicyContractV1,metricPolicyRevision:id(991),
+    optimizationPolicyRevision:input.optimizationPolicyRevision,targetFit:'MEAN_DAILY_CALORIE_FIT_V1',
+    diversity:'UNIQUE_RECIPE_MEAL_SHARE_V1',shoppingReuse:'CANONICAL_FOOD_MEAL_REUSE_SHARE_V1',convenience:'INDEPENDENT_WEEK_CONVENIENCE_V1'});
+  const optimizationPolicyRaw=JSON.stringify({contract:optimizationPolicyContractV1,policyRevision:input.optimizationPolicyRevision,
+    weights:{targetFit:'0.400',diversity:'0.250',convenience:'0.200',shoppingReuse:'0.150'}});
+  const metricWeekRaw=JSON.stringify(fixtureWeekValidationInput(f));
+  // Only convenience remains an explicit synthetic upstream source. Other metrics are computed from SQL context.
+  const computedMetrics=createSqlGenerationWeekMetricProducerV1(sql,metricPolicyRaw,{async loadConvenienceRaw(r,sha,digest,revision){
+    return JSON.stringify({contract:generationWeekConvenienceContractV1,requestOperationId:r,weekRawSha256:sha,generationInputDigest:digest,
+      metricPolicyRevision:revision,sourceRevision:id(992),score:'0.750'});
+  }});
+
   await t.test('actual PostgreSQL context goes through strict stored decoders and real candidate preparation',async()=>{
     const source=createAdmittedGenerationPreparationSourceV1(sql,metadata),raw=await source.loadPreparationRaw(input.operation.requestId);assert.ok(raw);
     const prepared=await createGenerationMenuCandidatePreparerV1({async loadPreparationRaw(){return raw;}}).prepare(input.operation.requestId);
@@ -55,6 +71,18 @@ test('native request-only preparation starts without final warnings; proposal va
     const gateway=await generationWorkerFixtureV1();
     await assert.rejects(createSqlPreparedGenerationWorkerV1({preparationSql:sql,authoritySql:sql,metadata,warnings:ports.warnings,decisions:ports.decisions,gateway:gateway.client,enabled:()=>true}).continue(input.operation.requestId),/SOURCE_PROVENANCE_UNAVAILABLE/);
     assert.equal(gateway.counts.records,0);assert.equal(gateway.counts.activations,0);
+  });
+
+  await t.test('SQL context feeds calculated metrics and real weighted search before final warning storage',async()=>{
+    const unknown=createSqlGenerationWeekMetricProducerV1(sql,metricPolicyRaw,null);
+    const partial=await unknown.calculateWeekRaw(input.operation.requestId,metricWeekRaw,f.evidence.generationInputDigest,optimizationPolicyRaw);
+    assert.ok(partial);assert.equal(partial.status,'PARTIAL');assert.equal(JSON.parse(partial.metricsRaw).metrics.convenience,null);
+    const {days,...weekHeader}=fixtureWeekValidationInput(f);
+    const searchRaw=JSON.stringify({contract:generationWeekSearchContractV1,weekHeader,dayOptions:days.map(d=>[d]),maxEvaluations:1});
+    const result=await optimizeGenerationWeekRawV1(searchRaw,f.rawContext.candidateManifestRaw,optimizationPolicyRaw,
+      JSON.stringify(input),computedMetrics);
+    assert.equal(result.status,'FEASIBLE_PROPOSAL');if(result.status==='FEASIBLE_PROPOSAL')assert.equal(result.score,'0.400');
+    assert.equal(ok('SELECT count(*) FROM potok_nutrition.generation_validation_warnings_v1;'),'0');
   });
   ok(warningInsert(f.warningRaw,proposalSha));
   ok(`INSERT INTO potok_nutrition.generation_validation_receipt_bindings_v1(receipt_ref,request_operation_id,account_id,source_kind,proposal_raw_sha256,source_storage_sha256)
@@ -87,5 +115,6 @@ test('native request-only preparation starts without final warnings; proposal va
     ok("INSERT INTO potok_nutrition.generation_validation_receipt_revocations_v1(receipt_ref,reason_ref) VALUES ('synthetic-only:inputs','synthetic-only:revoked');");
     let calls=0;const source=createAdmittedGenerationPreparationSourceV1(sql,{async loadMetadataRaw(){calls++;return null;}});
     await assert.rejects(source.loadPreparationRaw(input.operation.requestId),/SOURCE_PROVENANCE_UNAVAILABLE/);assert.equal(calls,0);
+    await assert.rejects(computedMetrics.assessWeekRaw(input.operation.requestId,metricWeekRaw,f.evidence.generationInputDigest,optimizationPolicyRaw),/SOURCE_PROVENANCE_UNAVAILABLE/);
   });
 });
