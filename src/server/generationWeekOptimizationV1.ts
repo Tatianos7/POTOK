@@ -81,11 +81,22 @@ export async function optimizeGenerationWeekRawV1(searchRaw:string,pinnedManifes
   if(manifest.digest!==input.candidateManifestDigest||manifest.manifestRevision!==input.candidateManifestRevision)
     throw Error('WEEK_OPTIMIZATION_MANIFEST_MISMATCH');
   const generationInputDigest=await trustedGenerationInputDigestV1(input);
+  const pinnedGoal=canonicalJsonV1(input.goalNutritionTarget,'SAFE_INTEGER');
   const totalCombinations=options.reduce((n,pool)=>n*pool.length,1),limit=Math.min(search.maxEvaluations as number,totalCombinations);
   const indexes=Array<number>(7).fill(0),evaluations:Evaluation[]=[],assessments=new Map<string,string>();
   let best:{weekRaw:string;sha:string;validation:ValidatorResultV1;indexes:number[];score:bigint}|null=null;
   for(let evaluated=1;evaluated<=limit;evaluated++){
-    const weekRaw=JSON.stringify({...header,days:options.map((pool,i)=>pool[indexes[i]])});
+    const selectedDays=options.map((pool,i)=>pool[indexes[i]]);
+    for(const value of selectedDays){
+      // A missing target remains the validator's missing-evidence case. A supplied
+      // target must match the pinned values, not merely reuse their revision UUID.
+      if(value&&typeof value==='object'&&!Array.isArray(value)){
+        const target=(value as Record<string,unknown>).goalTarget;
+        if(target!==null&&target!==undefined&&canonicalJsonV1(target,'SAFE_INTEGER')!==pinnedGoal)
+          throw Error('WEEK_OPTIMIZATION_GOAL_TARGET_MISMATCH');
+      }
+    }
+    const weekRaw=JSON.stringify({...header,days:selectedDays});
     const sha=await rawHash(weekRaw),validation=await validateWeekSnapshotRawV2(weekRaw,pinnedManifestRaw);
     // An unknown visited candidate cannot be declared inferior to a fully evaluated one.
     if(validation.status==='BLOCKED_MISSING_EVIDENCE')return freeze({status:'BLOCKED_MISSING_EVIDENCE',evaluated,totalCombinations});

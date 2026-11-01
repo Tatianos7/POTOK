@@ -1,6 +1,6 @@
 # Bounded weighted week comparison
 
-`optimizeGenerationWeekRawV1` compares the actual visited seven-day candidates instead of stopping at the first feasible one. It reuses the existing search input contract and real V2 week validator. It pins the trusted request/input, goal/target/plan/composition/balance/optimization revisions, week/timezone and decoded manifest identity. Raw policy, search, input and manifest are owned before asynchronous work. Neither the evaluator nor its hashes admit source authority or issue database acceptance.
+`optimizeGenerationWeekRawV1` compares the actual visited seven-day candidates instead of stopping at the first feasible one. It reuses the existing search input contract and real V2 week validator. It pins the trusted request/input, exact supplied goal target values, goal/target/plan/composition/balance/optimization revisions, week/timezone and decoded manifest identity. Raw policy, search, input and manifest are owned before asynchronous work. Neither the evaluator nor its hashes admit source authority or issue database acceptance.
 
 ## Scoring
 

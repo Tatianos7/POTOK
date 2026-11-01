@@ -113,6 +113,12 @@ test('raw/budget/policy/input substitutions fail before metric source access',as
     x.f.rawContext.candidateManifestRaw,x.policyRaw,JSON.stringify(x.f.context.input),x.metrics));
   assert.equal(x.calls(),0);
 });
+test('changed goal target values cannot reuse the pinned goal revision for scoring',async()=>{
+  const x=await fixture(),day=x.search.dayOptions[0][0];
+  day.goalTarget=structuredClone(day.goalTarget);assert.ok(day.goalTarget);
+  day.goalTarget.calories.target='175.000';
+  await assert.rejects(x.run,/WEEK_OPTIMIZATION_GOAL_TARGET_MISMATCH/);assert.equal(x.calls(),0);
+});
 test('duplicate week assessments cannot silently drift during one comparison',async()=>{
   const x=await fixture();x.search.dayOptions[6][1]=structuredClone(x.search.dayOptions[6][0]);x.set('drift');
   await assert.rejects(x.run,/METRICS_DRIFT/);
