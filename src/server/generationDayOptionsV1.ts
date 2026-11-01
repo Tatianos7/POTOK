@@ -2,7 +2,8 @@ import { createGenerationMenuCandidatePreparerV1, type GenerationMenuCandidateSo
   type GenerationMenuCandidateSlotV1 } from './generationMenuCandidatesV1';
 import { generationWeekSearchContractV1, searchGenerationWeekRawV1,
   type GenerationWeekSearchResultV1 } from './generationWeekSearchV1';
-import {optimizeGenerationWeekRawV1,type GenerationWeekOptimizationConfigV1} from './generationWeekOptimizationV1';
+import {optimizeGenerationWeekRawV1,type GenerationWeekOptimizationConfigV1,
+  type GenerationWeekOptimizationResultV1} from './generationWeekOptimizationV1';
 import { decodeTrustedGenerationInputV1 } from '../utils/adaptiveNutritionGraphV2';
 import { decodeAdaptiveNutritionCandidateManifestV2, decodeNutritionPreferenceSnapshotV1,
   decodeNutritionSafetySnapshotV1 } from '../utils/adaptiveNutritionAuthoritiesV1';
@@ -27,6 +28,12 @@ export interface GenerationDayDiagnosticV1 {
   missingWarningOptions: number;
 }
 type FeasibleWeek = Extract<GenerationWeekSearchResultV1, { status: 'FEASIBLE_PROPOSAL' }>;
+function isOptimizedWeek(value:FeasibleWeek):value is Extract<GenerationWeekOptimizationResultV1,{status:'FEASIBLE_PROPOSAL'}>{
+  return 'optimizationResultDigest' in value&&typeof value.optimizationResultDigest==='string'
+    &&'optimizationReceiptRaw' in value&&typeof value.optimizationReceiptRaw==='string'
+    &&'score' in value&&typeof value.score==='string'&&'scope' in value
+    &&(value.scope==='BEST_IN_VALIDATED_POOL'||value.scope==='BEST_EVALUATED_PREFIX');
+}
 export type GenerationDayOptionsResultV1 =
   | { status: 'FEASIBLE_PROPOSAL'; requestOperationId: string; week: FeasibleWeek;
       selectedWarningEntriesRaw: string[]; days: GenerationDayDiagnosticV1[] }
@@ -235,7 +242,8 @@ function createGenerationDayOptionsInternalV1(sourcePort: GenerationMenuCandidat
       slotId:meal.slotId,sourceKind:meal.validationInput.sourceKind,
       selectedCandidateDigest:meal.validationInput.meal.digest,
       candidateSetDigest:pools.find(p=>p.slotId===meal.slotId)!.candidateSetDigest})));
-    const optimized='optimizationResultDigest' in week?week:null;
+    const optimized=optimization&&isOptimizedWeek(week)?week:null;
+    if(optimization&&!optimized)throw Error('GENERATION_WEEK_OPTIMIZATION_RECEIPT_MISSING');
     const receiptContract=optimized?generationSelectionReceiptContractV2:generationSelectionReceiptContractV1;
     const content={contract:receiptContract,requestOperationId,
       generationInputDigest:prepared.generationInputDigest,candidateManifestDigest:manifest.digest,

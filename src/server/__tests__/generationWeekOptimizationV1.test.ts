@@ -74,7 +74,8 @@ test('ties use stable week digest; identical raw inputs produce identical result
   if(reversed.status!=='FEASIBLE_PROPOSAL')throw Error('fixture');assert.equal(reversed.weekRaw,a.weekRaw);
 });
 test('existing valid-before-warnings preference precedes weighted score',async()=>{
-  const x=await fixture(true);x.search.dayOptions[6][1].meals[0].validationInput.warningSignals.longPreparationBurden=true;
+  const x=await fixture(true);const meal=x.search.dayOptions[6][1].meals[0];
+  meal.validationInput.warningSignals={...meal.validationInput.warningSignals,longPreparationBurden:true};
   const r=await x.run();assert.equal(r.status,'FEASIBLE_PROPOSAL');if(r.status!=='FEASIBLE_PROPOSAL')return;
   assert.equal(r.optionIndexes[6],0);assert.equal(r.score,'0.300');assert.equal(r.validation.status,'VALID');
 });
