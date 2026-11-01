@@ -35,7 +35,7 @@ export function createWeightedAdmittedGenerationWorkerV1(dependencies:WeightedAd
     query:(statement,parameters)=>guarded(()=>authoritySql.query(statement,parameters)),
   }));
   const guardedSource:GenerationMenuCandidateSourcePortV1={loadPreparationRaw:request=>guarded(()=>source.loadPreparationRaw(request))};
-  const guardedWarnings:GenerationPreparationWarningPortV1={loadMealWarningRaw:(request,slot,digest)=>guarded(()=>warnings.loadMealWarningRaw(request,slot,digest))};
+  const guardedWarnings:GenerationPreparationWarningPortV1={loadMealWarningRaw:(...args)=>guarded(()=>warnings.loadMealWarningRaw(...args))};
   const optimization:GenerationWeekOptimizationConfigV1={policyRaw,metrics:{assessWeekRaw:(request,weekRaw,inputDigest,rawPolicy)=>
     guarded(()=>metrics.assessWeekRaw(request,weekRaw,inputDigest,rawPolicy))}};
   const bind=comparison==='STRICT'?createOptimizedGenerationWorkerBindingsV1:createConvenienceBoundedGenerationWorkerBindingsV1;

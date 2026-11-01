@@ -56,7 +56,8 @@ async function fixture(known=false){
     source:{async loadPreparationRaw(r){counts.source++;assert.equal(r,request);if(state.closeAt==='source')state.enabled=false;
       return JSON.stringify({contract:generationMenuCandidateSourceContractV1,requestOperationId:r,contextRaw:f.contextRaw,policiesRaw:f.policiesRaw,
         goalProfile:'MAINTENANCE',slotRevisions:f.plan.graph.days.flatMap(d=>d.slots.map(s=>({slotId:s.slotId,mealSnapshotRevision:s.mealSnapshotRevision})))});}},
-    warnings:{async loadMealWarningRaw(r,slotId,mealSnapshotDigest){counts.warnings++;assert.equal(r,request);
+    warnings:{async loadMealWarningRaw(r,slotId,mealSnapshotDigest,evidenceDigest,policiesDigest){counts.warnings++;assert.equal(r,request);
+      assert.equal(evidenceDigest,f.evidence.digest);assert.equal(policiesDigest,f.policies.digest);
       if(state.closeAt==='warnings')state.enabled=false;return JSON.stringify(resignEntry({...f.set.entries[0],slotId,mealSnapshotDigest}));}},
     optimization:{policyRaw:JSON.stringify({contract:optimizationPolicyContractV1,policyRevision:input.optimizationPolicyRevision,
       weights:{targetFit:'0.400',diversity:'0.250',convenience:'0.200',shoppingReuse:'0.150'}}),metrics:{async assessWeekRaw(...args){
