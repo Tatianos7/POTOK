@@ -1,0 +1,26 @@
+{
+  "contract": "potok-generation-staging-package-v1",
+  "targetProjectId": "ozidryfvhkcbtpnulakq",
+  "sourceCommit": "8711dc1157dd70372b53e30627797c97a18cafd8",
+  "sources": [
+    {
+      "path": "docs/premium/drafts/generation_preparation_source_v1.sql",
+      "sha256": "f308c64f1016f9725deb22ae106eeb55a22f1569da817c0dd0a53efbe0e1535d",
+      "pr": 268
+    },
+    {
+      "path": "docs/premium/drafts/generation_producer_sources_v1.sql",
+      "sha256": "fa6a987719606c563b0c64036f41aab8e6f36f3099dad28e96717976f6bae2cd",
+      "pr": 269
+    },
+    {
+      "path": "docs/premium/drafts/generation_goal_preparation_source_v1.sql",
+      "sha256": "b3023f7ac2e73c4a5f14d5d5289a652464a7a6a584f5518f0875b2cd9551aed8",
+      "pr": 271
+    },
+    {
+      "path": "docs/premium/drafts/generation_plan_readback_v2.sql",
+      "sha256": "b2756be61a2db87cd7e19e275e85aa1dafaca704bc5749a48bdd21bdf7bf8e22"
+    }
+  ]
+}

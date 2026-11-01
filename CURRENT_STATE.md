@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Weighted generation integration and bounded Staging package — 2026-11-01
+
+- PR270–277 add warning assessment, goal-derived metadata, actual selection receipts, weighted week optimization, computed metrics, robust unknown-convenience bounds, actual per-slot decision projection and an inactive admitted worker assembly. Exact PR277 head 8711dc1157dd70372b53e30627797c97a18cafd8 passed build/full regressions and all seven native PostgreSQL suites. Fixtures are explicit; this is not live menu acceptance.
+- Fresh Staging metadata/count inspection: approved PR267 source storage remains installed and empty; the request-only/producer/goal readers and own-request menu reader are absent. Published manifests remain zero. Eighteen installation-baseline checks passed, including pinned existing function bodies, reader allowlist, forced RLS and actual column types. No live writes were performed.
+- Four unchanged SQL candidates are now byte-pinned in an ordered review manifest with SELECT-only preflight and an offline rollback-only assembler. A combined disposable suite verifies successful composition, late failure atomicity, exact privileges and empty source tables. Native results must be read from this PR CI; preparation alone is not an installed-path acceptance receipt. See docs/premium/generation-staging-package-20261101.md.
+- Hosted SQL requires specific approval per AGENTS. No master merge, deployment, catalog publication, runtime mount, activation or FACT write. Catalog/admission/runtime and real-account installed-path E2E remain outstanding. Cooking stays deferred.
+
 ## SQL-backed producer metadata and prepared-meal warning sources — 2026-10-31
 
 - Added admitted SQL ports for existing preparation metadata and per-meal warning DTOs. Fixed parameterized lookups pin request/input or request/slot/meal/evidence/policy identity, verify stored raw SHA/UTF8/duplicate-aware JSON and preserve exact payload text. Missing/revoked data remains unavailable, never a default profile/revision allocation or all-false warning signal set.

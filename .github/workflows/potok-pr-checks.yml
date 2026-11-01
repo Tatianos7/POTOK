@@ -38,6 +38,9 @@ jobs:
           VITE_SUPABASE_URL: ''
           VITE_SUPABASE_ANON_KEY: ''
 
+      - name: Pinned generation Staging package review
+        run: node --test scripts/security/generation-staging-package/build.test.mjs
+
       - name: Diary contract tests
         run: npm run test:diary
 
