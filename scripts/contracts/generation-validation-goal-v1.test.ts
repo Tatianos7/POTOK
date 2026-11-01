@@ -59,13 +59,14 @@ test('native admitted goal source derives metadata without metadata rows or tabl
     assert.equal(ok("SELECT to_regclass('potok_nutrition.generation_preparation_sources_v1') IS NULL;"),'t');
   });
   await t.test('goal revision, account, Premium, policy and revoked input receipt changes fail closed',()=>{
-    for(const change of [
-      `UPDATE public.user_goals SET goal_revision='00000000-0000-4000-8000-000000000999' WHERE user_id=${account};`,
-      `UPDATE public.user_goals SET user_id='00000000-0000-4000-8000-000000000999' WHERE user_id=${account};`,
-      "UPDATE potok_control.access_attestations SET valid_until=statement_timestamp()-interval '1 minute';",
-      "UPDATE potok_nutrition.adaptive_nutrition_generation_policy_head_v2 SET publication_state='DRAFT';",
-      `INSERT INTO potok_nutrition.generation_validation_receipt_revocations_v1(receipt_ref,reason_ref) VALUES('synthetic-only:inputs','synthetic-only:goal-test');`,
-    ])denied('BEGIN;'+change+session+read,/SOURCE_PROVENANCE_UNAVAILABLE|GENERATION_REQUEST_STALE_SELECTION|GENERATION_REQUEST_STALE_POLICY|VERIFIED_PREMIUM_REQUIRED/);
+    const changes:[string,RegExp][]=[
+      [`UPDATE public.user_goals SET goal_revision='00000000-0000-4000-8000-000000000999' WHERE user_id=${account};`,/GENERATION_REQUEST_STALE_SELECTION/],
+      [`UPDATE public.user_goals SET user_id='00000000-0000-4000-8000-000000000999' WHERE user_id=${account};`,/GENERATION_REQUEST_STALE_SELECTION/],
+      ["UPDATE potok_control.access_attestations SET valid_until=statement_timestamp()-interval '1 minute';",/VERIFIED_PREMIUM_REQUIRED/],
+      ["UPDATE potok_nutrition.adaptive_nutrition_generation_policy_head_v2 SET publication_state='DRAFT';",/query returned no rows/],
+      [`INSERT INTO potok_nutrition.generation_validation_receipt_revocations_v1(receipt_ref,reason_ref) VALUES('synthetic-only:inputs','synthetic-only:goal-test');`,/SOURCE_PROVENANCE_UNAVAILABLE/],
+    ];
+    for(const [change,expected] of changes)denied('BEGIN;'+change+session+read,expected);
   });
   await t.test('previous metadata does not hide later unavailability',async()=>{
     assert.ok(metadataRaw!);ok(`UPDATE public.user_goals SET goal_type=NULL WHERE user_id=${account};`);

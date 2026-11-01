@@ -68,7 +68,8 @@ test('another request, changed nested bytes, duplicate keys and extra metadata a
 test('invalid lookup and malformed/failed SQL do not fall back to stored/default metadata',async()=>{
   const x=await fixture();await assert.rejects(()=>x.source.loadPreparationRaw('bad'));assert.equal(x.calls.length,0);
   for(const rows of [[],[{source_raw:null},{source_raw:null}],[{source_raw:null,extra:true}],[{source_raw:{}}]]){
-    const source=createGoalDerivedGenerationPreparationSourceV1({async query(){return {rows};}});
+    // Deliberately violate the driver's typed contract to exercise the runtime boundary.
+    const source=createGoalDerivedGenerationPreparationSourceV1({async query(){return {rows:rows as unknown as {source_raw:string|null}[]};}});
     await assert.rejects(()=>source.loadPreparationRaw(x.request));
   }
   const source=createGoalDerivedGenerationPreparationSourceV1({async query(){throw Error('connection failed');}});
