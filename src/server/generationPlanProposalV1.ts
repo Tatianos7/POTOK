@@ -1,4 +1,6 @@
-import {createGenerationDayOptionsV1,createGenerationSelectionV1, type GenerationPreparationWarningPortV1} from './generationDayOptionsV1';
+import {createGenerationDayOptionsV1,createGenerationSelectionV1,createOptimizedGenerationSelectionV1,
+  type GenerationPreparationWarningPortV1} from './generationDayOptionsV1';
+import type {GenerationWeekOptimizationConfigV1} from './generationWeekOptimizationV1';
 import type {GenerationMenuCandidateSourcePortV1} from './generationMenuCandidatesV1';
 import {createGenerationValidationAdapterV1, type GenerationValidationAuthorityPortV1} from './generationValidationAdapterV1';
 import {decodeTrustedGenerationInputV1, sealAdaptiveNutritionGraphV2, bindGeneratedWeekPlanV1,
@@ -125,13 +127,15 @@ export async function projectGenerationWeekRawV1(requestOperationId:string,weekR
 function proposalPipeline(sourcePort:GenerationMenuCandidateSourcePortV1,
   warningPort:GenerationPreparationWarningPortV1,
   traceFor:(request:string,weekRaw:string,contextRaw:string,receiptRaw?:string)=>Promise<string|null>,
-  authorityPort:GenerationValidationAuthorityPortV1,selectionBound:boolean){
+  authorityPort:GenerationValidationAuthorityPortV1,selectionBound:boolean,optimization?:GenerationWeekOptimizationConfigV1){
   return Object.freeze({async generate(requestOperationId:string,limitsRaw?:string){
     let preparationRaw:string|null=null;
-    const create=selectionBound?createGenerationSelectionV1:createGenerationDayOptionsV1;
-    const prepared=await create({async loadPreparationRaw(id){
+    const snapshotSource={async loadPreparationRaw(id:string){
       preparationRaw=await sourcePort.loadPreparationRaw(id);return preparationRaw;
-    }},warningPort).generate(requestOperationId,limitsRaw);
+    }};
+    const engine=optimization?createOptimizedGenerationSelectionV1(snapshotSource,warningPort,optimization)
+      :selectionBound?createGenerationSelectionV1(snapshotSource,warningPort):createGenerationDayOptionsV1(snapshotSource,warningPort);
+    const prepared=await engine.generate(requestOperationId,limitsRaw);
     if(prepared.status!=='FEASIBLE_PROPOSAL')return Object.freeze({status:'PREPARATION_STOPPED' as const,reason:prepared.status,requestOperationId});
     const source=JSON.parse(preparationRaw!) as {contextRaw:string}; // admitted by existing preparation boundary
     const receiptRaw='selectionReceiptRaw' in prepared&&typeof prepared.selectionReceiptRaw==='string'?prepared.selectionReceiptRaw:undefined;
@@ -157,19 +161,23 @@ export function createValidatedGenerationProposalV1(source:GenerationMenuCandida
  * candidate pool/meal. Search provenance does not create an optimization certificate.
  */
 export function createSelectionBoundGenerationProposalV1(source:GenerationMenuCandidateSourcePortV1,
-  warnings:GenerationPreparationWarningPortV1,decisions:GenerationSelectionDecisionPortV1,authority:GenerationValidationAuthorityPortV1){
+  warnings:GenerationPreparationWarningPortV1,decisions:GenerationSelectionDecisionPortV1,authority:GenerationValidationAuthorityPortV1,
+  optimization?:GenerationWeekOptimizationConfigV1){
+  const owned=optimization?Object.freeze({policyRaw:optimization.policyRaw,metrics:optimization.metrics}):undefined;
   return proposalPipeline(source,warnings,async(request,weekRaw,contextRaw,receiptRaw)=>{
     if(typeof receiptRaw!=='string')throw Error('GENERATION_SELECTION_RECEIPT_MISSING');
     // This receipt was made by the owned engine immediately above, never loaded from
     // the trace producer. The producer only receives immutable primitive strings.
-    const receipt=JSON.parse(receiptRaw) as {requestOperationId:string;weekRawSha256:string;
+    const receipt=JSON.parse(receiptRaw) as {requestOperationId:string;weekRawSha256:string;weekOptimizationResultDigest?:string;
       selectedSlots:{slotId:string;sourceKind:string;candidateSetDigest:string;selectedCandidateDigest:string}[]};
     const raw=await decisions.produceDecisionTraceRaw(request,weekRaw,receiptRaw,contextRaw);
     if(raw===null)return null;
     const trace=record(parse(raw),['contract','requestOperationId','weekRawSha256','slots','weekOptimizationResultDigest']);
     if(trace.contract!==generationDecisionTraceContractV1||trace.requestOperationId!==request
       ||trace.requestOperationId!==receipt.requestOperationId||trace.weekRawSha256!==receipt.weekRawSha256
-      ||!Array.isArray(trace.slots)||trace.slots.length!==receipt.selectedSlots.length)throw Error('SELECTION_DECISION_TRACE_MISMATCH');
+      ||!Array.isArray(trace.slots)||trace.slots.length!==receipt.selectedSlots.length
+      ||(receipt.weekOptimizationResultDigest!==undefined&&trace.weekOptimizationResultDigest!==receipt.weekOptimizationResultDigest))
+      throw Error('SELECTION_DECISION_TRACE_MISMATCH');
     const seen=new Set<string>();
     for(const value of trace.slots){
       const slot=record(value,['slotId','generatorDecisionEvidence']);
@@ -182,5 +190,14 @@ export function createSelectionBoundGenerationProposalV1(source:GenerationMenuCa
       seen.add(actual.slotId);
     }
     return raw;
-  },authority,true);
+  },authority,true,owned);
+}
+
+/** Explicit weighted-week path. Missing metrics block; old factories keep their defaults. */
+export function createOptimizedGenerationProposalV1(source:GenerationMenuCandidateSourcePortV1,
+  warnings:GenerationPreparationWarningPortV1,optimization:GenerationWeekOptimizationConfigV1,
+  decisions:GenerationSelectionDecisionPortV1,authority:GenerationValidationAuthorityPortV1){
+  if(!optimization||typeof optimization.policyRaw!=='string'||!optimization.metrics
+    ||typeof optimization.metrics.assessWeekRaw!=='function')throw Error('INVALID_WEEK_OPTIMIZATION_CONFIG');
+  return createSelectionBoundGenerationProposalV1(source,warnings,decisions,authority,optimization);
 }

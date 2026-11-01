@@ -2,6 +2,8 @@ import { createGenerationMenuCandidatePreparerV1, type GenerationMenuCandidateSo
   type GenerationMenuCandidateSlotV1 } from './generationMenuCandidatesV1';
 import { generationWeekSearchContractV1, searchGenerationWeekRawV1,
   type GenerationWeekSearchResultV1 } from './generationWeekSearchV1';
+import {optimizeGenerationWeekRawV1,type GenerationWeekOptimizationConfigV1,
+  type GenerationWeekOptimizationResultV1} from './generationWeekOptimizationV1';
 import { decodeTrustedGenerationInputV1 } from '../utils/adaptiveNutritionGraphV2';
 import { decodeAdaptiveNutritionCandidateManifestV2, decodeNutritionPreferenceSnapshotV1,
   decodeNutritionSafetySnapshotV1 } from '../utils/adaptiveNutritionAuthoritiesV1';
@@ -26,12 +28,18 @@ export interface GenerationDayDiagnosticV1 {
   missingWarningOptions: number;
 }
 type FeasibleWeek = Extract<GenerationWeekSearchResultV1, { status: 'FEASIBLE_PROPOSAL' }>;
+function isOptimizedWeek(value:FeasibleWeek):value is Extract<GenerationWeekOptimizationResultV1,{status:'FEASIBLE_PROPOSAL'}>{
+  return 'optimizationResultDigest' in value&&typeof value.optimizationResultDigest==='string'
+    &&'optimizationReceiptRaw' in value&&typeof value.optimizationReceiptRaw==='string'
+    &&'score' in value&&typeof value.score==='string'&&'scope' in value
+    &&(value.scope==='BEST_IN_VALIDATED_POOL'||value.scope==='BEST_EVALUATED_PREFIX');
+}
 export type GenerationDayOptionsResultV1 =
   | { status: 'FEASIBLE_PROPOSAL'; requestOperationId: string; week: FeasibleWeek;
       selectedWarningEntriesRaw: string[]; days: GenerationDayDiagnosticV1[] }
   | { status: 'BLOCKED_SOURCE_MISSING' | 'RESOURCE_LIMIT_REACHED' | 'INCOMPLETE_MEAL_POOL'
       | 'DAY_SEARCH_LIMIT_REACHED' | 'NO_FEASIBLE_DAY' | 'BLOCKED_WARNING_EVIDENCE'
-      | 'BLOCKED_MISSING_EVIDENCE' | 'NO_FEASIBLE_WEEK_IN_POOL' | 'SEARCH_LIMIT_REACHED';
+      | 'BLOCKED_MISSING_EVIDENCE' | 'NO_FEASIBLE_WEEK_IN_POOL' | 'SEARCH_LIMIT_REACHED' | 'BLOCKED_OPTIMIZATION_METRICS';
       requestOperationId: string; days: GenerationDayDiagnosticV1[] };
 type Option = GenerationMenuCandidateSlotV1['meals'][number];
 type WarnedOption = { option: Option; warning: MealWarningEvidenceV1; warningRaw: string };
@@ -41,6 +49,7 @@ interface SelectionPoolV1 {
   admittedWarnings:{mealSnapshotDigest:string;warningEvidenceDigest:string}[];
 }
 export const generationSelectionReceiptContractV1='potok-generation-selection-receipt-v1';
+export const generationSelectionReceiptContractV2='potok-generation-selection-receipt-v2';
 export type GenerationSelectionResultV1=Exclude<GenerationDayOptionsResultV1,{status:'FEASIBLE_PROPOSAL'}>
   | (Extract<GenerationDayOptionsResultV1,{status:'FEASIBLE_PROPOSAL'}>&{selectionReceiptRaw:string});
 type InternalResult=GenerationDayOptionsResultV1&{selectionReceiptRaw?:string};
@@ -78,7 +87,7 @@ function limits(raw: string) {
 
 /** Inactive catalog -> meal options -> validated day alternatives -> bounded weekly proposal. */
 function createGenerationDayOptionsInternalV1(sourcePort: GenerationMenuCandidateSourcePortV1,
-  warningPort: GenerationPreparationWarningPortV1,captureSelection:boolean) {
+  warningPort: GenerationPreparationWarningPortV1,captureSelection:boolean,optimization?:GenerationWeekOptimizationConfigV1) {
   return Object.freeze({ async generate(requestOperationId: string,
     limitsRaw = '{"maxDayEvaluations":1024,"maxWeekEvaluations":1024}'): Promise<InternalResult> {
     const budget = limits(limitsRaw);
@@ -205,7 +214,9 @@ function createGenerationDayOptionsInternalV1(sourcePort: GenerationMenuCandidat
           status: fallback.status, ordinaryWeekDigest: fallback.ordinaryWeekDigest } }, dayOptions,
       maxEvaluations: budget.maxWeekEvaluations });
     if (searchRaw.length > 8_000_000) return stop('RESOURCE_LIMIT_REACHED');
-    const week = await searchGenerationWeekRawV1(searchRaw, context.candidateManifestRaw);
+    const week = optimization
+      ?await optimizeGenerationWeekRawV1(searchRaw,context.candidateManifestRaw,optimization.policyRaw,context.trustedGenerationInputRaw,optimization.metrics)
+      :await searchGenerationWeekRawV1(searchRaw, context.candidateManifestRaw);
     if (week.status !== 'FEASIBLE_PROPOSAL') {
       return stop(week.status === 'NO_FEASIBLE_WEEK_IN_POOL' && days.some(d => d.missingWarningOptions) ? 'BLOCKED_WARNING_EVIDENCE' : week.status);
     }
@@ -231,17 +242,21 @@ function createGenerationDayOptionsInternalV1(sourcePort: GenerationMenuCandidat
       slotId:meal.slotId,sourceKind:meal.validationInput.sourceKind,
       selectedCandidateDigest:meal.validationInput.meal.digest,
       candidateSetDigest:pools.find(p=>p.slotId===meal.slotId)!.candidateSetDigest})));
-    const content={contract:generationSelectionReceiptContractV1,requestOperationId,
+    const optimized=optimization&&isOptimizedWeek(week)?week:null;
+    if(optimization&&!optimized)throw Error('GENERATION_WEEK_OPTIMIZATION_RECEIPT_MISSING');
+    const receiptContract=optimized?generationSelectionReceiptContractV2:generationSelectionReceiptContractV1;
+    const content={contract:receiptContract,requestOperationId,
       generationInputDigest:prepared.generationInputDigest,candidateManifestDigest:manifest.digest,
       generationPolicyRevision:input.generationPolicyRevision,validationEvidenceDigest:evidence.digest,
-      validationPoliciesDigest:policies.digest,scope:'BOUNDED_FIRST_FEASIBLE',
+      validationPoliciesDigest:policies.digest,scope:optimized?optimized.scope:'BOUNDED_FIRST_FEASIBLE',
       warningCoverage:[...missingBySlot.values()].some(n=>n>0)?'PARTIAL':'COMPLETE',
       budget,searchInputRawSha256:await adaptiveNutritionSha256HexV1(new TextEncoder().encode(searchRaw)),
       weekRawSha256:await adaptiveNutritionSha256HexV1(new TextEncoder().encode(week.weekRaw)),
       evaluated:week.evaluated,totalCombinations:week.totalCombinations,optionIndexes:week.optionIndexes,
-      weekValidationResultDigest:week.validation.subjectDigest,pools,selectedSlots};
-    const receipt={...content,digest:await receiptHash({contract:generationSelectionReceiptContractV1,
-      encoding:'potok-generation-selection-receipt-canonical-json-v1',receipt:content})};
+      weekValidationResultDigest:week.validation.subjectDigest,pools,selectedSlots,
+      ...(optimized?{weekOptimizationResultDigest:optimized.optimizationResultDigest,weekOptimizationReceiptRaw:optimized.optimizationReceiptRaw}:{})};
+    const receipt={...content,digest:await receiptHash({contract:receiptContract,
+      encoding:optimized?'potok-generation-selection-receipt-canonical-json-v2':'potok-generation-selection-receipt-canonical-json-v1',receipt:content})};
     const selectionReceiptRaw=canonicalJsonV1(receipt,'SAFE_INTEGER');
     if(selectionReceiptRaw.length>8_000_000)return stop('RESOURCE_LIMIT_REACHED');
     return freeze({...result,selectionReceiptRaw});
@@ -256,6 +271,21 @@ export function createGenerationDayOptionsV1(source:GenerationMenuCandidateSourc
 /** Actual bounded-search provenance, not a weighted/global optimization certificate. */
 export function createGenerationSelectionV1(source:GenerationMenuCandidateSourcePortV1,warnings:GenerationPreparationWarningPortV1){
   const engine=createGenerationDayOptionsInternalV1(source,warnings,true);
+  return Object.freeze({async generate(requestOperationId:string,limitsRaw?:string):Promise<GenerationSelectionResultV1>{
+    const result=await engine.generate(requestOperationId,limitsRaw);
+    if(result.status!=='FEASIBLE_PROPOSAL')return result;
+    if(typeof result.selectionReceiptRaw!=='string')throw Error('GENERATION_SELECTION_RECEIPT_MISSING');
+    return freeze({...result,selectionReceiptRaw:result.selectionReceiptRaw});
+  }});
+}
+
+/** Explicit opt-in only. No fallback to first-feasible selection when metrics are missing. */
+export function createOptimizedGenerationSelectionV1(source:GenerationMenuCandidateSourcePortV1,
+  warnings:GenerationPreparationWarningPortV1,optimization:GenerationWeekOptimizationConfigV1){
+  if(!optimization||typeof optimization.policyRaw!=='string'||!optimization.metrics
+    ||typeof optimization.metrics.assessWeekRaw!=='function')throw Error('INVALID_WEEK_OPTIMIZATION_CONFIG');
+  const owned=Object.freeze({policyRaw:optimization.policyRaw,metrics:optimization.metrics});
+  const engine=createGenerationDayOptionsInternalV1(source,warnings,true,owned);
   return Object.freeze({async generate(requestOperationId:string,limitsRaw?:string):Promise<GenerationSelectionResultV1>{
     const result=await engine.generate(requestOperationId,limitsRaw);
     if(result.status!=='FEASIBLE_PROPOSAL')return result;
