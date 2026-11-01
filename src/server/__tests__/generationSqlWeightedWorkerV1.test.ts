@@ -1,3 +1,5 @@
+import {createSqlTransportGenerationWorkerV1} from '../generationSqlTransportWorkerV1';
+import {generationLoadGatewaySqlV1,generationRecordGatewaySqlV1,generationActivateGatewaySqlV1} from '../generationSqlGatewayV1';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {createSqlWeightedGenerationWorkerV1,type SqlWeightedGenerationWorkerDependenciesV1} from '../generationSqlWeightedWorkerV1';
@@ -119,4 +121,27 @@ test('strict mode preserves unknown convenience and requires an explicit admitte
   const x=await fixture();await assert.rejects(createSqlWeightedGenerationWorkerV1({...x.deps,comparison:'STRICT'}).continue(x.request));assert.equal(x.state.records,0);
   const y=await fixture(true);assert.equal((await createSqlWeightedGenerationWorkerV1({...y.deps,comparison:'STRICT'}).continue(y.request)).status,'ACTIVE');
   assert.throws(()=>createSqlWeightedGenerationWorkerV1({...x.deps,convenience:undefined as never}),/INVALID_WEEK_CONVENIENCE_SOURCE/);
+});
+
+test('fixed SQL gateway composes with admitted SQL sources and recovers a committed record after a lost reply',async()=>{
+  const x=await fixture(),{gateway,...generation}=x.deps;let loseRecordReply=true;const calls:string[]=[];
+  const worker=createSqlTransportGenerationWorkerV1({...generation,gatewaySql:{async query(statement,parameters){
+    calls.push(statement);assert.ok([generationLoadGatewaySqlV1,generationRecordGatewaySqlV1,generationActivateGatewaySqlV1].includes(statement));
+    const record=statement===generationRecordGatewaySqlV1;
+    const result=await gateway.rpc(statement===generationLoadGatewaySqlV1?'load_generation_request_v2':record?'record_generated_week_gateway_v2':'activate_generated_week_gateway_v2',
+      {p_request_operation_id:parameters[0],...(record?{p_generated_week_plan_canonical:'\\x'+parameters[1]}:{})});
+    if(record)assert.equal(x.state.stored,parameters[1]);
+    if(record&&loseRecordReply){loseRecordReply=false;throw Error('synthetic committed reply loss');}
+    return {rows:[{result_raw:result.data}]};
+  }}});
+  await assert.rejects(worker.continue(x.request),/RPC_FAILED/);assert.equal(x.state.records,1);assert.equal(x.state.activations,0);
+  const sourceReads=x.queryLog.length;assert.equal((await worker.continue(x.request)).status,'ACTIVE');
+  assert.equal(x.queryLog.length,sourceReads);assert.equal(x.state.records,1);assert.equal(x.state.activations,1);
+  assert.deepEqual(JSON.parse(Buffer.from(x.state.stored!,'hex').toString('utf8')).facts,[]);
+  assert.deepEqual(calls,[generationLoadGatewaySqlV1,generationRecordGatewaySqlV1,generationLoadGatewaySqlV1,generationActivateGatewaySqlV1]);
+});
+test('SQL gateway identity denial prevents preparation and final-authority reads',async()=>{
+  const x=await fixture(),{gateway,...generation}=x.deps;void gateway;
+  const worker=createSqlTransportGenerationWorkerV1({...generation,gatewaySql:{async query(){return {rows:[{result_raw:null}]};}}});
+  await assert.rejects(worker.continue(x.request),/RPC_FAILED/);assert.equal(x.queryLog.length,0);assert.equal(x.state.records,0);
 });
