@@ -1,7 +1,8 @@
 import {GenerationEdgeErrorV2,type GenerationProposalProviderV2,type TrustedGenerationValidatorV2} from '../../supabase/functions/adaptive-nutrition-generate-v2/contracts';
-import {createValidatedGenerationProposalV1,createSelectionBoundGenerationProposalV1,
+import {createValidatedGenerationProposalV1,createSelectionBoundGenerationProposalV1,createOptimizedGenerationProposalV1,
   type GenerationDecisionTracePortV1,type GenerationSelectionDecisionPortV1} from './generationPlanProposalV1';
 import type {GenerationPreparationWarningPortV1} from './generationDayOptionsV1';
+import type {GenerationWeekOptimizationConfigV1} from './generationWeekOptimizationV1';
 import type {GenerationMenuCandidateSourcePortV1} from './generationMenuCandidatesV1';
 import {createGenerationValidationAdapterV1,type GenerationValidationAuthorityPortV1} from './generationValidationAdapterV1';
 import {decodeTrustedGenerationInputRawV1,decodeGeneratedWeekPlanRawV1} from '../utils/adaptiveNutritionGraphV2';
@@ -115,4 +116,15 @@ export function createSelectionBoundGenerationWorkerBindingsV1(source:Generation
   authority:GenerationValidationAuthorityPortV1,limitsRaw?:string){
   return workerBindings(source,authority,(scopedSource,scopedAuthority)=>
     createSelectionBoundGenerationProposalV1(scopedSource,warnings,decisions,scopedAuthority),limitsRaw);
+}
+
+/** Inactive weighted-week bindings with the same fresh independent pre-record checks. */
+export function createOptimizedGenerationWorkerBindingsV1(source:GenerationMenuCandidateSourcePortV1,
+  warnings:GenerationPreparationWarningPortV1,optimization:GenerationWeekOptimizationConfigV1,
+  decisions:GenerationSelectionDecisionPortV1,authority:GenerationValidationAuthorityPortV1,limitsRaw?:string){
+  if(!optimization||typeof optimization.policyRaw!=='string'||!optimization.metrics
+    ||typeof optimization.metrics.assessWeekRaw!=='function')throw Error('INVALID_WEEK_OPTIMIZATION_CONFIG');
+  const owned=Object.freeze({policyRaw:optimization.policyRaw,metrics:optimization.metrics});
+  return workerBindings(source,authority,(scopedSource,scopedAuthority)=>
+    createOptimizedGenerationProposalV1(scopedSource,warnings,owned,decisions,scopedAuthority),limitsRaw);
 }
