@@ -1,4 +1,4 @@
-import {createGenerationDayOptionsV1, type GenerationPreparationWarningPortV1} from './generationDayOptionsV1';
+import {createGenerationDayOptionsV1,createGenerationSelectionV1, type GenerationPreparationWarningPortV1} from './generationDayOptionsV1';
 import type {GenerationMenuCandidateSourcePortV1} from './generationMenuCandidatesV1';
 import {createGenerationValidationAdapterV1, type GenerationValidationAuthorityPortV1} from './generationValidationAdapterV1';
 import {decodeTrustedGenerationInputV1, sealAdaptiveNutritionGraphV2, bindGeneratedWeekPlanV1,
@@ -14,6 +14,12 @@ export const generationDecisionTraceContractV1='potok-generation-plan-decision-t
 /** Existing producer decision metadata, not reviewer/policy/warning authority. Never fill absent digests with placeholders. */
 export interface GenerationDecisionTracePortV1 {
   loadDecisionTraceRaw(requestOperationId:string,weekRawSha256:string):Promise<string|null>;
+}
+/** Producer receives the actual selected week and actual search receipt, avoiding a
+ * lookup for an unknown future hash. Optimization evidence still requires real sources.
+ */
+export interface GenerationSelectionDecisionPortV1 {
+  produceDecisionTraceRaw(requestOperationId:string,weekRaw:string,selectionReceiptRaw:string,contextRaw:string):Promise<string|null>;
 }
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const hex=/^[0-9a-f]{64}$/;
@@ -116,17 +122,20 @@ export async function projectGenerationWeekRawV1(requestOperationId:string,weekR
 }
 
 /** Inactive read-only pipeline. No writer/activation port: validation acceptance is never a DB receipt. */
-export function createValidatedGenerationProposalV1(sourcePort:GenerationMenuCandidateSourcePortV1,
-  warningPort:GenerationPreparationWarningPortV1,decisionPort:GenerationDecisionTracePortV1,
-  authorityPort:GenerationValidationAuthorityPortV1){
+function proposalPipeline(sourcePort:GenerationMenuCandidateSourcePortV1,
+  warningPort:GenerationPreparationWarningPortV1,
+  traceFor:(request:string,weekRaw:string,contextRaw:string,receiptRaw?:string)=>Promise<string|null>,
+  authorityPort:GenerationValidationAuthorityPortV1,selectionBound:boolean){
   return Object.freeze({async generate(requestOperationId:string,limitsRaw?:string){
     let preparationRaw:string|null=null;
-    const prepared=await createGenerationDayOptionsV1({async loadPreparationRaw(id){
+    const create=selectionBound?createGenerationSelectionV1:createGenerationDayOptionsV1;
+    const prepared=await create({async loadPreparationRaw(id){
       preparationRaw=await sourcePort.loadPreparationRaw(id);return preparationRaw;
     }},warningPort).generate(requestOperationId,limitsRaw);
     if(prepared.status!=='FEASIBLE_PROPOSAL')return Object.freeze({status:'PREPARATION_STOPPED' as const,reason:prepared.status,requestOperationId});
     const source=JSON.parse(preparationRaw!) as {contextRaw:string}; // admitted by existing preparation boundary
-    const traceRaw=await decisionPort.loadDecisionTraceRaw(requestOperationId,await generationProposalRawHashV1(prepared.week.weekRaw));
+    const receiptRaw='selectionReceiptRaw' in prepared&&typeof prepared.selectionReceiptRaw==='string'?prepared.selectionReceiptRaw:undefined;
+    const traceRaw=await traceFor(requestOperationId,prepared.week.weekRaw,source.contextRaw,receiptRaw);
     if(traceRaw===null)return Object.freeze({status:'BLOCKED_DECISION_TRACE' as const,requestOperationId});
     const proposal=await projectGenerationWeekRawV1(requestOperationId,prepared.week.weekRaw,source.contextRaw,traceRaw);
     if(proposal.status!=='PROJECTED')return Object.freeze({status:proposal.status,requestOperationId});
@@ -135,4 +144,43 @@ export function createValidatedGenerationProposalV1(sourcePort:GenerationMenuCan
     return Object.freeze({status:'VALIDATED_PROPOSAL' as const,requestOperationId,generatedPlanRaw:checked.generatedPlanRaw,
       proposalRawSha256:checked.proposalRawSha256,validation:checked.validation});
   }});
+}
+
+/** Existing V1 path retains its legacy lookup/output contract. */
+export function createValidatedGenerationProposalV1(source:GenerationMenuCandidateSourcePortV1,
+  warnings:GenerationPreparationWarningPortV1,decisions:GenerationDecisionTracePortV1,authority:GenerationValidationAuthorityPortV1){
+  return proposalPipeline(source,warnings,async(request,weekRaw)=>
+    decisions.loadDecisionTraceRaw(request,await generationProposalRawHashV1(weekRaw)),authority,false);
+}
+
+/** Inactive stricter path: opaque optimization hashes cannot substitute another
+ * candidate pool/meal. Search provenance does not create an optimization certificate.
+ */
+export function createSelectionBoundGenerationProposalV1(source:GenerationMenuCandidateSourcePortV1,
+  warnings:GenerationPreparationWarningPortV1,decisions:GenerationSelectionDecisionPortV1,authority:GenerationValidationAuthorityPortV1){
+  return proposalPipeline(source,warnings,async(request,weekRaw,contextRaw,receiptRaw)=>{
+    if(typeof receiptRaw!=='string')throw Error('GENERATION_SELECTION_RECEIPT_MISSING');
+    // This receipt was made by the owned engine immediately above, never loaded from
+    // the trace producer. The producer only receives immutable primitive strings.
+    const receipt=JSON.parse(receiptRaw) as {requestOperationId:string;weekRawSha256:string;
+      selectedSlots:{slotId:string;sourceKind:string;candidateSetDigest:string;selectedCandidateDigest:string}[]};
+    const raw=await decisions.produceDecisionTraceRaw(request,weekRaw,receiptRaw,contextRaw);
+    if(raw===null)return null;
+    const trace=record(parse(raw),['contract','requestOperationId','weekRawSha256','slots','weekOptimizationResultDigest']);
+    if(trace.contract!==generationDecisionTraceContractV1||trace.requestOperationId!==request
+      ||trace.requestOperationId!==receipt.requestOperationId||trace.weekRawSha256!==receipt.weekRawSha256
+      ||!Array.isArray(trace.slots)||trace.slots.length!==receipt.selectedSlots.length)throw Error('SELECTION_DECISION_TRACE_MISMATCH');
+    const seen=new Set<string>();
+    for(const value of trace.slots){
+      const slot=record(value,['slotId','generatorDecisionEvidence']);
+      const actual=receipt.selectedSlots.find(s=>s.slotId===slot.slotId);
+      const decision=record(slot.generatorDecisionEvidence,['decisionPath','generationPolicyRevision','candidateManifestDigest',
+        'candidateSetDigest','selectedCandidateDigest','optimizationResultDigest']);
+      if(!actual||seen.has(actual.slotId)||decision.decisionPath!==actual.sourceKind
+        ||decision.candidateSetDigest!==actual.candidateSetDigest||decision.selectedCandidateDigest!==actual.selectedCandidateDigest)
+        throw Error('SELECTION_DECISION_CANDIDATE_MISMATCH');
+      seen.add(actual.slotId);
+    }
+    return raw;
+  },authority,true);
 }
