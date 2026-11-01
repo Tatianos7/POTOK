@@ -8,7 +8,7 @@ import { decodeAdaptiveNutritionCandidateManifestV2, decodeNutritionPreferenceSn
 import { decodeTrustedValidationEvidenceV1 } from '../utils/trustedValidationEvidenceV1';
 import { decodeTrustedValidationPoliciesRawV2 } from '../utils/trustedValidationPoliciesV1';
 import { decodePreparedMealWarningEvidenceRawV2, type MealWarningEvidenceV1 } from '../utils/trustedMealWarningEvidenceV1';
-import { assertRawJsonWithoutDuplicateKeysV1 } from '../utils/adaptiveNutritionWireV1';
+import { assertRawJsonWithoutDuplicateKeysV1,adaptiveNutritionSha256HexV1,canonicalJsonV1 } from '../utils/adaptiveNutritionWireV1';
 import { dayValidatorInputContractV1, mealValidatorInputContractV1, mealCandidateEvidenceContractV2,
   weekValidatorInputContractV2, validateDaySnapshotRawV2 } from '../utils/adaptiveNutritionMealBalanceV1';
 
@@ -35,6 +35,13 @@ export type GenerationDayOptionsResultV1 =
       requestOperationId: string; days: GenerationDayDiagnosticV1[] };
 type Option = GenerationMenuCandidateSlotV1['meals'][number];
 type WarnedOption = { option: Option; warning: MealWarningEvidenceV1; warningRaw: string };
+export const generationSelectionReceiptContractV1='potok-generation-selection-receipt-v1';
+export type GenerationSelectionResultV1=Exclude<GenerationDayOptionsResultV1,{status:'FEASIBLE_PROPOSAL'}>
+  | (Extract<GenerationDayOptionsResultV1,{status:'FEASIBLE_PROPOSAL'}>&{selectionReceiptRaw:string});
+type InternalResult=GenerationDayOptionsResultV1&{selectionReceiptRaw?:string};
+async function receiptHash(value:unknown):Promise<string>{
+  return adaptiveNutritionSha256HexV1(new TextEncoder().encode(canonicalJsonV1(value,'SAFE_INTEGER')));
+}
 
 function parse(raw: unknown): unknown {
   if (typeof raw !== 'string') throw new Error('DAY_PREPARATION_RAW_REQUIRED');
@@ -65,10 +72,10 @@ function limits(raw: string) {
 }
 
 /** Inactive catalog -> meal options -> validated day alternatives -> bounded weekly proposal. */
-export function createGenerationDayOptionsV1(sourcePort: GenerationMenuCandidateSourcePortV1,
-  warningPort: GenerationPreparationWarningPortV1) {
+function createGenerationDayOptionsInternalV1(sourcePort: GenerationMenuCandidateSourcePortV1,
+  warningPort: GenerationPreparationWarningPortV1,captureSelection:boolean) {
   return Object.freeze({ async generate(requestOperationId: string,
-    limitsRaw = '{"maxDayEvaluations":1024,"maxWeekEvaluations":1024}'): Promise<GenerationDayOptionsResultV1> {
+    limitsRaw = '{"maxDayEvaluations":1024,"maxWeekEvaluations":1024}'): Promise<InternalResult> {
     const budget = limits(limitsRaw);
     if (typeof requestOperationId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(requestOperationId)) {
       throw new Error('INVALID_DAY_PREPARATION_REQUEST');
@@ -201,6 +208,53 @@ export function createGenerationDayOptionsV1(sourcePort: GenerationMenuCandidate
       const key = `${meal.slotId}:${meal.validationInput.meal.digest}`;
       return { slotId: meal.slotId, raw: warnings.get(key)!.warningRaw };
     })).sort((a, b) => a.slotId < b.slotId ? -1 : a.slotId > b.slotId ? 1 : 0).map(w => w.raw);
-    return freeze({ status: 'FEASIBLE_PROPOSAL', requestOperationId, week, selectedWarningEntriesRaw, days });
+    const result={status:'FEASIBLE_PROPOSAL' as const,requestOperationId,week,selectedWarningEntriesRaw,days};
+    if(!captureSelection)return freeze(result);
+    // Capture the actual owned pools and actual search result in this invocation, never a
+    // second source read/replayed generator or a producer-supplied claim of optimality.
+    const pools=[];
+    for(const slot of prepared.slots){
+      const content={contract:'potok-generation-slot-candidate-set-v1',requestOperationId,
+        generationInputDigest:prepared.generationInputDigest,slotId:slot.slotId,
+        candidates:slot.meals.map(option=>({mealSnapshotDigest:option.meal.digest,sourceKind:option.sourceKind,
+          isolatedCompositionScore:option.isolatedCompositionScore})),
+        admittedWarnings:warnedPools.get(slot.slotId)!.map(option=>({mealSnapshotDigest:option.option.meal.digest,
+          warningEvidenceDigest:option.warning.digest}))};
+      pools.push({...content,candidateSetDigest:await receiptHash(content)});
+    }
+    const selectedSlots=dayOptions.flatMap((pool,day)=>pool[week.optionIndexes[day]].meals.map(meal=>({
+      slotId:meal.slotId,sourceKind:meal.validationInput.sourceKind,
+      selectedCandidateDigest:meal.validationInput.meal.digest,
+      candidateSetDigest:pools.find(p=>p.slotId===meal.slotId)!.candidateSetDigest})));
+    const content={contract:generationSelectionReceiptContractV1,requestOperationId,
+      generationInputDigest:prepared.generationInputDigest,candidateManifestDigest:manifest.digest,
+      generationPolicyRevision:input.generationPolicyRevision,validationEvidenceDigest:evidence.digest,
+      validationPoliciesDigest:policies.digest,scope:'BOUNDED_FIRST_FEASIBLE',
+      warningCoverage:[...missingBySlot.values()].some(n=>n>0)?'PARTIAL':'COMPLETE',
+      budget,searchInputRawSha256:await adaptiveNutritionSha256HexV1(new TextEncoder().encode(searchRaw)),
+      weekRawSha256:await adaptiveNutritionSha256HexV1(new TextEncoder().encode(week.weekRaw)),
+      evaluated:week.evaluated,totalCombinations:week.totalCombinations,optionIndexes:week.optionIndexes,
+      weekValidationResultDigest:week.validation.subjectDigest,pools,selectedSlots};
+    const receipt={...content,digest:await receiptHash({contract:generationSelectionReceiptContractV1,
+      encoding:'potok-generation-selection-receipt-canonical-json-v1',receipt:content})};
+    const selectionReceiptRaw=canonicalJsonV1(receipt,'SAFE_INTEGER');
+    if(selectionReceiptRaw.length>8_000_000)return stop('RESOURCE_LIMIT_REACHED');
+    return freeze({...result,selectionReceiptRaw});
   } });
+}
+
+/** Existing V1 API keeps its exact runtime output, without a selection receipt. */
+export function createGenerationDayOptionsV1(source:GenerationMenuCandidateSourcePortV1,warnings:GenerationPreparationWarningPortV1):{
+  readonly generate:(requestOperationId:string,limitsRaw?:string)=>Promise<GenerationDayOptionsResultV1>;
+}{return createGenerationDayOptionsInternalV1(source,warnings,false);}
+
+/** Actual bounded-search provenance, not a weighted/global optimization certificate. */
+export function createGenerationSelectionV1(source:GenerationMenuCandidateSourcePortV1,warnings:GenerationPreparationWarningPortV1){
+  const engine=createGenerationDayOptionsInternalV1(source,warnings,true);
+  return Object.freeze({async generate(requestOperationId:string,limitsRaw?:string):Promise<GenerationSelectionResultV1>{
+    const result=await engine.generate(requestOperationId,limitsRaw);
+    if(result.status!=='FEASIBLE_PROPOSAL')return result;
+    if(typeof result.selectionReceiptRaw!=='string')throw Error('GENERATION_SELECTION_RECEIPT_MISSING');
+    return freeze({...result,selectionReceiptRaw:result.selectionReceiptRaw});
+  }});
 }

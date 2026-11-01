@@ -1,5 +1,6 @@
 import {GenerationEdgeErrorV2,type GenerationProposalProviderV2,type TrustedGenerationValidatorV2} from '../../supabase/functions/adaptive-nutrition-generate-v2/contracts';
-import {createValidatedGenerationProposalV1,type GenerationDecisionTracePortV1} from './generationPlanProposalV1';
+import {createValidatedGenerationProposalV1,createSelectionBoundGenerationProposalV1,
+  type GenerationDecisionTracePortV1,type GenerationSelectionDecisionPortV1} from './generationPlanProposalV1';
 import type {GenerationPreparationWarningPortV1} from './generationDayOptionsV1';
 import type {GenerationMenuCandidateSourcePortV1} from './generationMenuCandidatesV1';
 import {createGenerationValidationAdapterV1,type GenerationValidationAuthorityPortV1} from './generationValidationAdapterV1';
@@ -65,19 +66,20 @@ function scopedAuthority(port:GenerationValidationAuthorityPortV1,pinned:ReturnT
 }
 
 /** Inactive backend bindings for the existing worker; no credentials, HTTP route or live activation. */
-export function createGenerationWorkerBindingsV1(sourcePort:GenerationMenuCandidateSourcePortV1,
-  warningPort:GenerationPreparationWarningPortV1,decisionPort:GenerationDecisionTracePortV1,
-  authorityPort:GenerationValidationAuthorityPortV1,limitsRaw?:string):Readonly<{
+function workerBindings(sourcePort:GenerationMenuCandidateSourcePortV1,
+  authorityPort:GenerationValidationAuthorityPortV1,
+  pipelineFor:(source:GenerationMenuCandidateSourcePortV1,authority:GenerationValidationAuthorityPortV1)=>ReturnType<typeof createValidatedGenerationProposalV1>,
+  limitsRaw?:string):Readonly<{
     generator:GenerationProposalProviderV2;validator:TrustedGenerationValidatorV2;
   }>{
   const generator:GenerationProposalProviderV2={async generate(value){
     const pinned=ownBinding(value);
-    const pipeline=createValidatedGenerationProposalV1({async loadPreparationRaw(request){
+    const pipeline=pipelineFor({async loadPreparationRaw(request){
       if(request!==pinned.requestOperationId)throw new GenerationEdgeErrorV2('WORKER_REQUEST_INPUT_MISMATCH',409);
       const raw=await sourcePort.loadPreparationRaw(request);if(raw===null)return null;
       const source=parse(raw);if(typeof source.contextRaw!=='string')throw new GenerationEdgeErrorV2('INVALID_WORKER_CONTEXT',502);
       await bindContext(source.contextRaw,pinned);return raw;
-    }},warningPort,decisionPort,scopedAuthority(authorityPort,pinned));
+    }},scopedAuthority(authorityPort,pinned));
     const result=await pipeline.generate(pinned.requestOperationId,limitsRaw);
     if(result.status!=='VALIDATED_PROPOSAL')throw new GenerationEdgeErrorV2(`GENERATION_PROPOSAL_${result.status}`,409);
     await decodeGeneratedWeekPlanRawV1(result.generatedPlanRaw,pinned.input);
@@ -96,4 +98,21 @@ export function createGenerationWorkerBindingsV1(sourcePort:GenerationMenuCandid
     return Object.freeze({generatedWeekPlanCanonicalHex:proposalHex});
   }};
   return Object.freeze({generator:Object.freeze(generator),validator:Object.freeze(validator)});
+}
+
+/** Legacy bindings remain unchanged and inactive. */
+export function createGenerationWorkerBindingsV1(source:GenerationMenuCandidateSourcePortV1,
+  warnings:GenerationPreparationWarningPortV1,decisions:GenerationDecisionTracePortV1,
+  authority:GenerationValidationAuthorityPortV1,limitsRaw?:string){
+  return workerBindings(source,authority,(scopedSource,scopedAuthority)=>
+    createValidatedGenerationProposalV1(scopedSource,warnings,decisions,scopedAuthority),limitsRaw);
+}
+/** Same canonical request binding and fresh pre-record validator, with actual selection provenance.
+ * No gateway, connection, role switch, route or enabled runtime is created here.
+ */
+export function createSelectionBoundGenerationWorkerBindingsV1(source:GenerationMenuCandidateSourcePortV1,
+  warnings:GenerationPreparationWarningPortV1,decisions:GenerationSelectionDecisionPortV1,
+  authority:GenerationValidationAuthorityPortV1,limitsRaw?:string){
+  return workerBindings(source,authority,(scopedSource,scopedAuthority)=>
+    createSelectionBoundGenerationProposalV1(scopedSource,warnings,decisions,scopedAuthority),limitsRaw);
 }
