@@ -1,5 +1,12 @@
 # POTOK current state
 
+## SQL-composed weighted worker — 2026-11-01
+
+- Added an inactive assembly of the already installed admitted goal/context/warning readers, actual metric computation and weighted worker with real decision projection. No caller-supplied slot metadata, fabricated metric scores or decision trace is used in this path. The caller still supplies an admitted SQL session, protected gateway and independently pinned policies; no connection, SQL identity, source publisher or route is created.
+- Each SQL/convenience await is gated; existing exact-byte request binding and fresh independent pre-record validation remain. Integration tests use the actual adapters/producers/validators/state machine/readback decoder, with explicit synthetic SQL/gateway/Auth/admission fixtures. They are not live E2E or a replacement for source admission.
+- Read-only Staging observation at 2026-11-01T13:49:09.551762Z: published manifests, published generation policy heads, validation inputs, final warnings and preparation source rows are all zero. PR278 installation remains complete, as recorded in PR279. No new live write/publication/deployment/activation occurred. See docs/premium/generation-sql-weighted-worker-v1.md.
+- Real data admission, reviewed runtime mounting and ordinary-account installed-path menu acceptance remain outstanding. Cooking stays deferred; unknown yields/grams stay null and facts empty.
+
 ## Owner-approved generation Staging package installed — 2026-11-01
 
 - Owner explicitly approved the exact PR278 four-source package, commit 94c9051cd9fd9d1fa894434efdf0b9f9081519f9, for Staging ozidryfvhkcbtpnulakq only, keeping generation inactive. Fresh baseline passed all 18 checks; four SHA-256 pins matched before installation.
