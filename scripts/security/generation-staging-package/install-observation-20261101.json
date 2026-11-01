@@ -1,0 +1,216 @@
+{
+  "contract": "potok-generation-staging-install-observation-v1",
+  "approvedPackagePr": 278,
+  "approvedPackageCommit": "94c9051cd9fd9d1fa894434efdf0b9f9081519f9",
+  "targetProjectId": "ozidryfvhkcbtpnulakq",
+  "operation": "OWNER_APPROVED_FOUR_SOURCE_INSTALLATION",
+  "migrationName": "generation_staging_approved_package_v1",
+  "sources": [
+    {
+      "path": "docs/premium/drafts/generation_preparation_source_v1.sql",
+      "expected": "f308c64f1016f9725deb22ae106eeb55a22f1569da817c0dd0a53efbe0e1535d",
+      "actual": "f308c64f1016f9725deb22ae106eeb55a22f1569da817c0dd0a53efbe0e1535d",
+      "matches": true
+    },
+    {
+      "path": "docs/premium/drafts/generation_producer_sources_v1.sql",
+      "expected": "fa6a987719606c563b0c64036f41aab8e6f36f3099dad28e96717976f6bae2cd",
+      "actual": "fa6a987719606c563b0c64036f41aab8e6f36f3099dad28e96717976f6bae2cd",
+      "matches": true
+    },
+    {
+      "path": "docs/premium/drafts/generation_goal_preparation_source_v1.sql",
+      "expected": "b3023f7ac2e73c4a5f14d5d5289a652464a7a6a584f5518f0875b2cd9551aed8",
+      "actual": "b3023f7ac2e73c4a5f14d5d5289a652464a7a6a584f5518f0875b2cd9551aed8",
+      "matches": true
+    },
+    {
+      "path": "docs/premium/drafts/generation_plan_readback_v2.sql",
+      "expected": "b2756be61a2db87cd7e19e275e85aa1dafaca704bc5749a48bdd21bdf7bf8e22",
+      "actual": "b2756be61a2db87cd7e19e275e85aa1dafaca704bc5749a48bdd21bdf7bf8e22",
+      "matches": true
+    }
+  ],
+  "baseline": {
+    "counts": {
+      "inputs": 0,
+      "bindings": 0,
+      "warnings": 0,
+      "revocations": 0,
+      "publishedManifests": 0
+    },
+    "observedAt": "2026-11-01T12:23:15.607643+00:00"
+  },
+  "postcheck": {
+    "counts": {
+      "inputs": 0,
+      "bindings": 0,
+      "warnings": 0,
+      "revocations": 0,
+      "preparationSources": 0,
+      "publishedManifests": 0,
+      "preparationRevocations": 0
+    },
+    "tables": [
+      {
+        "rls": true,
+        "name": "generation_preparation_source_revocations_v1",
+        "owner": "postgres",
+        "forced": true,
+        "triggers": 3
+      },
+      {
+        "rls": true,
+        "name": "generation_preparation_sources_v1",
+        "owner": "postgres",
+        "forced": true,
+        "triggers": 3
+      }
+    ],
+    "functions": [
+      {
+        "name": "potok_nutrition.generation_producer_context_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "af4e1752b14a541c4b52a5e124a75d21",
+        "definer": false,
+        "volatility": "v",
+        "bodyMatches": true
+      },
+      {
+        "name": "potok_nutrition.guard_generation_producer_revocation_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "66bcd181904a69fe3bd33c657a273fce",
+        "definer": false,
+        "volatility": "v",
+        "bodyMatches": true
+      },
+      {
+        "name": "potok_nutrition.guard_generation_producer_source_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "e50d33ed44ef2d2a226aadd1ff74c7f8",
+        "definer": false,
+        "volatility": "v",
+        "bodyMatches": true
+      },
+      {
+        "name": "potok_nutrition.read_admitted_generation_goal_preparation_source_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "c19406ab4fb50da92ecc2728d2d0050f",
+        "definer": true,
+        "volatility": "v",
+        "bodyMatches": true
+      },
+      {
+        "name": "potok_nutrition.read_admitted_generation_preparation_source_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "c230a35cb30a71eb04f89bf4f7adf1fa",
+        "definer": true,
+        "volatility": "v",
+        "bodyMatches": true
+      },
+      {
+        "name": "potok_nutrition.read_admitted_generation_producer_source_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "82e8a69a30af5802c740196eb04d7fbe",
+        "definer": true,
+        "volatility": "v",
+        "bodyMatches": true
+      },
+      {
+        "name": "public.adaptive_nutrition_read_generation_plan_v2",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "bodyMd5": "6ed550ed9f9a686e155cd47549fa16d4",
+        "definer": true,
+        "volatility": "s",
+        "bodyMatches": true
+      }
+    ],
+    "observedAt": "2026-11-01T12:24:57.14468+00:00",
+    "readerRole": {
+      "login": false,
+      "inherit": false,
+      "createDb": false,
+      "bypassRls": false,
+      "superuser": false,
+      "createRole": false,
+      "replication": false
+    },
+    "readbackExecute": {
+      "anon": false,
+      "serviceRole": false,
+      "authenticated": true
+    },
+    "readerAllowlist": [
+      "read_admitted_generation_goal_preparation_source_v1",
+      "read_admitted_generation_preparation_source_v1",
+      "read_admitted_generation_producer_source_v1",
+      "read_admitted_generation_validation_source_v1"
+    ],
+    "tableAccessLeakCount": 0
+  },
+  "unauthenticatedReadbackDenied": true,
+  "edgeFunctionsAfter": [],
+  "advisorDelta": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "metadata": {
+        "name": "generation_preparation_source_revocations_v1",
+        "type": "table",
+        "schema": "potok_nutrition"
+      },
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "metadata": {
+        "name": "generation_preparation_sources_v1",
+        "type": "table",
+        "schema": "potok_nutrition"
+      },
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "level": "WARN",
+      "metadata": {
+        "name": "adaptive_nutrition_read_generation_plan_v2",
+        "schema": "public",
+        "language": "plpgsql",
+        "arguments": "p_request_operation_id uuid",
+        "security_definer": true
+      },
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+    }
+  ],
+  "scope": {
+    "sourceRowsPublished": false,
+    "generatorActivated": false,
+    "edgeDeployed": false,
+    "masterMerged": false,
+    "realAccountMenuAccepted": false,
+    "productionAccessed": false
+  }
+}

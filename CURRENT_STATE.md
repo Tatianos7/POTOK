@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Owner-approved generation Staging package installed — 2026-11-01
+
+- Owner explicitly approved the exact PR278 four-source package, commit 94c9051cd9fd9d1fa894434efdf0b9f9081519f9, for Staging ozidryfvhkcbtpnulakq only, keeping generation inactive. Fresh baseline passed all 18 checks; four SHA-256 pins matched before installation.
+- Installed via one guarded transaction using Supabase migration generation_staging_approved_package_v1. Inner source definitions/guards were unchanged. The request-only, producer and goal readers and own-request menu readback now exist; earlier absence/unapplied observations below are historical.
+- Independent postcheck matched all seven new function bodies/configurations. Two new empty private tables have forced RLS and three guards each. Reader remains NOLOGIN/NOSUPERUSER/NOBYPASSRLS with exactly four private reader grants and no direct table privileges. Menu readback is executable only by authenticated among the checked API roles; an unauthenticated call was denied.
+- All six generation source/revocation tables and published manifests remain empty. Edge function inventory is still empty. No catalog/policy/warning publication, entitlement grant, runtime mount, activation, FACT write, master merge or Production operation occurred. Real ordinary-account menu acceptance remains outstanding.
+- Advisory delta is limited to the two intentionally policy-free forced-RLS private tables and the intentionally authenticated SECURITY DEFINER own-request reader; no unrelated advisory repair was made. See docs/premium/generation-staging-install-20261101.md and the sanitized installation observation JSON. Cooking stays deferred; Premium purchase verification remains after generation.
+
 ## Weighted generation integration and bounded Staging package — 2026-11-01
 
 - PR270–277 add warning assessment, goal-derived metadata, actual selection receipts, weighted week optimization, computed metrics, robust unknown-convenience bounds, actual per-slot decision projection and an inactive admitted worker assembly. Exact PR277 head 8711dc1157dd70372b53e30627797c97a18cafd8 passed build/full regressions and all seven native PostgreSQL suites. Fixtures are explicit; this is not live menu acceptance.
