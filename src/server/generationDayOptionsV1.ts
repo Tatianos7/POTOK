@@ -35,6 +35,11 @@ export type GenerationDayOptionsResultV1 =
       requestOperationId: string; days: GenerationDayDiagnosticV1[] };
 type Option = GenerationMenuCandidateSlotV1['meals'][number];
 type WarnedOption = { option: Option; warning: MealWarningEvidenceV1; warningRaw: string };
+interface SelectionPoolV1 {
+  contract:string;requestOperationId:string;generationInputDigest:string;slotId:string;candidateSetDigest:string;
+  candidates:{mealSnapshotDigest:string;sourceKind:Option['sourceKind'];isolatedCompositionScore:string}[];
+  admittedWarnings:{mealSnapshotDigest:string;warningEvidenceDigest:string}[];
+}
 export const generationSelectionReceiptContractV1='potok-generation-selection-receipt-v1';
 export type GenerationSelectionResultV1=Exclude<GenerationDayOptionsResultV1,{status:'FEASIBLE_PROPOSAL'}>
   | (Extract<GenerationDayOptionsResultV1,{status:'FEASIBLE_PROPOSAL'}>&{selectionReceiptRaw:string});
@@ -212,7 +217,7 @@ function createGenerationDayOptionsInternalV1(sourcePort: GenerationMenuCandidat
     if(!captureSelection)return freeze(result);
     // Capture the actual owned pools and actual search result in this invocation, never a
     // second source read/replayed generator or a producer-supplied claim of optimality.
-    const pools=[];
+    const pools:SelectionPoolV1[]=[];
     for(const slot of prepared.slots){
       const content={contract:'potok-generation-slot-candidate-set-v1',requestOperationId,
         generationInputDigest:prepared.generationInputDigest,slotId:slot.slotId,
