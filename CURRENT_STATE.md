@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Fixed SQL gateway transport — 2026-11-01
+
+- Added a default-disabled direct SQL adapter for exactly load/record/activate gateway functions and a composition with the SQL-backed weighted worker. Uses bound UUID/hex parameters and preserves exact bytes. No private-schema HTTP exposure, SQL connection, credentials, role changes, retries, direct table access or internal writer fallback is supplied.
+- Each gateway statement checks actual service_role execution and a nonowner, nonprivileged session identity in the same statement as the call. Owner/superuser/BYPASSRLS/admin-capable/member-of-postgres sessions and fake JWT/GUC role labels cannot authorize this path. Client input cannot select SQL or supply account/revision parameters. Existing response decoders bind results to the same request; raw SQL/connection errors are suppressed.
+- Local tests exercise exact statement/byte mapping, malformed requests/rows, gate races, parameter snapshots, composed worker validation and lost-record-reply recovery without duplicate writes. A new native transport suite uses explicit synthetic gateway functions to prove actual PostgreSQL role/session/byte behavior; it does not replace real gateway/driver/Auth admission or installed-path E2E.
+- Live PR278 installation remains unchanged. The NOLOGIN source reader still has no admitted backend login/connection provisioning; supplied driver interfaces are not proof that a runtime exists. Reviewed identity/connection/TLS/rotation, source publication, commit-time currentness and activation remain separate. No live mutation, deployment, generator activation or FACT write; cooking stays deferred.
+
 ## SQL-composed weighted worker — 2026-11-01
 
 - Added an inactive assembly of the already installed admitted goal/context/warning readers, actual metric computation and weighted worker with real decision projection. No caller-supplied slot metadata, fabricated metric scores or decision trace is used in this path. The caller still supplies an admitted SQL session, protected gateway and independently pinned policies; no connection, SQL identity, source publisher or route is created.
