@@ -2,12 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fullFixture} from '../../utils/__tests__/trustedGeneratedWeekFixturesV1';
 import {decodePreparedMealWarningEvidenceRawV2} from '../../utils/trustedMealWarningEvidenceV1';
+import {createGenerationDayOptionsV1} from '../generationDayOptionsV1';
+import {generationMenuCandidateSourceContractV1} from '../generationMenuCandidatesV1';
 import {assessGenerationMealWarningsRawV1,generationWarningAssessmentFactsContractV1,
   generationWarningAssessmentPolicyContractV1,createAssessedGenerationWarningPortV1} from '../generationMealWarningAssessmentV1';
 
 // Explicit synthetic thresholds and metrics. These are never runtime policy defaults.
-async function fixture(){
-  const f=await fullFixture();const meal=f.plan.graph.days[0].slots[0].mealSnapshot;
+async function fixture(withPreparationWarning=false){
+  const f=await fullFixture(state=>{
+    if(withPreparationWarning){state.balance.policy.allowedWarningCodes.push('LONG_PREPARATION_BURDEN');
+      state.balance.policy.allowedWarningCodes.sort();}
+  });const meal=f.plan.graph.days[0].slots[0].mealSnapshot;
   const assessmentPolicyRevision='00000000-0000-4000-8000-000000000991';
   const metrics={targetDeviationBasisPoints:500,preparationMinutes:30,distinctShoppingItems:8,
     convenienceScoreBasisPoints:6000,maximumRepeatUtilizationBasisPoints:7500};
@@ -104,4 +109,27 @@ test('preparer port rejects a complete self-consistent source returned for a dif
   }});
   await assert.rejects(()=>port.loadMealWarningRaw('00000000-0000-4000-8000-000000000993',x.meal.mealSlotId,
     x.meal.digest,x.f.evidence.digest,x.f.policies.digest),/LOOKUP_MISMATCH/);
+});
+test('actual day/week preparation retains computed warnings and stops when metrics disappear',async()=>{
+  const x=await fixture(true);let missing=false;
+  const sourceRaw=JSON.stringify({contract:generationMenuCandidateSourceContractV1,
+    requestOperationId:x.facts.requestOperationId,contextRaw:x.f.contextRaw,policiesRaw:x.f.policiesRaw,
+    goalProfile:'MAINTENANCE',slotRevisions:x.f.plan.graph.days.flatMap(d=>d.slots.map(s=>({
+      slotId:s.slotId,mealSnapshotRevision:s.mealSnapshotRevision})))});
+  const warnings=createAssessedGenerationWarningPortV1({async loadAssessmentInputsRaw(request,slot,digest){
+    const meal=x.f.plan.graph.days.flatMap(d=>d.slots).find(s=>s.slotId===slot)?.mealSnapshot;
+    assert.ok(meal);assert.equal(meal.digest,digest);
+    return JSON.stringify({factsRaw:JSON.stringify({...x.facts,requestOperationId:request,slotId:slot,mealSnapshotDigest:digest,
+      metrics:{...x.facts.metrics,preparationMinutes:missing?null:31}}),assessmentPolicyRaw:JSON.stringify(x.policy),
+      policiesRaw:x.f.policiesRaw,trustedContextRaw:x.f.contextRaw,mealSnapshotRaw:JSON.stringify(meal)});
+  }});
+  const generator=createGenerationDayOptionsV1({async loadPreparationRaw(){return sourceRaw;}},warnings);
+  const result=await generator.generate(x.facts.requestOperationId);assert.equal(result.status,'FEASIBLE_PROPOSAL');
+  if(result.status==='FEASIBLE_PROPOSAL'){
+    assert.equal(result.selectedWarningEntriesRaw.length,7);
+    assert.ok(result.selectedWarningEntriesRaw.every(raw=>JSON.parse(raw).signals.longPreparationBurden===true));
+    assert.equal(result.week.validation.status,'VALID_WITH_WARNINGS');
+    assert.ok(result.week.validation.reasons.some(r=>r.code==='LONG_PREPARATION_BURDEN'));
+  }
+  missing=true;assert.equal((await generator.generate(x.facts.requestOperationId)).status,'BLOCKED_WARNING_EVIDENCE');
 });
