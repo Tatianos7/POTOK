@@ -110,6 +110,7 @@ jobs:
             src/server/__tests__/generationSelectionV1.test.ts \
             src/server/__tests__/generationWeekOptimizationV1.test.ts \
             src/server/__tests__/generationWeekMetricProducerV1.test.ts \
+            src/server/__tests__/generationConvenienceBoundsV1.test.ts \
             src/server/__tests__/generationWorkerBindingsV1.test.ts \
             src/server/__tests__/generationAdmittedWorkerV1.test.ts \
             src/server/__tests__/generationPreparationSourceV1.test.ts \

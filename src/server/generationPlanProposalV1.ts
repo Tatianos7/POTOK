@@ -1,4 +1,4 @@
-import {createGenerationDayOptionsV1,createGenerationSelectionV1,createOptimizedGenerationSelectionV1,
+import {createGenerationDayOptionsV1,createGenerationSelectionV1,createOptimizedGenerationSelectionV1,createConvenienceBoundedGenerationSelectionV1,
   type GenerationPreparationWarningPortV1} from './generationDayOptionsV1';
 import type {GenerationWeekOptimizationConfigV1} from './generationWeekOptimizationV1';
 import type {GenerationMenuCandidateSourcePortV1} from './generationMenuCandidatesV1';
@@ -127,13 +127,13 @@ export async function projectGenerationWeekRawV1(requestOperationId:string,weekR
 function proposalPipeline(sourcePort:GenerationMenuCandidateSourcePortV1,
   warningPort:GenerationPreparationWarningPortV1,
   traceFor:(request:string,weekRaw:string,contextRaw:string,receiptRaw?:string)=>Promise<string|null>,
-  authorityPort:GenerationValidationAuthorityPortV1,selectionBound:boolean,optimization?:GenerationWeekOptimizationConfigV1){
+  authorityPort:GenerationValidationAuthorityPortV1,selectionBound:boolean,optimization?:GenerationWeekOptimizationConfigV1,boundConvenience=false){
   return Object.freeze({async generate(requestOperationId:string,limitsRaw?:string){
     let preparationRaw:string|null=null;
     const snapshotSource={async loadPreparationRaw(id:string){
       preparationRaw=await sourcePort.loadPreparationRaw(id);return preparationRaw;
     }};
-    const engine=optimization?createOptimizedGenerationSelectionV1(snapshotSource,warningPort,optimization)
+    const engine=optimization?(boundConvenience?createConvenienceBoundedGenerationSelectionV1:createOptimizedGenerationSelectionV1)(snapshotSource,warningPort,optimization)
       :selectionBound?createGenerationSelectionV1(snapshotSource,warningPort):createGenerationDayOptionsV1(snapshotSource,warningPort);
     const prepared=await engine.generate(requestOperationId,limitsRaw);
     if(prepared.status!=='FEASIBLE_PROPOSAL')return Object.freeze({status:'PREPARATION_STOPPED' as const,reason:prepared.status,requestOperationId});
@@ -162,7 +162,8 @@ export function createValidatedGenerationProposalV1(source:GenerationMenuCandida
  */
 export function createSelectionBoundGenerationProposalV1(source:GenerationMenuCandidateSourcePortV1,
   warnings:GenerationPreparationWarningPortV1,decisions:GenerationSelectionDecisionPortV1,authority:GenerationValidationAuthorityPortV1,
-  optimization?:GenerationWeekOptimizationConfigV1){
+  optimization?:GenerationWeekOptimizationConfigV1,boundConvenience=false){
+  if(boundConvenience&&!optimization)throw Error('INVALID_WEEK_OPTIMIZATION_CONFIG');
   const owned=optimization?Object.freeze({policyRaw:optimization.policyRaw,metrics:optimization.metrics}):undefined;
   return proposalPipeline(source,warnings,async(request,weekRaw,contextRaw,receiptRaw)=>{
     if(typeof receiptRaw!=='string')throw Error('GENERATION_SELECTION_RECEIPT_MISSING');
@@ -190,7 +191,7 @@ export function createSelectionBoundGenerationProposalV1(source:GenerationMenuCa
       seen.add(actual.slotId);
     }
     return raw;
-  },authority,true,owned);
+  },authority,true,owned,boundConvenience);
 }
 
 /** Explicit weighted-week path. Missing metrics block; old factories keep their defaults. */
@@ -200,4 +201,13 @@ export function createOptimizedGenerationProposalV1(source:GenerationMenuCandida
   if(!optimization||typeof optimization.policyRaw!=='string'||!optimization.metrics
     ||typeof optimization.metrics.assessWeekRaw!=='function')throw Error('INVALID_WEEK_OPTIMIZATION_CONFIG');
   return createSelectionBoundGenerationProposalV1(source,warnings,decisions,authority,optimization);
+}
+
+/** Explicit bounded-uncertainty mode; preserves real unknowns and exact result binding. */
+export function createConvenienceBoundedGenerationProposalV1(source:GenerationMenuCandidateSourcePortV1,
+  warnings:GenerationPreparationWarningPortV1,optimization:GenerationWeekOptimizationConfigV1,
+  decisions:GenerationSelectionDecisionPortV1,authority:GenerationValidationAuthorityPortV1){
+  if(!optimization||typeof optimization.policyRaw!=='string'||!optimization.metrics
+    ||typeof optimization.metrics.assessWeekRaw!=='function')throw Error('INVALID_WEEK_OPTIMIZATION_CONFIG');
+  return createSelectionBoundGenerationProposalV1(source,warnings,decisions,authority,optimization,true);
 }

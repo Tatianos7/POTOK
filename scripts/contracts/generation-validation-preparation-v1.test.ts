@@ -13,7 +13,7 @@ import {generationWorkerFixtureV1} from '../../src/server/__tests__/generationWo
 import {canonicalJsonV1} from '../../src/utils/adaptiveNutritionWireV1';
 import {id,fixtureWeekValidationInput} from '../../src/utils/__tests__/trustedGeneratedWeekFixturesV1';
 import {createSqlGenerationWeekMetricProducerV1,generationWeekMetricPolicyContractV1,generationWeekConvenienceContractV1} from '../../src/server/generationWeekMetricProducerV1';
-import {optimizeGenerationWeekRawV1} from '../../src/server/generationWeekOptimizationV1';
+import {optimizeGenerationWeekRawV1,optimizeGenerationWeekWithConvenienceBoundsRawV1} from '../../src/server/generationWeekOptimizationV1';
 import {generationWeekSearchContractV1} from '../../src/server/generationWeekSearchV1';
 import {optimizationPolicyContractV1} from '../../src/utils/adaptiveNutritionMealBalanceV1';
 const native=process.env.POTOK_GENERATION_STORE_NATIVE==='1';
@@ -82,6 +82,13 @@ test('native request-only preparation starts without final warnings; proposal va
     const result=await optimizeGenerationWeekRawV1(searchRaw,f.rawContext.candidateManifestRaw,optimizationPolicyRaw,
       JSON.stringify(input),computedMetrics);
     assert.equal(result.status,'FEASIBLE_PROPOSAL');if(result.status==='FEASIBLE_PROPOSAL')assert.equal(result.score,'0.400');
+    const bounded=await optimizeGenerationWeekWithConvenienceBoundsRawV1(searchRaw,f.rawContext.candidateManifestRaw,optimizationPolicyRaw,
+      JSON.stringify(input),unknown);
+    assert.equal(bounded.status,'FEASIBLE_PROPOSAL');
+    if(bounded.status==='FEASIBLE_PROPOSAL'){
+      assert.equal(bounded.score,null);assert.deepEqual(bounded.scoreBounds,{minimum:'0.250',maximum:'0.450'});
+      assert.deepEqual(bounded.unknownMetrics,['convenience']);
+    }
     assert.equal(ok('SELECT count(*) FROM potok_nutrition.generation_validation_warnings_v1;'),'0');
   });
   ok(warningInsert(f.warningRaw,proposalSha));
