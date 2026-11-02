@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [store, admission, readback, runtime, preparation, producer, goal, package, transport, logins]
+        suite: [store, admission, readback, runtime, preparation, producer, goal, package, transport, logins, lifecycle]
     name: PostgreSQL ${{ matrix.suite }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -41,3 +41,4 @@ jobs:
         env:
           POTOK_GENERATION_STORE_NATIVE: '1'
           PGPASSWORD: disposable-generation-only
+
