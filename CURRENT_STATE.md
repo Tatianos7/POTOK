@@ -1,5 +1,11 @@
 # POTOK current state
 
+## Public CA preflight prepared — 2026-11-02
+
+- Added offline preflight to the existing connection verifier: bounded single public PEM root, CA constraint/self-signature and validity checks before psql. Password-file bytes remain unread by the JavaScript verifier; actual server chain/hostname verification remains libpq verify-full.
+- Missing psql now has a sanitized actionable error. Eight focused tests pass, including malformed/concatenated/oversized/invalid-signature/not-current roots and no process launch on local failure. The owner's downloaded CA passed local preflight; no managed password/TLS acceptance is claimed.
+- Owner has a phone only at present. Password provisioning and live connection checks are deferred to the laptop step. Generator inactive, cooking deferred; no database mutation, runtime mount, deployment, FACT write or Production operation.
+
 ## PR282 restricted runtime login package installed — 2026-11-01
 
 - Owner instructed “Продолжи работу” in immediate response to the bounded PR282 permission-application question. Applied only the exact Staging package from commit 03e7b5681023a36a0e225f8404c1b82b220672ff; SQL SHA256 3350df015b5c0f4839c9ca440ff39178d942696b5ce5a2961fb47c50e98619c0. Migration: generation_staging_runtime_logins_v1. Prior candidate/NOLOGIN observations below are historical.
@@ -182,3 +188,4 @@ Checkpoint date: 2026-10-03
 - Production database: **untouched**.
 - Existing local future work: **72 paths remain uncommitted**; owner baseline paths remain separate and preserved.
 - Next technical phase: protected execution runtime / Edge orchestration integration, without generator activation or production rollout.
+
