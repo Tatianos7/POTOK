@@ -132,6 +132,13 @@ test('native restricted gateway writes, activates and reads an actual Graph V2',
       ${binary(hex(canonicalJsonV1(input,'SAFE_INTEGER')))},${binary(hex(wrong))});`,/generated week binding\/digest mismatch/);
     assert.equal(ok(counts),baseline);
   });
+  await t.test('valid canonical proposal reaches the retained inner writer and gateway before activation',()=>{
+    const direct=ok(`BEGIN;SELECT potok_nutrition.record_generated_week_v2(${account},${literal(f.plan.selectionId)},${literal(id(912))},
+      ${binary(hex(canonicalJsonV1(input,'SAFE_INTEGER')))},${binary(planHex)});ROLLBACK;`);
+    assert.equal(JSON.parse(direct).outcome,'accepted');
+    const lines=ok('BEGIN;'+role+load+record+'ROLLBACK;').split('\n');
+    const response=JSON.parse(lines[1]);assert.equal(response.status,'GENERATED',JSON.stringify(response));
+  });
   await t.test('revocation before recording blocks the real writer and leaves graph empty',()=>{
     const lines=ok('BEGIN;'+role+load+'RESET ROLE;'+
       "INSERT INTO potok_nutrition.generation_preparation_source_revocations_v1(source_ref,reason_ref) VALUES('synthetic-only:meal-0','synthetic-only:withdrawal');"+
