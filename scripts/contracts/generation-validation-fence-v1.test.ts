@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import {Pool, type PoolClient} from 'pg';
 import {installGenerationRuntimeSourceFixtureV1} from './generation-validation-runtime-fixture-v1';
-import {ok, denied, literal, binary} from './generation-validation-fixture-v1';
+import {ok, denied, literal, binary, hash} from './generation-validation-fixture-v1';
 import {generationPreparationMetadataFixtureV1} from '../../src/server/__tests__/generationPreparationSqlFixturesV1';
 import {id} from '../../src/utils/__tests__/trustedGeneratedWeekFixturesV1';
 import {canonicalJsonV1} from '../../src/utils/adaptiveNutritionWireV1';
@@ -31,6 +31,9 @@ test('source fence candidate stays a bounded unapplied transaction', () => {
 // concurrency acceptance, not full Graph persistence, Auth/TLS or menu E2E.
 test('native source fence serializes actual gateways against source revocation', {skip: !native}, async t => {
   const {f, input, request, account, inputInsert, warningInsert} = await installGenerationRuntimeSourceFixtureV1();
+  // The domain fixture's planRaw is ordinary JSON. The real SQL writer requires
+  // canonical JSON; bind final warning admission to those exact outgoing bytes.
+  const planRaw = canonicalJsonV1(f.plan, 'SAFE_INTEGER');
   ok(read('generation_preparation_source_v1.sql')); ok(read('generation_producer_sources_v1.sql'));
   const generated = literal(id(900)), activated = literal(id(901));
   ok(`ALTER TABLE potok_nutrition.adaptive_nutrition_generation_requests_v2
@@ -42,7 +45,7 @@ test('native source fence serializes actual gateways against source revocation',
       attempt_operation_id=${literal(id(911))}, record_idempotency_key=${literal(id(912))},activation_idempotency_key=${literal(id(913))},
       proposed_plan_revision=${literal(f.plan.proposedPlanRevision)};
     CREATE TABLE public.adaptive_nutrition_operations(operation_id uuid PRIMARY KEY,user_id uuid,selection_id uuid,action_type text,outcome text,
-      canonical_request bytea,request_digest bytea,result_canonical bytea,result_digest bytea,result_plan_revision uuid,result_graph_digest bytea,result_references jsonb,committed_at timestamptz);
+      canonical_request bytea,request_digest bytea,result_canonical bytea,result_digest bytea,result_plan_revision uuid,result_graph_digest bytea,result_references jsonb,reason text,committed_at timestamptz);
     CREATE TABLE potok_nutrition.fence_activation_fixture(generation_operation_id uuid PRIMARY KEY);
     CREATE FUNCTION potok_nutrition.record_generated_week_v2(a uuid,s uuid,k uuid,i bytea,p bytea) RETURNS jsonb LANGUAGE plpgsql SET search_path=pg_catalog AS $stub$
     BEGIN
@@ -67,7 +70,7 @@ test('native source fence serializes actual gateways against source revocation',
     GRANT USAGE ON SCHEMA potok_nutrition TO potok_generation_gateway_v1;
     GRANT EXECUTE ON FUNCTION potok_nutrition.record_generated_week_gateway_v2(uuid,bytea),potok_nutrition.activate_generated_week_gateway_v2(uuid) TO potok_generation_gateway_v1;
     ${inputInsert()}
-    ${warningInsert()}
+    ${warningInsert(f.warningRaw, hash(planRaw))}
     INSERT INTO potok_nutrition.generation_validation_receipt_bindings_v1(receipt_ref,request_operation_id,account_id,source_kind,source_storage_sha256,policies_storage_sha256)
       SELECT source_receipt_ref,request_operation_id,account_id,'INPUTS',evidence_storage_sha256,policies_storage_sha256 FROM potok_nutrition.generation_validation_inputs_v1;
     INSERT INTO potok_nutrition.generation_validation_receipt_bindings_v1(receipt_ref,request_operation_id,account_id,source_kind,proposal_raw_sha256,source_storage_sha256)
@@ -88,12 +91,12 @@ test('native source fence serializes actual gateways against source revocation',
   await t.test('prerequisite/trigger drift and late installer failure roll back the whole package', () => {
     denied("BEGIN;ALTER FUNCTION potok_nutrition.acquire_shared_account_gate_v1(uuid) SET search_path=public;" + candidate, /GENERATION_FENCE_PREREQUISITE_DRIFT/);
     denied('BEGIN;ALTER TABLE potok_nutrition.generation_validation_receipt_revocations_v1 DISABLE TRIGGER receipt_revocation_insert;' + candidate, /GENERATION_FENCE_REVOCATION_GUARD_DRIFT/);
-    denied(candidate.replace(/COMMIT;\s*$/, "DO $$ BEGIN RAISE EXCEPTION 'FIXTURE_LATE_FAILURE'; END $$;COMMIT;"), /FIXTURE_LATE_FAILURE/);
+    denied(candidate.replace(/COMMIT;\s*$/, () => "DO $late_failure$ BEGIN RAISE EXCEPTION 'FIXTURE_LATE_FAILURE'; END $late_failure$;COMMIT;"), /ERROR:\s+FIXTURE_LATE_FAILURE/);
     assert.equal(oldBodies(), before);
     assert.equal(ok("SELECT to_regprocedure('potok_nutrition.assert_generation_source_current_v1(uuid,bytea)') IS NULL;"), 't');
   });
   ok(candidate);
-  const call = `SELECT potok_nutrition.record_generated_week_gateway_v2(${request},${binary(Buffer.from(f.planRaw).toString('hex'))});`;
+  const call = `SELECT potok_nutrition.record_generated_week_gateway_v2(${request},${binary(Buffer.from(planRaw).toString('hex'))});`;
   const activate = `SELECT potok_nutrition.activate_generated_week_gateway_v2(${request});`;
   const actor = 'SET LOCAL ROLE potok_generation_gateway_v1;';
   const receiptRevoke = (ref: string) => `INSERT INTO potok_nutrition.generation_validation_receipt_revocations_v1(receipt_ref,reason_ref) VALUES(${literal(ref)},'synthetic-only:withdrawal');`;
@@ -104,6 +107,7 @@ test('native source fence serializes actual gateways against source revocation',
     denied(candidate, /GENERATION_FENCE_ALREADY_INSTALLED/);
   });
   await t.test('accepted sources reach retained record gateway; replay returns the same stored outcome', () => {
+    assert.equal(ok(`BEGIN;SELECT potok_nutrition.assert_generation_source_current_v1(${request},${binary(Buffer.from(planRaw).toString('hex'))});ROLLBACK;`), '');
     const lines = ok('BEGIN;' + actor + call + call + 'RESET ROLE;SELECT count(*) FROM public.adaptive_nutrition_operations;ROLLBACK;').split('\n');
     assert.equal(JSON.parse(lines[0]).status, 'GENERATED'); assert.deepEqual(JSON.parse(lines[1]), JSON.parse(lines[0])); assert.equal(lines[2], '1');
   });
@@ -123,7 +127,7 @@ test('native source fence serializes actual gateways against source revocation',
     const missing = ok("BEGIN;UPDATE public.user_premium_plan_selections SET origin_lineage='{}';" + actor + call + 'RESET ROLE;SELECT count(*) FROM public.adaptive_nutrition_operations;ROLLBACK;').split('\n');
     assert.equal(JSON.parse(missing[0]).status, 'REJECTED'); assert.equal(missing[1], '0');
     const changed = canonicalJsonV1({...f.plan, generatedAt: '2026-09-28T01:00:00.000Z'}, 'SAFE_INTEGER');
-    assert.notEqual(changed, f.planRaw);
+    assert.notEqual(changed, planRaw);
     const wrong = `SELECT potok_nutrition.record_generated_week_gateway_v2(${request},${binary(Buffer.from(changed).toString('hex'))});`;
     const lines = ok('BEGIN;' + actor + wrong + 'RESET ROLE;SELECT count(*) FROM public.adaptive_nutrition_operations;ROLLBACK;').split('\n');
     assert.equal(JSON.parse(lines[0]).status, 'REJECTED'); assert.equal(lines[1], '0');
@@ -140,7 +144,7 @@ test('native source fence serializes actual gateways against source revocation',
     throw Error('FIXTURE_EXPECTED_LOCK_WAIT');
   }
   const recordSql = 'SELECT potok_nutrition.record_generated_week_gateway_v2($1::uuid,$2::bytea) AS result';
-  const parameters = [input.operation.requestId, Buffer.from(f.planRaw)];
+  const parameters = [input.operation.requestId, Buffer.from(planRaw)];
   try {
     await t.test('record keeps the common gate through commit; concurrent revocation cannot commit first', async () => {
       const recorder = await gateway.connect(), revoker = await owner.connect(), observer = await owner.connect();
