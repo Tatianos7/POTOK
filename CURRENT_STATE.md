@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Inactive pooled transaction lifecycle — 2026-11-02
+
+- Added an optional restricted worker composition using separate admitted source/gateway pool dependencies. One exclusive lease and one normal short transaction per adapter query; parameters pinned before acquisition, gate checks around awaits, rollback/discard on failure, single awaited release.
+- Lost COMMIT response is explicitly unknown and never retries SQL; confirmed commit plus release failure is distinguished. Eight focused tests with explicit session doubles pass. No actual driver, pool, password/TLS connection, PostgreSQL lifecycle or menu acceptance is claimed.
+- Per-query source locks do not establish a provenance/currentness fence across later record commit. Bounded pool acquire/query/close and discard semantics remain driver obligations.
+- Existing factories remain unchanged/default-disabled. No database operation, runtime mount, deployment, activation, FACT write or Production operation. Laptop credential/TLS step and cooking remain deferred.
+
 ## Public CA preflight prepared — 2026-11-02
 
 - Added offline preflight to the existing connection verifier: bounded single public PEM root, CA constraint/self-signature and validity checks before psql. Password-file bytes remain unread by the JavaScript verifier; actual server chain/hostname verification remains libpq verify-full.
