@@ -121,6 +121,7 @@ jobs:
             src/server/__tests__/generationWeightedAdmittedWorkerV1.test.ts \
             src/server/__tests__/generationSqlWeightedWorkerV1.test.ts \
             src/server/__tests__/generationSqlGatewayV1.test.ts \
+            src/server/__tests__/generationTransactionClientV1.test.ts \
             src/server/__tests__/generationWorkerBindingsV1.test.ts \
             src/server/__tests__/generationAdmittedWorkerV1.test.ts \
             src/server/__tests__/generationPreparationSourceV1.test.ts \
