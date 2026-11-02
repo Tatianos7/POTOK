@@ -72,3 +72,58 @@ test('missing psql has a bounded actionable error with no raw driver details',()
     /^Error: GENERATION_CONNECTION_PSQL_NOT_FOUND$/);
 });
 
+test('explicit IPv4/IPv6 routes preserve fixed TLS hostname, roles and password-file identity',()=>{
+  for(const hostaddr of ['192.0.2.1','2001:db8::1']){
+    const calls=[];
+    const result=verifyGenerationConnections({...config,hostaddr,run:(command,args,opts)=>{
+      calls.push({command,args,opts});
+      return {status:0,stdout:JSON.stringify(observation(args[args.indexOf('-U')+1]))};
+    }});
+    assert.deepEqual(result.map(x=>x.role),roles);
+    for(const {args,opts} of calls){
+      assert.equal(args[args.indexOf('-h')+1],stagingHost);
+      assert.equal(opts.env.PGHOSTADDR,hostaddr);
+      assert.equal(opts.env.PGSSLMODE,'verify-full');
+      assert.equal(opts.env.PGSSLROOTCERT,config.ca);
+      assert.equal(opts.env.PGPASSFILE,config.passfile);
+      assert.equal(opts.env.PGOPTIONS,'-c default_transaction_read_only=on');
+      assert.equal(opts.env.PGSERVICE,undefined);
+      assert.equal(opts.env.PGPASSWORD,undefined);
+      assert.equal(opts.env.PGSSLNEGOTIATION,undefined);
+      assert.ok(roles.includes(args[args.indexOf('-U')+1]));
+      assert.doesNotMatch(JSON.stringify(result),/192\.0\.2\.1|2001:db8/);
+    }
+  }
+});
+test('invalid route selectors fail before reading any file or launching psql',()=>{
+  let effects=0;
+  const unexpected=()=>{effects++;throw Error('private detail');};
+  for(const hostaddr of ['',null,42,{},'other.example','127.0.0.1:5432','[2001:db8::1]',
+    'fe80::1%en0','127.0.0.1,192.0.2.1',' 192.0.2.1','192.0.2.1\n',
+    'postgresql://user:secret@192.0.2.1/db','--host=192.0.2.1']){
+    assert.throws(()=>verifyGenerationConnections({...config,hostaddr,stat:unexpected,readCa:unexpected,run:unexpected}),
+      /^Error: GENERATION_CONNECTION_HOSTADDR_INVALID$/);
+  }
+  assert.equal(effects,0);
+});
+test('route failure does not retry another address or expose driver details',()=>{
+  let calls=0;
+  assert.throws(()=>verifyGenerationConnections({...config,hostaddr:'2001:db8::1',run:()=>{
+    calls++;return {status:2,stderr:'private credential/route detail'};
+  }}),/^Error: GENERATION_CONNECTION_PROBE_FAILED$/);
+  assert.equal(calls,1);
+});
+test('inherited libpq address cannot override the fixed target',()=>{
+  const previous=process.env.PGHOSTADDR;
+  process.env.PGHOSTADDR='192.0.2.99';
+  try{
+    verifyGenerationConnections({...config,run:(_command,args,opts)=>{
+      assert.equal(Object.hasOwn(opts.env,'PGHOSTADDR'),false);
+      assert.equal(args[args.indexOf('-h')+1],stagingHost);
+      return {status:0,stdout:JSON.stringify(observation(args[args.indexOf('-U')+1]))};
+    }});
+  }finally{
+    if(previous===undefined)delete process.env.PGHOSTADDR;else process.env.PGHOSTADDR=previous;
+  }
+});
+
