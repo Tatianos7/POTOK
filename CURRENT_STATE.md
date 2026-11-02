@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Inactive pinned node-postgres adapter — 2026-11-02
+
+- Resumed from PR286 exact head 17f99ecdb343d0cacdb944dc2b69bc4ebe85c769. Its PR checks run 41402475189 and all eleven native suites in run 41402475159 succeeded; lifecycle job 125137091599 executed 7 tests with zero failures/skips. This is disposable acceptance, not managed TLS/menu E2E.
+- Added a real pinned pg 8.23.1 adapter and default-disabled fixed-Staging two-role factory. Separate lazy max-two pools, verified CA/hostname TLS configuration, bounded acquire/query/close acknowledgement, late-lease discard, parameter binding and no SQL retries. No browser import or runtime mounting.
+- New focused unit/offline-driver tests and twelfth loopback native CI suite distinguish doubles/configuration checks from actual pg session execution. Read the current PR checks for exact-head acceptance; preparation/local native skip alone is not PASS.
+- Actual hosted credentials/TLS/admission, deployment connection budget/rotation, source-revocation/record-commit fence, real catalog and ordinary-account menu E2E remain open. No hosted mutation, source publication, activation, deployment, FACT write, master merge or Production operation. Laptop setup/cooking remain deferred. See docs/premium/generation-node-pg-pool-v1.md.
+
 ## Native transaction lifecycle suite prepared — 2026-11-02
 
 - Added an eleventh isolated PostgreSQL CI suite exercising the real transaction client through persistent loopback psql sessions with a narrow disposable fixture login/table.
