@@ -162,13 +162,21 @@ test('native restricted gateway writes, activates and reads an actual Graph V2',
       role+record+'RESET ROLE;'+counts+'ROLLBACK;').split('\n');
     assert.equal(JSON.parse(lines[1]).status,'REJECTED');assert.equal(lines[2],baseline);
   });
-  await t.test('late activation error rolls back operation and graph together, preserving generation receipt',()=>{
+  await t.test('late uncaught activation error rolls back operation and graph together, preserving generation receipt',()=>{
     const lines=ok('BEGIN;'+role+load+record+'RESET ROLE;'+`
       CREATE FUNCTION potok_nutrition.fail_graph_fixture() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'SYNTHETIC_LATE_GRAPH_FAILURE' USING ERRCODE='22023'; END $$;
       CREATE TRIGGER fail_graph_fixture BEFORE INSERT ON public.adaptive_nutrition_graph_revisions FOR EACH ROW EXECUTE FUNCTION potok_nutrition.fail_graph_fixture();`+
-      role+activate+'RESET ROLE;'+counts+"SELECT status FROM public.user_premium_plan_selections;ROLLBACK;").split('\n');
-    assert.equal(JSON.parse(lines[1]).status,'GENERATED');assert.equal(JSON.parse(lines[2]).status,'REJECTED');
-    assert.equal(lines[3],'1,0,0,0');assert.equal(lines[4],'pending_generation');
+      role+`DO $failure_boundary$ BEGIN
+        BEGIN
+          PERFORM potok_nutrition.activate_generated_week_gateway_v2(${request});
+          RAISE EXCEPTION 'EXPECTED_LATE_GRAPH_FAILURE';
+        EXCEPTION WHEN invalid_parameter_value THEN
+          IF SQLERRM<>'SYNTHETIC_LATE_GRAPH_FAILURE' THEN RAISE; END IF;
+        END;
+      END $failure_boundary$;`+'RESET ROLE;'+counts+
+      "SELECT status FROM public.user_premium_plan_selections;SELECT status FROM potok_nutrition.adaptive_nutrition_generation_requests_v2;ROLLBACK;").split('\n');
+    assert.equal(JSON.parse(lines[1]).status,'GENERATED');assert.equal(lines[2],'1,0,0,0');
+    assert.equal(lines[3],'pending_generation');assert.equal(lines[4],'GENERATED');
   });
   await t.test('revocation after recording prevents activation without altering its settled receipt',()=>{
     const lines=ok('BEGIN;'+role+load+record+'RESET ROLE;'+
