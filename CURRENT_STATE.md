@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Native transaction lifecycle suite prepared — 2026-11-02
+
+- Added an eleventh isolated PostgreSQL CI suite exercising the real transaction client through persistent loopback psql sessions with a narrow disposable fixture login/table.
+- Covers commit persistence, rollback after lost data reply, actual commit with unknown reply/no retry, gate closure, SQL-error cleanup, parallel backend isolation and zero remaining harness sessions. Reply loss is injected after execution; this is not real network/TLS failure.
+- Local workspace has no psql/PostgreSQL service: native discovery skips and is not acceptance. Exact-head CI execution is required; no result is asserted by preparation alone.
+- Fixture harness is not the production parameterized driver/pool, installed source/gateway admission or menu acceptance. No managed connection, live mutation, activation, FACT write or Production operation. Laptop passwords/TLS and cooking remain deferred.
+
 ## Inactive pooled transaction lifecycle — 2026-11-02
 
 - Added an optional restricted worker composition using separate admitted source/gateway pool dependencies. One exclusive lease and one normal short transaction per adapter query; parameters pinned before acquisition, gate checks around awaits, rollback/discard on failure, single awaited release.
