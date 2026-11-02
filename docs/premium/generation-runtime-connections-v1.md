@@ -1,5 +1,36 @@
 # Runtime connections — restricted candidate
 
+Current installation status: the scoped LOGIN/grant package was applied on Staging on
+2026-11-01; see [installation receipt](generation-runtime-logins-install-20261101.md).
+The candidate/pre-install descriptions below are historical. Password provisioning
+and actual managed TLS acceptance remain outstanding.
+
+## Local certificate preflight — 2026-11-02
+
+Before launching psql, the verifier reads only the selected public CA file and
+requires one PEM root certificate, no extra PEM objects, at most 64 KiB, the CA
+constraint, a valid self-signature and a current validity interval. Password-file
+contents are never read by the JavaScript verifier. This check validates local
+certificate structure; it does not independently establish that a root belongs to
+Supabase. Download it from the project's authenticated database settings. libpq's
+verify-full still performs the actual server chain/hostname check.
+
+The owner's downloaded public Supabase Root 2021 CA passed local parsing/validity
+preflight on 2026-11-02. This does not prove live TLS or password authentication,
+and the uploaded certificate is not copied into the repository.
+
+| Sanitized error | Owner action |
+| --- | --- |
+| GENERATION_CONNECTION_CA_INVALID | Download the public project CA again; select the certificate file, not a password/key/bundle. |
+| GENERATION_CONNECTION_CA_NOT_CURRENT | Check the computer's clock and obtain a current project CA. |
+| GENERATION_CONNECTION_PSQL_NOT_FOUND | Install/locate psql before rerunning the read-only verifier. |
+
+All errors omit raw certificate bytes, driver stderr and private paths. Unit tests
+cover valid/invalid/self-signature/validity/file failures, credential non-reading,
+missing psql and the existing fixed-host/role/TLS/read-only probe construction.
+No password, database write, SSL enforcement toggle, deployment or activation is
+performed by this preflight.
+
 The installed source reader is NOLOGIN and therefore is not a usable password login. Giving it an injected query callback in a test did not establish a real backend connection. Staging metadata also confirms service_role is NOLOGIN and BYPASSRLS; the worker should not obtain that broad role through an owner session. This candidate prepares separate narrow source and gateway logins. No new hosting provider is required or selected.
 
 ## Exact SQL scope, not yet installed
@@ -38,3 +69,4 @@ The new native suite uses actual password/SCRAM TCP authentication to the fixed 
 Loopback deliberately has TLS disabled. Consequently the metadata probe must report TLS=false and overall connection readiness=false while its other checks pass. Actual managed TLS/certificate validation and secret rotation/pool lifecycle still need acceptance after separately approved configuration. Offline tests verify safe command construction, file modes, missing/forged checks and error suppression. Existing legacy worker/SQL transport behavior remains covered.
 
 No live role/grant/password write, source publication, deployment or activation was performed by preparing this candidate. Cooking remains deferred, unknown physical quantities remain unknown, and PLAN does not create FACT.
+
