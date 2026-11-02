@@ -2,8 +2,10 @@
 
 Current installation status: the scoped LOGIN/grant package was applied on Staging on
 2026-11-01; see [installation receipt](generation-runtime-logins-install-20261101.md).
-The candidate/pre-install descriptions below are historical. Password provisioning
-and actual managed TLS acceptance remain outstanding.
+The candidate/pre-install descriptions below are historical. On 2026-11-02 the
+owner supplied successful manual password/TLS/read-only probe results for both
+restricted roles; see [owner connection observation](generation-owner-connection-observation-20261102.md).
+This is not a worker-pool connection or request-to-menu acceptance.
 
 ## Local certificate preflight — 2026-11-02
 
@@ -24,6 +26,7 @@ and the uploaded certificate is not copied into the repository.
 | GENERATION_CONNECTION_CA_INVALID | Download the public project CA again; select the certificate file, not a password/key/bundle. |
 | GENERATION_CONNECTION_CA_NOT_CURRENT | Check the computer's clock and obtain a current project CA. |
 | GENERATION_CONNECTION_PSQL_NOT_FOUND | Install/locate psql before rerunning the read-only verifier. |
+| GENERATION_CONNECTION_HOSTADDR_INVALID | Supply one numeric IPv4/IPv6 address from the fixed Staging host's current DNS records; omit the selector to use normal DNS. |
 
 All errors omit raw certificate bytes, driver stderr and private paths. Unit tests
 cover valid/invalid/self-signature/validity/file failures, credential non-reading,
@@ -57,6 +60,27 @@ The restricted transport still relies on a trusted driver and actual credential/
 `node scripts/security/generation-connection/verify.mjs` is fixed to the direct Staging host db.ozidryfvhkcbtpnulakq.supabase.co, port5432/database postgres and the two exact role names. It runs only metadata SELECTs, requires certificate/hostname verification (verify-full), enforces private readable password-file mode, strips inherited database/session selectors, and emits only sanitized check outcomes. It does not read password-file contents or print driver stderr, credentials or connection strings. Direct-host reachability, including IPv6 support, is not presumed proven.
 
 The owner supplies absolute local paths in POTOK_GENERATION_PGPASSFILE and POTOK_GENERATION_CA. The password file should have mode0600 (or owner-read-only) and two libpq entries for the fixed host/database/role names; real passwords belong only in the private file and managed backend secret store. Download the project CA through [Staging database settings](https://supabase.com/dashboard/project/ozidryfvhkcbtpnulakq/database/settings). No real password or service key should be sent in chat. The verifier selects those private file paths; it does not provision the secrets or copy them into the app.
+
+### Optional explicit numeric route
+
+If system name lookup fails but a current DNS query and TCP check confirm a route
+to the fixed host, the trusted operator can set `POTOK_GENERATION_HOSTADDR` to one
+numeric IPv4/IPv6 address. It is passed to libpq as `PGHOSTADDR` while `-h` remains
+the fixed Staging hostname. `verify-full`, the selected CA and password-file
+matching against the hostname remain intact. No address is embedded in source,
+persisted by the verifier, returned in observations or discovered automatically.
+The operator must recheck DNS when an address changes; this is an explicit route,
+not a permanent IP pin or proof of address ownership by itself.
+
+Empty values, hostnames, URIs, lists, ports, whitespace, brackets and scoped IPv6
+interface selectors fail locally before files are read or psql starts. An omitted
+selector keeps normal hostname lookup. Inherited libpq route/session selectors
+are still excluded. A failed connection is not retried with another address and
+TLS verification is never weakened. This option applies only to the separate
+read-only verifier, not the inactive `pg` pools.
+
+PostgreSQL documents both hostname verification and password-file matching for
+combined `host`/`hostaddr` in [libpq connection parameters](https://www.postgresql.org/docs/18/libpq-connect.html#LIBPQ-PARAMKEYWORDS).
 
 Checks cover real session identity, safe LOGIN attributes/connection limit, memberships, exact private function allowlist, absence of application table/sequence rights/owned objects, schema usage without CREATE, TLS, bounded defaults and read-only probe state. Missing TLS or a contradictory/missing check cannot produce readiness. A successful connection check still has mayActivate=false; it is not catalog admission, Premium verification or installed-path menu acceptance.
 

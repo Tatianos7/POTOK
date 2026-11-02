@@ -2,6 +2,7 @@ import {spawnSync} from 'node:child_process';
 import {X509Certificate} from 'node:crypto';
 import {readFileSync,statSync} from 'node:fs';
 import {isAbsolute,resolve} from 'node:path';
+import {isIP} from 'node:net';
 import {fileURLToPath} from 'node:url';
 export const stagingHost='db.ozidryfvhkcbtpnulakq.supabase.co';
 export const roles=['potok_generation_reader_v1','potok_generation_gateway_v1'];
@@ -31,7 +32,12 @@ export function classifyConnection(value,role){
  * Password bytes are never read. Only the public CA is read for local preflight;
  * credentials and connection strings are never returned or logged. */
 export function verifyGenerationConnections({passfile=process.env.POTOK_GENERATION_PGPASSFILE,ca=process.env.POTOK_GENERATION_CA,
+  hostaddr=process.env.POTOK_GENERATION_HOSTADDR,
   run=spawnSync,stat=statSync,readCa=readFileSync,now=Date.now(),path=process.env.PATH}={}){
+  // An explicit numeric route only: TLS/pgpass still bind to the fixed host.
+  // Reject scoped IPv6 (interface selectors) and never accept a URI/hostname.
+  if(hostaddr!==undefined&&(typeof hostaddr!=='string'||hostaddr.includes('%')||isIP(hostaddr)===0))
+    throw Error('GENERATION_CONNECTION_HOSTADDR_INVALID');
   if(!passfile||!ca||!isAbsolute(passfile)||!isAbsolute(ca))throw Error('GENERATION_CONNECTION_FILES_REQUIRED');
   let secret,certificate;try{secret=stat(passfile);certificate=stat(ca);}catch{throw Error('GENERATION_CONNECTION_FILES_INVALID');}
   if(!secret.isFile()||!certificate.isFile()||(secret.mode&0o077)!==0||(secret.mode&0o400)===0)throw Error('GENERATION_CONNECTION_FILE_PERMISSIONS');
@@ -43,6 +49,7 @@ export function verifyGenerationConnections({passfile=process.env.POTOK_GENERATI
     const result=run('psql',['-X','-w','-qAt','-v','ON_ERROR_STOP=1','-h',stagingHost,'-p','5432','-U',role,'-d','postgres'],{
       input:query,encoding:'utf8',maxBuffer:64*1024,timeout:45000,
       env:{PATH:path,LANG:'C',PGPASSFILE:passfile,PGSSLROOTCERT:ca,PGSSLMODE:'verify-full',PGCONNECT_TIMEOUT:'5',
+        ...(hostaddr===undefined?{}:{PGHOSTADDR:hostaddr}),
         PGOPTIONS:'-c default_transaction_read_only=on',PGAPPNAME:'potok-generation-connection-check'},
     });
     if(result.error?.code==='ENOENT')throw Error('GENERATION_CONNECTION_PSQL_NOT_FOUND');
