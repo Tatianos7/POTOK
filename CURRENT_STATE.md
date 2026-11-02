@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Stored generation-source commit fence candidate — 2026-11-02
+
+- Prepared an unapplied bounded SQL candidate: an internal invoker helper and exact-body-pinned record/activation gateway changes. No new client/worker grant, source row, role or runtime mount. Existing revocation triggers and the gateway share the same exclusive transaction account gate.
+- Rechecks exact-proposal INPUTS/final WARNINGS, metadata and selected per-meal warning provenance under the gateway transaction lock; rejects stale transaction snapshots and incomplete/mismatched sources. Activation repeats the check; historical/idempotent terminal replies remain unchanged.
+- Added a thirteenth native PostgreSQL CI suite with real source guards/currentness/outer gateways and explicitly synthetic inner Graph marker writers. Both actual concurrency lock orders, installer rollback, private grants, source revocations, activation and isolation rejection are covered. Read exact-head CI for executed acceptance; local native skip is not PASS.
+- This is stored generation-source admission fencing, not independent underlying Food/Nonfood evidence-chain replay or full Graph/schema/Auth/menu E2E. Requires fresh hosted inventory, a separately approved Staging package and updated gateway pins before live use. Generator inactive; no hosted mutation, publication, deployment, FACT write, historical rewrite or Production operation. See docs/premium/generation-source-commit-fence-v1.md.
+
 ## Inactive pinned node-postgres adapter — 2026-11-02
 
 - Resumed from PR286 exact head 17f99ecdb343d0cacdb944dc2b69bc4ebe85c769. Its PR checks run 41402475189 and all eleven native suites in run 41402475159 succeeded; lifecycle job 125137091599 executed 7 tests with zero failures/skips. This is disposable acceptance, not managed TLS/menu E2E.
