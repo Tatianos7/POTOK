@@ -4,6 +4,25 @@ This test closes the gap between marker-only inner writes in the source-fence
 suite and pre-inserted Graph rows in the readback suite. It introduces no runtime
 entrypoint, hosted SQL installation, credentials or generator activation.
 
+## Recipe identity defect and bounded correction
+
+The retained inner writers match manifest recipe IDs using the nonexistent
+flattened `component.recipeId`; the Graph V2 contract carries the ID in
+`component.recipe.recipeId`. Exact canonical component snapshots still match,
+but a valid Graph cannot pass the old manifest query. The native regression first
+requires that the original writer reject the valid fixture with
+`manifest component missing`.
+
+`drafts/generation_graph_recipe_identity_v1.sql` is a separate **unapplied**
+candidate. It replaces exactly one recipe-ID selector in each of the two pinned
+inner functions. Before/after body hashes and owner/security/signature/ACL
+postchecks restrict the change; second-function drift or a late failure rolls
+back both replacements. Existing recipe revision, portion, eligibility and exact
+snapshot comparisons are retained. Baseline SQL drafts are unchanged.
+
+Fresh hosted inventory and separately approved installation are required. This
+test does not establish that current hosted bodies match these pins.
+
 `scripts/contracts/generation-validation-graph-v1.test.ts` runs as the fourteenth
 isolated PostgreSQL matrix suite (`graph`). It admits only the existing fixed
 loopback disposable database. Native execution must finish with zero skips before
@@ -13,8 +32,8 @@ SQL extraction check runs and the native parent is skipped.
 ## Retained production-candidate code exercised
 
 - Exact protected inner `record_generated_week_v2` and
-  `activate_generated_week_v2` function definitions, without body rewrites or
-  synthetic marker writers.
+  `activate_generated_week_v2` definitions, then the bounded identity correction
+  above; no synthetic marker writers.
 - Exact operation, graph-revision and event DDL from the persistence draft,
   including idempotency uniqueness, terminal receipt checks, deferred account/
   selection/operation FKs, Graph V2 shape/digest checks and immutable guards.

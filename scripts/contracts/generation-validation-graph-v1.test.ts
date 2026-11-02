@@ -18,6 +18,7 @@ const read=(name:string)=>readFileSync(new URL('../../docs/premium/drafts/'+name
 const persistence=read('20260921_adaptive_nutrition_persistence_v1.sql');
 const graph=read('20260927_adaptive_nutrition_graph_v2_authorities_activation_v1.sql');
 const protectedSql=read('20260930_adaptive_nutrition_protected_execution_binding_v1.sql');
+const identityPatch=read('generation_graph_recipe_identity_v1.sql');
 function section(source:string,start:string,end:string){
   const a=source.indexOf(start),b=source.indexOf(end,a+start.length);
   assert.ok(a>=0&&b>a,`missing retained SQL section: ${start}`);return source.slice(a,b);
@@ -38,6 +39,8 @@ test('roundtrip fixture extracts retained writers and full operation/graph const
   }
   assert.match(section(persistence,'CREATE TABLE public.adaptive_nutrition_operations (','CREATE TABLE public.adaptive_nutrition_events ('),/DEFERRABLE INITIALLY DEFERRED/);
   assert.match(section(graph,'ALTER TABLE public.adaptive_nutrition_operations\n','CREATE FUNCTION potok_nutrition.reject_immutable_change_v2()'),/adaptive_nutrition_graph_revisions_v2_activation_operation_fk/);
+  assert.match(identityPatch,/recipe,recipeId/);
+  assert.doesNotMatch(identityPatch,/CREATE TABLE|GRANT |INSERT INTO|UPDATE public|DELETE FROM|TRUNCATE /);
 });
 
 // Fixed loopback synthetic authorities/accounts/manifest relation; actual retained
@@ -120,6 +123,21 @@ test('native restricted gateway writes, activates and reads an actual Graph V2',
     (SELECT count(*) FROM public.adaptive_nutrition_operations WHERE action_type='PLAN_ACTIVATED_V2')||','||
     (SELECT count(*) FROM public.adaptive_nutrition_graph_revisions)||','||(SELECT count(*) FROM public.adaptive_nutrition_events);`;
   const baseline=ok(counts);assert.equal(baseline,'0,0,0,0');
+  const directRecord=`SELECT potok_nutrition.record_generated_week_v2(${account},${literal(f.plan.selectionId)},${literal(id(912))},
+    ${binary(hex(canonicalJsonV1(input,'SAFE_INTEGER')))},${binary(planHex)});`;
+  await t.test('retained baseline rejects a valid nested recipe identity; patch is atomic and refuses drift',()=>{
+    denied(directRecord,/manifest component missing/);assert.equal(ok(counts),baseline);
+    const bodies=()=>ok(`SELECT string_agg(md5(prosrc),',' ORDER BY proname) FROM pg_proc WHERE oid IN(
+      'potok_nutrition.record_generated_week_v2(uuid,uuid,uuid,bytea,bytea)'::regprocedure,
+      'potok_nutrition.activate_generated_week_v2(uuid,uuid,uuid)'::regprocedure);`);
+    const before=bodies();
+    denied("BEGIN;ALTER FUNCTION potok_nutrition.activate_generated_week_v2(uuid,uuid,uuid) SET search_path=public;"+identityPatch,/GENERATION_GRAPH_IDENTITY_PREREQUISITE_DRIFT/);
+    assert.equal(bodies(),before);
+    denied(identityPatch.replace(/COMMIT;\s*$/,()=>"DO $late$ BEGIN RAISE EXCEPTION 'SYNTHETIC_LATE_IDENTITY_FAILURE'; END $late$;COMMIT;"),/SYNTHETIC_LATE_IDENTITY_FAILURE/);
+    assert.equal(bodies(),before);
+  });
+  ok(identityPatch);
+  denied(identityPatch,/GENERATION_GRAPH_IDENTITY_PREREQUISITE_DRIFT/);
   await t.test('graph/operation constraints and immutable guards are retained',()=>{
     assert.equal(ok(`SELECT count(*) FROM pg_constraint WHERE conname IN ('adaptive_nutrition_operations_terminal_check',
       'adaptive_nutrition_graph_revisions_v2_shape_check','adaptive_nutrition_graph_revisions_v2_activation_operation_fk',
@@ -133,8 +151,7 @@ test('native restricted gateway writes, activates and reads an actual Graph V2',
     assert.equal(ok(counts),baseline);
   });
   await t.test('valid canonical proposal reaches the retained inner writer and gateway before activation',()=>{
-    const direct=ok(`BEGIN;SELECT potok_nutrition.record_generated_week_v2(${account},${literal(f.plan.selectionId)},${literal(id(912))},
-      ${binary(hex(canonicalJsonV1(input,'SAFE_INTEGER')))},${binary(planHex)});ROLLBACK;`);
+    const direct=ok('BEGIN;'+directRecord+'ROLLBACK;');
     assert.equal(JSON.parse(direct).outcome,'accepted');
     const lines=ok('BEGIN;'+role+load+record+'ROLLBACK;').split('\n');
     const response=JSON.parse(lines[1]);assert.equal(response.status,'GENERATED',JSON.stringify(response));
