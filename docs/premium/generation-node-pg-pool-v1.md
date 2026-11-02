@@ -37,7 +37,10 @@ against the installed per-role two-connection limits before mounting.
 - Acquisition and query deadlines never trigger a repeat. A late acquisition is
   destroyed. Concurrent queries on one lease and queries after release are denied.
 - Query errors/timeouts remove the client from the pool and request destruction.
-  PostgreSQL aborts uncommitted work on disconnect. A dispatched COMMIT remains
+  Local socket closure is not acknowledgement of remote cancellation. PostgreSQL
+  can continue a running statement until disconnect detection or its server
+  statement timeout; the independent server/idle-transaction deadlines remain
+  necessary. Once disconnection is processed, uncommitted work is aborted. A dispatched COMMIT remains
   uncertain; the existing transaction wrapper reports UNKNOWN and its caller
   must use same-request recovery rather than resubmit the write.
 - Release is idempotent at the adapter boundary. Discard waits for the driver's
@@ -65,7 +68,9 @@ fixed disposable loopback PostgreSQL database. It verifies bound special text,
 backend isolation, pool saturation/recovery, timeout destruction, SQL-error
 cleanup, multiple-statement rejection, persisted COMMIT with injected lost reply
 and active shutdown. Final pg_stat_activity inspection requires no fixture
-sessions. Loopback TLS is deliberately disabled. Local native discovery skips
+sessions after the explicit fixture server deadline (1 second, plus 2 seconds
+for scheduling/observation), rather than treating a local end event as immediate
+server termination. Loopback TLS is deliberately disabled. Local native discovery skips
 without explicit opt-in; only actual execution with zero skips is acceptance.
 
 Still open: protected hosted passwords, actual CA/hostname/TLS and restricted

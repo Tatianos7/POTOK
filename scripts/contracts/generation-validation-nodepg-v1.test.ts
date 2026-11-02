@@ -18,7 +18,7 @@ test('actual node-postgres exclusive leases on disposable PostgreSQL', {skip: !n
   const create = (max = 2, acquireMs = 1000, queryMs = 2000) => {
     const raw = new Pool({host: '127.0.0.1', port: 5432, database, user: 'nodepg_fixture_login',
       password: 'nodepg-disposable-only', ssl: false, max, connectionTimeoutMillis: acquireMs,
-      statement_timeout: 5000, application_name: 'potok-nodepg-fixture',
+      statement_timeout: 1000, application_name: 'potok-nodepg-fixture',
       options: '-c search_path=pg_catalog -c default_transaction_read_only=off', replication: 'false'});
     const adapter = adaptGenerationNodePgPoolV1<Row>(raw, () => true, {acquireMs, queryMs, closeMs: 1000});
     pools.push(adapter); rawPools.push(raw); return {raw, adapter};
@@ -87,8 +87,10 @@ test('actual node-postgres exclusive leases on disposable PostgreSQL', {skip: !n
       await assert.rejects(adapter.acquire(), /GENERATION_PG_DISABLED/);
     });
     assert.ok(rawPools.every(pool => pool.totalCount === 0));
-    // pg end events establish local closure; separately verify server cleanup.
-    for (let attempt = 0; attempt < 50; attempt++) {
+    // A local socket end is not remote cancellation: pg_sleep may continue until
+    // the fixture's 1s statement_timeout. Require server cleanup within that
+    // explicit bound plus 2s scheduling/observation allowance, not immediately.
+    for (let attempt = 0; attempt < 150; attempt++) {
       const count = (await owner.query("SELECT count(*)::int AS n FROM pg_stat_activity WHERE application_name='potok-nodepg-fixture'")).rows[0].n;
       if (count === 0) break;
       await new Promise(resolve => setTimeout(resolve, 20));
