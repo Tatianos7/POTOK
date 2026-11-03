@@ -31,7 +31,7 @@ export async function runGenerationRequestRoundtripV1(t:TestContext,gateway:Gene
   const date=(offset:number)=>new Date(Date.parse(week+'T00:00:00Z')+offset*86400000).toISOString().slice(0,10);
   const fixture=(issued?:TrustedGenerationInputV1)=>fullFixture(state=>{
     if(issued)state.context.input=structuredClone(issued);
-    else Object.assign(state.context.input,{accountId:account,weekStartLocal:week,
+    else Object.assign(state.context.input,{accountId:account,weekStartLocal:week,entitlementEvidenceRevision:id(9004),
       selection:{...state.context.input.selection,selectionId:selection,planSelectionRevision:provision}});
     state.context.preference.accountId=account;state.context.safety.accountId=account;
     Object.assign(state.evidence,{accountId:account,selectionId:selection,weekStartLocal:week});
