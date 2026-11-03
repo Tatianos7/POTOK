@@ -11,12 +11,13 @@ const ca = await readFile(caPath, 'utf8'), wrongCa = await readFile(wrongCaPath,
 const builtins = new Set(builtinModules.map(n => n.replace(/^node:/, '')));
 await mkdir(output, {recursive: true});
 const shim = resolve(output, 'buffer-shim.mjs');
-await writeFile(shim, "export {Buffer} from 'node:buffer';\n");
+await writeFile(shim, "export {Buffer} from 'node:buffer';export {default as process} from 'node:process';export {setImmediate,clearImmediate} from 'node:timers';\n");
 async function bundle(name: string, contents: string) {
   await mkdir(resolve(output, name), {recursive: true});
   await build({stdin: {contents, resolveDir: process.cwd(), loader: 'ts'}, bundle: true,
     platform: 'node', format: 'esm', target: 'es2022', supported: {'node-colon-prefix-import': true},
-    inject: [shim], banner: {js: "import {createRequire as diagnosticCreateRequire} from 'node:module';const require=diagnosticCreateRequire(import.meta.url);"},
+    inject: [shim], define: {global: 'globalThis'},
+    banner: {js: "import {createRequire as diagnosticCreateRequire} from 'node:module';const require=diagnosticCreateRequire(import.meta.url);"},
     outfile: resolve(output, name, 'index.ts'), plugins: [{name: 'explicit-node-builtins', setup(b) {
       b.onResolve({filter: /^[a-z][a-z_/]*$/}, ({path}) => builtins.has(path) ? {path: `node:${path}`, external: true} : undefined);
     }}]});

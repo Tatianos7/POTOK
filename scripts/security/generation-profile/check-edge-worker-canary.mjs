@@ -5,6 +5,7 @@ import {writeFile} from 'node:fs/promises';
 
 const observations = [];
 for (const name of ['pg', 'small', 'robust', 'strict', 'cpu']) {
+  try {
   const since = new Date().toISOString();
   const response = await fetch(`http://127.0.0.1:9098/${name}`, {signal: AbortSignal.timeout(45000)});
   const body = await response.text();
@@ -29,8 +30,8 @@ for (const name of ['pg', 'small', 'robust', 'strict', 'cpu']) {
     assert.match(log, /cpu time|CPU time|CPUTime|memory limit|Memory limit/i, `NO_RESOURCE_LIMIT_EVIDENCE_${name}`);
     observations.push({name, outcome: 'RESOURCE_LIMIT_CANCELLED', status: response.status});
   }
+  } catch {observations.push({name, outcome: 'UNEXPECTED_FAILURE'});}
 }
-assert.equal(observations.find(r => r.name === 'cpu').outcome, 'RESOURCE_LIMIT_CANCELLED');
 const report = {contract: 'potok-local-edge-worker-canary-v1', hostedAcceptance: false,
   stagingModified: false, syntheticDatabase: true, limits: {cpuSoftMs: 2000, cpuHardMs: 2000, memoryMb: 256, wallMs: 150000},
   limitScope: 'LOCAL_OFFICIAL_EDGE_USER_WORKER_INCLUDES_MODULE_AND_FIXTURE_SETUP',
@@ -38,3 +39,5 @@ const report = {contract: 'potok-local-edge-worker-canary-v1', hostedAcceptance:
   observations};
 await writeFile(process.argv[2], JSON.stringify(report, null, 2) + '\n');
 console.log(JSON.stringify(report));
+assert.equal(observations.find(r => r.name === 'cpu').outcome, 'RESOURCE_LIMIT_CANCELLED');
+assert.ok(observations.every(r => r.outcome !== 'UNEXPECTED_FAILURE'), 'UNEXPECTED_CANARY_FAILURE');
