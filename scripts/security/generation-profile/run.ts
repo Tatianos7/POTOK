@@ -4,7 +4,7 @@ import {pathToFileURL} from 'node:url';
 import {rootCertificates} from 'node:tls';
 import {X509Certificate} from 'node:crypto';
 import {generationSqlWeightedWorkerFixtureV1} from '../../../src/server/__tests__/generationSqlWeightedWorkerFixturesV1';
-import {createManagedGenerationRuntimeV1, createStagingGenerationRuntimeV1, type GenerationRuntimePoolsV1} from '../../../src/server/generationRuntimeV1';
+import {createManagedGenerationRuntimeV1, createPortableStagingGenerationRuntimeV1, createStagingGenerationRuntimeV1, type GenerationRuntimePoolsV1} from '../../../src/server/generationRuntimeV1';
 import {restrictedGenerationLoadSqlV1, restrictedGenerationRecordSqlV1, restrictedGenerationActivateSqlV1} from '../../../src/server/generationSqlGatewayV1';
 
 const isDeno = 'Deno' in globalThis;
@@ -38,17 +38,20 @@ export async function profileGenerationWorkerV1(samples = 3) {
   let disabledPgFactoryProbe: 'PASS' | 'FAIL' = 'FAIL';
   let disabledPgFactoryProbeStage = 'PUBLIC_CA';
   let x509CheckIssued: 'PASS' | 'UNAVAILABLE_OR_FAILED' = 'UNAVAILABLE_OR_FAILED';
+  let portablePgFactoryProbe: 'PASS' | 'FAIL' = 'FAIL';
   for (const [slots, known] of [[1, false], [4, false], [4, true]] as const) {
     for (let sample = 0; sample < samples; sample++) {
       // Setup and fixture signing are excluded. Synthetic adapter work during continue is included.
       const x = await generationSqlWeightedWorkerFixtureV1(known, slots);
       const {sourcesSql, gateway, ...config} = x.deps; void sourcesSql; void gateway;
       if (measurements.length === 0) {
+        let probeCa: string | undefined;
         // Only public test trust material and synthetic passwords; never acquire a connection.
         try {
           const ca = rootCertificates.find(pem => {const r = new X509Certificate(pem);
             return r.ca && Date.now() >= Date.parse(r.validFrom) && Date.now() < Date.parse(r.validTo);});
           assert.ok(ca);
+          probeCa = ca;
           try {const root = new X509Certificate(ca); if (root.checkIssued(root)) x509CheckIssued = 'PASS';} catch {/* Recorded capability failure, never skipped inside the real factory. */}
           disabledPgFactoryProbeStage = 'FACTORY_CONSTRUCTION';
           const {enabled, ...disabled} = config; void enabled;
@@ -57,6 +60,16 @@ export async function profileGenerationWorkerV1(samples = 3) {
           finally {disabledPgFactoryProbeStage = 'CLOSE'; await probe.close();}
           disabledPgFactoryProbe = 'PASS'; disabledPgFactoryProbeStage = 'COMPLETE';
         } catch {disabledPgFactoryProbe = 'FAIL';}
+        if (probeCa) {
+          try {
+            const {enabled, ...disabled} = config; void enabled;
+            const probe = await createPortableStagingGenerationRuntimeV1({...disabled,
+              secrets: {ca: probeCa, readerPassword: 'synthetic-reader', gatewayPassword: 'synthetic-gateway'}});
+            try {await assert.rejects(probe.continue(x.request), /GENERATION_RUNTIME_DISABLED/);}
+            finally {await probe.close();}
+            portablePgFactoryProbe = 'PASS';
+          } catch {portablePgFactoryProbe = 'FAIL';}
+        }
       }
       const startCpu = cpu(), startRss = rss(), start = performance.now();
       const runtime = await createManagedGenerationRuntimeV1({...config,
@@ -80,7 +93,7 @@ export async function profileGenerationWorkerV1(samples = 3) {
   }
   const deno = (globalThis as typeof globalThis & {Deno?: {version: {deno: string}}}).Deno;
   return {contract: 'potok-generation-worker-local-profile-v1', runtime: deno ? `Deno ${deno.version.deno}` : `Node ${process.versions.node}`,
-    input: 'SYNTHETIC_SQL_AUTH_CATALOG_FIXTURE', disabledPgFactoryProbe, disabledPgFactoryProbeStage, x509CheckIssued, hostedAcceptance: false, cloudLimitsEnforced: false,
+    input: 'SYNTHETIC_SQL_AUTH_CATALOG_FIXTURE', disabledPgFactoryProbe, disabledPgFactoryProbeStage, portablePgFactoryProbe, x509CheckIssued, hostedAcceptance: false, cloudLimitsEnforced: false,
     cpuIncludesSyntheticAdapters: true, memoryScope: 'PROCESS_NOT_REQUEST_OR_EDGE_ISOLATE',
     measuredScope: 'RUNTIME_ASSEMBLY_SELECTION_VALIDATION_RECORD_ACTIVATION_PROTOCOL_AND_OUTPUT_ASSERTIONS',
     excluded: ['FIXTURE_SETUP', 'REAL_DATABASE_IO_AND_COMMIT', 'TLS_AND_ROLE_ADMISSION', 'SUPABASE_AUTH', 'HTTP_UI', 'WORST_CASE_CATALOG', 'CLOUD_CPU_ACCOUNTING'],

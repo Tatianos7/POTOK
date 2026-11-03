@@ -10,6 +10,7 @@ test('profile exercises both slot sizes and comparison paths with explicit synth
   const r = await profileGenerationWorkerV1(1);
   assert.equal(r.hostedAcceptance, false); assert.equal(r.cloudLimitsEnforced, false);
   assert.equal(r.cpuIncludesSyntheticAdapters, true); assert.equal(r.disabledPgFactoryProbe, 'PASS');
+  assert.equal(r.portablePgFactoryProbe, 'PASS');
   assert.equal(r.x509CheckIssued, 'PASS'); assert.equal(r.measurements.length, 3);
   assert.deepEqual(r.measurements.map(x => [x.slotsPerDay, x.comparison]), [[1, 'ROBUST_CONVENIENCE_BOUNDS'], [4, 'ROBUST_CONVENIENCE_BOUNDS'], [4, 'STRICT']]);
   for (const m of r.measurements) {
