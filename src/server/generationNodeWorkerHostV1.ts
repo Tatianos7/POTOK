@@ -1,7 +1,5 @@
 import process from 'node:process';
-import {open} from 'node:fs/promises';
-import {constants} from 'node:fs';
-import {assertRawJsonWithoutDuplicateKeysV1} from '../utils/adaptiveNutritionWireV1';
+import {readPrivateGenerationJsonV1} from './generationPrivateConfigurationV1';
 import {createStagingGenerationRuntimeV1, type StagingGenerationRuntimeDependenciesV1} from './generationRuntimeV1';
 
 export const generationNodeWorkerConfigContractV1 = 'potok-staging-node-worker-config-v1' as const;
@@ -23,23 +21,7 @@ function record(value: unknown, keys: string[]): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 async function readConfiguration(path: string): Promise<Omit<StagingGenerationRuntimeDependenciesV1, 'enabled'>> {
-  if (typeof path !== 'string' || !path || path.includes('\0')) throw Error('INVALID_CONFIG');
-  const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-  let raw: string;
-  try {
-    const stat = await file.stat();
-    if (!stat.isFile() || stat.uid !== process.getuid!() || (stat.mode & 0o077) !== 0
-      || stat.size < 1 || stat.size > 2 * 1024 * 1024) throw Error('INVALID_CONFIG');
-    const buffer = Buffer.alloc(stat.size + 1);let offset = 0;
-    while (offset < buffer.length) {
-      const {bytesRead} = await file.read(buffer, offset, buffer.length - offset, offset);
-      if (bytesRead === 0) break;offset += bytesRead;
-    }
-    if (offset !== stat.size) throw Error('INVALID_CONFIG');
-    raw = new TextDecoder('utf-8', {fatal: true, ignoreBOM: true}).decode(buffer.subarray(0, offset));
-  } finally {await file.close();}
-  assertRawJsonWithoutDuplicateKeysV1(raw);
-  const config = record(JSON.parse(raw), ['contract','secrets','optimizationPolicyRaw','metricPolicyRaw','comparison','limitsRaw']);
+  const config = record(await readPrivateGenerationJsonV1(path), ['contract','secrets','optimizationPolicyRaw','metricPolicyRaw','comparison','limitsRaw']);
   if (config.contract !== generationNodeWorkerConfigContractV1 || config.comparison !== 'ROBUST_CONVENIENCE_BOUNDS'
     || typeof config.optimizationPolicyRaw !== 'string' || typeof config.metricPolicyRaw !== 'string'
     || (config.limitsRaw !== null && typeof config.limitsRaw !== 'string')) throw Error('INVALID_CONFIG');
