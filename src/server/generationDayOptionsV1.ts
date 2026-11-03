@@ -9,7 +9,7 @@ import { decodeAdaptiveNutritionCandidateManifestV2, decodeNutritionPreferenceSn
   decodeNutritionSafetySnapshotV1 } from '../utils/adaptiveNutritionAuthoritiesV1';
 import { decodeTrustedValidationEvidenceV1 } from '../utils/trustedValidationEvidenceV1';
 import { decodeTrustedValidationPoliciesRawV2 } from '../utils/trustedValidationPoliciesV1';
-import { decodePreparedMealWarningEvidenceRawV2, type MealWarningEvidenceV1 } from '../utils/trustedMealWarningEvidenceV1';
+import { createPreparedMealWarningDecoderRawV2, type MealWarningEvidenceV1 } from '../utils/trustedMealWarningEvidenceV1';
 import { assertRawJsonWithoutDuplicateKeysV1,adaptiveNutritionSha256HexV1,canonicalJsonV1 } from '../utils/adaptiveNutritionWireV1';
 import { dayValidatorInputContractV1, mealValidatorInputContractV1, mealCandidateEvidenceContractV2,
   weekValidatorInputContractV2, validateDaySnapshotRawV2 } from '../utils/adaptiveNutritionMealBalanceV1';
@@ -131,6 +131,7 @@ function createGenerationDayOptionsInternalV1(sourcePort: GenerationMenuCandidat
       const count = day.requiredSlots.reduce((n, s) => n * slotPools.get(s.slotId)!.length, 1);
       if (!Number.isSafeInteger(count) || count > budget.maxDayEvaluations) return stop('DAY_SEARCH_LIMIT_REACHED');
     }
+    const warningDecoder = await createPreparedMealWarningDecoderRawV2(source.policiesRaw, source.contextRaw);
     const warnings = new Map<string, WarnedOption>();
     const warnedPools = new Map<string, WarnedOption[]>();
     const missingBySlot = new Map<string, number>();
@@ -141,7 +142,7 @@ function createGenerationDayOptionsInternalV1(sourcePort: GenerationMenuCandidat
           evidence.digest, policies.digest);
         if (warningRaw === null) { missingBySlot.set(slot.slotId, (missingBySlot.get(slot.slotId) ?? 0) + 1); continue; }
         parse(warningRaw); // Size, primitive raw and duplicate-key admission before decoding.
-        const warning = await decodePreparedMealWarningEvidenceRawV2(warningRaw, source.policiesRaw, source.contextRaw, JSON.stringify(option.meal));
+        const warning = await warningDecoder.decode(warningRaw, JSON.stringify(option.meal));
         const warned = { option, warning, warningRaw };
         options.push(warned); warnings.set(`${slot.slotId}:${option.meal.digest}`, warned);
       }

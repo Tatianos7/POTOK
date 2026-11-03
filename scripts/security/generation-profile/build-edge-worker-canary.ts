@@ -26,7 +26,7 @@ for (const name of ['small', 'robust', 'strict']) {
   await bundle(name, `import {profileGenerationWorkerV1} from './scripts/security/generation-profile/profile';
     Deno.serve(async()=>Response.json(await profileGenerationWorkerV1(1,{caseName:'${name}',probes:false})));`);
 }
-await bundle('pg', `import assert from 'node:assert/strict';import {Pool} from 'pg';
+await bundle('pg', `import assert from 'node:assert/strict';import {Pool,Client} from 'pg';
   import {adaptGenerationNodePgPoolV1} from './src/server/generationNodePgPoolV1';
   import {assertGenerationRootCaV1} from './src/server/generationRootCaV1';
   const ca=${JSON.stringify(ca)},wrongCa=${JSON.stringify(wrongCa)};
@@ -35,7 +35,14 @@ await bundle('pg', `import assert from 'node:assert/strict';import {Pool} from '
     const results=[];
     for(const user of ['potok_generation_reader_v1','potok_generation_gateway_v1']){
       for(const mode of ['valid','wrong-ca','wrong-name','wrong-password']){
+        let peerCertificateRawAvailable=null;
+        class DiagnosticClient extends Client{constructor(options){super(options);
+          this.connection.on('sslconnect',()=>this.connection.stream.once('secureConnect',()=>{
+            const raw=this.connection.stream.getPeerCertificate()?.raw;
+            peerCertificateRawAvailable=Buffer.isBuffer(raw)&&raw.length>0;
+          }));}}
         const pool=new Pool({host:mode==='wrong-name'?'potok-profile-wrong-name':'potok-profile-db',port:5432,database:'postgres',user,
+          Client:DiagnosticClient,
           password:mode==='wrong-password'?'incorrect-fixture-only':'fixture-only-password',
           ssl:{ca:mode==='wrong-ca'?wrongCa:ca,rejectUnauthorized:true,
             minVersion:'TLSv1.2'},
@@ -53,7 +60,7 @@ await bundle('pg', `import assert from 'node:assert/strict';import {Pool} from '
         const reason=driverError&&(mode==='wrong-password'?driverError.code==='28P01':
           mode==='wrong-name'?/ALTNAME|NotValidForName|not valid for name|does not match/.test(driverError.code+' '+driverError.message):
           mode==='wrong-ca'?/SELF_SIGNED|UNABLE_TO_VERIFY|UnknownIssuer/.test(driverError.code+' '+driverError.message):false);
-        results.push({user,mode,pass:mode==='valid'?accepted:!accepted&&!!reason,stage,driverError});
+        results.push({user,mode,pass:mode==='valid'?accepted:!accepted&&!!reason,stage,driverError,peerCertificateRawAvailable});
       }
     }
     return Response.json({contract:'potok-local-edge-pg-canary-v1',hostedAcceptance:false,

@@ -17,6 +17,17 @@ const hash = (value: string | Uint8Array) => createHash('sha256').update(value).
 const stored = (bytes: Uint8Array): StoredGenerationCanonicalV1 => ({
   canonicalHex: Buffer.from(bytes).toString('hex'), storageSha256: hash(bytes),
 });
+
+test('native hex decoding stays behind exact nonempty lowercase even-byte admission', async () => {
+  const f = await fullFixture();
+  for (const field of ['input','manifest','preference','safety'] as const) {
+    for (const corrupt of [(s:string)=>s.slice(1),(s:string)=>s.toUpperCase(),(s:string)=>s+'zz',
+      (s:string)=>' '+s,()=>'',(s:string)=>'0x'+s]) {
+      const s = await source(f);s[field]!.canonicalHex=corrupt(s[field]!.canonicalHex);
+      await assert.rejects(run(s,f),code('INVALID_SOURCE_PACKAGE'));
+    }
+  }
+});
 function changed(source: StoredGenerationCanonicalV1, change: (value: Record<string, unknown>) => void) {
   const value = JSON.parse(Buffer.from(source.canonicalHex, 'hex').toString('utf8'));
   change(value); return stored(Buffer.from(canonicalJsonV1(value, 'SAFE_INTEGER')));

@@ -1,0 +1,400 @@
+{
+  "observedAt": "2026-11-03",
+  "testedCommit": "b521edcbae5ef782b4b25224a8f936fec1e6ce70",
+  "runId": 41666087058,
+  "jobId": 126021663902,
+  "ciConclusion": "failure",
+  "image": "supabase/edge-runtime@sha256:6b850a2ccf0bf50ecac9accff8098095cd191c389c2a53c59b857aa0f53a8343",
+  "nodeBaseline": {
+    "contract": "potok-local-edge-pg-canary-v1",
+    "hostedAcceptance": false,
+    "realLocalPostgres": true,
+    "stagingConnectionTested": false,
+    "results": [
+      {
+        "user": "potok_generation_reader_v1",
+        "mode": "valid",
+        "pass": true,
+        "stage": "ASSERT",
+        "driverError": null,
+        "peerCertificateRawAvailable": true
+      },
+      {
+        "user": "potok_generation_reader_v1",
+        "mode": "wrong-ca",
+        "pass": true,
+        "stage": "ACQUIRE",
+        "driverError": {
+          "name": "Error",
+          "code": "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+          "message": "unable to verify the first certificate; if the root CA is installed locally, try running Node.js with --use-system-ca",
+          "source": "OTHER"
+        },
+        "peerCertificateRawAvailable": null
+      },
+      {
+        "user": "potok_generation_reader_v1",
+        "mode": "wrong-name",
+        "pass": true,
+        "stage": "ACQUIRE",
+        "driverError": {
+          "name": "Error",
+          "code": "ERR_TLS_CERT_ALTNAME_INVALID",
+          "message": "Hostname/IP does not match certificate's altnames: Host: potok-profile-wrong-name. is not in the cert's altnames: DNS:potok-profile-db",
+          "source": "OTHER"
+        },
+        "peerCertificateRawAvailable": null
+      },
+      {
+        "user": "potok_generation_reader_v1",
+        "mode": "wrong-password",
+        "pass": true,
+        "stage": "ACQUIRE",
+        "driverError": {
+          "name": "error",
+          "code": "28P01",
+          "message": "password authentication failed for user \"potok_generation_reader_v1\"",
+          "source": "OTHER"
+        },
+        "peerCertificateRawAvailable": true
+      },
+      {
+        "user": "potok_generation_gateway_v1",
+        "mode": "valid",
+        "pass": true,
+        "stage": "ASSERT",
+        "driverError": null,
+        "peerCertificateRawAvailable": true
+      },
+      {
+        "user": "potok_generation_gateway_v1",
+        "mode": "wrong-ca",
+        "pass": true,
+        "stage": "ACQUIRE",
+        "driverError": {
+          "name": "Error",
+          "code": "UNABLE_TO_VERIFY_LEAF_SIGNATURE",
+          "message": "unable to verify the first certificate; if the root CA is installed locally, try running Node.js with --use-system-ca",
+          "source": "OTHER"
+        },
+        "peerCertificateRawAvailable": null
+      },
+      {
+        "user": "potok_generation_gateway_v1",
+        "mode": "wrong-name",
+        "pass": true,
+        "stage": "ACQUIRE",
+        "driverError": {
+          "name": "Error",
+          "code": "ERR_TLS_CERT_ALTNAME_INVALID",
+          "message": "Hostname/IP does not match certificate's altnames: Host: potok-profile-wrong-name. is not in the cert's altnames: DNS:potok-profile-db",
+          "source": "OTHER"
+        },
+        "peerCertificateRawAvailable": null
+      },
+      {
+        "user": "potok_generation_gateway_v1",
+        "mode": "wrong-password",
+        "pass": true,
+        "stage": "ACQUIRE",
+        "driverError": {
+          "name": "error",
+          "code": "28P01",
+          "message": "password authentication failed for user \"potok_generation_gateway_v1\"",
+          "source": "OTHER"
+        },
+        "peerCertificateRawAvailable": true
+      }
+    ]
+  },
+  "edge": {
+    "contract": "potok-local-edge-worker-canary-v1",
+    "hostedAcceptance": false,
+    "stagingModified": false,
+    "syntheticDatabase": true,
+    "limits": {
+      "cpuSoftMs": 2000,
+      "cpuHardMs": 2000,
+      "memoryMb": 256,
+      "wallMs": 150000
+    },
+    "limitScope": "LOCAL_OFFICIAL_EDGE_USER_WORKER_INCLUDES_MODULE_AND_FIXTURE_SETUP",
+    "notProven": [
+      "HOSTED_CPU_ACCOUNTING_PARITY",
+      "STAGING_TLS_AND_ROLES",
+      "REAL_CATALOG_WORST_CASE",
+      "AUTH_TO_UI",
+      "12000_USERS"
+    ],
+    "observations": [
+      {
+        "name": "pg",
+        "outcome": "UNEXPECTED_FAILURE",
+        "evidence": {
+          "status": 200,
+          "result": {
+            "contract": "potok-local-edge-pg-canary-v1",
+            "hostedAcceptance": false,
+            "realLocalPostgres": true,
+            "stagingConnectionTested": false,
+            "results": [
+              {
+                "user": "potok_generation_reader_v1",
+                "mode": "valid",
+                "pass": false,
+                "stage": "ACQUIRE",
+                "driverError": {
+                  "name": "TypeError",
+                  "code": "undefined",
+                  "message": "Cannot read properties of undefined (reading '0')",
+                  "source": "OTHER"
+                },
+                "peerCertificateRawAvailable": false
+              },
+              {
+                "user": "potok_generation_reader_v1",
+                "mode": "wrong-ca",
+                "pass": true,
+                "stage": "ACQUIRE",
+                "driverError": {
+                  "name": "InvalidData",
+                  "code": "undefined",
+                  "message": "invalid peer certificate: UnknownIssuer",
+                  "source": "OTHER"
+                },
+                "peerCertificateRawAvailable": false
+              },
+              {
+                "user": "potok_generation_reader_v1",
+                "mode": "wrong-name",
+                "pass": true,
+                "stage": "ACQUIRE",
+                "driverError": {
+                  "name": "InvalidData",
+                  "code": "undefined",
+                  "message": "invalid peer certificate: certificate not valid for name \"potok-profile-wrong-name\"; certificate is only valid for DnsName(\"potok-profile-db\")",
+                  "source": "OTHER"
+                },
+                "peerCertificateRawAvailable": false
+              },
+              {
+                "user": "potok_generation_reader_v1",
+                "mode": "wrong-password",
+                "pass": false,
+                "stage": "ACQUIRE",
+                "driverError": {
+                  "name": "TypeError",
+                  "code": "undefined",
+                  "message": "Cannot read properties of undefined (reading '0')",
+                  "source": "OTHER"
+                },
+                "peerCertificateRawAvailable": false
+              },
+              {
+                "user": "potok_generation_gateway_v1",
+                "mode": "valid",
+                "pass": false,
+                "stage": "ACQUIRE",
+                "driverError": {
+                  "name": "TypeError",
+                  "code": "undefined",
+                  "message": "Cannot read properties of undefined (reading '0')",
+                  "source": "OTHER"
+                },
+                "peerCertificateRawAvailable": false
+              },
+              {
+                "user": "potok_generation_gateway_v1",
+                "mode": "wrong-ca",
+                "pass": true,
+                "stage": "ACQUIRE",
+                "driverError": {
+                  "name": "InvalidData",
+                  "code": "undefined",
+                  "message": "invalid peer certificate: UnknownIssuer",
+                  "source": "OTHER"
+                },
+                "peerCertificateRawAvailable": false
+              },
+              {
+                "user": "potok_generation_gateway_v1",
+                "mode": "wrong-name",
+                "pass": true,
+                "stage": "ACQUIRE",
+                "driverError": {
+                  "name": "InvalidData",
+                  "code": "undefined",
+                  "message": "invalid peer certificate: certificate not valid for name \"potok-profile-wrong-name\"; certificate is only valid for DnsName(\"potok-profile-db\")",
+                  "source": "OTHER"
+                },
+                "peerCertificateRawAvailable": false
+              },
+              {
+                "user": "potok_generation_gateway_v1",
+                "mode": "wrong-password",
+                "pass": false,
+                "stage": "ACQUIRE",
+                "driverError": {
+                  "name": "TypeError",
+                  "code": "undefined",
+                  "message": "Cannot read properties of undefined (reading '0')",
+                  "source": "OTHER"
+                },
+                "peerCertificateRawAvailable": false
+              }
+            ]
+          }
+        }
+      },
+      {
+        "name": "small",
+        "outcome": "COMPLETED_WITH_LOCAL_LIMITS",
+        "result": {
+          "contract": "potok-generation-worker-local-profile-v1",
+          "runtime": "Deno supabase-edge-runtime-1.77.9 (compatible with Deno v2.1.4)",
+          "input": "SYNTHETIC_SQL_AUTH_CATALOG_FIXTURE",
+          "factoryProbesRun": false,
+          "disabledPgFactoryProbe": "NOT_RUN",
+          "disabledPgFactoryProbeStage": "NOT_RUN",
+          "portablePgFactoryProbe": "NOT_RUN",
+          "x509CheckIssued": "NOT_RUN",
+          "hostedAcceptance": false,
+          "cloudLimitsEnforced": false,
+          "cpuIncludesSyntheticAdapters": true,
+          "memoryScope": "PROCESS_NOT_REQUEST_OR_EDGE_ISOLATE",
+          "measuredScope": "RUNTIME_ASSEMBLY_SELECTION_VALIDATION_RECORD_ACTIVATION_PROTOCOL_AND_OUTPUT_ASSERTIONS",
+          "excluded": [
+            "FIXTURE_SETUP",
+            "REAL_DATABASE_IO_AND_COMMIT",
+            "TLS_AND_ROLE_ADMISSION",
+            "SUPABASE_AUTH",
+            "HTTP_UI",
+            "WORST_CASE_CATALOG",
+            "CLOUD_CPU_ACCOUNTING"
+          ],
+          "measurements": [
+            {
+              "slotsPerDay": 1,
+              "comparison": "ROBUST_CONVENIENCE_BOUNDS",
+              "sample": 0,
+              "wallMs": 537.0905270000001,
+              "cpuMs": null,
+              "rssBeforeBytes": null,
+              "rssAfterBytes": null,
+              "processPeakRssKiB": null,
+              "sourceReads": 11,
+              "gatewayCalls": 3,
+              "planBytes": 36861,
+              "meals": 7,
+              "records": 1,
+              "activations": 1,
+              "authorityReads": 2,
+              "facts": 0
+            }
+          ]
+        }
+      },
+      {
+        "name": "robust",
+        "outcome": "COMPLETED_WITH_LOCAL_LIMITS",
+        "result": {
+          "contract": "potok-generation-worker-local-profile-v1",
+          "runtime": "Deno supabase-edge-runtime-1.77.9 (compatible with Deno v2.1.4)",
+          "input": "SYNTHETIC_SQL_AUTH_CATALOG_FIXTURE",
+          "factoryProbesRun": false,
+          "disabledPgFactoryProbe": "NOT_RUN",
+          "disabledPgFactoryProbeStage": "NOT_RUN",
+          "portablePgFactoryProbe": "NOT_RUN",
+          "x509CheckIssued": "NOT_RUN",
+          "hostedAcceptance": false,
+          "cloudLimitsEnforced": false,
+          "cpuIncludesSyntheticAdapters": true,
+          "memoryScope": "PROCESS_NOT_REQUEST_OR_EDGE_ISOLATE",
+          "measuredScope": "RUNTIME_ASSEMBLY_SELECTION_VALIDATION_RECORD_ACTIVATION_PROTOCOL_AND_OUTPUT_ASSERTIONS",
+          "excluded": [
+            "FIXTURE_SETUP",
+            "REAL_DATABASE_IO_AND_COMMIT",
+            "TLS_AND_ROLE_ADMISSION",
+            "SUPABASE_AUTH",
+            "HTTP_UI",
+            "WORST_CASE_CATALOG",
+            "CLOUD_CPU_ACCOUNTING"
+          ],
+          "measurements": [
+            {
+              "slotsPerDay": 4,
+              "comparison": "ROBUST_CONVENIENCE_BOUNDS",
+              "sample": 0,
+              "wallMs": 1638.746068,
+              "cpuMs": null,
+              "rssBeforeBytes": null,
+              "rssAfterBytes": null,
+              "processPeakRssKiB": null,
+              "sourceReads": 32,
+              "gatewayCalls": 3,
+              "planBytes": 135292,
+              "meals": 28,
+              "records": 1,
+              "activations": 1,
+              "authorityReads": 2,
+              "facts": 0
+            }
+          ]
+        }
+      },
+      {
+        "name": "strict",
+        "outcome": "COMPLETED_WITH_LOCAL_LIMITS",
+        "result": {
+          "contract": "potok-generation-worker-local-profile-v1",
+          "runtime": "Deno supabase-edge-runtime-1.77.9 (compatible with Deno v2.1.4)",
+          "input": "SYNTHETIC_SQL_AUTH_CATALOG_FIXTURE",
+          "factoryProbesRun": false,
+          "disabledPgFactoryProbe": "NOT_RUN",
+          "disabledPgFactoryProbeStage": "NOT_RUN",
+          "portablePgFactoryProbe": "NOT_RUN",
+          "x509CheckIssued": "NOT_RUN",
+          "hostedAcceptance": false,
+          "cloudLimitsEnforced": false,
+          "cpuIncludesSyntheticAdapters": true,
+          "memoryScope": "PROCESS_NOT_REQUEST_OR_EDGE_ISOLATE",
+          "measuredScope": "RUNTIME_ASSEMBLY_SELECTION_VALIDATION_RECORD_ACTIVATION_PROTOCOL_AND_OUTPUT_ASSERTIONS",
+          "excluded": [
+            "FIXTURE_SETUP",
+            "REAL_DATABASE_IO_AND_COMMIT",
+            "TLS_AND_ROLE_ADMISSION",
+            "SUPABASE_AUTH",
+            "HTTP_UI",
+            "WORST_CASE_CATALOG",
+            "CLOUD_CPU_ACCOUNTING"
+          ],
+          "measurements": [
+            {
+              "slotsPerDay": 4,
+              "comparison": "STRICT",
+              "sample": 0,
+              "wallMs": 1699.2026,
+              "cpuMs": null,
+              "rssBeforeBytes": null,
+              "rssAfterBytes": null,
+              "processPeakRssKiB": null,
+              "sourceReads": 32,
+              "gatewayCalls": 3,
+              "planBytes": 135292,
+              "meals": 28,
+              "records": 1,
+              "activations": 1,
+              "authorityReads": 2,
+              "facts": 0
+            }
+          ]
+        }
+      },
+      {
+        "name": "cpu",
+        "outcome": "RESOURCE_LIMIT_CANCELLED",
+        "status": 503
+      }
+    ]
+  }
+}
