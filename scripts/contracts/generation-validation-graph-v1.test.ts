@@ -13,6 +13,7 @@ import {adaptGenerationNodePgPoolV1} from '../../src/server/generationNodePgPool
 import {createGenerationTransactionClientV1,type GenerationTransactionPoolV1} from '../../src/server/generationTransactionClientV1';
 import {createRestrictedGenerationSqlGatewayV1,restrictedGenerationRecordSqlV1,restrictedGenerationActivateSqlV1} from '../../src/server/generationSqlGatewayV1';
 import {buildGenerationPatchPackageV1} from '../security/generation-patch-package/build.mjs';
+import {runGenerationRequestRoundtripV1} from './generation-request-roundtrip-fixture-v1';
 
 const native=process.env.POTOK_GENERATION_STORE_NATIVE==='1';
 const read=(name:string)=>readFileSync(new URL('../../docs/premium/drafts/'+name,import.meta.url),'utf8');
@@ -276,5 +277,6 @@ test('native restricted gateway writes, activates and reads an actual Graph V2',
       denied("UPDATE public.adaptive_nutrition_operations SET result_references='{}' WHERE action_type='PLAN_GENERATED_V2';",/immutable after settlement/);
       assert.equal(ok(counts),'1,1,1,0');
     });
+    await runGenerationRequestRoundtripV1(t,gateway);
   }finally{await adapter.close();}
 });
