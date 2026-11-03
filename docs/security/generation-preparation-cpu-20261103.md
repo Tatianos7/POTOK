@@ -52,5 +52,50 @@ No production pg method, authentication setting, CA/name verification or CPU lim
 is patched. Successful compute cases would still not make this runtime acceptable
 without successful strict database connection. The full Edge gate remains strict.
 
-Official Edge results will be appended after the measured run. Synthetic local
-CPU timings are not a 12,000-user load test or hosted acceptance.
+## Observed official Edge result
+
+Run [41666087058](https://github.com/Tatianos7/POTOK/actions/runs/41666087058), job
+126021663902, code commit `b521edcbae5ef782b4b25224a8f936fec1e6ce70`.
+Exact synthetic JSON is retained in `generation-preparation-cpu-observation-20261103.json`.
+
+| Diagnostic | Result |
+| --- | --- |
+| 7-meal worker | Completed; measured worker wall interval about 537 ms |
+| 28-meal robust worker | Completed; about 1,639 ms wall interval |
+| 28-meal strict worker | Completed; about 1,699 ms wall interval |
+| All successful generation outputs | Expected meal count, zero facts, one record/activation protocol call, two final-authority reads |
+| Intentional CPU overrun | Cancelled by the runtime at the unchanged CPU limit |
+| Node TLS baseline, both roles | All eight checks pass; actual peer raw DER available on valid and wrong-password connections |
+| Edge TLS, both roles | Actual peer raw DER unavailable; valid acquisition still fails with the same TypeError |
+| Edge negative TLS tests | Wrong CA and wrong DNS name rejected for their proper reasons |
+
+Both previously cancelled 28-meal fixtures now complete with the same 2,000 ms
+local user-worker CPU limit, 256 MB memory limit and cold per-request isolates.
+Reported wall intervals exclude fixture setup, while limits still include setup
+and module loading. This is one sample of each synthetic case, not a margin,
+worst-case, sustained-load or hosted-accounting guarantee. No exact CPU/RSS value
+is claimed where the runtime does not supply one.
+
+The missing peer raw-DER capability is now observed in the actual official image,
+not merely inferred from generic Deno. Combined with the pinned pg PLUS-auth code
+and upstream Deno stub, it localizes the compatibility blocker. We have not disabled
+channel binding, supplied pretend peer bytes or replaced TLS methods to force a
+successful connection. Wrong-password authentication in Edge remains unproven
+because acquisition fails before that expected server response.
+
+The full Edge gate remains **failing** on required valid connection. General PR
+checks, the separate Edge CA workflow and PostgreSQL admission workflow pass on
+the tested commit. Local validation: 122 initial targeted tests; then the expanded
+32-test storage-loader suite, TypeScript, targeted lint, production build/postbuild
+and diagnostic bundle build passed. Final commit only records observations.
+
+## Execution placement implication
+
+The existing strict Node runtime composition is the supported candidate for the
+database-connected worker while the pinned Edge runtime lacks this TLS capability.
+There is no automatic fallback from Edge to Node. This does not select, purchase,
+provision or claim access to a Node host; any hosting/provider decision must follow
+the owner's existing service-notice rule. Supabase remains the existing database,
+Auth and request/status infrastructure. No hosted generator is activated.
+
+Synthetic local timings are not a 12,000-user load test or hosted acceptance.
