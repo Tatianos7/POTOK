@@ -1,0 +1,9 @@
+{
+  "contract": "potok-generation-patch-package-v1",
+  "targetProjectId": "ozidryfvhkcbtpnulakq",
+  "sourceCommit": "56e14043863504d93d2d8281f7c6b63bf22c5837",
+  "sources": [
+    {"path": "docs/premium/drafts/generation_source_commit_fence_v1.sql", "sha256": "c571ad2219902275c8f598274a083196de7a2e998c0e0984f308a2e6751f4332", "pr": 288},
+    {"path": "docs/premium/drafts/generation_graph_recipe_identity_v1.sql", "sha256": "81cdecf09a8b1578778e9770cbccebfa548b47d902d692cb49754eda89a77e8b", "pr": 290}
+  ]
+}

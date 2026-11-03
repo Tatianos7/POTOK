@@ -12,6 +12,7 @@ import {decodeGenerationPlanReadbackV2} from '../../src/services/generationPlanR
 import {adaptGenerationNodePgPoolV1} from '../../src/server/generationNodePgPoolV1';
 import {createGenerationTransactionClientV1,type GenerationTransactionPoolV1} from '../../src/server/generationTransactionClientV1';
 import {createRestrictedGenerationSqlGatewayV1,restrictedGenerationRecordSqlV1,restrictedGenerationActivateSqlV1} from '../../src/server/generationSqlGatewayV1';
+import {buildGenerationPatchPackageV1} from '../security/generation-patch-package/build.mjs';
 
 const native=process.env.POTOK_GENERATION_STORE_NATIVE==='1';
 const read=(name:string)=>readFileSync(new URL('../../docs/premium/drafts/'+name,import.meta.url),'utf8');
@@ -50,6 +51,8 @@ test('native restricted gateway writes, activates and reads an actual Graph V2',
   const {f,input,request,account,inputInsert,warningInsert}=await installGenerationRuntimeSourceFixtureV1();
   const planRaw=canonicalJsonV1(f.plan,'SAFE_INTEGER'),planHex=hex(planRaw);
   ok(read('generation_preparation_source_v1.sql'));ok(read('generation_producer_sources_v1.sql'));
+  ok('ALTER TABLE public.user_goals ADD COLUMN goal_type text;');
+  ok(read('generation_goal_preparation_source_v1.sql'));
   ok(`BEGIN;
     CREATE SCHEMA auth;
     CREATE TABLE auth.users(id uuid PRIMARY KEY);
@@ -81,12 +84,17 @@ test('native restricted gateway writes, activates and reads an actual Graph V2',
     ${definition(graph,'public.adaptive_nutrition_read_graph_v2')}
     REVOKE ALL ON FUNCTION public.adaptive_nutrition_read_graph_v2(uuid,uuid,text) FROM PUBLIC,anon,service_role;
     GRANT EXECUTE ON FUNCTION public.adaptive_nutrition_read_graph_v2(uuid,uuid,text) TO authenticated;
-    CREATE ROLE potok_generation_gateway_v1 LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS PASSWORD 'graph-disposable-only';
+    CREATE ROLE potok_generation_gateway_v1 LOGIN NOINHERIT NOSUPERUSER NOBYPASSRLS CONNECTION LIMIT 2 PASSWORD 'graph-disposable-only';
+    ALTER ROLE potok_generation_reader_v1 LOGIN CONNECTION LIMIT 2;
     REVOKE ALL ON ALL TABLES IN SCHEMA public,auth,potok_nutrition,potok_control FROM PUBLIC,anon,authenticated,service_role,potok_generation_reader_v1,potok_generation_gateway_v1;
     REVOKE ALL ON ALL FUNCTIONS IN SCHEMA potok_nutrition FROM PUBLIC,anon,authenticated,service_role,potok_generation_reader_v1,potok_generation_gateway_v1;
     GRANT USAGE ON SCHEMA potok_nutrition TO potok_generation_gateway_v1;
     GRANT EXECUTE ON FUNCTION potok_nutrition.load_generation_request_v2(uuid),potok_nutrition.record_generated_week_gateway_v2(uuid,bytea),
-      potok_nutrition.activate_generated_week_gateway_v2(uuid) TO potok_generation_gateway_v1;
+      potok_nutrition.activate_generated_week_gateway_v2(uuid) TO potok_generation_gateway_v1,service_role;
+    GRANT EXECUTE ON FUNCTION potok_nutrition.read_admitted_generation_validation_source_v1(uuid,bytea),
+      potok_nutrition.read_admitted_generation_preparation_source_v1(uuid),
+      potok_nutrition.read_admitted_generation_producer_source_v1(uuid,text,bytea,uuid,bytea,bytea,bytea),
+      potok_nutrition.read_admitted_generation_goal_preparation_source_v1(uuid) TO potok_generation_reader_v1;
     ALTER TABLE public.adaptive_nutrition_operations ENABLE ROW LEVEL SECURITY;
     ALTER TABLE public.adaptive_nutrition_graph_revisions ENABLE ROW LEVEL SECURITY;
     ALTER TABLE public.adaptive_nutrition_events ENABLE ROW LEVEL SECURITY;
@@ -112,7 +120,7 @@ test('native restricted gateway writes, activates and reads an actual Graph V2',
   };
   source('synthetic-only:metadata','METADATA',generationPreparationMetadataFixtureV1(f));
   JSON.parse(f.warningRaw).entries.forEach((e:unknown,i:number)=>source('synthetic-only:meal-'+i,'MEAL_WARNING',JSON.stringify(e)));
-  ok(read('generation_source_commit_fence_v1.sql'));ok(read('generation_plan_readback_v2.sql'));
+  ok(read('generation_plan_readback_v2.sql'));
   const role='SET LOCAL ROLE potok_generation_gateway_v1;';
   const load=`SELECT potok_nutrition.load_generation_request_v2(${request});`;
   const record=`SELECT potok_nutrition.record_generated_week_gateway_v2(${request},${binary(planHex)});`;
@@ -136,7 +144,31 @@ test('native restricted gateway writes, activates and reads an actual Graph V2',
     denied(identityPatch.replace(/COMMIT;\s*$/,()=>"DO $late$ BEGIN RAISE EXCEPTION 'SYNTHETIC_LATE_IDENTITY_FAILURE'; END $late$;COMMIT;"),/SYNTHETIC_LATE_IDENTITY_FAILURE/);
     assert.equal(bodies(),before);
   });
-  ok(identityPatch);
+  const bundle=buildGenerationPatchPackageV1();
+  const inventory=readFileSync(new URL('../security/generation-patch-package/inventory.readonly.sql',import.meta.url),'utf8');
+  const inspect=()=>JSON.parse(ok(inventory));
+  const snapshot=()=>ok(`SELECT md5(jsonb_build_object(
+    'requests',(SELECT jsonb_agg(to_jsonb(t) ORDER BY request_operation_id) FROM potok_nutrition.adaptive_nutrition_generation_requests_v2 t),
+    'sources',(SELECT jsonb_agg(to_jsonb(t) ORDER BY source_ref) FROM potok_nutrition.generation_preparation_sources_v1 t),
+    'inputs',(SELECT jsonb_agg(to_jsonb(t) ORDER BY request_operation_id) FROM potok_nutrition.generation_validation_inputs_v1 t),
+    'selections',(SELECT jsonb_agg(to_jsonb(t) ORDER BY id) FROM public.user_premium_plan_selections t),
+    'operations',(SELECT jsonb_agg(to_jsonb(t) ORDER BY operation_id) FROM public.adaptive_nutrition_operations t),
+    'graphs',(SELECT jsonb_agg(to_jsonb(t) ORDER BY plan_revision) FROM public.adaptive_nutrition_graph_revisions t)
+    )::text);`);
+  const observed=inspect(),unchanged=snapshot();
+  await t.test('combined review rolls back both patches and preserves the exact data and baseline',()=>{
+    assert.equal(observed.baselineReady,true,JSON.stringify(observed));
+    ok(bundle.rollbackSql);assert.deepEqual(inspect(),observed);assert.equal(snapshot(),unchanged);
+  });
+  await t.test('combined package rejects drifted permissions and rolls back a late error after both patches',()=>{
+    denied('BEGIN;GRANT SELECT ON public.adaptive_nutrition_graph_revisions TO potok_generation_gateway_v1;'+bundle.rollbackSql,/GENERATION_PATCH_BASELINE_REQUIRED/);
+    denied(bundle.rollbackSql.replace('END $generation_patch_package$;',"RAISE EXCEPTION 'SYNTHETIC_LATE_PACKAGE_FAILURE';END $generation_patch_package$;"),/SYNTHETIC_LATE_PACKAGE_FAILURE/);
+    assert.deepEqual(inspect(),observed);assert.equal(snapshot(),unchanged);
+  });
+  // Exact reviewed commit artifact, executed only in the admitted disposable DB.
+  ok(bundle.commitReviewSql);
+  assert.equal(inspect().installedReady,true);assert.equal(snapshot(),unchanged);
+  denied(bundle.rollbackSql,/GENERATION_PATCH_BASELINE_REQUIRED/);
   denied(identityPatch,/GENERATION_GRAPH_IDENTITY_PREREQUISITE_DRIFT/);
   await t.test('graph/operation constraints and immutable guards are retained',()=>{
     assert.equal(ok(`SELECT count(*) FROM pg_constraint WHERE conname IN ('adaptive_nutrition_operations_terminal_check',

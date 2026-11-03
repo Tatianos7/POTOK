@@ -44,6 +44,9 @@ jobs:
       - name: Generation connection verifier regressions
         run: node --test scripts/security/generation-connection/verify.test.mjs
 
+      - name: Bounded generation patch package review
+        run: node --test scripts/security/generation-patch-package/build.test.mjs
+
       - name: Diary contract tests
         run: npm run test:diary
 
