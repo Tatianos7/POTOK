@@ -57,7 +57,7 @@ jobs:
         run: node --import tsx --test scripts/security/generation-profile/run.test.ts
 
       - name: Disabled Node worker process and private configuration contracts
-        run: node --import tsx --test src/server/__tests__/generationNodeWorkerHostV1.test.ts
+        run: node --import tsx --test src/server/__tests__/generationNodeWorkerHostV1.test.ts src/server/__tests__/generationNodeConnectionCheckV1.test.ts
 
       - name: Package disabled Node worker (no deployment)
         run: node scripts/security/generation-node-worker/build.mjs "$RUNNER_TEMP/potok-node-worker"

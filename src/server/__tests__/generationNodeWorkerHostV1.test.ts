@@ -110,5 +110,8 @@ test('standalone bundle runs disabled outside the repository with no config or n
     const failed=spawnSync(process.execPath,[join(output,'potok-generation-worker.cjs'),'invalid','/missing'],{cwd:tmpdir(),encoding:'utf8',
       env:{...process.env,POTOK_GENERATION_WORKER_ENABLED:'true'},timeout:10000});
     assert.equal(failed.status,1);assert.equal(JSON.parse(failed.stdout).outcome,'FAILED');assert.equal(failed.stderr,'');
+    const probe=spawnSync(process.execPath,[join(output,'potok-generation-connection-check.cjs')],{cwd:tmpdir(),encoding:'utf8',
+      env:{...process.env,POTOK_GENERATION_CONNECTION_CHECK_ENABLED:'',POTOK_GENERATION_WORKER_ENABLED:'true'},timeout:10000});
+    assert.equal(probe.status,0);assert.equal(JSON.parse(probe.stdout).outcome,'DISABLED');assert.equal(probe.stderr,'');
   } finally {await rm(output,{recursive:true,force:true});}
 });
