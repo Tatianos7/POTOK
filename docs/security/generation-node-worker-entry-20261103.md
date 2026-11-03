@@ -102,10 +102,10 @@ connection budget must be reviewed before concurrency or polling is introduced.
 
 ## Validation and remaining gates
 
-Nine host tests exercise default inactivity, private-file admission, raw-only config,
+Ten host tests exercise default inactivity, private-file admission, raw-only config,
 abort races, exact cleanup, uncertain statuses, fixed output and a standalone
 disabled/no-config bundle smoke. Existing runtime/pool regressions are included in
-the local targeted run (30 total). General CI builds and uploads the disabled
+the local targeted run (31 total). General CI builds and uploads the disabled
 bundle and manifest as `disabled-node-generation-worker` for review, with no
 deployment or hosted credentials.
 

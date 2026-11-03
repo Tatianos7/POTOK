@@ -84,5 +84,6 @@ export async function runGenerationNodeWorkerOnceV1(options: {
     options.signal.removeEventListener('abort', stop);
     if (runtime) {try {await close();} catch {outcome = result('FAILED');}}
   }
+  if (!allowed() && outcome.outcome !== 'FAILED') outcome = result('STOPPED');
   return outcome;
 }

@@ -70,6 +70,12 @@ test('abort during async construction still closes the returned runtime without 
   const r=await run({enabled:true,configPath:path,requestOperationId:request,signal:controller.signal},factory);
   assert.equal(r.outcome,'STOPPED');assert.equal(closes,1);assert.equal(attempts,0);
 }));
+test('abort while final cleanup awaits cannot emit a late ACTIVE response', async () => fixture(async path => {
+  const controller=new AbortController();let closes=0;
+  const factory:Factory=async()=>({async continue(){return response;},async close(){closes++;controller.abort();await Promise.resolve();}});
+  const r=await run({enabled:true,configPath:path,requestOperationId:request,signal:controller.signal},factory);
+  assert.equal(r.outcome,'STOPPED');assert.equal(r.status,null);assert.equal(closes,1);
+}));
 test('nonterminal and uncertain statuses are preserved without a successful-generation claim or retry', async () => fixture(async path => {
   let attempts=0;
   for (const status of ['GENERATING','UNKNOWN_RETRYABLE','REJECTED'] as const) {
