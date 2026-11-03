@@ -73,7 +73,7 @@ export function inspectRecipeMasterRowsV1(sheets: Record<string, Row[]>) {
   };
 }
 
-export function readRecipeMasterReadinessV1(path: string) {
+export function readRecipeMasterSheetsV1(path: string) {
   const bytes = readFileSync(path);
   const workbook = XLSX.read(bytes, { type: 'buffer' });
   const sheets: Record<string, Row[]> = {};
@@ -85,8 +85,13 @@ export function readRecipeMasterReadinessV1(path: string) {
     }
     sheets[name] = XLSX.utils.sheet_to_json<Row>(sheet, { defval: null });
   }
-  return { ...inspectRecipeMasterRowsV1(sheets), source: { fileName: basename(path),
+  return { sheets, source: { fileName: basename(path),
     sha256: createHash('sha256').update(bytes).digest('hex'), bytes: bytes.length } };
+}
+
+export function readRecipeMasterReadinessV1(path: string) {
+  const {sheets,source}=readRecipeMasterSheetsV1(path);
+  return {...inspectRecipeMasterRowsV1(sheets),source};
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
