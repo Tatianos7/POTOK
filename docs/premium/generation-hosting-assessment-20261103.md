@@ -46,3 +46,11 @@ No external AI/menu API is required by this implementation. Supabase compute, fu
 - [Function pricing](https://supabase.com/docs/guides/functions/pricing)
 
 These platform capabilities identify a candidate, not proof that this particular worker has passed hosted acceptance. The owner external-services notice rule remains in effect; the next concrete work is compatibility/profiling, not an unsolicited service purchase.
+
+## Follow-up: actual local profiling
+
+The subsequent [offline full-worker profile](../../scripts/security/generation-profile/README.md) obtained a transient pinned standalone Deno 2.1.4 toolchain and completed nine samples in each of Node 24.22.1 and Deno. The earlier absence of Deno in this assessment is historical; Docker/actual Supabase Edge execution remains unperformed.
+
+The 28-meal synthetic cases completed in approximately 1.81–1.93 s wall time in Node and 1.69–1.85 s in standalone Deno. Node process CPU was approximately 1.97–2.18 s, including synthetic adapter work. Deno CPU is unavailable/null, not zero; process RSS is not Edge isolate memory. These measurements neither establish compliance with hosted CPU limits nor cover worst permitted catalogs.
+
+Crucially, the real disabled Staging runtime/pool constructor fails in Deno 2.1.4: its certificate validation depends on the unimplemented `X509Certificate.checkIssued` method. It succeeds under Node. No CA/hostname/SQL identity check was removed. This blocks a drop-in move of the current Node assembly to that local Deno target, while not proving every Supabase Edge release incompatible. Packaging/crypto/driver adaptation and actual Edge Runtime acceptance must precede deployment.
