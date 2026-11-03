@@ -53,6 +53,9 @@ jobs:
       - name: Local authoring week viewer contracts
         run: node --import tsx --test src/dev/__tests__/authoringWeekViewer.test.tsx
 
+      - name: Offline full-worker profiling contracts (no hosted acceptance)
+        run: node --import tsx --test scripts/security/generation-profile/run.test.ts
+
       - name: Generation worker continuity and inactive Edge regressions
         run: node --import tsx --test scripts/contracts/generation-worker-continuity-v2.test.ts scripts/contracts/adaptive-nutrition-protected-execution-binding-v1.test.ts scripts/contracts/adaptive-nutrition-edge-http-v2.test.ts
 
