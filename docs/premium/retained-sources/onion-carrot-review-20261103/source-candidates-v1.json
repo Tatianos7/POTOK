@@ -1,0 +1,814 @@
+{
+  "contract": "potok-onion-carrot-source-preparation-v1",
+  "date": "2026-11-03",
+  "status": "SOURCE_CANDIDATES_NOT_APPROVED",
+  "sourceWorkbookSha256": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+  "ingredientRows": 61,
+  "affectedRecipeUnion": 45,
+  "groups": [
+    {
+      "authoringName": "Лук репчатый",
+      "ingredientRows": 40,
+      "affectedRecipes": 40,
+      "recordedWeightDistribution": [
+        {
+          "grams": 50.0,
+          "rows": 1
+        },
+        {
+          "grams": 80.0,
+          "rows": 2
+        },
+        {
+          "grams": 100.0,
+          "rows": 37
+        }
+      ],
+      "quantityConversionPerformed": false,
+      "explicitRawEdibleWeightRows": 40,
+      "source": {
+        "record": "NDB11282",
+        "title": "Onions, raw",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf",
+        "pdfPageOneBased": 1139,
+        "upstreamSha256": "ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161",
+        "capturePath": "sr28-11282-facts.txt",
+        "captureSha256": "3eda4f6d03db8447f69499d8b2beaed3f2ffc9fb42adaa2f82286d9064f4ee32",
+        "factsPer100GEdibleRaw": {
+          "calories": "40",
+          "protein": "1.10",
+          "fat": "0.10",
+          "totalCarbohydrate": "9.34",
+          "fiber": "1.7"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "7.640",
+      "workbookCarbsFinding": "RECORDED_REFERENCE_MATCHES_TOTAL_CARBOHYDRATE_NOT_AVAILABLE",
+      "workbookFdcIdIndependentlyVerified": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "buckwheat_porridge_mushrooms_ing_03",
+          "recipeId": "buckwheat_porridge_mushrooms",
+          "recordedAmount": 50,
+          "unit": "G",
+          "recordedWeightG": 50,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "lean_beef_potatoes_ing_03",
+          "recipeId": "lean_beef_potatoes",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "turkey_buckwheat_ing_03",
+          "recipeId": "turkey_buckwheat",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "beef_pearl_barley_mushrooms_ing_04",
+          "recipeId": "beef_pearl_barley_mushrooms",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "rabbit_potatoes_carrots_ing_04",
+          "recipeId": "rabbit_potatoes_carrots",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "buckwheat_chicken_liver_ing_03",
+          "recipeId": "buckwheat_chicken_liver",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "turkey_kidney_beans_tomato_ing_04",
+          "recipeId": "turkey_kidney_beans_tomato",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "brown_lentils_rice_carrot_ing_04",
+          "recipeId": "brown_lentils_rice_carrot",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "chickpeas_bulgur_tomato_ing_04",
+          "recipeId": "chickpeas_bulgur_tomato",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "cannellini_potato_herbs_ing_03",
+          "recipeId": "cannellini_potato_herbs",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "vegetable_brown_lentil_soup_ing_04",
+          "recipeId": "vegetable_brown_lentil_soup",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "chicken_rice_vegetable_soup_ing_04",
+          "recipeId": "chicken_rice_vegetable_soup",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "turkey_buckwheat_soup_ing_05",
+          "recipeId": "turkey_buckwheat_soup",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "pollock_potato_soup_ing_04",
+          "recipeId": "pollock_potato_soup",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "pumpkin_chickpea_soup_ing_04",
+          "recipeId": "pumpkin_chickpea_soup",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "lean_beef_quinoa_vegetables_ing_05",
+          "recipeId": "lean_beef_quinoa_vegetables",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "chicken_roasted_beet_potato_ing_04",
+          "recipeId": "chicken_roasted_beet_potato",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "whole_wheat_pasta_lentils_tomato_ing_04",
+          "recipeId": "whole_wheat_pasta_lentils_tomato",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "chicken_breast_cauliflower_ing_03",
+          "recipeId": "chicken_breast_cauliflower",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "turkey_stewed_cabbage_ing_04",
+          "recipeId": "turkey_stewed_cabbage",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "lean_beef_zucchini_ing_04",
+          "recipeId": "lean_beef_zucchini",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "cod_oven_vegetables_ing_05",
+          "recipeId": "cod_oven_vegetables",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "hake_frozen_green_beans_ing_03",
+          "recipeId": "hake_frozen_green_beans",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "salmon_frozen_spinach_ing_03",
+          "recipeId": "salmon_frozen_spinach",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "pollock_cauliflower_ing_03",
+          "recipeId": "pollock_cauliflower",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "shrimp_zucchini_ing_03",
+          "recipeId": "shrimp_zucchini",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "squid_mixed_vegetables_ing_05",
+          "recipeId": "squid_mixed_vegetables",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "chicken_meatballs_buckwheat_ing_02",
+          "recipeId": "chicken_meatballs_buckwheat",
+          "recordedAmount": 80,
+          "unit": "G",
+          "recordedWeightG": 80,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "turkey_meatballs_rice_ing_02",
+          "recipeId": "turkey_meatballs_rice",
+          "recordedAmount": 80,
+          "unit": "G",
+          "recordedWeightG": 80,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "pollock_patties_mashed_potato_ing_04",
+          "recipeId": "pollock_patties_mashed_potato",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "chicken_pumpkin_mushrooms_ing_04",
+          "recipeId": "chicken_pumpkin_mushrooms",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "turkey_eggplant_tomato_ing_04",
+          "recipeId": "turkey_eggplant_tomato",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "tofu_frozen_cauliflower_ing_03",
+          "recipeId": "tofu_frozen_cauliflower",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "tofu_mushrooms_parsley_ing_03",
+          "recipeId": "tofu_mushrooms_parsley",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "whole_green_lentils_roasted_vegetables_ing_05",
+          "recipeId": "whole_green_lentils_roasted_vegetables",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "canned_chickpeas_spinach_tomatoes_ing_04",
+          "recipeId": "canned_chickpeas_spinach_tomatoes",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "red_kidney_beans_mushrooms_cabbage_ing_04",
+          "recipeId": "red_kidney_beans_mushrooms_cabbage",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "buckwheat_vegetables_whole_egg_ing_05",
+          "recipeId": "buckwheat_vegetables_whole_egg",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "quinoa_pumpkin_chickpeas_ing_04",
+          "recipeId": "quinoa_pumpkin_chickpeas",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "chicken_red_kidney_bean_salad_ing_06",
+          "recipeId": "chicken_red_kidney_bean_salad",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        }
+      ]
+    },
+    {
+      "authoringName": "Морковь",
+      "ingredientRows": 21,
+      "affectedRecipes": 21,
+      "recordedWeightDistribution": [
+        {
+          "grams": 100.0,
+          "rows": 1
+        },
+        {
+          "grams": 150.0,
+          "rows": 12
+        },
+        {
+          "grams": 200.0,
+          "rows": 6
+        },
+        {
+          "grams": 250.0,
+          "rows": 1
+        },
+        {
+          "grams": 500.0,
+          "rows": 1
+        }
+      ],
+      "quantityConversionPerformed": false,
+      "explicitRawEdibleWeightRows": 20,
+      "source": {
+        "record": "NDB11124",
+        "title": "Carrots, raw",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf",
+        "pdfPageOneBased": 448,
+        "upstreamSha256": "ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161",
+        "capturePath": "sr28-11124-facts.txt",
+        "captureSha256": "4f43260e0210bc4d7b79db75f37c85df0ee2fe41186ecc7e7ce17d87bf03e4fc",
+        "factsPer100GEdibleRaw": {
+          "calories": "41",
+          "protein": "0.93",
+          "fat": "0.24",
+          "totalCarbohydrate": "9.58",
+          "fiber": "2.8"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "6.780",
+      "workbookCarbsFinding": "RECORDED_REFERENCE_MATCHES_TOTAL_CARBOHYDRATE_NOT_AVAILABLE",
+      "workbookFdcIdIndependentlyVerified": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "carrot_ricotta_tart_ing_01",
+          "recipeId": "carrot_ricotta_tart",
+          "recordedAmount": 2,
+          "unit": "PCS",
+          "recordedWeightG": 200,
+          "explicitRawEdibleWeight": false,
+          "quantityVerificationRequired": true,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "turkey_buckwheat_ing_04",
+          "recipeId": "turkey_buckwheat",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "cod_potatoes_carrots_ing_03",
+          "recipeId": "cod_potatoes_carrots",
+          "recordedAmount": 200,
+          "unit": "G",
+          "recordedWeightG": 200,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "rabbit_potatoes_carrots_ing_03",
+          "recipeId": "rabbit_potatoes_carrots",
+          "recordedAmount": 200,
+          "unit": "G",
+          "recordedWeightG": 200,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "pollock_buckwheat_vegetables_ing_03",
+          "recipeId": "pollock_buckwheat_vegetables",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "shrimp_rice_vegetables_ing_05",
+          "recipeId": "shrimp_rice_vegetables",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "brown_lentils_rice_carrot_ing_03",
+          "recipeId": "brown_lentils_rice_carrot",
+          "recordedAmount": 200,
+          "unit": "G",
+          "recordedWeightG": 200,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "vegetable_brown_lentil_soup_ing_02",
+          "recipeId": "vegetable_brown_lentil_soup",
+          "recordedAmount": 200,
+          "unit": "G",
+          "recordedWeightG": 200,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "chicken_rice_vegetable_soup_ing_03",
+          "recipeId": "chicken_rice_vegetable_soup",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "turkey_buckwheat_soup_ing_04",
+          "recipeId": "turkey_buckwheat_soup",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "pollock_potato_soup_ing_03",
+          "recipeId": "pollock_potato_soup",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "pumpkin_chickpea_soup_ing_03",
+          "recipeId": "pumpkin_chickpea_soup",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "lean_beef_quinoa_vegetables_ing_04",
+          "recipeId": "lean_beef_quinoa_vegetables",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "turkey_stewed_cabbage_ing_03",
+          "recipeId": "turkey_stewed_cabbage",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "lean_beef_zucchini_ing_03",
+          "recipeId": "lean_beef_zucchini",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "cod_oven_vegetables_ing_03",
+          "recipeId": "cod_oven_vegetables",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "squid_mixed_vegetables_ing_04",
+          "recipeId": "squid_mixed_vegetables",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "pollock_patties_mashed_potato_ing_03",
+          "recipeId": "pollock_patties_mashed_potato",
+          "recordedAmount": 100,
+          "unit": "G",
+          "recordedWeightG": 100,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "beef_patties_roasted_carrot_ing_02",
+          "recipeId": "beef_patties_roasted_carrot",
+          "recordedAmount": 500,
+          "unit": "G",
+          "recordedWeightG": 500,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "whole_green_lentils_roasted_vegetables_ing_02",
+          "recipeId": "whole_green_lentils_roasted_vegetables",
+          "recordedAmount": 250,
+          "unit": "G",
+          "recordedWeightG": 250,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        },
+        {
+          "ingredientRowId": "buckwheat_vegetables_whole_egg_ing_03",
+          "recipeId": "buckwheat_vegetables_whole_egg",
+          "recordedAmount": 200,
+          "unit": "G",
+          "recordedWeightG": 200,
+          "explicitRawEdibleWeight": true,
+          "quantityVerificationRequired": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null
+        }
+      ]
+    }
+  ],
+  "mapping": {
+    "referencedPolicyVersion": "potok-source-total-including-fiber-to-available-v1",
+    "parentPackagePath": "docs/premium/retained-sources/p5-03/source-review-package-v1.json",
+    "parentPackageSha256": "cc0451eaf137d4cd85bd2457fe72dd7584bd0bcf6a2405d13a4e75bc7280926b",
+    "semanticsCapturePath": "docs/premium/retained-sources/pear-almonds-review-20261030/sr28-carbohydrate-semantics.txt",
+    "semanticsCaptureSha256": "27c10aae0fa069bc3b38335b8caa9da367068081f80ba310877cd83eb52578fc",
+    "formula": "sourceTotalCarbohydrate - sourceFiber",
+    "energy": "KEEP_SOURCE_ENERGY",
+    "foodSpecificApproval": false
+  },
+  "quantityExceptions": [
+    {
+      "ingredientRowId": "carrot_ricotta_tart_ing_01",
+      "sourceAmount": 2,
+      "sourceUnit": "PCS",
+      "recordedWeightG": 200,
+      "sourceWeightIsApproximate": true,
+      "measuredEdibleWeightG": null,
+      "applicabilityReview": "State is not explicitly described as raw edible weight; verify before using the raw reference."
+    }
+  ],
+  "limitations": [
+    "RAW_SOURCE_NOT_COOKED_RECIPE_NUTRITION",
+    "GENERIC_SOURCE_NOT_A_RETAIL_PRODUCT_MATCH",
+    "NO_SECOND_REFUSE_DEDUCTION_FROM_EDIBLE_WEIGHT",
+    "NO_AUTOMATIC_CANONICAL_BINDING",
+    "FOOD_SPECIFIC_CARBOHYDRATE_MAPPING_REVIEW_REQUIRED",
+    "COOKING_RETENTION_PORTIONS_AND_YIELD_UNCONFIRMED",
+    "ALLERGEN_DIETARY_COMPOSITION_AND_PORTION_REVIEW_REQUIRED",
+    "NO_INDEPENDENT_PUBLICATION_EVIDENCE_OR_MANIFEST"
+  ],
+  "runtimePublishable": false,
+  "generatorActivated": false,
+  "sourceWorkbookModified": false,
+  "databaseModified": false
+}

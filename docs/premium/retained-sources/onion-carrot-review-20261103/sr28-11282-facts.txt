@@ -1,0 +1,6 @@
+USDA ARS, Standard Reference Release 28 (2015). NDB 11282: Onions, raw.
+PDF page 1139, Mean column, per 100 g edible raw portion.
+Energy 40 kcal; protein 1.10 g; fat 0.10 g; carbohydrate by difference 9.34 g; total dietary fiber 1.7 g.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf
+Retrieved and visually checked 2026-11-03. Upstream SHA-256: ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161.
+Factual source capture only; not POTOK approval or a cooked-food/retail-product binding.

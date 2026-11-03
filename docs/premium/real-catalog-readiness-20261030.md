@@ -1,5 +1,7 @@
 # Real recipe source readiness — 2026-10-30
 
+2026-11-03 follow-up: [onion/carrot source preparation and current catalog check](onion-carrot-source-preparation-20261103.md) covers 61 ingredient rows across 45 recipes. The master checksum remains unchanged; Staging still has no published catalog. Source carbohydrate semantics and one approximate carrot weight are explicitly held for review. No recipe became publishable.
+
 Read-only source check for the next generation step. No original workbook, live database, review status, canonical mapping, publication, deployment or activation was changed.
 
 The latest saved master found by filename search was `POTOK_recipe_master_v1_007(3).xlsx`, 393790 bytes, SHA-256 `9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5`. Later local-only edits, if any, are not covered. Source content was inspected locally; recipe bodies and personal database recipe rows are not included in this PR.
