@@ -8,7 +8,7 @@ Staging, admit sources, turn on the generator or establish hosted acceptance.
 The new `generation-edge-worker.yml` runs the official Edge Runtime v1.77.9 image,
 pinned by the same multiarch digest as the CA canary. Its main service only routes
 five fixed diagnostic paths. Each request creates a fresh **user worker**, with
-256 MB memory, 150 s wall time and 2,000 ms soft/hard CPU limits. No credentials or
+256 MB memory, 150 s wall time and 2,000 ms soft/hard CPU limits. No hosted credentials or
 host environment variables are passed into the user workers. All npm code is
 bundled from `npm ci`, including the pinned pg 8.23.1 dependency; workers need no
 runtime module downloads. These CI-only bundles are not deployable app artifacts.
@@ -18,7 +18,10 @@ runtime module downloads. These CI-only bundles are not deployable app artifacts
    `adaptGenerationNodePgPoolV1` connect, bind the extended query protocol, verify
    `current_user == session_user == requested role` and inspect the connection's
    SSL flag. Both roles must succeed with valid TLS and reject wrong CA, wrong
-   server name and wrong password. Public roots pass the portable CA validator.
+   server name and wrong password. Test roots pass the portable CA validator.
+   The exact bundled TLS fixture must first pass all eight checks in Node. Negative
+   cases require the expected CA/name/authentication failure reason; an unrelated
+   driver crash does not count as successful protection.
    The local host configuration is intentionally separate from the fixed Staging
    factory; this does not verify Staging passwords, CA provenance or grants.
 2. `small`, `robust`, `strict`: one full managed-worker protocol run per isolate,
@@ -57,4 +60,36 @@ catalog worst-case compute, ordinary-account Auth-to-persistence-to-UI acceptanc
 global pool budgets, load testing and explicit activation approval. This experiment
 provides no capacity claim for 12,000 users.
 
-CI observations will be recorded after the actual run.
+## Observed result: compatibility blocked
+
+Evidence: workflow run [41635439760](https://github.com/Tatianos7/POTOK/actions/runs/41635439760),
+job 125915333476, tested commit `39e513d383928c49a50813f29b1f90dc98329383`.
+The synthetic observation is committed in
+`generation-edge-worker-observation-20261103.json` beside this document.
+
+| Check | Result |
+| --- | --- |
+| Node: same pg bundle, database, CA and both roles | All eight positive/negative checks pass |
+| Edge: valid pg connection, both roles | Fails during acquire with `TypeError: Cannot read properties of undefined (reading '0')` |
+| Edge: wrong CA / wrong DNS name | Both rejected for the correct TLS reason, for both roles |
+| Edge: wrong password | Not established: the same earlier driver failure prevents the expected PostgreSQL `28P01` response |
+| Small generation: 7 meals | Completes under local limits; measured worker interval about 669 ms wall time |
+| Robust generation: 28 meals | CPU hard-limit cancellation; no successful output |
+| Strict generation: 28 meals | CPU hard-limit cancellation; no successful output |
+| Deliberate CPU negative control | Cancelled with CPU-limit log evidence |
+
+The pg failure's internal cause is not yet isolated. It must not be labelled a
+certificate-validation failure or a proven SCRAM defect from this evidence alone.
+The Node baseline rules out a shared broken certificate/role fixture. Its success
+does not prove hosted Staging admission either.
+
+The **full Edge canary remains failing**, deliberately: positive database connection
+is a required compatibility gate. The diagnostic does not turn that failure green
+or weaken channel binding, TLS checks or worker limits. Separate CA CI and the
+PostgreSQL admission workflow pass on the tested commit. Four profile tests,
+targeted lint, TypeScript, production build/postbuild and an offline bundled Deno
+smoke with Node globals removed pass locally. Existing general build warnings remain.
+
+Next work is to isolate the pg/Edge acquire incompatibility and reduce/bound full
+worker CPU, or prepare a separately reviewed Node worker path on existing hosting.
+There is no basis yet to deploy this worker as a hosted Edge generator.
