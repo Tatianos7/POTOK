@@ -22,6 +22,13 @@ test('profile exercises both slot sizes and comparison paths with explicit synth
 });
 test('invalid sample counts reject before any fixture or runtime work', async () => {
   for (const count of [0, 6, 1.1, NaN]) await assert.rejects(profileGenerationWorkerV1(count), /PROFILE_SAMPLES_OUT_OF_BOUNDS/);
+  await assert.rejects(profileGenerationWorkerV1(1, {caseName: 'invalid' as 'small'}), /PROFILE_CASE_INVALID/);
+});
+test('limited-worker selection runs exactly one case and does not claim factory probes', async () => {
+  const r = await profileGenerationWorkerV1(1, {caseName: 'strict', probes: false});
+  assert.equal(r.measurements.length, 1); assert.equal(r.measurements[0].comparison, 'STRICT');
+  assert.equal(r.measurements[0].meals, 28); assert.equal(r.factoryProbesRun, false);
+  assert.equal(r.portablePgFactoryProbe, 'NOT_RUN');assert.equal(r.disabledPgFactoryProbe, 'NOT_RUN');
 });
 test('diagnostic bundling pins pg, retains node imports and creates no serving entrypoint', async () => {
   const output = await mkdtemp(join(tmpdir(), 'potok-profile-test-'));
