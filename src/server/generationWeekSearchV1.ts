@@ -1,4 +1,5 @@
 import { assertRawJsonWithoutDuplicateKeysV1 } from '../utils/adaptiveNutritionWireV1';
+import {boundedCartesianIndexesV1} from '../utils/boundedCartesianIndexesV1';
 import { validateWeekSnapshotRawV2, weekValidatorInputContractV2,
   type ValidatorResultV1 } from '../utils/adaptiveNutritionMealBalanceV1';
 
@@ -61,10 +62,11 @@ export async function searchGenerationWeekRawV1(
     return day;
   });
   const totalCombinations = options.reduce((total, day) => total * day.length, 1);
-  const indexes = Array<number>(7).fill(0);
   const limit = Math.min(input.maxEvaluations as number, totalCombinations);
   let missingEvidence = false;
-  for (let evaluated = 1; evaluated <= limit; evaluated++) {
+  let evaluated=0;
+  for (const indexes of boundedCartesianIndexesV1(options.map(day=>day.length),input.maxEvaluations as number)) {
+    evaluated++;
     const weekRaw = JSON.stringify({ ...header, days: options.map((day, index) => day[indexes[index]]) });
     // The real V2 validator checks every visited full week, including cross-day repeat limits.
     // Structural/provenance decoding errors abort; they are never converted into infeasibility.
@@ -73,12 +75,6 @@ export async function searchGenerationWeekRawV1(
     if (validation.status === 'VALID' || validation.status === 'VALID_WITH_WARNINGS') {
       return freeze({ status: 'FEASIBLE_PROPOSAL', evaluated, totalCombinations,
         optionIndexes: [...indexes], weekRaw, validation });
-    }
-    // Ordered Cartesian traversal: last day varies fastest, with no random IDs or policy changes.
-    for (let day = 6; day >= 0; day--) {
-      indexes[day]++;
-      if (indexes[day] < options[day].length) break;
-      indexes[day] = 0;
     }
   }
   return Object.freeze({ status: limit < totalCombinations ? 'SEARCH_LIMIT_REACHED'
