@@ -113,6 +113,7 @@ jobs:
             scripts/contracts/first-real-source-review-batch-v1.test.ts \
             scripts/contracts/recipe-master-readiness-v1.test.ts \
             scripts/contracts/recipe-authoring-test-catalog-v1.test.ts \
+            scripts/contracts/recipe-authoring-week-preview-v1.test.ts \
             scripts/contracts/recipe-master-review-queue-v1.test.ts \
             scripts/contracts/generation-validation-store-v1.test.ts \
             scripts/contracts/generation-validation-admission-v1.test.ts \
