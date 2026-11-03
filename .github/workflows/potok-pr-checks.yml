@@ -56,6 +56,18 @@ jobs:
       - name: Offline full-worker profiling contracts (no hosted acceptance)
         run: node --import tsx --test scripts/security/generation-profile/run.test.ts
 
+      - name: Disabled Node worker process and private configuration contracts
+        run: node --import tsx --test src/server/__tests__/generationNodeWorkerHostV1.test.ts
+
+      - name: Package disabled Node worker (no deployment)
+        run: node scripts/security/generation-node-worker/build.mjs "$RUNNER_TEMP/potok-node-worker"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: disabled-node-generation-worker
+          path: ${{ runner.temp }}/potok-node-worker
+          if-no-files-found: error
+
       - name: Generation worker continuity and inactive Edge regressions
         run: node --import tsx --test scripts/contracts/generation-worker-continuity-v2.test.ts scripts/contracts/adaptive-nutrition-protected-execution-binding-v1.test.ts scripts/contracts/adaptive-nutrition-edge-http-v2.test.ts
 
