@@ -22,7 +22,7 @@ const snapshot=`SELECT jsonb_object_agg(p.oid::text,CASE WHEN p.oid IN(
  WHERE n.nspname IN('public','potok_nutrition','potok_control')
  AND p.oid IS DISTINCT FROM to_regprocedure('potok_nutrition.assert_generation_source_current_v1(uuid,bytea)')::oid`;
 
-/** Offline review artifact only. No connection, password, apply flag or COMMIT output. */
+/** Offline review artifacts only. No connection, password or apply operation. */
 export function buildGenerationPatchPackageV1({manifest=JSON.parse(readFileSync(new URL('manifest.json',import.meta.url),'utf8')),
   read=path=>readFileSync(new URL(path,root))}={}){
   if(!manifest||manifest.contract!=='potok-generation-patch-package-v1'||manifest.targetProjectId!==targetProjectId
@@ -58,11 +58,17 @@ BEGIN
 END $generation_patch_package$;
 ROLLBACK;
 `;
+  const commitReviewSql=rollbackSql.replace('-- REVIEW REHEARSAL ONLY; not permission to apply. Target must be verified externally.',
+    '-- COMMIT REVIEW CANDIDATE ONLY; requires specific owner approval and verified Staging target.')
+    .replace(/\nROLLBACK;\n$/,'\nCOMMIT;\n');
   return Object.freeze({contract:'potok-generation-patch-package-v1',targetProjectId,sourceCommit,sourceCount:2,
-    mayApply:false,mayActivate:false,rollbackSql,rollbackSha256:createHash('sha256').update(rollbackSql).digest('hex')});
+    mayApply:false,mayActivate:false,rollbackSql,commitReviewSql,
+    rollbackSha256:createHash('sha256').update(rollbackSql).digest('hex'),
+    commitReviewSha256:createHash('sha256').update(commitReviewSql).digest('hex')});
 }
 if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
-  if(process.argv.length>3||(process.argv[2]!==undefined&&process.argv[2]!=='--rollback-sql'))throw Error('GENERATION_PATCH_UNSUPPORTED_OPERATION');
+  if(process.argv.length>3||(process.argv[2]!==undefined&&!['--rollback-sql','--commit-review-sql'].includes(process.argv[2])))throw Error('GENERATION_PATCH_UNSUPPORTED_OPERATION');
   const result=buildGenerationPatchPackageV1();
-  console.log(process.argv[2]==='--rollback-sql'?result.rollbackSql:JSON.stringify({...result,rollbackSql:undefined}));
+  console.log(process.argv[2]==='--rollback-sql'?result.rollbackSql:process.argv[2]==='--commit-review-sql'?result.commitReviewSql:
+    JSON.stringify({...result,rollbackSql:undefined,commitReviewSql:undefined}));
 }

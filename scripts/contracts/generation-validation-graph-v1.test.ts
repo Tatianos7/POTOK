@@ -165,8 +165,8 @@ test('native restricted gateway writes, activates and reads an actual Graph V2',
     denied(bundle.rollbackSql.replace('END $generation_patch_package$;',"RAISE EXCEPTION 'SYNTHETIC_LATE_PACKAGE_FAILURE';END $generation_patch_package$;"),/SYNTHETIC_LATE_PACKAGE_FAILURE/);
     assert.deepEqual(inspect(),observed);assert.equal(snapshot(),unchanged);
   });
-  // Explicit fixture-only commit rehearsal. The exported builder never emits COMMIT.
-  ok(bundle.rollbackSql.replace(/\nROLLBACK;\n$/,'\nCOMMIT;\n'));
+  // Exact reviewed commit artifact, executed only in the admitted disposable DB.
+  ok(bundle.commitReviewSql);
   assert.equal(inspect().installedReady,true);assert.equal(snapshot(),unchanged);
   denied(bundle.rollbackSql,/GENERATION_PATCH_BASELINE_REQUIRED/);
   denied(identityPatch,/GENERATION_GRAPH_IDENTITY_PREREQUISITE_DRIFT/);

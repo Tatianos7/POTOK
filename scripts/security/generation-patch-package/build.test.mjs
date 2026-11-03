@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {buildGenerationPatchPackageV1} from './build.mjs';
 const manifest=JSON.parse(readFileSync(new URL('manifest.json',import.meta.url),'utf8'));
 const root=new URL('../../../',import.meta.url);
-test('two pinned candidates compose as one rollback-only package with pre/post admission and metadata preservation',()=>{
+test('two pinned candidates compose as exact review artifacts with pre/post admission and metadata preservation',()=>{
   const a=buildGenerationPatchPackageV1();assert.deepEqual(a,buildGenerationPatchPackageV1());
   assert.equal(a.sourceCount,2);assert.equal(a.mayApply,false);assert.equal(a.mayActivate,false);
   assert.match(a.rollbackSql,/\nROLLBACK;\n$/);assert.doesNotMatch(a.rollbackSql,/^COMMIT;/m);
@@ -17,6 +17,8 @@ test('two pinned candidates compose as one rollback-only package with pre/post a
     assert.ok(a.rollbackSql.includes(body));
   }
   assert.equal(a.rollbackSha256,createHash('sha256').update(a.rollbackSql).digest('hex'));
+  assert.match(a.commitReviewSql,/\nCOMMIT;\n$/);assert.doesNotMatch(a.commitReviewSql,/^ROLLBACK;/m);
+  assert.equal(a.commitReviewSha256,createHash('sha256').update(a.commitReviewSql).digest('hex'));
 });
 test('wrong target/revision/order/path/digest/PR cannot redirect or reauthorize source bytes',()=>{
   for(const mutate of [m=>m.targetProjectId='other',m=>m.sourceCommit='a'.repeat(40),m=>m.sources.reverse(),

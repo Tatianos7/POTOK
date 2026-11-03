@@ -26,11 +26,13 @@ cannot authorize changed SQL. Historical candidates and installers are unchanged
 ```bash
 node scripts/security/generation-patch-package/build.mjs
 node scripts/security/generation-patch-package/build.mjs --rollback-sql
+node scripts/security/generation-patch-package/build.mjs --commit-review-sql
 ```
 
-Both commands are offline and accept no connection, credential, apply, commit or
-deploy option. The first prints a review summary and generated SQL digest; the
-second prints a single transaction ending in ROLLBACK. Neither executes SQL.
+All commands are offline and accept no connection, credential, apply or deploy
+option. The first prints a review summary and digests for both exact SQL artifacts;
+the second prints a single transaction ending in ROLLBACK. The third prints the
+COMMIT candidate for review only. None executes SQL or grants apply permission.
 The project label is not database identity proof. A trusted operator must verify
 the actual target separately and must never redirect this package to Production.
 
@@ -74,10 +76,10 @@ explicit owner approval. Treat STAGING as read-only unless a specific write or
 apply is approved."
 
 Only after that approval may the trusted operator bind the verified Staging
-target, refresh inventory, execute the reviewed transaction with its final
-ROLLBACK changed to COMMIT, and immediately require installed-phase postchecks.
-The exact resulting SQL must be rehashed and reviewed before execution. The
-loopback-only test substitution is not an apply command or hosted authorization.
+target, refresh inventory, verify the exact `commitReviewSha256`, execute the
+already reviewed COMMIT candidate and immediately require installed-phase
+postchecks. The native suite rehearses those exact COMMIT bytes in its fixed
+loopback database; neither that test nor the generator grants hosted authorization.
 
 This package does not test a real worker connection, provision backend secrets,
 mount a runtime, invoke generation, publish recipe sources or generate FACT.
