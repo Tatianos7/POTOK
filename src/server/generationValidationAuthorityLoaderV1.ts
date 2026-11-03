@@ -1,3 +1,4 @@
+import {Buffer} from 'node:buffer';
 import {
   sealAdaptiveNutritionCandidateManifestV2, adaptiveNutritionCandidateManifestCanonicalBytesV2,
   sealNutritionPreferenceSnapshotV1, nutritionPreferenceSnapshotCanonicalBytesV1,
@@ -63,7 +64,7 @@ function record(value: unknown, keys: readonly string[]): Record<string, unknown
   return value as Record<string, unknown>;
 }
 function bytesHex(bytes: Uint8Array): string {
-  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+  return Buffer.from(bytes).toString('hex');
 }
 function descriptor(value: unknown): StoredGenerationCanonicalV1 {
   const row = record(value, ['canonicalHex', 'storageSha256']);
@@ -81,8 +82,9 @@ function inputDescriptor(value: unknown): StoredGenerationInputV1 {
   }
   return { canonicalHex: row.canonicalHex, generationInputDigest: row.generationInputDigest };
 }
-function decodeBytes(canonicalHex: string): { raw: string; value: unknown; canonicalHex: string } {
-  const bytes = Uint8Array.from(canonicalHex.match(/../g)!, byte => parseInt(byte, 16));
+function decodeBytes(canonicalHex: string, bytes: Uint8Array = Buffer.from(canonicalHex, 'hex')): { raw: string; value: unknown; canonicalHex: string } {
+  // Private: descriptors have already required nonempty, even, lowercase hex.
+  // Buffer's permissive hex parser must never become an external admission path.
   // Preserve a BOM as content so the strict JSON/canonical boundary rejects it;
   // the default decoder would silently strip those stored bytes.
   const raw = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
@@ -90,11 +92,11 @@ function decodeBytes(canonicalHex: string): { raw: string; value: unknown; canon
 }
 async function stored(value: unknown): Promise<{ raw: string; value: unknown; canonicalHex: string }> {
   const row = descriptor(value);
-  const bytes = Uint8Array.from(row.canonicalHex.match(/../g)!, byte => parseInt(byte, 16));
+  const bytes = Buffer.from(row.canonicalHex, 'hex');
   if (await adaptiveNutritionSha256HexV1(bytes) !== row.storageSha256) {
     throw new GenerationValidationSourceErrorV1('STORAGE_DIGEST_MISMATCH');
   }
-  return decodeBytes(row.canonicalHex);
+  return decodeBytes(row.canonicalHex, bytes);
 }
 
 export const generationPreparationContextSourceContractV1='potok-generation-preparation-context-source-v1' as const;

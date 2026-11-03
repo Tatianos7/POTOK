@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { fullFixture, fixtureWeekValidationInput, fixtureValidationResults, resignEntry } from './trustedGeneratedWeekFixturesV1';
 import { validateDaySnapshotRawV2 } from '../adaptiveNutritionMealBalanceV1';
-import { decodePreparedMealWarningEvidenceRawV2, decodeMealWarningEvidenceRawV1 } from '../trustedMealWarningEvidenceV1';
+import { createPreparedMealWarningDecoderRawV2, decodePreparedMealWarningEvidenceRawV2, decodeMealWarningEvidenceRawV1 } from '../trustedMealWarningEvidenceV1';
 
 test('standalone V2 day produces the exact existing weekly-child result, including UTC', async () => {
   const f = await fullFixture(); const week = fixtureWeekValidationInput(f); const actual = await fixtureValidationResults(f);
@@ -51,4 +51,32 @@ test('prepared warning raw boundary rejects duplicate keys and non-primitive arg
     await assert.rejects(decodePreparedMealWarningEvidenceRawV2(bad[0], bad[1], bad[2], bad[3]), /RAW_JSON_STRING_REQUIRED/);
   }
   await assert.rejects(decodePreparedMealWarningEvidenceRawV2(args[0].replace('{', '{"signals":{},'), args[1], args[2], args[3]), /Duplicate/);
+});
+
+test('attempt-scoped warning decoder preserves all entry bindings, including concurrent independent meals', async () => {
+  const f = await fullFixture();
+  const decoder = await createPreparedMealWarningDecoderRawV2(f.policiesRaw, f.contextRaw);
+  assert.equal(Object.isFrozen(decoder), true);
+  await Promise.all(f.plan.graph.days.map(async (day, index) => {
+    const meal = JSON.stringify(day.slots[0].mealSnapshot), raw = JSON.stringify(f.set.entries[index]);
+    assert.deepEqual(await decoder.decode(raw, meal), await decodePreparedMealWarningEvidenceRawV2(raw, f.policiesRaw, f.contextRaw, meal));
+    await assert.rejects(decoder.decode(JSON.stringify(f.set.entries[(index + 1) % 7]), meal));
+    await assert.rejects(decoder.decode(JSON.stringify({...f.set.entries[index], digest: '0'.repeat(64)}), meal));
+    await assert.rejects(decoder.decode(raw, meal.replace('{', '{"digest":"duplicate",')), /Duplicate/);
+  }));
+});
+
+test('attempt-scoped decoder admits fresh raw context and never coerces hostile objects', async () => {
+  const f = await fullFixture();let traps = 0;
+  const hostile = {toString(){traps++;throw Error('coercion');}} as unknown as string;
+  for (const args of [[hostile,f.contextRaw],[f.policiesRaw,hostile],
+    [f.policiesRaw,f.contextRaw.replace('{','{"contract":"duplicate",')]]) {
+    await assert.rejects(createPreparedMealWarningDecoderRawV2(args[0],args[1]));
+  }
+  const decoder = await createPreparedMealWarningDecoderRawV2(f.policiesRaw,f.contextRaw);
+  const raw=JSON.stringify(f.set.entries[0]),meal=JSON.stringify(f.plan.graph.days[0].slots[0].mealSnapshot);
+  await assert.rejects(decoder.decode(hostile,meal),/RAW_JSON_STRING_REQUIRED/);
+  await assert.rejects(decoder.decode(raw,hostile),/RAW_JSON_STRING_REQUIRED/);
+  await assert.rejects(createPreparedMealWarningDecoderRawV2(f.policiesRaw.replace('{','{"digest":"duplicate",'),f.contextRaw));
+  assert.deepEqual(await decoder.decode(raw,meal),f.set.entries[0]);assert.equal(traps,0);
 });

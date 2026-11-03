@@ -187,8 +187,15 @@ export async function decodePreparedMealWarningEvidenceRawV2(raw: string, polici
   if ([raw, policiesRaw, trustedContextRaw, mealSnapshotRaw].some(v => typeof v !== 'string')) {
     throw new Error('RAW_JSON_STRING_REQUIRED');
   }
-  const entry = parseRaw(raw);
-  const mealOwned = parseRaw(mealSnapshotRaw);
+  return (await createPreparedMealWarningDecoderRawV2(policiesRaw, trustedContextRaw)).decode(raw, mealSnapshotRaw);
+}
+
+/** One immutable raw context per preparation attempt. No cross-request cache or
+ * publication authority: final plan/set validation still reads fresh sources.
+ * Only parser-owned snapshots are retained; each entry and meal is admitted anew.
+ */
+export async function createPreparedMealWarningDecoderRawV2(policiesRaw: string, trustedContextRaw: string) {
+  if (typeof policiesRaw !== 'string' || typeof trustedContextRaw !== 'string') throw new Error('RAW_JSON_STRING_REQUIRED');
   const row = record(parseRaw(trustedContextRaw), contextKeys);
   if (row.contract !== trustedValidationPoliciesRawBoundaryContractV2) throw new Error('INVALID_RAW_BOUNDARY_CONTRACT');
   const owned = { input: parseRaw(row.trustedGenerationInputRaw), manifest: parseRaw(row.candidateManifestRaw),
@@ -197,13 +204,18 @@ export async function decodePreparedMealWarningEvidenceRawV2(raw: string, polici
   const input = decodeTrustedGenerationInputV1(owned.input);
   const policies = await decodeTrustedValidationPoliciesRawV2(policiesRaw, trustedContextRaw);
   const evidence = await decodeTrustedValidationEvidenceV1(evidenceOwned, owned);
-  const meal = await decodeMealSnapshotV1(mealOwned);
-  const slot = evidence.distributionPolicy.days.flatMap(day => day.requiredSlots).find(s => s.slotId === meal.mealSlotId);
-  if (!slot || slot.mealType !== meal.mealType || meal.goalRevision !== input.goalNutritionTarget.goalRevision
-      || meal.compositionPolicyRevision !== input.compositionPolicyRevision) throw new Error('WARNING_PREPARED_MEAL_BINDING_MISMATCH');
-  return entryOwned(entry, { evidence, policies, slots: new Set([meal.mealSlotId]),
-    meals: new Map([[meal.mealSlotId, meal.digest]]) });
+  const slots = new Map(evidence.distributionPolicy.days.flatMap(day => day.requiredSlots).map(slot => [slot.slotId, slot]));
+  return Object.freeze({async decode(raw: string, mealSnapshotRaw: string): Promise<MealWarningEvidenceV1> {
+    const entry = parseRaw(raw), mealOwned = parseRaw(mealSnapshotRaw);
+    const meal = await decodeMealSnapshotV1(mealOwned);
+    const slot = slots.get(meal.mealSlotId);
+    if (!slot || slot.mealType !== meal.mealType || meal.goalRevision !== input.goalNutritionTarget.goalRevision
+        || meal.compositionPolicyRevision !== input.compositionPolicyRevision) throw new Error('WARNING_PREPARED_MEAL_BINDING_MISMATCH');
+    return entryOwned(entry, { evidence, policies, slots: new Set([meal.mealSlotId]),
+      meals: new Map([[meal.mealSlotId, meal.digest]]) });
+  }});
 }
+
 export async function decodeTrustedMealWarningEvidenceSetRawV1(raw: string, policiesRaw: string,
   trustedContextRaw: string, evaluatedPlanRaw: string): Promise<TrustedMealWarningEvidenceSetV1> {
   const owned = parseRaw(raw);
