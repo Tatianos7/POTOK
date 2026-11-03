@@ -40,7 +40,7 @@ jobs:
           sudo chown 70:70 "$RUNNER_TEMP/potok-edge-db/server.key"
           sudo chmod 600 "$RUNNER_TEMP/potok-edge-db/server.key"
           docker network create potok-edge-diagnostic
-          docker run -d --name potok-profile-db --network potok-edge-diagnostic \
+          docker run -d --name potok-profile-db --network potok-edge-diagnostic --network-alias potok-profile-wrong-name -p 127.0.0.1:5432:5432 \
             -e POSTGRES_PASSWORD=ephemeral-ci-admin-only \
             --mount "type=bind,src=$RUNNER_TEMP/potok-edge-db,dst=/fixture,readonly" \
             --mount "type=bind,src=$RUNNER_TEMP/potok-edge-db/init.sql,dst=/docker-entrypoint-initdb.d/init.sql,readonly" \
@@ -51,6 +51,18 @@ jobs:
           done
       - name: Build CI-only worker services with bundled pinned pg
         run: node --import tsx scripts/security/generation-profile/build-edge-worker-canary.ts "$RUNNER_TEMP/potok-edge-worker" "$RUNNER_TEMP/potok-edge-certs/ca.pem" "$RUNNER_TEMP/potok-edge-certs/wrong.pem"
+      - name: Verify the same TLS fixture and bundled driver in Node first
+        run: |
+          echo '127.0.0.1 potok-profile-db potok-profile-wrong-name' | sudo tee -a /etc/hosts >/dev/null
+          node --input-type=module - "$RUNNER_TEMP/potok-edge-worker/pg/index.ts" <<'JS'
+          import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';
+          let done;const completion=new Promise(resolve=>{done=resolve;});
+          globalThis.Deno={serve:async handler=>{try{
+            const result=await(await handler()).json();console.log(JSON.stringify(result));
+            assert.equal(result.results.length,8);assert.ok(result.results.every(r=>r.pass));
+          }catch{process.exitCode=1;}finally{done();}}};
+          await import(pathToFileURL(process.argv[2]).href);await completion;
+          JS
       - name: Run official Edge Runtime with separate limited user workers
         run: |
           docker run -d --name potok-edge-worker --network potok-edge-diagnostic \
