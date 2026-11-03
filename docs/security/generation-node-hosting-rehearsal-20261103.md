@@ -105,9 +105,11 @@ permissions, size, UTF-8, symlink or duplicate-key checks.
 }
 ```
 
-5. Run the connection-only command, replacing only the config-file path:
+5. Restrict file permissions, then run the connection-only command, replacing only
+   the config-file path:
 
 ```sh
+chmod 600 /absolute/private/connection-config.json
 POTOK_GENERATION_CONNECTION_CHECK_ENABLED=true node ./potok-generation-connection-check.cjs /absolute/private/connection-config.json
 ```
 
@@ -121,3 +123,21 @@ An enabled generation attempt remains a separate future action requiring admitte
 runtime sources, independently pinned policies, a real test request, scoped Staging
 write approval and ordinary-account Auth-to-plan acceptance. None are inferred
 from a successful connection report.
+
+## Recorded validation
+
+Code commit `804639dadd913496b543d088bde65ecf504af1fc`: 38 local targeted tests,
+TypeScript, targeted lint and production build/postbuild passed. General CI and
+all PostgreSQL admission jobs also passed. The final documentation follow-up only
+adds the file-permission command and records these results.
+
+- General CI: https://github.com/Tatianos7/POTOK/actions/runs/41683492803
+- Node package with both executables: https://github.com/Tatianos7/POTOK/actions/runs/41683492803/artifacts/13254151879
+- Artifact zip SHA-256: `4e9646e75fd7d9b47446a9472709f51a97b5c072622537bfe97a506819f2ea79`
+- PostgreSQL admission: https://github.com/Tatianos7/POTOK/actions/runs/41683492751
+- Existing full Edge diagnostic: https://github.com/Tatianos7/POTOK/actions/runs/41683492752
+
+The Edge diagnostic remains failing at the existing TLS/pg connection gate; its
+three synthetic compute cases complete and the CPU negative control is cancelled.
+This change does not fix that distinct runtime limitation. No real Staging
+connection, credential provisioning or generation attempt was performed here.
