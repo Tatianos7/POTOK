@@ -1,14 +1,18 @@
 import type {AuthoringMeal, AuthoringReport} from './authoringWeekReport';
+import type {AuthoringSearchCatalogV1} from './authoringWeekSearchV1';
 
 type Reference = Record<'calories' | 'protein' | 'fat' | 'carbs' | 'fiber', number | null>;
 export interface AuthoringRecipe {
   id: string; name: string; status: string; servings: number | null; declaredYieldG: number | null;
   notes: string | null; nutrition: Reference;
+  primaryCategory: string | null; numericReferenceTestInputAvailable: boolean;
   ingredients: {id: string; order: number; name: string; amount: number | null; unit: string | null;
     weightG: number | null; optional: boolean; preparation: string | null; notes: string | null}[];
   steps: {id: string; order: number; instruction: string; duration: number | null; temperature: number | null; notes: string | null}[];
 }
-export interface AuthoringRecipeCatalog {sourceHash: string; recipes: ReadonlyMap<string, AuthoringRecipe>}
+export interface AuthoringRecipeCatalog {
+  sourceHash: string; source: AuthoringSearchCatalogV1['source']; recipes: ReadonlyMap<string, AuthoringRecipe>;
+}
 const fail = (): never => {throw new Error('Файл не соответствует формату тестового каталога. Рецепты не открыты.');};
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return fail();
@@ -55,8 +59,9 @@ export function decodeAuthoringRecipeCatalog(value: unknown): AuthoringRecipeCat
     const status = text(r.sourceStatus);
     if (!['DRAFT', 'READY_FOR_REVIEW', 'APPROVED', 'BLOCKED'].includes(status)) return fail();
     const servings = optionalNumber(r.declaredServings);
-    if (servings === 0) return fail();
+    if (servings === 0 || typeof r.numericReferenceTestInputAvailable !== 'boolean') return fail();
     recipes.set(id, {id, name: text(r.name), status, servings, declaredYieldG: optionalNumber(r.declaredYieldG),
+      primaryCategory: optionalText(raw.meal_type_primary ?? null), numericReferenceTestInputAvailable: r.numericReferenceTestInputAvailable,
       notes: optionalText(raw.owner_notes ?? null),
       nutrition: Object.fromEntries(['calories', 'protein', 'fat', 'carbs', 'fiber'].map(axis => [axis, optionalNumber(values[axis])])) as Reference,
       ingredients: sorted(rows(r.ingredients).map(i => {
@@ -72,7 +77,17 @@ export function decodeAuthoringRecipeCatalog(value: unknown): AuthoringRecipeCat
       })),
     });
   }
-  return {sourceHash: source.sha256, recipes};
+  const bytes = optionalNumber(source.bytes);
+  if (bytes === null || !Number.isInteger(bytes)) return fail();
+  return {sourceHash: source.sha256, source: {fileName: text(source.fileName), sha256: source.sha256, bytes}, recipes};
+}
+
+/** Project only validated offline fields. Never imports Node/XLSX or trusted runtime code. */
+export function authoringSearchInput(catalog: AuthoringRecipeCatalog): AuthoringSearchCatalogV1 {
+  return {contract: 'potok-recipe-authoring-test-catalog-v1', runtimePublishable: false, source: {...catalog.source},
+    recipes: [...catalog.recipes.values()].map(r => ({recipeId: r.id, name: r.name, sourceStatus: r.status,
+      declaredServings: r.servings, numericReferenceTestInputAvailable: r.numericReferenceTestInputAvailable,
+      sourceRecipe: {meal_type_primary: r.primaryCategory}, referenceNutrition: {values: {...r.nutrition}}}))};
 }
 
 /** Exact local linkage only; never resolve by name or silently use another catalog. */
