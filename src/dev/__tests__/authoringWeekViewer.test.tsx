@@ -3,8 +3,11 @@ import test from 'node:test';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {decodeAuthoringWeekReport} from '../authoringWeekReport';
 import {AuthoringWeekContent} from '../AuthoringWeekViewer';
-import {decodeAuthoringRecipeCatalog, matchAuthoringRecipe} from '../authoringRecipeCatalog';
+import {authoringSearchInput, decodeAuthoringRecipeCatalog, matchAuthoringRecipe} from '../authoringRecipeCatalog';
 import AuthoringRecipeDetails from '../AuthoringRecipeDetails';
+import {selectAuthoringWeek} from '../authoringSelectionView';
+import {previewRecipeAuthoringWeekV1} from '../authoringWeekSearchV1';
+import scenario from '../../../docs/premium/authoring-week-scenario-20261103.json';
 
 function fixture() {
   return {
@@ -67,9 +70,10 @@ test('selected day rendering retains reference labels and escapes file-provided 
 function catalogFixture() {
   return {contract: 'potok-recipe-authoring-test-catalog-v1', usage: 'OFFLINE_AUTHORING_TEST_INPUT_ONLY',
     runtimePublishable: false, mayActivate: false, physicalCookingBlocksDevelopment: false,
-    referenceNutritionMustNotBePresentedAsVerified: true, source: {sha256: 'a'.repeat(64)},
+    referenceNutritionMustNotBePresentedAsVerified: true, source: {sha256: 'a'.repeat(64), fileName: 'synthetic.xlsx', bytes: 1},
     recipes: [{recipeId: 'synthetic-0', name: 'Тестовое блюдо 0', sourceStatus: 'DRAFT',
-      sourceRecipe: {recipe_id: 'synthetic-0', owner_notes: null}, declaredServings: 2, declaredYieldG: null,
+      sourceRecipe: {recipe_id: 'synthetic-0', owner_notes: null, meal_type_primary: 'LUNCH'}, declaredServings: 2, declaredYieldG: null,
+      numericReferenceTestInputAvailable: true,
       measuredYieldG: null, confirmedServings: null, physicalReview: 'DEFERRED_UNTIL_OWNER_PRELAUNCH_TESTING',
       runtimePublishable: false, sourceTagsAreVerifiedRestrictions: false,
       referenceNutrition: {basis: 'SOURCE_DECLARED_PER_SERVING', verified: false,
@@ -139,4 +143,41 @@ test('week cards expose recipe details only for matched catalog records', () => 
   catalog.sourceHash = 'b'.repeat(64);
   const mismatch = renderToStaticMarkup(<AuthoringWeekContent report={report} selectedDay={0} onSelectDay={() => {}} catalog={catalog} />);
   assert.match(mismatch, /разным версиям сборника/); assert.doesNotMatch(mismatch, /Открыть рецепт|Смешать\./);
+});
+
+function selectionFixture() {
+  const c = catalogFixture(), template = c.recipes[0];
+  c.recipes = [];
+  for (const [category, calories] of [['BREAKFAST', 400], ['LUNCH', 500], ['SNACK', 200]] as const) {
+    for (let i = 0; i < 12; i++) {
+      const r = structuredClone(template), id = `${category}-${i}`;
+      r.recipeId = id; r.name = id; r.sourceRecipe.recipe_id = id; r.sourceRecipe.meal_type_primary = category;
+      r.referenceNutrition.values.calories = calories;
+      r.ingredients[0].recipe_id = id; r.steps[0].recipe_id = id;
+      c.recipes.push(r);
+    }
+  }
+  return decodeAuthoringRecipeCatalog(c);
+}
+test('selection connects the same bounded producer to the viewer and recipe cards without a report file', () => {
+  const catalog = selectionFixture(), before = JSON.stringify([...catalog.recipes]);
+  const r = selectAuthoringWeek(catalog, 1600, '2026-11-09');
+  assert.equal(r.status, 'REFERENCE_WEEK_PREVIEW'); assert.equal(r.days.length, 7);
+  assert.equal(r.days[0].date, '2026-11-09'); assert.equal(r.days[6].date, '2026-11-15');
+  const expected = decodeAuthoringWeekReport(previewRecipeAuthoringWeekV1(authoringSearchInput(catalog),
+    {...scenario, contract: 'potok-authoring-week-scenario-v1', dailyCalorieTarget: 1600, weekStart: '2026-11-09'}));
+  assert.deepEqual(r, expected);
+  for (const day of r.days) {
+    assert.equal(day.meals.length, 4); assert.equal(day.referenceNutrition.calories, 1600);
+    for (const meal of day.meals) {assert.equal(meal.assignedSourceServings, 1); assert.equal(meal.measuredGrams, null); assert.ok(matchAuthoringRecipe(catalog, r, meal).recipe);}
+  }
+  assert.equal(JSON.stringify([...catalog.recipes]), before);
+});
+test('no-week result remains empty and scenario bounds never relax silently', () => {
+  const c = selectionFixture(), r = selectAuthoringWeek(c, 2000, '2026-11-02');
+  assert.equal(r.status, 'NO_REFERENCE_DAY_IN_EVALUATED_SHORTLISTS'); assert.deepEqual(r.days, []);
+  assert.throws(() => selectAuthoringWeek(c, 1700, '2026-11-02'));
+  assert.throws(() => selectAuthoringWeek(c, 1600, '2026-02-30'));
+  for (const recipe of c.recipes.values()) recipe.numericReferenceTestInputAvailable = false;
+  assert.equal(selectAuthoringWeek(c, 1600, '2026-11-02').status, 'INCOMPLETE_CATEGORY_POOL');
 });
