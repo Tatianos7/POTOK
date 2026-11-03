@@ -1,5 +1,10 @@
 # Generation patch package — Staging review, 2026-11-03
 
+Installation status: applied to Staging after explicit owner approval on
+2026-11-03; independent installed-phase checks passed. See the
+[installation receipt](generation-patch-install-20261103.md). The pre-install
+observations below are historical; the generator remains inactive.
+
 ## Scope and current observation
 
 The next bounded installation consists of PR288's stored-source commit fence,
