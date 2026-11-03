@@ -5,6 +5,7 @@ import {writeFile} from 'node:fs/promises';
 
 const observations = [];
 for (const name of ['pg', 'small', 'robust', 'strict', 'cpu']) {
+  let evidence;
   try {
   const since = new Date().toISOString();
   const response = await fetch(`http://127.0.0.1:9098/${name}`, {signal: AbortSignal.timeout(45000)});
@@ -12,6 +13,7 @@ for (const name of ['pg', 'small', 'robust', 'strict', 'cpu']) {
   const logs = spawnSync('docker', ['logs', '--since', since, 'potok-edge-worker'], {encoding: 'utf8'});
   assert.equal(logs.status, 0);const log = logs.stdout + logs.stderr;
   let result;try {result = JSON.parse(body);} catch {throw Error(`NON_JSON_RESPONSE_${name}`);}
+  evidence = {status: response.status, result};
   if (name === 'pg') {
     assert.equal(response.status, 200); assert.equal(result.contract, 'potok-local-edge-pg-canary-v1');
     assert.equal(result.hostedAcceptance, false); assert.equal(result.stagingConnectionTested, false);
@@ -30,7 +32,7 @@ for (const name of ['pg', 'small', 'robust', 'strict', 'cpu']) {
     assert.match(log, /cpu time|CPU time|CPUTime|memory limit|Memory limit/i, `NO_RESOURCE_LIMIT_EVIDENCE_${name}`);
     observations.push({name, outcome: 'RESOURCE_LIMIT_CANCELLED', status: response.status});
   }
-  } catch {observations.push({name, outcome: 'UNEXPECTED_FAILURE'});}
+  } catch {observations.push({name, outcome: 'UNEXPECTED_FAILURE', evidence});}
 }
 const report = {contract: 'potok-local-edge-worker-canary-v1', hostedAcceptance: false,
   stagingModified: false, syntheticDatabase: true, limits: {cpuSoftMs: 2000, cpuHardMs: 2000, memoryMb: 256, wallMs: 150000},

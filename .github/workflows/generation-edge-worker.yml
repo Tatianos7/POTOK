@@ -44,7 +44,7 @@ jobs:
             -e POSTGRES_PASSWORD=ephemeral-ci-admin-only \
             --mount "type=bind,src=$RUNNER_TEMP/potok-edge-db,dst=/fixture,readonly" \
             --mount "type=bind,src=$RUNNER_TEMP/potok-edge-db/init.sql,dst=/docker-entrypoint-initdb.d/init.sql,readonly" \
-            postgres:17-alpine -c ssl=on -c ssl_cert_file=/fixture/server.pem -c ssl_key_file=/fixture/server.key
+            postgres:17-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b -c ssl=on -c ssl_cert_file=/fixture/server.pem -c ssl_key_file=/fixture/server.key
           for attempt in $(seq 1 30); do
             if docker exec potok-profile-db pg_isready -U postgres; then break; fi
             sleep 1

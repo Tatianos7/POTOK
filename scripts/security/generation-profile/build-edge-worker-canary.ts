@@ -41,13 +41,15 @@ await bundle('pg', `import assert from 'node:assert/strict';import {Pool} from '
             servername:mode==='wrong-name'?'invalid.fixture.test':'potok-profile-db',minVersion:'TLSv1.2'},
           enableChannelBinding:true,max:2,connectionTimeoutMillis:5000,query_timeout:5000,
           options:'-c search_path=pg_catalog',replication:'false',sslnegotiation:'postgres'});
-        const adapter=adaptGenerationNodePgPoolV1(pool,()=>true);let accepted=false;
-        try{const lease=await adapter.acquire();try{
+        const adapter=adaptGenerationNodePgPoolV1(pool,()=>true);let accepted=false,stage='ACQUIRE',driverError=null;
+        const connect=pool.connect.bind(pool);pool.connect=async()=>{try{return await connect();}catch(e){
+          driverError={name:String(e.name),code:String(e.code),message:String(e.message).replace(/fixture-only-password|incorrect-fixture-only/g,'[fixture-password]').slice(0,200)};throw e;}};
+        try{const lease=await adapter.acquire();stage='QUERY';try{
           const r=await lease.query('SELECT current_user AS role, session_user AS session_role, ssl FROM pg_catalog.pg_stat_ssl WHERE pid=pg_catalog.pg_backend_pid()',[]);
-          assert.equal(r.rows.length,1);assert.equal(r.rows[0].role,user);
+          stage='ASSERT';assert.equal(r.rows.length,1);assert.equal(r.rows[0].role,user);
           assert.equal(r.rows[0].session_role,user);assert.equal(r.rows[0].ssl,true);accepted=true;
         }finally{await lease.release(true);}}catch{accepted=false;}finally{await adapter.close();}
-        results.push({user,mode,pass:accepted===(mode==='valid')});
+        results.push({user,mode,pass:accepted===(mode==='valid'),stage,driverError});
       }
     }
     return Response.json({contract:'potok-local-edge-pg-canary-v1',hostedAcceptance:false,

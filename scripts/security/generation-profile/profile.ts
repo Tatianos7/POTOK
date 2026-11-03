@@ -9,7 +9,7 @@ import {restrictedGenerationLoadSqlV1, restrictedGenerationRecordSqlV1, restrict
 const isDeno = 'Deno' in globalThis;
 // Deno 2.1's compatibility stub returns zeroes with a warning, not a CPU measurement.
 function cpu() {if (isDeno) return null; try {return process.cpuUsage();} catch {return null;}}
-function rss() {try {return process.memoryUsage().rss;} catch {return null;}}
+function rss() {try {const value = process.memoryUsage().rss;return value > 0 ? value : null;} catch {return null;}}
 function peakRss() {if (isDeno) return null; try {return process.resourceUsage().maxRSS;} catch {return null;}}
 type Fixture = Awaited<ReturnType<typeof generationSqlWeightedWorkerFixtureV1>>;
 function pools(x: Fixture): GenerationRuntimePoolsV1 {
