@@ -1,5 +1,7 @@
 # Real recipe source readiness — 2026-10-30
 
+Owner decision 2026-11-03: physical recipe cooking/measurement is deferred to owner application testing before launch and must not block coding or offline authoring previews. See [authoring test catalog and decision](recipe-authoring-test-catalog-20261103.md). Earlier readiness findings concern unverified data/publication; they do not require the owner to cook every recipe now.
+
 2026-11-03 follow-up: [onion/carrot source preparation and current catalog check](onion-carrot-source-preparation-20261103.md) covers 61 ingredient rows across 45 recipes. The master checksum remains unchanged; Staging still has no published catalog. Source carbohydrate semantics and one approximate carrot weight are explicitly held for review. No recipe became publishable.
 
 Read-only source check for the next generation step. No original workbook, live database, review status, canonical mapping, publication, deployment or activation was changed.
