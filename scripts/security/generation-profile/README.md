@@ -38,3 +38,7 @@ npm exec --yes --package=deno@2.1.4 -- deno run --no-config --node-modules-dir=m
 Local timing/CPU values are useful for identifying missing performance headroom, not for comparing directly to a hosted 2-second CPU limit. The large cases are only four-meal synthetic fixtures, not worst-case accepted data. No Docker/Supabase Edge Runtime execution, real hosted TLS/identity or load acceptance was completed. Source and manifest admission remain required independently.
 
 Next: prepare an explicit compatible certificate/driver packaging approach without weakening CA/hostname/identity checks, then repeat in the actual Supabase Edge Runtime with CPU/memory enforcement. Do not deploy the Node assembly as-is or interpret successful standalone-Deno calculations as successful Edge hosting. No provider purchase, hosted write or activation occurred.
+
+## Portable-path follow-up
+
+The subsequent portable CA change keeps `disabledPgFactoryProbe` as the legacy Node path and adds `portablePgFactoryProbe` as a separate explicit WebCrypto factory. On local Deno 2.1.4 the former still fails and the latter passes; no automatic fallback occurs. The original observation file is historical and is not rewritten. See the [portable CA review](../../../docs/premium/generation-portable-ca-20261103.md) for cryptographic checks, conservative unsupported cases and the isolated official Edge Runtime certificate-only CI canary. Neither a portable constructor pass nor that CA canary is full-worker hosted acceptance.

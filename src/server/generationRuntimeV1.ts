@@ -1,5 +1,5 @@
 import {GenerationEdgeErrorV2} from '../../supabase/functions/adaptive-nutrition-generate-v2/contracts';
-import {createStagingGenerationNodePgPoolsV1, type GenerationNodePgSecretsV1} from './generationNodePgPoolV1';
+import {createStagingGenerationNodePgPoolsV1, preparePortableStagingGenerationNodePgPoolsV1, type GenerationNodePgSecretsV1} from './generationNodePgPoolV1';
 import {createPooledRestrictedGenerationWorkerV1, type PooledRestrictedGenerationWorkerDependenciesV1} from './generationSqlTransportWorkerV1';
 
 type Policies = Omit<PooledRestrictedGenerationWorkerDependenciesV1, 'sourcesPool' | 'gatewayPool' | 'enabled'>;
@@ -70,4 +70,13 @@ export function createStagingGenerationRuntimeV1(dependencies: StagingGeneration
   const {secrets, ...policies} = dependencies;
   const owned = {ca: secrets?.ca, readerPassword: secrets?.readerPassword, gatewayPassword: secrets?.gatewayPassword};
   return createManagedGenerationRuntimeV1({...policies, openPools: gate => createStagingGenerationNodePgPoolsV1(owned, gate)});
+}
+
+/** Explicit async WebCrypto/X509 path; never selected as an error fallback. */
+export async function createPortableStagingGenerationRuntimeV1(dependencies: StagingGenerationRuntimeDependenciesV1) {
+  const {secrets, ...policies} = dependencies;
+  let openPools: Awaited<ReturnType<typeof preparePortableStagingGenerationNodePgPoolsV1>>;
+  try {openPools = await preparePortableStagingGenerationNodePgPoolsV1(secrets);}
+  catch {throw Error('GENERATION_RUNTIME_CONFIGURATION_INVALID');}
+  return createManagedGenerationRuntimeV1({...policies, openPools});
 }

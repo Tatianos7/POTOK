@@ -1,6 +1,7 @@
 import {X509Certificate} from 'node:crypto';
 import {Pool, type PoolClient, type PoolConfig} from 'pg';
 import type {GenerationTransactionConnectionV1, GenerationTransactionPoolV1} from './generationTransactionClientV1';
+import {assertGenerationRootCaV1} from './generationRootCaV1';
 
 const host = 'db.ozidryfvhkcbtpnulakq.supabase.co';
 const roles = ['potok_generation_reader_v1', 'potok_generation_gateway_v1'] as const;
@@ -154,6 +155,12 @@ export function generationStagingPgConfigV1(channel: 'reader' | 'gateway', secre
       ![readerPassword, gatewayPassword].every(p => typeof p === 'string' && p.length > 0 && !p.includes('\0')) ||
       readerPassword === gatewayPassword) throw Error();
   } catch {throw Error('GENERATION_PG_CONFIGURATION_INVALID');}
+  return stagingConfig(channel, secrets);
+}
+
+// Both explicit validation paths use these exact connection/TLS settings.
+function stagingConfig(channel: 'reader' | 'gateway', secrets: GenerationNodePgSecretsV1): StagingPgConfig {
+  const {ca, readerPassword, gatewayPassword} = secrets;
   const user = channel === 'reader' ? roles[0] : roles[1];
   const password = channel === 'reader' ? readerPassword : gatewayPassword;
   return {
@@ -173,8 +180,30 @@ export function generationStagingPgConfigV1(channel: 'reader' | 'gateway', secre
 export function createStagingGenerationNodePgPoolsV1(
   secrets: GenerationNodePgSecretsV1, enabled: () => boolean = () => false,
 ) {
-  const sourcesPool = adaptGenerationNodePgPoolV1<{source_raw: string | null}>(new Pool(generationStagingPgConfigV1('reader', secrets)), enabled);
-  const gatewayPool = adaptGenerationNodePgPoolV1<{result_raw: unknown}>(new Pool(generationStagingPgConfigV1('gateway', secrets)), enabled);
+  return poolPair(generationStagingPgConfigV1('reader', secrets), generationStagingPgConfigV1('gateway', secrets), enabled);
+}
+
+/** Explicit portable path: validate before returning a lazy, gate-aware pool factory.
+ * It never calls/skips the legacy Node X509 checks based on runtime detection.
+ */
+export async function preparePortableStagingGenerationNodePgPoolsV1(secrets: GenerationNodePgSecretsV1) {
+  const owned = {ca: secrets?.ca, readerPassword: secrets?.readerPassword, gatewayPassword: secrets?.gatewayPassword};
+  let validity: Awaited<ReturnType<typeof assertGenerationRootCaV1>>;
+  try {
+    if (![owned.readerPassword, owned.gatewayPassword].every(p => typeof p === 'string' && p.length > 0 && !p.includes('\0'))
+      || owned.readerPassword === owned.gatewayPassword) throw Error();
+    validity = await assertGenerationRootCaV1(owned.ca);
+  } catch {throw Error('GENERATION_PG_CONFIGURATION_INVALID');}
+  const reader = stagingConfig('reader', owned), gateway = stagingConfig('gateway', owned);
+  return (enabled: () => boolean = () => false) => {
+    if (Date.now() < validity.notBefore || Date.now() >= validity.notAfter) throw Error('GENERATION_PG_CONFIGURATION_INVALID');
+    return poolPair(reader, gateway, enabled);
+  };
+}
+
+function poolPair(reader: StagingPgConfig, gateway: StagingPgConfig, enabled: () => boolean) {
+  const sourcesPool = adaptGenerationNodePgPoolV1<{source_raw: string | null}>(new Pool(reader), enabled);
+  const gatewayPool = adaptGenerationNodePgPoolV1<{result_raw: unknown}>(new Pool(gateway), enabled);
   return Object.freeze({sourcesPool, gatewayPool, async close() {
     const results = await Promise.allSettled([sourcesPool.close(), gatewayPool.close()]);
     if (results.some(result => result.status === 'rejected')) throw Error('GENERATION_PG_CLOSE_FAILED');

@@ -137,6 +137,7 @@ jobs:
             src/server/__tests__/generationTransactionClientV1.test.ts \
             src/server/__tests__/generationNodePgPoolV1.test.ts \
             src/server/__tests__/generationRuntimeV1.test.ts \
+            src/server/__tests__/generationRootCaV1.test.ts \
             src/server/__tests__/generationWorkerBindingsV1.test.ts \
             src/server/__tests__/generationAdmittedWorkerV1.test.ts \
             src/server/__tests__/generationPreparationSourceV1.test.ts \
