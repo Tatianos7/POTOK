@@ -1,0 +1,7 @@
+USDA ARS, Standard Reference Release 28 (2015). NDB 02045: Dill weed, fresh.
+PDF page 6, Mean column, per 100 g edible source portion.
+Energy 43 kcal; protein 3.46 g; fat 1.12 g; carbohydrate by difference 7.02 g; total dietary fiber 2.1 g.
+These are source edible-portion facts; refuse percentages must not be deducted again from recipe edible input grams.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg02.pdf
+Retrieved and visually checked 2026-11-04. Upstream SHA-256: a3671c827247adbcc806c7a3db05eed074c7ade10540dc01db70c47cbae9d6a4.
+Factual source capture only; not POTOK approval, FDC-ID crosswalk, retail-product binding or cooked recipe evidence.

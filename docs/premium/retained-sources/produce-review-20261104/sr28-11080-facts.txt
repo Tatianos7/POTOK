@@ -1,0 +1,7 @@
+USDA ARS, Standard Reference Release 28 (2015). NDB 11080: Beets, raw.
+PDF page 226, Mean column, per 100 g edible source portion.
+Energy 43 kcal; protein 1.61 g; fat 0.17 g; carbohydrate by difference 9.56 g; total dietary fiber 2.8 g.
+These are source edible-portion facts; refuse percentages must not be deducted again from recipe edible input grams.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf
+Retrieved and visually checked 2026-11-04. Upstream SHA-256: ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161.
+Factual source capture only; not POTOK approval, FDC-ID crosswalk, retail-product binding or cooked recipe evidence.

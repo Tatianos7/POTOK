@@ -1,0 +1,415 @@
+{
+  "contract": "potok-pilot-produce-source-preparation-v1",
+  "date": "2026-11-04",
+  "status": "SOURCE_CANDIDATES_NOT_APPROVED",
+  "sourceWorkbookSha256": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+  "privatePilotPacketSha256": "e7ad3b7161156a444f7e2c24226226aff58fee9659dba55d1ec09546e4eae723",
+  "scope": "ONLY_ELEVEN_ROWS_IN_SELECTED_REFERENCE_WEEK",
+  "ingredientRows": 11,
+  "affectedRecipeUnion": 10,
+  "groups": [
+    {
+      "authoringLabels": [
+        "Банан свежий"
+      ],
+      "ingredientRows": 2,
+      "affectedRecipes": 2,
+      "source": {
+        "record": "NDB09040",
+        "title": "Bananas, raw",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 147,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg09.pdf",
+        "upstreamSha256": "e0b48c1df61eadc85d169203483deeb922ca77897c3e9887b471a8976746d12a",
+        "capturePath": "sr28-09040-facts.txt",
+        "captureSha256": "b37c60f94ffa27fae261e413cf79258f345930ca71a2b60f213f3beb45c081bb",
+        "factsPer100GEdible": {
+          "calories": "89",
+          "protein": "1.09",
+          "fat": "0.33",
+          "totalCarbohydrate": "22.84",
+          "fiber": "2.6"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "20.240",
+      "workbookFdcIdsIndependentlyVerified": false,
+      "quantityConversionsPerformed": false,
+      "recipeNutritionRecomputed": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "banana_natural_yogurt_cocoa_ing_02",
+          "recipeId": "banana_natural_yogurt_cocoa",
+          "authoringName": "Банан свежий",
+          "recordedAmount": 120,
+          "unit": "G",
+          "recordedWeightG": 120,
+          "optional": false,
+          "sourcePreparationNote": "свежий съедобный вес после удаления кожуры; размять",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_REFERENCE_MATCH_REVIEW_REQUIRED"
+        },
+        {
+          "ingredientRowId": "greek_yogurt_banana_ing_02",
+          "recipeId": "greek_yogurt_banana",
+          "authoringName": "Банан свежий",
+          "recordedAmount": 120,
+          "unit": "G",
+          "recordedWeightG": 120,
+          "optional": false,
+          "sourcePreparationNote": "свежий съедобный вес после удаления кожуры",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_REFERENCE_MATCH_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    {
+      "authoringLabels": [
+        "Шампиньоны"
+      ],
+      "ingredientRows": 2,
+      "affectedRecipes": 2,
+      "source": {
+        "record": "NDB11260",
+        "title": "Mushrooms, white, raw",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 1046,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf",
+        "upstreamSha256": "ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161",
+        "capturePath": "sr28-11260-facts.txt",
+        "captureSha256": "baa4bbf6b61f19de7061e932c4dfba21c1e6831162d5a5caa53d5fc0aa85513c",
+        "factsPer100GEdible": {
+          "calories": "22",
+          "protein": "3.09",
+          "fat": "0.34",
+          "totalCarbohydrate": "3.26",
+          "fiber": "1.0"
+        },
+        "additionalSourceAdjustedProteinG": "2.18",
+        "proteinColumnUsed": "PROTEIN_N_X_6_25",
+        "adjustedProteinSubstituted": false
+      },
+      "candidateAvailableCarbsPer100G": "2.260",
+      "workbookFdcIdsIndependentlyVerified": false,
+      "quantityConversionsPerformed": false,
+      "recipeNutritionRecomputed": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "buckwheat_porridge_mushrooms_ing_02",
+          "recipeId": "buckwheat_porridge_mushrooms",
+          "authoringName": "Шампиньоны",
+          "recordedAmount": 200,
+          "unit": "G",
+          "recordedWeightG": 200,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес; нарезать",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_REFERENCE_MATCH_REVIEW_REQUIRED"
+        },
+        {
+          "ingredientRowId": "beef_pearl_barley_mushrooms_ing_03",
+          "recipeId": "beef_pearl_barley_mushrooms",
+          "authoringName": "Шампиньоны",
+          "recordedAmount": 250,
+          "unit": "G",
+          "recordedWeightG": 250,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес; нарезать",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_REFERENCE_MATCH_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    {
+      "authoringLabels": [
+        "Кабачок с кожицей"
+      ],
+      "ingredientRows": 1,
+      "affectedRecipes": 1,
+      "source": {
+        "record": "NDB11477",
+        "title": "Squash, summer, zucchini, includes skin, raw",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 1876,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf",
+        "upstreamSha256": "ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161",
+        "capturePath": "sr28-11477-facts.txt",
+        "captureSha256": "9f72f691b4e939870c8407a3d22da2f384b05ff59f4610b49521e90423bacc14",
+        "factsPer100GEdible": {
+          "calories": "17",
+          "protein": "1.21",
+          "fat": "0.32",
+          "totalCarbohydrate": "3.11",
+          "fiber": "1.0"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "2.110",
+      "workbookFdcIdsIndependentlyVerified": false,
+      "quantityConversionsPerformed": false,
+      "recipeNutritionRecomputed": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "chicken_bulgur_zucchini_ing_03",
+          "recipeId": "chicken_bulgur_zucchini",
+          "authoringName": "Кабачок с кожицей",
+          "recordedAmount": 300,
+          "unit": "G",
+          "recordedWeightG": 300,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес с кожицей; кубик 1.5 см",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_REFERENCE_MATCH_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    {
+      "authoringLabels": [
+        "Огурец",
+        "Огурец с кожицей"
+      ],
+      "ingredientRows": 2,
+      "affectedRecipes": 2,
+      "source": {
+        "record": "NDB11205",
+        "title": "Cucumber, with peel, raw",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 713,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf",
+        "upstreamSha256": "ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161",
+        "capturePath": "sr28-11205-facts.txt",
+        "captureSha256": "aa9e50e0b0d285327c6c7be21bf0b8357c740291e3474d8fbff64a6792025ad6",
+        "factsPer100GEdible": {
+          "calories": "15",
+          "protein": "0.65",
+          "fat": "0.11",
+          "totalCarbohydrate": "3.63",
+          "fiber": "0.5"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "3.130",
+      "workbookFdcIdsIndependentlyVerified": false,
+      "quantityConversionsPerformed": false,
+      "recipeNutritionRecomputed": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "wholegrain_toast_hummus_cucumber_ing_03",
+          "recipeId": "wholegrain_toast_hummus_cucumber",
+          "authoringName": "Огурец",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес; вымыть, обсушить и нарезать",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "BLOCKED_CUCUMBER_SKIN_STATUS_UNSPECIFIED"
+        },
+        {
+          "ingredientRowId": "tvorog_cucumber_dill_ing_02",
+          "recipeId": "tvorog_cucumber_dill",
+          "authoringName": "Огурец с кожицей",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "optional": false,
+          "sourcePreparationNote": "свежий съедобный вес с целой кожицей; мелкие кубики",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_REFERENCE_MATCH_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    {
+      "authoringLabels": [
+        "Помидор",
+        "Помидор свежий"
+      ],
+      "ingredientRows": 2,
+      "affectedRecipes": 2,
+      "source": {
+        "record": "NDB11529",
+        "title": "Tomatoes, red, ripe, raw, year round average",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 2142,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf",
+        "upstreamSha256": "ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161",
+        "capturePath": "sr28-11529-facts.txt",
+        "captureSha256": "447b101b77a246d26fb526d6c1c4684b35b73d2927799a1c292cccd1a24259f3",
+        "factsPer100GEdible": {
+          "calories": "18",
+          "protein": "0.88",
+          "fat": "0.20",
+          "totalCarbohydrate": "3.89",
+          "fiber": "1.2"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "2.690",
+      "workbookFdcIdsIndependentlyVerified": false,
+      "quantityConversionsPerformed": false,
+      "recipeNutritionRecomputed": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "wholegrain_toast_tvorog_tomato_ing_03",
+          "recipeId": "wholegrain_toast_tvorog_tomato",
+          "authoringName": "Помидор",
+          "recordedAmount": 150,
+          "unit": "G",
+          "recordedWeightG": 150,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес после удаления плодоножки; нарезать и при необходимости обсушить",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_REFERENCE_MATCH_REVIEW_REQUIRED"
+        },
+        {
+          "ingredientRowId": "tuna_tomato_pasta_ing_03",
+          "recipeId": "tuna_tomato_pasta",
+          "authoringName": "Помидор свежий",
+          "recordedAmount": 300,
+          "unit": "G",
+          "recordedWeightG": 300,
+          "optional": false,
+          "sourcePreparationNote": "свежий сырой съедобный вес; кубик",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_REFERENCE_MATCH_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    {
+      "authoringLabels": [
+        "Свёкла"
+      ],
+      "ingredientRows": 1,
+      "affectedRecipes": 1,
+      "source": {
+        "record": "NDB11080",
+        "title": "Beets, raw",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 226,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf",
+        "upstreamSha256": "ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161",
+        "capturePath": "sr28-11080-facts.txt",
+        "captureSha256": "a045fdeef616904f37f38496cde3dea1b5efd13c018e191b15defea4c6ba3b13",
+        "factsPer100GEdible": {
+          "calories": "43",
+          "protein": "1.61",
+          "fat": "0.17",
+          "totalCarbohydrate": "9.56",
+          "fiber": "2.8"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "6.760",
+      "workbookFdcIdsIndependentlyVerified": false,
+      "quantityConversionsPerformed": false,
+      "recipeNutritionRecomputed": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "chicken_roasted_beet_potato_ing_02",
+          "recipeId": "chicken_roasted_beet_potato",
+          "authoringName": "Свёкла",
+          "recordedAmount": 400,
+          "unit": "G",
+          "recordedWeightG": 400,
+          "optional": false,
+          "sourcePreparationNote": "сырой очищенный съедобный вес; кубик 2 см",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_REFERENCE_MATCH_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    {
+      "authoringLabels": [
+        "Укроп свежий"
+      ],
+      "ingredientRows": 1,
+      "affectedRecipes": 1,
+      "source": {
+        "record": "NDB02045",
+        "title": "Dill weed, fresh",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 6,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg02.pdf",
+        "upstreamSha256": "a3671c827247adbcc806c7a3db05eed074c7ade10540dc01db70c47cbae9d6a4",
+        "capturePath": "sr28-02045-facts.txt",
+        "captureSha256": "7aa2b1c55a905a328e2ec19c3cb645357b55338d1c599fa5ab4c0865d187a2bc",
+        "factsPer100GEdible": {
+          "calories": "43",
+          "protein": "3.46",
+          "fat": "1.12",
+          "totalCarbohydrate": "7.02",
+          "fiber": "2.1"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "4.920",
+      "workbookFdcIdsIndependentlyVerified": false,
+      "quantityConversionsPerformed": false,
+      "recipeNutritionRecomputed": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "tvorog_cucumber_dill_ing_03",
+          "recipeId": "tvorog_cucumber_dill",
+          "authoringName": "Укроп свежий",
+          "recordedAmount": 10,
+          "unit": "G",
+          "recordedWeightG": 10,
+          "optional": false,
+          "sourcePreparationNote": "свежий съедобный вес; мелко нарезать",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_REFERENCE_MATCH_REVIEW_REQUIRED"
+        }
+      ]
+    }
+  ],
+  "mapping": {
+    "referencedPolicyVersion": "potok-source-total-including-fiber-to-available-v1",
+    "parentPackagePath": "docs/premium/retained-sources/p5-03/source-review-package-v1.json",
+    "parentPackageSha256": "cc0451eaf137d4cd85bd2457fe72dd7584bd0bcf6a2405d13a4e75bc7280926b",
+    "semanticsCapturePath": "docs/premium/retained-sources/pear-almonds-review-20261030/sr28-carbohydrate-semantics.txt",
+    "semanticsCaptureSha256": "27c10aae0fa069bc3b38335b8caa9da367068081f80ba310877cd83eb52578fc",
+    "formula": "sourceTotalCarbohydrate - sourceFiber",
+    "energy": "KEEP_SOURCE_ENERGY",
+    "foodSpecificApproval": false
+  },
+  "remainingReview": [
+    "INDEPENDENT_SOURCE_AND_CANONICAL_IDENTITY_EVIDENCE",
+    "PRECISE_FOOD_VARIANT_AND_STATE_APPLICABILITY",
+    "CUCUMBER_SKIN_STATUS_FOR_UNSPECIFIED_ROW",
+    "SOURCE_PROTEIN_METHOD_AND_CARBOHYDRATE_MAPPING_ADMISSION",
+    "COOKING_RETENTION_AND_NUTRIENT_CHANGES_NOT_RAW_INPUT_SUMS",
+    "ALLERGEN_DIETARY_PORTION_COMPOSITION_AND_REPEAT_EVIDENCE"
+  ],
+  "physicalCookingBlocksDevelopment": false,
+  "measuredFinishedYieldG": null,
+  "sourceWorkbookModified": false,
+  "databaseModified": false,
+  "runtimePublishable": false,
+  "generatorActivated": false
+}
