@@ -57,6 +57,8 @@ jobs:
         run: |
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/authoring-reference-proposals-v1.ts
           node --import tsx --test scripts/contracts/authoring-reference-proposals-v1.test.ts
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/authoring-reference-review-drafts-v1.ts
+          node --import tsx --test scripts/contracts/authoring-reference-review-drafts-v1.test.ts
 
       - name: Offline full-worker profiling contracts (no hosted acceptance)
         run: node --import tsx --test scripts/security/generation-profile/run.test.ts
