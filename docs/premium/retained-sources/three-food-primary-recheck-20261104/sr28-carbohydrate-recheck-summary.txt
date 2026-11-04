@@ -1,0 +1,5 @@
+USDA SR28 Documentation and User Guide, September 2015, slightly revised May 2016.
+Official URL: https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/sr28_doc.pdf
+Retrieved 2026-11-04. PDF page 20 (zero-based 19), printed page 13, Carbohydrate.
+Factual summary: carbohydrate by difference includes dietary fiber. The guide describes an optional available-carbohydrate calculation that also subtracts fiber. For the same identity, state, unit and edible basis this corresponds to source total carbohydrate minus source dietary fiber under POTOK's existing source-candidate policy. It is not a fresh analytical measurement or a food-specific approval. Keep source energy; no 4/9/4 recalculation.
+The archived base SR28 data and this revised guide have distinct byte hashes. No May 2016 data patch or current FDC replacement has been applied.

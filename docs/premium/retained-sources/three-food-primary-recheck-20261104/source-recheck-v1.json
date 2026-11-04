@@ -1,0 +1,107 @@
+{
+  "contract": "potok-three-food-primary-recheck-v1",
+  "retrievedDate": "2026-11-04",
+  "status": "PRIMARY_BYTES_RECHECKED_NOT_SOURCE_ADMISSION",
+  "parentCaptureSha256": "7dfa59063a9bc9f85793e0a5e152e95558dc6125a5ab5858aeee8a9001e8fc38",
+  "archiveRecheck": {
+    "sourceUrl": "https://www.ars.usda.gov/ARSUserFiles/80400535/DATA/SR/SR28/dnload/sr28asc.zip",
+    "archiveSha256": "8308fd1d224ef1e5331093748007180da01a7ac713cbac6a1f5bc2a03e1ee70a",
+    "fileHashes": {
+      "FOOD_DES.txt": "bb2047218cdad1d830da69e760386409fde3b7afabceae604c5479f280d4fa2e",
+      "NUT_DATA.txt": "506c9ee39a276ac8f53565d270597e430944ec3363adb53a91cc6ee8c061fac5",
+      "NUTR_DEF.txt": "b0d6b559eaf0cf9f9a1c13e938395e1bb3513057f3c4c0f21c046b061e599fee"
+    },
+    "patchApplied": false
+  },
+  "records": [
+    {
+      "caseId": "FROZEN_STRAWBERRY",
+      "ndb": "09318",
+      "description": "Strawberries, frozen, unsweetened",
+      "captureRecordSha256": "93801586acfdc7bad2d6d879e3a1c27f6845c2ecb16f216601c3c2afdcad1b30",
+      "factsPer100GEdible": {
+        "protein": "0.43",
+        "fat": "0.11",
+        "totalCarbohydrate": "9.13",
+        "calories": "35",
+        "fiber": "2.1"
+      },
+      "lineRecheck": "ALL_RETAINED_FOOD_AND_FIVE_NUTRIENT_LINES_MATCH_REDOWNLOADED_ARCHIVE",
+      "foodStateReview": "PENDING_RECIPE_APPLICABILITY"
+    },
+    {
+      "caseId": "WALNUT",
+      "ndb": "12155",
+      "description": "Nuts, walnuts, english",
+      "captureRecordSha256": "28b617b3d00df81926982725ca3d5858ea6adb61147e08cc404591de144fbccc",
+      "factsPer100GEdible": {
+        "protein": "15.23",
+        "fat": "65.21",
+        "totalCarbohydrate": "13.71",
+        "calories": "654",
+        "fiber": "6.7"
+      },
+      "lineRecheck": "ALL_RETAINED_FOOD_AND_FIVE_NUTRIENT_LINES_MATCH_REDOWNLOADED_ARCHIVE",
+      "foodStateReview": "PENDING_RECIPE_APPLICABILITY"
+    },
+    {
+      "caseId": "BLUEBERRY",
+      "ndb": "09050",
+      "description": "Blueberries, raw",
+      "captureRecordSha256": "81fedefac9f10c5f3df96dd6effa0afc51e3388ec326ffb787dd0103d0a67fed",
+      "factsPer100GEdible": {
+        "protein": "0.74",
+        "fat": "0.33",
+        "totalCarbohydrate": "14.49",
+        "calories": "57",
+        "fiber": "2.4"
+      },
+      "lineRecheck": "ALL_RETAINED_FOOD_AND_FIVE_NUTRIENT_LINES_MATCH_REDOWNLOADED_ARCHIVE",
+      "foodStateReview": "PENDING_RECIPE_APPLICABILITY"
+    }
+  ],
+  "independentApiCaptures": [
+    {
+      "fdcId": 170187,
+      "ndb": "12155",
+      "dataType": "SR Legacy",
+      "publicationDate": "4/1/2019",
+      "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/170187",
+      "retainedFile": "fdc-170187-primary-response.json",
+      "sha256": "b7d9dbc16de5b2693463b3de95730d989b0db85f3c181322280abf15059da165",
+      "comparisonScope": "ONLY_NUTRIENTS_203_204_205_208_291_NOT_GLOBAL_DATASET_EQUIVALENCE"
+    },
+    {
+      "fdcId": 171711,
+      "ndb": "09050",
+      "dataType": "SR Legacy",
+      "publicationDate": "4/1/2019",
+      "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/171711",
+      "retainedFile": "fdc-171711-primary-response.json",
+      "sha256": "4a2716f5091acdb34718590ccfd961d603dda32821a0d8a2ce53b409a474331e",
+      "comparisonScope": "ONLY_NUTRIENTS_203_204_205_208_291_NOT_GLOBAL_DATASET_EQUIVALENCE"
+    }
+  ],
+  "semanticsRecheck": {
+    "sourceUrl": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/sr28_doc.pdf",
+    "documentSha256": "6ee9d1b3d838c7bc66ab8df422b0498956300d4d0aec2b4f8b132184d72427c2",
+    "archiveGuideSha256": "0fbcd24e595231893faae27348bf985f621990568387d9ed33f9af899f7eec9f",
+    "pdfPageOneBased": 20,
+    "printedPage": 13,
+    "extractedPageTextSha256": "f758391cdd95bd2479373c54ac8a2b95c475f7de2be0f539c7d938691d96625c",
+    "retainedSummaryFile": "sr28-carbohydrate-recheck-summary.txt",
+    "retainedSummarySha256": "749961f477fb6785637d622e6f241d422400b870f04f02e02e187fa62fc50431",
+    "sourceDefinition": "TOTAL_CARBOHYDRATE_BY_DIFFERENCE_INCLUDING_FIBER",
+    "basis": "PER_100_G_EDIBLE",
+    "units": "g"
+  },
+  "parentPolicy": {
+    "path": "docs/premium/retained-sources/p5-03/source-review-package-v1.json",
+    "sha256": "cc0451eaf137d4cd85bd2457fe72dd7584bd0bcf6a2405d13a4e75bc7280926b",
+    "version": "potok-source-total-including-fiber-to-available-v1"
+  },
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false,
+  "physicalCookingBlocksDevelopment": false
+}
