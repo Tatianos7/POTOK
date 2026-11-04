@@ -1,18 +1,18 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import test from 'node:test';
-import {buildThreeFoodApplicabilityReviewV1,readDeclaredApplicabilityReviewRawV1,reproduceThreeFoodReferenceTextV1} from './three-food-applicability-review-v1';
+import {buildThreeFoodApplicabilityReviewV1,buildThreeFoodOwnerInputStateReviewV1,readDeclaredApplicabilityReviewRawV1,readWalnutOwnerInputStateRawV1,reproduceThreeFoodReferenceTextV1} from './three-food-applicability-review-v1';
 import {readPrimaryRecheckRawV1} from './three-food-source-candidates-v1';
 import {readPinnedProposalSourcesV1} from './authoring-reference-proposals-v1';
 import {decodeReviewedRuntimeRecipePublicationEvidenceRawV1} from '../../src/utils/reviewedRuntimeRecipePublicationEvidenceV1';
 const hash=(s:string)=>createHash('sha256').update(s).digest('hex');
 const canonical=(v:unknown):string=>v!==null&&typeof v==='object'?(Array.isArray(v)?'['+v.map(canonical).join(',')+']':'{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+canonical((v as Record<string,unknown>)[k])).join(',')+'}'):JSON.stringify(v);
-function fixture(unit='G',mass:number|null=75){
+function fixture(unit='G',mass:number|null=75,walnutUnit='G',walnutMass:number|null=30){
   const captureRaw=readPinnedProposalSourcesV1().captureRaw,primary=readPrimaryRecheckRawV1();
-  const definitions=[['FROZEN_STRAWBERRY','09318',50],['WALNUT','12155',30],['BLUEBERRY','09050',mass]] as const;
+  const definitions=[['FROZEN_STRAWBERRY','09318',50],['WALNUT','12155',walnutMass],['BLUEBERRY','09050',mass]] as const;
   const notes=['per 100 g: 32 kcal; P 0.67 g; F 0.3 g; C 7.68 g; fiber 2 g.','на 100 г: 654 ккал; Б 15.2 г; Ж 65.2 г; У 13.7 г; клетчатка 6.7 г.','на 100 г: 57 ккал; Б 0.7 г; Ж 0.3 г; У 14.5 г; клетчатка 2.4 г.'];
   const rows=definitions.map(([caseId,ndb,weight_g],i)=>({caseId,ndb,raw:{ingredient_row_id:'synthetic_row_'+i,recipe_id:'synthetic_recipe_'+i,
-    unit:i===2?unit:'G',weight_g,notes:'PRIVATE_NOTE '+notes[i]}}));
+    unit:i===2?unit:i===1?walnutUnit:'G',weight_g,notes:'PRIVATE_NOTE '+notes[i]}}));
   const recipes=rows.map(r=>({recipeId:r.raw.recipe_id,ingredients:[r.raw],sourceRecipe:{recipe_id:r.raw.recipe_id},steps:[{instruction_ru:'PRIVATE_SYNTHETIC_STEP'}]}));
   const catalogRaw=JSON.stringify({recipes});
   const ledger={contract:'potok-pilot-120-row-stage-review-v1',privatePilotPacketSha256:'a'.repeat(64),counts:{rows:3},
@@ -74,5 +74,39 @@ test('review is deterministic, preserves input/unknowns/totals and exports no ra
 test('normal and forged-approval applicability exports stay outside the actual runtime publication boundary',async()=>{
   const p=build(fixture());for(const c of [p,{...p,sourceApproved:true,canApply:true,runtimePublishable:true,mayActivate:true}]){
     const raw=JSON.stringify(c);await assert.rejects(decodeReviewedRuntimeRecipePublicationEvidenceRawV1(raw,raw),/REVIEWED_PUBLICATION_FIELDS_INVALID/);
+  }
+});
+
+function ownerState(f:ReturnType<typeof fixture>){
+  const s=JSON.parse(readWalnutOwnerInputStateRawV1()),r=f.review.records.find(r=>r.caseId==='WALNUT')!;
+  return {...s,privateCatalogSha256:f.review.privateCatalogSha256,recipeId:r.recipeId,ingredientRowId:r.ingredientRowId,sourceAuthoringRowSha256:r.sourceAuthoringRowSha256,recipeContextSha256:r.recipeContextSha256};
+}
+const buildOwner=(f:ReturnType<typeof fixture>,s=ownerState(f))=>buildThreeFoodOwnerInputStateReviewV1(JSON.stringify(f.input),f.catalogRaw,f.sources,f.primary,JSON.stringify(f.review),JSON.stringify(s));
+
+test('explicit owner state is scoped to one walnut row, leaves original review unchanged and produces exact conditional 30g arithmetic',()=>{
+  const s=JSON.parse(readWalnutOwnerInputStateRawV1());assert.equal(s.recipeId,'oatmeal_pear_walnut');assert.equal(s.processing,'RAW');assert.equal(s.edibleForm,'SHELLED_KERNELS');assert.equal(s.saltAdded,false);assert.equal(s.additivesAdded,false);
+  const f=fixture(),before=JSON.stringify(f),baseline=build(f),p=buildOwner(f),w=p.results[1];
+  assert.equal(p.contract,'potok-three-food-owner-input-state-result-v1');assert.equal(p.summary.ownerSpecifiedInputRows,1);assert.equal(p.summary.effectiveUnknownProcessingRows,0);assert.equal(p.summary.conditionalInputContributions,3);
+  assert.deepEqual(w.inputContribution.values,{calories:'196.20000000',protein:'4.56900000',fat:'19.56300000',carbs:'2.10300000',fiber:'2.01000000'});
+  assert.equal(w.originalDeclaredAlignment,'UNKNOWN_PROCESSING_AND_EDIBLE_FORM');assert.equal(w.ownerInputState.processing,'RAW');assert.equal(w.ownerDecision,null);assert.equal(w.sourceApproved,false);assert.equal(w.foodSpecificMappingApproved,false);
+  assert.deepEqual(p.results[0],baseline.results[0]);assert.deepEqual(p.results[2],baseline.results[2]);assert.equal(build(f).results[1].inputContribution.values,null);
+  assert.equal(JSON.stringify(f),before);assert.equal(p.recipeTotalsRecomputed,false);assert.equal(p.originalDataModified,false);assert.equal(p.physicalCookingBlocksDevelopment,false);
+});
+test('owner state cannot widen to other recipes, substitute processing, change bound context or carry approval-shaped fields',()=>{
+  const f=fixture();for(const patch of [{recipeId:'other_recipe'},{ingredientRowId:'other_row'},{sourceAuthoringRowSha256:'b'.repeat(64)},
+    {recipeContextSha256:'b'.repeat(64)},{privateCatalogSha256:'b'.repeat(64)},{scope:'ALL_WALNUTS'},{processing:'ROASTED'},
+    {edibleForm:'IN_SHELL'},{saltAdded:true},{additivesAdded:true},{sourceApproved:true},{ownerDecision:'APPROVED'}]){
+    assert.throws(()=>buildOwner(f,{...ownerState(f),...patch}),/INVALID_THREE_FOOD_APPLICABILITY_REVIEW/);
+  }
+});
+test('specified raw kernels do not bypass volume, piece or absent/zero mass blocks',()=>{
+  for(const [unit,mass] of [['ML',30],['PCS',30],['G',null],['G',0]] as const){
+    const p=buildOwner(fixture('G',75,unit,mass));assert.equal(p.results[1].inputContribution.values,null);assert.equal(p.results[1].inputContribution.status,'BLOCKED_INPUT_MASS_BASIS');
+  }
+});
+test('owner product choice is neither source admission nor a runtime publication packet',async()=>{
+  const p=buildOwner(fixture());assert.equal(p.sourceApproved,false);assert.equal(p.canApply,false);assert.equal(p.summary.sourceApprovals,0);assert.equal(p.summary.appliedChanges,0);
+  for(const candidate of [p,{...p,sourceApproved:true,canApply:true,runtimePublishable:true,mayActivate:true}]){
+    const raw=JSON.stringify(candidate);await assert.rejects(decodeReviewedRuntimeRecipePublicationEvidenceRawV1(raw,raw),/REVIEWED_PUBLICATION_FIELDS_INVALID/);
   }
 });

@@ -1,0 +1,19 @@
+{
+  "contract": "potok-owner-walnut-input-state-v1",
+  "date": "2026-11-04",
+  "origin": "OWNER_REPLY_TO_WALNUT_INPUT_STATE_QUESTION",
+  "scope": "ONE_RECIPE_AUTHORING_INPUT_ONLY",
+  "recipeId": "oatmeal_pear_walnut",
+  "ingredientRowId": "oatmeal_pear_walnut_ing_05",
+  "sourceAuthoringRowSha256": "119100281ca44b96ce5b9cbac39f61d898ec9c84f78f16db26a24c67862a8be6",
+  "recipeContextSha256": "9af2b917394d78db6ba365c7e72131905461a854e28e9a8dc6b5e3e35a4297be",
+  "privateCatalogSha256": "517386c0ec6d5bc3a4ff28a33b702f046b1862a16c342f52255789f3a3fb90b0",
+  "processing": "RAW",
+  "edibleForm": "SHELLED_KERNELS",
+  "saltAdded": false,
+  "additivesAdded": false,
+  "sourceApproved": false,
+  "canApply": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}
