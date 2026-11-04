@@ -86,7 +86,36 @@ export function buildThreeFoodApplicabilityReviewV1(inputRaw:string,catalogRaw:s
     recipeTotalsRecomputed:false,originalDataModified:false,physicalCookingBlocksDevelopment:false};
 }
 
+export function readWalnutOwnerInputStateRawV1(){return readFileSync(new URL('../../docs/premium/retained-sources/three-food-applicability-20261104/walnut-owner-input-state-v1.json',import.meta.url),'utf8');}
+
+/** Owner authoring-state overlay only; preserves the original review and every source/publication gate. */
+export function buildThreeFoodOwnerInputStateReviewV1(inputRaw:string,catalogRaw:string,sources:ProposalSourcesRawV1,primaryRaw:PrimaryRecheckRawV1,reviewRaw:string,ownerStateRaw:string){
+  const baseline=buildThreeFoodApplicabilityReviewV1(inputRaw,catalogRaw,sources,primaryRaw,reviewRaw),s=parse(ownerStateRaw);
+  const keys=['contract','date','origin','scope','recipeId','ingredientRowId','sourceAuthoringRowSha256','recipeContextSha256','privateCatalogSha256','processing','edibleForm','saltAdded','additivesAdded','sourceApproved','canApply','runtimePublishable','mayActivate'];
+  if(Object.keys(s).length!==keys.length||keys.some(k=>!Object.hasOwn(s,k))
+    ||s.contract!=='potok-owner-walnut-input-state-v1'||s.date!=='2026-11-04'||s.origin!=='OWNER_REPLY_TO_WALNUT_INPUT_STATE_QUESTION'
+    ||s.scope!=='ONE_RECIPE_AUTHORING_INPUT_ONLY'||s.processing!=='RAW'||s.edibleForm!=='SHELLED_KERNELS'
+    ||[s.saltAdded,s.additivesAdded,s.sourceApproved,s.canApply,s.runtimePublishable,s.mayActivate].some(v=>v!==false)
+    ||s.privateCatalogSha256!==baseline.provenance.privateCatalogSha256)invalid();
+  const walnuts=baseline.results.filter(r=>r.caseId==='WALNUT');if(walnuts.length!==1)invalid();const w=walnuts[0];
+  if(s.recipeId!==w.recipeId||s.ingredientRowId!==w.ingredientRowId||s.sourceAuthoringRowSha256!==w.sourceAuthoringRowSha256||s.recipeContextSha256!==w.recipeContextSha256)invalid();
+  const mass=w.recordedGramsReference,hasMass=w.recordedUnit==='G'&&typeof mass==='number'&&Number.isFinite(mass)&&mass>0;
+  const values=hasMass?Object.fromEntries(axes.map(a=>[a,fixed8(minor(w.completeSourceCandidatePer100GEdible[a])*minor(String(mass)))])):null;
+  const results=baseline.results.map(r=>r.caseId!=='WALNUT'?r:{...r,
+    originalDeclaredAlignment:r.declaredAlignment,declaredAlignment:'OWNER_INPUT_SPECIFIED_SOURCE_APPLICABILITY_PENDING',
+    ownerInputState:{processing:'RAW',edibleForm:'SHELLED_KERNELS',saltAdded:false,additivesAdded:false,scope:'ONE_RECIPE_AUTHORING_INPUT_ONLY'},
+    openConditions:['Owner input state specified; primary source applicability, food-specific mapping and publication remain unapproved.'],
+    inputContribution:{...r.inputContribution,status:hasMass?'CONDITIONAL_OWNER_SPECIFIED_INPUT_ARITHMETIC':'BLOCKED_INPUT_MASS_BASIS',values}});
+  return {...baseline,contract:'potok-three-food-owner-input-state-result-v1',status:'OWNER_AUTHORING_STATE_RECORDED_NOT_SOURCE_ADMISSION',
+    provenance:{...baseline.provenance,originalReviewResultSha256:hash(JSON.stringify(baseline)),ownerInputStateSha256:hash(ownerStateRaw)},
+    summary:{reviewedRows:results.length,transcriptionFieldsReproduced:baseline.summary.transcriptionFieldsReproduced,
+      originalTextUnknownProcessingRows:baseline.summary.openProcessingRows,ownerSpecifiedInputRows:1,effectiveUnknownProcessingRows:0,
+      conditionalInputContributions:results.filter(r=>r.inputContribution.values!==null).length,sourceApprovals:0,appliedChanges:0},results};
+}
+
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
-  if(process.argv.length!==4)throw Error('Usage: node --import tsx scripts/contracts/three-food-applicability-review-v1.ts PRIVATE_INPUT.json ORIGINAL_PRIVATE_CATALOG.json');
-  process.stdout.write(JSON.stringify(buildThreeFoodApplicabilityReviewV1(readFileSync(process.argv[2],'utf8'),readFileSync(process.argv[3],'utf8'),readPinnedProposalSourcesV1(),readPrimaryRecheckRawV1(),readDeclaredApplicabilityReviewRawV1()),null,2)+'\n');
+  if(![4,5].includes(process.argv.length)||(process.argv.length===5&&process.argv[4]!=='--owner-walnut-state-v1'))throw Error('Usage: node --import tsx scripts/contracts/three-food-applicability-review-v1.ts PRIVATE_INPUT.json ORIGINAL_PRIVATE_CATALOG.json [--owner-walnut-state-v1]');
+  const args=[readFileSync(process.argv[2],'utf8'),readFileSync(process.argv[3],'utf8'),readPinnedProposalSourcesV1(),readPrimaryRecheckRawV1(),readDeclaredApplicabilityReviewRawV1()] as const;
+  const result=process.argv.length===5?buildThreeFoodOwnerInputStateReviewV1(...args,readWalnutOwnerInputStateRawV1()):buildThreeFoodApplicabilityReviewV1(...args);
+  process.stdout.write(JSON.stringify(result,null,2)+'\n');
 }
