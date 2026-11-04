@@ -53,6 +53,11 @@ jobs:
       - name: Local authoring week viewer contracts
         run: node --import tsx --test src/dev/__tests__/authoringWeekViewer.test.tsx
 
+      - name: Authoring reference proposals (offline review only)
+        run: |
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/authoring-reference-proposals-v1.ts
+          node --import tsx --test scripts/contracts/authoring-reference-proposals-v1.test.ts
+
       - name: Offline full-worker profiling contracts (no hosted acceptance)
         run: node --import tsx --test scripts/security/generation-profile/run.test.ts
 
