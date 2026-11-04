@@ -1,0 +1,7 @@
+USDA ARS, Standard Reference Release 28 (2015). NDB 09040: Bananas, raw.
+PDF page 147, Mean column, per 100 g edible source portion.
+Energy 89 kcal; protein 1.09 g; fat 0.33 g; carbohydrate by difference 22.84 g; total dietary fiber 2.6 g.
+These are source edible-portion facts; refuse percentages must not be deducted again from recipe edible input grams.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg09.pdf
+Retrieved and visually checked 2026-11-04. Upstream SHA-256: e0b48c1df61eadc85d169203483deeb922ca77897c3e9887b471a8976746d12a.
+Factual source capture only; not POTOK approval, FDC-ID crosswalk, retail-product binding or cooked recipe evidence.

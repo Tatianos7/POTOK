@@ -1,0 +1,7 @@
+USDA ARS, Standard Reference Release 28 (2015). NDB 11260: Mushrooms, white, raw.
+PDF page 1046, Mean column, per 100 g edible source portion.
+Energy 22 kcal; protein 3.09 g; fat 0.34 g; carbohydrate by difference 3.26 g; total dietary fiber 1.0 g.
+Mushroom table additionally lists adjusted protein 2.18 g; retained separately, not substituted for the stated Protein (N x 6.25) value.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf
+Retrieved and visually checked 2026-11-04. Upstream SHA-256: ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161.
+Factual source capture only; not POTOK approval, FDC-ID crosswalk, retail-product binding or cooked recipe evidence.
