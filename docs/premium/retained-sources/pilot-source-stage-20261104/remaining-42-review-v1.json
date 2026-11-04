@@ -1,0 +1,466 @@
+{
+  "contract": "potok-pilot-remaining-42-review-v1",
+  "date": "2026-11-04",
+  "privatePilotPacketSha256": "e7ad3b7161156a444f7e2c24226226aff58fee9659dba55d1ec09546e4eae723",
+  "baselineLedgerPath": "docs/premium/retained-sources/grain-review-20261104/remaining-row-review-v1.json",
+  "baselineLedgerSha256": "df1cff9ccb4b50611b688adb5be1878ec90678c84505a0c3eb4779e21fbbc025",
+  "asciiCapturePath": "docs/premium/retained-sources/pilot-source-stage-20261104/sr28-ascii-capture-v1.json",
+  "asciiCaptureSha256": "7dfa59063a9bc9f85793e0a5e152e95558dc6125a5ab5858aeee8a9001e8fc38",
+  "previousTvorogDecisionPath": "docs/premium/p5-03-cottage-cheese-apple-owner-review.md",
+  "previousTvorogDecisionSha256": "a9b887f5f16b8f6b9d6fc0a232c2226fd173e0601abb39513abf0c04e333afb4",
+  "reviewedRows": 42,
+  "milkYogurtTvorogRows": 15,
+  "allCasesRemainAdmissionBlocked": true,
+  "cases": [
+    {
+      "caseId": "OATS",
+      "rowIds": [
+        "oatmeal_pear_walnut_ing_01"
+      ],
+      "authoringLabels": [
+        "Овсяные хлопья"
+      ],
+      "sourceRecordIds": [
+        "08120"
+      ],
+      "status": "SOURCE_VERSION_MISMATCH",
+      "finding": "Recorded Foundation claim has 379/13.5/5.89/68.7/10.4; retained SR28 has 379/13.15/6.52/67.70/10.1. Equal energy does not establish equivalence.",
+      "requiredEvidence": "Obtain the exact Foundation primary record/version and verify dry rolled-oat class; do not replace it with SR28.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "WALNUT",
+      "rowIds": [
+        "oatmeal_pear_walnut_ing_05"
+      ],
+      "authoringLabels": [
+        "Грецкие орехи"
+      ],
+      "sourceRecordIds": [
+        "12155"
+      ],
+      "status": "ROUNDING_AND_CLASS_REVIEW",
+      "finding": "Retained English-walnut facts are 654/15.23/65.21/13.71/6.7; source notes use rounded 15.2/65.2/13.7.",
+      "requiredEvidence": "Pin edible shelled walnut state/source and rounding policy; do not turn nut-family labels into allergen approval.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "CINNAMON",
+      "rowIds": [
+        "baked_apple_tvorog_ing_02",
+        "oatmeal_pear_walnut_ing_06"
+      ],
+      "authoringLabels": [
+        "Корица молотая"
+      ],
+      "sourceRecordIds": [
+        "02010"
+      ],
+      "status": "ROUNDING_AND_CLASS_REVIEW",
+      "finding": "Source carbohydrate 80.59 is distinct from the 80.6 rounded note in one recipe. Fiber 53.1 remains separate.",
+      "requiredEvidence": "Review exact ground-cinnamon class and reference rounding; no supplement/extract substitution.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "FRESH_STRAWBERRY",
+      "rowIds": [
+        "rice_porridge_berries_ing_04"
+      ],
+      "authoringLabels": [
+        "Клубника свежая"
+      ],
+      "sourceRecordIds": [
+        "09316"
+      ],
+      "status": "SOURCE_VERSION_MISMATCH",
+      "finding": "Claimed FDC747448 reference 31/0.6/0.2/7.6/1.8 differs from SR28 raw 32/0.67/0.30/7.68/2.0. Neither source is selected from calorie closeness.",
+      "requiredEvidence": "Obtain exact claimed primary record/version and raw edible state; retain both references without correction.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "BLUEBERRY",
+      "rowIds": [
+        "rice_porridge_berries_ing_05"
+      ],
+      "authoringLabels": [
+        "Голубика свежая"
+      ],
+      "sourceRecordIds": [
+        "09050"
+      ],
+      "status": "ROUNDING_AND_CLASS_REVIEW",
+      "finding": "SR28 raw facts are 57/0.74/0.33/14.49/2.4 versus rounded 0.7/0.3/14.5 in notes.",
+      "requiredEvidence": "Pin raw blueberry source and rounding; do not assume equivalence to sweetened, dried or processed berries.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "EGG",
+      "rowIds": [
+        "pollock_patties_mashed_potato_ing_05",
+        "turkey_meatballs_rice_ing_03",
+        "buckwheat_crepes_tvorog_ing_04"
+      ],
+      "authoringLabels": [
+        "Яйцо куриное"
+      ],
+      "sourceRecordIds": [
+        "01123"
+      ],
+      "status": "DISCRETE_REFERENCE_MASS_REVIEW",
+      "finding": "Raw whole-egg nutrient vector matches the inspected SR28 reference. The source does not measure these recipe eggs: 50 g per piece is authoring reference only.",
+      "requiredEvidence": "Retain piece count and raw whole-egg class; admit discrete increments/edible mass basis independently. Do not borrow earlier conflicting cooked-egg pilot evidence.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "TURKEY",
+      "rowIds": [
+        "turkey_meatballs_rice_ing_01",
+        "turkey_buckwheat_ing_01"
+      ],
+      "authoringLabels": [
+        "Грудка индейки без кожи",
+        "Филе грудки индейки"
+      ],
+      "sourceRecordIds": [
+        "05219",
+        "05710"
+      ],
+      "status": "CUT_AND_SOURCE_FORM_REVIEW",
+      "finding": "Whole-bird breast and retail-parts breast both have 114 kcal but different protein/fat: 23.66/1.48 versus 23.34/2.33. Recorded vector matches the whole-bird record.",
+      "requiredEvidence": "Establish raw meat-only breast form/no added solution and precise source applicability; equal calories do not identify the ingredient.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "BEEF",
+      "rowIds": [
+        "beef_pearl_barley_mushrooms_ing_01"
+      ],
+      "authoringLabels": [
+        "Говядина top round постная"
+      ],
+      "sourceRecordIds": [
+        "23359"
+      ],
+      "status": "CUT_AND_SOURCE_FORM_REVIEW",
+      "finding": "Recorded vector matches a specific raw select top-round roast, boneless, separable lean only, trimmed to zero external fat. This is narrower than generic lean beef.",
+      "requiredEvidence": "Review exact cut/grade/trim applicability, edible input and source provenance; do not generalize this vector to all beef.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "RABBIT",
+      "rowIds": [
+        "rabbit_potatoes_carrots_ing_01"
+      ],
+      "authoringLabels": [
+        "Кролик домашний, съедобное мясо"
+      ],
+      "sourceRecordIds": [
+        "17177"
+      ],
+      "status": "CUT_AND_SOURCE_FORM_REVIEW",
+      "finding": "Reference matches domesticated rabbit composite cuts raw. The existing publication block and edible boneless input distinction remain.",
+      "requiredEvidence": "Review composite-cut applicability and typed edible input; bone-in package mass cannot stand for edible meat mass. Physical checks remain deferred.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "TUNA",
+      "rowIds": [
+        "tuna_tomato_pasta_ing_02"
+      ],
+      "authoringLabels": [
+        "Тунец светлый в воде, слитый"
+      ],
+      "sourceRecordIds": [
+        "15184",
+        "15121"
+      ],
+      "status": "DRAINED_PRODUCT_CLASS_REVIEW",
+      "finding": "Without-salt drained tuna is 116/25.51/0.82; the other drained light-tuna record is 86/19.44/0.96. Recorded reference matches without-salt only.",
+      "requiredEvidence": "Review exact water-packed/without-salt drained class and edible solids basis; no oil-packed/undrained substitution or invented drained measurement.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "BREADCRUMBS",
+      "rowIds": [
+        "turkey_meatballs_rice_ing_04",
+        "chicken_meatballs_buckwheat_ing_03"
+      ],
+      "authoringLabels": [
+        "Сухари панировочные без добавок"
+      ],
+      "sourceRecordIds": [
+        "18079"
+      ],
+      "status": "PROCESSED_CLASS_REVIEW",
+      "finding": "Reference matches plain dry grated breadcrumbs. This does not prove a specific ingredient list, allergen profile or equivalence of flavored/coated blends.",
+      "requiredEvidence": "Review plain dry product class/composition and canonical evidence; brand is not universally mandatory.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "BREAD",
+      "rowIds": [
+        "wholegrain_toast_hummus_cucumber_ing_01",
+        "wholegrain_toast_tvorog_tomato_ing_01"
+      ],
+      "authoringLabels": [
+        "Хлеб цельнозерновой"
+      ],
+      "sourceRecordIds": [
+        "18075"
+      ],
+      "status": "SOURCE_VERSION_AND_PROCESSED_CLASS_REVIEW",
+      "finding": "SR28 commercially prepared whole-wheat bread has total carbohydrate 42.71 versus recorded 43.1. Slices and recorded grams are not a universal slice conversion.",
+      "requiredEvidence": "Obtain exact claimed source version or reviewed product class/formulation, composition and portion basis; keep grams and presentation piece count separate.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "POLLOCK",
+      "rowIds": [
+        "pollock_patties_mashed_potato_ing_01"
+      ],
+      "authoringLabels": [
+        "Филе минтая"
+      ],
+      "sourceRecordIds": [
+        "15066",
+        "15266"
+      ],
+      "status": "FOUNDATION_PROXY_AND_FREEZE_STATE_REVIEW",
+      "finding": "Recorded FDC2768188 proxy 78.5/17.3/1/0.1 differs from both inspected SR28 raw pollock states. One SR28 comparison also lacks fiber.",
+      "requiredEvidence": "Obtain the exact primary Foundation record and species/freeze/drain state; no substitution with an older SR28 vector or missing-fiber zero.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "BUTTER",
+      "rowIds": [
+        "pollock_patties_mashed_potato_ing_08"
+      ],
+      "authoringLabels": [
+        "Масло сливочное"
+      ],
+      "sourceRecordIds": [
+        "01001",
+        "01145"
+      ],
+      "status": "SALT_AND_PRODUCT_CLASS_REVIEW",
+      "finding": "Salted and unsalted butter are distinct source descriptions even when macronutrient values are close. The recipe label does not establish the salt class.",
+      "requiredEvidence": "Pin butter class/source without transferring salt-free or salted eligibility from macros; keep existing recipe salt unchanged.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "COCOA",
+      "rowIds": [
+        "banana_natural_yogurt_cocoa_ing_03"
+      ],
+      "authoringLabels": [
+        "Какао-порошок несладкий"
+      ],
+      "sourceRecordIds": [
+        "19165",
+        "19166"
+      ],
+      "status": "PROCESSING_CLASS_REVIEW",
+      "finding": "Unprocessed-unsweetened and alkali-processed cocoa have different facts: 228/19.60/13.70/57.90/37.0 versus 220/18.10/13.10/58.30/29.8.",
+      "requiredEvidence": "Establish cocoa processing class and exact primary record; unsweetened alone does not distinguish these forms.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "FROZEN_STRAWBERRY",
+      "rowIds": [
+        "berry_tvorog_cream_ing_03"
+      ],
+      "authoringLabels": [
+        "Клубника замороженная без сахара"
+      ],
+      "sourceRecordIds": [
+        "09318",
+        "09316"
+      ],
+      "status": "FROZEN_STATE_SOURCE_MISMATCH",
+      "finding": "Recorded 32/0.67/0.3/7.68/2 matches the inspected raw record; frozen-unsweetened SR28 is 35/0.43/0.11/9.13/2.1. This is a reference collision, not proof the unverified original source is wrong.",
+      "requiredEvidence": "Obtain matching frozen unsweetened primary source/class, retain all thaw juice as declared, and review original provenance before any recalculation.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "FROZEN_CURRANT",
+      "rowIds": [
+        "berry_tvorog_cream_ing_04"
+      ],
+      "authoringLabels": [
+        "Смородина чёрная замороженная без сахара"
+      ],
+      "sourceRecordIds": [
+        "09083"
+      ],
+      "status": "MISSING_FIBER_AND_FROZEN_SOURCE",
+      "finding": "Inspected raw blackcurrant record has 63/1.40/0.41/15.38 and no nutrient291 row. It does not support the recorded fiber4.3 or frozen class.",
+      "requiredEvidence": "Obtain exact frozen-unsweetened source including fiber and retained-juice basis; missing fiber is neither zero nor the recorded4.3.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "BEANS",
+      "rowIds": [
+        "cannellini_spread_wholegrain_crispbread_ing_01"
+      ],
+      "authoringLabels": [
+        "Фасоль каннеллини консервированная"
+      ],
+      "sourceRecordIds": [],
+      "status": "EXACT_DRAINED_RINSED_SOURCE_NOT_OBTAINED",
+      "finding": "The recorded FDC2644287 drained/rinsed cannellini claim is not verified by this SR28 capture. No dry bean or generic canned-white-bean proxy is substituted.",
+      "requiredEvidence": "Obtain exact primary drained/rinsed cannellini class/product record and solids basis; preserve explicit publication block.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "LEMON",
+      "rowIds": [
+        "cannellini_spread_wholegrain_crispbread_ing_02"
+      ],
+      "authoringLabels": [
+        "Лимонный сок свежий"
+      ],
+      "sourceRecordIds": [
+        "09152"
+      ],
+      "status": "RAW_JUICE_CLASS_REVIEW",
+      "finding": "Raw lemon-juice vector matches the inspected SR28 record; grams remain source edible input, not volume or a bottled/concentrated juice identity.",
+      "requiredEvidence": "Pin raw fresh juice source/class and edible mass basis; no household-spoon conversion.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "HUMMUS",
+      "rowIds": [
+        "wholegrain_toast_hummus_cucumber_ing_02"
+      ],
+      "authoringLabels": [
+        "Хумус классический"
+      ],
+      "sourceRecordIds": [],
+      "status": "FORMULATION_OR_CLASS_NOT_ESTABLISHED",
+      "finding": "Existing notes explicitly call this a commercial plain-hummus proxy with unresolved exact product or POTOK formulation. A generic source cannot settle recipe composition.",
+      "requiredEvidence": "Review an exact appropriate product class or a complete POTOK house formulation and its evidence; retain publication block.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "CRISPBREAD",
+      "rowIds": [
+        "cannellini_spread_wholegrain_crispbread_ing_06"
+      ],
+      "authoringLabels": [
+        "Хлебцы ржаные цельнозерновые"
+      ],
+      "sourceRecordIds": [],
+      "status": "PRODUCT_BOUND_PROXY_NOT_ESTABLISHED",
+      "finding": "The 344/10/2.8/60/18 vector is explicitly product-bound proxy; rye crackers or wafers are not automatically this whole-grain rye crispbread.",
+      "requiredEvidence": "Review exact whole-grain rye class/composition, gluten evidence, fiber and gram/optional piece presentation basis; retain publication block.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "DAIRY_MILK",
+      "rowIds": [
+        "pollock_patties_mashed_potato_ing_07",
+        "rice_porridge_berries_ing_03",
+        "buckwheat_crepes_tvorog_ing_02",
+        "oatmeal_pear_walnut_ing_02"
+      ],
+      "authoringLabels": [
+        "Молоко 2%"
+      ],
+      "sourceRecordIds": [
+        "01079",
+        "01174"
+      ],
+      "status": "MILK_CLASS_VERSION_AND_VOLUME_BASIS_OPEN",
+      "finding": "The two recorded profiles differ (3.3/2 versus3.36/1.9 protein/fat). Captured historical SR28 profiles are3.30/1.98. Equal50 kcal does not resolve version/class.",
+      "requiredEvidence": "Pin exact appropriate2% milk class/version. For ML inputs use reviewed per-volume nutrition or reviewed class/product volume-to-mass basis; never global1ml=1g or an inferred cup density.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "DAIRY_NATURAL_YOGURT",
+      "rowIds": [
+        "banana_natural_yogurt_cocoa_ing_01",
+        "buckwheat_crepes_tvorog_ing_07",
+        "berry_tvorog_cream_ing_02"
+      ],
+      "authoringLabels": [
+        "Йогурт натуральный 2%"
+      ],
+      "sourceRecordIds": [
+        "01117"
+      ],
+      "status": "NATURAL_YOGURT_CLASS_NOT_ADMITTED",
+      "finding": "Recorded63/5.3/1.6/7 differs from captured low-fat yogurt63/5.25/1.55/7.04; the source description does not establish the generic nominal2% class.",
+      "requiredEvidence": "Review appropriate plain unsweetened natural-yogurt class/source, fermentation/composition and exact version; zero fiber must have admitted source basis.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "DAIRY_GREEK_YOGURT",
+      "rowIds": [
+        "greek_yogurt_banana_ing_01",
+        "greek_yogurt_apple_ing_01"
+      ],
+      "authoringLabels": [
+        "Йогурт греческий 2%"
+      ],
+      "sourceRecordIds": [
+        "01287"
+      ],
+      "status": "GREEK_YOGURT_CLASS_NOT_ADMITTED",
+      "finding": "Recorded73/9.5/2/3.6 differs from captured plain lowfat Greek73/9.95/1.92/3.94. Greek-style labels alone cannot validate a full nutrient vector.",
+      "requiredEvidence": "Review appropriate plain unsweetened Greek/strained class and source version; no automatic interchange with ordinary yogurt.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "caseId": "DAIRY_TVOROG",
+      "rowIds": [
+        "wholegrain_toast_tvorog_tomato_ing_02",
+        "baked_apple_tvorog_ing_03",
+        "cottage_cheese_pear_ing_01",
+        "tvorog_cucumber_dill_ing_01",
+        "buckwheat_crepes_tvorog_ing_06",
+        "berry_tvorog_cream_ing_01"
+      ],
+      "authoringLabels": [
+        "Творог 5%",
+        "Творог 5% сухой",
+        "Творог 5% сухой консистенции"
+      ],
+      "sourceRecordIds": [],
+      "status": "EXISTING_GENERIC_TVOROG_NO_GO_RETAINED",
+      "finding": "Owner-approved provisional authoring121/17/5/1.8/0 is not admitted generic nutrition. Earlier USMZ121/16/5/3 has unknown fiber and is a separate branded example; generic-curd search remains stopped.",
+      "requiredEvidence": "Retain prior NO-GO and generic-any-brand decision. A complete independently verified generic primary row or a separately reviewed explicit product/class decision is needed; do not borrow cottage-cheese or manufacturer fields.",
+      "nutritionApproved": false,
+      "runtimePublishable": false
+    }
+  ],
+  "canonicalIdsIssued": 0,
+  "reviewReceiptsIssued": 0,
+  "runtimePublishable": false,
+  "mayActivate": false,
+  "physicalCookingBlocksDevelopment": false,
+  "otherWorkstreamRows": 27
+}

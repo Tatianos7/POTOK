@@ -1,0 +1,46 @@
+{
+  "contract": "potok-pilot-milk-volume-review-v1",
+  "privatePilotPacketSha256": "e7ad3b7161156a444f7e2c24226226aff58fee9659dba55d1ec09546e4eae723",
+  "rows": [
+    {
+      "ingredientRowId": "pollock_patties_mashed_potato_ing_07",
+      "recordedVolumeMl": 100,
+      "recordedGramReference": 100,
+      "measuredMassG": null,
+      "reviewedConversion": null,
+      "recordedReferenceIsNotEvidenceOfMeasurement": true,
+      "route": "REVIEWED_PER_VOLUME_SOURCE_OR_REVIEWED_VOLUME_TO_MASS_BASIS_REQUIRED"
+    },
+    {
+      "ingredientRowId": "rice_porridge_berries_ing_03",
+      "recordedVolumeMl": 400,
+      "recordedGramReference": null,
+      "measuredMassG": null,
+      "reviewedConversion": null,
+      "recordedReferenceIsNotEvidenceOfMeasurement": true,
+      "route": "REVIEWED_PER_VOLUME_SOURCE_OR_REVIEWED_VOLUME_TO_MASS_BASIS_REQUIRED"
+    },
+    {
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_02",
+      "recordedVolumeMl": 150,
+      "recordedGramReference": 150,
+      "measuredMassG": null,
+      "reviewedConversion": null,
+      "recordedReferenceIsNotEvidenceOfMeasurement": true,
+      "route": "REVIEWED_PER_VOLUME_SOURCE_OR_REVIEWED_VOLUME_TO_MASS_BASIS_REQUIRED"
+    },
+    {
+      "ingredientRowId": "oatmeal_pear_walnut_ing_02",
+      "recordedVolumeMl": 300,
+      "recordedGramReference": null,
+      "measuredMassG": null,
+      "reviewedConversion": null,
+      "recordedReferenceIsNotEvidenceOfMeasurement": true,
+      "route": "REVIEWED_PER_VOLUME_SOURCE_OR_REVIEWED_VOLUME_TO_MASS_BASIS_REQUIRED"
+    }
+  ],
+  "universalDensityAssumed": false,
+  "massFilledOrReinterpreted": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}

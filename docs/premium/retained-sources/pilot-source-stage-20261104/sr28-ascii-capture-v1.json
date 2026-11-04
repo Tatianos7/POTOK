@@ -1,0 +1,1415 @@
+{
+  "contract": "potok-sr28-ascii-source-capture-v1",
+  "retrievedDate": "2026-11-04",
+  "sourceUrl": "https://www.ars.usda.gov/ARSUserFiles/80400535/DATA/SR/SR28/dnload/sr28asc.zip",
+  "officialLandingUrl": "https://www.ars.usda.gov/northeast-area/beltsville-md-bhnrc/beltsville-human-nutrition-research-center/methods-and-application-of-food-composition-laboratory/mafcl-site-pages/sr11-sr28/",
+  "archiveSha256": "8308fd1d224ef1e5331093748007180da01a7ac713cbac6a1f5bc2a03e1ee70a",
+  "version": "HISTORICAL_SR28_ARCHIVE_BYTES_NOT_CURRENT_FDC",
+  "patchOrOtherDatasetApplied": false,
+  "recordTextEncoding": "ISO_8859_1_WITH_LINE_TERMINATORS_EXCLUDED",
+  "fileHashes": {
+    "FOOD_DES.txt": "bb2047218cdad1d830da69e760386409fde3b7afabceae604c5479f280d4fa2e",
+    "NUT_DATA.txt": "506c9ee39a276ac8f53565d270597e430944ec3363adb53a91cc6ee8c061fac5",
+    "NUTR_DEF.txt": "b0d6b559eaf0cf9f9a1c13e938395e1bb3513057f3c4c0f21c046b061e599fee",
+    "SRC_CD.txt": "4351328c88c7deb275a625c3219d4aced92a265349893ce82b4cc1481c984b7e",
+    "DERIV_CD.txt": "98eeeb71a28f796bec384478c2d8e6ae0375e231a920a611de8e2fff3bdab29a",
+    "sr28_doc.pdf": "0fbcd24e595231893faae27348bf985f621990568387d9ed33f9af899f7eec9f"
+  },
+  "foodRecordCount": 8789,
+  "nutrientDefinitions": [
+    {
+      "lineNumber": 1,
+      "text": "~203~^~g~^~PROCNT~^~Protein~^~2~^~600~"
+    },
+    {
+      "lineNumber": 2,
+      "text": "~204~^~g~^~FAT~^~Total lipid (fat)~^~2~^~800~"
+    },
+    {
+      "lineNumber": 3,
+      "text": "~205~^~g~^~CHOCDF~^~Carbohydrate, by difference~^~2~^~1100~"
+    },
+    {
+      "lineNumber": 5,
+      "text": "~208~^~kcal~^~ENERC_KCAL~^~Energy~^~0~^~300~"
+    },
+    {
+      "lineNumber": 20,
+      "text": "~291~^~g~^~FIBTG~^~Fiber, total dietary~^~1~^~1200~"
+    }
+  ],
+  "records": [
+    {
+      "ndb": "02010",
+      "description": "Spices, cinnamon, ground",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 260,
+        "text": "~02010~^~0200~^~Spices, cinnamon, ground~^~CINNAMON,GROUND~^~Cassia~^~~^~Y~^~~^0^~Cinnamomum aromaticum~^6.25^1.82^8.37^2.85"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 23676,
+          "nutrientCode": "203",
+          "text": "~02010~^~203~^3.99^5^0.073^~1~^~A~^~~^~~^3^3.21^4.50^2^3.678^4.305^~2~^05/2007^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 23677,
+          "nutrientCode": "204",
+          "text": "~02010~^~204~^1.24^6^0.373^~11~^~JO~^~~^~~^4^0.33^1.92^3^0.056^2.431^~2~^05/2007^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 23678,
+          "nutrientCode": "205",
+          "text": "~02010~^~205~^80.59^0^^~4~^~NC~^~~^~~^^^^^^^~~^05/2007^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 23680,
+          "nutrientCode": "208",
+          "text": "~02010~^~208~^247^0^^~4~^~NC~^~~^~~^^^^^^^~~^05/2007^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 23693,
+          "nutrientCode": "291",
+          "text": "~02010~^~291~^53.1^9^1.217^~1~^~A~^~~^~~^6^48.7^57.0^5^50.015^56.272^~2~^02/2007^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "3.99",
+        "fat": "1.24",
+        "totalCarbohydrate": "80.59",
+        "calories": "247",
+        "fiber": "53.1"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "12155",
+      "description": "Nuts, walnuts, english",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 3690,
+        "text": "~12155~^~1200~^~Nuts, walnuts, english~^~WALNUTS,ENGLISH~^~Includes USDA commodity food A259, A257~^~~^~Y~^~Shells~^55^~Juglans regia~^5.30^3.47^8.37^4.07"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 290671,
+          "nutrientCode": "203",
+          "text": "~12155~^~203~^15.23^7^0.238^~1~^~A~^~~^~~^1^14.40^16.00^6^14.647^15.810^~4~^12/2000^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 290672,
+          "nutrientCode": "204",
+          "text": "~12155~^~204~^65.21^7^0.494^~1~^~A~^~~^~~^1^63.50^66.90^6^64.006^66.423^~4~^12/2000^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 290673,
+          "nutrientCode": "205",
+          "text": "~12155~^~205~^13.71^0^^~4~^~NC~^~~^~~^^^^^^^~~^03/2006^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 290675,
+          "nutrientCode": "208",
+          "text": "~12155~^~208~^654^0^^~4~^~NC~^~~^~~^^^^^^^~~^03/2006^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 290688,
+          "nutrientCode": "291",
+          "text": "~12155~^~291~^6.7^7^0.549^~1~^~A~^~~^~~^1^4.7^9.2^6^5.354^8.043^~4~^12/2000^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "15.23",
+        "fat": "65.21",
+        "totalCarbohydrate": "13.71",
+        "calories": "654",
+        "fiber": "6.7"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "19165",
+      "description": "Cocoa, dry powder, unsweetened",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 6195,
+        "text": "~19165~^~1900~^~Cocoa, dry powder, unsweetened~^~COCOA,DRY PDR,UNSWTND~^~~^~~^~Y~^~~^0^~~^5.63^1.83^8.37^1.33"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 480524,
+          "nutrientCode": "203",
+          "text": "~19165~^~203~^19.60^8^0.520^~1~^~~^~~^~~^^^^^^^~~^08/1991^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 480525,
+          "nutrientCode": "204",
+          "text": "~19165~^~204~^13.70^8^0.495^~1~^~~^~~^~~^^^^^^^~~^08/1991^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 480526,
+          "nutrientCode": "205",
+          "text": "~19165~^~205~^57.90^0^^~4~^~NC~^~~^~~^^^^^^^~~^05/2009^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 480528,
+          "nutrientCode": "208",
+          "text": "~19165~^~208~^228^0^^~4~^~NC~^~~^~~^^^^^^^~~^05/2009^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 480535,
+          "nutrientCode": "291",
+          "text": "~19165~^~291~^37.0^0^^~8~^~LC~^~~^~~^^^^^^^~~^06/2014^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "19.60",
+        "fat": "13.70",
+        "totalCarbohydrate": "57.90",
+        "calories": "228",
+        "fiber": "37.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "19166",
+      "description": "Cocoa, dry powder, unsweetened, processed with alkali",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 6196,
+        "text": "~19166~^~1900~^~Cocoa, dry powder, unsweetened, processed with alkali~^~COCOA,DRY PDR,UNSWTND,PROC W/ALKALI~^~Dutch cocoa~^~~^~Y~^~~^0^~~^5.63^1.83^8.37^1.33"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 480613,
+          "nutrientCode": "203",
+          "text": "~19166~^~203~^18.10^2^^~1~^~~^~~^~~^^^^^^^~~^08/1991^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 480614,
+          "nutrientCode": "204",
+          "text": "~19166~^~204~^13.10^2^^~1~^~~^~~^~~^^^^^^^~~^08/1991^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 480615,
+          "nutrientCode": "205",
+          "text": "~19166~^~205~^58.30^0^^~4~^~NC~^~~^~~^^^^^^^~~^05/2009^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 480617,
+          "nutrientCode": "208",
+          "text": "~19166~^~208~^220^0^^~4~^~NC~^~~^~~^^^^^^^~~^05/2009^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 480624,
+          "nutrientCode": "291",
+          "text": "~19166~^~291~^29.8^0^^~1~^~~^~~^~~^^^^^^^~~^08/1991^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "18.10",
+        "fat": "13.10",
+        "totalCarbohydrate": "58.30",
+        "calories": "220",
+        "fiber": "29.8"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "09152",
+      "description": "Lemon juice, raw",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 2256,
+        "text": "~09152~^~0900~^~Lemon juice, raw~^~LEMON JUICE,RAW~^~~^~~^~Y~^~~^0^~~^6.25^3.36^8.37^2.70"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 170329,
+          "nutrientCode": "203",
+          "text": "~09152~^~203~^0.35^6^0.003^~1~^~A~^~~^~~^2^0.30^0.40^1^0.307^0.387^~2~^11/2009^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 170330,
+          "nutrientCode": "204",
+          "text": "~09152~^~204~^0.24^6^0.164^~1~^~A~^~~^~~^2^0.05^0.48^1^-1.842^2.319^~1, 2~^11/2009^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 170331,
+          "nutrientCode": "205",
+          "text": "~09152~^~205~^6.90^0^^~4~^~NC~^~~^~~^^^^^^^~~^11/2009^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 170333,
+          "nutrientCode": "208",
+          "text": "~09152~^~208~^22^0^^~4~^~NC~^~~^~~^^^^^^^~~^11/2009^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 170347,
+          "nutrientCode": "291",
+          "text": "~09152~^~291~^0.3^6^0.092^~1~^~A~^~~^~~^2^0.1^0.5^1^-0.884^1.441^~1, 2~^11/2009^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "0.35",
+        "fat": "0.24",
+        "totalCarbohydrate": "6.90",
+        "calories": "22",
+        "fiber": "0.3"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "09316",
+      "description": "Strawberries, raw",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 2385,
+        "text": "~09316~^~0900~^~Strawberries, raw~^~STRAWBERRIES,RAW~^~~^~~^~Y~^~Caps and stems~^6^~Fragaria X ananassa~^6.25^3.36^8.37^3.60"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 180468,
+          "nutrientCode": "203",
+          "text": "~09316~^~203~^0.67^19^0.026^~1~^~A~^~~^~~^5^0.51^0.89^4^0.596^0.740^~2~^04/2003^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 180469,
+          "nutrientCode": "204",
+          "text": "~09316~^~204~^0.30^15^0.047^~1~^~A~^~~^~~^5^0.13^0.50^4^0.173^0.436^~2~^04/2003^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 180470,
+          "nutrientCode": "205",
+          "text": "~09316~^~205~^7.68^0^^~4~^~NC~^~~^~~^^^^^^^~~^05/2006^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 180472,
+          "nutrientCode": "208",
+          "text": "~09316~^~208~^32^0^^~4~^~NC~^~~^~~^^^^^^^~~^05/2006^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 180486,
+          "nutrientCode": "291",
+          "text": "~09316~^~291~^2.0^21^0.152^~1~^~A~^~~^~~^7^1.1^2.8^6^1.624^2.366^~2~^04/2003^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "0.67",
+        "fat": "0.30",
+        "totalCarbohydrate": "7.68",
+        "calories": "32",
+        "fiber": "2.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "09318",
+      "description": "Strawberries, frozen, unsweetened",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 2387,
+        "text": "~09318~^~0900~^~Strawberries, frozen, unsweetened~^~STRAWBERRIES,FRZ,UNSWTND~^~~^~~^~Y~^~~^0^~~^6.25^3.36^8.37^3.60"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 180666,
+          "nutrientCode": "203",
+          "text": "~09318~^~203~^0.43^12^0.054^~1~^~~^~~^~~^^^^^^^~~^08/1982^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 180667,
+          "nutrientCode": "204",
+          "text": "~09318~^~204~^0.11^6^0.015^~1~^~~^~~^~~^^^^^^^~~^08/1982^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 180668,
+          "nutrientCode": "205",
+          "text": "~09318~^~205~^9.13^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/1982^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 180670,
+          "nutrientCode": "208",
+          "text": "~09318~^~208~^35^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/1982^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 180680,
+          "nutrientCode": "291",
+          "text": "~09318~^~291~^2.1^0^^~4~^~~^~~^~~^^^^^^^~~^08/1982^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "0.43",
+        "fat": "0.11",
+        "totalCarbohydrate": "9.13",
+        "calories": "35",
+        "fiber": "2.1"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "09083",
+      "description": "Currants, european black, raw",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 2195,
+        "text": "~09083~^~0900~^~Currants, european black, raw~^~CURRANTS,EUROPEAN BLACK,RAW~^~~^~~^~~^~Stems~^2^~Ribes nigrum~^6.25^3.36^8.37^3.60"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 165975,
+          "nutrientCode": "203",
+          "text": "~09083~^~203~^1.40^2^^~1~^~~^~~^~~^^^^^^^~~^08/1982^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 165976,
+          "nutrientCode": "204",
+          "text": "~09083~^~204~^0.41^2^^~1~^~~^~~^~~^^^^^^^~~^08/1982^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 165977,
+          "nutrientCode": "205",
+          "text": "~09083~^~205~^15.38^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/1982^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 165979,
+          "nutrientCode": "208",
+          "text": "~09083~^~208~^63^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/1982^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "1.40",
+        "fat": "0.41",
+        "totalCarbohydrate": "15.38",
+        "calories": "63",
+        "fiber": null
+      },
+      "missingNutrientCodes": [
+        "291"
+      ],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "09050",
+      "description": "Blueberries, raw",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 2166,
+        "text": "~09050~^~0900~^~Blueberries, raw~^~BLUEBERRIES,RAW~^~~^~~^~Y~^~Stems and green or spoiled berries~^5^~Vaccinium spp.~^6.25^3.36^8.37^3.60"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 163843,
+          "nutrientCode": "203",
+          "text": "~09050~^~203~^0.74^12^0.019^~1~^~A~^~~^~~^3^0.60^0.97^1^0.500^0.975^~2~^09/2002^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 163844,
+          "nutrientCode": "204",
+          "text": "~09050~^~204~^0.33^12^0.018^~1~^~A~^~~^~~^3^0.20^0.50^1^0.106^0.560^~2~^09/2002^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 163845,
+          "nutrientCode": "205",
+          "text": "~09050~^~205~^14.49^0^^~4~^~NC~^~~^~~^^^^^^^~~^06/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 163847,
+          "nutrientCode": "208",
+          "text": "~09050~^~208~^57^0^^~4~^~NC~^~~^~~^^^^^^^~~^06/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 163861,
+          "nutrientCode": "291",
+          "text": "~09050~^~291~^2.4^4^0.124^~1~^~A~^~~^~~^1^2.3^2.8^3^2.053^2.842^~2, 3~^09/2002^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "0.74",
+        "fat": "0.33",
+        "totalCarbohydrate": "14.49",
+        "calories": "57",
+        "fiber": "2.4"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "01117",
+      "description": "Yogurt, plain, low fat, 12 grams protein per 8 ounce",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 106,
+        "text": "~01117~^~0100~^~Yogurt, plain, low fat, 12 grams protein per 8 ounce~^~YOGURT,PLN,LOFAT,12 GRAMS PROT PER 8 OZ~^~~^~~^~Y~^~~^0^~~^6.38^4.27^8.79^3.87"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 10012,
+          "nutrientCode": "203",
+          "text": "~01117~^~203~^5.25^30^0.104^~1~^~~^~~^~~^^^^^^^~~^11/1976^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 10013,
+          "nutrientCode": "204",
+          "text": "~01117~^~204~^1.55^38^0.072^~1~^~~^~~^~~^^^^^^^~~^11/1976^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 10014,
+          "nutrientCode": "205",
+          "text": "~01117~^~205~^7.04^0^^~4~^~NC~^~~^~~^^^^^^^~~^11/1976^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 10016,
+          "nutrientCode": "208",
+          "text": "~01117~^~208~^63^0^^~4~^~NC~^~~^~~^^^^^^^~~^02/2009^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 10023,
+          "nutrientCode": "291",
+          "text": "~01117~^~291~^0.0^0^^~4~^~~^~~^~~^^^^^^^~~^11/1976^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "5.25",
+        "fat": "1.55",
+        "totalCarbohydrate": "7.04",
+        "calories": "63",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "01287",
+      "description": "Yogurt, Greek, plain, lowfat",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 235,
+        "text": "~01287~^~0100~^~Yogurt, Greek, plain, lowfat~^~YOGURT,GREEK,PLN,LOWFAT~^~~^~~^~Y~^~~^0^~~^^^^"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 21502,
+          "nutrientCode": "203",
+          "text": "~01287~^~203~^9.95^5^0.177^~1~^~A~^~~^~~^1^9.54^10.40^4^9.462^10.442^~2, 3~^05/2015^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 21503,
+          "nutrientCode": "204",
+          "text": "~01287~^~204~^1.92^5^0.037^~1~^~A~^~~^~~^1^1.80^2.00^4^1.816^2.024^~2, 3~^05/2015^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 21504,
+          "nutrientCode": "205",
+          "text": "~01287~^~205~^3.94^0^^~4~^~NC~^~~^~~^^^^^^^~~^05/2015^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 21506,
+          "nutrientCode": "208",
+          "text": "~01287~^~208~^73^0^^~4~^~NC~^~~^~~^^^^^^^~~^05/2015^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 21520,
+          "nutrientCode": "291",
+          "text": "~01287~^~291~^0.0^0^^~7~^~Z~^~~^~~^^^^^^^~~^05/2015^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "9.95",
+        "fat": "1.92",
+        "totalCarbohydrate": "3.94",
+        "calories": "73",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "01079",
+      "description": "Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 72,
+        "text": "~01079~^~0100~^~Milk, reduced fat, fluid, 2% milkfat, with added vitamin A and vitamin D~^~MILK,RED FAT,FLUID,2% MILKFAT,W/ ADDED VIT A & VITAMIN D~^~~^~~^~Y~^~~^0^~~^6.38^4.27^8.79^3.87"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 6903,
+          "nutrientCode": "203",
+          "text": "~01079~^~203~^3.30^13^0.033^~1~^~A~^~~^~~^2^3.18^3.61^11^3.231^3.377^~2, 3~^03/2003^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 6904,
+          "nutrientCode": "204",
+          "text": "~01079~^~204~^1.98^14^0.008^~11~^~JO~^~~^~~^6^1.90^2.06^8^1.959^1.996^~2, 3~^12/2008^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 6905,
+          "nutrientCode": "205",
+          "text": "~01079~^~205~^4.80^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 6907,
+          "nutrientCode": "208",
+          "text": "~01079~^~208~^50^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 6920,
+          "nutrientCode": "291",
+          "text": "~01079~^~291~^0.0^0^^~4~^~~^~~^~~^^^^^^^~~^05/2009^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "3.30",
+        "fat": "1.98",
+        "totalCarbohydrate": "4.80",
+        "calories": "50",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "01174",
+      "description": "Milk, reduced fat, fluid, 2% milkfat, without added vitamin A and vitamin D",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 153,
+        "text": "~01174~^~0100~^~Milk, reduced fat, fluid, 2% milkfat, without added vitamin A and vitamin D~^~MILK,RED FAT,FLUID,2% MILKFAT,WO/ ADDED VIT A & VIT D~^~~^~~^~Y~^~~^0^~~^0.00^4.27^8.79^3.87"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 14521,
+          "nutrientCode": "203",
+          "text": "~01174~^~203~^3.30^13^0.033^~1~^~A~^~~^~~^2^3.18^3.61^11^3.231^3.377^~2, 3~^12/2008^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 14522,
+          "nutrientCode": "204",
+          "text": "~01174~^~204~^1.98^14^0.008^~11~^~JO~^~~^~~^6^1.90^2.06^8^1.959^1.996^~2, 3~^12/2008^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 14523,
+          "nutrientCode": "205",
+          "text": "~01174~^~205~^4.80^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 14525,
+          "nutrientCode": "208",
+          "text": "~01174~^~208~^50^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 14538,
+          "nutrientCode": "291",
+          "text": "~01174~^~291~^0.0^0^^~7~^~Z~^~~^~~^^^^^^^~~^12/2008^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "3.30",
+        "fat": "1.98",
+        "totalCarbohydrate": "4.80",
+        "calories": "50",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "01123",
+      "description": "Egg, whole, raw, fresh",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 112,
+        "text": "~01123~^~0100~^~Egg, whole, raw, fresh~^~EGG,WHL,RAW,FRSH~^~~^~~^~Y~^~Shell~^12^~~^6.25^4.36^9.02^3.68"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 10534,
+          "nutrientCode": "203",
+          "text": "~01123~^~203~^12.56^12^0.102^~1~^~A~^~~^~~^1^11.81^13.06^11^12.333^12.782^~2, 3~^08/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 10535,
+          "nutrientCode": "204",
+          "text": "~01123~^~204~^9.51^12^0.115^~1~^~A~^~~^~~^1^8.78^10.30^11^9.254^9.759^~2, 3~^08/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 10536,
+          "nutrientCode": "205",
+          "text": "~01123~^~205~^0.72^0^^~4~^~NC~^~~^~~^^^^^^^~~^09/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 10538,
+          "nutrientCode": "208",
+          "text": "~01123~^~208~^143^0^^~4~^~NC~^~~^~~^^^^^^^~~^03/2011^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 10551,
+          "nutrientCode": "291",
+          "text": "~01123~^~291~^0.0^1^^~1~^~A~^~~^~~^^^^^^^~~^11/2002^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "12.56",
+        "fat": "9.51",
+        "totalCarbohydrate": "0.72",
+        "calories": "143",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "01001",
+      "description": "Butter, salted",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 1,
+        "text": "~01001~^~0100~^~Butter, salted~^~BUTTER,WITH SALT~^~~^~~^~Y~^~~^0^~~^6.38^4.27^8.79^3.87"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 1,
+          "nutrientCode": "203",
+          "text": "~01001~^~203~^0.85^16^0.074^~1~^~~^~~^~~^^^^^^^~~^11/1976^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 2,
+          "nutrientCode": "204",
+          "text": "~01001~^~204~^81.11^580^0.065^~1~^~~^~~^~~^^^^^^^~~^11/1976^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 3,
+          "nutrientCode": "205",
+          "text": "~01001~^~205~^0.06^0^^~4~^~NC~^~~^~~^^^^^^^~~^11/1976^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 5,
+          "nutrientCode": "208",
+          "text": "~01001~^~208~^717^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 12,
+          "nutrientCode": "291",
+          "text": "~01001~^~291~^0.0^0^^~4~^~~^~~^~~^^^^^^^~~^^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "0.85",
+        "fat": "81.11",
+        "totalCarbohydrate": "0.06",
+        "calories": "717",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "01145",
+      "description": "Butter, without salt",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 132,
+        "text": "~01145~^~0100~^~Butter, without salt~^~BUTTER,WITHOUT SALT~^~~^~~^~Y~^~~^0^~~^6.38^4.27^8.79^3.87"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 12564,
+          "nutrientCode": "203",
+          "text": "~01145~^~203~^0.85^0^^~1~^~~^~~^~~^^^^^^^~~^11/1976^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 12565,
+          "nutrientCode": "204",
+          "text": "~01145~^~204~^81.11^0^^~1~^~~^~~^~~^^^^^^^~~^11/1976^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 12566,
+          "nutrientCode": "205",
+          "text": "~01145~^~205~^0.06^0^^~4~^~NC~^~~^~~^^^^^^^~~^11/1976^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 12568,
+          "nutrientCode": "208",
+          "text": "~01145~^~208~^717^0^^~4~^~NC~^~~^~~^^^^^^^~~^02/2009^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 12575,
+          "nutrientCode": "291",
+          "text": "~01145~^~291~^0.0^0^^~7~^~~^~~^~~^^^^^^^~~^11/1976^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "0.85",
+        "fat": "81.11",
+        "totalCarbohydrate": "0.06",
+        "calories": "717",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "05219",
+      "description": "Turkey, breast, from whole bird, meat only, raw",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 1020,
+        "text": "~05219~^~0500~^~Turkey, breast, from whole bird, meat only, raw~^~TURKEY,BREAST,FROM WHL BIRD,MEAT ONLY,RAW~^~~^~~^~~^~Bone and connective tissue 12%, Skin and separable fat 10%~^22^~~^6.25^4.27^9.02^3.87"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 84974,
+          "nutrientCode": "203",
+          "text": "~05219~^~203~^23.66^4^0.349^~1~^~A~^~~^~~^^22.95^24.38^^^^~~^01/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 84975,
+          "nutrientCode": "204",
+          "text": "~05219~^~204~^1.48^4^0.064^~1~^~A~^~~^~~^^1.37^1.61^^^^~~^01/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 84976,
+          "nutrientCode": "205",
+          "text": "~05219~^~205~^0.14^0^^~4~^~NR~^~~^~~^^^^^^^~~^06/2014^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 84978,
+          "nutrientCode": "208",
+          "text": "~05219~^~208~^114^0^^~4~^~NC~^~~^~~^^^^^^^~~^01/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 84992,
+          "nutrientCode": "291",
+          "text": "~05219~^~291~^0.0^0^^~7~^~Z~^~~^~~^^^^^^^~~^08/1979^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "23.66",
+        "fat": "1.48",
+        "totalCarbohydrate": "0.14",
+        "calories": "114",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "05710",
+      "description": "Turkey, retail parts, breast, meat only, raw",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 1166,
+        "text": "~05710~^~0500~^~Turkey, retail parts, breast, meat only, raw~^~TURKEY,RTL PARTS,BREAST,MEAT ONLY,RAW~^~~^~~^~~^~Bone and connective tissue 14%, Skin and separable fat 11%~^25^~~^^^^"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 99965,
+          "nutrientCode": "203",
+          "text": "~05710~^~203~^23.34^3^0.237^~1~^~A~^~~^~~^1^22.99^23.79^2^22.317^24.357^~2, 3~^01/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 99966,
+          "nutrientCode": "204",
+          "text": "~05710~^~204~^2.33^3^0.109^~1~^~A~^~~^~~^1^2.11^2.46^2^1.856^2.797^~2, 3~^01/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 99967,
+          "nutrientCode": "205",
+          "text": "~05710~^~205~^0.00^0^^~4~^~NC~^~~^~~^^^^^^^~~^01/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 99969,
+          "nutrientCode": "208",
+          "text": "~05710~^~208~^114^0^^~4~^~NC~^~~^~~^^^^^^^~~^01/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 99976,
+          "nutrientCode": "291",
+          "text": "~05710~^~291~^0.0^0^^~7~^~Z~^~~^~~^^^^^^^~~^01/2013^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "23.34",
+        "fat": "2.33",
+        "totalCarbohydrate": "0.00",
+        "calories": "114",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "23359",
+      "description": "Beef, round, top round roast, boneless, separable lean only, trimmed to 0\" fat, select, raw",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 7440,
+        "text": "~23359~^~1300~^~Beef, round, top round roast, boneless, separable lean only, trimmed to 0\" fat, select, raw~^~BEEF,RND,TOP RND RST,BNLESS,LN,0\" FAT,SEL,RAW~^~Top Round Roast, URMIS # 1551~^~~^~~^~Connective tissue 2%~^2^~~^6.25^^^"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 585108,
+          "nutrientCode": "203",
+          "text": "~23359~^~203~^23.59^12^0.379^~1~^~AR~^~~^~~^^^^^^^~~^04/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 585109,
+          "nutrientCode": "204",
+          "text": "~23359~^~204~^2.45^12^0.499^~1~^~AR~^~~^~~^^^^^^^~~^04/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 585110,
+          "nutrientCode": "205",
+          "text": "~23359~^~205~^0.00^0^^~4~^~NC~^~~^~~^^^^^^^~~^04/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 585112,
+          "nutrientCode": "208",
+          "text": "~23359~^~208~^116^0^^~4~^~NC~^~~^~~^^^^^^^~~^04/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 585119,
+          "nutrientCode": "291",
+          "text": "~23359~^~291~^0.0^0^^~7~^~Z~^~~^~~^^^^^^^~~^04/2013^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "23.59",
+        "fat": "2.45",
+        "totalCarbohydrate": "0.00",
+        "calories": "116",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "17177",
+      "description": "Game meat, rabbit, domesticated, composite of cuts, raw",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 5276,
+        "text": "~17177~^~1700~^~Game meat, rabbit, domesticated, composite of cuts, raw~^~GAME MEAT,RABBIT,DOMESTICATED,COMP OF CUTS,RAW~^~~^~~^~~^~~^0^~Oryctolagus spp.~^6.25^4.27^9.02^3.87"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 408753,
+          "nutrientCode": "203",
+          "text": "~17177~^~203~^20.05^60^0.260^~1~^~~^~~^~~^^^^^^^~~^04/1989^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 408754,
+          "nutrientCode": "204",
+          "text": "~17177~^~204~^5.55^62^0.339^~1~^~~^~~^~~^^^^^^^~~^04/1989^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 408755,
+          "nutrientCode": "205",
+          "text": "~17177~^~205~^0.00^0^^~7~^~Z~^~~^~~^^^^^^^~~^04/1989^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 408757,
+          "nutrientCode": "208",
+          "text": "~17177~^~208~^136^0^^~4~^~NC~^~~^~~^^^^^^^~~^04/1989^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 408760,
+          "nutrientCode": "291",
+          "text": "~17177~^~291~^0.0^0^^~7~^~Z~^~~^~~^^^^^^^~~^04/1989^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "20.05",
+        "fat": "5.55",
+        "totalCarbohydrate": "0.00",
+        "calories": "136",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "18079",
+      "description": "Bread crumbs, dry, grated, plain",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 5622,
+        "text": "~18079~^~1800~^~Bread crumbs, dry, grated, plain~^~BREAD CRUMBS,DRY,GRATED,PLN~^~~^~~^~Y~^~~^0^~~^5.70^4.00^8.80^4.10"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 437825,
+          "nutrientCode": "203",
+          "text": "~18079~^~203~^13.35^6^0.707^~1~^~A~^~~^~~^1^9.92^14.49^5^11.536^15.170^~2, 3~^01/2003^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 437826,
+          "nutrientCode": "204",
+          "text": "~18079~^~204~^5.30^6^0.106^~1~^~A~^~~^~~^1^4.81^5.57^5^5.023^5.570^~2, 3~^01/2003^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 437827,
+          "nutrientCode": "205",
+          "text": "~18079~^~205~^71.98^0^^~4~^~NC~^~~^~~^^^^^^^~~^01/2007^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 437829,
+          "nutrientCode": "208",
+          "text": "~18079~^~208~^395^0^^~4~^~NC~^~~^~~^^^^^^^~~^01/2007^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 437843,
+          "nutrientCode": "291",
+          "text": "~18079~^~291~^4.5^6^0.086^~1~^~A~^~~^~~^1^4.3^4.8^5^4.257^4.697^~2, 3~^01/2003^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "13.35",
+        "fat": "5.30",
+        "totalCarbohydrate": "71.98",
+        "calories": "395",
+        "fiber": "4.5"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "18075",
+      "description": "Bread, whole-wheat, commercially prepared",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 5618,
+        "text": "~18075~^~1800~^~Bread, whole-wheat, commercially prepared~^~BREAD,WHOLE-WHEAT,COMM. PREPARED~^~~^~~^~Y~^~~^0^~~^6.25^^^"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 437437,
+          "nutrientCode": "203",
+          "text": "~18075~^~203~^12.45^10^0.241^~1~^~A~^~~^~~^1^11.31^13.56^3^11.679^13.221^~2, 3~^04/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 437438,
+          "nutrientCode": "204",
+          "text": "~18075~^~204~^3.50^10^0.072^~1~^~A~^~~^~~^1^3.15^4.00^8^3.338^3.672^~2, 3~^04/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 437439,
+          "nutrientCode": "205",
+          "text": "~18075~^~205~^42.71^0^^~4~^~NC~^~~^~~^^^^^^^~~^04/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 437441,
+          "nutrientCode": "208",
+          "text": "~18075~^~208~^252^0^^~4~^~NC~^~~^~~^^^^^^^~~^04/2013^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 437455,
+          "nutrientCode": "291",
+          "text": "~18075~^~291~^6.0^7^0.391^~1~^~A~^~~^~~^1^5.2^8.3^3^4.783^7.261^~2, 3~^04/2013^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "12.45",
+        "fat": "3.50",
+        "totalCarbohydrate": "42.71",
+        "calories": "252",
+        "fiber": "6.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "15066",
+      "description": "Fish, pollock, Alaska, raw (may have been previously frozen)",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 4548,
+        "text": "~15066~^~1500~^~Fish, pollock, Alaska, raw (may have been previously frozen)~^~FISH,POLLOCK,ALASKA,RAW (MAY HAVE BEEN PREVIOUSLY FROZEN)~^~~^~~^~Y~^~~^0^~Theragra chalcogramma (Pallas)~^6.25^4.27^9.02^3.87"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 357798,
+          "nutrientCode": "203",
+          "text": "~15066~^~203~^12.19^8^1.276^~1~^~A~^~~^~~^1^8.75^18.63^7^9.170^15.205^~2, 3~^07/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 357799,
+          "nutrientCode": "204",
+          "text": "~15066~^~204~^0.41^8^0.035^~1~^~A~^~~^~~^1^0.21^0.51^7^0.325^0.488^~2, 3~^07/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 357800,
+          "nutrientCode": "205",
+          "text": "~15066~^~205~^0.00^0^^~7~^~Z~^~~^~~^^^^^^^~~^09/1987^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 357802,
+          "nutrientCode": "208",
+          "text": "~15066~^~208~^56^0^^~4~^~NC~^~~^~~^^^^^^^~~^07/2010^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 357814,
+          "nutrientCode": "291",
+          "text": "~15066~^~291~^0.0^0^^~7~^~Z~^~~^~~^^^^^^^~~^09/1987^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "12.19",
+        "fat": "0.41",
+        "totalCarbohydrate": "0.00",
+        "calories": "56",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "15266",
+      "description": "Fish, pollock, Alaska, raw (not previously frozen)",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 4735,
+        "text": "~15266~^~1500~^~Fish, pollock, Alaska, raw (not previously frozen)~^~FISH,POLLOCK,ALASKA,RAW (NOT PREVIOUSLY FROZEN)~^~~^~~^~~^~~^0^~~^^^^"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 373366,
+          "nutrientCode": "203",
+          "text": "~15266~^~203~^17.17^3^^~1~^~A~^~~^~~^1^16.88^17.56^^^^~2~^08/2012^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 373367,
+          "nutrientCode": "204",
+          "text": "~15266~^~204~^0.19^3^^~1~^~A~^~~^~~^1^0.18^0.21^^^^~2~^08/2012^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 373368,
+          "nutrientCode": "205",
+          "text": "~15266~^~205~^0.00^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/2012^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 373370,
+          "nutrientCode": "208",
+          "text": "~15266~^~208~^70^0^^~4~^~NC~^~~^~~^^^^^^^~~^08/2012^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "17.17",
+        "fat": "0.19",
+        "totalCarbohydrate": "0.00",
+        "calories": "70",
+        "fiber": null
+      },
+      "missingNutrientCodes": [
+        "291"
+      ],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "15121",
+      "description": "Fish, tuna, light, canned in water, drained solids",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 4602,
+        "text": "~15121~^~1500~^~Fish, tuna, light, canned in water, drained solids~^~FISH,TUNA,LT,CND IN H2O,DRND SOL~^~~^~~^~Y~^~~^0^~~^^^^"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 362561,
+          "nutrientCode": "203",
+          "text": "~15121~^~203~^19.44^24^0.167^~1~^~A~^~~^~~^1^16.00^21.00^17^19.088^19.795^~2, 3~^06/2012^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 362562,
+          "nutrientCode": "204",
+          "text": "~15121~^~204~^0.96^24^0.022^~1~^~A~^~~^~~^1^0.82^1.27^17^0.908^1.004^~2, 3~^06/2012^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 362563,
+          "nutrientCode": "205",
+          "text": "~15121~^~205~^0.00^0^^~7~^~Z~^~~^~~^^^^^^^~~^09/1987^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 362565,
+          "nutrientCode": "208",
+          "text": "~15121~^~208~^86^0^^~4~^~NC~^~~^~~^^^^^^^~~^06/2012^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 362572,
+          "nutrientCode": "291",
+          "text": "~15121~^~291~^0.0^0^^~7~^~Z~^~~^~~^^^^^^^~~^09/1987^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "19.44",
+        "fat": "0.96",
+        "totalCarbohydrate": "0.00",
+        "calories": "86",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "15184",
+      "description": "Fish, tuna, light, canned in water, without salt, drained solids",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 4662,
+        "text": "~15184~^~1500~^~Fish, tuna, light, canned in water, without salt, drained solids~^~TUNA,LT,CND IN H2O,WO/SALT,DRND SOL~^~~^~~^~~^~~^0^~~^6.25^4.27^9.02^3.87"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 367769,
+          "nutrientCode": "203",
+          "text": "~15184~^~203~^25.51^0^^~1~^~A~^~~^~~^^^^^^^~~^03/1997^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 367770,
+          "nutrientCode": "204",
+          "text": "~15184~^~204~^0.82^0^^~1~^~A~^~~^~~^^^^^^^~~^03/1997^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 367771,
+          "nutrientCode": "205",
+          "text": "~15184~^~205~^0.00^0^^~7~^~Z~^~~^~~^^^^^^^~~^09/1987^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 367773,
+          "nutrientCode": "208",
+          "text": "~15184~^~208~^116^0^^~4~^~NC~^~~^~~^^^^^^^~~^03/2006^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 367777,
+          "nutrientCode": "291",
+          "text": "~15184~^~291~^0.0^0^^~7~^~Z~^~~^~~^^^^^^^~~^09/1987^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "25.51",
+        "fat": "0.82",
+        "totalCarbohydrate": "0.00",
+        "calories": "116",
+        "fiber": "0.0"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    },
+    {
+      "ndb": "08120",
+      "description": "Cereals, oats, regular and quick, not fortified, dry",
+      "foodRecord": {
+        "file": "FOOD_DES.txt",
+        "lineNumber": 1847,
+        "text": "~08120~^~0800~^~Cereals, oats, regular and quick, not fortified, dry~^~CEREALS,OATS,REG & QUICK,NOT FORT,DRY~^~oatmeal, old-fashioned oats, rolled oats~^~~^~Y~^~~^0^~~^5.83^3.46^8.37^4.12"
+      },
+      "nutrientRecords": [
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 144214,
+          "nutrientCode": "203",
+          "text": "~08120~^~203~^13.15^4^0.053^~1~^~A~^~~^~~^1^13.00^13.24^3^12.986^13.324^~2, 3~^11/2006^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 144215,
+          "nutrientCode": "204",
+          "text": "~08120~^~204~^6.52^4^0.182^~1~^~A~^~~^~~^1^6.20^6.92^3^5.944^7.106^~2, 3~^10/2006^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 144216,
+          "nutrientCode": "205",
+          "text": "~08120~^~205~^67.70^0^^~4~^~NC~^~~^~~^^^^^^^~~^11/2006^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 144218,
+          "nutrientCode": "208",
+          "text": "~08120~^~208~^379^0^^~4~^~NC~^~~^~~^^^^^^^~~^11/2006^"
+        },
+        {
+          "file": "NUT_DATA.txt",
+          "lineNumber": 144232,
+          "nutrientCode": "291",
+          "text": "~08120~^~291~^10.1^4^0.473^~1~^~A~^~~^~~^1^8.8^11.0^3^8.621^11.628^~2, 3~^10/2006^"
+        }
+      ],
+      "factsPer100GEdible": {
+        "protein": "13.15",
+        "fat": "6.52",
+        "totalCarbohydrate": "67.70",
+        "calories": "379",
+        "fiber": "10.1"
+      },
+      "missingNutrientCodes": [],
+      "fdcCrosswalkVerified": false,
+      "usedForRecipeRecalculation": false
+    }
+  ],
+  "hashesDoNotProveReview": true,
+  "runtimePublishable": false,
+  "mayActivate": false
+}
