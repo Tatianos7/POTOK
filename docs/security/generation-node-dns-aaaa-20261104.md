@@ -34,7 +34,8 @@ IP hosts. Native TLS verification authenticates that hostname, not the numeric I
 
 This distinction is tested with a real TLS server on IPv6 loopback: the correct
 named certificate succeeds; a wrong DNS name or wrong root CA fails. Synthetic
-private keys remain only in test memory. This does not prove a real Staging login.
+private keys remain only in test memory. Those automated TLS tests alone do not
+prove a real Staging login; the subsequent owner-local acceptance is recorded below.
 
 The output additionally reports the selected mode and a fixed `failureStage`
 (`CONFIG`, `DNS`, `ACQUIRE`, `QUERY`, `VERIFY` or `CLOSE`) on failure/stop. It never
@@ -70,3 +71,24 @@ Automated validation covers resolver reply/timeout/abort contracts, exact TLS-na
 preservation, native IPv6 TLS rejection cases, fixed SQL, default SYSTEM behavior,
 explicit mode, invalid mode, cancellation and no fallback/pool acquisition on DNS
 failure. No paid service, new provider or deployment is introduced.
+
+## Owner-local connection acceptance, 2026-11-04
+
+The owner ran the updated checker twice on macOS / Node 24.11.1. Both reports
+returned PASS, DNS_AAAA, null failureStage, both expected roles passed with empty
+failedChecks, and mayActivate:false. The exact sanitized reports are retained in
+`generation-node-owner-connection-observation-20261104.json` beside this document.
+They are owner-reported terminal observations, not an agent replay or a verified
+checksum measurement on the owner's machine.
+
+This establishes actual Node/TLS login and the reviewed read-only role-metadata
+checks from that laptop/network at the time of the two runs. No passwords, config
+contents, numeric server addresses, business rows or local personal paths are
+stored in the observation. It does not establish worst-case load, worker hosting,
+source readiness, an ordinary-account generation flow or permission to activate.
+
+The read-only transport gate is now complete for this laptop. No more repeated
+connection probes are needed without a change or failure. Next, separately prepare
+the same explicit resolution mode for the generation worker (which still uses
+SYSTEM), review runtime-source readiness, and prepare one scoped Staging test.
+A real generation write and generator activation remain separate approval gates.
