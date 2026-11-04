@@ -10,3 +10,9 @@
 - Preserve the domain invariant `PLAN != FACT`; a planned meal never proves consumption.
 - Preserve Graph v1 compatibility. Graph v2 is separately versioned and must not silently replace Graph v1.
 - The trusted generator and Edge execution remain inactive unless the owner explicitly approves activation.
+
+## Accelerated AI-assisted development
+
+- For owner-approved bounded development stages, follow `docs/ai/accelerated-development-workflow-v1.md` in addition to this contract. A stage may contain up to four related tasks; do not seek approval for every noncritical implementation step within its approved scope.
+- This workflow never authorizes merges, deployments, Supabase/STAGING writes, migrations, security policy changes, or generator activation. Explicit separate owner approval remains required.
+- GitHub is the current collaboration channel; any older Codex-specific instruction applies only if Codex is actually used. All AI-assisted changes use isolated branches and Draft PRs, never direct commits to `master`.
