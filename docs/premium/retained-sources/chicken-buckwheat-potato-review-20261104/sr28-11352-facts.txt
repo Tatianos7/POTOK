@@ -1,0 +1,7 @@
+USDA ARS, Standard Reference Release 28 (2015). NDB 11352: Potatoes, flesh and skin, raw.
+PDF page 1473, Mean column, per 100 g edible portion.
+Energy 77 kcal; protein 2.05 g; fat 0.09 g; carbohydrate by difference 17.49 g; total dietary fiber 2.1 g.
+Source specifies flesh and skin. Refuse 25% parings and trimmings is a source description, not a multiplier for already edible recipe weights.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf
+Retrieved and visually checked 2026-11-04. Upstream SHA-256: ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161.
+Factual source capture only; not POTOK approval, FDC-ID crosswalk, retail-product binding or cooked recipe evidence.

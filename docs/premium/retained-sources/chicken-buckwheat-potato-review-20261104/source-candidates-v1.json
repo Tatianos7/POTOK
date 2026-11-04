@@ -1,0 +1,263 @@
+{
+  "contract": "potok-pilot-chicken-buckwheat-potato-source-preparation-v1",
+  "date": "2026-11-04",
+  "status": "SOURCE_CANDIDATES_NOT_APPROVED",
+  "sourceWorkbookSha256": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+  "privatePilotPacketSha256": "e7ad3b7161156a444f7e2c24226226aff58fee9659dba55d1ec09546e4eae723",
+  "scope": "ONLY_NINE_ROWS_IN_SELECTED_REFERENCE_WEEK",
+  "ingredientRows": 9,
+  "affectedRecipeUnion": 8,
+  "groups": [
+    {
+      "authoringName": "Грудка куриная без кожи",
+      "ingredientRows": 3,
+      "affectedRecipes": 3,
+      "source": {
+        "record": "NDB05062",
+        "title": "Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 22,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg05.pdf",
+        "upstreamSha256": "9e5c8346c6b3ba60869d800f01eb07d5fdfc1f54f69ccc14575c4eced88ceaba",
+        "capturePath": "sr28-05062-facts.txt",
+        "captureSha256": "c8481d4a2b96569454ededd5534bfa06bead39daa9b07ea9229eeaf6c61ad862",
+        "factsPer100GEdible": {
+          "calories": "120",
+          "protein": "22.50",
+          "fat": "2.62",
+          "totalCarbohydrate": "0.00",
+          "fiber": "0.0"
+        }
+      },
+      "workbookFdcIdClaim": "171077",
+      "workbookFdcIdIndependentlyVerified": false,
+      "candidateAvailableCarbsPer100G": "0.000",
+      "quantityConversionsPerformed": false,
+      "recipeNutritionRecomputed": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "chicken_bulgur_zucchini_ing_01",
+          "recipeId": "chicken_bulgur_zucchini",
+          "recordedAmount": 300,
+          "unit": "G",
+          "recordedWeightG": 300,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес; boneless skinless; нарезать 2–3 см",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_RAW_BONELESS_SKINLESS_MATCH_REVIEW_REQUIRED"
+        },
+        {
+          "ingredientRowId": "chicken_breast_wholegrain_pasta_ing_01",
+          "recipeId": "chicken_breast_wholegrain_pasta",
+          "recordedAmount": 300,
+          "unit": "G",
+          "recordedWeightG": 300,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес; boneless skinless; кусочки 2–3 см",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_RAW_BONELESS_SKINLESS_MATCH_REVIEW_REQUIRED"
+        },
+        {
+          "ingredientRowId": "chicken_roasted_beet_potato_ing_01",
+          "recipeId": "chicken_roasted_beet_potato",
+          "recordedAmount": 300,
+          "unit": "G",
+          "recordedWeightG": 300,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес грудки без кожи и кости; куски 3 см",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_RAW_BONELESS_SKINLESS_MATCH_REVIEW_REQUIRED"
+        }
+      ]
+    },
+    {
+      "authoringName": "Крупа гречневая",
+      "ingredientRows": 3,
+      "affectedRecipes": 3,
+      "source": {
+        "record": "NDB20008",
+        "title": "Buckwheat",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 24,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+        "upstreamSha256": "3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05",
+        "capturePath": "sr28-20008-facts.txt",
+        "captureSha256": "a6960ffdd9a1c118bd74468957504c2814d0545234c5c58090589d4c5332e479",
+        "factsPer100GEdible": {
+          "calories": "343",
+          "protein": "13.25",
+          "fat": "3.40",
+          "totalCarbohydrate": "71.50",
+          "fiber": "10.0"
+        }
+      },
+      "workbookFdcIdClaim": "170286",
+      "workbookFdcIdIndependentlyVerified": false,
+      "candidateAvailableCarbsPer100G": "61.500",
+      "quantityConversionsPerformed": false,
+      "recipeNutritionRecomputed": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "buckwheat_porridge_mushrooms_ing_01",
+          "recipeId": "buckwheat_porridge_mushrooms",
+          "recordedAmount": 80,
+          "unit": "G",
+          "recordedWeightG": 80,
+          "optional": false,
+          "sourcePreparationNote": "сухой вес; промыть и дать воде стечь",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "BLOCKED_BUCKWHEAT_FORM_AND_ROASTING_STATE_UNSPECIFIED"
+        },
+        {
+          "ingredientRowId": "turkey_buckwheat_ing_02",
+          "recipeId": "turkey_buckwheat",
+          "recordedAmount": 140,
+          "unit": "G",
+          "recordedWeightG": 140,
+          "optional": false,
+          "sourcePreparationNote": "сухой вес до варки; промыть и дать воде стечь",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "BLOCKED_BUCKWHEAT_FORM_AND_ROASTING_STATE_UNSPECIFIED"
+        },
+        {
+          "ingredientRowId": "chicken_meatballs_buckwheat_ing_06",
+          "recipeId": "chicken_meatballs_buckwheat",
+          "recordedAmount": 120,
+          "unit": "G",
+          "recordedWeightG": 120,
+          "optional": false,
+          "sourcePreparationNote": "сухой вес; отдельный гарнир",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "BLOCKED_BUCKWHEAT_FORM_AND_ROASTING_STATE_UNSPECIFIED"
+        }
+      ]
+    },
+    {
+      "authoringName": "Картофель",
+      "ingredientRows": 3,
+      "affectedRecipes": 3,
+      "source": {
+        "record": "NDB11352",
+        "title": "Potatoes, flesh and skin, raw",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 1473,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf",
+        "upstreamSha256": "ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161",
+        "capturePath": "sr28-11352-facts.txt",
+        "captureSha256": "d3e0ae1b0712471a0b69fb3e60dd7f6b126c033936d09418cbdede5128ecf67f",
+        "factsPer100GEdible": {
+          "calories": "77",
+          "protein": "2.05",
+          "fat": "0.09",
+          "totalCarbohydrate": "17.49",
+          "fiber": "2.1"
+        }
+      },
+      "workbookFdcIdClaim": "170026",
+      "workbookFdcIdIndependentlyVerified": false,
+      "candidateAvailableCarbsPer100G": "15.390",
+      "quantityConversionsPerformed": false,
+      "recipeNutritionRecomputed": false,
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "rows": [
+        {
+          "ingredientRowId": "pollock_patties_mashed_potato_ing_02",
+          "recipeId": "pollock_patties_mashed_potato",
+          "recordedAmount": 500,
+          "unit": "G",
+          "recordedWeightG": 500,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес total: 100 г котлеты + 400 г пюре",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "BLOCKED_POTATO_SKIN_STATUS_UNSPECIFIED"
+        },
+        {
+          "ingredientRowId": "chicken_roasted_beet_potato_ing_03",
+          "recipeId": "chicken_roasted_beet_potato",
+          "recordedAmount": 400,
+          "unit": "G",
+          "recordedWeightG": 400,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес; кубик 2 см",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "BLOCKED_POTATO_SKIN_STATUS_UNSPECIFIED"
+        },
+        {
+          "ingredientRowId": "rabbit_potatoes_carrots_ing_02",
+          "recipeId": "rabbit_potatoes_carrots",
+          "recordedAmount": 400,
+          "unit": "G",
+          "recordedWeightG": 400,
+          "optional": false,
+          "sourcePreparationNote": "сырой съедобный вес; кубик 2 см",
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "BLOCKED_POTATO_SKIN_STATUS_UNSPECIFIED"
+        }
+      ]
+    }
+  ],
+  "stateComparisonOnly": {
+    "source": {
+      "record": "NDB20009",
+      "title": "Buckwheat groats, roasted, dry",
+      "version": "USDA SR28 (2015)",
+      "pdfPageOneBased": 33,
+      "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+      "upstreamSha256": "3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05",
+      "capturePath": "sr28-20009-facts.txt",
+      "captureSha256": "1cda1c7273aaa1c32a973232fa3324627812cc0ebdeb56b812fafb336084e4bd",
+      "factsPer100GEdible": {
+        "calories": "346",
+        "protein": "11.73",
+        "fat": "2.71",
+        "totalCarbohydrate": "74.95",
+        "fiber": "10.3"
+      }
+    },
+    "candidateAvailableCarbsPer100G": "64.650",
+    "usedForBindings": false,
+    "usedForRecipeRecalculation": false
+  },
+  "mapping": {
+    "referencedPolicyVersion": "potok-source-total-including-fiber-to-available-v1",
+    "parentPackagePath": "docs/premium/retained-sources/p5-03/source-review-package-v1.json",
+    "parentPackageSha256": "cc0451eaf137d4cd85bd2457fe72dd7584bd0bcf6a2405d13a4e75bc7280926b",
+    "semanticsCapturePath": "docs/premium/retained-sources/pear-almonds-review-20261030/sr28-carbohydrate-semantics.txt",
+    "semanticsCaptureSha256": "27c10aae0fa069bc3b38335b8caa9da367068081f80ba310877cd83eb52578fc",
+    "formula": "sourceTotalCarbohydrate - sourceFiber",
+    "energy": "KEEP_SOURCE_ENERGY",
+    "foodSpecificApproval": false
+  },
+  "remainingReview": [
+    "INDEPENDENT_SOURCE_AND_CANONICAL_IDENTITY_EVIDENCE",
+    "RAW_BREAST_NO_ADDED_SOLUTION_OR_RETAIL_PRODUCT_ASSUMPTION",
+    "BUCKWHEAT_FORM_AND_ROASTING_STATE",
+    "POTATO_SKIN_STATUS",
+    "CARBOHYDRATE_MAPPING_FOOD_SPECIFIC_ADMISSION",
+    "COOKING_RETENTION_AND_NUTRIENT_CHANGES_NOT_RAW_INPUT_SUMS",
+    "ALLERGEN_DIETARY_PORTION_COMPOSITION_AND_REPEAT_EVIDENCE"
+  ],
+  "physicalCookingBlocksDevelopment": false,
+  "measuredFinishedYieldG": null,
+  "sourceWorkbookModified": false,
+  "databaseModified": false,
+  "runtimePublishable": false,
+  "generatorActivated": false
+}
