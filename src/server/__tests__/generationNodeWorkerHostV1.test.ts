@@ -23,6 +23,36 @@ test('default gate reads no file and creates no runtime, including malformed arg
     async () => {throw Error('MUST_NOT_CONSTRUCT');});
   assert.equal(r.outcome, 'DISABLED');assert.equal(r.status, null);
 });
+test('explicit worker AAAA selection never invokes the system factory, including on DNS factory failure',async()=>fixture(async path=>{
+  for(const fail of [false,true]){
+    let system=0,aaaa=0,attempts=0,closes=0;
+    const controller=new AbortController();
+    const r=await run({enabled:true,configPath:path,requestOperationId:request,signal:controller.signal,dnsMode:'DNS_AAAA'},
+      async()=>{system++;throw Error('MUST_NOT_FALL_BACK');},async(settings,signal)=>{
+        aaaa++;assert.equal(signal,controller.signal);assert.equal(settings.enabled!(),true);
+        if(fail)throw Error('sensitive resolver failure');
+        return{async continue(){attempts++;return response;},async close(){closes++;}};
+      });
+    assert.equal(r.outcome,fail?'FAILED':'RESPONSE');assert.equal(system,0);assert.equal(aaaa,1);
+    assert.equal(attempts,fail?0:1);assert.equal(closes,fail?0:1);assert.doesNotMatch(JSON.stringify(r),/sensitive/);
+  }
+}));
+test('invalid mode or closed gate cannot select a DNS factory or read a config',async()=>{
+  let factories=0;
+  const system:Factory=async()=>{factories++;throw Error('MUST_NOT_CREATE');};
+  const aaaa:NonNullable<Parameters<typeof run>[2]>=async()=>{factories++;throw Error('MUST_NOT_CREATE');};
+  for(const enabled of [false,true]){
+    const r=await run({enabled,configPath:'/missing',requestOperationId:request,signal:new AbortController().signal,dnsMode:'INVALID'},system,aaaa);
+    assert.equal(r.outcome,enabled?'FAILED':'DISABLED');
+  }
+  assert.equal(factories,0);
+});
+test('abort inside AAAA construction closes the returned runtime and suppresses dispatch',async()=>fixture(async path=>{
+  const controller=new AbortController();let attempts=0,closes=0;
+  const r=await run({enabled:true,configPath:path,requestOperationId:request,signal:controller.signal,dnsMode:'DNS_AAAA'},
+    async()=>{throw Error('MUST_NOT_FALL_BACK');},async()=>{controller.abort();return{async continue(){attempts++;return response;},async close(){closes++;}};});
+  assert.equal(r.outcome,'STOPPED');assert.equal(attempts,0);assert.equal(closes,1);
+}));
 test('one enabled invocation owns config, returns status only and closes the runtime exactly once', async () => fixture(async path => {
   let attempts = 0, closes = 0;
   const factory: Factory = async settings => {
@@ -105,7 +135,7 @@ test('standalone bundle runs disabled outside the repository with no config or n
     const manifest=JSON.parse(await readFile(join(output,'manifest.json'),'utf8'));
     assert.equal(manifest.enabledByDefault,false);assert.equal(manifest.hostedAcceptance,false);
     const r=spawnSync(process.execPath,[join(output,'potok-generation-worker.cjs')],{cwd:tmpdir(),encoding:'utf8',
-      env:{...process.env,POTOK_GENERATION_WORKER_ENABLED:''},timeout:10000});
+      env:{...process.env,POTOK_GENERATION_WORKER_ENABLED:'',POTOK_GENERATION_WORKER_DNS_MODE:'DNS_AAAA'},timeout:10000});
     assert.equal(r.status,0);assert.equal(JSON.parse(r.stdout).outcome,'DISABLED');assert.equal(r.stderr,'');
     const failed=spawnSync(process.execPath,[join(output,'potok-generation-worker.cjs'),'invalid','/missing'],{cwd:tmpdir(),encoding:'utf8',
       env:{...process.env,POTOK_GENERATION_WORKER_ENABLED:'true'},timeout:10000});

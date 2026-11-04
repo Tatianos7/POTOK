@@ -8,7 +8,7 @@ process.on('SIGTERM', stop);process.on('SIGINT', stop);
 void (async () => {
   try {
     const response = await runGenerationNodeWorkerOnceV1({enabled: process.env.POTOK_GENERATION_WORKER_ENABLED === 'true',
-      requestOperationId: process.argv[2], configPath: process.argv[3], signal: controller.signal});
+      requestOperationId: process.argv[2], configPath: process.argv[3], signal: controller.signal,dnsMode:process.env.POTOK_GENERATION_WORKER_DNS_MODE});
     process.stdout.write(JSON.stringify(response) + '\n');
     process.exitCode = response.outcome === 'FAILED' ? 1 : response.outcome === 'STOPPED' ? 130
       : response.outcome === 'RESPONSE' && response.status !== 'ACTIVE' ? 2 : 0;

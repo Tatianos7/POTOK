@@ -1,0 +1,37 @@
+{
+  "contract": "potok-single-generation-test-readiness-v1",
+  "observedDate": "2026-11-04",
+  "projectRef": "ozidryfvhkcbtpnulakq",
+  "origin": "READ_ONLY_SUPABASE_METADATA_AND_OWNER_REPORTED_CONNECTION",
+  "scope": "ONE_OWNER_TEST_REQUEST",
+  "ownerConnection": {
+    "nodeVersion": "24.11.1",
+    "dnsMode": "DNS_AAAA",
+    "successfulRuns": 2,
+    "bothRestrictedRolesPassed": true
+  },
+  "runtimeSources": {
+    "manifestHeads": 0,
+    "generationPolicyHeads": 0,
+    "preparationSources": 0,
+    "validationInputs": 0,
+    "finalWarningSources": 0
+  },
+  "requestFunctions": [
+    {"name": "public.adaptive_nutrition_request_generation_v2", "arguments": "p_protocol_version text, p_idempotency_key uuid", "authenticatedCanExecute": true},
+    {"name": "public.adaptive_nutrition_generation_status_v2", "arguments": "p_request_operation_id uuid", "authenticatedCanExecute": true}
+  ],
+  "edgeFunctionCount": 0,
+  "status": "BLOCKED_RUNTIME_SOURCE_ADMISSION",
+  "generationExecuted": false,
+  "mayActivate": false,
+  "scopedWritePackagePrepared": false,
+  "requestOperationId": null,
+  "requiredBeforeWriteApproval": [
+    "Independently reviewed runtime catalog and source evidence; authoring previews are not runtime admission",
+    "Pinned generation, optimization, metric and validation policies",
+    "Owner test account with real Auth and request-bound goal/preference/safety inputs",
+    "Request-bound preparation, validation and independently admitted warning sources",
+    "Concrete limited Staging write package with real revisions/request identities and recovery plan"
+  ]
+}

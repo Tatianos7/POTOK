@@ -1,7 +1,7 @@
 import {Resolver} from 'node:dns/promises';
 import {isIP} from 'node:net';
 import type {PoolConfig} from 'pg';
-import {generationStagingPgHostV1} from './generationNodePgPoolV1';
+import {generationStagingPgHostV1} from './generationStagingTargetV1';
 
 interface ResolverPort {resolve6(host: string): Promise<string[]>; cancel(): void}
 /** Explicit DNS-AAAA transport selection for the fixed Staging identity only.
