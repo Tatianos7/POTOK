@@ -1,0 +1,48 @@
+{
+  "contract": "potok-three-food-declared-applicability-review-v1",
+  "date": "2026-11-04",
+  "reviewKind": "PINNED_OFFLINE_DECLARED_DATA_REVIEW_NOT_AUTHORITY_EVENT",
+  "privateCatalogSha256": "517386c0ec6d5bc3a4ff28a33b702f046b1862a16c342f52255789f3a3fb90b0",
+  "privatePilotPacketSha256": "e7ad3b7161156a444f7e2c24226226aff58fee9659dba55d1ec09546e4eae723",
+  "primaryRecheckSha256": "354f6b44cc8452d72cb40b723035aa01a173df2ad4d9d74dd7ba3253367131bb",
+  "records": [
+    {
+      "caseId": "FROZEN_STRAWBERRY",
+      "ingredientRowId": "berry_tvorog_cream_ing_03",
+      "recipeId": "berry_tvorog_cream",
+      "sourceAuthoringRowSha256": "68dfbe6f0401b507fa1bacd6009293e2d897683903d0091641422bc0dda7a4ad",
+      "recipeContextSha256": "ead942da17f9bdd3c838f2fdcb539cbd3c18bcdd945e07ec26d7e0a1eb44fbe3",
+      "declaredAlignment": "DECLARED_ORIGIN_AND_INPUT_STATE_ALIGN",
+      "openConditions": [
+        "Declared source alignment is not actual product identity, measured mass, nutrient retention or source/mapping approval."
+      ]
+    },
+    {
+      "caseId": "WALNUT",
+      "ingredientRowId": "oatmeal_pear_walnut_ing_05",
+      "recipeId": "oatmeal_pear_walnut",
+      "sourceAuthoringRowSha256": "119100281ca44b96ce5b9cbac39f61d898ec9c84f78f16db26a24c67862a8be6",
+      "recipeContextSha256": "9af2b917394d78db6ba365c7e72131905461a854e28e9a8dc6b5e3e35a4297be",
+      "declaredAlignment": "UNKNOWN_PROCESSING_AND_EDIBLE_FORM",
+      "openConditions": [
+        "Specify raw/roasted processing, salt/additives and edible shelled input; chopping or topping alone does not establish these."
+      ]
+    },
+    {
+      "caseId": "BLUEBERRY",
+      "ingredientRowId": "rice_porridge_berries_ing_05",
+      "recipeId": "rice_porridge_berries",
+      "sourceAuthoringRowSha256": "d8460bacad0693272dcf71375155496d6c2179605da955e821c06b639b8b892e",
+      "recipeContextSha256": "830f2b2a15980bce1df11f5feb52d2d71670e7a4e51979075bfe4bdc8c90b999",
+      "declaredAlignment": "DECLARED_ORIGIN_AND_INPUT_STATE_ALIGN",
+      "openConditions": [
+        "Declared source alignment is not actual product identity, measured mass, nutrient retention or source/mapping approval."
+      ]
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false,
+  "physicalCookingBlocksDevelopment": false
+}
