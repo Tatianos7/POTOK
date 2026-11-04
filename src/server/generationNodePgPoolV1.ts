@@ -3,7 +3,8 @@ import {Pool, type PoolClient, type PoolConfig} from 'pg';
 import type {GenerationTransactionConnectionV1, GenerationTransactionPoolV1} from './generationTransactionClientV1';
 import {assertGenerationRootCaV1} from './generationRootCaV1';
 
-const host = 'db.ozidryfvhkcbtpnulakq.supabase.co';
+export const generationStagingPgHostV1 = 'db.ozidryfvhkcbtpnulakq.supabase.co';
+const host = generationStagingPgHostV1;
 const roles = ['potok_generation_reader_v1', 'potok_generation_gateway_v1'] as const;
 const defaults = Object.freeze({acquireMs: 5000, queryMs: 35000, closeMs: 2000});
 type Bounds = {readonly acquireMs: number; readonly queryMs: number; readonly closeMs: number};
