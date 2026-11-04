@@ -63,6 +63,8 @@ jobs:
           node --import tsx --test scripts/contracts/three-food-source-candidates-v1.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/three-food-applicability-review-v1.ts
           node --import tsx --test scripts/contracts/three-food-applicability-review-v1.test.ts
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/consolidated-authoring-candidate-week-v1.ts
+          node --import tsx --test scripts/contracts/consolidated-authoring-candidate-week-v1.test.ts
 
       - name: Offline full-worker profiling contracts (no hosted acceptance)
         run: node --import tsx --test scripts/security/generation-profile/run.test.ts
