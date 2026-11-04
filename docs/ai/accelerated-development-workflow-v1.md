@@ -1,6 +1,6 @@
-# POTOK accelerated AI development workflow — proposal v1
+# POTOK accelerated AI development workflow — v1
 
-Status: PROPOSED / owner review required. This document is not a grant of production or deployment permissions.
+Status: OWNER-APPROVED WORKFLOW (2026-11-04); pending merge to master. Approval applies to process rules only, not to production or deployment permissions.
 Date: 2026-11-04
 Scope: GitHub-based AI-assisted development, without Codex dependency.
 
@@ -49,4 +49,4 @@ Explicit separate owner authorization required for:
 
 ## Pilot adoption
 - Start with one non-production, documentation-or-test-only stage and measure: owner approvals needed, time to verified PR, CI pass rate, reopened defects.
-- If effective, adopt stage-based development more broadly. Keep root AGENTS.md unchanged until the owner reviews this proposal and its interaction with the current stacked PR chain.
+- If effective, adopt stage-based development more broadly. Root AGENTS.md links to this workflow on the isolated review branch. Do not merge or alter stacked generation PR ancestry without separate owner approval.
