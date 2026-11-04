@@ -1,0 +1,6 @@
+USDA ARS, Standard Reference Release 28 (2015). NDB 20005: Barley, pearled, raw.
+PDF page 21, Mean column, per 100 g edible source portion.
+Energy 352 kcal; protein 9.91 g; fat 1.16 g; carbohydrate by difference 77.72 g; total dietary fiber 15.6 g.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf
+Retrieved source bytes and visually checked exact page 2026-11-04. Upstream SHA-256: 3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05.
+Factual source capture only; no FDC crosswalk, source approval, identity binding or cooked-yield evidence. Blank nutrient values are not zero or transferable from a related record.
