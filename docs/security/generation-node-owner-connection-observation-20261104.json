@@ -1,0 +1,56 @@
+{
+  "contract": "potok-owner-node-connection-observation-v1",
+  "observedDate": "2026-11-04",
+  "origin": "OWNER_REPORTED_LOCAL_TERMINAL",
+  "agentIndependentlyReplayed": false,
+  "nodeVersion": "24.11.1",
+  "platform": "macOS",
+  "targetProjectRef": "ozidryfvhkcbtpnulakq",
+  "expectedCodeCommit": "934977450f4c42974cd99b3d058c6d97ef8f94db",
+  "expectedArtifactId": 13308446998,
+  "expectedWorkflowRunId": 41803350291,
+  "ownerBinaryDigestIndependentlyVerified": false,
+  "observations": [
+    {
+      "contract": "potok-node-connection-check-result-v1",
+      "outcome": "PASS",
+      "mayActivate": false,
+      "dnsMode": "DNS_AAAA",
+      "failureStage": null,
+      "checks": [
+        {
+          "role": "potok_generation_reader_v1",
+          "passed": true,
+          "failedChecks": []
+        },
+        {
+          "role": "potok_generation_gateway_v1",
+          "passed": true,
+          "failedChecks": []
+        }
+      ]
+    },
+    {
+      "contract": "potok-node-connection-check-result-v1",
+      "outcome": "PASS",
+      "mayActivate": false,
+      "dnsMode": "DNS_AAAA",
+      "failureStage": null,
+      "checks": [
+        {
+          "role": "potok_generation_reader_v1",
+          "passed": true,
+          "failedChecks": []
+        },
+        {
+          "role": "potok_generation_gateway_v1",
+          "passed": true,
+          "failedChecks": []
+        }
+      ]
+    }
+  ],
+  "generationExecuted": false,
+  "hostedWorkerDeployed": false,
+  "ordinaryAccountEndToEndAcceptance": false
+}

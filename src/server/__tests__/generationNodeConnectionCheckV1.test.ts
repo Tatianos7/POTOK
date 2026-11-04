@@ -24,6 +24,27 @@ test('connection checker defaults off without file or connection access',async()
   const r=await check({configPath:'/missing',signal:new AbortController().signal},()=>{throw Error('MUST_NOT_CONNECT');});
   assert.equal(r.outcome,'DISABLED');assert.equal(r.mayActivate,false);assert.deepEqual(r.checks,[]);
 });
+test('explicit AAAA mode resolves once and keeps original verified TLS identity for both read-only role connections',async()=>fixture(async path=>{
+  let lookups=0,opened=0;
+  const factory:Factory=config=>{
+    opened++;assert.equal(config.host,'2001:db8::1');assert.equal((config.ssl as {servername:string}).servername,'db.ozidryfvhkcbtpnulakq.supabase.co');
+    assert.equal((config.ssl as {rejectUnauthorized:boolean}).rejectUnauthorized,true);
+    return{async acquire(){return{async query(statement){return{rows:statement===sql?[{jsonb_build_object:observation(config.user)}]:[]};},async release(){}};},async close(){}};
+  };
+  const r=await check({enabled:true,configPath:path,signal:new AbortController().signal,dnsMode:'DNS_AAAA'},factory,async()=>{lookups++;return '2001:db8::1';});
+  assert.equal(r.outcome,'PASS');assert.equal(r.dnsMode,'DNS_AAAA');assert.equal(r.failureStage,null);assert.equal(lookups,1);assert.equal(opened,2);
+}));
+test('DNS failure, invalid mode and abort do not fall back to system lookup or open a pool',async()=>fixture(async path=>{
+  let opened=0,lookups=0;
+  const factory:Factory=()=>{opened++;throw Error('MUST_NOT_OPEN');};
+  const failed=await check({enabled:true,configPath:path,signal:new AbortController().signal,dnsMode:'DNS_AAAA'},factory,async()=>{lookups++;throw Error('sensitive');});
+  assert.equal(failed.outcome,'FAILED');assert.equal(failed.failureStage,'DNS');assert.equal(opened,0);assert.equal(lookups,1);assert.doesNotMatch(JSON.stringify(failed),/sensitive/);
+  const invalid=await check({enabled:true,configPath:path,signal:new AbortController().signal,dnsMode:'OTHER'},factory,async()=>{throw Error('MUST_NOT_RESOLVE');});
+  assert.equal(invalid.outcome,'FAILED');assert.equal(invalid.failureStage,'CONFIG');assert.equal(invalid.dnsMode,'INVALID');
+  const controller=new AbortController();
+  const stopped=await check({enabled:true,configPath:path,signal:controller.signal,dnsMode:'DNS_AAAA'},factory,async()=>{controller.abort();return '2001:db8::1';});
+  assert.equal(stopped.outcome,'STOPPED');assert.equal(opened,0);
+}));
 test('same fixed worker TLS/roles execute only one read-only metadata transaction each, then close',async()=>fixture(async path=>{
   const queries:string[]=[],roles:string[]=[];let closes=0,releases=0;
   const factory:Factory=(config,enabled)=>{
