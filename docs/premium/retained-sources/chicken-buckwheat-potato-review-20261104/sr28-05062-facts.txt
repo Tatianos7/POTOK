@@ -1,0 +1,7 @@
+USDA ARS, Standard Reference Release 28 (2015). NDB 05062: Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw.
+PDF page 22, Mean column, per 100 g edible portion.
+Energy 120 kcal; protein 22.50 g; fat 2.62 g; carbohydrate by difference 0.00 g; total dietary fiber 0.0 g.
+Raw meat only, without skin or bone. Not the with-added-solution, cooked or whole-breast-with-skin records.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg05.pdf
+Retrieved and visually checked 2026-11-04. Upstream SHA-256: 9e5c8346c6b3ba60869d800f01eb07d5fdfc1f54f69ccc14575c4eced88ceaba.
+Factual source capture only; not POTOK approval, FDC-ID crosswalk, retail-product binding or cooked recipe evidence.

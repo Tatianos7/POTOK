@@ -1,0 +1,7 @@
+USDA ARS, Standard Reference Release 28 (2015). NDB 20009: Buckwheat groats, roasted, dry.
+PDF page 33, Mean column, per 100 g edible portion.
+Energy 346 kcal; protein 11.73 g; fat 2.71 g; carbohydrate by difference 74.95 g; total dietary fiber 10.3 g.
+Alternative for state comparison only; no automatic substitution into authoring recipes.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf
+Retrieved and visually checked 2026-11-04. Upstream SHA-256: 3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05.
+Factual source capture only; not POTOK approval, FDC-ID crosswalk, retail-product binding or cooked recipe evidence.
