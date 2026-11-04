@@ -1,11 +1,12 @@
 import process from 'node:process';
 import {readPrivateGenerationJsonV1} from './generationPrivateConfigurationV1';
-import {createStagingGenerationRuntimeV1, type StagingGenerationRuntimeDependenciesV1} from './generationRuntimeV1';
+import {createStagingGenerationRuntimeV1, createAaaaStagingGenerationRuntimeV1, type StagingGenerationRuntimeDependenciesV1} from './generationRuntimeV1';
 
 export const generationNodeWorkerConfigContractV1 = 'potok-staging-node-worker-config-v1' as const;
 export const generationNodeWorkerResultContractV1 = 'potok-node-worker-attempt-result-v1' as const;
 type Runtime = Awaited<ReturnType<typeof createStagingGenerationRuntimeV1>>;
 type RuntimeFactory = (config: StagingGenerationRuntimeDependenciesV1) => Promise<Runtime>;
+type AaaaRuntimeFactory = (config:StagingGenerationRuntimeDependenciesV1,signal:AbortSignal)=>Promise<Runtime>;
 export interface GenerationNodeWorkerAttemptResultV1 {
   readonly contract: typeof generationNodeWorkerResultContractV1;
   readonly outcome: 'DISABLED' | 'RESPONSE' | 'STOPPED' | 'FAILED';
@@ -37,8 +38,9 @@ async function readConfiguration(path: string): Promise<Omit<StagingGenerationRu
  * The optional factory is a trusted composition seam, never request input.
  */
 export async function runGenerationNodeWorkerOnceV1(options: {
-  readonly enabled?: boolean; readonly configPath: string; readonly requestOperationId: string; readonly signal: AbortSignal;
-}, factory: RuntimeFactory = createStagingGenerationRuntimeV1): Promise<GenerationNodeWorkerAttemptResultV1> {
+  readonly enabled?: boolean; readonly configPath: string; readonly requestOperationId: string; readonly signal: AbortSignal; readonly dnsMode?: string;
+}, factory: RuntimeFactory = createStagingGenerationRuntimeV1,
+  aaaaFactory:AaaaRuntimeFactory=createAaaaStagingGenerationRuntimeV1): Promise<GenerationNodeWorkerAttemptResultV1> {
   if (options.enabled !== true) return result('DISABLED');
   const allowed = () => !options.signal.aborted;
   let runtime: Runtime | undefined, closing: Promise<void> | undefined;
@@ -49,10 +51,12 @@ export async function runGenerationNodeWorkerOnceV1(options: {
     if ('Deno' in globalThis || process.release.name !== 'node' || process.versions.node.split('.')[0] !== '24'
       || !['linux','darwin'].includes(process.platform) || typeof process.getuid !== 'function'
       || typeof options.requestOperationId !== 'string' || !uuid.test(options.requestOperationId)) throw Error('UNSUPPORTED_HOST_OR_REQUEST');
+    const dnsMode=options.dnsMode??'SYSTEM';
+    if(dnsMode!=='SYSTEM'&&dnsMode!=='DNS_AAAA')throw Error('UNSUPPORTED_DNS_MODE');
     if (!allowed()) return result('STOPPED');
     const config = await readConfiguration(options.configPath);
     if (!allowed()) return result('STOPPED');
-    runtime = await factory({...config, enabled: allowed});
+    runtime = dnsMode==='DNS_AAAA'?await aaaaFactory({...config,enabled:allowed},options.signal):await factory({...config, enabled: allowed});
     options.signal.addEventListener('abort', stop, {once: true});
     if (!allowed()) stop();
     else {

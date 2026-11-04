@@ -20,6 +20,7 @@ for(const name of ['potok-generation-worker.cjs','potok-generation-connection-ch
   files[name]=createHash('sha256').update(await readFile(resolve(output,name))).digest('hex');
 await writeFile(resolve(output, 'manifest.json'), JSON.stringify({contract: 'potok-node-worker-bundle-v1',
   target: 'STAGING_ONLY', enabledByDefault: false, hostedAcceptance: false, node: (await readFile(resolve(root, '.node-version'), 'utf8')).trim(),
+  workerDnsModes:['SYSTEM','DNS_AAAA'],workerDefaultDnsMode:'SYSTEM',
   pg: '8.23.1', sha256: createHash('sha256').update(await readFile(path)).digest('hex'),
   files, inputs: Object.keys(built.metafile.inputs).sort()}, null, 2) + '\n');
 console.log('Built disabled-by-default Node worker; no connection or deployment.');

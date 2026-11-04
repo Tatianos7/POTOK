@@ -2,8 +2,10 @@ import {X509Certificate} from 'node:crypto';
 import {Pool, type PoolClient, type PoolConfig} from 'pg';
 import type {GenerationTransactionConnectionV1, GenerationTransactionPoolV1} from './generationTransactionClientV1';
 import {assertGenerationRootCaV1} from './generationRootCaV1';
+import {generationStagingPgHostV1} from './generationStagingTargetV1';
+import {resolveGenerationStagingIpv6V1,generationStagingIpv6ConfigV1} from './generationStagingDnsV1';
 
-export const generationStagingPgHostV1 = 'db.ozidryfvhkcbtpnulakq.supabase.co';
+export {generationStagingPgHostV1} from './generationStagingTargetV1';
 const host = generationStagingPgHostV1;
 const roles = ['potok_generation_reader_v1', 'potok_generation_gateway_v1'] as const;
 const defaults = Object.freeze({acquireMs: 5000, queryMs: 35000, closeMs: 2000});
@@ -182,6 +184,28 @@ export function createStagingGenerationNodePgPoolsV1(
   secrets: GenerationNodePgSecretsV1, enabled: () => boolean = () => false,
 ) {
   return poolPair(generationStagingPgConfigV1('reader', secrets), generationStagingPgConfigV1('gateway', secrets), enabled);
+}
+
+/** Explicit Node AAAA preparation. Own and validate both secret/config snapshots
+ * before DNS, then return lazy pools with the same logical TLS identity. No retry
+ * or alternative transport is selected on failure. Cancellation prevents opening.
+ */
+export async function prepareAaaaStagingGenerationNodePgPoolsV1(secrets:GenerationNodePgSecretsV1,signal:AbortSignal,
+  resolveAddress:(signal:AbortSignal)=>Promise<string>=resolveGenerationStagingIpv6V1){
+  const owned={ca:secrets?.ca,readerPassword:secrets?.readerPassword,gatewayPassword:secrets?.gatewayPassword};
+  generationStagingPgConfigV1('reader',owned);generationStagingPgConfigV1('gateway',owned);
+  if(signal.aborted)throw Error('GENERATION_PG_DISABLED');
+  const address=await resolveAddress(signal);
+  if(signal.aborted)throw Error('GENERATION_PG_DISABLED');
+  // Validate the resolver result before returning a capability to create pools.
+  generationStagingIpv6ConfigV1(generationStagingPgConfigV1('reader',owned),address);
+  return(enabled:()=>boolean=()=>false)=>{
+    if(signal.aborted)throw Error('GENERATION_PG_DISABLED');
+    // Recheck current CA validity after DNS and any deferred factory invocation.
+    const reader=generationStagingIpv6ConfigV1(generationStagingPgConfigV1('reader',owned),address) as StagingPgConfig;
+    const gateway=generationStagingIpv6ConfigV1(generationStagingPgConfigV1('gateway',owned),address) as StagingPgConfig;
+    return poolPair(reader,gateway,()=>!signal.aborted&&enabled()===true);
+  };
 }
 
 /** Explicit portable path: validate before returning a lazy, gate-aware pool factory.

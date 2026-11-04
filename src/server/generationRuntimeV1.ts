@@ -1,5 +1,6 @@
 import {GenerationEdgeErrorV2} from '../../supabase/functions/adaptive-nutrition-generate-v2/contracts';
-import {createStagingGenerationNodePgPoolsV1, preparePortableStagingGenerationNodePgPoolsV1, type GenerationNodePgSecretsV1} from './generationNodePgPoolV1';
+import {createStagingGenerationNodePgPoolsV1, preparePortableStagingGenerationNodePgPoolsV1, prepareAaaaStagingGenerationNodePgPoolsV1, type GenerationNodePgSecretsV1} from './generationNodePgPoolV1';
+import {resolveGenerationStagingIpv6V1} from './generationStagingDnsV1';
 import {createPooledRestrictedGenerationWorkerV1, type PooledRestrictedGenerationWorkerDependenciesV1} from './generationSqlTransportWorkerV1';
 
 type Policies = Omit<PooledRestrictedGenerationWorkerDependenciesV1, 'sourcesPool' | 'gatewayPool' | 'enabled'>;
@@ -70,6 +71,16 @@ export function createStagingGenerationRuntimeV1(dependencies: StagingGeneration
   const {secrets, ...policies} = dependencies;
   const owned = {ca: secrets?.ca, readerPassword: secrets?.readerPassword, gatewayPassword: secrets?.gatewayPassword};
   return createManagedGenerationRuntimeV1({...policies, openPools: gate => createStagingGenerationNodePgPoolsV1(owned, gate)});
+}
+
+/** Separately selected Node transport; never a fallback from system DNS/Edge. */
+export async function createAaaaStagingGenerationRuntimeV1(dependencies:StagingGenerationRuntimeDependenciesV1,signal:AbortSignal,
+  resolveAddress:(signal:AbortSignal)=>Promise<string>=resolveGenerationStagingIpv6V1){
+  const {secrets,enabled=()=>false,...policies}=dependencies;
+  let openPools:Awaited<ReturnType<typeof prepareAaaaStagingGenerationNodePgPoolsV1>>;
+  try{openPools=await prepareAaaaStagingGenerationNodePgPoolsV1(secrets,signal,resolveAddress);}
+  catch{throw Error('GENERATION_RUNTIME_CONFIGURATION_INVALID');}
+  return createManagedGenerationRuntimeV1({...policies,enabled:()=>!signal.aborted&&enabled()===true,openPools});
 }
 
 /** Explicit async WebCrypto/X509 path; never selected as an error fallback. */
