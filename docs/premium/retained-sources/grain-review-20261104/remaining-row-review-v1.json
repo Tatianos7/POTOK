@@ -1,0 +1,1034 @@
+{
+  "contract": "potok-pilot-remaining-row-review-v1",
+  "date": "2026-11-04",
+  "privatePilotPacketSha256": "e7ad3b7161156a444f7e2c24226226aff58fee9659dba55d1ec09546e4eae723",
+  "baselinePriorPreparationReach": 64,
+  "remainingInputRows": 56,
+  "routeCounts": {
+    "NEW_GRAIN_SOURCE_CANDIDATE": 7,
+    "EXISTING_SOURCE_LOCATOR_REVIEW_REQUIRED": 7,
+    "SOURCE_PREPARATION_OUTSTANDING": 42
+  },
+  "preparationReachIncludingNewAndReusedLocators": 78,
+  "reachIsNotApprovalOrIdentity": true,
+  "allOriginalCanonicalBindingsStillUnresolved": 120,
+  "physicalCookingBlocksDevelopment": false,
+  "runtimePublishable": false,
+  "mayActivate": false,
+  "rows": [
+    {
+      "ingredientRowId": "pollock_patties_mashed_potato_ing_01",
+      "recipeId": "pollock_patties_mashed_potato",
+      "authoringName": "Филе минтая",
+      "recordedAmount": 300,
+      "unit": "G",
+      "recordedWeightG": 300,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "PROXY_SOURCE_AND_FISH_SPECIES_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "pollock_patties_mashed_potato_ing_05",
+      "recipeId": "pollock_patties_mashed_potato",
+      "authoringName": "Яйцо куриное",
+      "recordedAmount": 1,
+      "unit": "PIECE",
+      "recordedWeightG": 50,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "RAW_WHOLE_EGG_AND_DISCRETE_REFERENCE_MASS_NOT_MEASURED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "pollock_patties_mashed_potato_ing_07",
+      "recipeId": "pollock_patties_mashed_potato",
+      "authoringName": "Молоко 2%",
+      "recordedAmount": 100,
+      "unit": "ML",
+      "recordedWeightG": 100,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED",
+        "REVIEWED_LIQUID_VOLUME_TO_MASS_BASIS_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "pollock_patties_mashed_potato_ing_08",
+      "recipeId": "pollock_patties_mashed_potato",
+      "authoringName": "Масло сливочное",
+      "recordedAmount": 10,
+      "unit": "G",
+      "recordedWeightG": 10,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "turkey_meatballs_rice_ing_01",
+      "recipeId": "turkey_meatballs_rice",
+      "authoringName": "Филе грудки индейки",
+      "recordedAmount": 300,
+      "unit": "G",
+      "recordedWeightG": 300,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "turkey_meatballs_rice_ing_03",
+      "recipeId": "turkey_meatballs_rice",
+      "authoringName": "Яйцо куриное",
+      "recordedAmount": 1,
+      "unit": "PIECE",
+      "recordedWeightG": 50,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "RAW_WHOLE_EGG_AND_DISCRETE_REFERENCE_MASS_NOT_MEASURED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "turkey_meatballs_rice_ing_04",
+      "recipeId": "turkey_meatballs_rice",
+      "authoringName": "Сухари панировочные без добавок",
+      "recordedAmount": 20,
+      "unit": "G",
+      "recordedWeightG": 20,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "EXACT_PRODUCT_CLASS_COMPOSITION_AND_PORTION_BASIS_REVIEW"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "turkey_meatballs_rice_ing_07",
+      "recipeId": "turkey_meatballs_rice",
+      "authoringName": "Рис белый длиннозёрный",
+      "recordedAmount": 120,
+      "unit": "G",
+      "recordedWeightG": 120,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [],
+      "route": "NEW_GRAIN_SOURCE_CANDIDATE"
+    },
+    {
+      "ingredientRowId": "banana_natural_yogurt_cocoa_ing_01",
+      "recipeId": "banana_natural_yogurt_cocoa",
+      "authoringName": "Йогурт натуральный 2%",
+      "recordedAmount": 200,
+      "unit": "G",
+      "recordedWeightG": 200,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "banana_natural_yogurt_cocoa_ing_03",
+      "recipeId": "banana_natural_yogurt_cocoa",
+      "authoringName": "Какао-порошок несладкий",
+      "recordedAmount": 5,
+      "unit": "G",
+      "recordedWeightG": 5,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "rice_porridge_berries_ing_01",
+      "recipeId": "rice_porridge_berries",
+      "authoringName": "Рис круглозёрный",
+      "recordedAmount": 120,
+      "unit": "G",
+      "recordedWeightG": 120,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [],
+      "route": "NEW_GRAIN_SOURCE_CANDIDATE"
+    },
+    {
+      "ingredientRowId": "rice_porridge_berries_ing_03",
+      "recipeId": "rice_porridge_berries",
+      "authoringName": "Молоко 2%",
+      "recordedAmount": 400,
+      "unit": "ML",
+      "recordedWeightG": null,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED",
+        "REVIEWED_LIQUID_VOLUME_TO_MASS_BASIS_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "rice_porridge_berries_ing_04",
+      "recipeId": "rice_porridge_berries",
+      "authoringName": "Клубника свежая",
+      "recordedAmount": 75,
+      "unit": "G",
+      "recordedWeightG": 75,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "rice_porridge_berries_ing_05",
+      "recipeId": "rice_porridge_berries",
+      "authoringName": "Голубика свежая",
+      "recordedAmount": 75,
+      "unit": "G",
+      "recordedWeightG": 75,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_02",
+      "recipeId": "chicken_bulgur_zucchini",
+      "authoringName": "Булгур medium/coarse",
+      "recordedAmount": 140,
+      "unit": "G",
+      "recordedWeightG": 140,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [],
+      "route": "NEW_GRAIN_SOURCE_CANDIDATE"
+    },
+    {
+      "ingredientRowId": "chicken_breast_wholegrain_pasta_ing_02",
+      "recipeId": "chicken_breast_wholegrain_pasta",
+      "authoringName": "Паста пшеничная 100% цельнозерновая",
+      "recordedAmount": 140,
+      "unit": "G",
+      "recordedWeightG": 140,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [],
+      "route": "NEW_GRAIN_SOURCE_CANDIDATE"
+    },
+    {
+      "ingredientRowId": "cannellini_spread_wholegrain_crispbread_ing_01",
+      "recipeId": "cannellini_spread_wholegrain_crispbread",
+      "authoringName": "Фасоль каннеллини консервированная",
+      "recordedAmount": 120,
+      "unit": "G",
+      "recordedWeightG": 120,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "EXACT_PRODUCT_CLASS_COMPOSITION_AND_PORTION_BASIS_REVIEW"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "cannellini_spread_wholegrain_crispbread_ing_02",
+      "recipeId": "cannellini_spread_wholegrain_crispbread",
+      "authoringName": "Лимонный сок свежий",
+      "recordedAmount": 10,
+      "unit": "G",
+      "recordedWeightG": 10,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "cannellini_spread_wholegrain_crispbread_ing_04",
+      "recipeId": "cannellini_spread_wholegrain_crispbread",
+      "authoringName": "Вода питьевая",
+      "recordedAmount": 15,
+      "unit": "G",
+      "recordedWeightG": 15,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "ROW_SPECIFIC_APPLICABILITY_NOT_PROVED_BY_LABEL"
+      ],
+      "route": "EXISTING_SOURCE_LOCATOR_REVIEW_REQUIRED",
+      "existingCapturePath": "docs/premium/retained-sources/p5-03b/water-usda-sr28-14411.txt",
+      "existingCaptureSha256": "5a3e857547b56df38ffebf1d0ce882a7eea8b8111bdb4d07b7422c8d79922b26"
+    },
+    {
+      "ingredientRowId": "cannellini_spread_wholegrain_crispbread_ing_05",
+      "recipeId": "cannellini_spread_wholegrain_crispbread",
+      "authoringName": "Соль мелкая",
+      "recordedAmount": 0.5,
+      "unit": "G",
+      "recordedWeightG": 0.5,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "ROW_SPECIFIC_APPLICABILITY_NOT_PROVED_BY_LABEL"
+      ],
+      "route": "EXISTING_SOURCE_LOCATOR_REVIEW_REQUIRED",
+      "existingCapturePath": "docs/premium/retained-sources/salt-water-review-20261031/sr28-02047-facts.txt",
+      "existingCaptureSha256": "6b11c954882b9a89a717184a0644179a605bacf734ad96f79d27bfc8bb58b83d"
+    },
+    {
+      "ingredientRowId": "cannellini_spread_wholegrain_crispbread_ing_06",
+      "recipeId": "cannellini_spread_wholegrain_crispbread",
+      "authoringName": "Хлебцы ржаные цельнозерновые",
+      "recordedAmount": 26,
+      "unit": "G",
+      "recordedWeightG": 26,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "EXACT_PRODUCT_CLASS_COMPOSITION_AND_PORTION_BASIS_REVIEW"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "wholegrain_toast_hummus_cucumber_ing_01",
+      "recipeId": "wholegrain_toast_hummus_cucumber",
+      "authoringName": "Хлеб цельнозерновой",
+      "recordedAmount": 2,
+      "unit": "PCS",
+      "recordedWeightG": 80,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "EXACT_PRODUCT_CLASS_COMPOSITION_AND_PORTION_BASIS_REVIEW"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "wholegrain_toast_hummus_cucumber_ing_02",
+      "recipeId": "wholegrain_toast_hummus_cucumber",
+      "authoringName": "Хумус классический",
+      "recordedAmount": 80,
+      "unit": "G",
+      "recordedWeightG": 80,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "EXACT_PRODUCT_CLASS_COMPOSITION_AND_PORTION_BASIS_REVIEW"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "turkey_buckwheat_ing_01",
+      "recipeId": "turkey_buckwheat",
+      "authoringName": "Грудка индейки без кожи",
+      "recordedAmount": 300,
+      "unit": "G",
+      "recordedWeightG": 300,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "greek_yogurt_banana_ing_01",
+      "recipeId": "greek_yogurt_banana",
+      "authoringName": "Йогурт греческий 2%",
+      "recordedAmount": 200,
+      "unit": "G",
+      "recordedWeightG": 200,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "wholegrain_toast_tvorog_tomato_ing_01",
+      "recipeId": "wholegrain_toast_tvorog_tomato",
+      "authoringName": "Хлеб цельнозерновой",
+      "recordedAmount": 2,
+      "unit": "PCS",
+      "recordedWeightG": 80,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "EXACT_PRODUCT_CLASS_COMPOSITION_AND_PORTION_BASIS_REVIEW"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "wholegrain_toast_tvorog_tomato_ing_02",
+      "recipeId": "wholegrain_toast_tvorog_tomato",
+      "authoringName": "Творог 5%",
+      "recordedAmount": 150,
+      "unit": "G",
+      "recordedWeightG": 150,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "chicken_meatballs_buckwheat_ing_01",
+      "recipeId": "chicken_meatballs_buckwheat",
+      "authoringName": "Филе куриной грудки",
+      "recordedAmount": 300,
+      "unit": "G",
+      "recordedWeightG": 300,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "ROW_SPECIFIC_APPLICABILITY_NOT_PROVED_BY_LABEL"
+      ],
+      "route": "EXISTING_SOURCE_LOCATOR_REVIEW_REQUIRED",
+      "existingCapturePath": "docs/premium/retained-sources/chicken-buckwheat-potato-review-20261104/sr28-05062-facts.txt",
+      "existingCaptureSha256": "c8481d4a2b96569454ededd5534bfa06bead39daa9b07ea9229eeaf6c61ad862"
+    },
+    {
+      "ingredientRowId": "chicken_meatballs_buckwheat_ing_03",
+      "recipeId": "chicken_meatballs_buckwheat",
+      "authoringName": "Сухари панировочные без добавок",
+      "recordedAmount": 20,
+      "unit": "G",
+      "recordedWeightG": 20,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "EXACT_PRODUCT_CLASS_COMPOSITION_AND_PORTION_BASIS_REVIEW"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "baked_apple_tvorog_ing_01",
+      "recipeId": "baked_apple_tvorog",
+      "authoringName": "Яблоко с кожурой",
+      "recordedAmount": 200,
+      "unit": "G",
+      "recordedWeightG": 200,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "ROW_SPECIFIC_APPLICABILITY_NOT_PROVED_BY_LABEL"
+      ],
+      "route": "EXISTING_SOURCE_LOCATOR_REVIEW_REQUIRED",
+      "existingCapturePath": "docs/premium/retained-sources/p5-03/apple-usda-sr27-ndb-09003.txt",
+      "existingCaptureSha256": "89d79388d19e3013fb7975d67c6a6cf5b4e42cad58fe6fb8fb08c2d81befaaca"
+    },
+    {
+      "ingredientRowId": "baked_apple_tvorog_ing_02",
+      "recipeId": "baked_apple_tvorog",
+      "authoringName": "Корица молотая",
+      "recordedAmount": 1,
+      "unit": "G",
+      "recordedWeightG": 1,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "baked_apple_tvorog_ing_03",
+      "recipeId": "baked_apple_tvorog",
+      "authoringName": "Творог 5% сухой",
+      "recordedAmount": 100,
+      "unit": "G",
+      "recordedWeightG": 100,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "cottage_cheese_pear_ing_01",
+      "recipeId": "cottage_cheese_pear",
+      "authoringName": "Творог 5%",
+      "recordedAmount": 200,
+      "unit": "G",
+      "recordedWeightG": 200,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "cottage_cheese_pear_ing_02",
+      "recipeId": "cottage_cheese_pear",
+      "authoringName": "Груша",
+      "recordedAmount": 180,
+      "unit": "G",
+      "recordedWeightG": 180,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "ROW_SPECIFIC_APPLICABILITY_NOT_PROVED_BY_LABEL",
+        "RETAIN_15_2_REFERENCE_VS_15_23_SOURCE_ROUNDING_DIFFERENCE"
+      ],
+      "route": "EXISTING_SOURCE_LOCATOR_REVIEW_REQUIRED",
+      "existingCapturePath": "docs/premium/retained-sources/pear-almonds-review-20261030/pear-usda-sr28-09252.txt",
+      "existingCaptureSha256": "949067dbe5c57df0a8aeb80b0854f50bcf14ef42cf4eeb6171a17befa0b990de"
+    },
+    {
+      "ingredientRowId": "tuna_tomato_pasta_ing_01",
+      "recipeId": "tuna_tomato_pasta",
+      "authoringName": "Паста пшеничная сухая",
+      "recordedAmount": 140,
+      "unit": "G",
+      "recordedWeightG": 140,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [],
+      "route": "NEW_GRAIN_SOURCE_CANDIDATE"
+    },
+    {
+      "ingredientRowId": "tuna_tomato_pasta_ing_02",
+      "recipeId": "tuna_tomato_pasta",
+      "authoringName": "Тунец светлый в воде, слитый",
+      "recordedAmount": 240,
+      "unit": "G",
+      "recordedWeightG": 240,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "EXACT_PRODUCT_CLASS_COMPOSITION_AND_PORTION_BASIS_REVIEW"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "tvorog_cucumber_dill_ing_01",
+      "recipeId": "tvorog_cucumber_dill",
+      "authoringName": "Творог 5% сухой консистенции",
+      "recordedAmount": 200,
+      "unit": "G",
+      "recordedWeightG": 200,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_01",
+      "recipeId": "buckwheat_crepes_tvorog",
+      "authoringName": "Мука гречневая",
+      "recordedAmount": 80,
+      "unit": "G",
+      "recordedWeightG": 80,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [],
+      "route": "NEW_GRAIN_SOURCE_CANDIDATE"
+    },
+    {
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_02",
+      "recipeId": "buckwheat_crepes_tvorog",
+      "authoringName": "Молоко 2%",
+      "recordedAmount": 150,
+      "unit": "ML",
+      "recordedWeightG": 150,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED",
+        "REVIEWED_LIQUID_VOLUME_TO_MASS_BASIS_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_04",
+      "recipeId": "buckwheat_crepes_tvorog",
+      "authoringName": "Яйцо куриное",
+      "recordedAmount": 1,
+      "unit": "PCS",
+      "recordedWeightG": 50,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "RAW_WHOLE_EGG_AND_DISCRETE_REFERENCE_MASS_NOT_MEASURED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_06",
+      "recipeId": "buckwheat_crepes_tvorog",
+      "authoringName": "Творог 5%",
+      "recordedAmount": 200,
+      "unit": "G",
+      "recordedWeightG": 200,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_07",
+      "recipeId": "buckwheat_crepes_tvorog",
+      "authoringName": "Йогурт натуральный 2%",
+      "recordedAmount": 40,
+      "unit": "G",
+      "recordedWeightG": 40,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "beef_pearl_barley_mushrooms_ing_01",
+      "recipeId": "beef_pearl_barley_mushrooms",
+      "authoringName": "Говядина top round постная",
+      "recordedAmount": 300,
+      "unit": "G",
+      "recordedWeightG": 300,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "beef_pearl_barley_mushrooms_ing_02",
+      "recipeId": "beef_pearl_barley_mushrooms",
+      "authoringName": "Крупа перловая",
+      "recordedAmount": 120,
+      "unit": "G",
+      "recordedWeightG": 120,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [],
+      "route": "NEW_GRAIN_SOURCE_CANDIDATE"
+    },
+    {
+      "ingredientRowId": "berry_tvorog_cream_ing_01",
+      "recipeId": "berry_tvorog_cream",
+      "authoringName": "Творог 5% сухой",
+      "recordedAmount": 150,
+      "unit": "G",
+      "recordedWeightG": 150,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "berry_tvorog_cream_ing_02",
+      "recipeId": "berry_tvorog_cream",
+      "authoringName": "Йогурт натуральный 2%",
+      "recordedAmount": 50,
+      "unit": "G",
+      "recordedWeightG": 50,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "berry_tvorog_cream_ing_03",
+      "recipeId": "berry_tvorog_cream",
+      "authoringName": "Клубника замороженная без сахара",
+      "recordedAmount": 50,
+      "unit": "G",
+      "recordedWeightG": 50,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "FROZEN_UNSWEETENED_AND_RETAINED_THAW_JUICE_SOURCE_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "berry_tvorog_cream_ing_04",
+      "recipeId": "berry_tvorog_cream",
+      "authoringName": "Смородина чёрная замороженная без сахара",
+      "recordedAmount": 50,
+      "unit": "G",
+      "recordedWeightG": 50,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "FROZEN_UNSWEETENED_AND_RETAINED_THAW_JUICE_SOURCE_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "oatmeal_pear_walnut_ing_01",
+      "recipeId": "oatmeal_pear_walnut",
+      "authoringName": "Овсяные хлопья",
+      "recordedAmount": 100,
+      "unit": "G",
+      "recordedWeightG": 100,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "EXISTING_OAT_SOURCE_NOT_AUTOMATICALLY_EQUIVALENT_TO_RECORDED_REFERENCE"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "oatmeal_pear_walnut_ing_02",
+      "recipeId": "oatmeal_pear_walnut",
+      "authoringName": "Молоко 2%",
+      "recordedAmount": 300,
+      "unit": "ML",
+      "recordedWeightG": null,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED",
+        "REVIEWED_LIQUID_VOLUME_TO_MASS_BASIS_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "oatmeal_pear_walnut_ing_04",
+      "recipeId": "oatmeal_pear_walnut",
+      "authoringName": "Груша",
+      "recordedAmount": 180,
+      "unit": "G",
+      "recordedWeightG": 180,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "ROW_SPECIFIC_APPLICABILITY_NOT_PROVED_BY_LABEL",
+        "RETAIN_15_2_REFERENCE_VS_15_23_SOURCE_ROUNDING_DIFFERENCE"
+      ],
+      "route": "EXISTING_SOURCE_LOCATOR_REVIEW_REQUIRED",
+      "existingCapturePath": "docs/premium/retained-sources/pear-almonds-review-20261030/pear-usda-sr28-09252.txt",
+      "existingCaptureSha256": "949067dbe5c57df0a8aeb80b0854f50bcf14ef42cf4eeb6171a17befa0b990de"
+    },
+    {
+      "ingredientRowId": "oatmeal_pear_walnut_ing_05",
+      "recipeId": "oatmeal_pear_walnut",
+      "authoringName": "Грецкие орехи",
+      "recordedAmount": 30,
+      "unit": "G",
+      "recordedWeightG": 30,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "oatmeal_pear_walnut_ing_06",
+      "recipeId": "oatmeal_pear_walnut",
+      "authoringName": "Корица молотая",
+      "recordedAmount": 2,
+      "unit": "G",
+      "recordedWeightG": 2,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "rabbit_potatoes_carrots_ing_01",
+      "recipeId": "rabbit_potatoes_carrots",
+      "authoringName": "Кролик домашний, съедобное мясо",
+      "recordedAmount": 300,
+      "unit": "G",
+      "recordedWeightG": 300,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "INDEPENDENT_EXACT_SOURCE_AND_FOOD_STATE_REVIEW_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "greek_yogurt_apple_ing_01",
+      "recipeId": "greek_yogurt_apple",
+      "authoringName": "Йогурт греческий 2%",
+      "recordedAmount": 200,
+      "unit": "G",
+      "recordedWeightG": 200,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": true,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "DAIRY_CLASS_OR_PRODUCT_NUTRITION_MAPPING_REQUIRED"
+      ],
+      "route": "SOURCE_PREPARATION_OUTSTANDING"
+    },
+    {
+      "ingredientRowId": "greek_yogurt_apple_ing_02",
+      "recipeId": "greek_yogurt_apple",
+      "authoringName": "Яблоко свежее с кожурой",
+      "recordedAmount": 180,
+      "unit": "G",
+      "recordedWeightG": 180,
+      "optional": false,
+      "canonicalStatus": "UNRESOLVED",
+      "stableFoodId": null,
+      "authoringPublicationBlockPresent": false,
+      "runtimePublishable": false,
+      "reviewReceipt": null,
+      "pendingChecks": [
+        "ROW_SPECIFIC_APPLICABILITY_NOT_PROVED_BY_LABEL"
+      ],
+      "route": "EXISTING_SOURCE_LOCATOR_REVIEW_REQUIRED",
+      "existingCapturePath": "docs/premium/retained-sources/p5-03/apple-usda-sr27-ndb-09003.txt",
+      "existingCaptureSha256": "89d79388d19e3013fb7975d67c6a6cf5b4e42cad58fe6fb8fb08c2d81befaaca"
+    }
+  ]
+}

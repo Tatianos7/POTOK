@@ -1,0 +1,6 @@
+USDA ARS, Standard Reference Release 28 (2015). NDB 20044: Rice, white, long-grain, regular, raw, enriched.
+PDF page 328, Mean column, per 100 g edible source portion.
+Energy 365 kcal; protein 7.13 g; fat 0.66 g; carbohydrate by difference 79.95 g; total dietary fiber 1.3 g.
+URL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf
+Retrieved source bytes and visually checked exact page 2026-11-04. Upstream SHA-256: 3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05.
+Factual source capture only; no FDC crosswalk, source approval, identity binding or cooked-yield evidence. Blank nutrient values are not zero or transferable from a related record.

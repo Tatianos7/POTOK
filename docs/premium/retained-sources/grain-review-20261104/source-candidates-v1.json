@@ -1,0 +1,322 @@
+{
+  "contract": "potok-pilot-grain-source-preparation-v1",
+  "date": "2026-11-04",
+  "status": "SOURCE_CANDIDATES_NOT_APPROVED",
+  "privatePilotPacketSha256": "e7ad3b7161156a444f7e2c24226226aff58fee9659dba55d1ec09546e4eae723",
+  "sourceWorkbookSha256": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+  "ingredientRows": 7,
+  "groups": [
+    {
+      "authoringName": "Крупа перловая",
+      "source": {
+        "record": "NDB20005",
+        "title": "Barley, pearled, raw",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 21,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+        "upstreamSha256": "3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05",
+        "capturePath": "sr28-20005-facts.txt",
+        "captureSha256": "e1876b328e7b6c092b6d291ace0a184840a4b501c91099eb0ddb831c687efff9",
+        "factsPer100GEdible": {
+          "calories": "352",
+          "protein": "9.91",
+          "fat": "1.16",
+          "totalCarbohydrate": "77.72",
+          "fiber": "15.6"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "62.120",
+      "rows": [
+        {
+          "ingredientRowId": "beef_pearl_barley_mushrooms_ing_02",
+          "recipeId": "beef_pearl_barley_mushrooms",
+          "authoringName": "Крупа перловая",
+          "recordedAmount": 120,
+          "unit": "G",
+          "recordedWeightG": 120,
+          "optional": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_DRY_REFERENCE_MATCH_REVIEW_REQUIRED"
+        }
+      ],
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "workbookFdcIdIndependentlyVerified": false
+    },
+    {
+      "authoringName": "Мука гречневая",
+      "source": {
+        "record": "NDB20011",
+        "title": "Buckwheat flour, whole-groat",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 27,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+        "upstreamSha256": "3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05",
+        "capturePath": "sr28-20011-facts.txt",
+        "captureSha256": "2cc7cbdac55d790f43ddff79a92aeb0a9459ec637bc32eb911e637d93e7d1102",
+        "factsPer100GEdible": {
+          "calories": "335",
+          "protein": "12.62",
+          "fat": "3.10",
+          "totalCarbohydrate": "70.59",
+          "fiber": "10.0"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "60.590",
+      "rows": [
+        {
+          "ingredientRowId": "buckwheat_crepes_tvorog_ing_01",
+          "recipeId": "buckwheat_crepes_tvorog",
+          "authoringName": "Мука гречневая",
+          "recordedAmount": 80,
+          "unit": "G",
+          "recordedWeightG": 80,
+          "optional": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "WHOLE_GROAT_FLOUR_APPLICABILITY_REVIEW_REQUIRED"
+        }
+      ],
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "workbookFdcIdIndependentlyVerified": false
+    },
+    {
+      "authoringName": "Булгур medium/coarse",
+      "source": {
+        "record": "NDB20012",
+        "title": "Bulgur, dry",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 39,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+        "upstreamSha256": "3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05",
+        "capturePath": "sr28-20012-facts.txt",
+        "captureSha256": "12c09b9b8613392f321d796a1449d6db83018646a5322c36244ec98afde0f241",
+        "factsPer100GEdible": {
+          "calories": "342",
+          "protein": "12.29",
+          "fat": "1.33",
+          "totalCarbohydrate": "75.87",
+          "fiber": "12.5"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "63.370",
+      "rows": [
+        {
+          "ingredientRowId": "chicken_bulgur_zucchini_ing_02",
+          "recipeId": "chicken_bulgur_zucchini",
+          "authoringName": "Булгур medium/coarse",
+          "recordedAmount": 140,
+          "unit": "G",
+          "recordedWeightG": 140,
+          "optional": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "TEXTUAL_DRY_REFERENCE_MATCH_REVIEW_REQUIRED"
+        }
+      ],
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "workbookFdcIdIndependentlyVerified": false
+    },
+    {
+      "authoringName": "Паста пшеничная 100% цельнозерновая",
+      "source": {
+        "record": "NDB20124",
+        "title": "Pasta, whole-wheat, dry",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 253,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+        "upstreamSha256": "3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05",
+        "capturePath": "sr28-20124-facts.txt",
+        "captureSha256": "4c9fb7296631c37f3f30a26103da0cc5b2f39d8c987188f174194d2639ebcd3e",
+        "factsPer100GEdible": {
+          "calories": "352",
+          "protein": "13.87",
+          "fat": "2.93",
+          "totalCarbohydrate": "73.37",
+          "fiber": "9.2"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "64.170",
+      "rows": [
+        {
+          "ingredientRowId": "chicken_breast_wholegrain_pasta_ing_02",
+          "recipeId": "chicken_breast_wholegrain_pasta",
+          "authoringName": "Паста пшеничная 100% цельнозерновая",
+          "recordedAmount": 140,
+          "unit": "G",
+          "recordedWeightG": 140,
+          "optional": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "EXISTING_EXACT_WHOLE_WHEAT_CLASS_PUBLICATION_BLOCK_RETAINED"
+        }
+      ],
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "workbookFdcIdIndependentlyVerified": false
+    },
+    {
+      "authoringName": "Рис белый длиннозёрный",
+      "source": {
+        "record": "NDB20044",
+        "title": "Rice, white, long-grain, regular, raw, enriched",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 328,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+        "upstreamSha256": "3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05",
+        "capturePath": "sr28-20044-facts.txt",
+        "captureSha256": "cd03f4226a569c6bfc40c0cd03f2f1511f1c558afdf8d72d921cbe58cd122172",
+        "factsPer100GEdible": {
+          "calories": "365",
+          "protein": "7.13",
+          "fat": "0.66",
+          "totalCarbohydrate": "79.95",
+          "fiber": "1.3"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "78.650",
+      "rows": [
+        {
+          "ingredientRowId": "turkey_meatballs_rice_ing_07",
+          "recipeId": "turkey_meatballs_rice",
+          "authoringName": "Рис белый длиннозёрный",
+          "recordedAmount": 120,
+          "unit": "G",
+          "recordedWeightG": 120,
+          "optional": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "BLOCKED_ENRICHMENT_CLASS_UNSPECIFIED"
+        }
+      ],
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "workbookFdcIdIndependentlyVerified": false
+    },
+    {
+      "authoringName": "Рис круглозёрный",
+      "source": {
+        "record": "NDB20052",
+        "title": "Rice, white, short-grain, enriched, uncooked",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 355,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+        "upstreamSha256": "3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05",
+        "capturePath": "sr28-20052-facts.txt",
+        "captureSha256": "3c6e69e0d0e2795e8ded0da212ea35960a2db7f69e23e50b6d35f8ba69740433",
+        "factsPer100GEdible": {
+          "calories": "358",
+          "protein": "6.50",
+          "fat": "0.52",
+          "totalCarbohydrate": "79.15",
+          "fiber": "2.8"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "76.350",
+      "rows": [
+        {
+          "ingredientRowId": "rice_porridge_berries_ing_01",
+          "recipeId": "rice_porridge_berries",
+          "authoringName": "Рис круглозёрный",
+          "recordedAmount": 120,
+          "unit": "G",
+          "recordedWeightG": 120,
+          "optional": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "BLOCKED_ENRICHMENT_CLASS_AND_FIBER_SOURCE_UNSPECIFIED"
+        }
+      ],
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "workbookFdcIdIndependentlyVerified": false
+    },
+    {
+      "authoringName": "Паста пшеничная сухая",
+      "source": {
+        "record": "NDB20120",
+        "title": "Pasta, dry, enriched",
+        "version": "USDA SR28 (2015)",
+        "pdfPageOneBased": 198,
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+        "upstreamSha256": "3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05",
+        "capturePath": "sr28-20120-facts.txt",
+        "captureSha256": "18c15361417c1aee5d37f437f0707b9d7e8d78ef96b4f7c17abfa01587cb1503",
+        "factsPer100GEdible": {
+          "calories": "371",
+          "protein": "13.04",
+          "fat": "1.51",
+          "totalCarbohydrate": "74.67",
+          "fiber": "3.2"
+        }
+      },
+      "candidateAvailableCarbsPer100G": "71.470",
+      "rows": [
+        {
+          "ingredientRowId": "tuna_tomato_pasta_ing_01",
+          "recipeId": "tuna_tomato_pasta",
+          "authoringName": "Паста пшеничная сухая",
+          "recordedAmount": 140,
+          "unit": "G",
+          "recordedWeightG": 140,
+          "optional": false,
+          "canonicalStatus": "UNRESOLVED",
+          "stableFoodId": null,
+          "sourceApplicabilityStatus": "ENRICHED_SOURCE_APPLICABILITY_REVIEW_REQUIRED"
+        }
+      ],
+      "canonicalFoodId": null,
+      "reviewReceipt": null,
+      "runtimePublishable": false,
+      "workbookFdcIdIndependentlyVerified": false
+    }
+  ],
+  "comparisonOnly": {
+    "source": {
+      "record": "NDB20452",
+      "title": "Rice, white, short-grain, raw, unenriched",
+      "version": "USDA SR28 (2015)",
+      "pdfPageOneBased": 358,
+      "url": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf",
+      "upstreamSha256": "3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05",
+      "capturePath": "sr28-20452-facts.txt",
+      "captureSha256": "d82635b775ab29b6d7445c52af5859fc503622b63246bab1b1f57225dadde270",
+      "factsPer100GEdible": {
+        "calories": "358",
+        "protein": "6.50",
+        "fat": "0.52",
+        "totalCarbohydrate": "79.15",
+        "fiber": null
+      }
+    },
+    "candidateAvailableCarbsPer100G": null,
+    "usedForBinding": false,
+    "fiberBorrowedFromEnriched": false
+  },
+  "mapping": {
+    "referencedPolicyVersion": "potok-source-total-including-fiber-to-available-v1",
+    "parentPackagePath": "docs/premium/retained-sources/p5-03/source-review-package-v1.json",
+    "parentPackageSha256": "cc0451eaf137d4cd85bd2457fe72dd7584bd0bcf6a2405d13a4e75bc7280926b",
+    "semanticsCapturePath": "docs/premium/retained-sources/pear-almonds-review-20261030/sr28-carbohydrate-semantics.txt",
+    "semanticsCaptureSha256": "27c10aae0fa069bc3b38335b8caa9da367068081f80ba310877cd83eb52578fc",
+    "formula": "sourceTotalCarbohydrate - sourceFiber",
+    "energy": "KEEP_SOURCE_ENERGY",
+    "foodSpecificApproval": false
+  },
+  "quantityConversionsPerformed": false,
+  "recipeNutritionRecomputed": false,
+  "physicalCookingBlocksDevelopment": false,
+  "runtimePublishable": false,
+  "mayActivate": false,
+  "databaseModified": false,
+  "sourceWorkbookModified": false
+}

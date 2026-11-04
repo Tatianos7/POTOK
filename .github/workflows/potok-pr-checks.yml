@@ -130,6 +130,7 @@ jobs:
             scripts/contracts/onion-carrot-source-candidates-v1.test.ts \
             scripts/contracts/chicken-buckwheat-potato-source-candidates-v1.test.ts \
             scripts/contracts/produce-source-candidates-v1.test.ts \
+            scripts/contracts/grain-source-candidates-v1.test.ts \
             scripts/contracts/first-real-source-review-batch-v1.test.ts \
             scripts/contracts/recipe-master-readiness-v1.test.ts \
             scripts/contracts/recipe-authoring-test-catalog-v1.test.ts \
