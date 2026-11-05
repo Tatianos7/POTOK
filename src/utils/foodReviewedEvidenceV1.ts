@@ -214,6 +214,16 @@ function proposalTarget(value: unknown): FoodEvidenceProposalTargetV1 {
   return { kind: row.kind, canonicalFoodId: uuid(row.canonicalFoodId), proposalDigest: hash(row.proposalDigest),
     applicability: applicability(row.applicability) };
 }
+function authorityOwned(value: unknown): FoodReviewAuthorityContextV1 {
+  const authority = record(value, ['boundary', 'actorId', 'role', 'authorityReference']);
+  if (authority.boundary !== 'OWNER_ADMIN_REVIEW' || (authority.role !== 'OWNER' && authority.role !== 'ADMIN')) fail('AUTHORITY_CONTEXT_INVALID');
+  return { boundary: 'OWNER_ADMIN_REVIEW', actorId: uuid(authority.actorId), role: authority.role,
+    authorityReference: text(authority.authorityReference) };
+}
+/** Representation only; authentication and event-time authorization remain server responsibilities. */
+export function decodeFoodReviewAuthorityContextRawV1(raw: string): FoodReviewAuthorityContextV1 {
+  return freeze(authorityOwned(parse(raw)));
+}
 async function eventOwned(value: unknown): Promise<FoodEvidenceReviewEventV1> {
   if (!value || typeof value !== 'object') fail('EVENT_REQUIRED');
   const kind = (value as Record<string, unknown>).kind;
@@ -223,12 +233,10 @@ async function eventOwned(value: unknown): Promise<FoodEvidenceReviewEventV1> {
     ...(kind === 'REVIEW_APPROVED' ? [] : ['reason']), ...(kind === 'INVALIDATION' ? ['severity'] : [])]);
   if (row.contract !== foodEvidenceReviewEventContractV1 || row.encoding !== foodReviewedEvidenceEncodingV1) fail('EVENT_CONTRACT_INVALID');
   if (row.timestampOrigin !== 'SERVER') fail('SERVER_TIMESTAMP_REQUIRED');
-  const authority = record(row.authorityContext, ['boundary', 'actorId', 'role', 'authorityReference']);
-  if (authority.boundary !== 'OWNER_ADMIN_REVIEW' || (authority.role !== 'OWNER' && authority.role !== 'ADMIN')) fail('AUTHORITY_CONTEXT_INVALID');
+  const authority = authorityOwned(row.authorityContext);
   const common: FoodEvidenceEventCommonV1 = { contract: foodEvidenceReviewEventContractV1, encoding: foodReviewedEvidenceEncodingV1,
     eventId: uuid(row.eventId), occurredAt: timestamp(row.occurredAt), timestampOrigin: 'SERVER',
-    authorityContext: { boundary: 'OWNER_ADMIN_REVIEW', actorId: uuid(authority.actorId), role: authority.role,
-      authorityReference: text(authority.authorityReference) },
+    authorityContext: authority,
     idempotencyReference: uuid(row.idempotencyReference), requestDigest: hash(row.requestDigest), digest: hash(row.digest) };
   const retained = kind === 'REVIEW_REJECTED' && row.retainedSource === null ? null : await retainedSource(row.retainedSource);
   const isCanonical = kind === 'REVIEW_REJECTED'

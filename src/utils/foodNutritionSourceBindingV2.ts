@@ -35,7 +35,8 @@ function hash(value: unknown): string {
   if (typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value)) fail('DIGEST');
   return value;
 }
-function parse(raw: unknown): unknown {
+/** Bounded protocol JSON; only safe integer numbers are representable (retained byte length). */
+export function parseFoodNutritionSourceBindingJsonRawV2(raw: unknown): unknown {
   if (typeof raw !== 'string' || raw.length > foodNutritionSourceBindingBudgetsV2.rawBytes
     || new TextEncoder().encode(raw).length > foodNutritionSourceBindingBudgetsV2.rawBytes) fail('RAW_BUDGET');
   let depth = 0, quoted = false, escaped = false;
@@ -46,24 +47,32 @@ function parse(raw: unknown): unknown {
     else if (char === '}' || char === ']') { if (--depth < 0) fail('RAW_JSON'); }
   }
   assertRawJsonWithoutDuplicateKeysV1(raw);
-  return JSON.parse(raw) as unknown;
+  const result: unknown = JSON.parse(raw);
+  // Preserve lexical -0 rejection before nested packets pass through JSON.stringify.
+  // Stringifying first would silently turn an invalid retained byteLength -0 into 0.
+  const checkNumbers = (value: unknown): void => {
+    if (typeof value === 'number' && (!Number.isSafeInteger(value) || Object.is(value, -0))) fail('RAW_NUMBER');
+    if (value && typeof value === 'object') for (const child of Object.values(value)) checkNumbers(child);
+  };
+  checkNumbers(result);
+  return result;
 }
 async function digest(domain: string, payload: unknown): Promise<string> {
   return adaptiveNutritionSha256HexV1(new TextEncoder().encode(canonicalJsonV1({ domain, payload }, 'SAFE_INTEGER')));
 }
 /** Includes bytes, mappings AND metadata, rather than just the declared bytes hash. */
 export async function retainedFoodSourceSnapshotDigestRawV2(raw: string): Promise<string> {
-  const source = await decodeRetainedFoodSourceSnapshotRawV1(JSON.stringify(parse(raw)));
+  const source = await decodeRetainedFoodSourceSnapshotRawV1(JSON.stringify(parseFoodNutritionSourceBindingJsonRawV2(raw)));
   return digest('potok-retained-food-source-snapshot-sha256-v2', source);
 }
 async function capture(canonicalRaw: string, sourceRaw: string, inputRaw: string, pinsRaw: string): Promise<FoodNutritionSourceBindingV2> {
-  const pins = record(parse(pinsRaw), ['canonicalRevisionDigest', 'numericInputDigest', 'retainedSnapshotDigest']);
+  const pins = record(parseFoodNutritionSourceBindingJsonRawV2(pinsRaw), ['canonicalRevisionDigest', 'numericInputDigest', 'retainedSnapshotDigest']);
   const expected = {
     canonicalRevisionDigest: hash(pins.canonicalRevisionDigest), numericInputDigest: hash(pins.numericInputDigest),
     retainedSnapshotDigest: hash(pins.retainedSnapshotDigest),
   };
-  const canonical = await decodeCanonicalFoodReviewedRevisionRawV1(JSON.stringify(parse(canonicalRaw)));
-  const retainedSource = await decodeRetainedFoodSourceSnapshotRawV1(JSON.stringify(parse(sourceRaw)));
+  const canonical = await decodeCanonicalFoodReviewedRevisionRawV1(JSON.stringify(parseFoodNutritionSourceBindingJsonRawV2(canonicalRaw)));
+  const retainedSource = await decodeRetainedFoodSourceSnapshotRawV1(JSON.stringify(parseFoodNutritionSourceBindingJsonRawV2(sourceRaw)));
   const numericInput = decodeExactNutritionInputRawV2(inputRaw);
   if (canonical.digest !== expected.canonicalRevisionDigest) fail('CANONICAL_PIN_MISMATCH');
   if (await exactNutritionInputDigestV2(numericInput) !== expected.numericInputDigest) fail('NUMERIC_INPUT_PIN_MISMATCH');
@@ -84,7 +93,7 @@ export async function captureFoodNutritionSourceBindingRawV2(canonicalRaw: strin
 }
 /** A valid self digest cannot substitute for the independent caller pins. */
 export async function decodeFoodNutritionSourceBindingRawV2(raw: string, pinsRaw: string): Promise<FoodNutritionSourceBindingV2> {
-  const row = record(parse(raw), ['contract', 'encoding', 'authority', 'status', 'canonical', 'retainedSource', 'numericInput', 'digest']);
+  const row = record(parseFoodNutritionSourceBindingJsonRawV2(raw), ['contract', 'encoding', 'authority', 'status', 'canonical', 'retainedSource', 'numericInput', 'digest']);
   if (row.contract !== foodNutritionSourceBindingContractV2 || row.encoding !== foodNutritionSourceBindingEncodingV2
     || row.authority !== 'NONE' || row.status !== 'REVIEW_REQUIRED') fail('CONTRACT');
   const result = await capture(JSON.stringify(row.canonical), JSON.stringify(row.retainedSource), JSON.stringify(row.numericInput), pinsRaw);

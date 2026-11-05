@@ -147,3 +147,8 @@ test('bounded raw parser rejects huge and deeply nested packets before recursive
   await assert.rejects(decode('['.repeat(13) + '0' + ']'.repeat(13), raw(f.pins)), /RAW_DEPTH/);
   await assert.rejects(decode('"' + '🦊'.repeat(70000) + '"', raw(f.pins)), /RAW_BUDGET/);
 });
+
+test('literal nested retained negative zero fails before byte validation normalizes JSON', async () => {
+  const f = await fixture(), p = await packet(f);
+  await assert.rejects(decode(raw(p).replace(/"byteLength":\d+/, '"byteLength":-0'), raw(f.pins)), /RAW_NUMBER/);
+});
