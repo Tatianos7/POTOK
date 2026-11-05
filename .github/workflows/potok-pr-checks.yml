@@ -83,6 +83,8 @@ jobs:
           node --import tsx --test scripts/contracts/breakfast-main-capacity-v1.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/selected-breakfast-week-capacity-v1.ts scripts/contracts/week-input-calorie-capacity-v1.ts scripts/contracts/selected-breakfast-week-capacity-v1.test.ts
           node --import tsx --test scripts/contracts/selected-breakfast-week-capacity-v1.test.ts
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/grain-main-week-v1.ts scripts/contracts/complete-input-week-witness-v1.ts scripts/contracts/grain-main-week-v1.test.ts
+          node --import tsx --test scripts/contracts/grain-main-week-v1.test.ts
 
       - name: Offline full-worker profiling contracts (no hosted acceptance)
         run: node --import tsx --test scripts/security/generation-profile/run.test.ts

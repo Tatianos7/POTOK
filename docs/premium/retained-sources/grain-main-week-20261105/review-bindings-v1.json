@@ -1,0 +1,37 @@
+{
+  "contract": "potok-grain-main-week-review-v1",
+  "scope": "TWO_PINNED_EXISTING_GRAIN_MAIN_RECIPES_ONLY",
+  "candidateBytesSha256": "485da00522a3014c7722a7443b63b45fd3ddfcf05ec8f0186fe7d1ca704d50af",
+  "rows": [
+    {
+      "recipeId": "chicken_breast_rice",
+      "recipeSha256": "3613e7f3276b3736aa30dafcda1462fe907a6fe3c16061118a2459c973d8adc5"
+    },
+    {
+      "recipeId": "salmon_brown_rice",
+      "recipeSha256": "9ba564c169d12b7bacf97e8202ff31c36fba869565fb07dc2ca286318ba33e49"
+    }
+  ],
+  "materials": [
+    {
+      "path": "docs/premium/retained-sources/grain-main-week-20261105/fdc-169703-selected-fields-v1.json",
+      "sha256": "6ce3775772bde0c513360a33eabf3cd688873215020a5acd807b2ba44444714b"
+    },
+    {
+      "path": "docs/premium/retained-sources/grain-main-week-20261105/fdc-169756-selected-fields-v1.json",
+      "sha256": "72a7092c314074e1553138955618dfc882299922e0403b867df18a6432f986cc"
+    },
+    {
+      "path": "docs/premium/retained-sources/grain-main-week-20261105/fdc-175167-selected-fields-v1.json",
+      "sha256": "ba3bba971a52d889a0de297c22a16f89459f702389c3ec1ba697526b91c77dde"
+    },
+    {
+      "path": "docs/premium/retained-sources/foundation-variants-20261105/method-facts-v1.json",
+      "sha256": "48cadc15402d40b476db58ac83470206b7c381999329473755b1bec7e18c5347"
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false
+}
