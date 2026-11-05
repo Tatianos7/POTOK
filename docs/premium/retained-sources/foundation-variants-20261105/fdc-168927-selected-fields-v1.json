@@ -1,0 +1,73 @@
+{
+  "captureContract": "potok-fdc-primary-selected-fields-v1",
+  "captureKind": "SELECTED_NUMERIC_FIELDS_AND_DEFINITIONS_NOT_FULL_RESPONSE",
+  "retrievedDate": "2026-11-05",
+  "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/168927",
+  "sourceResponseSha256": "3a238df52c40dcd984ed0c730f56cd8eb43fa3935f4bfad685c94cdd12ab041b",
+  "sourceResponseBytes": 42389,
+  "fdcId": 168927,
+  "ndb": "20420",
+  "dataType": "SR Legacy",
+  "description": "Pasta, dry, unenriched",
+  "publicationDate": "4/1/2019",
+  "foodNutrients": [
+    {
+      "sourceArrayIndex": 2,
+      "nutrient": {
+        "id": 1008,
+        "number": "208",
+        "name": "Energy",
+        "rank": 300,
+        "unitName": "kcal"
+      },
+      "amount": 371.0
+    },
+    {
+      "sourceArrayIndex": 4,
+      "nutrient": {
+        "id": 1003,
+        "number": "203",
+        "name": "Protein",
+        "rank": 600,
+        "unitName": "g"
+      },
+      "amount": 13.04
+    },
+    {
+      "sourceArrayIndex": 5,
+      "nutrient": {
+        "id": 1004,
+        "number": "204",
+        "name": "Total lipid (fat)",
+        "rank": 800,
+        "unitName": "g"
+      },
+      "amount": 1.51
+    },
+    {
+      "sourceArrayIndex": 8,
+      "nutrient": {
+        "id": 1005,
+        "number": "205",
+        "name": "Carbohydrate, by difference",
+        "rank": 1110,
+        "unitName": "g"
+      },
+      "amount": 74.67
+    },
+    {
+      "sourceArrayIndex": 9,
+      "nutrient": {
+        "id": 1079,
+        "number": "291",
+        "name": "Fiber, total dietary",
+        "rank": 1200,
+        "unitName": "g"
+      },
+      "amount": 3.2
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}

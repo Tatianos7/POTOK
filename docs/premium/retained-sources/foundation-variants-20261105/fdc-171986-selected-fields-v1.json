@@ -1,0 +1,73 @@
+{
+  "captureContract": "potok-fdc-primary-selected-fields-v1",
+  "captureKind": "SELECTED_NUMERIC_FIELDS_AND_DEFINITIONS_NOT_FULL_RESPONSE",
+  "retrievedDate": "2026-11-05",
+  "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/171986",
+  "sourceResponseSha256": "935ce1aa7592f833147f47d80320560aaf0a6f1d0bd8c8a1a5ace8d9f12d3f86",
+  "sourceResponseBytes": 27713,
+  "fdcId": 171986,
+  "ndb": "15184",
+  "dataType": "SR Legacy",
+  "description": "Fish, tuna, light, canned in water, without salt, drained solids",
+  "publicationDate": "4/1/2019",
+  "foodNutrients": [
+    {
+      "sourceArrayIndex": 2,
+      "nutrient": {
+        "id": 1008,
+        "number": "208",
+        "name": "Energy",
+        "rank": 300,
+        "unitName": "kcal"
+      },
+      "amount": 116.0
+    },
+    {
+      "sourceArrayIndex": 4,
+      "nutrient": {
+        "id": 1003,
+        "number": "203",
+        "name": "Protein",
+        "rank": 600,
+        "unitName": "g"
+      },
+      "amount": 25.51
+    },
+    {
+      "sourceArrayIndex": 5,
+      "nutrient": {
+        "id": 1004,
+        "number": "204",
+        "name": "Total lipid (fat)",
+        "rank": 800,
+        "unitName": "g"
+      },
+      "amount": 0.82
+    },
+    {
+      "sourceArrayIndex": 8,
+      "nutrient": {
+        "id": 1005,
+        "number": "205",
+        "name": "Carbohydrate, by difference",
+        "rank": 1110,
+        "unitName": "g"
+      },
+      "amount": 0.0
+    },
+    {
+      "sourceArrayIndex": 9,
+      "nutrient": {
+        "id": 1079,
+        "number": "291",
+        "name": "Fiber, total dietary",
+        "rank": 1200,
+        "unitName": "g"
+      },
+      "amount": 0.0
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}

@@ -73,6 +73,8 @@ jobs:
           node --import tsx --test scripts/contracts/greek-owner-balanced-pool-v1.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/pilot-source-quantity-batch-v1.ts scripts/contracts/pilot-source-quantity-batch-v1.test.ts
           node --import tsx --test scripts/contracts/pilot-source-quantity-batch-v1.test.ts
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/foundation-variants-review-v1.ts scripts/contracts/foundation-variants-review-v1.test.ts
+          node --import tsx --test scripts/contracts/foundation-variants-review-v1.test.ts
 
       - name: Offline full-worker profiling contracts (no hosted acceptance)
         run: node --import tsx --test scripts/security/generation-profile/run.test.ts

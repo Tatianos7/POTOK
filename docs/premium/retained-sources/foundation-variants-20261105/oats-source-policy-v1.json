@@ -1,0 +1,58 @@
+{
+  "contract": "potok-foundation-oats-source-model-policy-v1",
+  "status": "OFFLINE_SOURCE_MODEL_POLICY_NOT_SOURCE_ADMISSION",
+  "scope": "ONE_PINNED_ROLLED_OAT_INPUT_ONLY",
+  "fdcId": 2346396,
+  "selectedEnergyNutrientId": 2048,
+  "preserveAlternateEnergyNutrientId": 2047,
+  "fiberNutrientId": 2033,
+  "fiberMethod": "AOAC_2011_25",
+  "totalCarbohydrateNutrientId": 1005,
+  "basis": "PER_100_G_FOOD",
+  "carbohydrateDefinition": "TOTAL_BY_DIFFERENCE_INCLUDING_FIBER",
+  "formula": "TOTAL_MINUS_SAME_SOURCE_TOTAL_DIETARY_FIBER",
+  "precision": 8,
+  "rounding": "HALF_UP_ONLY_AFTER_SUM_OR_SERVINGS_DIVISION",
+  "ingredientRowId": "oatmeal_pear_walnut_ing_01",
+  "sourceAuthoringRowSha256": "8f2bb0c9dc6b1dab09ba82aaa28e6697a677091461141b945a042144f9583998",
+  "recipeContextSha256": "9af2b917394d78db6ba365c7e72131905461a854e28e9a8dc6b5e3e35a4297be",
+  "materials": [
+    {
+      "path": "docs/premium/retained-sources/foundation-variants-20261105/method-facts-v1.json",
+      "sha256": "48cadc15402d40b476db58ac83470206b7c381999329473755b1bec7e18c5347"
+    },
+    {
+      "path": "docs/premium/retained-sources/foundation-variants-20261105/fdc-168927-selected-fields-v1.json",
+      "sha256": "bb3e3496f57ddb702c505ba1f33e52396746e554a0d3caa6bd3543510c7d6770"
+    },
+    {
+      "path": "docs/premium/retained-sources/foundation-variants-20261105/fdc-168881-selected-fields-v1.json",
+      "sha256": "78595f6f0201deef93c3a012d0626a0fd9934529a95c00856c761a6e9a94d2d2"
+    },
+    {
+      "path": "docs/premium/retained-sources/foundation-variants-20261105/fdc-171986-selected-fields-v1.json",
+      "sha256": "7044c847cc1af346e5faa346cf25b35af2af9e6371015bf12aa864560cf31d5c"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/fdc-2346396-selected-fields-v1.json",
+      "sha256": "8b0d25273a2554232033295ad9edcbb7c0a29a64647342d4b8b5353a6dd04253"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/fdc-2346401-selected-fields-v1.json",
+      "sha256": "16111cebf217afa852f3a007fabe97029d9bf68ac3edd5434538fe1560b4ec91"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/fdc-2346403-selected-fields-v1.json",
+      "sha256": "fba3a292098dd8eb94d2aa3b21959636ef4fcf32dd75d43cb62902f74df4d8b4"
+    }
+  ],
+  "unansweredOwnerChoices": {
+    "porridgeSalt": "NO_REPLY_RECEIVED",
+    "ricePastaEnrichment": "NO_REPLY_RECEIVED",
+    "tunaSalt": "NO_REPLY_RECEIVED"
+  },
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false
+}
