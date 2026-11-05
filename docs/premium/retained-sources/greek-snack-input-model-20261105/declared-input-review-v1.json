@@ -1,0 +1,106 @@
+{
+  "contract": "potok-two-greek-snack-declared-input-review-v1",
+  "status": "DECLARED_INPUT_REVIEW_WITH_UNSELECTED_DAIRY_MODEL",
+  "date": "2026-11-05",
+  "candidateIntegritySha256": "079bf83659e334b37cd410b9b953a799e487645cb7ee9b070238d7d8520168f9",
+  "rows": [
+    {
+      "recipeId": "greek_yogurt_banana",
+      "ingredientRowId": "greek_yogurt_banana_ing_01",
+      "sourceAuthoringRowSha256": "49828d13e5077fa25272aa46988c2aced38ac2b910e4762c1780c41a6336ec2e",
+      "recipeContextSha256": "bbbd8d6dfdabae294e4ada1c50a5f94bc0e33ee519605435d140602e7dca1583",
+      "role": "GREEK_YOGURT",
+      "declaredAlignment": "CLASS_CHOICE_NOT_APPROVED",
+      "sourceApproved": false,
+      "foodSpecificMappingApproved": false
+    },
+    {
+      "recipeId": "greek_yogurt_banana",
+      "ingredientRowId": "greek_yogurt_banana_ing_02",
+      "sourceAuthoringRowSha256": "ce9eb4a32af2247cfb5aaafa9cf3443c59c7160157f40ec3b78946db21e29371",
+      "recipeContextSha256": "bbbd8d6dfdabae294e4ada1c50a5f94bc0e33ee519605435d140602e7dca1583",
+      "role": "RAW_BANANA_PEELED",
+      "declaredAlignment": "DECLARED_RAW_EDIBLE_STATE_ALIGNS_NOT_MEASURED",
+      "sourceApproved": false,
+      "foodSpecificMappingApproved": false
+    },
+    {
+      "recipeId": "greek_yogurt_apple",
+      "ingredientRowId": "greek_yogurt_apple_ing_01",
+      "sourceAuthoringRowSha256": "7a49d17f24bf2227f029bd7c2a911108327e2518b215be98aaabcca6f8e3b433",
+      "recipeContextSha256": "8c804da6407435a32d76dd15aabc73e0ec1c90f5804836d8601c2d5c4c919034",
+      "role": "GREEK_YOGURT",
+      "declaredAlignment": "CLASS_CHOICE_NOT_APPROVED",
+      "sourceApproved": false,
+      "foodSpecificMappingApproved": false
+    },
+    {
+      "recipeId": "greek_yogurt_apple",
+      "ingredientRowId": "greek_yogurt_apple_ing_02",
+      "sourceAuthoringRowSha256": "3688f7bbb6e0f0552cc1f150dab4cc850a92214ede80cd5dce5db17ab91ffe91",
+      "recipeContextSha256": "8c804da6407435a32d76dd15aabc73e0ec1c90f5804836d8601c2d5c4c919034",
+      "role": "RAW_APPLE_WITH_SKIN",
+      "declaredAlignment": "DECLARED_RAW_EDIBLE_STATE_ALIGNS_NOT_MEASURED",
+      "sourceApproved": false,
+      "foodSpecificMappingApproved": false
+    }
+  ],
+  "sourceMaterials": [
+    {
+      "path": "docs/premium/retained-sources/pilot-source-stage-20261104/sr28-ascii-capture-v1.json",
+      "sha256": "7dfa59063a9bc9f85793e0a5e152e95558dc6125a5ab5858aeee8a9001e8fc38"
+    },
+    {
+      "path": "docs/premium/retained-sources/dairy-primary-recheck-20261105/source-recheck-v1.json",
+      "sha256": "7d49678f029ea387a55a1c2781e7dadb792d243b921379e3b97301d795c973cf"
+    },
+    {
+      "path": "docs/premium/retained-sources/dairy-primary-recheck-20261105/fdc-170903-primary-response.json",
+      "sha256": "c823bdd5f727f9a6dedcfe61a97f27ccc714628d3766a218f032686c30e832ff"
+    },
+    {
+      "path": "docs/premium/retained-sources/produce-review-20261104/source-candidates-v1.json",
+      "sha256": "12fd4a40445ac45e957a738786b300f07df2113d5185f78e57950ff22cca3c24"
+    },
+    {
+      "path": "docs/premium/retained-sources/produce-review-20261104/sr28-09040-facts.txt",
+      "sha256": "b37c60f94ffa27fae261e413cf79258f345930ca71a2b60f213f3beb45c081bb"
+    },
+    {
+      "path": "docs/premium/retained-sources/p5-03/source-review-package-v1.json",
+      "sha256": "cc0451eaf137d4cd85bd2457fe72dd7584bd0bcf6a2405d13a4e75bc7280926b"
+    },
+    {
+      "path": "docs/premium/retained-sources/p5-03/apple-usda-sr27-ndb-09003.txt",
+      "sha256": "89d79388d19e3013fb7975d67c6a6cf5b4e42cad58fe6fb8fb08c2d81befaaca"
+    },
+    {
+      "path": "docs/premium/retained-sources/p5-03/usda-carbohydrate-definition.txt",
+      "sha256": "2df54b8797988ca8436df4c76735115ec117c8b955c93c3b3e05a7b60ba17a47"
+    },
+    {
+      "path": "docs/premium/retained-sources/p5-03/eaeu-carbohydrate-fiber-excerpt.txt",
+      "sha256": "41d86b1563b1948198500fd2e5c2a3ab077e02983eb60dfe4ab4528214fb502a"
+    }
+  ],
+  "classOptions": [
+    {
+      "optionId": "KEEP_DECLARED_GENERIC_GREEK_2_PERCENT",
+      "status": "BLOCKED_EXACT_CLASS_SOURCE_APPLICABILITY",
+      "sourceRecord": null
+    },
+    {
+      "optionId": "MODEL_USDA_SR28_01287_PLAIN_LOWFAT",
+      "status": "CONDITIONAL_SCENARIO_ONLY_NOT_RECIPE_SUBSTITUTION",
+      "sourceRecord": "USDA_SR28_NDB01287",
+      "apiCorroborationFdcId": 170903
+    }
+  ],
+  "selectedOption": null,
+  "ownerDecision": null,
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false,
+  "hashesAreNotAuthority": true
+}
