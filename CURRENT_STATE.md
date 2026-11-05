@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Exact numeric values V2 implemented, unmounted — 2026-11-05
+
+- PR340 exact head `be7880b3c1a6cd0501ea8e539aa3945a9af59e66` passed both GitHub workflows. Added pure strict V2 numeric values and mapped-input snapshots: canonical reduced rational strings, preserved supplied decimal text/reference/basis/units, exact BigInt arithmetic and fused scaling, bounded aggregates/raw parsing, canonical bytes/domain-separated digests and explicit display-only projection.
+- The numeric input's source reference is a declaration, not verified retained evidence or approval. It cannot issue Food revisions or authorize Graph publication. Missing values/axes, duplicate keys, sparse aggregates, zero division, precision/resource excess and forged fields reject. Display projection remains separate from exact totals.
+- Offline real-input compatibility reruns the existing pinned source/model pipeline: 19 recipes/88 components/7 days/28 meals; all 810 derived-axis comparisons agree with prior exact transfer/handoff. All 35 source-binding labels retain their numeric text/basis through V2. Typed water mass stays null; no density or cooked-retention claim.
+- No runtime route, Food/Graph V1/V2 decoder, source/identity or database change. No Supabase read/write, issuance/publication, merge/deployment or generator activation. Cooking remains deferred. Next: versioned Food evidence/source mapping over the new value type, then compatible Graph/publication/validator/storage/readback. See docs/architecture/exact-nutrition-values-v2.md.
+
 ## Exact source-class drafts and precision compatibility — 2026-11-05
 
 - PR339 exact head `900e8792a1018f79c16a24d8adbf1d7489be7430` passed both GitHub workflows. Prepared 34 retained-reference class drafts covering all 35 original source-binding labels: 32 FOOD plus typed water/salt. Canonical/stable IDs null, all promotion flags false. Walnut preparation state remains unknown; whole-wheat species and edamame cooking method are not invented.
