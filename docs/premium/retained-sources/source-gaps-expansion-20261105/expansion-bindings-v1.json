@@ -1,0 +1,133 @@
+{
+  "contract": "potok-source-gaps-expansion-v1",
+  "scope": "FOUR_PINNED_ADDITIONAL_RECIPES_AND_PRIOR_TUNA_ONLY",
+  "candidateBytesSha256": "485da00522a3014c7722a7443b63b45fd3ddfcf05ec8f0186fe7d1ca704d50af",
+  "rows": [
+    {
+      "recipeId": "oatmeal_apple_cinnamon",
+      "recipeSha256": "e3b0979427b550dddf71ab35e930068daeee089a817c78738857e074d26bf3a0",
+      "ingredientRows": [
+        {
+          "ingredientRowId": "oatmeal_apple_cinnamon_ing_01",
+          "sha256": "11f3d908adc82ec5b56f14fb5b1d4566748a1842ccd9bfb2dbd970d9af7fbd2a"
+        },
+        {
+          "ingredientRowId": "oatmeal_apple_cinnamon_ing_02",
+          "sha256": "234d203c54d045d2a9ed42fd9cf5cb4d5199adcbac245fb9710adbc7474f8ccd"
+        },
+        {
+          "ingredientRowId": "oatmeal_apple_cinnamon_ing_03",
+          "sha256": "9f86673e3036a59a3a0b1823bca50697e34f3cf65f6190b62bc2ac0e252224f4"
+        },
+        {
+          "ingredientRowId": "oatmeal_apple_cinnamon_ing_04",
+          "sha256": "03db9bab9dcf5c840b801851ea9d8319d2c9ad258ca2a12f1c9fb84a89752de8"
+        },
+        {
+          "ingredientRowId": "oatmeal_apple_cinnamon_ing_05",
+          "sha256": "a6d1251305d120c82dccd7a85b58ba6ffb1d796ce5cfe5e53105170264374414"
+        },
+        {
+          "ingredientRowId": "oatmeal_apple_cinnamon_ing_06",
+          "sha256": "febbcdcf573965892b3792bae7edd8a8bed001fd04d305e018a850065a50ed12"
+        }
+      ]
+    },
+    {
+      "recipeId": "oatmeal_pumpkin",
+      "recipeSha256": "f6c5eabc298b9a90a3032ee0b171287acb94937e201e83cb26c20c9a3c0d51a3",
+      "ingredientRows": [
+        {
+          "ingredientRowId": "oatmeal_pumpkin_ing_01",
+          "sha256": "64eb972f0a18da0e37f940d0491a24932a685b5c3c02cfa5e4ca08c24d8d3d83"
+        },
+        {
+          "ingredientRowId": "oatmeal_pumpkin_ing_02",
+          "sha256": "c9d9ddf6c8fd0339e3fd7e2c89e72db9f598cd2eddea5c6ff79f9a962d728a23"
+        },
+        {
+          "ingredientRowId": "oatmeal_pumpkin_ing_03",
+          "sha256": "4c3f5baa60be065cea08d195b0b17d555df37d36bea344ae9356460d377f091e"
+        },
+        {
+          "ingredientRowId": "oatmeal_pumpkin_ing_04",
+          "sha256": "73b8240c3622f674331d9b5095669bcbc8a86d31d24043801694e2c9f54a1e66"
+        },
+        {
+          "ingredientRowId": "oatmeal_pumpkin_ing_05",
+          "sha256": "3facc925d40fc3072226c66058cf647bc4bd77cd3a8f62319ce793f8977d30d8"
+        },
+        {
+          "ingredientRowId": "oatmeal_pumpkin_ing_06",
+          "sha256": "4d4f78cfe300968d4be5e4e0ceac556ebd2f166e862a5f02e6769188147835a6"
+        }
+      ]
+    },
+    {
+      "recipeId": "pear_almonds",
+      "recipeSha256": "81ec1167d7c596df338ac7fcfe5d99e0e0de15566c081e56ff8a77e211bc6d8f",
+      "ingredientRows": [
+        {
+          "ingredientRowId": "pear_almonds_ing_01",
+          "sha256": "3415f7a10ce20c6e5d9620963e7db163c974bd9d9944aae4d23230ee0385b178"
+        },
+        {
+          "ingredientRowId": "pear_almonds_ing_02",
+          "sha256": "2c71e2bda4f457ca848e7c8edb060587e944af5e0ab4b477a323f02628c8c9e0"
+        }
+      ]
+    },
+    {
+      "recipeId": "lemon_shelled_edamame",
+      "recipeSha256": "58e57b721bf93c8cbbefd949ab44c35e0816f58469da2b7af7bb55127fb6837f",
+      "ingredientRows": [
+        {
+          "ingredientRowId": "lemon_shelled_edamame_ing_01",
+          "sha256": "8b2aeac471b9dab745afc2cd74ce8e5a688444bbf001b2936b7621c6e849d41b"
+        },
+        {
+          "ingredientRowId": "lemon_shelled_edamame_ing_02",
+          "sha256": "73abe9c8fcfa4d6d55f188b5ee4eeb9619d595cded5d91adff7b2a74a5931236"
+        }
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "path": "docs/premium/retained-sources/source-gaps-expansion-20261105/fdc-167747-selected-fields-v1.json",
+      "sha256": "5317d3a06c0075a46c0e476e422a38826dc2be773acaca35d7b4df957ff25a27"
+    },
+    {
+      "path": "docs/premium/retained-sources/source-gaps-expansion-20261105/fdc-168411-selected-fields-v1.json",
+      "sha256": "25746c8457d740a573692d1be2307f5e7c893ce7580d69ed1990a8dece2977e0"
+    },
+    {
+      "path": "docs/premium/retained-sources/source-gaps-expansion-20261105/fdc-2346393-selected-fields-v1.json",
+      "sha256": "aa2876a2cac2170b87aec8ebcae3adaa77b9ede3c4c602413d5219ad0d4401b4"
+    },
+    {
+      "path": "docs/premium/retained-sources/source-gaps-expansion-20261105/tuna-sodium-class-facts-v1.json",
+      "sha256": "16e1a5d0126de62da0a2593ace340703de847a9d5266f2912e20be1b8fda9a4a"
+    },
+    {
+      "path": "docs/premium/retained-sources/owner-grain-tuna-20261105/fdc-168931-selected-fields-v1.json",
+      "sha256": "e29f8eb43a02501feac2fce8582699e6434f00067fb2c923b3f7170cb46ca1ab"
+    },
+    {
+      "path": "docs/premium/retained-sources/owner-grain-tuna-20261105/fdc-173709-selected-fields-v1.json",
+      "sha256": "f2def016bd2eba41c989116c7c62a612fd1481239392e893f76bcfc9d70fa69c"
+    },
+    {
+      "path": "docs/premium/retained-sources/foundation-variants-20261105/method-facts-v1.json",
+      "sha256": "48cadc15402d40b476db58ac83470206b7c381999329473755b1bec7e18c5347"
+    }
+  ],
+  "unansweredOwnerChoices": {
+    "bananaYogurtType": "NO_REPLY_RECEIVED",
+    "cocoaType": "NO_REPLY_RECEIVED"
+  },
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false
+}
