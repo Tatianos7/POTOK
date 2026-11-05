@@ -204,6 +204,10 @@ async function retainedSource(value: unknown): Promise<RetainedFoodSourceSnapsho
     sourceRevision: nullableText(row.sourceRevision), locator: text(row.locator), capturedAt: timestamp(row.capturedAt), mediaType: text(row.mediaType),
     byteLength: row.byteLength, sourceBytesSha256, mappings, ...payload };
 }
+/** Integrity and shape only; does not establish provenance, applicability or reviewer authority. */
+export async function decodeRetainedFoodSourceSnapshotRawV1(raw: string): Promise<RetainedFoodSourceSnapshotV1> {
+  return freeze(await retainedSource(parse(raw)));
+}
 function proposalTarget(value: unknown): FoodEvidenceProposalTargetV1 {
   const row = record(value, ['kind', 'canonicalFoodId', 'proposalDigest', 'applicability']);
   if (row.kind !== 'CANONICAL_PROPOSAL' && row.kind !== 'NUTRITION_PROPOSAL') fail('PROPOSAL_KIND_INVALID');
