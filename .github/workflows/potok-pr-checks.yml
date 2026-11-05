@@ -97,6 +97,8 @@ jobs:
           node --import tsx --test scripts/contracts/pilot-catalog-match-review-v1.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/pilot-catalog-discovery-review-v1.ts scripts/contracts/pilot-catalog-discovery-review-v1.test.ts
           node --import tsx --test scripts/contracts/pilot-catalog-discovery-review-v1.test.ts
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/pilot-source-binding-proposals-v1.ts scripts/contracts/pilot-source-binding-proposals-v1.test.ts
+          node --import tsx --test scripts/contracts/pilot-source-binding-proposals-v1.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/week-transfer-handoff-v1.ts scripts/contracts/week-transfer-handoff-v1.test.ts
           node --import tsx --test scripts/contracts/week-transfer-handoff-v1.test.ts
 
