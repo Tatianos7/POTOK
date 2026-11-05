@@ -1,0 +1,40 @@
+{
+  "contract": "potok-foundation-method-facts-v1",
+  "capturedDate": "2026-11-05",
+  "captureKind": "OWN_FACTUAL_SUMMARY_NOT_FULL_DOCUMENT",
+  "documents": [
+    {
+      "sourceUrl": "https://fdc.nal.usda.gov/Foundation_Foods_Documentation/",
+      "sourceVersion": "April 2024 documentation, retrieved 2026-11-05",
+      "sourceResponseSha256": "2c4957fbd527ff99fe1ef99eb9a846f8b8e9f68e7c72e085c5174624270884ba",
+      "locators": [
+        "Nutrient Data / Proximates",
+        "Energy"
+      ],
+      "facts": [
+        "Foundation carbohydrate by difference includes dietary fiber.",
+        "Energy nutrient ID2047 uses general Atwater factors; ID2048 uses food-specific factors.",
+        "The old Foundation energy ID1008 is not the preferred new representation.",
+        "Nutrient precision and analytical variability must be retained rather than concealed by early rounding."
+      ]
+    },
+    {
+      "sourceUrl": "https://www.ars.usda.gov/research/project/?accnNo=436107&fy=2024",
+      "sourceVersion": "USDA ARS project436107 annual report2024",
+      "sourceResponseSha256": "31298e77ec827bd5539dc2dbff646c9bd276a9189cc3f0fbef4360055056caca",
+      "locators": [
+        "Objective3",
+        "Accomplishment1"
+      ],
+      "facts": [
+        "The project compared dietary-fiber analytical methods, including AOAC2011.25.",
+        "Its oat results were similar across the compared methods.",
+        "Raw potato starch results differed with resistant starch and digestion conditions.",
+        "This report supplies no universal cultivar mapping or raw-to-cooked conversion for the two owner recipes."
+      ]
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}
