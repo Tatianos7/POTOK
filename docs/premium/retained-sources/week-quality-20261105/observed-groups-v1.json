@@ -1,0 +1,58 @@
+{
+  "contract": "potok-observed-source-groups-v1",
+  "usage": "SOURCE_RECORD_OCCURRENCE_OBSERVATION_ONLY",
+  "groups": {
+    "CHICKEN": [
+      "SR28:05062"
+    ],
+    "TUNA": [
+      "FDC_SR_LEGACY:173709:WATER_DRAINED:100G"
+    ],
+    "SALMON": [
+      "FDC_SR_LEGACY:175167:FARMED_ATLANTIC_RAW:100G"
+    ],
+    "TROUT": [
+      "FDC_SR_LEGACY:175154:RAW:100G"
+    ],
+    "MILK": [
+      "SR28:01174"
+    ],
+    "GREEK_YOGURT": [
+      "SR28:01287"
+    ],
+    "OATS": [
+      "FDC_FOUNDATION:2346396:2048:2033:PER_100_G_FOOD",
+      "FDC_FOUNDATION:2346396:2048:2033:100G"
+    ],
+    "BUCKWHEAT": [
+      "SR28:20009"
+    ],
+    "RICE": [
+      "FDC_SR_LEGACY:169756:RAW_UNENRICHED:100G",
+      "FDC_SR_LEGACY:169703:BROWN_RAW:100G"
+    ],
+    "WHEAT": [
+      "SR28:20124",
+      "SR28:20012",
+      "SR28:18079",
+      "FDC_SR_LEGACY:168927:PER_100_G_EDIBLE"
+    ],
+    "WALNUT": [
+      "SR28:12155"
+    ],
+    "ALMOND": [
+      "FDC_FOUNDATION:2346393:2048:1079:RAW:100G"
+    ],
+    "SOY_EDAMAME": [
+      "FDC_SR_LEGACY:168411:PREPARED:100G"
+    ]
+  },
+  "repeatFamilyPolicy": false,
+  "allergenClassification": false,
+  "dietaryEligibility": false,
+  "thresholdsApproved": false,
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false
+}
