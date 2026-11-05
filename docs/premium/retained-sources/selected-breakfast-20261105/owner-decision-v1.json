@@ -1,0 +1,46 @@
+{
+  "contract": "potok-selected-breakfast-owner-decision-v1",
+  "date": "2026-11-05",
+  "origin": "OWNER_REPLY_DO_AFTER_EXPLICIT_TWO_BREAKFAST_PROPOSAL",
+  "scope": "TWO_PINNED_BREAKFAST_VARIANTS_ONLY",
+  "decisions": {
+    "newMilkGramsEachRecipe": 300,
+    "milkFatPercent": 2,
+    "noAddedSaltBoth": true,
+    "appleWithPeelNoCoreOrStem": true,
+    "notVolumeToMassConversion": true
+  },
+  "candidateBytesSha256": "485da00522a3014c7722a7443b63b45fd3ddfcf05ec8f0186fe7d1ca704d50af",
+  "rows": [
+    {
+      "recipeId": "oatmeal_apple_cinnamon",
+      "recipeSha256": "e3b0979427b550dddf71ab35e930068daeee089a817c78738857e074d26bf3a0"
+    },
+    {
+      "recipeId": "oatmeal_pumpkin",
+      "recipeSha256": "f6c5eabc298b9a90a3032ee0b171287acb94937e201e83cb26c20c9a3c0d51a3"
+    }
+  ],
+  "materials": [
+    {
+      "path": "docs/premium/retained-sources/breakfast-main-capacity-20261105/review-bindings-v1.json",
+      "sha256": "62b6de3f716017475ef20804dcd4051f052802f85dc59f75c9e402df25de4f64"
+    },
+    {
+      "path": "docs/premium/retained-sources/breakfast-main-capacity-20261105/fdc-168448-selected-fields-v1.json",
+      "sha256": "25b4691c356ec30a58eeab3bde7a9d220d3161a2afeb158c4e20893b0c961653"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/fdc-2346396-selected-fields-v1.json",
+      "sha256": "8b0d25273a2554232033295ad9edcbb7c0a29a64647342d4b8b5353a6dd04253"
+    }
+  ],
+  "unansweredOwnerChoices": {
+    "bananaYogurtType": "NO_REPLY_RECEIVED",
+    "cocoaType": "NO_REPLY_RECEIVED"
+  },
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false
+}
