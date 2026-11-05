@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Exact food/source binding proposals V2, unmounted — 2026-11-05
+
+- PR341 exact head `c45ee8b7aa307427ae1c4d62b5f3a88153b7eff1` passed both GitHub workflows. Added a bounded immutable proposal tying an existing canonical Food revision V1, retained source snapshot V1 and exact numeric input V2. Reuses the existing source byte-length/hash/strict mapping validator; no parallel identity or authority mechanism.
+- Independent caller pins cover canonical revision digest, complete retained snapshot digest (bytes, metadata and mappings), and mapped numeric input digest (record, basis, units, policy and exact decimal text). Verify actual bytes, five-axis mapping coverage, canonical state applicability and numeric/source byte hash linkage. Self-consistent replacement packets still fail the original pins.
+- Every result remains authority NONE / REVIEW_REQUIRED. Source hashes and caller pins establish integrity/context only: the module does not extract arbitrary primary bytes, prove mapper provenance, authenticate reviewers, verify currentness, issue Food evidence or authorize Graph admission. Real pilot food IDs and approvals remain absent; no synthetic fixture is promoted.
+- No runtime imports, DB reads/writes, migrations, legacy wire/decimal widening, source edits, recipe approval, merge, deployment or generator activation. Next: integrate this proposal boundary with existing server review/authority primitives and separately versioned exact Food evidence; then Graph, validator/storage/readback compatibility. See docs/architecture/food-nutrition-source-binding-v2.md.
+
 ## Exact numeric values V2 implemented, unmounted — 2026-11-05
 
 - PR340 exact head `be7880b3c1a6cd0501ea8e539aa3945a9af59e66` passed both GitHub workflows. Added pure strict V2 numeric values and mapped-input snapshots: canonical reduced rational strings, preserved supplied decimal text/reference/basis/units, exact BigInt arithmetic and fused scaling, bounded aggregates/raw parsing, canonical bytes/domain-separated digests and explicit display-only projection.
