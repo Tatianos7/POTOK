@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Exact Food nutrition V2 artifacts and trusted-read adapter, unmounted — 2026-11-05
+
+- PR342 exact head `05aa17403daaa08d531b1cccf4177043919209e1` passed both GitHub workflows. Added separately versioned exact nutrition revisions and approval/rejection/invalidation events; canonical identity remains V1, source proposal stays immutable NONE/REVIEW_REQUIRED. No real IDs/review events are minted or issued.
+- Reuse V1 authority-context representation and the existing event-time authorization port (generic with V1 default, function-property variance prevents silently assigning a V1-only verifier). Exact V2 events require an explicit V2-capable implementation. No parallel role ledger, permission fallback, attestation issuer or fake V1 carrier event.
+- Added an unmounted trusted atomic-snapshot reader: selected heads/state, canonical V1 approval, exact V2 approval, independent mapper/source pins and complete event history must agree. Strict true authorization is checked on every event. Either invalidation, duplicate/missing/substituted events, changed payload under the same event ID, stale heads, foreign identity or unavailable authority fails closed. Own context/history before awaits.
+- Bounded source JSON now rejects negative zero/non-safe numeric values before nested JSON serialization can normalize invalid byteLength. Legacy V1 wire/digests and decimal constraints remain unchanged; no V1 resolver accepts new exact results.
+- This is representation/read-boundary code with synthetic authorization fixtures, not live JWT/PostgREST/authenticated store or real issuance. Full Food issuer remains in separate Draft #154 and related integration gates; not merged or cherry-picked here. No SQL/DB calls, runtime imports, source/recipe approval, Graph admission, diary writes, merge, deploy or activation. Next: exact Graph compatibility plus review/issuer/store integration under the existing authority model; see docs/architecture/exact-food-nutrition-evidence-v2.md.
+
 ## Exact food/source binding proposals V2, unmounted — 2026-11-05
 
 - PR341 exact head `c45ee8b7aa307427ae1c4d62b5f3a88153b7eff1` passed both GitHub workflows. Added a bounded immutable proposal tying an existing canonical Food revision V1, retained source snapshot V1 and exact numeric input V2. Reuses the existing source byte-length/hash/strict mapping validator; no parallel identity or authority mechanism.

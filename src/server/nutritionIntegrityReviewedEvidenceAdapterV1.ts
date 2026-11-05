@@ -26,9 +26,9 @@ export interface ReviewedEvidenceSnapshotV1 {
   currentFoodState: 'raw' | 'dry' | 'frozen' | 'cooked' | 'as-sold';
 }
 
-export interface ReviewedEvidenceAuthorityV1 {
+export interface ReviewedEvidenceAuthorityV1<TEvent = FoodEvidenceReviewEventV1> {
   /** Must validate server-issuance and reviewer privilege AT EVENT TIME, not merely event claims. */
-  isAuthorizedEvent(event: FoodEvidenceReviewEventV1): Promise<boolean>;
+  isAuthorizedEvent: (event: TEvent) => Promise<boolean>;
 }
 
 /**
