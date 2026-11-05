@@ -1,0 +1,32 @@
+{
+  "contract": "potok-usda-salted-tuna-class-facts-v1",
+  "sourceUrl": "https://www.ars.usda.gov/northeast-area/beltsville-md-bhnrc/beltsville-human-nutrition-research-center/methods-and-application-of-food-composition-laboratory/mafcl-site-pages/monitoring-sodium/",
+  "retrievedDate": "2026-11-05",
+  "sourceResponseSha256": "1ed005c509bb7b8802b2f860fefb0ffef403d1737293a5ce027761dad272b198",
+  "sourceResponseBytes": 193362,
+  "facts": [
+    {
+      "locator": "Sentinel Foods, first paragraph",
+      "summary": "USDA describes Sentinel Foods as commercially processed foods containing sodium added before purchase."
+    },
+    {
+      "locator": "Monitoring and Trends of Sentinel Foods, canned tuna in water row",
+      "ndb": "15121",
+      "baselineYear": 2011,
+      "baselineSodiumMgPer100G": 247,
+      "baselineSampleN": 24,
+      "resampledYear": 2017,
+      "resampledSodiumMgPer100G": 195,
+      "resampledSampleN": 18,
+      "summary": "The table identifies water-packed canned tuna by NDB15121. Different sampling years have different sodium results."
+    }
+  ],
+  "scope": "PINNED_WATER_PACKED_TUNA_SOURCE_MODEL_ONLY",
+  "ownJuiceEquivalenceEstablished": false,
+  "brandEquivalenceEstablished": false,
+  "sodiumIntakeSafetyAssessed": false,
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false
+}
