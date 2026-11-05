@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Source-backed ingredient review proposals — 2026-11-05
+
+- PR338 exact head `6cde8fafc7f3081602cc18d14c123e8fbf12a9b5` passed both CI workflows. Recovered the unchanged original candidate bytes and reran the existing pinned pipeline; all 19 models match the original checked-in freeze.
+- Bound all 88 ingredient rows (69 FOOD, 19 water/salt) to existing validated primary source mappers: 35 exact source binding labels, 16 capture files. Verify frozen row/source assignment and exact vector equality before producing drafts. Legacy catalog values and missingness remain separate from source values.
+- Staging routes: 55 rows need candidate identity review before source-backed revision; 10 need catalog precheck/source-class definition; 4 need a precision decision; 19 use existing typed nonfood evidence. Production routes: 37/28/4/19. None is a binding, source approval or publication.
+- Actual Food evidence decimal normalization blocks three rolled-oat rows and one raw-almond row on energy/protein/available-carb precision; no rounding or older-source fallback. Retained primary distinctions include wild trout, farmed Atlantic salmon, water-packed drained tuna, unknown lentil colour and owner-specific roasted buckwheat.
+- Proposed canonical/stable IDs, review event and authority context remain null. No Supabase read/write in this stage, no source/recipe mutation, issuer action, publication, activation, merge or deployment. Cooking remains deferred. Next: exact identity/source-class review items and a versioned precision compatibility proposal. See docs/premium/pilot-source-binding-proposals-20261105.md.
+
 ## Bounded ingredient-family discovery — 2026-11-05
 
 - PR337 exact head `5314fe0e38731798a55e7c5de0c8355a80bf7fd9` passed both GitHub workflows. Refreshed SELECT-only discovery over shared core/brand rows without a creator: 299 Staging and 224 Production observations.
