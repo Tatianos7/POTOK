@@ -1,0 +1,84 @@
+{
+  "captureContract": "potok-fdc-primary-selected-fields-v1",
+  "captureKind": "SELECTED_NUMERIC_FIELDS_AND_DEFINITIONS_NOT_FULL_RESPONSE",
+  "retrievedDate": "2026-11-05",
+  "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/168931",
+  "sourceResponseSha256": "3bba22700500f3fcd5c2ac2794feb3f6413726e5ead233a7513c88d59582f4df",
+  "sourceResponseBytes": 14525,
+  "fdcId": 168931,
+  "ndb": "20452",
+  "dataType": "SR Legacy",
+  "description": "Rice, white, short-grain, raw, unenriched",
+  "publicationDate": "4/1/2019",
+  "requestedNutrientNumbers": [
+    "208",
+    "203",
+    "204",
+    "205",
+    "291",
+    "307"
+  ],
+  "missingNutrientNumbers": [
+    "291"
+  ],
+  "foodNutrients": [
+    {
+      "sourceArrayIndex": 2,
+      "nutrient": {
+        "id": 1008,
+        "number": "208",
+        "name": "Energy",
+        "rank": 300,
+        "unitName": "kcal"
+      },
+      "amount": 358.0
+    },
+    {
+      "sourceArrayIndex": 4,
+      "nutrient": {
+        "id": 1003,
+        "number": "203",
+        "name": "Protein",
+        "rank": 600,
+        "unitName": "g"
+      },
+      "amount": 6.5
+    },
+    {
+      "sourceArrayIndex": 5,
+      "nutrient": {
+        "id": 1004,
+        "number": "204",
+        "name": "Total lipid (fat)",
+        "rank": 800,
+        "unitName": "g"
+      },
+      "amount": 0.52
+    },
+    {
+      "sourceArrayIndex": 8,
+      "nutrient": {
+        "id": 1005,
+        "number": "205",
+        "name": "Carbohydrate, by difference",
+        "rank": 1110,
+        "unitName": "g"
+      },
+      "amount": 79.15
+    },
+    {
+      "sourceArrayIndex": 15,
+      "nutrient": {
+        "id": 1093,
+        "number": "307",
+        "name": "Sodium, Na",
+        "rank": 5800,
+        "unitName": "mg"
+      },
+      "amount": 1.0
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}

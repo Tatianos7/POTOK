@@ -1,0 +1,93 @@
+{
+  "captureContract": "potok-fdc-primary-selected-fields-v1",
+  "captureKind": "SELECTED_NUMERIC_FIELDS_AND_DEFINITIONS_NOT_FULL_RESPONSE",
+  "retrievedDate": "2026-11-05",
+  "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/173709",
+  "sourceResponseSha256": "1ac04a04446755c55a68c9abf57fe8aad0418079f90dfb88ed5be4cf1983e069",
+  "sourceResponseBytes": 46402,
+  "fdcId": 173709,
+  "ndb": "15121",
+  "dataType": "SR Legacy",
+  "description": "Fish, tuna, light, canned in water, drained solids (Includes foods for USDA's Food Distribution Program)",
+  "publicationDate": "4/1/2019",
+  "requestedNutrientNumbers": [
+    "208",
+    "203",
+    "204",
+    "205",
+    "291",
+    "307"
+  ],
+  "missingNutrientNumbers": [],
+  "foodNutrients": [
+    {
+      "sourceArrayIndex": 2,
+      "nutrient": {
+        "id": 1008,
+        "number": "208",
+        "name": "Energy",
+        "rank": 300,
+        "unitName": "kcal"
+      },
+      "amount": 86.0
+    },
+    {
+      "sourceArrayIndex": 4,
+      "nutrient": {
+        "id": 1003,
+        "number": "203",
+        "name": "Protein",
+        "rank": 600,
+        "unitName": "g"
+      },
+      "amount": 19.44
+    },
+    {
+      "sourceArrayIndex": 5,
+      "nutrient": {
+        "id": 1004,
+        "number": "204",
+        "name": "Total lipid (fat)",
+        "rank": 800,
+        "unitName": "g"
+      },
+      "amount": 0.96
+    },
+    {
+      "sourceArrayIndex": 8,
+      "nutrient": {
+        "id": 1005,
+        "number": "205",
+        "name": "Carbohydrate, by difference",
+        "rank": 1110,
+        "unitName": "g"
+      },
+      "amount": 0.0
+    },
+    {
+      "sourceArrayIndex": 9,
+      "nutrient": {
+        "id": 1079,
+        "number": "291",
+        "name": "Fiber, total dietary",
+        "rank": 1200,
+        "unitName": "g"
+      },
+      "amount": 0.0
+    },
+    {
+      "sourceArrayIndex": 17,
+      "nutrient": {
+        "id": 1093,
+        "number": "307",
+        "name": "Sodium, Na",
+        "rank": 5800,
+        "unitName": "mg"
+      },
+      "amount": 247.0
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}
