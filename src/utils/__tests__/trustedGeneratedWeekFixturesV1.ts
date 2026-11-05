@@ -302,7 +302,9 @@ function warningSetFor(plan:GeneratedWeekPlanV1,evidence:TrustedValidationEviden
   return sealSet({contract:trustedMealWarningEvidenceSetContractV1,validationEvidenceDigest:evidence.digest,
     validationPoliciesDigest:policiesDigest,entries});
 }
-async function fullFixture(change: (state:FixtureState)=>void=()=>{},slotsPerDay=1) {
+// SEED preserves deliberately incompatible plans used by adversarial tests.
+// Positive integration scenarios can explicitly compose against PINNED policy.
+async function fullFixture(change: (state:FixtureState)=>void=()=>{},slotsPerDay=1,planPolicy:'SEED'|'PINNED'='SEED') {
   const seed=await warningFixture();
   const context={input:JSON.parse(seed.inputRaw) as TrustedGenerationInputV1,
     manifest:JSON.parse(seed.rawContext.candidateManifestRaw) as AdaptiveNutritionCandidateManifestV2,
@@ -375,7 +377,7 @@ async function fullFixture(change: (state:FixtureState)=>void=()=>{},slotsPerDay
     trustedValidationEvidenceRaw:JSON.stringify(pinnedEvidence)};
   const contextRaw=JSON.stringify(rawContext);const policiesRaw=JSON.stringify(aggregate);
   await decodeTrustedValidationPoliciesRawV2(policiesRaw,contextRaw);
-  const plan=await evaluatedPlanFixture(context.input,pinnedEvidence,context.manifest,seed.composition.policy);
+  const plan=await evaluatedPlanFixture(context.input,pinnedEvidence,context.manifest,planPolicy==='PINNED'?aggregate.composition.policy:seed.composition.policy);
   const set=warningSetFor(plan,pinnedEvidence,aggregate.digest);
   const full = {context,evidence:pinnedEvidence,policies:aggregate,plan,set,rawContext,contextRaw,policiesRaw,
     planRaw:JSON.stringify(plan),warningRaw:JSON.stringify(set)};
