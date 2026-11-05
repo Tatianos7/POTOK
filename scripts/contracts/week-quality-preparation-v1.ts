@@ -60,10 +60,10 @@ export function evaluateExplicitRecipeExclusionV1(inputs:CapacityRecipeV1[],scen
  if(witness.days.some(d=>d.meals.some(m=>excludedRecipeIds.includes(m.recipeId))))invalid();
  return {excludedRecipeIds:[...excludedRecipeIds].sort(),remainingInputRecipes:remaining.length,calorieCapacity:capacity,witness,exclusionScope:'EXPLICIT_RECIPE_IDS_ONLY_NOT_ALLERGEN_OR_DIETARY_SCREENING',fallbackUsed:false,sourceApproved:false,runtimePublishable:false,canApply:false,mayActivate:false};
 }
-export function buildOfflineValidationPreparationV1(candidateRaw:string,scenarioRaw:string,inputModels:ReviewInputModelV1[],witness:Witness,review:ReturnType<typeof reviewConditionalWeekV1>){
+export function buildOfflineValidationPreparationV1(candidateRaw:string,scenarioRaw:string,inputModels:ReviewInputModelV1[],witness:Witness,review:ReturnType<typeof reviewConditionalWeekV1>,groupsRaw=readObservedGroupsRawV1()){
  const candidate=obj(parse(candidateRaw).originalAuthoringCatalog);if(!Array.isArray(candidate.recipes))invalid();const originals=candidate.recipes.map(obj);
  for(const m of inputModels){const r=originals.find(r=>r.recipeId===m.recipeId);if(!r||r.declaredServings!==m.declaredServings||obj(r.sourceRecipe).meal_type_primary!==m.sourceCategory)invalid();}
- const scenario=parse(scenarioRaw) as unknown as CapacityScenarioV1&{weekStart:string},fresh=reviewConditionalWeekV1(inputModels,witness,scenario);
+ const scenario=parse(scenarioRaw) as unknown as CapacityScenarioV1&{weekStart:string},fresh=reviewConditionalWeekV1(inputModels,witness,scenario,groupsRaw);
  if(canon(fresh)!==canon(review))invalid();
  return {contract:'potok-offline-week-validation-preparation-v1',usage:'REVIEW_INPUT_ONLY_NOT_SERVER_REQUEST_OR_AUTHORITY',bindings:{candidateBytesSha256:hash(candidateRaw),scenarioBytesSha256:hash(scenarioRaw),inputModelsSha256:hash(canon(inputModels)),witnessSha256:hash(canon(witness)),qualityReviewSha256:hash(canon(review))},
   witness,conditionalQualityReview:review,accountContext:null,requestOperationId:null,canonicalRecipeIdentities:null,

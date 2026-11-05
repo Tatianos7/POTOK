@@ -1,0 +1,48 @@
+{
+  "contract": "potok-nonfish-lentil-review-v1",
+  "scope": "TWO_PINNED_EXISTING_WHOLE_LENTIL_RECIPES_ONLY",
+  "candidateBytesSha256": "485da00522a3014c7722a7443b63b45fd3ddfcf05ec8f0186fe7d1ca704d50af",
+  "rows": [
+    {
+      "recipeId": "brown_lentils_rice_carrot",
+      "recipeSha256": "4849f3079a84e1b0a568b14a7bd9e0298aa4f58aa94b77ec0aeabf168150a41e"
+    },
+    {
+      "recipeId": "whole_wheat_pasta_lentils_tomato",
+      "recipeSha256": "1ce8ac1ade65f5d54c959414603a081d3e039ab3ec21107d71488ffee84f22d0"
+    }
+  ],
+  "materials": [
+    {
+      "path": "docs/premium/retained-sources/nonfish-lentil-20261105/fdc-172420-selected-fields-v1.json",
+      "sha256": "9a0d20e40c1f708462c32795cf3fdc5af0146bad8c9eb06daeba2f68733c9b7c"
+    },
+    {
+      "path": "docs/premium/retained-sources/nonfish-lentil-20261105/observed-groups-with-lentils-v1.json",
+      "sha256": "335c89765e149f55687e1862df7feb45504744b0c1d7a2f7f030b6a0ddafa6d7"
+    },
+    {
+      "path": "docs/premium/retained-sources/grain-main-week-20261105/fdc-169756-selected-fields-v1.json",
+      "sha256": "72a7092c314074e1553138955618dfc882299922e0403b867df18a6432f986cc"
+    },
+    {
+      "path": "docs/premium/retained-sources/foundation-variants-20261105/method-facts-v1.json",
+      "sha256": "48cadc15402d40b476db58ac83470206b7c381999329473755b1bec7e18c5347"
+    }
+  ],
+  "conditions": {
+    "sourceColourCultivar": "NOT_REPORTED_NO_EQUIVALENCE_APPROVED",
+    "recipeState": "WHOLE_DRY_MATURE_LENTILS_ONLY",
+    "notEquivalent": [
+      "RED_SPLIT",
+      "CANNED",
+      "COOKED",
+      "PUREE"
+    ],
+    "discardedLiquidNutrientRetention": "UNKNOWN_INPUT_MODEL_ONLY"
+  },
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false
+}

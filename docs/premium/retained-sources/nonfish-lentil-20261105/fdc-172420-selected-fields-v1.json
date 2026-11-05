@@ -1,0 +1,75 @@
+{
+  "captureContract": "potok-fdc-primary-selected-fields-v1",
+  "captureKind": "SELECTED_NUMERIC_FIELDS_AND_DEFINITIONS_NOT_FULL_RESPONSE",
+  "retrievedDate": "2026-11-05",
+  "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/172420",
+  "sourceResponseSha256": "cb59499627d9f0e9804a5cea70790d3369cad480e02627970f84cb92bb9ce206",
+  "sourceResponseBytes": 41803,
+  "fdcId": 172420,
+  "ndb": "16069",
+  "dataType": "SR Legacy",
+  "description": "Lentils, raw",
+  "publicationDate": "4/1/2019",
+  "foodNutrients": [
+    {
+      "sourceArrayIndex": 2,
+      "nutrient": {
+        "id": 1008,
+        "number": "208",
+        "name": "Energy",
+        "rank": 300,
+        "unitName": "kcal"
+      },
+      "amount": 352.0
+    },
+    {
+      "sourceArrayIndex": 4,
+      "nutrient": {
+        "id": 1003,
+        "number": "203",
+        "name": "Protein",
+        "rank": 600,
+        "unitName": "g"
+      },
+      "amount": 24.63
+    },
+    {
+      "sourceArrayIndex": 5,
+      "nutrient": {
+        "id": 1004,
+        "number": "204",
+        "name": "Total lipid (fat)",
+        "rank": 800,
+        "unitName": "g"
+      },
+      "amount": 1.06
+    },
+    {
+      "sourceArrayIndex": 8,
+      "nutrient": {
+        "id": 1005,
+        "number": "205",
+        "name": "Carbohydrate, by difference",
+        "rank": 1110,
+        "unitName": "g"
+      },
+      "amount": 63.35
+    },
+    {
+      "sourceArrayIndex": 9,
+      "nutrient": {
+        "id": 1079,
+        "number": "291",
+        "name": "Fiber, total dietary",
+        "rank": 1200,
+        "unitName": "g"
+      },
+      "amount": 10.7
+    }
+  ],
+  "sourceColour": null,
+  "sourceCultivar": null,
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}
