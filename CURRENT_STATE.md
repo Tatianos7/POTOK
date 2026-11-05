@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Bounded ingredient-family discovery — 2026-11-05
+
+- PR337 exact head `5314fe0e38731798a55e7c5de0c8355a80bf7fd9` passed both GitHub workflows. Refreshed SELECT-only discovery over shared core/brand rows without a creator: 299 Staging and 224 Production observations.
+- Covered all prior exact-lookup misses: Staging 31/41 rows have potential observations, 10 do not; Production 25/53 have potential observations, 28 do not. These are discovery candidates, not resolved identities or eligible ingredients. All 25/23 distinct potential candidates lack fiber and explicit review/search approval flags.
+- Preserved raw/cooked contradictions, missing attributes and incompatible variants. Exact 2% milk/Greek yogurt, prepared edamame, whole brown lentils and 100% whole common-wheat pasta remain uncovered in this selection. No different fat percentage, mature soy, red/green lentil or spelt substitution. Owner ingredient choices remain unchanged.
+- Added a hash-bound offline discovery review queue; proposed IDs remain null, zero applied bindings/admissions. No DB writes, aliases, source approvals, runtime/publication changes, activation, merge or deployment. Physical cooking remains deferred. Next: specific source/identity repair proposals using existing evidence contracts. See docs/premium/pilot-catalog-discovery-review-20261105.md.
+
 ## Read-only pilot shared-catalog reconciliation — 2026-11-05
 
 - Resumed after Draft PR336 (`d35033035eaebabc8e44388c31ea66ee7726585e`); both exact-head CI workflows succeeded. Its conditional real weeks remain blocked, separate from synthetic server acceptance.
