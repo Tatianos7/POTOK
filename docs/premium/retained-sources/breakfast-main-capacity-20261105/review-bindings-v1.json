@@ -1,0 +1,75 @@
+{
+  "contract": "potok-breakfast-main-capacity-review-v1",
+  "scope": "THREE_PINNED_MAINS_AND_TWO_UNSELECTED_BREAKFAST_PROPOSALS",
+  "candidateBytesSha256": "485da00522a3014c7722a7443b63b45fd3ddfcf05ec8f0186fe7d1ca704d50af",
+  "rows": [
+    {
+      "recipeId": "oatmeal_apple_cinnamon",
+      "recipeSha256": "e3b0979427b550dddf71ab35e930068daeee089a817c78738857e074d26bf3a0"
+    },
+    {
+      "recipeId": "oatmeal_pumpkin",
+      "recipeSha256": "f6c5eabc298b9a90a3032ee0b171287acb94937e201e83cb26c20c9a3c0d51a3"
+    },
+    {
+      "recipeId": "trout_green_beans",
+      "recipeSha256": "076360ae492b325edf12a1b3ef9f9215bcc06522e542b67311744914d1c3ee1c"
+    },
+    {
+      "recipeId": "chicken_breast_cauliflower",
+      "recipeSha256": "9a4c403e25e52f4c35019ba7feee7d80bd499406c281b509b001d28bf266f944"
+    },
+    {
+      "recipeId": "chicken_pumpkin_mushrooms",
+      "recipeSha256": "360c0bbf34fcae80db3fac7140c14c0e2c5e7b3e14580666ac1dc38bb677027d"
+    }
+  ],
+  "materials": [
+    {
+      "path": "docs/premium/retained-sources/breakfast-main-capacity-20261105/fdc-168448-selected-fields-v1.json",
+      "sha256": "25b4691c356ec30a58eeab3bde7a9d220d3161a2afeb158c4e20893b0c961653"
+    },
+    {
+      "path": "docs/premium/retained-sources/breakfast-main-capacity-20261105/fdc-169961-selected-fields-v1.json",
+      "sha256": "061ea0cb8adcc5a864eece14964cba310778c8f09ac6e4bf0966e03938131d9f"
+    },
+    {
+      "path": "docs/premium/retained-sources/breakfast-main-capacity-20261105/fdc-169986-selected-fields-v1.json",
+      "sha256": "8068286a2ce0bb03e673aec5c440fff0f9c960e66298e27c61526c89851bee11"
+    },
+    {
+      "path": "docs/premium/retained-sources/breakfast-main-capacity-20261105/fdc-175154-selected-fields-v1.json",
+      "sha256": "69ac90aebd9b4ec47262dd91307854bc0758071f7c4949a43ed03af958934394"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/fdc-2346396-selected-fields-v1.json",
+      "sha256": "8b0d25273a2554232033295ad9edcbb7c0a29a64647342d4b8b5353a6dd04253"
+    },
+    {
+      "path": "docs/premium/retained-sources/foundation-variants-20261105/method-facts-v1.json",
+      "sha256": "48cadc15402d40b476db58ac83470206b7c381999329473755b1bec7e18c5347"
+    }
+  ],
+  "oatProposalPolicy": {
+    "scope": "TWO_PINNED_UNSELECTED_PROPOSALS_ONLY",
+    "fdcId": 2346396,
+    "energyNutrientId": 2048,
+    "fiberNutrientId": 2033,
+    "carbohydrateNutrientId": 1005,
+    "fiberMethod": "AOAC_2011_25",
+    "carbs": "SAME_SOURCE_TOTAL_MINUS_FIBER",
+    "precision": 8,
+    "runtimePolicyReplaced": false
+  },
+  "unansweredOwnerChoices": {
+    "twoBreakfastMilk": "NO_REPLY_RECEIVED",
+    "twoBreakfastSalt": "NO_REPLY_RECEIVED",
+    "applePeel": "NO_REPLY_RECEIVED",
+    "bananaYogurtType": "NO_REPLY_RECEIVED",
+    "cocoaType": "NO_REPLY_RECEIVED"
+  },
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false
+}
