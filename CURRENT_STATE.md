@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Read-only pilot shared-catalog reconciliation — 2026-11-05
+
+- Resumed after Draft PR336 (`d35033035eaebabc8e44388c31ea66ee7726585e`); both exact-head CI workflows succeeded. Its conditional real weeks remain blocked, separate from synthetic server acceptance.
+- Recovered the unfinished private catalog snapshots and refreshed shared-only exact name/alias reads for Staging and Production. Frozen pilot: 19 recipes, 88 component rows, 69 FOOD and 19 typed water/salt rows. Staging has 2200 shared foods, 47 candidate rows/41 no exact match; Production has 1745, 35/53. Exact lookup misses do not establish full-catalog absence.
+- Added an offline review using the existing exact resolver and input freeze: count completeness, visibility, root/alias consistency, ambiguity across labels, review-flag unknowns, explicit nutrient differences/missingness. Proposed canonical/stable IDs remain null. No source, state, nutrition semantics, ordinary-account accessibility or publication authority is inferred.
+- No DB writes, source approval, publication, generator/Edge activation, merge or deploy. Cooking/yield checks remain deferred. Next: bounded discovery of state-compatible shared candidates for unmatched labels, then a specific evidence review queue. See docs/premium/pilot-catalog-match-review-20261105.md.
+
 ## Stored generation-source commit fence candidate — 2026-11-02
 
 - Prepared an unapplied bounded SQL candidate: an internal invoker helper and exact-body-pinned record/activation gateway changes. No new client/worker grant, source row, role or runtime mount. Existing revocation triggers and the gateway share the same exclusive transaction account gate.
