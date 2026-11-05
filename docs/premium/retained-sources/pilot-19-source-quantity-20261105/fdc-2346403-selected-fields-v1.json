@@ -1,0 +1,95 @@
+{
+  "captureContract": "potok-fdc-primary-selected-fields-v1",
+  "captureKind": "SELECTED_NUMERIC_FIELDS_AND_DEFINITIONS_NOT_FULL_RESPONSE",
+  "retrievedDate": "2026-11-05",
+  "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/2346403",
+  "sourceResponseSha256": "7b8112f936fe23a7f7efa4f9aa453ed1fa0e89caef6605daa5989564d21c448e",
+  "sourceResponseBytes": 133817,
+  "fdcId": 2346403,
+  "dataType": "Foundation",
+  "description": "Potatoes, gold, without skin, raw",
+  "publicationDate": "10/28/2022",
+  "foodNutrients": [
+    {
+      "sourceArrayIndex": 2,
+      "nutrient": {
+        "id": 2047,
+        "number": "957",
+        "name": "Energy (Atwater General Factors)",
+        "rank": 280,
+        "unitName": "kcal"
+      },
+      "amount": 73.4738,
+      "id": 28912839,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 3,
+      "nutrient": {
+        "id": 2048,
+        "number": "958",
+        "name": "Energy (Atwater Specific Factors)",
+        "rank": 290,
+        "unitName": "kcal"
+      },
+      "amount": 71.575228,
+      "id": 28912840,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 5,
+      "nutrient": {
+        "id": 1003,
+        "number": "203",
+        "name": "Protein",
+        "rank": 600,
+        "unitName": "g"
+      },
+      "amount": 1.8125,
+      "id": 28912837,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 6,
+      "nutrient": {
+        "id": 1004,
+        "number": "204",
+        "name": "Total lipid (fat)",
+        "rank": 800,
+        "unitName": "g"
+      },
+      "amount": 0.2638,
+      "id": 28911999,
+      "dataPoints": 8
+    },
+    {
+      "sourceArrayIndex": 9,
+      "nutrient": {
+        "id": 1005,
+        "number": "205",
+        "name": "Carbohydrate, by difference",
+        "rank": 1110,
+        "unitName": "g"
+      },
+      "amount": 15.9624,
+      "id": 28912838,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 10,
+      "nutrient": {
+        "id": 2033,
+        "number": "293",
+        "name": "Total dietary fiber (AOAC 2011.25)",
+        "rank": 1300,
+        "unitName": "g"
+      },
+      "amount": 13.83,
+      "id": 28912001,
+      "dataPoints": 8
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}

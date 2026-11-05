@@ -1,0 +1,82 @@
+{
+  "captureContract": "potok-fdc-primary-selected-fields-v1",
+  "captureKind": "SELECTED_NUMERIC_FIELDS_AND_DEFINITIONS_NOT_FULL_RESPONSE",
+  "retrievedDate": "2026-11-05",
+  "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/747448",
+  "sourceResponseSha256": "d1d5b1af000c27d8cca677907b34a803682d4cf40a29fffdfc97e54d30f44ad2",
+  "sourceResponseBytes": 424074,
+  "fdcId": 747448,
+  "dataType": "Foundation",
+  "description": "Strawberries, raw",
+  "publicationDate": "12/16/2019",
+  "foodNutrients": [
+    {
+      "sourceArrayIndex": 2,
+      "nutrient": {
+        "id": 1008,
+        "number": "208",
+        "name": "Energy",
+        "rank": 300,
+        "unitName": "kcal"
+      },
+      "amount": 31.0,
+      "id": 8524420,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 5,
+      "nutrient": {
+        "id": 1003,
+        "number": "203",
+        "name": "Protein",
+        "rank": 600,
+        "unitName": "g"
+      },
+      "amount": 0.64,
+      "id": 8524409,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 6,
+      "nutrient": {
+        "id": 1004,
+        "number": "204",
+        "name": "Total lipid (fat)",
+        "rank": 800,
+        "unitName": "g"
+      },
+      "amount": 0.22,
+      "id": 8524405,
+      "dataPoints": 8
+    },
+    {
+      "sourceArrayIndex": 10,
+      "nutrient": {
+        "id": 1005,
+        "number": "205",
+        "name": "Carbohydrate, by difference",
+        "rank": 1110,
+        "unitName": "g"
+      },
+      "amount": 7.63,
+      "id": 8524419,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 12,
+      "nutrient": {
+        "id": 1079,
+        "number": "291",
+        "name": "Fiber, total dietary",
+        "rank": 1200,
+        "unitName": "g"
+      },
+      "amount": 1.8,
+      "id": 8524406,
+      "dataPoints": 4
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}

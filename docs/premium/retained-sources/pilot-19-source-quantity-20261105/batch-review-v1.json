@@ -1,0 +1,1453 @@
+{
+  "contract": "potok-pilot-19-source-quantity-review-v1",
+  "reviewKind": "PINNED_DECLARED_INPUT_REVIEW_NOT_SOURCE_AUTHORITY",
+  "candidateBytesSha256": "485da00522a3014c7722a7443b63b45fd3ddfcf05ec8f0186fe7d1ca704d50af",
+  "recipeIds": [
+    "baked_apple_tvorog",
+    "banana_natural_yogurt_cocoa",
+    "beef_pearl_barley_mushrooms",
+    "buckwheat_crepes_tvorog",
+    "buckwheat_porridge_mushrooms",
+    "chicken_breast_wholegrain_pasta",
+    "chicken_bulgur_zucchini",
+    "chicken_meatballs_buckwheat",
+    "chicken_roasted_beet_potato",
+    "cottage_cheese_pear",
+    "greek_yogurt_apple",
+    "greek_yogurt_banana",
+    "oatmeal_pear_walnut",
+    "rabbit_potatoes_carrots",
+    "rice_porridge_berries",
+    "tuna_tomato_pasta",
+    "turkey_buckwheat",
+    "wholegrain_toast_hummus_cucumber",
+    "wholegrain_toast_tvorog_tomato"
+  ],
+  "rows": [
+    {
+      "recipeId": "oatmeal_pear_walnut",
+      "ingredientRowId": "oatmeal_pear_walnut_ing_01",
+      "sourceAuthoringRowSha256": "8f2bb0c9dc6b1dab09ba82aaa28e6697a677091461141b945a042144f9583998",
+      "recipeContextSha256": "9af2b917394d78db6ba365c7e72131905461a854e28e9a8dc6b5e3e35a4297be",
+      "status": "BLOCKED",
+      "finding": "FOUNDATION_ATWATER_AND_AOAC293_PRECISION_POLICY_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "FDC_PRIMARY",
+        "record": 2346396
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "oatmeal_pear_walnut",
+      "ingredientRowId": "oatmeal_pear_walnut_ing_02",
+      "sourceAuthoringRowSha256": "b7790cc629f670ee460a1c10866dcb7df6b92526df5f3e643ad534d822355312",
+      "recipeContextSha256": "9af2b917394d78db6ba365c7e72131905461a854e28e9a8dc6b5e3e35a4297be",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "OWNER_NEW_GRAM_VARIANT_SR28_2_PERCENT_REFERENCE_NOT_ORIGINAL_ML_CONVERSION",
+      "quantityDecision": "OWNER_NEW_GRAM_INPUT_NOT_VOLUME_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "01174"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "oatmeal_pear_walnut",
+      "ingredientRowId": "oatmeal_pear_walnut_ing_03",
+      "sourceAuthoringRowSha256": "9ea23483b14f29c08271b2dc77ca15c1709835a16e351870189c9a32f9f79e2c",
+      "recipeContextSha256": "9af2b917394d78db6ba365c7e72131905461a854e28e9a8dc6b5e3e35a4297be",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "oatmeal_pear_walnut",
+      "ingredientRowId": "oatmeal_pear_walnut_ing_04",
+      "sourceAuthoringRowSha256": "bfb4dbac4e41e13d7f989474c5bee4b6d987b8555df935177a2e555f8a3b0701",
+      "recipeContextSha256": "9af2b917394d78db6ba365c7e72131905461a854e28e9a8dc6b5e3e35a4297be",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "09252"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "oatmeal_pear_walnut",
+      "ingredientRowId": "oatmeal_pear_walnut_ing_05",
+      "sourceAuthoringRowSha256": "119100281ca44b96ce5b9cbac39f61d898ec9c84f78f16db26a24c67862a8be6",
+      "recipeContextSha256": "9af2b917394d78db6ba365c7e72131905461a854e28e9a8dc6b5e3e35a4297be",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PRIOR_OWNER_RAW_SHELLED_UNSALTED_NO_ADDITIVES",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "12155"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "oatmeal_pear_walnut",
+      "ingredientRowId": "oatmeal_pear_walnut_ing_06",
+      "sourceAuthoringRowSha256": "7e91d1b46bda56e102e180a297f51917760f24a1a5786790fa4285632adf3c24",
+      "recipeContextSha256": "9af2b917394d78db6ba365c7e72131905461a854e28e9a8dc6b5e3e35a4297be",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "02010"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "oatmeal_pear_walnut",
+      "ingredientRowId": "oatmeal_pear_walnut_ing_07",
+      "sourceAuthoringRowSha256": "245e043e4ff56ff86ca8fb891b71ee4033d7476fab9d50d14b901b055a18109f",
+      "recipeContextSha256": "9af2b917394d78db6ba365c7e72131905461a854e28e9a8dc6b5e3e35a4297be",
+      "status": "BLOCKED",
+      "finding": "UNKNOWN_OPTIONAL_SALT_QUANTITY_RETAINED",
+      "quantityDecision": "UNREVIEWED_DISCRETE",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "02047"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rice_porridge_berries",
+      "ingredientRowId": "rice_porridge_berries_ing_01",
+      "sourceAuthoringRowSha256": "0ab9869856bd5a2506bd25413bd9a6691b6c14d8631f61599d0205a43288a7dd",
+      "recipeContextSha256": "830f2b2a15980bce1df11f5feb52d2d71670e7a4e51979075bfe4bdc8c90b999",
+      "status": "BLOCKED",
+      "finding": "RICE_ENRICHMENT_CLASS_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "20052"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rice_porridge_berries",
+      "ingredientRowId": "rice_porridge_berries_ing_02",
+      "sourceAuthoringRowSha256": "84d6c0a93a7e621202665ea2a18670b4cb5447f188e9102c57622b9337caadf2",
+      "recipeContextSha256": "830f2b2a15980bce1df11f5feb52d2d71670e7a4e51979075bfe4bdc8c90b999",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rice_porridge_berries",
+      "ingredientRowId": "rice_porridge_berries_ing_03",
+      "sourceAuthoringRowSha256": "db2e305c116fbe0f3d337eb88d34e93e34f89a37475cbf8b1fa2a0d202f438e7",
+      "recipeContextSha256": "830f2b2a15980bce1df11f5feb52d2d71670e7a4e51979075bfe4bdc8c90b999",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "OWNER_NEW_GRAM_VARIANT_SR28_2_PERCENT_REFERENCE_NOT_ORIGINAL_ML_CONVERSION",
+      "quantityDecision": "OWNER_NEW_GRAM_INPUT_NOT_VOLUME_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "01174"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rice_porridge_berries",
+      "ingredientRowId": "rice_porridge_berries_ing_04",
+      "sourceAuthoringRowSha256": "c142e4abbe6020c901db32b92bac297f40fe0b56f39ee9be0236342d24fc0d11",
+      "recipeContextSha256": "830f2b2a15980bce1df11f5feb52d2d71670e7a4e51979075bfe4bdc8c90b999",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "EXACT_REFERENCED_FOUNDATION_RAW_STRAWBERRY_NOT_SR28_SUBSTITUTION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "FDC_PRIMARY",
+        "record": 747448
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rice_porridge_berries",
+      "ingredientRowId": "rice_porridge_berries_ing_05",
+      "sourceAuthoringRowSha256": "d8460bacad0693272dcf71375155496d6c2179605da955e821c06b639b8b892e",
+      "recipeContextSha256": "830f2b2a15980bce1df11f5feb52d2d71670e7a4e51979075bfe4bdc8c90b999",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PRIOR_BOUND_CONDITIONAL_SOURCE_PROFILE",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "09050"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rice_porridge_berries",
+      "ingredientRowId": "rice_porridge_berries_ing_06",
+      "sourceAuthoringRowSha256": "71257486997476368179c8a953588e83ac036a0cdb175099af1b05b2dd78bf14",
+      "recipeContextSha256": "830f2b2a15980bce1df11f5feb52d2d71670e7a4e51979075bfe4bdc8c90b999",
+      "status": "BLOCKED",
+      "finding": "UNKNOWN_OPTIONAL_SALT_QUANTITY_RETAINED",
+      "quantityDecision": "UNREVIEWED_DISCRETE",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "02047"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "cottage_cheese_pear",
+      "ingredientRowId": "cottage_cheese_pear_ing_01",
+      "sourceAuthoringRowSha256": "99d489c1840ceee095ae386e590e86e4133d09a0255ac36e322d11890d785fdd",
+      "recipeContextSha256": "53471a68ad242114f9eb4beeed7794c9264ffce263e2f97f42833c150eaa1bd3",
+      "status": "BLOCKED",
+      "finding": "GENERIC_TVOROG_NO_GO_RETAINED",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": null,
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "cottage_cheese_pear",
+      "ingredientRowId": "cottage_cheese_pear_ing_02",
+      "sourceAuthoringRowSha256": "b31b3dadb620b1b0020937abfe06d06034af4480a75f290590fc2495af35d121",
+      "recipeContextSha256": "53471a68ad242114f9eb4beeed7794c9264ffce263e2f97f42833c150eaa1bd3",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "09252"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "wholegrain_toast_tvorog_tomato",
+      "ingredientRowId": "wholegrain_toast_tvorog_tomato_ing_01",
+      "sourceAuthoringRowSha256": "3428b19abecbd887f9c1c6374af16f9a32684ea260168538b9acdedb4ef37541",
+      "recipeContextSha256": "c1a8319917af1ce5dc9cae2f35ec2c6a7943469320ee18c59deb811dba4e3b57",
+      "status": "BLOCKED",
+      "finding": "BREAD_COMPOSITION_SOURCE_CLASS_PENDING_GRAM_AUTHORITY_REVIEWED",
+      "quantityDecision": "EXPLICIT_GRAMS_PIECES_PRESENTATION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "18075"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "wholegrain_toast_tvorog_tomato",
+      "ingredientRowId": "wholegrain_toast_tvorog_tomato_ing_02",
+      "sourceAuthoringRowSha256": "7f17e154ee183da287156e09ca47771ed78cce219467f0a052fb06dc37ae4add",
+      "recipeContextSha256": "c1a8319917af1ce5dc9cae2f35ec2c6a7943469320ee18c59deb811dba4e3b57",
+      "status": "BLOCKED",
+      "finding": "GENERIC_TVOROG_NO_GO_RETAINED",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": null,
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "wholegrain_toast_tvorog_tomato",
+      "ingredientRowId": "wholegrain_toast_tvorog_tomato_ing_03",
+      "sourceAuthoringRowSha256": "56dd9de5b022e9af6a47740d7b66629a2a488f10f09ea9818d1b7f9da484a0c7",
+      "recipeContextSha256": "c1a8319917af1ce5dc9cae2f35ec2c6a7943469320ee18c59deb811dba4e3b57",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11529"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_crepes_tvorog",
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_01",
+      "sourceAuthoringRowSha256": "5459a648fe9128e76fe12d7be44ef2f96667efebee8feacc9e28463c98663a82",
+      "recipeContextSha256": "30661446e43f0e83858cf3bea09c0fabc03e88a7d89e5ce3f7738391b7bcb886",
+      "status": "BLOCKED",
+      "finding": "FLOUR_WHOLE_GROAT_CLASS_PENDING_NOT_GROATS_OWNER_SCOPE",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": null,
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_crepes_tvorog",
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_02",
+      "sourceAuthoringRowSha256": "442e968b229fc97848e83a7bd2db39506138558332d1bbe0b07230fd646af51b",
+      "recipeContextSha256": "30661446e43f0e83858cf3bea09c0fabc03e88a7d89e5ce3f7738391b7bcb886",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "OWNER_NEW_GRAM_VARIANT_SR28_2_PERCENT_REFERENCE_NOT_ORIGINAL_ML_CONVERSION",
+      "quantityDecision": "OWNER_NEW_GRAM_INPUT_NOT_VOLUME_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "01174"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_crepes_tvorog",
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_03",
+      "sourceAuthoringRowSha256": "090e01b9e581fb23bb7904a15509c595dbf464edd86be49900e0cda725c1fbb2",
+      "recipeContextSha256": "30661446e43f0e83858cf3bea09c0fabc03e88a7d89e5ce3f7738391b7bcb886",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_crepes_tvorog",
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_04",
+      "sourceAuthoringRowSha256": "a3a4d7f3210f5fafa7953e4b02998f9232d0e9f6c637f344afb376f41cffb92f",
+      "recipeContextSha256": "30661446e43f0e83858cf3bea09c0fabc03e88a7d89e5ce3f7738391b7bcb886",
+      "status": "BLOCKED",
+      "finding": "REFERENCE_50_G_PER_EGG_NOT_RECIPE_SPECIFIC_EDIBLE_MASS",
+      "quantityDecision": "UNREVIEWED_DISCRETE",
+      "sourceCandidate": null,
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_crepes_tvorog",
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_05",
+      "sourceAuthoringRowSha256": "09f06ed2daf33b5215466e7c72818573082ed16898e1eb0d3d128aa62d886793",
+      "recipeContextSha256": "30661446e43f0e83858cf3bea09c0fabc03e88a7d89e5ce3f7738391b7bcb886",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "04053"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_crepes_tvorog",
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_06",
+      "sourceAuthoringRowSha256": "ea573a8f4cdfd73f82cb70d99823f19bd9cff10bd836530346b0be61245164b8",
+      "recipeContextSha256": "30661446e43f0e83858cf3bea09c0fabc03e88a7d89e5ce3f7738391b7bcb886",
+      "status": "BLOCKED",
+      "finding": "GENERIC_TVOROG_NO_GO_RETAINED",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": null,
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_crepes_tvorog",
+      "ingredientRowId": "buckwheat_crepes_tvorog_ing_07",
+      "sourceAuthoringRowSha256": "8fb370392baec705b7d3171320703afb8ac125061b3063badae2a33724987c4b",
+      "recipeContextSha256": "30661446e43f0e83858cf3bea09c0fabc03e88a7d89e5ce3f7738391b7bcb886",
+      "status": "BLOCKED",
+      "finding": "NATURAL_2_PERCENT_YOGURT_CLASS_PENDING_NOT_GREEK_OWNER_SCOPE",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "01117"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_porridge_mushrooms",
+      "ingredientRowId": "buckwheat_porridge_mushrooms_ing_01",
+      "sourceAuthoringRowSha256": "f234b2e9658d925509e5a3aad71745688319e3a830ce445eb382368b66e09ad7",
+      "recipeContextSha256": "93ea301e0d169e024b818c3ae946ccfe7525d60448c3e782faaaced385bc2ed4",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "OWNER_ROASTED_DRY_GROATS_NOT_PRIOR_GENERIC_BUCKWHEAT",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "20009"
+      },
+      "ownerState": "ROASTED_BROWN_GROATS",
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_porridge_mushrooms",
+      "ingredientRowId": "buckwheat_porridge_mushrooms_ing_02",
+      "sourceAuthoringRowSha256": "5bbb297a3ecef81f0f87d3758ca2c20d1079d2d7971bd1b007d9a07eb14dcf55",
+      "recipeContextSha256": "93ea301e0d169e024b818c3ae946ccfe7525d60448c3e782faaaced385bc2ed4",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11260"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_porridge_mushrooms",
+      "ingredientRowId": "buckwheat_porridge_mushrooms_ing_03",
+      "sourceAuthoringRowSha256": "4cf85e363f67c046e17150eb2cec589f47713a580d717087a0e6edc2318c90d9",
+      "recipeContextSha256": "93ea301e0d169e024b818c3ae946ccfe7525d60448c3e782faaaced385bc2ed4",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11282"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_porridge_mushrooms",
+      "ingredientRowId": "buckwheat_porridge_mushrooms_ing_04",
+      "sourceAuthoringRowSha256": "7b7ecf90869001d67d0cb7bb0e7688f9ef6fae2477c6ca1d8d6154c55ffa5284",
+      "recipeContextSha256": "93ea301e0d169e024b818c3ae946ccfe7525d60448c3e782faaaced385bc2ed4",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "04053"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "buckwheat_porridge_mushrooms",
+      "ingredientRowId": "buckwheat_porridge_mushrooms_ing_05",
+      "sourceAuthoringRowSha256": "1d1e5df6dd2d2f76ccf65315099bec43f03668c9c1802719e4d9ace208a37e04",
+      "recipeContextSha256": "93ea301e0d169e024b818c3ae946ccfe7525d60448c3e782faaaced385bc2ed4",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "wholegrain_toast_hummus_cucumber",
+      "ingredientRowId": "wholegrain_toast_hummus_cucumber_ing_01",
+      "sourceAuthoringRowSha256": "47b952a06d855291463af2e8a7532652e4bf092af5f777e4ec64b89ae0d9847f",
+      "recipeContextSha256": "a729521dca64bffefff844c11a80558bc50ae93de58e06981308692aba002ff6",
+      "status": "BLOCKED",
+      "finding": "BREAD_COMPOSITION_SOURCE_CLASS_PENDING_GRAM_AUTHORITY_REVIEWED",
+      "quantityDecision": "EXPLICIT_GRAMS_PIECES_PRESENTATION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "18075"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "wholegrain_toast_hummus_cucumber",
+      "ingredientRowId": "wholegrain_toast_hummus_cucumber_ing_02",
+      "sourceAuthoringRowSha256": "75e4101c05dacd7e62055dae3511639886039595d8f151d619f38c74dec02445",
+      "recipeContextSha256": "a729521dca64bffefff844c11a80558bc50ae93de58e06981308692aba002ff6",
+      "status": "BLOCKED",
+      "finding": "HUMMUS_PRODUCT_OR_COMPLETE_FORMULA_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": null,
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "wholegrain_toast_hummus_cucumber",
+      "ingredientRowId": "wholegrain_toast_hummus_cucumber_ing_03",
+      "sourceAuthoringRowSha256": "5c330c651b8caa7fc71406aec929ec4ca6f2097ecc8a1a7bbb9ad2c9fc2387af",
+      "recipeContextSha256": "a729521dca64bffefff844c11a80558bc50ae93de58e06981308692aba002ff6",
+      "status": "BLOCKED",
+      "finding": "CUCUMBER_PEEL_STATE_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": null,
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "turkey_buckwheat",
+      "ingredientRowId": "turkey_buckwheat_ing_01",
+      "sourceAuthoringRowSha256": "7a8c65041744d845e8ba41f1a4a7014fc34b36cfe46997210de1fbcc8b587301",
+      "recipeContextSha256": "6b3be76c4cb7b5f4d91de64984206956233e7c0dd35107482e7db428072f9da2",
+      "status": "BLOCKED",
+      "finding": "TURKEY_WHOLE_BIRD_VS_RETAIL_CLASS_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "05219"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "turkey_buckwheat",
+      "ingredientRowId": "turkey_buckwheat_ing_02",
+      "sourceAuthoringRowSha256": "23bd677d141a809e46149e3299445789280e9743e1252baf77ca22acfdf7de48",
+      "recipeContextSha256": "6b3be76c4cb7b5f4d91de64984206956233e7c0dd35107482e7db428072f9da2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "OWNER_ROASTED_DRY_GROATS_NOT_PRIOR_GENERIC_BUCKWHEAT",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "20009"
+      },
+      "ownerState": "ROASTED_BROWN_GROATS",
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "turkey_buckwheat",
+      "ingredientRowId": "turkey_buckwheat_ing_03",
+      "sourceAuthoringRowSha256": "8a728dc91db11362a1f9f2113ace061d78d486a8bc69d0dd1469cf04e9e72ada",
+      "recipeContextSha256": "6b3be76c4cb7b5f4d91de64984206956233e7c0dd35107482e7db428072f9da2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11282"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "turkey_buckwheat",
+      "ingredientRowId": "turkey_buckwheat_ing_04",
+      "sourceAuthoringRowSha256": "61d2b1d0212475e399dd6cd4ec576eccaebcd46b4dc9322139cde597ad274638",
+      "recipeContextSha256": "6b3be76c4cb7b5f4d91de64984206956233e7c0dd35107482e7db428072f9da2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11124"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "turkey_buckwheat",
+      "ingredientRowId": "turkey_buckwheat_ing_05",
+      "sourceAuthoringRowSha256": "522006a20f53abbd026b9bc6f7829d33c725ca6223caa4c6fed48fd238109cc7",
+      "recipeContextSha256": "6b3be76c4cb7b5f4d91de64984206956233e7c0dd35107482e7db428072f9da2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "04053"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "turkey_buckwheat",
+      "ingredientRowId": "turkey_buckwheat_ing_06",
+      "sourceAuthoringRowSha256": "26c2629a258146af75292c556c7825259cca79d4dfe697f44d8922cf4d52a517",
+      "recipeContextSha256": "6b3be76c4cb7b5f4d91de64984206956233e7c0dd35107482e7db428072f9da2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_bulgur_zucchini",
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_01",
+      "sourceAuthoringRowSha256": "2b8419c09c21fdfddf49cb234ca45c80ecf0034cff3127371595f09b41e65edf",
+      "recipeContextSha256": "dac16c32ebb71545b0e6b9bbe4ea1778636985a213ef692d49392133f022428f",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "05062"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_bulgur_zucchini",
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_02",
+      "sourceAuthoringRowSha256": "2e9d86ca634ad1e212fcc73399f4b7b56d73cae1bae6263f883c8262250419d8",
+      "recipeContextSha256": "dac16c32ebb71545b0e6b9bbe4ea1778636985a213ef692d49392133f022428f",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "20012"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_bulgur_zucchini",
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_03",
+      "sourceAuthoringRowSha256": "3c51c874bde9cabb24b971ac9e3a9748cc6f902a841e3daffedd5d3018d0e153",
+      "recipeContextSha256": "dac16c32ebb71545b0e6b9bbe4ea1778636985a213ef692d49392133f022428f",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11477"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_bulgur_zucchini",
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_04",
+      "sourceAuthoringRowSha256": "1485e0709ea6dd4154fab80d8b0e9da63dd3c56925d91f6705d678dd0377c7c4",
+      "recipeContextSha256": "dac16c32ebb71545b0e6b9bbe4ea1778636985a213ef692d49392133f022428f",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "04053"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_bulgur_zucchini",
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_05",
+      "sourceAuthoringRowSha256": "b69a87239f4a7c7839e14ffc8c2aa62dc877a91c8904dda3841229491e00d11e",
+      "recipeContextSha256": "dac16c32ebb71545b0e6b9bbe4ea1778636985a213ef692d49392133f022428f",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "beef_pearl_barley_mushrooms",
+      "ingredientRowId": "beef_pearl_barley_mushrooms_ing_01",
+      "sourceAuthoringRowSha256": "389c520f34510435dffd1349e839431119d653b3f6f7659e1631c58cc9658852",
+      "recipeContextSha256": "9aa367ed68b42285ec4fb13f3c1f49698839f7d08d85581b74850d105b8cec2c",
+      "status": "BLOCKED",
+      "finding": "BEEF_SELECT_GRADE_AND_TRIM_APPLICABILITY_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "23359"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "beef_pearl_barley_mushrooms",
+      "ingredientRowId": "beef_pearl_barley_mushrooms_ing_02",
+      "sourceAuthoringRowSha256": "c71712aec2d2940b155f9975becbf2e32dde717713c4b2ed634f5e4f9fcb7809",
+      "recipeContextSha256": "9aa367ed68b42285ec4fb13f3c1f49698839f7d08d85581b74850d105b8cec2c",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "20005"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "beef_pearl_barley_mushrooms",
+      "ingredientRowId": "beef_pearl_barley_mushrooms_ing_03",
+      "sourceAuthoringRowSha256": "3c677170678dbd47ecfdcaf3d2729bae1f7a12e769189437eec65df57a6866a3",
+      "recipeContextSha256": "9aa367ed68b42285ec4fb13f3c1f49698839f7d08d85581b74850d105b8cec2c",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11260"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "beef_pearl_barley_mushrooms",
+      "ingredientRowId": "beef_pearl_barley_mushrooms_ing_04",
+      "sourceAuthoringRowSha256": "35bf081e86e7e2f287f32b110c44a46da30bae375786c6e5592b2919e4cf531d",
+      "recipeContextSha256": "9aa367ed68b42285ec4fb13f3c1f49698839f7d08d85581b74850d105b8cec2c",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11282"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "beef_pearl_barley_mushrooms",
+      "ingredientRowId": "beef_pearl_barley_mushrooms_ing_05",
+      "sourceAuthoringRowSha256": "6d118a55f0b72cfa025da951ed0d481a2855f3716c3b362175864fd14097419b",
+      "recipeContextSha256": "9aa367ed68b42285ec4fb13f3c1f49698839f7d08d85581b74850d105b8cec2c",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "04053"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "beef_pearl_barley_mushrooms",
+      "ingredientRowId": "beef_pearl_barley_mushrooms_ing_06",
+      "sourceAuthoringRowSha256": "2321d66a13ec739a907cfd88dee86518693114762c74e8bccbfab0662c1a041f",
+      "recipeContextSha256": "9aa367ed68b42285ec4fb13f3c1f49698839f7d08d85581b74850d105b8cec2c",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rabbit_potatoes_carrots",
+      "ingredientRowId": "rabbit_potatoes_carrots_ing_01",
+      "sourceAuthoringRowSha256": "f9f56dfbe3450b9799c04197439827fb22c64b760b3624c789dcc0434574f489",
+      "recipeContextSha256": "97647138e577aa2ef572bdf6bb58d1f5879a4dd18cbc3ac2e85eeea88ab41ed8",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "17177"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rabbit_potatoes_carrots",
+      "ingredientRowId": "rabbit_potatoes_carrots_ing_02",
+      "sourceAuthoringRowSha256": "c6bed27d73092505186dce85979d9a06ad164c34d80259bfaf2d605a2717af20",
+      "recipeContextSha256": "97647138e577aa2ef572bdf6bb58d1f5879a4dd18cbc3ac2e85eeea88ab41ed8",
+      "status": "BLOCKED",
+      "finding": "PEELED_RAW_POTATO_GENERIC_SOURCE_AND_FIBER_METHOD_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": null,
+      "ownerState": "NON_YOUNG_PEELED",
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rabbit_potatoes_carrots",
+      "ingredientRowId": "rabbit_potatoes_carrots_ing_03",
+      "sourceAuthoringRowSha256": "d1c90c0a9a947b262f710a49cb539236e08b67e8a19fa3e8c1f65fba0328fc5c",
+      "recipeContextSha256": "97647138e577aa2ef572bdf6bb58d1f5879a4dd18cbc3ac2e85eeea88ab41ed8",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11124"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rabbit_potatoes_carrots",
+      "ingredientRowId": "rabbit_potatoes_carrots_ing_04",
+      "sourceAuthoringRowSha256": "248c24a074489e2cd9023b6f06c1447bf61e08e1f1ca9316d774b68171495de0",
+      "recipeContextSha256": "97647138e577aa2ef572bdf6bb58d1f5879a4dd18cbc3ac2e85eeea88ab41ed8",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11282"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rabbit_potatoes_carrots",
+      "ingredientRowId": "rabbit_potatoes_carrots_ing_05",
+      "sourceAuthoringRowSha256": "134daeb823fc63748db62eb01494c932d1279eaa4267c93ecc3d651bc0d0f97d",
+      "recipeContextSha256": "97647138e577aa2ef572bdf6bb58d1f5879a4dd18cbc3ac2e85eeea88ab41ed8",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "04053"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "rabbit_potatoes_carrots",
+      "ingredientRowId": "rabbit_potatoes_carrots_ing_06",
+      "sourceAuthoringRowSha256": "3f71f0c8dba30f8cf88f301a0e6266b9a9e9a7aed56a4b8f835e06ca8ad6f0fb",
+      "recipeContextSha256": "97647138e577aa2ef572bdf6bb58d1f5879a4dd18cbc3ac2e85eeea88ab41ed8",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_breast_wholegrain_pasta",
+      "ingredientRowId": "chicken_breast_wholegrain_pasta_ing_01",
+      "sourceAuthoringRowSha256": "1e28a289ede879c9b210e6a4dfc51b4f655cc58f2a7623f0747dacb52342f65e",
+      "recipeContextSha256": "cb16d34ad216415a1e6a9bf3d057f081d6b6b0c003659b5ca418b43451865317",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "05062"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_breast_wholegrain_pasta",
+      "ingredientRowId": "chicken_breast_wholegrain_pasta_ing_02",
+      "sourceAuthoringRowSha256": "0520f7cccca5338bfec5b9e046415207d529e203636b11a87aefcddb9fdc620a",
+      "recipeContextSha256": "cb16d34ad216415a1e6a9bf3d057f081d6b6b0c003659b5ca418b43451865317",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "20124"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_breast_wholegrain_pasta",
+      "ingredientRowId": "chicken_breast_wholegrain_pasta_ing_03",
+      "sourceAuthoringRowSha256": "3b2f9daf324f8737b7524620a7b7d5b835ada1e03a7985a3252112deb6fc80bf",
+      "recipeContextSha256": "cb16d34ad216415a1e6a9bf3d057f081d6b6b0c003659b5ca418b43451865317",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "04053"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_breast_wholegrain_pasta",
+      "ingredientRowId": "chicken_breast_wholegrain_pasta_ing_04",
+      "sourceAuthoringRowSha256": "56a008d8cb6a14d347dca56034d49df72675fde5cd09d80768a8c7a7bdaeb101",
+      "recipeContextSha256": "cb16d34ad216415a1e6a9bf3d057f081d6b6b0c003659b5ca418b43451865317",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "tuna_tomato_pasta",
+      "ingredientRowId": "tuna_tomato_pasta_ing_01",
+      "sourceAuthoringRowSha256": "5536420df22ba899f21e55c1a555b26d10a410378453f515a1493481364ff7a8",
+      "recipeContextSha256": "323f906f0c7b0f4197fd4de416fa8ea550caa392127507224ea407512c1d07b2",
+      "status": "BLOCKED",
+      "finding": "PASTA_ENRICHMENT_CLASS_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "20120"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "tuna_tomato_pasta",
+      "ingredientRowId": "tuna_tomato_pasta_ing_02",
+      "sourceAuthoringRowSha256": "54781fe9a90759ba9d3d1c3d9b5bcd85964ddaa50f46249a9a97040a5c24727a",
+      "recipeContextSha256": "323f906f0c7b0f4197fd4de416fa8ea550caa392127507224ea407512c1d07b2",
+      "status": "BLOCKED",
+      "finding": "TUNA_SALT_CLASS_APPLICABILITY_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "15184"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "tuna_tomato_pasta",
+      "ingredientRowId": "tuna_tomato_pasta_ing_03",
+      "sourceAuthoringRowSha256": "981f9b51bb0ddfa7f642a6fbd907ce3556762e665919f70feb3ec23e48093bb6",
+      "recipeContextSha256": "323f906f0c7b0f4197fd4de416fa8ea550caa392127507224ea407512c1d07b2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11529"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "tuna_tomato_pasta",
+      "ingredientRowId": "tuna_tomato_pasta_ing_04",
+      "sourceAuthoringRowSha256": "849b7e4d9a33a71dc34f1de1e71d3b8c1d337574527dc667ca6d3be0c1c6f2bb",
+      "recipeContextSha256": "323f906f0c7b0f4197fd4de416fa8ea550caa392127507224ea407512c1d07b2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "04053"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "tuna_tomato_pasta",
+      "ingredientRowId": "tuna_tomato_pasta_ing_05",
+      "sourceAuthoringRowSha256": "ab9fa7c8198fe87bf8c182d294e8cccea43f8c202084816e9227967114930fc8",
+      "recipeContextSha256": "323f906f0c7b0f4197fd4de416fa8ea550caa392127507224ea407512c1d07b2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_roasted_beet_potato",
+      "ingredientRowId": "chicken_roasted_beet_potato_ing_01",
+      "sourceAuthoringRowSha256": "d36010b71f5fb30dc121a1538a28603ecf864a9487076e3d0c2f7fb0e1fd74ba",
+      "recipeContextSha256": "c1e3386a050be33ab9f4d01643bfdcc86a8a5c3f427267132b568b4a8c0b4ab2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "05062"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_roasted_beet_potato",
+      "ingredientRowId": "chicken_roasted_beet_potato_ing_02",
+      "sourceAuthoringRowSha256": "918ae6f8671d04d227d74768d1bd8e7d412b684117e82b21ccf6f263a5471074",
+      "recipeContextSha256": "c1e3386a050be33ab9f4d01643bfdcc86a8a5c3f427267132b568b4a8c0b4ab2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11080"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_roasted_beet_potato",
+      "ingredientRowId": "chicken_roasted_beet_potato_ing_03",
+      "sourceAuthoringRowSha256": "932aa6af9737cc83876cf7f83ca68193f37b612348283f9384bd8cdaac8d16d7",
+      "recipeContextSha256": "c1e3386a050be33ab9f4d01643bfdcc86a8a5c3f427267132b568b4a8c0b4ab2",
+      "status": "BLOCKED",
+      "finding": "PEELED_RAW_POTATO_GENERIC_SOURCE_AND_FIBER_METHOD_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": null,
+      "ownerState": "NON_YOUNG_PEELED",
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_roasted_beet_potato",
+      "ingredientRowId": "chicken_roasted_beet_potato_ing_04",
+      "sourceAuthoringRowSha256": "e0264eaaba3a108dc4609141f4bafc7c2b564b74af020050023de32941bf7bed",
+      "recipeContextSha256": "c1e3386a050be33ab9f4d01643bfdcc86a8a5c3f427267132b568b4a8c0b4ab2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11282"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_roasted_beet_potato",
+      "ingredientRowId": "chicken_roasted_beet_potato_ing_05",
+      "sourceAuthoringRowSha256": "d6c69f2746df5322b0d9bd23e44b117b9521b8b2e7a005272275ab175eaad789",
+      "recipeContextSha256": "c1e3386a050be33ab9f4d01643bfdcc86a8a5c3f427267132b568b4a8c0b4ab2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "04053"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_roasted_beet_potato",
+      "ingredientRowId": "chicken_roasted_beet_potato_ing_06",
+      "sourceAuthoringRowSha256": "d9c12ce906afd64ca6ab56d962c69307aba3bf2e4889691e7b96faed8ca12387",
+      "recipeContextSha256": "c1e3386a050be33ab9f4d01643bfdcc86a8a5c3f427267132b568b4a8c0b4ab2",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "KNOWN_GRAMS_TABLE_SALT_5_AXES_ONLY_SODIUM_UNASSESSED",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "02047"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_meatballs_buckwheat",
+      "ingredientRowId": "chicken_meatballs_buckwheat_ing_01",
+      "sourceAuthoringRowSha256": "d12b97d94a8a023f45a12c5f31982941bc301ac17c63fb4368f036b494034c5f",
+      "recipeContextSha256": "36b092f1bec45577512fe98207e4e8231eaabadfeb5182804cf52889fe6dffdb",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "05062"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_meatballs_buckwheat",
+      "ingredientRowId": "chicken_meatballs_buckwheat_ing_02",
+      "sourceAuthoringRowSha256": "15438b5032a1d47a7313fd47764ca41f9fe7cfd7880863694a4ad3649fcfd9da",
+      "recipeContextSha256": "36b092f1bec45577512fe98207e4e8231eaabadfeb5182804cf52889fe6dffdb",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "11282"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_meatballs_buckwheat",
+      "ingredientRowId": "chicken_meatballs_buckwheat_ing_03",
+      "sourceAuthoringRowSha256": "b208762a5d8aac9789255449f7e97025a9f2b95a8a1d86ff74b8a118a058afea",
+      "recipeContextSha256": "36b092f1bec45577512fe98207e4e8231eaabadfeb5182804cf52889fe6dffdb",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "18079"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_meatballs_buckwheat",
+      "ingredientRowId": "chicken_meatballs_buckwheat_ing_04",
+      "sourceAuthoringRowSha256": "58b7c77b4d3f4fa8834022a4e65ef448e240239caad9e312119490244745283c",
+      "recipeContextSha256": "36b092f1bec45577512fe98207e4e8231eaabadfeb5182804cf52889fe6dffdb",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "04053"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_meatballs_buckwheat",
+      "ingredientRowId": "chicken_meatballs_buckwheat_ing_05",
+      "sourceAuthoringRowSha256": "0e4498934978405c4de8330d7979949e56d5dbe984254c95de3c7917387b90ee",
+      "recipeContextSha256": "36b092f1bec45577512fe98207e4e8231eaabadfeb5182804cf52889fe6dffdb",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "KNOWN_GRAMS_TABLE_SALT_5_AXES_ONLY_SODIUM_UNASSESSED",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "02047"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_meatballs_buckwheat",
+      "ingredientRowId": "chicken_meatballs_buckwheat_ing_06",
+      "sourceAuthoringRowSha256": "e4686dd28144322db2b54084a4e88399a7775a868e11c880464b4e54468608c5",
+      "recipeContextSha256": "36b092f1bec45577512fe98207e4e8231eaabadfeb5182804cf52889fe6dffdb",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "OWNER_ROASTED_DRY_GROATS_NOT_PRIOR_GENERIC_BUCKWHEAT",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "20009"
+      },
+      "ownerState": "ROASTED_BROWN_GROATS",
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "chicken_meatballs_buckwheat",
+      "ingredientRowId": "chicken_meatballs_buckwheat_ing_07",
+      "sourceAuthoringRowSha256": "7d295cb24460c99a56ae65f6f7f58f5b1be851502edf6a45729d73f20c00e09f",
+      "recipeContextSha256": "36b092f1bec45577512fe98207e4e8231eaabadfeb5182804cf52889fe6dffdb",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "PLAIN_POTABLE_WATER_SOURCE_ZERO_NOT_MASS_OR_YIELD",
+      "quantityDecision": "TYPED_WATER_ZERO_NO_GRAM_CONVERSION",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "14411"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "greek_yogurt_banana",
+      "ingredientRowId": "greek_yogurt_banana_ing_01",
+      "sourceAuthoringRowSha256": "49828d13e5077fa25272aa46988c2aced38ac2b910e4762c1780c41a6336ec2e",
+      "recipeContextSha256": "bbbd8d6dfdabae294e4ada1c50a5f94bc0e33ee519605435d140602e7dca1583",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "OWNER_GREEK_CLASS_CONDITIONAL_SR28_PROFILE_NOT_ALL_BRANDS",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "01287"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "greek_yogurt_banana",
+      "ingredientRowId": "greek_yogurt_banana_ing_02",
+      "sourceAuthoringRowSha256": "ce9eb4a32af2247cfb5aaafa9cf3443c59c7160157f40ec3b78946db21e29371",
+      "recipeContextSha256": "bbbd8d6dfdabae294e4ada1c50a5f94bc0e33ee519605435d140602e7dca1583",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "09040"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "greek_yogurt_apple",
+      "ingredientRowId": "greek_yogurt_apple_ing_01",
+      "sourceAuthoringRowSha256": "7a49d17f24bf2227f029bd7c2a911108327e2518b215be98aaabcca6f8e3b433",
+      "recipeContextSha256": "8c804da6407435a32d76dd15aabc73e0ec1c90f5804836d8601c2d5c4c919034",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "OWNER_GREEK_CLASS_CONDITIONAL_SR28_PROFILE_NOT_ALL_BRANDS",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "01287"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "greek_yogurt_apple",
+      "ingredientRowId": "greek_yogurt_apple_ing_02",
+      "sourceAuthoringRowSha256": "3688f7bbb6e0f0552cc1f150dab4cc850a92214ede80cd5dce5db17ab91ffe91",
+      "recipeContextSha256": "8c804da6407435a32d76dd15aabc73e0ec1c90f5804836d8601c2d5c4c919034",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "09003"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "banana_natural_yogurt_cocoa",
+      "ingredientRowId": "banana_natural_yogurt_cocoa_ing_01",
+      "sourceAuthoringRowSha256": "0cbe8359d478dcfcbed47bedb28f4ac9d1fd3aa5fd825c56ad1ba56c534f0694",
+      "recipeContextSha256": "1f0566966a358a552cf7e93df036d55fd58d4b8b618ceeb0621b762693649109",
+      "status": "BLOCKED",
+      "finding": "NATURAL_2_PERCENT_YOGURT_CLASS_PENDING_NOT_GREEK_OWNER_SCOPE",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "01117"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "banana_natural_yogurt_cocoa",
+      "ingredientRowId": "banana_natural_yogurt_cocoa_ing_02",
+      "sourceAuthoringRowSha256": "48be57c6cbeb1eae8d9380ad2fa34e2e96349766ab66e84d75ef146f49a78d46",
+      "recipeContextSha256": "1f0566966a358a552cf7e93df036d55fd58d4b8b618ceeb0621b762693649109",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "09040"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "banana_natural_yogurt_cocoa",
+      "ingredientRowId": "banana_natural_yogurt_cocoa_ing_03",
+      "sourceAuthoringRowSha256": "6d50468270dec4456738b58139d592edd41fbc6f3d4aa0ebc4f111694eeb85b6",
+      "recipeContextSha256": "1f0566966a358a552cf7e93df036d55fd58d4b8b618ceeb0621b762693649109",
+      "status": "BLOCKED",
+      "finding": "COCOA_ALKALIZATION_CLASS_PENDING",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "19165"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "baked_apple_tvorog",
+      "ingredientRowId": "baked_apple_tvorog_ing_01",
+      "sourceAuthoringRowSha256": "1773da434cbb3476ed1ac72d7caa40fb0aff33473c603820e137c52bebd3d020",
+      "recipeContextSha256": "935a2616a2c3c0bd220d8e6beef0016829b5e83e84ff6fb41de7439e65cf431a",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "09003"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "baked_apple_tvorog",
+      "ingredientRowId": "baked_apple_tvorog_ing_02",
+      "sourceAuthoringRowSha256": "ca6a8b4281d31fa937ec2bf84febc474b90586181621ddd1ce93344cb7ba1f9a",
+      "recipeContextSha256": "935a2616a2c3c0bd220d8e6beef0016829b5e83e84ff6fb41de7439e65cf431a",
+      "status": "DECLARED_SOURCE_INPUT_MODEL",
+      "finding": "DECLARED_STATE_AND_INPUT_BASIS_REVIEWED_NOT_ADMISSION",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": {
+        "kind": "SR28",
+        "record": "02010"
+      },
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    },
+    {
+      "recipeId": "baked_apple_tvorog",
+      "ingredientRowId": "baked_apple_tvorog_ing_03",
+      "sourceAuthoringRowSha256": "ee4f120c9146cfed6a10527c3d9661cb15a082e67be630758e26ccacb4929caa",
+      "recipeContextSha256": "935a2616a2c3c0bd220d8e6beef0016829b5e83e84ff6fb41de7439e65cf431a",
+      "status": "BLOCKED",
+      "finding": "GENERIC_TVOROG_NO_GO_RETAINED",
+      "quantityDecision": "DECLARED_GRAMS",
+      "sourceCandidate": null,
+      "ownerState": null,
+      "sourceApproved": false,
+      "runtimePublishable": false
+    }
+  ],
+  "materials": [
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "sha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/fdc-2346396-selected-fields-v1.json",
+      "sha256": "8b0d25273a2554232033295ad9edcbb7c0a29a64647342d4b8b5353a6dd04253"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/fdc-747448-selected-fields-v1.json",
+      "sha256": "63f1bc61286adef0ed6d6aec9268daafa3e1857563476ab13a643831d973d9ee"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/fdc-2346401-selected-fields-v1.json",
+      "sha256": "16111cebf217afa852f3a007fabe97029d9bf68ac3edd5434538fe1560b4ec91"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/fdc-2346403-selected-fields-v1.json",
+      "sha256": "fba3a292098dd8eb94d2aa3b21959636ef4fcf32dd75d43cb62902f74df4d8b4"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/owner-states-v1.json",
+      "sha256": "438fee567899c4587131edcb3682c59fde44629cdbc0d1fc7e519e3b2d894a8d"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-source-stage-20261104/sr28-ascii-capture-v1.json",
+      "sha256": "7dfa59063a9bc9f85793e0a5e152e95558dc6125a5ab5858aeee8a9001e8fc38"
+    },
+    {
+      "path": "docs/premium/retained-sources/p5-03/source-review-package-v1.json",
+      "sha256": "cc0451eaf137d4cd85bd2457fe72dd7584bd0bcf6a2405d13a4e75bc7280926b"
+    },
+    {
+      "path": "docs/premium/retained-sources/p5-03/usda-carbohydrate-definition.txt",
+      "sha256": "2df54b8797988ca8436df4c76735115ec117c8b955c93c3b3e05a7b60ba17a47"
+    },
+    {
+      "path": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/owner-milk-gram-inputs-v1.json",
+      "sha256": "397b5ef91b48d68aa9d7912d7fc925ec866654909c4699075c93941c81d52e06"
+    }
+  ],
+  "sourceApproved": false,
+  "canApply": false,
+  "runtimePublishable": false,
+  "mayActivate": false,
+  "originalDataModified": false
+}

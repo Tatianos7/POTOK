@@ -1,0 +1,95 @@
+{
+  "captureContract": "potok-fdc-primary-selected-fields-v1",
+  "captureKind": "SELECTED_NUMERIC_FIELDS_AND_DEFINITIONS_NOT_FULL_RESPONSE",
+  "retrievedDate": "2026-11-05",
+  "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/2346396",
+  "sourceResponseSha256": "9a01a8b57460525fc30d3270b57870ccffc9864b9f3db7fa30f974c92ed3eaf7",
+  "sourceResponseBytes": 113461,
+  "fdcId": 2346396,
+  "dataType": "Foundation",
+  "description": "Oats, whole grain, rolled, old fashioned",
+  "publicationDate": "10/28/2022",
+  "foodNutrients": [
+    {
+      "sourceArrayIndex": 2,
+      "nutrient": {
+        "id": 2047,
+        "number": "957",
+        "name": "Energy (Atwater General Factors)",
+        "rank": 280,
+        "unitName": "kcal"
+      },
+      "amount": 381.626,
+      "id": 28912806,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 3,
+      "nutrient": {
+        "id": 2048,
+        "number": "958",
+        "name": "Energy (Atwater Specific Factors)",
+        "rank": 290,
+        "unitName": "kcal"
+      },
+      "amount": 378.866123,
+      "id": 28912807,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 5,
+      "nutrient": {
+        "id": 1003,
+        "number": "203",
+        "name": "Protein",
+        "rank": 600,
+        "unitName": "g"
+      },
+      "amount": 13.49645,
+      "id": 28912804,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 6,
+      "nutrient": {
+        "id": 1004,
+        "number": "204",
+        "name": "Total lipid (fat)",
+        "rank": 800,
+        "unitName": "g"
+      },
+      "amount": 5.89,
+      "id": 28912746,
+      "dataPoints": 8
+    },
+    {
+      "sourceArrayIndex": 9,
+      "nutrient": {
+        "id": 1005,
+        "number": "205",
+        "name": "Carbohydrate, by difference",
+        "rank": 1110,
+        "unitName": "g"
+      },
+      "amount": 68.65755,
+      "id": 28912805,
+      "dataPoints": null
+    },
+    {
+      "sourceArrayIndex": 10,
+      "nutrient": {
+        "id": 2033,
+        "number": "293",
+        "name": "Total dietary fiber (AOAC 2011.25)",
+        "rank": 1300,
+        "unitName": "g"
+      },
+      "amount": 10.42,
+      "id": 28912749,
+      "dataPoints": 8
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}

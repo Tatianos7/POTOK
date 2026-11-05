@@ -1,0 +1,47 @@
+{
+  "contract": "potok-owner-pilot-groat-potato-states-v1",
+  "date": "2026-11-05",
+  "origin": "OWNER_MULTIPLE_CHOICE_REPLY",
+  "scope": "FIVE_PINNED_INPUT_ROWS_ONLY",
+  "rows": [
+    {
+      "recipeId": "buckwheat_porridge_mushrooms",
+      "ingredientRowId": "buckwheat_porridge_mushrooms_ing_01",
+      "sourceAuthoringRowSha256": "f234b2e9658d925509e5a3aad71745688319e3a830ce445eb382368b66e09ad7",
+      "recipeContextSha256": "93ea301e0d169e024b818c3ae946ccfe7525d60448c3e782faaaced385bc2ed4",
+      "intendedState": "ROASTED_BROWN_GROATS"
+    },
+    {
+      "recipeId": "turkey_buckwheat",
+      "ingredientRowId": "turkey_buckwheat_ing_02",
+      "sourceAuthoringRowSha256": "23bd677d141a809e46149e3299445789280e9743e1252baf77ca22acfdf7de48",
+      "recipeContextSha256": "6b3be76c4cb7b5f4d91de64984206956233e7c0dd35107482e7db428072f9da2",
+      "intendedState": "ROASTED_BROWN_GROATS"
+    },
+    {
+      "recipeId": "rabbit_potatoes_carrots",
+      "ingredientRowId": "rabbit_potatoes_carrots_ing_02",
+      "sourceAuthoringRowSha256": "c6bed27d73092505186dce85979d9a06ad164c34d80259bfaf2d605a2717af20",
+      "recipeContextSha256": "97647138e577aa2ef572bdf6bb58d1f5879a4dd18cbc3ac2e85eeea88ab41ed8",
+      "intendedState": "NON_YOUNG_PEELED"
+    },
+    {
+      "recipeId": "chicken_roasted_beet_potato",
+      "ingredientRowId": "chicken_roasted_beet_potato_ing_03",
+      "sourceAuthoringRowSha256": "932aa6af9737cc83876cf7f83ca68193f37b612348283f9384bd8cdaac8d16d7",
+      "recipeContextSha256": "c1e3386a050be33ab9f4d01643bfdcc86a8a5c3f427267132b568b4a8c0b4ab2",
+      "intendedState": "NON_YOUNG_PEELED"
+    },
+    {
+      "recipeId": "chicken_meatballs_buckwheat",
+      "ingredientRowId": "chicken_meatballs_buckwheat_ing_06",
+      "sourceAuthoringRowSha256": "e4686dd28144322db2b54084a4e88399a7775a868e11c880464b4e54468608c5",
+      "recipeContextSha256": "36b092f1bec45577512fe98207e4e8231eaabadfeb5182804cf52889fe6dffdb",
+      "intendedState": "ROASTED_BROWN_GROATS"
+    }
+  ],
+  "sourceApproved": false,
+  "canApply": false,
+  "runtimePublishable": false,
+  "mayActivate": false
+}
