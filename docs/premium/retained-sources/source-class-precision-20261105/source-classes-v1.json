@@ -1,0 +1,759 @@
+{
+  "contract": "potok-source-class-definition-drafts-v1",
+  "usage": "EXACT_RETAINED_REFERENCE_CLASSES_NOT_OWNER_FOOD_APPROVAL",
+  "definitions": [
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:168448:RAW:100G"
+      ],
+      "proposedNameRu": "Тыква сырая, справочный профиль",
+      "sourceDescription": "Pumpkin, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/breakfast-main-capacity-20261105/fdc-168448-selected-fields-v1.json",
+      "retainedSha256": "25b4691c356ec30a58eeab3bde7a9d220d3161a2afeb158c4e20893b0c961653",
+      "sourceVectorSha256": "7ff7bfaddc5c6c1f4633c8bb7a3af2f1102cb8b12ecea85c70cf3d41ae678cdf",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:169961:RAW:100G"
+      ],
+      "proposedNameRu": "Фасоль зелёная стручковая сырая, справочный профиль",
+      "sourceDescription": "Beans, snap, green, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/breakfast-main-capacity-20261105/fdc-169961-selected-fields-v1.json",
+      "retainedSha256": "061ea0cb8adcc5a864eece14964cba310778c8f09ac6e4bf0966e03938131d9f",
+      "sourceVectorSha256": "89f29ec46d973ddf376b553bbeec16cdecb28bd9f7c12212198d43177b3234db",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:169986:RAW:100G"
+      ],
+      "proposedNameRu": "Капуста цветная сырая, справочный профиль",
+      "sourceDescription": "Cauliflower, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/breakfast-main-capacity-20261105/fdc-169986-selected-fields-v1.json",
+      "retainedSha256": "8068286a2ce0bb03e673aec5c440fff0f9c960e66298e27c61526c89851bee11",
+      "sourceVectorSha256": "9e2e2a9243531154b7da6a96f4625331130d468c4597661567665e77f4092724",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:175154:RAW:100G"
+      ],
+      "proposedNameRu": "Форель радужная дикая сырая, справочный профиль",
+      "sourceDescription": "Fish, trout, rainbow, wild, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/breakfast-main-capacity-20261105/fdc-175154-selected-fields-v1.json",
+      "retainedSha256": "69ac90aebd9b4ec47262dd91307854bc0758071f7c4949a43ed03af958934394",
+      "sourceVectorSha256": "43175ac2a3fdf56b64a56325765dbcae2893cc45b48c456ffcef2a7a56e791bd",
+      "unresolvedSourceAttributes": [
+        "Не переносить на выращенную форель"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:168927:PER_100_G_EDIBLE"
+      ],
+      "proposedNameRu": "Паста сухая необогащённая, справочный профиль",
+      "sourceDescription": "Pasta, dry, unenriched",
+      "proposedFoodState": "dry",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/foundation-variants-20261105/fdc-168927-selected-fields-v1.json",
+      "retainedSha256": "bb3e3496f57ddb702c505ba1f33e52396746e554a0d3caa6bd3543510c7d6770",
+      "sourceVectorSha256": "7ebba26d5c3d6d0b40c762c84bfb98f8b54103fa75f77140482b43904185cabf",
+      "unresolvedSourceAttributes": [
+        "Краткое описание не задаёт конкретный вид пшеницы"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:169703:BROWN_RAW:100G"
+      ],
+      "proposedNameRu": "Рис бурый длиннозёрный сырой, справочный профиль",
+      "sourceDescription": "Rice, brown, long-grain, raw (Includes foods for USDA's Food Distribution Program)",
+      "proposedFoodState": "dry",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/grain-main-week-20261105/fdc-169703-selected-fields-v1.json",
+      "retainedSha256": "6ce3775772bde0c513360a33eabf3cd688873215020a5acd807b2ba44444714b",
+      "sourceVectorSha256": "c24233690f9ce04100724462f7f55bb391bb070f938eedebcd403a69958b6061",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:169756:RAW_UNENRICHED:100G"
+      ],
+      "proposedNameRu": "Рис белый длиннозёрный обычный необогащённый сырой, справочный профиль",
+      "sourceDescription": "Rice, white, long-grain, regular, raw, unenriched",
+      "proposedFoodState": "dry",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/grain-main-week-20261105/fdc-169756-selected-fields-v1.json",
+      "retainedSha256": "72a7092c314074e1553138955618dfc882299922e0403b867df18a6432f986cc",
+      "sourceVectorSha256": "1ca3547cccd1272d68fc420fd6bd4b06e2df1efef979405978be6621ccbfad7a",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:175167:FARMED_ATLANTIC_RAW:100G"
+      ],
+      "proposedNameRu": "Лосось атлантический выращенный сырой, справочный профиль",
+      "sourceDescription": "Fish, salmon, Atlantic, farmed, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/grain-main-week-20261105/fdc-175167-selected-fields-v1.json",
+      "retainedSha256": "ba3bba971a52d889a0de297c22a16f89459f702389c3ec1ba697526b91c77dde",
+      "sourceVectorSha256": "79c34021e0f63381c9bfa426c211cc6c845870c624bde580aebe0cf3d9ccd22d",
+      "unresolvedSourceAttributes": [
+        "Не переносить на дикого лосося или другую рыбу"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:172420:DRY_RAW:100G"
+      ],
+      "proposedNameRu": "Чечевица сухая сырая, цвет и сорт не указаны, справочный профиль",
+      "sourceDescription": "Lentils, raw",
+      "proposedFoodState": "dry",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/nonfish-lentil-20261105/fdc-172420-selected-fields-v1.json",
+      "retainedSha256": "9a0d20e40c1f708462c32795cf3fdc5af0146bad8c9eb06daeba2f68733c9b7c",
+      "sourceVectorSha256": "5227a167a80a793aaff23b262fcded4c5d147504f78eba6a2fb4cf07cf4fc70c",
+      "unresolvedSourceAttributes": [
+        "Коричневый цвет/сорт рецепта не подтверждаются описанием источника"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:173709:WATER_DRAINED:100G"
+      ],
+      "proposedNameRu": "Тунец светлый консервированный в воде, слитые твёрдые части, справочный профиль",
+      "sourceDescription": "Fish, tuna, light, canned in water, drained solids (Includes foods for USDA's Food Distribution Program)",
+      "proposedFoodState": "cooked",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/owner-grain-tuna-20261105/fdc-173709-selected-fields-v1.json",
+      "retainedSha256": "f2def016bd2eba41c989116c7c62a612fd1481239392e893f76bcfc9d70fa69c",
+      "sourceVectorSha256": "6c1ba41723018d22a47fbb7df64f9517424a1f18a917045983961849ad199bdb",
+      "unresolvedSourceAttributes": [
+        "Вода не приравнивается автоматически к собственному соку; солевой класс источника сохраняется"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_FOUNDATION:2346396:2048:2033:100G",
+        "FDC_FOUNDATION:2346396:2048:2033:PER_100_G_FOOD"
+      ],
+      "proposedNameRu": "Овсяные хлопья цельнозерновые old-fashioned, профиль Foundation",
+      "sourceDescription": "Oats, whole grain, rolled, old fashioned",
+      "proposedFoodState": "dry",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_FOOD",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/fdc-2346396-selected-fields-v1.json",
+      "retainedSha256": "8b0d25273a2554232033295ad9edcbb7c0a29a64647342d4b8b5353a6dd04253",
+      "sourceVectorSha256": "efadb282ada3aa232147dac94f7dbebb792b23384c429005fbc907c83133bded",
+      "unresolvedSourceAttributes": [
+        "Сохранять Atwater-specific energy и AOAC 2011.25; точность выше трёх знаков"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:09003"
+      ],
+      "proposedNameRu": "Яблоко сырое с кожурой, справочный профиль",
+      "sourceDescription": "Apples, raw, with skin",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "eeb553aef11d910c6a685756a004c5cb09be43256ed96ea25dbba2166a17d63a",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:09040"
+      ],
+      "proposedNameRu": "Банан сырой, съедобная часть, справочный профиль",
+      "sourceDescription": "Bananas, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "3343f6ffc243c56775d30c4f5c30014cab7092aa0ad6e95fac96537b24c90209",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:14411"
+      ],
+      "proposedNameRu": "Вода водопроводная питьевая, справочный профиль",
+      "sourceDescription": "Beverages, water, tap, drinking",
+      "proposedFoodState": "as-sold",
+      "componentKind": "POTABLE_WATER",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "15ae0546f031ef267c82c88cc9e8f02f1f5b4b894eb6b8e1cfe789ab2888087c",
+      "unresolvedSourceAttributes": [
+        "Нулевой нутриентный профиль не устанавливает плотность или массу"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:18079"
+      ],
+      "proposedNameRu": "Сухари панировочные сухие тёртые, обычные, справочный профиль",
+      "sourceDescription": "Bread crumbs, dry, grated, plain",
+      "proposedFoodState": "dry",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "48f8f17e19d30c1b19549b524935d4d08eb15fedd3277214ecc37f98d355d222",
+      "unresolvedSourceAttributes": [
+        "Plain в источнике не доказывает отсутствие соли и всех добавок у любой марки"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:20009"
+      ],
+      "proposedNameRu": "Крупа гречневая обжаренная сухая, справочный профиль",
+      "sourceDescription": "Buckwheat groats, roasted, dry",
+      "proposedFoodState": "dry",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "c3d4ba143e3153c9ca2e00773b1d66125b7103bb21f755beab41dfe957882683",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:20012"
+      ],
+      "proposedNameRu": "Булгур сухой, справочный профиль",
+      "sourceDescription": "Bulgur, dry",
+      "proposedFoodState": "dry",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "979c1667ee6b7e1f32a23f2559ed16a47ba88b9a5430b91843025f11ae1c3c40",
+      "unresolvedSourceAttributes": [
+        "Размер помола medium/coarse в источнике не указан"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:11124"
+      ],
+      "proposedNameRu": "Морковь сырая, справочный профиль",
+      "sourceDescription": "Carrots, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "bb376169eaa017ecb0c76dce7e5dd34a7d0253a161faa626fb4c6cb41593c6eb",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:05062"
+      ],
+      "proposedNameRu": "Грудка куриная без кожи и костей, только мясо, сырая",
+      "sourceDescription": "Chicken, broiler or fryers, breast, skinless, boneless, meat only, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "4bc1e18c8144c39c2426b084b4938c5232e522b223a4d3768a241ae1eefe3f91",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:01174"
+      ],
+      "proposedNameRu": "Молоко питьевое 2% без добавленных витаминов A/D, справочный профиль",
+      "sourceDescription": "Milk, reduced fat, fluid, 2% milkfat, without added vitamin A and vitamin D",
+      "proposedFoodState": "as-sold",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "0f774b68c78821e7003aaddf7ffe2a503772f45d5c611b873ebcba134a983e79",
+      "unresolvedSourceAttributes": [
+        "Состав и профиль источника не распространяются на все марки молока 2%"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:11260"
+      ],
+      "proposedNameRu": "Шампиньоны белые сырые, справочный профиль",
+      "sourceDescription": "Mushrooms, white, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "dc2644969d3aa5f94d32c6f156c8d034729cd0fa681b5b9d8391b437e8b44f74",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:04053"
+      ],
+      "proposedNameRu": "Масло оливковое для салатов и приготовления, справочный профиль",
+      "sourceDescription": "Oil, olive, salad or cooking",
+      "proposedFoodState": "as-sold",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "47e1956f22c8977e74d3807fae9a50f009cebbe083b7adfa77ec02a68b32fb63",
+      "unresolvedSourceAttributes": [
+        "Не определены сорт, степень очистки и конкретный бренд"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:11282"
+      ],
+      "proposedNameRu": "Лук репчатый сырой, справочный профиль",
+      "sourceDescription": "Onions, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "5348a69940fcdaed26cb8e2aa2e159897feccb45a1d1e15607d9b1b2a9efdc04",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:20124"
+      ],
+      "proposedNameRu": "Паста цельнозерновая пшеничная сухая, профиль SR28",
+      "sourceDescription": "Pasta, whole-wheat, dry",
+      "proposedFoodState": "dry",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "22c2df23eb51f19074bc0dfbc0f04423b4700f8578aafcbf7ea66f87d1e6d617",
+      "unresolvedSourceAttributes": [
+        "Вид пшеницы в кратком описании не указан; эквивалентность полбе не установлена"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:09252"
+      ],
+      "proposedNameRu": "Груша сырая, справочный профиль",
+      "sourceDescription": "Pears, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "01f3d030118b23b102788f36c122837a6a48d31cdea23927d7f3f200623a6670",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:02047"
+      ],
+      "proposedNameRu": "Соль поваренная, справочный профиль",
+      "sourceDescription": "Salt, table",
+      "proposedFoodState": "as-sold",
+      "componentKind": "TABLE_SALT",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "15ae0546f031ef267c82c88cc9e8f02f1f5b4b894eb6b8e1cfe789ab2888087c",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:02010"
+      ],
+      "proposedNameRu": "Корица молотая, профиль SR28",
+      "sourceDescription": "Spices, cinnamon, ground",
+      "proposedFoodState": "dry",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "e5656ebe5173361c81ac3b30b7dc23a5a6d092029e2939fcfd8efda2f2e611da",
+      "unresolvedSourceAttributes": [
+        "Ботанический вариант Cassia в исходной записи; эквивалентность другим видам корицы не установлена"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:11477"
+      ],
+      "proposedNameRu": "Кабачок сырой с кожицей, справочный профиль",
+      "sourceDescription": "Squash, summer, zucchini, includes skin, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "c240401d2fd917ce3b03508a5fe3f492cf878a96daa36a7ac832180a18c8eae1",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:11529"
+      ],
+      "proposedNameRu": "Помидоры красные спелые сырые, среднегодовой профиль",
+      "sourceDescription": "Tomatoes, red, ripe, raw, year round average",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "8bb86c22436a3990be3cf599b60edf61bf9145f144ba1fa9c51ca50fb0c65aad",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:01287"
+      ],
+      "proposedNameRu": "Йогурт греческий натуральный нежирный, справочный профиль",
+      "sourceDescription": "Yogurt, Greek, plain, lowfat",
+      "proposedFoodState": "as-sold",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-19-source-quantity-20261105/sr28-primary-subset-v1.json",
+      "retainedSha256": "ddeb1096c8309b174dd55cdab0763a1c73dce7a128961f583b5742772a686287",
+      "sourceVectorSha256": "e328d9fcc093abd489965d5f0cd4bbc925d56344f47107f74a6a03924470f797",
+      "unresolvedSourceAttributes": [
+        "Номинальные 2% в рецепте — намерение владельца; эквивалентность всем розничным продуктам не установлена"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "SR28:12155"
+      ],
+      "proposedNameRu": "Грецкий орех английский, профиль SR28",
+      "sourceDescription": "Nuts, walnuts, english",
+      "proposedFoodState": null,
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/pilot-source-stage-20261104/sr28-ascii-capture-v1.json",
+      "retainedSha256": "7dfa59063a9bc9f85793e0a5e152e95558dc6125a5ab5858aeee8a9001e8fc38",
+      "sourceVectorSha256": "7b4b1b290e738e271d82a0560d3af039cf1a2a34ab66c4e31b68b27bed00fac1",
+      "unresolvedSourceAttributes": [
+        "Краткое описание источника не заявляет обработку; ранее выбранные сырые несолёные ядра остаются намерением, а не новым свойством источника"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:167747:RAW_JUICE:100G"
+      ],
+      "proposedNameRu": "Сок лимонный сырой, справочный профиль",
+      "sourceDescription": "Lemon juice, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/source-gaps-expansion-20261105/fdc-167747-selected-fields-v1.json",
+      "retainedSha256": "5317d3a06c0075a46c0e476e422a38826dc2be773acaca35d7b4df957ff25a27",
+      "sourceVectorSha256": "f90bb21eef84bb5c289c303c14a10557726ee873903e65f5307265a604c9b16e",
+      "unresolvedSourceAttributes": [],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_SR_LEGACY:168411:PREPARED:100G"
+      ],
+      "proposedNameRu": "Эдамаме замороженные приготовленные, справочный профиль",
+      "sourceDescription": "Edamame, frozen, prepared",
+      "proposedFoodState": "cooked",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/source-gaps-expansion-20261105/fdc-168411-selected-fields-v1.json",
+      "retainedSha256": "25746c8457d740a573692d1be2307f5e7c893ce7580d69ed1990a8dece2977e0",
+      "sourceVectorSha256": "fc549cdcd84382f8683647b0ee16df3a35d9073582a57d0c890e95213eb84e7e",
+      "unresolvedSourceAttributes": [
+        "Prepared не устанавливает конкретный метод приготовления; не заменять зрелой соей"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    },
+    {
+      "sourceBindings": [
+        "FDC_FOUNDATION:2346393:2048:1079:RAW:100G"
+      ],
+      "proposedNameRu": "Миндаль цельный сырой, профиль Foundation",
+      "sourceDescription": "Nuts, almonds, whole, raw",
+      "proposedFoodState": "raw",
+      "componentKind": "FOOD",
+      "basis": "PER_100_G_EDIBLE",
+      "retainedPath": "docs/premium/retained-sources/source-gaps-expansion-20261105/fdc-2346393-selected-fields-v1.json",
+      "retainedSha256": "aa2876a2cac2170b87aec8ebcae3adaa77b9ede3c4c602413d5219ad0d4401b4",
+      "sourceVectorSha256": "6e40656400726b85cd2e7dba3850621313d67dbba2a2eb2448e27b7de928cc9b",
+      "unresolvedSourceAttributes": [
+        "Сохранять метод энергии/клетчатки и исходную точность; универсальная эквивалентность маркам не установлена"
+      ],
+      "status": "DRAFT_SOURCE_CLASS_NOT_CANONICAL",
+      "canonicalFoodId": null,
+      "foodStableId": null,
+      "sourceApproved": false,
+      "runtimePublishable": false,
+      "canApply": false,
+      "mayActivate": false
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false
+}

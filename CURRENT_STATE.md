@@ -1,5 +1,12 @@
 # POTOK current state
 
+## Exact source-class drafts and precision compatibility — 2026-11-05
+
+- PR339 exact head `900e8792a1018f79c16a24d8adbf1d7489be7430` passed both GitHub workflows. Prepared 34 retained-reference class drafts covering all 35 original source-binding labels: 32 FOOD plus typed water/salt. Canonical/stable IDs null, all promotion flags false. Walnut preparation state remains unknown; whole-wheat species and edamame cooking method are not invented.
+- Reused actual frozen transfer and weekly handoff arithmetic. In 95 declared-serving axis values, 7 are nonterminating decimals; a real 7-day/28-meal conditional witness has 3 nonterminating weekly axes. Finite source/input values require up to 7 places after scaling. Merely widening a decimal column cannot preserve every value.
+- Prepared a versioned exact-rational migration proposal across Food evidence, Graph/publication, optimization/validation, SQL storage/gateway and readback. Existing Graph V1/V2 already use three-place rounding; legacy behavior/digests remain unchanged. The diagnostic inventory pins 18 current source files; no new runtime encoding is implemented or accepted.
+- Original frozen inputs/quantities and source mappings are unchanged. No Supabase read/write, source approval, publication, role/schema/grant change, merge/deployment or generator activation. Cooking remains deferred. Next: the strict versioned exact-number/retained-source contract and vertical compatibility slice described in docs/architecture/exact-nutrition-versioned-migration-proposal-20261105.md.
+
 ## Source-backed ingredient review proposals — 2026-11-05
 
 - PR338 exact head `6cde8fafc7f3081602cc18d14c123e8fbf12a9b5` passed both CI workflows. Recovered the unchanged original candidate bytes and reran the existing pinned pipeline; all 19 models match the original checked-in freeze.
