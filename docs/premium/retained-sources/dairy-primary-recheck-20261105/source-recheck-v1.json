@@ -1,0 +1,84 @@
+{
+  "contract": "potok-dairy-primary-recheck-v1",
+  "retrievedDate": "2026-11-05",
+  "scope": "EXACT_REFERENCED_PRIMARY_RECORDS_NOT_PRODUCT_MAPPING",
+  "records": [
+    {
+      "fdcId": 172205,
+      "ndb": "01174",
+      "description": "Milk, reduced fat, fluid, 2% milkfat, without added vitamin A and vitamin D",
+      "dataType": "SR Legacy",
+      "publicationDate": "4/1/2019",
+      "path": "docs/premium/retained-sources/dairy-primary-recheck-20261105/fdc-172205-primary-response.json",
+      "sha256": "afd50c0e2db890cb1ec4c4ed20194fc43e6428dc1ba71dae139a3699f596b936",
+      "factsPer100GEdible": {
+        "calories": "50.0",
+        "protein": "3.3",
+        "fat": "1.98",
+        "totalCarbohydrate": "4.8",
+        "fiber": "0.0"
+      },
+      "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/172205",
+      "foodUrl": "https://fdc.nal.usda.gov/food-details/172205/nutrients"
+    },
+    {
+      "fdcId": 171265,
+      "ndb": "01077",
+      "description": "Milk, whole, 3.25% milkfat, with added vitamin D",
+      "dataType": "SR Legacy",
+      "publicationDate": "4/1/2019",
+      "path": "docs/premium/retained-sources/dairy-primary-recheck-20261105/fdc-171265-primary-response.json",
+      "sha256": "1613d446827a791fade695b67f7e074f992ffc780a90b98ae0601600bd9e46e3",
+      "factsPer100GEdible": {
+        "calories": "61.0",
+        "protein": "3.15",
+        "fat": "3.25",
+        "totalCarbohydrate": "4.8",
+        "fiber": "0.0"
+      },
+      "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/171265",
+      "foodUrl": "https://fdc.nal.usda.gov/food-details/171265/nutrients"
+    },
+    {
+      "fdcId": 170886,
+      "ndb": "01117",
+      "description": "Yogurt, plain, low fat",
+      "dataType": "SR Legacy",
+      "publicationDate": "4/1/2019",
+      "path": "docs/premium/retained-sources/dairy-primary-recheck-20261105/fdc-170886-primary-response.json",
+      "sha256": "bc5234c5dd266f33ee6a8881f2362668aebbd399e07c2781b12bffa85ce66385",
+      "factsPer100GEdible": {
+        "calories": "63.0",
+        "protein": "5.25",
+        "fat": "1.55",
+        "totalCarbohydrate": "7.04",
+        "fiber": "0.0"
+      },
+      "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/170886",
+      "foodUrl": "https://fdc.nal.usda.gov/food-details/170886/nutrients"
+    },
+    {
+      "fdcId": 170903,
+      "ndb": "01287",
+      "description": "Yogurt, Greek, plain, lowfat",
+      "dataType": "SR Legacy",
+      "publicationDate": "4/1/2019",
+      "path": "docs/premium/retained-sources/dairy-primary-recheck-20261105/fdc-170903-primary-response.json",
+      "sha256": "c823bdd5f727f9a6dedcfe61a97f27ccc714628d3766a218f032686c30e832ff",
+      "factsPer100GEdible": {
+        "calories": "73.0",
+        "protein": "9.95",
+        "fat": "1.92",
+        "totalCarbohydrate": "3.94",
+        "fiber": "0.0"
+      },
+      "sourceUrl": "https://api.nal.usda.gov/fdc/v1/food/170903",
+      "foodUrl": "https://fdc.nal.usda.gov/food-details/170903/nutrients"
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "mayActivate": false,
+  "canApply": false,
+  "originalDataModified": false
+}
