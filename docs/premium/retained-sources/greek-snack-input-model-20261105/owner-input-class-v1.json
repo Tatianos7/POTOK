@@ -1,0 +1,36 @@
+{
+  "contract": "potok-owner-greek-yogurt-input-class-v1",
+  "date": "2026-11-05",
+  "origin": "OWNER_REPLY_TO_TWO_GREEK_SNACK_CLASS_QUESTION",
+  "scope": "TWO_RECIPE_AUTHORING_INPUTS_ONLY",
+  "priorReviewSha256": "9be2d25befdf70a0f1446b43a01579cbe709195d3a7668a3b8e26a1a32fe8464",
+  "candidateIntegritySha256": "079bf83659e334b37cd410b9b953a799e487645cb7ee9b070238d7d8520168f9",
+  "ingredientClass": {
+    "family": "GREEK_YOGURT",
+    "flavor": "PLAIN_UNSWEETENED",
+    "nominalFatPercent": "2",
+    "mandatoryBrand": null
+  },
+  "rows": [
+    {
+      "recipeId": "greek_yogurt_banana",
+      "ingredientRowId": "greek_yogurt_banana_ing_01",
+      "sourceAuthoringRowSha256": "49828d13e5077fa25272aa46988c2aced38ac2b910e4762c1780c41a6336ec2e",
+      "recipeContextSha256": "bbbd8d6dfdabae294e4ada1c50a5f94bc0e33ee519605435d140602e7dca1583"
+    },
+    {
+      "recipeId": "greek_yogurt_apple",
+      "ingredientRowId": "greek_yogurt_apple_ing_01",
+      "sourceAuthoringRowSha256": "7a49d17f24bf2227f029bd7c2a911108327e2518b215be98aaabcca6f8e3b433",
+      "recipeContextSha256": "8c804da6407435a32d76dd15aabc73e0ec1c90f5804836d8601c2d5c4c919034"
+    }
+  ],
+  "confirmationKind": "AUTHORING_INGREDIENT_INTENT_NOT_NUTRIENT_APPROVAL",
+  "sourceApplicability": "PENDING_INDEPENDENT_REVIEW",
+  "universalRetail2PercentEquivalence": false,
+  "sourceApproved": false,
+  "foodSpecificMappingApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false
+}
