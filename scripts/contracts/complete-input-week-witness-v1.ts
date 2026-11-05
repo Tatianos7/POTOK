@@ -19,17 +19,19 @@ export function findCompleteInputWeekWitnessV1(recipes:CapacityRecipeV1[],s:Capa
  }
  enumerate(0,[]);days.sort((a,b)=>Math.abs(a.kcal-target)-Math.abs(b.kcal-target)||cmp(a.key,b.key));
  const groups=new Map<string,{indexes:number[];slots:number}>();for(let slot=0;slot<s.slots.length;slot++){const key=JSON.stringify([...s.slots[slot].sourceCategories].sort()),g=groups.get(key);if(g)g.slots++;else groups.set(key,{indexes:pools[slot],slots:1});}
- const uses=Array(rs.length).fill(0) as number[],chosen:number[]=[],failed=new Set<string>();let nodes=0,weekTransitions=0,weekLimited=false;
+ const uses=Array(rs.length).fill(0) as number[],chosen:number[]=[],failed=new Set<string>();let nodes=0,weekTransitions=0,caloriePrunedNodes=0,weekLimited=false;
  function search(start:number):boolean{
   if(chosen.length===7)return true;if(nodes>=limits.maxWeekNodes){weekLimited=true;return false;}nodes++;
   const remaining=7-chosen.length;if([...groups.values()].some(g=>g.indexes.reduce((n,i)=>n+s.maxRecipeUses-uses[i],0)<remaining*g.slots))return false;
+  let optimisticRemaining=0;for(const g of groups.values()){let need=remaining*g.slots;const available=g.indexes.map(i=>({kcal:kcal[i],capacity:s.maxRecipeUses-uses[i]})).sort((a,b)=>b.kcal-a.kcal);for(const r of available){const n=Math.min(need,r.capacity);optimisticRemaining+=n*r.kcal;need-=n;if(!need)break;}}
+  if(optimisticRemaining<remaining*lower){caloriePrunedNodes++;return false;}
   const key=start+'|'+uses.join(',');if(failed.has(key))return false;
   for(let index=start;index<days.length;index++){if(weekLimited)return false;if(weekTransitions>=Math.min(2000000,limits.maxWeekNodes*16)){weekLimited=true;return false;}weekTransitions++;const d=days[index];if(d.indexes.some(i=>uses[i]>=s.maxRecipeUses))continue;d.indexes.forEach(i=>uses[i]++);chosen.push(index);if(search(index))return true;chosen.pop();d.indexes.forEach(i=>uses[i]--);}
   failed.add(key);return false;
  }
  const found=search(0),fixed=(n:number)=>(n/1000).toFixed(3);
  return {contract:'potok-complete-input-week-witness-v1',status:found?'CONDITIONAL_INPUT_WEEK_WITNESS':dayLimited||weekLimited?'INCOMPLETE_BOUNDED_WITNESS_SEARCH':'NO_WEEK_IN_COMPLETE_CONDITIONAL_INPUT_DOMAIN',
-  dayEnumerationComplete:!dayLimited,dayCandidatesEnumerated:enumerated,distinctAcceptedDaySets:days.length,weekNodes:nodes,weekTransitions,weekSearchLimited:weekLimited,optimizationClaimed:false,
+  dayEnumerationComplete:!dayLimited,dayCandidatesEnumerated:enumerated,distinctAcceptedDaySets:days.length,weekNodes:nodes,weekTransitions,caloriePrunedNodes,weekSearchLimited:weekLimited,optimizationClaimed:false,
   days:found?chosen.map((index,day)=>({date:new Date(Date.parse(s.weekStart+'T00:00:00Z')+day*86400000).toISOString().slice(0,10),calories:fixed(days[index].kcal),meals:days[index].indexes.map((i,slot)=>({slot:s.slots[slot].label,recipeId:rs[i].recipeId,sourceCategory:rs[i].sourceCategory,assignedDeclaredServings:1,measuredGrams:null}))})):[],
   recipeUses:found?rs.map((r,i)=>({recipeId:r.recipeId,uses:uses[i]})).filter(r=>r.uses>0):[],
   portionBasis:'ONE_AUTHORING_DECLARED_SERVING_NO_SCALING',notAssessed:['ALLERGENS','DIETARY_SAFETY','MEASURED_YIELD','PRACTICAL_PORTIONS','REPEAT_FAMILIES','PROTEIN_OR_OTHER_TARGETS','TRUSTED_PLAN_VALIDATION'],
