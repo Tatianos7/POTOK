@@ -1,3 +1,11 @@
+## Stage 3: exact retained-proposal admission protocol and explicit Node verification — 2026-11-06
+
+- PR350 exact head `b496202e444bd3bb251c80fa1c8fda40afdb64c6`: PR Checks run42165680437 and PostgreSQL admission run42165680434 passed; Edge run42165680438 failed. Official latest Edge v1.78.1 still has a vendored getPeerCertificate stub without peer raw DER (blob510b29475ead1eaba4d03549d55b71276ec1980e). No image/driver/auth/TLS patch, fabricated bytes or gate relaxation; Edge remains unresolved.
+- Reuse the existing disabled Node24 worker candidate. Added a separate CI gate with the same pinned driver, ephemeral actual TLS PostgreSQL/role fixture, eight positive/negative assertions and synthetic 7/28-meal full-worker protocol cases. This is not host selection/provisioning or hosted acceptance; the owner service-notice rule still applies before any new host dependency/cost/deployment.
+- Started stage 3 with inactive transactional retained-snapshot admission, idempotent replay, opening and read-only UNKNOWN recovery. Reuse the existing currentness/verified Premium checks, require the authenticated durable request actor/input binding, rerun the exact optimizer and recheck admission before insert. Keep canonical exact proposal bytes, immutable hashes and empty facts. Never mark the plan active or consumption recorded.
+- The real same-connection SQL transaction/source/metric/store adapter and schema/role integration are NOT implemented/applied yet. Synthetic serialized transactions verify the protocol only. No new permission ledger or workflow state replaces existing requests/selections. Next: implement that private SQL-backed storage/authority adapter and test its actual transaction/ACL/currentness/recovery behavior before application opening.
+- No actual source/recipe approval, database mutation, migration, new host/service, merge, deployment or generator activation. See docs/architecture/exact-plan-admission-v3.md and docs/security/node-execution-edge-capability-20261106.md.
+
 ## Exact week optimization and generator decision V3, inactive — 2026-11-06
 
 - Parent PR349 exact head `6f08c5591a74227d50938ae89185099c171218cf`: PR Checks run42163310754 and PostgreSQL admission run42163310749 passed; separate Edge run42163310806 failed. No source/security/test gate relaxed.

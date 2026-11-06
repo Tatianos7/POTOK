@@ -1,0 +1,71 @@
+name: Node generation worker TLS and protocol
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'src/server/**'
+      - 'scripts/security/generation-profile/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/generation-node-worker-tls.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  node_strict_tls:
+    name: Node 24 strict TLS, role identities and worker protocol
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Prepare ephemeral local TLS and narrow PostgreSQL roles
+        run: |
+          mkdir -p "$RUNNER_TEMP/potok-edge-db" "$RUNNER_TEMP/potok-edge-certs"
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=POTOK-CI-CA -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign -keyout "$RUNNER_TEMP/potok-edge-certs/ca.key" -out "$RUNNER_TEMP/potok-edge-certs/ca.pem" 2>/dev/null
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=POTOK-CI-Wrong-CA -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign -keyout "$RUNNER_TEMP/potok-edge-certs/wrong.key" -out "$RUNNER_TEMP/potok-edge-certs/wrong.pem" 2>/dev/null
+          openssl req -new -newkey rsa:2048 -nodes -subj /CN=potok-profile-db -keyout "$RUNNER_TEMP/potok-edge-db/server.key" -out "$RUNNER_TEMP/potok-edge-certs/server.csr" 2>/dev/null
+          echo 'subjectAltName=DNS:potok-profile-db' > "$RUNNER_TEMP/potok-edge-certs/server.ext"
+          openssl x509 -req -in "$RUNNER_TEMP/potok-edge-certs/server.csr" -CA "$RUNNER_TEMP/potok-edge-certs/ca.pem" -CAkey "$RUNNER_TEMP/potok-edge-certs/ca.key" -CAcreateserial -days 1 -extfile "$RUNNER_TEMP/potok-edge-certs/server.ext" -out "$RUNNER_TEMP/potok-edge-db/server.pem" 2>/dev/null
+          cat > "$RUNNER_TEMP/potok-edge-db/init.sql" <<'SQL'
+          REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+          CREATE ROLE potok_generation_reader_v1 LOGIN PASSWORD 'fixture-only-password' NOINHERIT CONNECTION LIMIT 2;
+          CREATE ROLE potok_generation_gateway_v1 LOGIN PASSWORD 'fixture-only-password' NOINHERIT CONNECTION LIMIT 2;
+          SQL
+          sudo chown 70:70 "$RUNNER_TEMP/potok-edge-db/server.key"
+          sudo chmod 600 "$RUNNER_TEMP/potok-edge-db/server.key"
+          docker network create potok-edge-diagnostic
+          docker run -d --name potok-profile-db --network potok-edge-diagnostic --network-alias potok-profile-wrong-name -p 127.0.0.1:5432:5432 \
+            -e POSTGRES_PASSWORD=ephemeral-ci-admin-only \
+            --mount "type=bind,src=$RUNNER_TEMP/potok-edge-db,dst=/fixture,readonly" \
+            --mount "type=bind,src=$RUNNER_TEMP/potok-edge-db/init.sql,dst=/docker-entrypoint-initdb.d/init.sql,readonly" \
+            postgres:17-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b -c ssl=on -c ssl_cert_file=/fixture/server.pem -c ssl_key_file=/fixture/server.key
+          for attempt in $(seq 1 30); do
+            if docker exec potok-profile-db pg_isready -U postgres; then break; fi
+            sleep 1
+          done
+      - name: Build CI-only worker services with bundled pinned pg
+        run: node --import tsx scripts/security/generation-profile/build-edge-worker-canary.ts "$RUNNER_TEMP/potok-edge-worker" "$RUNNER_TEMP/potok-edge-certs/ca.pem" "$RUNNER_TEMP/potok-edge-certs/wrong.pem"
+      - name: Verify the same TLS fixture and bundled driver in Node first
+        run: |
+          echo '127.0.0.1 potok-profile-db potok-profile-wrong-name' | sudo tee -a /etc/hosts >/dev/null
+          node --input-type=module - "$RUNNER_TEMP/potok-edge-worker/pg/index.ts" <<'JS'
+          import assert from 'node:assert/strict';import {pathToFileURL} from 'node:url';
+          let done;const completion=new Promise(resolve=>{done=resolve;});
+          globalThis.Deno={serve:async handler=>{try{
+            const result=await(await handler()).json();console.log(JSON.stringify(result));
+            assert.equal(result.results.length,8);assert.ok(result.results.every(r=>r.pass));
+          }catch{process.exitCode=1;}finally{done();}}};
+          await import(pathToFileURL(process.argv[2]).href);await completion;
+          JS
+      - name: Verify disabled factories and synthetic full worker protocol in Node
+        run: node --import tsx --test scripts/security/generation-profile/run.test.ts
+      - name: Remove only the ephemeral local database and network
+        if: always()
+        run: |
+          docker rm -f potok-profile-db || true
+          docker network rm potok-edge-diagnostic || true
