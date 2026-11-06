@@ -48,7 +48,7 @@ for (const [label, rpc, args] of calls) {
   assert.ok(!after.error && after.data.user?.id === userId, 'AUTH_CHANGED_DURING_PROBE');
   if (expected === 'no') {
     // Non-admin must never receive a successful RPC result, even if no row exists.
-    assert.ok(error, `NON_ADMIN_${label.toUpperCase()}_UNEXPECTEDLY_ALLOWED`);
+    assert.ok(error && /AUTH_REQUIRED|ADMIN_REQUIRED|NOT_ADMIN|FORBIDDEN|INSUFFICIENT_PRIVILEGE/i.test(error.message),\n      `NON_ADMIN_${label.toUpperCase()}_DENIAL_NOT_PROVEN`);
     console.log(`${label}: denied (expected)`);
   } else {
     if (error) fail(`ADMIN_${label.toUpperCase()}_RPC_FAILED (inspect securely on host)`);
