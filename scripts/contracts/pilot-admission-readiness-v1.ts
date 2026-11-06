@@ -10,7 +10,7 @@ import type {ReviewInputModelV1} from './week-quality-preparation-v1';
 // Real publication/context decoders remain the only admission boundary.
 const axes=['calories','protein','fat','carbs','fiber'] as const;
 const flags={sourceApproved:false,runtimePublishable:false,canApply:false,mayActivate:false,readyForServerSubmission:false} as const;
-const freezePath='docs/premium/retained-sources/pilot19-admission-20261105/pilot-input-freeze-v1.json';
+const freezePath='docs/premium/retained-sources/pilot19-admission-20261105/pilot-input-freeze-content-v4-20261106.json';
 export const admissionContractPathsV1=[
  'src/utils/curatedRecipePublicationV1.ts',
  'src/utils/adaptiveNutritionGraphV1.ts',

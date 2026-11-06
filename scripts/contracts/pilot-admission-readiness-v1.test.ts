@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildPilotInputFreezeV1,inspectPilotAdmissionReadinessV1,verifyPilotInputFreezeV1,readAdmissionContractSourcesV1,readPilotFreezeRawV1,pilotCanonicalV1,pilotDigestV1,admissionContractPathsV1} from './pilot-admission-readiness-v1';
@@ -87,4 +88,13 @@ test('reviewed-looking nutrition without reviewed authority is blocked by the re
 });
 test('water cannot gain invented grams or nonzero nutrition through a recomputed freeze',()=>{
  for(const mode of ['MASS','NUTRIENT']){const {raw,models}=fixture();if(mode==='MASS')models[0].rows[1].component.quantityG='47';if(mode==='NUTRIENT')models[0].rows[1].component.vector!.calories='1';assert.throws(()=>buildPilotInputFreezeV1(raw,models,sources));}
+});
+
+test('content V4 source rebind preserves original private input and all 19 recipe pins without promotion',()=>{
+ const originalRaw=readFileSync(new URL('../../docs/premium/retained-sources/pilot19-admission-20261105/pilot-input-freeze-v1.json',import.meta.url),'utf8');
+ assert.equal(pilotDigestV1(originalRaw),'c231a7c21d17d44d6cbad1bc9524ce7f83cb16f5508b99846e3d8f3da54186fe');
+ const original=JSON.parse(originalRaw),current=JSON.parse(readPilotFreezeRawV1());
+ const {serverContracts:oldSources,...oldInputs}=original,{serverContracts:newSources,...newInputs}=current;
+ assert.deepEqual(newInputs,oldInputs);assert.deepEqual(newSources.map((s:{path:string})=>s.path),oldSources.map((s:{path:string})=>s.path));
+ for(const source of newSources)assert.equal(source.sha256,pilotDigestV1(sources[source.path]));
 });

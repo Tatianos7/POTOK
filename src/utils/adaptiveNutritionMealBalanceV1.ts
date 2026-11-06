@@ -757,6 +757,12 @@ function decodeEvidence(value: unknown): MealComponentEvidenceV1 {
   };
 }
 
+/** Existing review/classification representation only; not publication/issuer authority. */
+export function decodeMealComponentReviewMetadataRawV1(raw: string): MealComponentEvidenceV1 {
+  if (typeof raw !== 'string') throw new Error('COMPONENT_REVIEW_RAW_STRING_REQUIRED');
+  assertRawJsonWithoutDuplicateKeysV1(raw);
+  return freezeOwned(decodeEvidence(JSON.parse(raw)));
+}
 function decodeUserConstraints(value: unknown): UserFoodConstraintsV1 {
   const row = record(value, ['revisionId', 'excludedAllergens', 'excludedIngredientFamilies',
     'requiredDietaryTags', 'forbiddenDietaryTags'], 'user_constraints');

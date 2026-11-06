@@ -1,3 +1,11 @@
+## Exact menu content checks V4, unmounted — 2026-11-06
+
+- Continues PR347 numeric validation with one server source read binding the operation and actual exact proposal SHA. Reuses existing restriction, composition, review metadata and balance policy rules; independently binds exact publication subjects and canonical/Nonfood ingredient identities.
+- Checks reviewed serving ranges/increments, exact discrete ingredient steps, allergens/intolerances/dietary/preferences, meal compatibility, protein/produce, accessibility, recipe/family repeats and independent specialty/expense caps. Missing declared servings stays blocked. No invented portions or rounded nutrition.
+- Every receipt remains authority NONE / accepted=false / canRecord=false / canActivate=false. No real issuer/store implementation, Graph admission, DB change, source/recipe approval, merge, deploy, generator activation or FACT write. Next: exact Graph admission plus ordinary warning/fallback/optimization handling before transactional storage/readback.
+- PR347 PR checks failed because its additive helper changed a server source pinned by the original pilot freeze. Retain the original freeze unchanged; append a source-bound revision preserving every private input/model/recipe pin and false promotion flag, with a regression proving preservation. No integrity gate disabled. PR347 PostgreSQL workflow passed; separate Edge workflow remains failing.
+- See docs/architecture/exact-menu-content-validation-v4.md.
+
 # POTOK current state
 
 ## Request-bound exact weekly numeric precheck V3, unmounted — 2026-11-06

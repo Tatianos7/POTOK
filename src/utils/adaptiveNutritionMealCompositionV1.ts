@@ -366,13 +366,13 @@ function withinMaximum(value: GraphNutritionV1, maximum: GraphNutritionV1): bool
     <= decimalMinor(maximum[key], `maximum_${key}`));
 }
 
-function compatible(components: MealComponentCandidateV1[]): boolean {
+function compatible(components: readonly Pick<MealComponentCandidateV1, 'eligibility' | 'recipeRevision'>[]): boolean {
   if (new Set(components.map((component) => component.recipeRevision)).size !== components.length) return false;
   return components.every((component, index) => components.every((other, otherIndex) => index === otherIndex
     || !component.eligibility.incompatiblePairingTags.some((tag) => other.eligibility.pairingTags.includes(tag))));
 }
 
-function complete(components: MealComponentCandidateV1[]): boolean {
+function complete(components: readonly Pick<MealComponentCandidateV1, 'eligibility' | 'recipeRevision'>[]): boolean {
   const anchors = components.filter((component) => component.eligibility.anchorKind !== 'NONE');
   if (anchors.length !== 1) return false;
   const anchor = anchors[0];
@@ -381,6 +381,13 @@ function complete(components: MealComponentCandidateV1[]): boolean {
   return anchor.eligibility.requiredCompanionRoleSets.every((alternatives) => alternatives.some((role) => presentRoles.has(role)));
 }
 
+/** Classification-only projection through the same existing compatibility/anchor rules. */
+export function assessMealEligibilitySetV1(values: readonly unknown[]): { compatible: boolean; complete: boolean } {
+  if (!Array.isArray(values) || values.length === 0 || values.length > 6) throw new Error('INVALID_ELIGIBILITY_SET');
+  const owned = values.map(value => { const eligibility = decodeMealCompositionEligibilityV1(value);
+    return { eligibility, recipeRevision: eligibility.recipeRevisionId }; });
+  return Object.freeze({ compatible: compatible(owned), complete: complete(owned) });
+}
 function cartesian<T>(groups: T[][]): T[][] {
   return groups.reduce<T[][]>((rows, group) => rows.flatMap((row) => group.map((item) => [...row, item])), [[]]);
 }
