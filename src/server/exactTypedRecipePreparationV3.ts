@@ -59,7 +59,7 @@ export function decodeExactTypedRecipeRequestRawV3(raw:string):ExactTypedRecipeR
 export async function exactTypedRecipeRequestDigestRawV3(raw:string):Promise<string>{
   return digest('potok-exact-typed-recipe-request-sha256-v3',decodeExactTypedRecipeRequestRawV3(raw));
 }
-function ownContexts(rows:readonly ExactTypedRecipeContextV3[]):ExactTypedRecipeContextV3[]{
+export function ownExactTypedRecipeContextsV3(rows:readonly ExactTypedRecipeContextV3[]):ExactTypedRecipeContextV3[]{
   if(!Array.isArray(rows)||!rows.length||rows.length>128||new Set(rows.map(r=>r.rowId)).size!==rows.length)fail();
   return rows.map(row=>{
     if(row.kind==='NONFOOD_V1')return {rowId:row.rowId,kind:row.kind,snapshot:ownNonFoodReviewedSnapshotV1(row.snapshot)};
@@ -78,7 +78,7 @@ export async function prepareExactTypedRecipeRawV3(requestRaw:string,expectedReq
   const blocked=(reason:'REQUEST_INVALID_OR_CHANGED'|'EVIDENCE_UNAVAILABLE_OR_MISMATCHED'):ExactTypedRecipeResultV3=>Object.freeze({kind:'BLOCKED',reason});
   let request:ExactTypedRecipeRequestV3,owned:ExactTypedRecipeContextV3[];
   try{request=decodeExactTypedRecipeRequestRawV3(requestRaw);}catch{return blocked('REQUEST_INVALID_OR_CHANGED');}
-  try{owned=ownContexts(contexts);if(owned.length!==request.authoring.components.length)throw Error();}catch{return blocked('EVIDENCE_UNAVAILABLE_OR_MISMATCHED');}
+  try{owned=ownExactTypedRecipeContextsV3(contexts);if(owned.length!==request.authoring.components.length)throw Error();}catch{return blocked('EVIDENCE_UNAVAILABLE_OR_MISMATCHED');}
   const requestDigest=await digest('potok-exact-typed-recipe-request-sha256-v3',request);
   if(requestDigest!==expectedRequestDigest)return blocked('REQUEST_INVALID_OR_CHANGED');
   try{

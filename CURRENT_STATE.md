@@ -1,5 +1,14 @@
 # POTOK current state
 
+## Exact portion/meal/day/week input arithmetic V3, unmounted — 2026-11-06
+
+- Parent PR345 exact head `02f1faf4c1a9f5e1c5c873b0311d098fc01faddd`: PR checks and PostgreSQL admission passed; separate Edge full-worker run42156155530 failed. No compatibility claim or gate/security relaxation.
+- Added a separately versioned independently pinned weekly preparation request: account/selection, Monday local week/timezone, all seven consecutive civil dates, unique meal slots, explicit recipe request/snapshot digests and positive rational whole-recipe fractions or declared-serving amounts. No empty days/meals, implicit portions, dangling/unused/duplicate source identities or silently omitted placements.
+- Own every selected recipe context before awaits, reuse existing exact typed Food/Nonfood preparation once per recipe per invocation, and reject stale/mismatched/revoked sources. Invocation-only reuse is not a cross-request/account cache. Exact ingredient amounts (g/ml), nutrient contributions, portions, meals, days and weekly totals are recomputed with existing rational V2 arithmetic. Unknown declared servings block serving mode; an explicit fraction remains a conditional calculation.
+- Unknown mass remains explicit and scoped to slot/component/row; known input mass is separate from nullable total input mass. No volume density, cooked retention/yield, physical portion or consumption is inferred. Output is authority NONE / CONDITIONAL_PLAN_INPUT_ARITHMETIC, facts empty, and not a Graph or published plan.
+- Bound request/output bytes, recipes, slots/components and projected ingredient rows; oversized/inconsistent results fail without partial output. Readback reruns sources/authority and complete arithmetic. Numeric account/selection pins are not Auth/Premium/recipe publication evidence or write authorization; actual store/issuer/final transactional currentness remain separate.
+- No real source/identity/recipe approval, DB call/write, migration, runtime binding, diary/FACT write, merge, deploy or generator activation. Next: separately versioned exact Graph and validator/storage/readback integration using established authority/publication gates. See docs/architecture/exact-week-nutrition-preparation-v3.md.
+
 ## Exact typed Food/water/salt preparation V3, unmounted — 2026-11-06
 
 - PR344 exact head `3c8cfd72004489bba1d071560d4a27a9c78da10d` passed PR checks and PostgreSQL admission; the Edge full-worker workflow remains failing (run42154740585). No test/security gate relaxed and no Edge compatibility claimed.
