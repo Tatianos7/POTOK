@@ -152,6 +152,7 @@ END $$;
 -- Owner-only preparation. Neither a client endpoint nor approval. Pins are independently supplied here.
 CREATE FUNCTION potok_food_evidence.register_exact_source_v2(proposal_raw text,pins_raw text) RETURNS text
 LANGUAGE plpgsql VOLATILE SET search_path=pg_catalog AS $$
+<<source_scope>>
 DECLARE p jsonb; pins jsonb; c jsonb; s jsonb; source_bytes bytea; stored potok_food_evidence.retained_sources_v1%ROWTYPE;
   digest text; existing potok_food_evidence.exact_sources_v2%ROWTYPE;
 BEGIN
@@ -178,7 +179,7 @@ BEGIN
   IF FOUND THEN
     IF stored.snapshot IS DISTINCT FROM s OR stored.source_bytes IS DISTINCT FROM source_bytes THEN RAISE EXCEPTION 'SOURCE_ARTIFACT_ID_CONFLICT'; END IF;
   ELSE INSERT INTO potok_food_evidence.retained_sources_v1 VALUES((s->>'sourceArtifactId')::uuid,s,source_bytes); END IF;
-  SELECT * INTO existing FROM potok_food_evidence.exact_sources_v2 x WHERE x.digest=register_exact_source_v2.digest;
+  SELECT * INTO existing FROM potok_food_evidence.exact_sources_v2 x WHERE x.digest=source_scope.digest;
   IF FOUND THEN
     IF existing.proposal IS DISTINCT FROM p OR existing.pins IS DISTINCT FROM pins THEN RAISE EXCEPTION 'SOURCE_PROPOSAL_CONFLICT'; END IF;
   ELSE
@@ -214,6 +215,7 @@ CREATE CONSTRAINT TRIGGER exact_commit_authority_v2 AFTER INSERT ON potok_food_e
 
 CREATE FUNCTION public.food_nutrition_review_v2(p_request_text text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+<<review_scope>>
 DECLARE actor uuid:=auth.uid(); att uuid; req jsonb; key uuid; kind text; request_digest text; raw_bytes bytea; raw_hash text;
   dossier potok_food_evidence.exact_sources_v2%ROWTYPE; old potok_food_evidence.exact_requests_v2%ROWTYPE;
   rev potok_food_evidence.exact_revisions_v2%ROWTYPE; head potok_food_evidence.exact_heads_v2%ROWTYPE;
@@ -235,7 +237,7 @@ BEGIN
     revision_id:=potok_food_evidence.uuid_v1(req->'target'->'revisionId');
     PERFORM potok_food_evidence.hash_v1(req->'target'->'digest');
     IF NOT coalesce(req->>'severity' IN ('CORRECTION','SAFETY_CRITICAL'),false) THEN RAISE EXCEPTION 'SEVERITY_INVALID' USING ERRCODE='22023'; END IF;
-    SELECT * INTO rev FROM potok_food_evidence.exact_revisions_v2 x WHERE x.revision_id=food_nutrition_review_v2.revision_id
+    SELECT * INTO rev FROM potok_food_evidence.exact_revisions_v2 x WHERE x.revision_id=review_scope.revision_id
       AND x.canonical_food_id=food_id AND x.digest=req->'target'->>'digest';
     IF NOT FOUND THEN RAISE EXCEPTION 'EXACT_TARGET_REQUIRED' USING ERRCODE='40001'; END IF;
     SELECT * INTO STRICT dossier FROM potok_food_evidence.exact_sources_v2 x WHERE x.digest=rev.source_digest;
