@@ -785,6 +785,22 @@ function warning(balancePolicy: BalancePolicyV1, code: ValidatorReasonCodeV1, pa
   return balancePolicy.allowedWarningCodes.includes(code) ? [reason(code, 'WARNING', path, evidenceRevision)] : [];
 }
 
+/** Scalar-independent warning rules shared by exact Graph preparation; no nutrition conversion. */
+export function assessMealWarningSignalsV1(balancePolicy: BalancePolicyV1,
+  signals: MealValidationInputV1['warningSignals']): ValidatorReasonV1[] {
+  const reasons: ValidatorReasonV1[] = [];
+  const warningSignals: Array<[boolean, ValidatorReasonCodeV1, string]> = [
+    [signals.softTargetFitDeviation, 'SOFT_TARGET_FIT_DEVIATION', 'warningSignals.softTargetFitDeviation'],
+    [signals.longPreparationBurden, 'LONG_PREPARATION_BURDEN', 'warningSignals.longPreparationBurden'],
+    [signals.shoppingListBurden, 'SHOPPING_LIST_BURDEN', 'warningSignals.shoppingListBurden'],
+    [signals.lowerConvenienceScore, 'LOWER_CONVENIENCE_SCORE', 'warningSignals.lowerConvenienceScore'],
+    [signals.repetitionApproachingLimit, 'REPETITION_LIMIT_APPROACHING',
+      'warningSignals.repetitionApproachingLimit'],
+  ];
+  for (const [enabled, code, path] of warningSignals) if (enabled) reasons.push(...warning(balancePolicy, code, path));
+  return reasons;
+}
+
 function structuralReasonsFromRawMeal(value: unknown): ValidatorReasonV1[] {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
   const components = (value as { components?: unknown }).components;
@@ -949,15 +965,7 @@ export async function validateMealSnapshotV1(value: unknown): Promise<ValidatorR
   if (input.requirements.produceRequired && !alignedEvidence.some((item) => item.produceSource)) {
     reasons.push(reason('REQUIRED_PRODUCE_MISSING', 'ERROR', 'requirements.produceRequired'));
   }
-  const warningSignals: Array<[boolean, ValidatorReasonCodeV1, string]> = [
-    [input.warningSignals.softTargetFitDeviation, 'SOFT_TARGET_FIT_DEVIATION', 'warningSignals.softTargetFitDeviation'],
-    [input.warningSignals.longPreparationBurden, 'LONG_PREPARATION_BURDEN', 'warningSignals.longPreparationBurden'],
-    [input.warningSignals.shoppingListBurden, 'SHOPPING_LIST_BURDEN', 'warningSignals.shoppingListBurden'],
-    [input.warningSignals.lowerConvenienceScore, 'LOWER_CONVENIENCE_SCORE', 'warningSignals.lowerConvenienceScore'],
-    [input.warningSignals.repetitionApproachingLimit, 'REPETITION_LIMIT_APPROACHING',
-      'warningSignals.repetitionApproachingLimit'],
-  ];
-  for (const [enabled, code, path] of warningSignals) if (enabled) reasons.push(...warning(input.balancePolicy, code, path));
+  reasons.push(...assessMealWarningSignalsV1(input.balancePolicy, input.warningSignals));
   return result('MEAL', input.balancePolicy.policyRevision, { ...input, meal }, reasons);
 }
 
