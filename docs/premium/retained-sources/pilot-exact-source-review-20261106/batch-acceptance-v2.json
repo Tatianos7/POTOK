@@ -1,0 +1,62 @@
+{
+  "contract": "potok-pilot-exact-source-batch-acceptance-v2",
+  "usage": "AGGREGATE_READONLY_OBSERVATION_NOT_SOURCE_APPROVAL",
+  "basePr": 357,
+  "baseHead": "83609bd7e857d950d4e5bbc3edafa195f6fa33bd",
+  "observation": {
+    "environment": "STAGING",
+    "projectId": "ozidryfvhkcbtpnulakq",
+    "capturedAt": "2026-11-06T11:37:09.726822+00:00",
+    "sharedFoodCount": 2200,
+    "schemaHasReviewFlags": true
+  },
+  "inputBindings": {
+    "candidateSha256": "485da00522a3014c7722a7443b63b45fd3ddfcf05ec8f0186fe7d1ca704d50af",
+    "freezeSha256": "ce1fa3dbea8f57d271329b999480eb2188f38d0b3fe64f462c5df4e22a0910ae",
+    "snapshotSha256": "8ec234f6c0f1821b8dd100f3dfe4929ab34d13ff3ba38f6df1fb05db4508ef5a"
+  },
+  "summary": {
+    "recipes": 19,
+    "ingredientRows": 88,
+    "sourceBindings": 35,
+    "retainedMaterials": 16,
+    "foodRows": 69,
+    "typedNonfoodRows": 19,
+    "foodRowsPreviouslyBlockedByV1Precision": 4,
+    "sourceApprovals": 0,
+    "issuedCanonicalRevisions": 0,
+    "issuedNutritionRevisions": 0,
+    "admittedRecipes": 0,
+    "appliedBindings": 0
+  },
+  "catalogRowStatuses": {
+    "NO_EXACT_MATCH": 41,
+    "EXACT_CANDIDATE": 47
+  },
+  "foodOnlyCatalogRowStatuses": {
+    "NO_EXACT_MATCH": 41,
+    "EXACT_CANDIDATE": 28
+  },
+  "catalogCandidateAvailability": {
+    "UNKNOWN_NOT_PROVEN": 47
+  },
+  "stagingEvidenceInventory": {
+    "exactV2Installed": false,
+    "canonicalRevisions": 0,
+    "nutritionRevisionsV1": 0
+  },
+  "runtimePublishable": false,
+  "sourceApproved": false,
+  "canApply": false,
+  "mayActivate": false,
+  "readyForServerSubmission": false,
+  "privateInputsAndOutputsCommitted": false,
+  "physicalMeasurements": "DEFERRED_TO_OWNER_PRELAUNCH",
+  "limitations": [
+    "EXACT_NAME_LOOKUP_ONLY_NOT_FULL_CATALOG_ABSENCE",
+    "STATE_AND_IDENTITY_EQUIVALENCE_NOT_APPROVED",
+    "PRIVILEGED_READ_NOT_ORDINARY_ACCOUNT_ACCESS_PROOF",
+    "EXACT_ISSUER_NOT_INSTALLED_ON_STAGING",
+    "NO_RECIPE_NUTRITION_OR_PUBLICATION_APPROVAL"
+  ]
+}
