@@ -621,9 +621,9 @@ export async function decodeGeneratedWeekPlanRawV1(raw: string,
   return decodeGeneratedWeekPlanV1(JSON.parse(raw), pinnedInputValue);
 }
 
-export async function finalizeGeneratedWeekPlanV1(inputValue: unknown, graphValue: unknown,
-  recheck: GenerationAuthorityRecheckV1): Promise<GenerationFinalizeResultV1> {
-  const input = decodeTrustedGenerationInputV1(inputValue);
+/** Existing currentness checks shared with exact V3 admission; no Graph conversion or source issuance. */
+export function assessGenerationAuthorityRecheckV1(input: TrustedGenerationInputV1,
+  recheck: GenerationAuthorityRecheckV1): {status:'GENERATION_VALID'} | Exclude<GenerationFinalizeResultV1, {status:'GENERATION_VALID'}> {
   if (recheck.entitlement !== 'verified') return {
     status: 'GENERATION_ENTITLEMENT_DENIED',
     reason: recheck.entitlement === 'revoked' ? 'ENTITLEMENT_REVOKED' : 'ENTITLEMENT_EXPIRED',
@@ -651,6 +651,14 @@ export async function finalizeGeneratedWeekPlanV1(inputValue: unknown, graphValu
   ];
   const conflict = checks.find(([failed]) => failed);
   if (conflict) return { status: 'GENERATION_CONFLICT_STALE_INPUT', reason: conflict[1] };
+  return {status:'GENERATION_VALID'};
+}
+
+export async function finalizeGeneratedWeekPlanV1(inputValue: unknown, graphValue: unknown,
+  recheck: GenerationAuthorityRecheckV1): Promise<GenerationFinalizeResultV1> {
+  const input = decodeTrustedGenerationInputV1(inputValue);
+  const checked = assessGenerationAuthorityRecheckV1(input, recheck);
+  if (checked.status !== 'GENERATION_VALID') return checked;
   return { status: 'GENERATION_VALID', plan: await bindGeneratedWeekPlanV1(input, graphValue) };
 }
 
