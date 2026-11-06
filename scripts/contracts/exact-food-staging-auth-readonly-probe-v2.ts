@@ -47,13 +47,26 @@ for (const [label, rpc, args] of calls) {
   const after = await client.auth.getUser(token);
   assert.ok(!after.error && after.data.user?.id === userId, 'AUTH_CHANGED_DURING_PROBE');
   if (expected === 'no') {
-    // Non-admin must never receive a successful RPC result, even if no row exists.
-    assert.ok(error && /AUTH_REQUIRED|ADMIN_REQUIRED|NOT_ADMIN|FORBIDDEN|INSUFFICIENT_PRIVILEGE/i.test(error.message),\n      `NON_ADMIN_${label.toUpperCase()}_DENIAL_NOT_PROVEN`);
-    console.log(`${label}: denied (expected)`);
+    // The live server's authority_v1 raises VERIFIED_ADMIN_REQUIRED (42501).
+    // A missing row, bad schema, network problem or invalid JWT is NOT proof of RLS.
+    assert.ok(error?.code === '42501' && error.message.includes('VERIFIED_ADMIN_REQUIRED'),
+      `NON_ADMIN_${label.toUpperCase()}_VERIFIED_DENIAL_NOT_PROVEN`);
+    console.log(`${label}: verified-admin gate denied (expected)`);
   } else {
-    if (error) fail(`ADMIN_${label.toUpperCase()}_RPC_FAILED (inspect securely on host)`);
-    assert.ok(data !== undefined, `ADMIN_${label.toUpperCase()}_NO_RESULT`);
-    console.log(`${label}: reached RPC (read-only)`);
+    if (label === 'receipt') {
+      // Empty ledger: successful authorization reaches REQUEST_NOT_FOUND (P0002).
+      assert.ok(error?.code === 'P0002' && error.message.includes('REQUEST_NOT_FOUND'),
+        'ADMIN_RECEIPT_AUTHENTICATED_GATE_NOT_PROVEN');
+      console.log('receipt: authorized; no receipt exists (expected)');
+    } else {
+      // Empty ledger: the current RPC returns a fail-closed UNRESOLVED document.
+      assert.ifError(error && new Error('ADMIN_CURRENT_RPC_FAILED'));
+      assert.ok(data && typeof data === 'object' && !Array.isArray(data)
+        && (data as { kind?: unknown }).kind === 'UNRESOLVED'
+        && (data as { foodId?: unknown }).foodId === uuid,
+        'ADMIN_CURRENT_UNRESOLVED_RESULT_REQUIRED');
+      console.log('current: authorized; unresolved (expected)');
+    }
   }
 }
 console.log('Staging Nutrition V2 read-only Auth probe complete; review/issuance NOT tested.');
