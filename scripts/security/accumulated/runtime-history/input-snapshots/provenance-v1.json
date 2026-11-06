@@ -1,0 +1,82 @@
+{
+  "contract": "potok-historical-runtime-source-overlay-v1",
+  "sourceCommit": "455deef591456222e08eced30d3a7ba7bf9e242a",
+  "runtimeManifestSha256": "42905c3493a09729229f51aa89e1eccca47c0ca15c993af4462f882256d4de9e",
+  "purpose": "REPRODUCE_EXISTING_ACCEPTED_HISTORICAL_IMAGE_NOT_CURRENT_PRODUCT_BUILD",
+  "files": [
+    {
+      "originalPath": "package-lock.json",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/package-lock.json.source",
+      "originalBlobSha": "89977464094b7118d64bc474a83df550c0510102",
+      "expectedSha256": "ba7a198dbe98ca34359ee83b8b5e6b74edd86dbfa9da72652fa620dca4035751"
+    },
+    {
+      "originalPath": "package.json",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/package.json.source",
+      "originalBlobSha": "e27304971a90f8f85c07d79ccb0159552e5ba8f9",
+      "expectedSha256": "29ac7e88178b7ef59ac7e1c01c77a73efb51a58a9491189525203195f2b6ddd6"
+    },
+    {
+      "originalPath": "src/server/nutritionIntegrityReviewedEvidenceAdapterV1.ts",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/src/server/nutritionIntegrityReviewedEvidenceAdapterV1.ts.source",
+      "originalBlobSha": "2f8e09a04db3f71b5758b0329f540108a6364e87",
+      "expectedSha256": "cd8f0d4291a8321bb44b2626afcbbb8c10deae0df60f9e357a83eb8f35c2bd2c"
+    },
+    {
+      "originalPath": "src/utils/__tests__/trustedGeneratedWeekValidatorV1.test.ts",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/src/utils/__tests__/trustedGeneratedWeekValidatorV1.test.ts.source",
+      "originalBlobSha": "58cd48e7c7e86a7e3a2398223ff450a981809bbd",
+      "expectedSha256": "c17252e523aca576bbd45c4ff39fe23319d0f26b537da7952c448b2a9811536c"
+    },
+    {
+      "originalPath": "src/utils/__tests__/trustedMealWarningEvidenceV1.test.ts",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/src/utils/__tests__/trustedMealWarningEvidenceV1.test.ts.source",
+      "originalBlobSha": "82d3c139a754db12309e3bd6549c3ff8338fa254",
+      "expectedSha256": "8ae46a5970fa414c9f689aad65c0c456d593de5703c2352a07123883ad0579f5"
+    },
+    {
+      "originalPath": "src/utils/adaptiveNutritionAuthoritiesV1.ts",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/src/utils/adaptiveNutritionAuthoritiesV1.ts.source",
+      "originalBlobSha": "7cfd2e303e9ffd6e0a6de36c076bb0af9ae37fc3",
+      "expectedSha256": "241ebb0b27384313e0b7976c295df91e0ac8f89ed8f2bc43a31a4a545411c8c7"
+    },
+    {
+      "originalPath": "src/utils/adaptiveNutritionGraphV2.ts",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/src/utils/adaptiveNutritionGraphV2.ts.source",
+      "originalBlobSha": "c8bd910a60451bcda9f2c0b31ec02cabb7e8ec64",
+      "expectedSha256": "3eff606163daeb893c0637d84399c9e7f5c7b7cb6b6c4a76e820ec58225c2858"
+    },
+    {
+      "originalPath": "src/utils/adaptiveNutritionMealBalanceV1.ts",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/src/utils/adaptiveNutritionMealBalanceV1.ts.source",
+      "originalBlobSha": "9ec1da0276a6cbe9a5e32c984c7907168c337826",
+      "expectedSha256": "4fa95295665c76b45b98b2a6239e77b83ecaca852fb8bf3ea28a03bbc1aff23f"
+    },
+    {
+      "originalPath": "src/utils/adaptiveNutritionMealCompositionV1.ts",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/src/utils/adaptiveNutritionMealCompositionV1.ts.source",
+      "originalBlobSha": "f01f8189db131332e33f86bb314096e4835ad569",
+      "expectedSha256": "09f0789da67b8a1d7dd3e7f3ada41a8082455827727fb3e44c837d1b1a4f0054"
+    },
+    {
+      "originalPath": "src/utils/foodReviewedEvidenceV1.ts",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/src/utils/foodReviewedEvidenceV1.ts.source",
+      "originalBlobSha": "1662f3d545e176756fe683577f487c347886033c",
+      "expectedSha256": "52c799d83ece30660ba25284fb1ff206eee8a11ed4ffe9d433e07d2b892a3537"
+    },
+    {
+      "originalPath": "src/utils/trustedMealWarningEvidenceV1.ts",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/src/utils/trustedMealWarningEvidenceV1.ts.source",
+      "originalBlobSha": "bc5079d332606c0c746d124af23e670d6bef4382",
+      "expectedSha256": "1f402a6d1648ebdc91d72486afabb259c1a45d5fbbfcbd79dae2b7fcb8c6b894"
+    },
+    {
+      "originalPath": "src/utils/trustedValidationEvidenceV1.ts",
+      "retainedPath": "scripts/security/accumulated/runtime-history/input-snapshots/src/utils/trustedValidationEvidenceV1.ts.source",
+      "originalBlobSha": "c9805f7eb0dda5afd1312fa5a6fa3cea0a5cb954",
+      "expectedSha256": "a2f7e0cae76c47b3199c6b391d41cf7f3c2f92c7ae72a202c48d33c5f98a4ba4"
+    }
+  ],
+  "currentProductFilesModified": false,
+  "manifestModified": false
+}
