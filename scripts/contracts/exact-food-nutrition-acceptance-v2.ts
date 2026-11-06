@@ -12,6 +12,7 @@ import { verifyExactFoodNutritionReceiptV2, submitExactFoodNutritionReviewV2, re
   readCurrentExactFoodNutritionV2, type ExactFoodNutritionUserPortV2 } from '../../src/server/exactFoodNutritionReviewGatewayV2';
 import { preparePinnedPilotSourceBindingForReviewV2 } from './pilot-exact-source-review-batch-v2';
 import { readPilotBindingSourceDossiersV1 } from './pilot-source-binding-proposals-v1';
+import { buildExactFoodNutritionStagingPackageV2,exactStagingCatalogFingerprintQueryV2,exactStagingProjectV2 } from './exact-food-nutrition-staging-package-v2';
 
 const q = (s: string): string => `'${s.replace(/'/g, "''")}'`;
 const raw = JSON.stringify;
@@ -21,12 +22,33 @@ interface DB {
 }
 export async function runExactFoodNutritionAcceptanceV2(t: TestContext, db: DB): Promise<void> {
   const { sql, asUser } = db;
-  const candidate = await readFile('scripts/contracts/exact-food-nutrition-v2-disposable.sql','utf8');
-  await t.test('V2 install requires its own explicit disposable cluster acknowledgement', async () => {
-    await assert.rejects(sql(candidate), /OWN_DISPOSABLE_CLUSTER_REQUIRED/);
+  const staged = process.env.POTOK_EXACT_FOOD_STAGING_ACCEPTANCE==='1';
+  const fingerprint = staged?await sql(exactStagingCatalogFingerprintQueryV2):null;
+  const candidate = staged?buildExactFoodNutritionStagingPackageV2({ projectId:exactStagingProjectV2,catalogFingerprint:fingerprint! }).sql
+    :await readFile('scripts/contracts/exact-food-nutrition-v2-disposable.sql','utf8');
+  await t.test('V2 install requires explicit target acknowledgement and leaves no partial objects', async () => {
+    await assert.rejects(sql(candidate), staged?/EXPLICIT_EXACT_STAGING_INSTALL_ACK_REQUIRED/:/OWN_DISPOSABLE_CLUSTER_REQUIRED/);
     assert.equal(await sql("SELECT to_regclass('potok_food_evidence.exact_events_v2') IS NULL"),'t');
   });
-  await sql("SET potok_food_evidence.exact_test_target='disposable-postgresql-only';\n" + candidate);
+  const ack = staged?"SET potok_food_evidence.exact_staging_target='staging:ozidryfvhkcbtpnulakq';\n":"SET potok_food_evidence.exact_test_target='disposable-postgresql-only';\n";
+  if (staged) {
+    await t.test('wrong target, stale catalog pin, leaked ACL and prerequisite drift all reject atomically', async () => {
+      await assert.rejects(sql("SET potok_food_evidence.exact_staging_target='production';\n"+candidate),/EXPLICIT_EXACT_STAGING_INSTALL_ACK_REQUIRED/);
+      const wrong = buildExactFoodNutritionStagingPackageV2({ projectId:exactStagingProjectV2,catalogFingerprint:'f'.repeat(64) }).sql;
+      await assert.rejects(sql(ack+wrong),/STAGING_CATALOG_FINGERPRINT_CHANGED/);
+      await sql('GRANT SELECT ON potok_food_evidence.retained_sources_v1 TO authenticated');
+      await assert.rejects(sql(ack+candidate),/REVIEWED_V1_PRIVATE_ACL_REQUIRED/);
+      await sql('REVOKE SELECT ON potok_food_evidence.retained_sources_v1 FROM authenticated');
+      await sql('ALTER FUNCTION potok_food_evidence.authority_v1() SET search_path=public');
+      await assert.rejects(sql(ack+candidate),/REVIEWED_V1_PREREQUISITES_REQUIRED/);
+      await sql('ALTER FUNCTION potok_food_evidence.authority_v1() SET search_path=pg_catalog');
+      assert.equal(await sql("SELECT to_regclass('potok_food_evidence.exact_events_v2') IS NULL"),'t');
+    });
+  }
+  await sql(ack+candidate);
+  if (staged) await t.test('reapply fails without replacing or truncating installed evidence objects', async () => {
+    await assert.rejects(sql(ack+candidate),/EXACT_V2_ALREADY_PRESENT_REVIEW_STATE/);
+  });
   const port = (user = actor): ExactFoodNutritionUserPortV2 => ({
     // Synthetic verified-claims fixture ONLY. Real Auth signature verification is not exercised by this suite.
     verifyUser: async () => ({ id: user }),

@@ -17,6 +17,10 @@ jobs:
     if: github.event.pull_request.draft == true
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [exact-food-nutrition-disposable-db-v2.test.ts, exact-food-nutrition-staging-disposable-v2.test.ts]
     container:
       image: postgres:17
     steps:
@@ -32,4 +36,4 @@ jobs:
       - name: Real exact issuance and receipt/current acceptance in own Unix-only cluster
         run: |
           test "$(id -u)" -eq 0
-          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 node --import tsx --test --test-isolation=none scripts/contracts/exact-food-nutrition-disposable-db-v2.test.ts
+          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 node --import tsx --test --test-isolation=none scripts/contracts/${{ matrix.suite }}
