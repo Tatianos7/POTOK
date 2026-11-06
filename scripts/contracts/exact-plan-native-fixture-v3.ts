@@ -2,14 +2,13 @@
 import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {Pool} from 'pg';
 import {optimizationFixtureV3,graphSourceFixtureV3,raw,sha,id,q} from '../../src/server/__tests__/exactWeekOptimizationFixturesV3';
 import {canonicalJsonV1} from '../../src/utils/adaptiveNutritionWireV1';import {trustedGenerationInputDigestV1} from '../../src/utils/adaptiveNutritionGraphV2';
-import {createExactWeekOptimizationV3} from '../../src/server/exactWeekOptimizationV3';
-import {createExactWeekMetricProducerV3,exactWeekMetricPolicyContractV3,exactWeekConvenienceContractV3} from '../../src/server/exactWeekMetricProducerV3';
+import {exactWeekMetricPolicyContractV3,exactWeekConvenienceContractV3} from '../../src/server/exactWeekMetricProducerV3';
 import {createExactWeekGraphPreparationV3} from '../../src/server/exactWeekGraphPreparationV3';
 import {createExactPlanPostgresStoreV3,type ExactPlanSqlSourceClientV3,type ExactPlanSqlRowV3} from '../../src/server/exactPlanPostgresV3';
 import {createExactPlanAdmissionV3} from '../../src/server/exactPlanAdmissionV3';import {adaptGenerationNodePgPoolV1} from '../../src/server/generationNodePgPoolV1';
 import type {GenerationTransactionPoolV1} from '../../src/server/generationTransactionClientV1';
 import {authorized} from '../../src/server/__tests__/exactWeekNutritionFixturesV3';
-export const packetSqlV3='SELECT potok_nutrition.read_exact_native_fixture_packet_v3($1::uuid,$2::text) AS result_raw';
+import {createExactGenerationSqlOptimizerV3,exactGenerationSourceStatementsV3} from '../../src/server/exactGenerationSourcesV3';
 const literal=(s:string)=>"'"+s.replaceAll("'","''")+"'";
 const canonical=(v:unknown)=>canonicalJsonV1(v,'SAFE_INTEGER');
 export async function installExactPlanNativeFixtureV3(){
@@ -19,7 +18,7 @@ export async function installExactPlanNativeFixtureV3(){
  const update=(source:typeof f.source)=>({...source,numericAuthorityRaw:raw({...JSON.parse(source.numericAuthorityRaw),trustedGenerationInputRaw:inputRaw,generationInputDigest:inputDigest}),
   bindingsRaw:raw(JSON.parse(source.bindingsRaw).map((b:Record<string,unknown>)=>({...b,manifestDigest:input.candidateManifestDigest})))});
  const ordinary=update(f.source),sources=new Map<string,string>();
- for(const item of [f,f.alternative]){const source=update(item.source),g=await graphSourceFixtureV3(f.operation,item.snapshotRaw,source,{snapshotRaw:f.snapshotRaw,sourceRaw:raw(ordinary)});sources.set(sha(item.snapshotRaw),raw(g.graphSource));}
+ for(const item of [f,f.alternative]){const source=update(item.source),g=await graphSourceFixtureV3(f.operation,item.snapshotRaw,source,{snapshotRaw:f.snapshotRaw,sourceRaw:raw(ordinary)});sources.set(sha(item.snapshotRaw),canonical(g.graphSource));}
  const poolRaw=raw({...f.pool,trustedGenerationInputRaw:inputRaw});const packets=new Map([['pool',poolRaw],...sources.entries()].map(([k,v])=>[k==='pool'?k:'graph:'+k,v]));
  const metricPolicy={contract:exactWeekMetricPolicyContractV3,metricPolicyRevision:id(190000),optimizationPolicyRevision:input.optimizationPolicyRevision,
   targetFit:'MEAN_DAILY_EXACT_CALORIE_FIT_V3',diversity:'UNIQUE_RECIPE_MEAL_SHARE_V1',shoppingReuse:'CANONICAL_FOOD_MEAL_REUSE_SHARE_V1',convenience:'INDEPENDENT_EXACT_WEEK_CONVENIENCE_V3'};
@@ -33,7 +32,7 @@ export async function installExactPlanNativeFixtureV3(){
   packets.set('convenience:'+graphRawSha256,raw({contract:exactWeekConvenienceContractV3,requestOperationId:f.operation,graphRawSha256,generationInputDigest:inputDigest,
    metricPolicyRevision:metricPolicy.metricPolicyRevision,sourceRevision:id(190001+index),score:q('0')}));
  }
- const prerequisites=readFileSync(new URL('./generation-admission-prerequisites-v1.sql',import.meta.url),'utf8'),draft=readFileSync(new URL('./exact-plan-retention-v3.sql',import.meta.url),'utf8');
+ const prerequisites=readFileSync(new URL('./generation-admission-prerequisites-v1.sql',import.meta.url),'utf8'),draft=readFileSync(new URL('./exact-plan-retention-v3.sql',import.meta.url),'utf8'),sourceDraft=readFileSync(new URL('./exact-generation-sources-v3.sql',import.meta.url),'utf8');
  await owner.query(`BEGIN;
  CREATE SCHEMA extensions;CREATE EXTENSION pgcrypto WITH SCHEMA extensions;CREATE SCHEMA potok_nutrition;CREATE SCHEMA potok_control;
  CREATE ROLE anon NOLOGIN;CREATE ROLE authenticated NOLOGIN;CREATE ROLE service_role NOLOGIN BYPASSRLS;
@@ -49,14 +48,7 @@ export async function installExactPlanNativeFixtureV3(){
  ALTER TABLE public.user_premium_plan_selections ENABLE ROW LEVEL SECURITY;ALTER TABLE public.user_premium_plan_selections FORCE ROW LEVEL SECURITY;
  ALTER TABLE public.user_goals ENABLE ROW LEVEL SECURITY;ALTER TABLE public.user_goals FORCE ROW LEVEL SECURITY;
  REVOKE ALL ON public.user_premium_plan_selections,public.user_goals FROM PUBLIC,anon,authenticated,service_role,potok_generation_gateway_v1;
- SET LOCAL potok.disposable_generation_store='on';${prerequisites}${draft}
- CREATE TABLE potok_nutrition.exact_native_fixture_packets_v3(request_operation_id uuid NOT NULL,key text NOT NULL,raw text NOT NULL,PRIMARY KEY(request_operation_id,key));
- ALTER TABLE potok_nutrition.exact_native_fixture_packets_v3 ENABLE ROW LEVEL SECURITY;ALTER TABLE potok_nutrition.exact_native_fixture_packets_v3 FORCE ROW LEVEL SECURITY;
- REVOKE ALL ON potok_nutrition.exact_native_fixture_packets_v3 FROM PUBLIC,anon,authenticated,service_role,potok_generation_gateway_v1;
- CREATE FUNCTION potok_nutrition.read_exact_native_fixture_packet_v3(operation uuid,packet_key text) RETURNS text LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=pg_catalog AS $fn$
- DECLARE answer text;BEGIN PERFORM potok_nutrition.load_locked_exact_plan_admission_v3(operation,NULL);SELECT raw INTO answer FROM potok_nutrition.exact_native_fixture_packets_v3 WHERE request_operation_id=operation AND key=packet_key FOR SHARE;RETURN answer;END $fn$;
- REVOKE ALL ON FUNCTION potok_nutrition.read_exact_native_fixture_packet_v3(uuid,text) FROM PUBLIC,anon,authenticated,service_role;
- GRANT EXECUTE ON FUNCTION potok_nutrition.read_exact_native_fixture_packet_v3(uuid,text) TO potok_generation_gateway_v1;
+ SET LOCAL potok.disposable_generation_store='on';${prerequisites}${draft}${sourceDraft}
  COMMIT;`);
  await owner.query('INSERT INTO potok_nutrition.adaptive_nutrition_generation_requests_v2 VALUES($1,$2,$3,$4,$5,$6)',[f.operation,input.accountId,input.selection.selectionId,Buffer.from(inputRaw),Buffer.from(inputDigest,'hex'),'REQUESTED']);
  await owner.query('INSERT INTO potok_nutrition.adaptive_nutrition_candidate_manifests_v2 VALUES($1,$2,$3,$4)',[input.candidateManifestRevision,'PUBLISHED',Buffer.from(manifest),Buffer.from(input.candidateManifestDigest,'hex')]);
@@ -66,20 +58,16 @@ export async function installExactPlanNativeFixtureV3(){
  await owner.query("INSERT INTO potok_control.access_attestations VALUES($1,$2,'premium','GRANT',NULL,1,statement_timestamp()-interval '1 hour',statement_timestamp()+interval '1 day')",[input.entitlementEvidenceRevision,input.accountId]);
  await owner.query("INSERT INTO public.user_premium_plan_selections VALUES($1,$2,'pending_generation',NULL,$3,$4,$5,$6)",[input.selection.selectionId,input.accountId,input.weekStartLocal,input.timezone,input.goalNutritionTarget.goalRevision,{provisionOperationId:input.selection.planSelectionRevision}]);
  await owner.query('INSERT INTO public.user_goals VALUES($1,$2)',[input.accountId,input.goalNutritionTarget.goalRevision]);
- for(const [key,value] of packets)await owner.query('INSERT INTO potok_nutrition.exact_native_fixture_packets_v3 VALUES($1,$2,$3)',[f.operation,key,value]);
+ for(const [key,value] of packets){
+  const [prefix,subject]=key.split(':'),kind=prefix==='pool'?'POOL':prefix==='graph'?'GRAPH':prefix==='metric-policy'?'METRIC_POLICY':'CONVENIENCE';
+  await owner.query('INSERT INTO potok_nutrition.exact_generation_sources_v3(source_ref,request_operation_id,account_id,generation_input_digest,source_kind,subject_sha256,payload_raw) VALUES($1,$2,$3,$4,$5,$6,$7)',
+   ['synthetic-native:'+key,f.operation,input.accountId,Buffer.from(inputDigest,'hex'),kind,subject?Buffer.from(subject,'hex'):null,canonical(JSON.parse(value))]);
+ }
  const rawPool=new Pool({host:'127.0.0.1',port:5432,database:'potok_generation_store_disposable',user:'potok_generation_gateway_v1',password:'exact-native-only',ssl:false,max:2,connectionTimeoutMillis:5000,
   options:'-c search_path=pg_catalog -c statement_timeout=30000 -c lock_timeout=5000 -c idle_in_transaction_session_timeout=60000',application_name:'potok-exact-v3-native'});
  const pool=adaptGenerationNodePgPoolV1<ExactPlanSqlRowV3>(rawPool,()=>true);
- const factory=(client:ExactPlanSqlSourceClientV3)=>{
-  const packet=async(operation:string,key:string)=>(await client.query(packetSqlV3,[operation,key])).rows[0].result_raw;
-  const poolPort={loadForOperationRaw:(op:string)=>packet(op,'pool')},graphPort={loadForProposalRaw:(op:string,subject:string)=>packet(op,'graph:'+subject)};
-  return {async optimize(operation:string){
-   const policyRaw=await packet(operation,'metric-policy');if(policyRaw===null)throw Error('NATIVE_METRIC_POLICY_MISSING');
-   const producer=createExactWeekMetricProducerV3(poolPort,graphPort,authorized,policyRaw,{loadConvenienceRaw:(op,graphSha)=>packet(op,'convenience:'+graphSha)});
-   return createExactWeekOptimizationV3(poolPort,graphPort,producer,authorized).optimize(operation);
-  }};
- };
- const storeFor=(p:GenerationTransactionPoolV1<ExactPlanSqlRowV3>)=>createExactPlanPostgresStoreV3(p,[packetSqlV3],factory,()=>true);
+ const factory=(client:ExactPlanSqlSourceClientV3)=>createExactGenerationSqlOptimizerV3(client,authorized);
+ const storeFor=(p:GenerationTransactionPoolV1<ExactPlanSqlRowV3>)=>createExactPlanPostgresStoreV3(p,exactGenerationSourceStatementsV3,factory,()=>true);
  const store=storeFor(pool),service=createExactPlanAdmissionV3(store,()=>true);
  return {owner,pool,rawPool,store,storeFor,service,input,operation:f.operation,inputDigest,expectedSelectedSnapshotSha256:sha(f.snapshotRaw),literal,canonical,async close(){await pool.close();await owner.end();}};
 }

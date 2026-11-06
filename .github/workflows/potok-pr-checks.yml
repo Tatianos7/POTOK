@@ -123,6 +123,8 @@ jobs:
           node --import tsx --test src/server/__tests__/exactWeekOptimizationV3.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2020 --module ESNext --moduleResolution Bundler --types node src/server/exactWeekMetricProducerV3.ts src/server/__tests__/exactWeekMetricProducerV3.test.ts
           node --import tsx --test src/server/__tests__/exactWeekMetricProducerV3.test.ts
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2020 --module ESNext --moduleResolution Bundler --types node src/server/exactGenerationSourcesV3.ts src/server/__tests__/exactGenerationSourcesV3.test.ts
+          node --import tsx --test src/server/__tests__/exactGenerationSourcesV3.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node src/server/exactPlanAdmissionV3.ts src/server/__tests__/exactPlanAdmissionFixturesV3.ts src/server/__tests__/exactPlanAdmissionV3.test.ts
           node --import tsx --test src/server/__tests__/exactPlanAdmissionV3.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node src/server/exactPlanPostgresV3.ts src/server/__tests__/exactPlanPostgresV3.test.ts scripts/contracts/exact-plan-native-fixture-v3.ts scripts/contracts/generation-validation-exact-v1.test.ts
