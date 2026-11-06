@@ -110,6 +110,9 @@ export async function runExactFoodNutritionAcceptanceV2(t: TestContext, db: DB):
     assert.equal(await sql('SELECT count(*) FROM potok_food_evidence.exact_events_v2'),'1');
   });
   await t.test('current read uses actual stored event-time attestations and feeds exact consumer', async () => {
+    const envelope = await port().current(foodId,'raw') as { kind: string; eventAuthorizations: { authorized: unknown }[] };
+    assert.equal(envelope.kind,'COMPLETE_TRUSTED_STORE_SNAPSHOT_V2');
+    assert.equal(envelope.eventAuthorizations.length,2); assert.ok(envelope.eventAuthorizations.every(e => e.authorized===true));
     const current = await readCurrentExactFoodNutritionV2(port(),foodId,'raw'); assert.equal(current.kind,'REVIEWED_EXACT_V2');
     if (current.kind==='REVIEWED_EXACT_V2') assert.equal(current.numericInput.mappedDecimalText.protein,'13.49645');
     const valid = await port().current(foodId,'raw') as { eventAuthorizations: { authorized: unknown }[] };
@@ -138,7 +141,8 @@ export async function runExactFoodNutritionAcceptanceV2(t: TestContext, db: DB):
     latest = { revisionId:state2.nutritionRevisionId,digest:state2.nutritionDigest };
   });
   const invalidate = (key: number, revision: { revisionId: string; digest: string }): ExactFoodNutritionReviewRequestV2 => ({
-    contract:exactFoodNutritionRequestContractV2,kind:'INVALIDATION',idempotencyReference:id(key),target:{ ...revision,canonicalFoodId:foodId },severity:'SAFETY_CRITICAL',reason:'Synthetic source correction' });
+    contract:exactFoodNutritionRequestContractV2,kind:'INVALIDATION',idempotencyReference:id(key),
+    target:{ revisionId:revision.revisionId,digest:revision.digest,canonicalFoodId:foodId },severity:'SAFETY_CRITICAL',reason:'Synthetic source correction' });
   await t.test('historical invalidation cannot roll back or invalidate a newer head', async () => {
     await issue(invalidate(5006,JSON.parse(first.targetRaw)));
     const state = await readCurrentExactFoodNutritionV2(port(),foodId,'raw'); assert.equal(state.kind,'REVIEWED_EXACT_V2');
@@ -172,8 +176,9 @@ export async function runExactFoodNutritionAcceptanceV2(t: TestContext, db: DB):
   await t.test('deferred COMMIT rechecks real session expiry and atomically rolls back all writes', async () => {
     const count = await sql('SELECT count(*) FROM potok_food_evidence.exact_events_v2');
     await sql(`UPDATE auth.sessions SET not_after=clock_timestamp()+interval '1.5 seconds' WHERE id=${q(id(101))}`);
-    await assert.rejects(asUser(`SELECT public.food_nutrition_review_v2(${q(raw(approve(5014,dossier.p.digest,latest)))}); SELECT pg_sleep(2)`),/LIVE_AUTH_SESSION_REQUIRED/);
-    await sql(`UPDATE auth.sessions SET not_after=NULL WHERE id=${q(id(101))}`);
+    try {
+      await assert.rejects(asUser(`SELECT public.food_nutrition_review_v2(${q(raw(approve(5014,dossier.p.digest,latest)))}); SELECT pg_sleep(2)`),/LIVE_AUTH_SESSION_REQUIRED/);
+    } finally { await sql(`UPDATE auth.sessions SET not_after=NULL WHERE id=${q(id(101))}`); }
     assert.equal(await sql('SELECT count(*) FROM potok_food_evidence.exact_events_v2'),count);
     await assert.rejects(port().receipt(id(5014)),/REQUEST_NOT_FOUND/);
   });

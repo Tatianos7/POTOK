@@ -346,8 +346,8 @@ BEGIN
     OR rev.canonical_bytes<>convert_to(potok_food_evidence.canonical_json_v1(rev.snapshot),'UTF8')
     OR rev.snapshot->'sourceProposal' IS DISTINCT FROM dossier.proposal THEN
     RETURN jsonb_build_object('kind','UNRESOLVED','foodId',p_canonical_food_id); END IF;
-  SELECT snapshot INTO ca FROM potok_food_evidence.review_events_v1 WHERE event_id=(c->>'reviewEventId')::uuid;
-  SELECT snapshot INTO na FROM potok_food_evidence.exact_events_v2 WHERE event_id=rev.review_event_id;
+  SELECT e.snapshot INTO ca FROM potok_food_evidence.review_events_v1 e WHERE e.event_id=(c->>'reviewEventId')::uuid;
+  SELECT e.snapshot INTO na FROM potok_food_evidence.exact_events_v2 e WHERE e.event_id=rev.review_event_id;
   SELECT jsonb_agg(potok_food_evidence.canonical_json_v1(e.snapshot) ORDER BY e.event_id),
     jsonb_agg(jsonb_build_object('eventId',e.event_id,'digest',e.digest,'authorized',
       potok_food_evidence.event_authorized_exact_v2(e.snapshot,e.actor_id,e.authority_attestation_id,e.digest,e.canonical_bytes)) ORDER BY e.event_id)
