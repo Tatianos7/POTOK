@@ -1,0 +1,23 @@
+{
+  "contract": "potok-exact-food-nutrition-staging-install-package-v2",
+  "projectId": "ozidryfvhkcbtpnulakq",
+  "catalogFingerprint": "226e6a374be43fdd19e8167b0a2318d4b6dffe8cc046723a940ea22b51bb20cc",
+  "sourceSha256": "abb8d12251d3e35e47e7fbde29bc917a54ee9061ced8f23c9ff14681fbc46b7f",
+  "sqlSha256": "fb75d099cab65342ed5730660a5095b040975bf8165e9ea838497c3bb6e73c84",
+  "scope": {
+    "privateTables": 5,
+    "privateHelpers": 7,
+    "authenticatedAdminRpcs": 3,
+    "immutableTableTriggers": 4,
+    "deferredAuthorityTrigger": 1,
+    "existingV1VersionBarrierTrigger": 1,
+    "catalogRowWrites": 0,
+    "sourceApprovals": 0,
+    "recipePublications": 0
+  },
+  "canApply": false,
+  "ownerApprovalRequired": true,
+  "generatorActivated": false,
+  "sqlPath": "docs/premium/drafts/food-nutrition-exact-v2-staging-install-20261106.sql",
+  "notice": "REVIEW_ARTIFACT_NOT_APPLIED_MIGRATION_HISTORY"
+}

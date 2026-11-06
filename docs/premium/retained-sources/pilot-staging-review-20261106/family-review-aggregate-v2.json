@@ -1,0 +1,49 @@
+{
+  "contract": "potok-pilot-family-review-aggregate-v2",
+  "usage": "AGGREGATE_ONLY_NO_IDENTITY_OR_SOURCE_APPROVAL",
+  "inputBindings": {
+    "candidateSha256": "485da00522a3014c7722a7443b63b45fd3ddfcf05ec8f0186fe7d1ca704d50af",
+    "freezeSha256": "ce1fa3dbea8f57d271329b999480eb2188f38d0b3fe64f462c5df4e22a0910ae",
+    "snapshotSha256": "8ec234f6c0f1821b8dd100f3dfe4929ab34d13ff3ba38f6df1fb05db4508ef5a",
+    "familySnapshotSha256": "f6c11e8c184f42548f5461250a47b4fa84dce0cd84b30807a831fca1befa74ee"
+  },
+  "observation": {
+    "projectId": "ozidryfvhkcbtpnulakq",
+    "capturedAt": "2026-11-06T11:56:33.929632+00:00",
+    "rows": 667,
+    "scope": "EXPLICIT_FAMILIES_SHARED_CORE_BRAND_ONLY"
+  },
+  "summary": {
+    "recipes": 19,
+    "foodRows": 69,
+    "foodRowsWithFamilyCandidates": 59,
+    "foodRowsWithoutFamilyCandidates": 10,
+    "sourceGroupsRequiringPrecheck": [
+      "FDC_SR_LEGACY:168411:PREPARED:100G",
+      "FDC_SR_LEGACY:172420:DRY_RAW:100G",
+      "SR28:01174",
+      "SR28:01287",
+      "SR28:20124"
+    ],
+    "approvedBindings": 0,
+    "catalogWrites": 0,
+    "sourceApprovals": 0
+  },
+  "candidatePairsByDisposition": {
+    "CANDIDATE_FOR_REVIEW": 128,
+    "EXCLUDED_VARIANT": 82,
+    "INSUFFICIENT_VARIANT_LABEL": 45
+  },
+  "candidatePairsByStateFinding": {
+    "STATE_UNKNOWN": 68,
+    "LABEL_ONLY_NOT_EQUIVALENCE": 98,
+    "STATE_LABEL_CONFLICT": 86,
+    "NAME_STATE_CONFLICT": 3
+  },
+  "catalogWrites": 0,
+  "sourceApprovals": 0,
+  "privateRowsCommitted": false,
+  "proposedFoodCreates": 0,
+  "proposedFoodUpdates": 0,
+  "canApply": false
+}

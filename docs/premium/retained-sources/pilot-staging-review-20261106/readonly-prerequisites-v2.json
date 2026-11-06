@@ -1,0 +1,147 @@
+{
+  "contract": "potok-pilot-staging-review-acceptance-v2",
+  "usage": "AGGREGATE_READONLY_OBSERVATION_NOT_IDENTITY_APPROVAL",
+  "recordedAt": "2026-11-06T12:10:44.039Z",
+  "familyObservation": {
+    "capturedAt": "2026-11-06T11:56:33.929632+00:00",
+    "rows": 667,
+    "scope": "EXPLICIT_FAMILIES_SHARED_CORE_BRAND_ONLY"
+  },
+  "prerequisites": {
+    "functions": [
+      {
+        "md5": "e322ada6e5dbadef65429126f7f2bb53",
+        "name": "authority_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "securityDefiner": false
+      },
+      {
+        "md5": "6016a334cae1796bf3e0cf2439cf4054",
+        "name": "canonical_json_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "securityDefiner": false
+      },
+      {
+        "md5": "1dc7364e8c5289b13d7a556a8fe5a3f4",
+        "name": "digest_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "securityDefiner": false
+      },
+      {
+        "md5": "e410f479e947a1338a6604ef755483c2",
+        "name": "identity_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "securityDefiner": false
+      },
+      {
+        "md5": "17a1ef13c3b4a7209d84f33e1cb98b6e",
+        "name": "invalidated_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "securityDefiner": false
+      },
+      {
+        "md5": "9709c4d215e140c3ab94b81a3f353ed5",
+        "name": "reject_mutation_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "securityDefiner": false
+      },
+      {
+        "md5": "ebbb559395c8d261c83ee0618f616078",
+        "name": "revision_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "securityDefiner": false
+      },
+      {
+        "md5": "f0a61577582d3057b1bbffbf40e5074b",
+        "name": "shared_food_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "securityDefiner": false
+      },
+      {
+        "md5": "6cae67ff524d56d19b19f7a5a122ae06",
+        "name": "source_v1",
+        "owner": "postgres",
+        "config": [
+          "search_path=pg_catalog"
+        ],
+        "securityDefiner": false
+      }
+    ],
+    "privateTables": [
+      {
+        "rls": true,
+        "name": "canonical_revisions_v1",
+        "owner": "postgres",
+        "forceRls": true
+      },
+      {
+        "rls": true,
+        "name": "current_heads_v1",
+        "owner": "postgres",
+        "forceRls": true
+      },
+      {
+        "rls": true,
+        "name": "nutrition_revisions_v1",
+        "owner": "postgres",
+        "forceRls": true
+      },
+      {
+        "rls": true,
+        "name": "retained_sources_v1",
+        "owner": "postgres",
+        "forceRls": true
+      },
+      {
+        "rls": true,
+        "name": "review_events_v1",
+        "owner": "postgres",
+        "forceRls": true
+      },
+      {
+        "rls": true,
+        "name": "review_requests_v1",
+        "owner": "postgres",
+        "forceRls": true
+      }
+    ]
+  },
+  "guardReadiness": {
+    "currentUser": "postgres",
+    "sessionUser": "postgres",
+    "postgresBypass": true,
+    "exactRpcPresent": false,
+    "exactTablePresent": false,
+    "unsafeClientRoles": false,
+    "ownerRoleMembership": false,
+    "privateTableClientGrant": false
+  },
+  "catalogFingerprint": "226e6a374be43fdd19e8167b0a2318d4b6dffe8cc046723a940ea22b51bb20cc",
+  "sourceApproved": false,
+  "canApply": false,
+  "privateCatalogRowsCommitted": false
+}
