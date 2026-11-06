@@ -73,6 +73,15 @@ test('confirmed result requires stable verified actor before and after write', a
   let checks = 0;
   assert.equal((await submitExactFoodNutritionReviewV2({ ...port,verifyUser:async () => ({ id:++checks===1?id(6):id(99) }) },raw(req))).kind,'UNKNOWN');
 });
+test('receipt is owned before yielding to another Auth check', async () => {
+  const { req,port,receipt } = await fixture(); let checks = 0;
+  const result = await submitExactFoodNutritionReviewV2({ ...port,verifyUser:async () => {
+    if (++checks===2) receipt.actorId=id(99);
+    return { id:id(6) };
+  } },raw(req));
+  assert.equal(result.kind,'CONFIRMED');
+  if (result.kind==='CONFIRMED') { assert.equal((result.receipt as { actorId: string }).actorId,id(6)); assert.ok(Object.isFrozen(result.receipt)); }
+});
 test('atomic trusted SQL snapshot resolves exact values; forged authorization/history fails closed', async () => {
   const { f,port } = await fixture();
   assert.equal((await readCurrentExactFoodNutritionV2(port,f.canonical.foodId,'as-sold')).kind,'REVIEWED_EXACT_V2');

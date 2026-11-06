@@ -327,7 +327,7 @@ END $$;
 CREATE FUNCTION public.food_nutrition_current_v2(p_canonical_food_id uuid,p_food_state text) RETURNS jsonb
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
 DECLARE head potok_food_evidence.exact_heads_v2%ROWTYPE; rev potok_food_evidence.exact_revisions_v2%ROWTYPE;
-  dossier potok_food_evidence.exact_sources_v2%ROWTYPE; c jsonb; ca jsonb; na jsonb; events jsonb; authorities jsonb; snapshot jsonb;
+  dossier potok_food_evidence.exact_sources_v2%ROWTYPE; c jsonb; ca jsonb; na jsonb; events jsonb; authorities jsonb; snapshot_result jsonb;
 BEGIN
   PERFORM potok_food_evidence.authority_v1();
   PERFORM potok_food_evidence.applicability_v1(jsonb_build_object('kind','EXACT_FOOD_STATE','foodState',p_food_state),p_food_state);
@@ -357,11 +357,11 @@ BEGIN
       UNION ALL SELECT event_id,actor_id,authority_attestation_id,digest,snapshot,canonical_bytes FROM potok_food_evidence.exact_events_v2
         WHERE target_revision_id=rev.revision_id
     ) e;
-  snapshot:=jsonb_build_object('requestedFoodId',p_canonical_food_id,'nutritionRaw',potok_food_evidence.canonical_json_v1(rev.snapshot),
+  snapshot_result:=jsonb_build_object('requestedFoodId',p_canonical_food_id,'nutritionRaw',potok_food_evidence.canonical_json_v1(rev.snapshot),
     'sourcePinsRaw',potok_food_evidence.canonical_json_v1(dossier.pins),'canonicalApprovalRaw',potok_food_evidence.canonical_json_v1(ca),
     'nutritionApprovalRaw',potok_food_evidence.canonical_json_v1(na),'relevantEventRaws',events,'activeCanonicalRevisionId',c->'revisionId',
     'activeNutritionRevisionId',rev.revision_id,'currentFoodState',p_food_state);
-  RETURN jsonb_build_object('kind','COMPLETE_TRUSTED_STORE_SNAPSHOT_V2','snapshot',snapshot,'eventAuthorizations',authorities);
+  RETURN jsonb_build_object('kind','COMPLETE_TRUSTED_STORE_SNAPSHOT_V2','snapshot',snapshot_result,'eventAuthorizations',authorities);
 END $$;
 
 REVOKE ALL ON ALL FUNCTIONS IN SCHEMA potok_food_evidence FROM PUBLIC,anon,authenticated,service_role;

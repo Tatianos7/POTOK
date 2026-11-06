@@ -25,7 +25,7 @@ function actorId(value: unknown): value is string {
 }
 export async function verifyExactFoodNutritionReceiptV2(raw: string, actor: string, value: unknown): Promise<void> {
   const req = decodeExactFoodNutritionReviewRequestRawV2(raw);
-  const r = object(value, ['contract','actorId','idempotencyReference','requestDigest','rawRequestSha256','eventRaw','targetRaw','sourcePinsRaw','replayed']);
+  const r = object(JSON.parse(JSON.stringify(value)), ['contract','actorId','idempotencyReference','requestDigest','rawRequestSha256','eventRaw','targetRaw','sourcePinsRaw','replayed']);
   if (r.contract !== 'potok-exact-food-nutrition-review-receipt-v2' || typeof r.replayed !== 'boolean'
     || r.actorId !== actor || r.idempotencyReference !== req.idempotencyReference
     || r.requestDigest !== await exactFoodNutritionReviewRequestDigestRawV2(raw)
@@ -54,7 +54,7 @@ export async function submitExactFoodNutritionReviewV2(port: ExactFoodNutritionU
   if (!actor || !actorId(actor.id)) throw Error('AUTH_REQUIRED');
   const id = actor.id;
   try {
-    const receipt = await port.review(raw);
+    const receipt: unknown = Object.freeze(JSON.parse(JSON.stringify(await port.review(raw))));
     if ((await port.verifyUser())?.id !== id) throw Error('AUTH_CHANGED');
     await verifyExactFoodNutritionReceiptV2(raw, id, receipt);
     return Object.freeze({ kind: 'CONFIRMED', receipt });
@@ -67,7 +67,7 @@ export async function recoverExactFoodNutritionReviewV2(port: ExactFoodNutrition
   if (decodeExactFoodNutritionReviewRequestRawV2(raw).idempotencyReference !== idempotencyReference || !actorId(id)) throw Error('INVALID_RECOVERY_CONTEXT');
   if ((await port.verifyUser())?.id !== id) throw Error('AUTH_CHANGED');
   try {
-    const receipt = await port.receipt(idempotencyReference);
+    const receipt: unknown = Object.freeze(JSON.parse(JSON.stringify(await port.receipt(idempotencyReference))));
     if ((await port.verifyUser())?.id !== id) throw Error('AUTH_CHANGED');
     await verifyExactFoodNutritionReceiptV2(raw, id, receipt);
     return Object.freeze({ kind: 'CONFIRMED', receipt });
