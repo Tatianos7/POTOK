@@ -267,6 +267,18 @@ function distribution(value: unknown, week: string): MealDistributionPolicySnaps
   return { contract: mealDistributionPolicyContractV1, policyRevision: uuid(row.policyRevision),
     compositionPolicyRevision: uuid(row.compositionPolicyRevision), days: days as DistributionDayEvidenceV1[] };
 }
+/** Standalone representation projection for exact arithmetic consumers; no policy authority claim.
+ * Reuses the existing distribution decoder and admitted-input revision/date bindings unchanged. */
+export function decodeMealDistributionPolicyRawV1(raw: string, trustedGenerationInputRaw: string): MealDistributionPolicySnapshotV1 {
+  if (typeof raw !== 'string' || typeof trustedGenerationInputRaw !== 'string') throw new Error('DISTRIBUTION_RAW_STRING_REQUIRED');
+  assertRawJsonWithoutDuplicateKeysV1(raw); assertRawJsonWithoutDuplicateKeysV1(trustedGenerationInputRaw);
+  const input = decodeTrustedGenerationInputV1(JSON.parse(trustedGenerationInputRaw));
+  const result = distribution(JSON.parse(raw), input.weekStartLocal);
+  if (result.policyRevision !== input.validationPolicyRevision || result.compositionPolicyRevision !== input.compositionPolicyRevision) {
+    throw new Error('DISTRIBUTION_POLICY_REVISION_MISMATCH');
+  }
+  return frozen(result);
+}
 function fallback(value: unknown): OrdinaryFallbackEvidenceV1 {
   const row = record(value, ['contract', 'validationPolicyRevision', 'candidateManifestRevision', 'candidateManifestDigest',
     'candidatePoolDigest', 'status', 'ordinaryWeekDigest'], 'ORDINARY_FALLBACK');

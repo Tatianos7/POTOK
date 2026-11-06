@@ -1,5 +1,14 @@
 # POTOK current state
 
+## Request-bound exact weekly numeric precheck V3, unmounted — 2026-11-06
+
+- Parent PR346 exact head `45db14daa9ddc0d1e50f2b19e1af97bef0d66872`: PR checks and PostgreSQL admission passed; Edge full-worker run42157526143 failed. No security/test relaxation or runtime compatibility claim.
+- Existing full validator consumes Graph V2 / three-decimal nutrition and cannot accept the new exact snapshots without rounding/version changes. Added a separate request-bound numeric precheck using the existing GenerationValidationAuthorityPortV1 read signature, admitted TrustedGenerationInputV1 metadata/goal, current Goal V1 decoder, balance policy snapshot/digest and unchanged distribution-policy decoder. V1 packages reject at the V3 source boundary; no fake Graph carrier or new role/authority ledger.
+- A server-owned V3 package must bind the exact operation/proposal raw SHA, admitted input digest, account/selection/local week/timezone, source request/snapshot digests, current goal, policy revisions and every required slot/order/type. Source recipe/ingredient/Nonfood authority and exact arithmetic are fully revalidated by the existing exact-week decoder before comparisons.
+- Inclusive exact rational comparisons enforce both meal nutrition and distribution bounds, optional daily Goal axes, seven-scaled weekly Goal bounds and the existing five-component balance cap. Null Goal axes remain unspecified, not zero. No new medical/portion/target values or nutrition rounding. Current Goal/admitted Goal mismatch and stale policy/slot/data substitutions fail closed.
+- Every result has accepted=false, canRecord=false and canActivate=false. A numeric pass is NUMERIC_CHECKS_PASSED_PENDING_VALIDATION with explicit remaining Graph/publication/portion/composition/repeat/accessibility/safety/preference/warning/optimization/Auth/Premium/transaction gates; it is never legacy ACCEPTED or a writable plan. No DB port implementation, storage proof, source issuance, publication, merge/deploy/activation or FACT write. Next: exact Graph and the remaining established validation/publication gates before storage/readback.
+- See docs/architecture/exact-week-nutrition-validation-v3.md.
+
 ## Exact portion/meal/day/week input arithmetic V3, unmounted — 2026-11-06
 
 - Parent PR345 exact head `02f1faf4c1a9f5e1c5c873b0311d098fc01faddd`: PR checks and PostgreSQL admission passed; separate Edge full-worker run42156155530 failed. No compatibility claim or gate/security relaxation.
