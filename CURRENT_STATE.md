@@ -1,5 +1,13 @@
 # POTOK current state
 
+## Exact recipe food-input arithmetic and preparation V2, unmounted — 2026-11-06
+
+- PR343 exact head `d4cd31a2e9ee88884f712a2ed1a5413f9e5adbe5`: PR checks and PostgreSQL admission succeeded; Edge full-worker run 42071039336 failed the strict pg connection check. Logs reproduce the documented Nov03 blocker: raw peer DER unavailable under the pinned Edge runtime, valid/wrong-password acquisition fails; identical Node baseline passes all eight cases. Robust compute completed, strict compute hit local CPU limits in this sample. No gate relaxed or Edge compatibility claimed.
+- Added an independently request-pinned exact recipe input snapshot: ordered complete row list, food/state/basis and revision/source/numeric bindings, positive rational grams and nullable declared servings. Recompute component contributions, whole totals, input mass and conditional serving fractions; all results stay authority NONE / INPUT_COMPONENTS_NO_COOKING_RETENTION_CLAIM, cooked yield null.
+- An unmounted server preparation boundary resolves every FOOD row through the existing exact reviewed-read adapter and compares all bindings. Any stale, missing, revoked, mismatched or unauthorized ingredient blocks the whole preparation. Own all snapshots before awaits; repeated foods retain distinct row IDs.
+- Typed water/salt rows are preserved but explicitly blocked with NONFOOD_EVIDENCE_NOT_INTEGRATED. No density, zero vector, fake food identity or partial total substitution. This food-only slice does not admit the 19 mixed pilot recipes. Nonfood, recipe source/portion/allergen/dietary/publication authority, Graph V3, week/validator/storage/readback integration remain separate.
+- No source mutation, DB/network port, SQL, runtime binding, Food issuance, recipe approval, diary/FACT write, merge, deploy or generator activation. Next: existing typed Nonfood evidence integration into this exact path, then exact meal/week/Graph compatibility. See docs/architecture/exact-recipe-nutrition-v2.md.
+
 ## Exact Food nutrition V2 artifacts and trusted-read adapter, unmounted — 2026-11-05
 
 - PR342 exact head `05aa17403daaa08d531b1cccf4177043919209e1` passed both GitHub workflows. Added separately versioned exact nutrition revisions and approval/rejection/invalidation events; canonical identity remains V1, source proposal stays immutable NONE/REVIEW_REQUIRED. No real IDs/review events are minted or issued.

@@ -107,6 +107,8 @@ jobs:
           node --import tsx --test src/utils/__tests__/foodNutritionSourceBindingV2.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node src/utils/exactFoodNutritionEvidenceV2.ts src/utils/__tests__/exactFoodNutritionEvidenceV2.test.ts src/server/exactFoodNutritionReviewedAdapterV2.ts src/server/__tests__/exactFoodNutritionFixturesV2.ts src/server/__tests__/exactFoodNutritionReviewedAdapterV2.test.ts
           node --import tsx --test src/utils/__tests__/exactFoodNutritionEvidenceV2.test.ts src/server/__tests__/exactFoodNutritionReviewedAdapterV2.test.ts
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node src/utils/exactRecipeNutritionV2.ts src/server/exactRecipeNutritionPreparationV2.ts src/server/__tests__/exactRecipeNutritionV2.test.ts
+          node --import tsx --test src/server/__tests__/exactRecipeNutritionV2.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/week-transfer-handoff-v1.ts scripts/contracts/week-transfer-handoff-v1.test.ts
           node --import tsx --test scripts/contracts/week-transfer-handoff-v1.test.ts
 
