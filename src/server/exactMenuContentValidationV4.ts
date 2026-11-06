@@ -55,7 +55,7 @@ function increment(v:unknown):string{const s=assertFoodEvidenceDecimalV1(v);if(e
 const canonical=(v:unknown)=>canonicalJsonV1(v,'SAFE_INTEGER');
 const sha=(s:string)=>adaptiveNutritionSha256HexV1(new TextEncoder().encode(s));
 function freeze<T>(v:T):T{if(v&&typeof v==='object'){for(const c of Object.values(v))freeze(c);Object.freeze(v);}return v;}
-function bindings(raw:string){
+export function decodeExactPublicationBindingsRawV4(raw:string){
  return list(parse(raw,2_097_152,20)).map(rawValue=>{
   const b=row(rawValue,['contract','manifestRevision','manifestDigest','slotId','componentKey','recipeKey','recipeId','portionRevisionId','activePublicationRevision','publicationSubject','reviewMetadataRaw','eligibilityRaw','ingredientIds','intoleranceCodes','specialty','expensive','portionRules','componentBindings']);
   if(b.contract!=='potok-exact-recipe-publication-binding-v4')fail();
@@ -119,7 +119,7 @@ export function createExactMenuContentValidationAdapterV4(port:GenerationValidat
    const composition=await decodeCompositionPolicySnapshotRawV2(source.compositionPolicySnapshotRaw as string,a.trustedGenerationInputRaw);
    const balance=(await decodeBalancePolicySnapshotRawV2(a.balancePolicySnapshotRaw,a.trustedGenerationInputRaw)).policy;
    const distribution=decodeMealDistributionPolicyRawV1(a.distributionPolicyRaw,a.trustedGenerationInputRaw);
-   const reviewed=bindings(source.bindingsRaw as string),placements=snapshot.days.flatMap(d=>d.meals.flatMap(m=>m.components.map(c=>({slotId:m.slotId,component:c}))));
+   const reviewed=decodeExactPublicationBindingsRawV4(source.bindingsRaw as string),placements=snapshot.days.flatMap(d=>d.meals.flatMap(m=>m.components.map(c=>({slotId:m.slotId,component:c}))));
    if(reviewed.length!==placements.length||new Set(reviewed.map(b=>b.value.slotId+':'+b.value.componentKey)).size!==reviewed.length)fail();
    if(reviewed.some((b,i)=>b.value.slotId!==placements[i].slotId||b.value.componentKey!==placements[i].component.componentKey||b.value.recipeKey!==placements[i].component.recipeKey))fail();
    const meals=snapshot.days.flatMap(d=>d.meals),modes=list(source.mealModes,56).map(v=>{const m=row(v,['slotId','sourceKind']);if(m.sourceKind!=='COMPLETE_RECIPE'&&m.sourceKind!=='COMPOSED_MEAL')fail();return {slotId:uuid(m.slotId),sourceKind:m.sourceKind};});
@@ -130,7 +130,7 @@ export function createExactMenuContentValidationAdapterV4(port:GenerationValidat
    for(const [dayIndex,day] of snapshot.days.entries()){
     const dailyRecipes=new Map<string,number>();
     for(const [slotIndex,meal] of day.meals.entries()){
-     const path=`days[${dayIndex}].meals[${slotIndex}]`,selected:ReturnType<typeof bindings>=[];let specialty=false,expensive=false;
+     const path=`days[${dayIndex}].meals[${slotIndex}]`,selected:ReturnType<typeof decodeExactPublicationBindingsRawV4>=[];let specialty=false,expensive=false;
      for(const component of meal.components){
       const item=reviewed[at++],b=item.value,r=item.review,e=item.eligibility;selected.push(item);const cp=path+'.components.'+component.componentKey;
       const ref=snapshot.request.recipes.find(v=>v.recipeKey===b.recipeKey)!,recipeInput=a.recipeInputs.find(v=>v.recipeKey===b.recipeKey)!;

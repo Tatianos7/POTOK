@@ -10,11 +10,11 @@ import {mealCandidateEvidenceContractV1,type MealComponentEvidenceV1} from '../.
 import {sealNutritionPreferenceSnapshotV1,sealNutritionSafetySnapshotV1,nutritionPreferenceSnapshotContractV1,nutritionSafetySnapshotContractV1} from '../../utils/adaptiveNutritionAuthoritiesV1';
 import {compositionPolicySnapshotContractV1,compositionPolicySnapshotEncodingV1} from '../../utils/trustedValidationPoliciesV1';
 import {canonicalJsonV1} from '../../utils/adaptiveNutritionWireV1';
-export async function contentFixtureV4(options:{repeated?:boolean;unknownServings?:boolean;duplicateWithinDay?:boolean}={}){
+export async function contentFixtureV4(options:{repeated?:boolean;unknownServings?:boolean;duplicateWithinDay?:boolean;recipeNamespace?:string;identityOffset?:number}={}){
  const f=await exactWeekValidationFixtureV3(),input=f.input,refs:ExactWeekNutritionRequestV3['recipes'][number][]=[],inputs:ExactWeekRecipeInputV3[]=[];
  const recipeCount=options.repeated?1:7;
  for(let i=0;i<recipeCount;i++){
-  const recipe=JSON.parse(f.recipeInputs[0].requestRaw);recipe.authoring.authoringRecipeId='synthetic-content-'+i;if(options.unknownServings)recipe.authoring.declaredServings=null;
+  const recipe=JSON.parse(f.recipeInputs[0].requestRaw);recipe.authoring.authoringRecipeId=(options.recipeNamespace??'synthetic-content')+'-'+i;if(options.unknownServings)recipe.authoring.declaredServings=null;
   const requestRaw=raw(recipe),requestDigest=await exactTypedRecipeRequestDigestRawV3(requestRaw),p=await prepareExactTypedRecipeRawV3(requestRaw,requestDigest,f.recipeInputs[0].contexts,authorized);
   if(p.kind!=='PREPARED_EXACT_TYPED_INPUTS_V3')throw Error();refs.push({recipeKey:'r'+i,requestDigest,snapshotDigest:p.snapshot.digest});inputs.push({recipeKey:'r'+i,requestRaw,contexts:f.recipeInputs[0].contexts});
  }
@@ -33,7 +33,7 @@ export async function contentFixtureV4(options:{repeated?:boolean;unknownServing
  const composition={...compositionContent,digest:sha(canonicalJsonV1({contract:compositionPolicySnapshotContractV1,encoding:compositionPolicySnapshotEncodingV1,policy:compositionContent},'SAFE_INTEGER'))};
  const bindings:ExactRecipePublicationBindingV4[]=[];let placement=0;
  for(const day of p.snapshot.days)for(const meal of day.meals)for(const component of meal.components){
-  const i=refs.findIndex(r=>r.recipeKey===component.recipeKey),base=120000+i*100,recipe=JSON.parse(inputs[i].requestRaw),family='family_'+Math.floor(i/3),ingredient='ingredient_'+Math.floor(i/4);
+  const i=refs.findIndex(r=>r.recipeKey===component.recipeKey),base=120000+(options.identityOffset??0)+i*100,recipe=JSON.parse(inputs[i].requestRaw),family='family_'+Math.floor(i/3),ingredient='ingredient_'+Math.floor(i/4);
   const review:MealComponentEvidenceV1={contract:mealCandidateEvidenceContractV1,mealComponentId:id(110000+placement++),recipeRevision:id(base+1),publicationStatus:'PUBLISHED',publicationRevision:id(base+2),canonicalStatus:'READY',canonicalEvidenceRevision:id(base+3),
    nutritionStatus:'COMPLETE',nutritionEvidenceRevision:id(base+4),allergenStatus:'REVIEWED',allergenEvidenceRevision:id(base+5),dietaryStatus:'REVIEWED',dietaryEvidenceRevision:id(base+6),portionPolicyRevision:id(base+7),
    accessibility:'COMMON_RU_RETAIL',allergens:[],dietaryTags:[],ingredientFamilies:[ingredient],dominantIngredientFamily:ingredient,repeatFamily:family,assignedServingsMinimum:'0.500',assignedServingsMaximum:'2.000',proteinSource:true,produceSource:true};

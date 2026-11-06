@@ -1,3 +1,12 @@
+## Exact week Graph V3, ordinary witness, warnings and replacement preparation — 2026-11-06
+
+- Parent PR348 exact head `b5e943421c3e7cd7a588c63b60ed89aaab3877ff`: POTOK PR Checks run42161418791 and PostgreSQL admission run42161418734 passed; separate Edge compatibility run42161418687 failed. No security/test gate relaxed.
+- Added separately versioned exact rational Graph V3 with admitted input/selection/revisions, seven days, typed ingredient/portion/publication bindings, exact totals, explicit unknown mass, independent slot/day/graph digests and empty facts. V1/V2 contracts remain unchanged and reject V3.
+- Reuse V4 numeric/content checks plus an actually revalidated ordinary-week witness with matching account/input/context/policies and no specialty/expense dependency. Conflicting classification of the same immutable recipe across the selected/witness weeks blocks. Missing witness is unknown, never a proof of no feasible plan or exhaustive search.
+- Bind complete independently assessed warning signals to the exact slot subject and content receipt; reuse the existing scalar-independent warning rules and policy allowlist. Readback recomputes all sources and arithmetic. Conditional single-component replacement checks expected old graph digest, unchanged non-target placements AND source references, and the entire new week, including cross-day repeat limits.
+- Every graph remains authority NONE / accepted=false / canRecord=false / canActivate=false. No real store/issuer implementation, optimization proof, Auth/Premium admission, database transaction, actual plan/FACT write, merge, deployment or activation. Next: integrate exact optimization and generator-decision receipts, then final transactional storage/readback.
+- See docs/architecture/exact-week-graph-preparation-v3.md.
+
 ## Exact menu content checks V4, unmounted — 2026-11-06
 
 - Continues PR347 numeric validation with one server source read binding the operation and actual exact proposal SHA. Reuses existing restriction, composition, review metadata and balance policy rules; independently binds exact publication subjects and canonical/Nonfood ingredient identities.
