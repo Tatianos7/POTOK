@@ -10,6 +10,8 @@ import { type CanonicalFoodReviewedRevisionV1 } from '../../src/utils/foodReview
 import { exactFoodNutritionRequestContractV2, type ExactFoodNutritionReviewRequestV2 } from '../../src/server/exactFoodNutritionReviewRequestV2';
 import { verifyExactFoodNutritionReceiptV2, submitExactFoodNutritionReviewV2, recoverExactFoodNutritionReviewV2,
   readCurrentExactFoodNutritionV2, type ExactFoodNutritionUserPortV2 } from '../../src/server/exactFoodNutritionReviewGatewayV2';
+import { preparePinnedPilotSourceBindingForReviewV2 } from './pilot-exact-source-review-batch-v2';
+import { readPilotBindingSourceDossiersV1 } from './pilot-source-binding-proposals-v1';
 
 const q = (s: string): string => `'${s.replace(/'/g, "''")}'`;
 const raw = JSON.stringify;
@@ -65,6 +67,21 @@ export async function runExactFoodNutritionAcceptanceV2(t: TestContext, db: DB):
   const before = await sql(`SELECT jsonb_build_object('foods',(SELECT jsonb_agg(to_jsonb(f) ORDER BY id) FROM public.foods f),
     'diary',(SELECT jsonb_agg(to_jsonb(f)) FROM public.food_diary_entries f),'aliases',(SELECT jsonb_agg(to_jsonb(f)) FROM public.food_aliases f))`);
   const c = await canonical(foodId,5000), dossier = await prepare(c,5200);
+  await t.test('actual retained primary capture passes the mapper-to-SQL preparation boundary without issuing approval', async () => {
+    // Synthetic canonical identity ONLY: this tests bytes/precision/storage, not real source/food equivalence.
+    const sourceRecord = 'FDC_FOUNDATION:2346396:2048:2033:100G';
+    const source = readPilotBindingSourceDossiersV1().get(sourceRecord)!;
+    const input = captureExactNutritionInputV2({ sourceRecord,declaredRetainedArtifactSha256:source.retainedSha256,basis:source.basis,
+      units:{ calories:'kcal',protein:'g',fat:'g',carbs:'g',fiber:'g' },carbohydrateSemantics:'AVAILABLE_EXCLUDING_FIBER',
+      mappingPolicyRef:'EXISTING_OFFLINE_SAME_SOURCE_CARBOHYDRATE_MAPPING_NOT_ISSUED_EVIDENCE' },source.vector);
+    const handoff = await preparePinnedPilotSourceBindingForReviewV2({ sourceRecord,canonicalRaw:raw(c),expectedCanonicalDigest:c.digest,
+      expectedNumericInputDigest:await exactNutritionInputDigestV2(input),expectedRetainedSha256:source.retainedSha256,
+      expectedFoodState:'raw',sourceArtifactId:id(6000),capturedAt:new Date().toISOString() });
+    assert.equal(await sql(`SELECT potok_food_evidence.register_exact_source_v2(${q(raw(handoff.proposal))},${q(raw(handoff.pins))})`),handoff.proposal.digest);
+    assert.equal(await sql(`SELECT proposal->'numericInput'->'mappedDecimalText'->>'calories' FROM potok_food_evidence.exact_sources_v2 WHERE digest=${q(handoff.proposal.digest)}`),'378.866123');
+    assert.equal(await sql('SELECT count(*) FROM potok_food_evidence.exact_events_v2'),'0');
+    assert.equal((await readCurrentExactFoodNutritionV2(port(),foodId,'raw')).kind,'UNRESOLVED');
+  });
   await t.test('private prepared sources confer no approval; current read stays unresolved', async () => {
     assert.equal(await dossier.register(),dossier.p.digest);
     assert.equal(await sql('SELECT count(*) FROM potok_food_evidence.exact_events_v2'),'0');
