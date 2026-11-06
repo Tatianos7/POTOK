@@ -1,5 +1,14 @@
 # POTOK current state
 
+## Exact typed Food/water/salt preparation V3, unmounted — 2026-11-06
+
+- PR344 exact head `3c8cfd72004489bba1d071560d4a27a9c78da10d` passed PR checks and PostgreSQL admission; the Edge full-worker workflow remains failing (run42154740585). No test/security gate relaxed and no Edge compatibility claimed.
+- Reused the existing PR165 Nonfood request/receipt verifier verbatim: src/server/nonFoodEvidenceV1.ts, blob `21a757a648bd8dc68de486ef84d4b9dbe1459fa8`, inspected PR165 head `5054ecb8d9ead892d408f9a778a597928247b54a`. No gateway, HTTP handler, SQL, issuer or migration imported/applied. V1 requires explicit five-axis zero values and definition/nutrition linkage; no positive food namespace bypass.
+- Added a trusted Nonfood complete-snapshot reader over those unchanged receipts. Definition and nutrition approvals, exact selected IDs/digests/stable key/state/current heads, raw request/actor/source bindings and complete history must agree and every event requires independent issuance/event-time authority. Either invalidation, missing/duplicate/substituted history or stale state/head fails closed. No new authority ledger or default allow verifier.
+- Added separate V3 mixed-recipe preparation around unchanged V2 authoring. Explicit nonfood bindings cover every typed row; FOOD V2 remains strict and unchanged. All inputs are captured before awaits and rechecked through their existing validators. Exact full/conditional-serving totals include Food plus reviewed water/salt; any missing/revoked ingredient blocks the whole result.
+- Water ml retains recorded volume, mass null, unknownMassRowIds and knownInputMassGrams separately; inputMassGrams stays null if any mass is unknown. Grams stay explicit. No density, cooked yield or retention invented. Results remain authority NONE, not recipe publication, Graph or FACT. No real pilot IDs/approvals are minted; synthetic tests do not make 19 recipes admissible.
+- No database call/write, source changes, Food/Nonfood issuance, recipe approval, runtime imports, merge, deployment or generator activation. Next: exact meal/week composition and Graph/validator/storage/readback compatibility; real source/identity/portion/allergen/dietary/publication and atomic-store integration remain separate gates. See docs/architecture/exact-typed-nonfood-preparation-v3.md.
+
 ## Exact recipe food-input arithmetic and preparation V2, unmounted — 2026-11-06
 
 - PR343 exact head `d4cd31a2e9ee88884f712a2ed1a5413f9e5adbe5`: PR checks and PostgreSQL admission succeeded; Edge full-worker run 42071039336 failed the strict pg connection check. Logs reproduce the documented Nov03 blocker: raw peer DER unavailable under the pinned Edge runtime, valid/wrong-password acquisition fails; identical Node baseline passes all eight cases. Robust compute completed, strict compute hit local CPU limits in this sample. No gate relaxed or Edge compatibility claimed.
