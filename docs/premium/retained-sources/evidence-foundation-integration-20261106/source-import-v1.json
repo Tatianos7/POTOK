@@ -1,0 +1,150 @@
+{
+  "contract": "potok-evidence-foundation-import-v1",
+  "baseCommit": "e0a8d843e602917ad241262d2677822b31be3d1a",
+  "foodSourceCommit": "b36f55500fc4b142bfa7b3029dc4c511a9d58c75",
+  "combinedSourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a",
+  "files": [
+    {
+      "path": ".github/workflows/food-evidence-postgres-acceptance.yml",
+      "sourceBlobSha": "1e810aeea1e5d5e8334c30891f84635d0e3d746c",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": ".github/workflows/nonfood-evidence-postgres-acceptance.yml",
+      "sourceBlobSha": "8d09c0aa53d970c0237a2c6d1003d03163090613",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "docs/architecture/food-reviewed-evidence-phase2c-implementation-plan-v1.md",
+      "sourceBlobSha": "29fb929e4693e28490cb95ff8329f438228273d3",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "docs/architecture/food-reviewed-evidence-retention-design-v1.md",
+      "sourceBlobSha": "8a253d5406f212d4ce7256d6aa3f4bb671f20c0a",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "docs/architecture/food-reviewed-evidence-server-v1-phase2b.md",
+      "sourceBlobSha": "0cd21765bb717b917f179d639cb5a779dbc64fcb",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "docs/architecture/food-reviewed-evidence-server-v1-phase2c-review.md",
+      "sourceBlobSha": "30012b559b7d970dd6bb5b6758f5ebf48f339ab3",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "docs/architecture/nonfood-reviewed-evidence-server-v1.md",
+      "sourceBlobSha": "c7ad95387622a8035ce95c027bd14ec531f183d9",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "scripts/contracts/food-evidence-disposable-db-v1.test.ts",
+      "sourceBlobSha": "94f26aa8b79377e979f72729634187201f1d9f72",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "scripts/contracts/nonfood-evidence-acceptance-v1.ts",
+      "sourceBlobSha": "bac3313f37ba6a11c046562bacef4bd2f6e06aec",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "scripts/contracts/nonfood-evidence-disposable-db-v1.test.ts",
+      "sourceBlobSha": "d1410018bc4657a192e28802f26fa786f96aecdf",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "src/server/__tests__/foodEvidenceFixturesV1.ts",
+      "sourceBlobSha": "6b0bde66016501ae90f82abbea11a44d971e2784",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "src/server/__tests__/foodEvidenceReviewServerV1.test.ts",
+      "sourceBlobSha": "f2726cdb5c28f4c70ddab259272eae637cdfc45e",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "src/server/__tests__/nonFoodEvidenceFixturesV1.ts",
+      "sourceBlobSha": "c07c2f542750d8f5dae6021827124a7c05fea65a",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "src/server/__tests__/nonFoodEvidenceV1.test.ts",
+      "sourceBlobSha": "e84dad6e4266208ad62f0b0cbafe2dc49f3772bd",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "src/server/foodEvidenceReviewGatewayV1.ts",
+      "sourceBlobSha": "e4dbddc7ec5f4a030dcc7d5e398ffc732879cc9c",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "src/server/foodEvidenceReviewRequestV1.ts",
+      "sourceBlobSha": "7af7197705017d6fe9b7d14de10c053bd854fab3",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "src/server/nonFoodEvidenceGatewayV1.ts",
+      "sourceBlobSha": "b3ced6a0f89bfd89c263efa59722fc6d3edec838",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "src/server/nonFoodEvidenceV1.ts",
+      "sourceBlobSha": "21a757a648bd8dc68de486ef84d4b9dbe1459fa8",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.postcheck.sql",
+      "sourceBlobSha": "60c3bae9d8085052d84c39f917f5f7cfedb300b8",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.preflight.sql",
+      "sourceBlobSha": "e13e90abfc2200d3c0476385db8af7645a2cd613",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.sql",
+      "sourceBlobSha": "abebb3735bc45220a8b4cc4818bf9ab365798cb8",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "supabase/migration_drafts/food_reviewed_evidence_v1_retention_inventory.sql",
+      "sourceBlobSha": "21aa3b6418b3d5979bb5469b15cc1c2fa1021e85",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "supabase/migration_drafts/nonfood_reviewed_evidence_v1.postcheck.sql",
+      "sourceBlobSha": "8d018c4126a00d61ae6d5fc160f6fea22e273cb3",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "supabase/migration_drafts/nonfood_reviewed_evidence_v1.preflight.sql",
+      "sourceBlobSha": "d0703a47da82308a1f84a7427dcf187b6051ec24",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    },
+    {
+      "path": "supabase/migration_drafts/nonfood_reviewed_evidence_v1.sql",
+      "sourceBlobSha": "2d72a53cfc0f143b7e65b464261fe25e94e6beb2",
+      "sourceCommit": "5054ecb8d9ead892d408f9a778a597928247b54a"
+    }
+  ],
+  "localAdjustments": [
+    {
+      "path": ".github/workflows/food-evidence-postgres-acceptance.yml",
+      "change": "Check out exact PR head instead of the implicit merge ref"
+    },
+    {
+      "path": ".github/workflows/potok-pr-checks.yml",
+      "change": "Add strict compilation and shared/cross-version unit regression checks"
+    }
+  ],
+  "preservedExisting": [
+    "src/utils/foodReviewedEvidenceV1.ts",
+    "src/server/nonFoodEvidenceV1.ts"
+  ],
+  "scope": "SOURCE_INTEGRATION_ONLY_NOT_CO_INSTALLED_DATABASE_OR_LIVE_ISSUANCE",
+  "canApply": false,
+  "mayActivate": false
+}
