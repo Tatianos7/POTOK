@@ -1,0 +1,157 @@
+{
+  "contract": "potok-pilot-input-freeze-v1",
+  "usage": "OFFLINE_INPUT_INTEGRITY_ONLY_NOT_ADMISSION",
+  "candidateBytesSha256": "485da00522a3014c7722a7443b63b45fd3ddfcf05ec8f0186fe7d1ca704d50af",
+  "inputSetSha256": "d41b44abb753f7706f2b13c03c34bc7b188f611665515a1cfb67ea8032d1790e",
+  "recipes": [
+    {
+      "recipeId": "brown_lentils_rice_carrot",
+      "authoringRecipeSha256": "4849f3079a84e1b0a568b14a7bd9e0298aa4f58aa94b77ec0aeabf168150a41e",
+      "modelSha256": "abfa95bc9fed56b914ee3c7da837f91ffd04296976259e39d2b42d53be19a66a",
+      "componentRows": 7
+    },
+    {
+      "recipeId": "buckwheat_porridge_mushrooms",
+      "authoringRecipeSha256": "4ff870af4c3abb090822eb501b4808d0108a1a71df4e0964757f5bbe765ad844",
+      "modelSha256": "745eadbce2fc5e3d550a052218d7c61f362979b37bd299dff16e8825ed9af5bd",
+      "componentRows": 5
+    },
+    {
+      "recipeId": "chicken_breast_cauliflower",
+      "authoringRecipeSha256": "9a4c403e25e52f4c35019ba7feee7d80bd499406c281b509b001d28bf266f944",
+      "modelSha256": "1fde74cc4f8cfaa348d7ba48a5d3ab22aa44c930bd9d3962146270485e70010c",
+      "componentRows": 6
+    },
+    {
+      "recipeId": "chicken_breast_rice",
+      "authoringRecipeSha256": "3613e7f3276b3736aa30dafcda1462fe907a6fe3c16061118a2459c973d8adc5",
+      "modelSha256": "5159f8610e204f2208df17a151bc1f8795fbd1cd1d8976f153097bdfda215894",
+      "componentRows": 4
+    },
+    {
+      "recipeId": "chicken_breast_wholegrain_pasta",
+      "authoringRecipeSha256": "f648572e62e100ab8f56aacb4bdc05ba8c5d24c7b4a2d1196efb882fad9e897d",
+      "modelSha256": "76870bed77c96eb7ab00fc67ef893f8ea58d401a1d9fe9a7eff39efa159aa3cd",
+      "componentRows": 4
+    },
+    {
+      "recipeId": "chicken_bulgur_zucchini",
+      "authoringRecipeSha256": "dbb8d9a3ffb7d9f6cf62198b73977fef734b32ddfc03b029629285789929a0e9",
+      "modelSha256": "b16636ec34882eb03b6c548d8709723e1e7210e867ae12957b347ca1840e6243",
+      "componentRows": 5
+    },
+    {
+      "recipeId": "chicken_meatballs_buckwheat",
+      "authoringRecipeSha256": "69ce8afd25a715891a93623b7de27504d0ed42a9da358059adda45dbcc1ce091",
+      "modelSha256": "9ced5266e2f500fe15d7a5ff33efaebfafa42c5a893da271a767ae54596c773f",
+      "componentRows": 7
+    },
+    {
+      "recipeId": "chicken_pumpkin_mushrooms",
+      "authoringRecipeSha256": "360c0bbf34fcae80db3fac7140c14c0e2c5e7b3e14580666ac1dc38bb677027d",
+      "modelSha256": "4f58ec80a859f628f19c0975556ade05c832391b7143e6b8bc5cf0f687466d60",
+      "componentRows": 6
+    },
+    {
+      "recipeId": "greek_yogurt_apple",
+      "authoringRecipeSha256": "738d7d3de0499f90c67d0c7d2b797992069f7bce74f8ae821bfca2a96fa3c380",
+      "modelSha256": "7befa0bcba9f14de352f50dc66f6bd424bb32ce7543340a3e0a8f0e043f56a76",
+      "componentRows": 2
+    },
+    {
+      "recipeId": "greek_yogurt_banana",
+      "authoringRecipeSha256": "f65263a214e9077ddf28cfbc59575a003bfb7c6ccddc835104655e0f8142a69b",
+      "modelSha256": "8bd674d6d9f371d6a852fba4661df292cb28b93a31ad7f82b3f32368a732e040",
+      "componentRows": 2
+    },
+    {
+      "recipeId": "lemon_shelled_edamame",
+      "authoringRecipeSha256": "58e57b721bf93c8cbbefd949ab44c35e0816f58469da2b7af7bb55127fb6837f",
+      "modelSha256": "369de861c341ff494dc200b74b9f05c2f1a93271507c126d9a2c20e7d0546e9f",
+      "componentRows": 2
+    },
+    {
+      "recipeId": "oatmeal_apple_cinnamon",
+      "authoringRecipeSha256": "e3b0979427b550dddf71ab35e930068daeee089a817c78738857e074d26bf3a0",
+      "modelSha256": "836d1cff772ba7cff924972355a943ac1d750681225f9d545e1987acbad670d6",
+      "componentRows": 5
+    },
+    {
+      "recipeId": "oatmeal_pear_walnut",
+      "authoringRecipeSha256": "ec8b44f8eb0aa9057caf15f11746b36000948b453e25879e959c3dabab74db1e",
+      "modelSha256": "decc0464ee874194435d84366ee1696e6beb443c2d16b247f61d5259e6dd2c72",
+      "componentRows": 6
+    },
+    {
+      "recipeId": "oatmeal_pumpkin",
+      "authoringRecipeSha256": "f6c5eabc298b9a90a3032ee0b171287acb94937e201e83cb26c20c9a3c0d51a3",
+      "modelSha256": "c16150e34883c18882bdfdf532d4914741804c4909466a5883b79c8d089cdc60",
+      "componentRows": 5
+    },
+    {
+      "recipeId": "pear_almonds",
+      "authoringRecipeSha256": "81ec1167d7c596df338ac7fcfe5d99e0e0de15566c081e56ff8a77e211bc6d8f",
+      "modelSha256": "ee0a3d5eb974b5601219f4db7ba1a93a63f3bbe29363b28529e76db6952ba730",
+      "componentRows": 2
+    },
+    {
+      "recipeId": "salmon_brown_rice",
+      "authoringRecipeSha256": "9ba564c169d12b7bacf97e8202ff31c36fba869565fb07dc2ca286318ba33e49",
+      "modelSha256": "418e6f237de4a181dc2e2c5f97b51ec5e27aac76a097d3c60ad7f7d65dfaf882",
+      "componentRows": 4
+    },
+    {
+      "recipeId": "trout_green_beans",
+      "authoringRecipeSha256": "076360ae492b325edf12a1b3ef9f9215bcc06522e542b67311744914d1c3ee1c",
+      "modelSha256": "ef824a4ab65137684b64e10532edab33f111d3d7f77644a15a4a76c347dbff58",
+      "componentRows": 3
+    },
+    {
+      "recipeId": "tuna_tomato_pasta",
+      "authoringRecipeSha256": "561811f826c441d29ad5bd214eac9afca06539aa7878b062bc6fa24e511aa211",
+      "modelSha256": "f1dc256cdecd3a76d6dac46fb6ee20c09b3496a681271919a99459fb3a1bac7b",
+      "componentRows": 5
+    },
+    {
+      "recipeId": "whole_wheat_pasta_lentils_tomato",
+      "authoringRecipeSha256": "1ce8ac1ade65f5d54c959414603a081d3e039ab3ec21107d71488ffee84f22d0",
+      "modelSha256": "11f23937f68876ee22a7b08df6c46f929cbea53beeb60fe4e705b388e5e45d9a",
+      "componentRows": 8
+    }
+  ],
+  "serverContracts": [
+    {
+      "path": "src/utils/curatedRecipePublicationV1.ts",
+      "sha256": "a346ab8acd864e303e6a055eac37cf7e52e3e961f6c68eeaff611c9a610342b6"
+    },
+    {
+      "path": "src/utils/adaptiveNutritionGraphV1.ts",
+      "sha256": "06a9e1e5feabe4e3911e4976ec5eb325114b779a6c4af124a4c3a64e9ac2c088"
+    },
+    {
+      "path": "src/utils/adaptiveNutritionAuthoritiesV1.ts",
+      "sha256": "923d8422b9394babdccf437e491bcae251047a6dbfd8d36140d0f9c1e21b4f63"
+    },
+    {
+      "path": "src/utils/reviewedRuntimeRecipePublicationEvidenceV1.ts",
+      "sha256": "ec5e0bac7e6d84dedb32a422cc47d60afc60feeae88fa5163ea8f9574a8884d9"
+    },
+    {
+      "path": "src/utils/adaptiveNutritionMealCompositionV1.ts",
+      "sha256": "5b33046c42e492df2d4d57809e700d35e61ec563729091abbe45cf24bb01d9da"
+    },
+    {
+      "path": "src/utils/trustedValidationEvidenceV1.ts",
+      "sha256": "3a7f217af20ee13ccdae713d6e57f756d7e01520515cf7eac2501d3b6ce82ac8"
+    },
+    {
+      "path": "src/server/generationValidationAuthorityLoaderV1.ts",
+      "sha256": "5c95d7806be6f1473e5f20b993da6a6e545e08868ae2a5ea684cbc84987fbd75"
+    }
+  ],
+  "sourceApproved": false,
+  "runtimePublishable": false,
+  "canApply": false,
+  "mayActivate": false,
+  "readyForServerSubmission": false
+}

@@ -590,26 +590,41 @@ export function validateCandidateAuthoritiesV1(value: {
   if (!entry || !entry.allowedMealTypes.includes(value.candidate.mealType)) {
     return { status: 'BLOCKED', reason: 'MANIFEST_COMPONENT_MISSING' };
   }
-  if (value.preference.hard.excludedMealTypes.includes(value.candidate.mealType)) {
+  return assessRecipeRestrictionsV1({ accountId: value.accountId, recipeId: value.candidate.recipeId,
+    mealType: value.candidate.mealType, metadata: entry, preference: value.preference, safety: value.safety });
+}
+
+/** Same non-numeric restriction rules. Use independently decoded metadata; not an admission grant. */
+export function assessRecipeRestrictionsV1(value: {
+  accountId: string; recipeId: string; mealType: GraphMealTypeV1;
+  metadata: Pick<AdaptiveNutritionCandidateManifestEntryV2, 'ingredientIds' | 'allergenCodes' | 'intoleranceCodes' | 'dietaryCodes'>;
+  preference: NutritionPreferenceSnapshotV1 | null; safety: NutritionSafetySnapshotV1 | null;
+}): CandidateAuthorityResultV1 {
+  if (!value.safety) return { status: 'BLOCKED', reason: 'MISSING_SAFETY_AUTHORITY' };
+  if (!value.preference) return { status: 'BLOCKED', reason: 'MISSING_PREFERENCE_AUTHORITY' };
+  if (value.preference.accountId !== value.accountId || value.safety.accountId !== value.accountId) {
+    return { status: 'BLOCKED', reason: 'ACCOUNT_AUTHORITY_MISMATCH' };
+  }
+  if (value.preference.hard.excludedMealTypes.includes(value.mealType)) {
     return { status: 'BLOCKED', reason: 'MEAL_TYPE_EXCLUDED' };
   }
-  if (value.preference.hard.excludedRecipeIds.includes(value.candidate.recipeId)) {
+  if (value.preference.hard.excludedRecipeIds.includes(value.recipeId)) {
     return { status: 'BLOCKED', reason: 'RECIPE_EXCLUDED' };
   }
-  if (entry.ingredientIds.some((item) => value.preference?.hard.excludedIngredientIds.includes(item))) {
+  if (value.metadata.ingredientIds.some((item) => value.preference?.hard.excludedIngredientIds.includes(item))) {
     return { status: 'BLOCKED', reason: 'INGREDIENT_EXCLUDED' };
   }
-  if (entry.allergenCodes.some((item) => value.safety?.declaredAllergenCodes.includes(item))) {
+  if (value.metadata.allergenCodes.some((item) => value.safety?.declaredAllergenCodes.includes(item))) {
     return { status: 'BLOCKED', reason: 'ALLERGEN_CONFLICT' };
   }
-  if (entry.intoleranceCodes.some((item) => value.safety?.declaredIntoleranceCodes.includes(item))) {
+  if (value.metadata.intoleranceCodes.some((item) => value.safety?.declaredIntoleranceCodes.includes(item))) {
     return { status: 'BLOCKED', reason: 'INTOLERANCE_CONFLICT' };
   }
-  if (entry.dietaryCodes.some((item) => value.safety?.dietaryHardExclusionCodes.includes(item))) {
+  if (value.metadata.dietaryCodes.some((item) => value.safety?.dietaryHardExclusionCodes.includes(item))) {
     return { status: 'BLOCKED', reason: 'DIETARY_HARD_EXCLUSION' };
   }
   if (value.preference.hard.dietaryPattern !== 'UNSPECIFIED'
-      && !entry.dietaryCodes.includes(value.preference.hard.dietaryPattern.toLowerCase())) {
+      && !value.metadata.dietaryCodes.includes(value.preference.hard.dietaryPattern.toLowerCase())) {
     return { status: 'BLOCKED', reason: 'DIETARY_PATTERN_CONFLICT' };
   }
   return {

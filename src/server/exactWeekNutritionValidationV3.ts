@@ -35,7 +35,8 @@ export type ExactWeekNumericResultV3=
  readonly remainingChecks:typeof exactWeekNumericRemainingChecksV3;readonly digest:string};
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/,hash=/^[a-f0-9]{64}$/;
 function fail():never{throw Error('EXACT_WEEK_NUMERIC_AUTHORITY_INVALID');}
-function bounded(raw:unknown,limit:number,depthLimit:number):unknown{
+export function parseExactValidationJsonRawV3(raw:unknown,limit:number,depthLimit:number):unknown{
+ if(!Number.isSafeInteger(limit)||limit<1||limit>16_777_216||!Number.isSafeInteger(depthLimit)||depthLimit<1||depthLimit>32)fail();
  if(typeof raw!=='string'||raw.length>limit)fail();const bytes=new TextEncoder().encode(raw);
  if(bytes.length>limit||new TextDecoder('utf-8',{fatal:true}).decode(bytes)!==raw)fail();
  let quoted=false,escaped=false,depth=0;
@@ -44,8 +45,8 @@ function bounded(raw:unknown,limit:number,depthLimit:number):unknown{
  assertRawJsonWithoutDuplicateKeysV1(raw);const value:unknown=JSON.parse(raw);
  const numbers=(v:unknown):void=>{if(typeof v==='number'&&(!Number.isSafeInteger(v)||Object.is(v,-0)))fail();if(v&&typeof v==='object')for(const c of Object.values(v))numbers(c);};numbers(value);return value;
 }
-function parseAuthority(raw:string):ExactWeekNumericAuthorityV3{
- const value=bounded(raw,8_388_608,24),keys=['contract','requestOperationId','evaluatedSnapshotRawSha256','weekRequestDigest','snapshotDigest','generationInputDigest',
+export function decodeExactWeekNumericAuthorityRawV3(raw:string):ExactWeekNumericAuthorityV3{
+ const value=parseExactValidationJsonRawV3(raw,8_388_608,24),keys=['contract','requestOperationId','evaluatedSnapshotRawSha256','weekRequestDigest','snapshotDigest','generationInputDigest',
  'trustedGenerationInputRaw','currentGoalTargetRaw','balancePolicySnapshotRaw','distributionPolicyRaw','recipeInputs'];
  if(!value||typeof value!=='object'||Array.isArray(value)||Object.keys(value).length!==keys.length||keys.some(k=>!Object.prototype.hasOwnProperty.call(value,k)))fail();
  const r=value as Record<string,unknown>;
@@ -62,14 +63,14 @@ const sha=(raw:string)=>adaptiveNutritionSha256HexV1(new TextEncoder().encode(ra
 export function createExactWeekNutritionValidationAdapterV3(port:GenerationValidationAuthorityPortV1,eventAuthority:ExactTypedRecipeAuthorityV3){
  return Object.freeze({async validate(requestOperationId:string,snapshotRaw:string):Promise<ExactWeekNumericResultV3>{
   const blocked=(reason:Extract<ExactWeekNumericResultV3,{status:'BLOCKED'}>['reason']):ExactWeekNumericResultV3=>Object.freeze({status:'BLOCKED',reason,accepted:false,canRecord:false,canActivate:false});
-  try{if(typeof requestOperationId!=='string'||!uuid.test(requestOperationId))fail();bounded(snapshotRaw,262144,12);}catch{return blocked('INVALID_PROPOSAL');}
+  try{if(typeof requestOperationId!=='string'||!uuid.test(requestOperationId))fail();parseExactValidationJsonRawV3(snapshotRaw,262144,12);}catch{return blocked('INVALID_PROPOSAL');}
   const evaluatedSnapshotRawSha256=await sha(snapshotRaw);
   let authorityRaw:string|null;try{authorityRaw=await port.loadForProposalRaw(requestOperationId,evaluatedSnapshotRawSha256);}catch{return blocked('AUTHORITY_UNAVAILABLE');}
   if(authorityRaw===null)return blocked('AUTHORITY_UNAVAILABLE');
   let a:ExactWeekNumericAuthorityV3,input:ReturnType<typeof decodeTrustedGenerationInputRawV1>,goal:ReturnType<typeof decodeGoalNutritionTargetV1>,balance:Awaited<ReturnType<typeof decodeBalancePolicySnapshotRawV2>>,distribution:ReturnType<typeof decodeMealDistributionPolicyRawV1>;
   try{
-   a=parseAuthority(authorityRaw);if(a.requestOperationId!==requestOperationId||a.evaluatedSnapshotRawSha256!==evaluatedSnapshotRawSha256)fail();
-   bounded(a.trustedGenerationInputRaw,262144,12);bounded(a.currentGoalTargetRaw,65536,8);bounded(a.balancePolicySnapshotRaw,65536,8);bounded(a.distributionPolicyRaw,262144,12);
+   a=decodeExactWeekNumericAuthorityRawV3(authorityRaw);if(a.requestOperationId!==requestOperationId||a.evaluatedSnapshotRawSha256!==evaluatedSnapshotRawSha256)fail();
+   parseExactValidationJsonRawV3(a.trustedGenerationInputRaw,262144,12);parseExactValidationJsonRawV3(a.currentGoalTargetRaw,65536,8);parseExactValidationJsonRawV3(a.balancePolicySnapshotRaw,65536,8);parseExactValidationJsonRawV3(a.distributionPolicyRaw,262144,12);
    input=decodeTrustedGenerationInputRawV1(a.trustedGenerationInputRaw);
    if(input.operation.requestId!==requestOperationId||await trustedGenerationInputDigestV1(input)!==a.generationInputDigest)fail();
    goal=decodeGoalNutritionTargetV1(JSON.parse(a.currentGoalTargetRaw));if(canonicalJsonV1(goal)!==canonicalJsonV1(input.goalNutritionTarget))fail();

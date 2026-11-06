@@ -115,6 +115,8 @@ jobs:
           node --import tsx --test src/server/__tests__/exactWeekNutritionPreparationV3.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node src/server/exactWeekNutritionValidationV3.ts src/server/__tests__/exactWeekNutritionValidationFixturesV3.ts src/server/__tests__/exactWeekNutritionValidationV3.test.ts
           node --import tsx --test src/server/__tests__/exactWeekNutritionValidationV3.test.ts
+          node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node src/server/exactMenuContentValidationV4.ts src/server/__tests__/exactMenuContentValidationFixturesV4.ts src/server/__tests__/exactMenuContentValidationV4.test.ts
+          node --import tsx --test src/server/__tests__/exactMenuContentValidationV4.test.ts
           node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/week-transfer-handoff-v1.ts scripts/contracts/week-transfer-handoff-v1.test.ts
           node --import tsx --test scripts/contracts/week-transfer-handoff-v1.test.ts
 
