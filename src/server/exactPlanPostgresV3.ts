@@ -34,7 +34,7 @@ export function createExactPlanPostgresStoreV3(pool:GenerationTransactionPoolV1<
     try{const row=await connection!.query(sql,owned);gate();if(!live)throw Error('EXACT_SQL_SESSION_CLOSED');return row;}finally{busy=false;}
    };
    const optimizer=optimizerFactory(Object.freeze({query:async(sql:string,parameters:readonly string[])=>{
-    if(!allowlist.has(sql))throw Error('EXACT_SQL_SOURCE_NOT_ALLOWLISTED');return query(sql,parameters);
+    if(!allowlist.has(sql))throw Error('EXACT_SQL_SOURCE_NOT_ALLOWLISTED');if(parameters[0]!==operation)throw Error('EXACT_SQL_REQUEST_MISMATCH');const row=await query(sql,parameters);result(row);return row;
    }}));
    const operationMatches=(op:string)=>{if(op!==operation)throw Error('EXACT_SQL_REQUEST_MISMATCH');};
    const tx:ExactPlanTransactionV3=Object.freeze({

@@ -5,7 +5,7 @@ const op='aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',sourceSql='SELECT potok_nutritio
 function fixture(mode='normal'){
  const calls:{sql:string;values:readonly string[]}[]=[],released:boolean[]=[];let acquired=0,source:ExactPlanSqlSourceClientV3|undefined;
  const pool={async acquire(){acquired++;return {async query(sql:string,values:readonly string[]){calls.push({sql,values});if(mode==='commit-lost'&&sql==='COMMIT')throw Error('lost');
-  return {rows:[{result_raw:sql===exactPlanChannelSqlV3?mode==='wrong-role'?null:'EXACT_PLAN_CHANNEL_V3':sql===exactPlanCurrentSqlV3?'source':sql===exactPlanInsertSqlV3?'stored':null}]};},async release(discard:boolean){released.push(discard);if(mode==='release-lost')throw Error();}};}};
+  if(mode==='bad-source-row'&&sql===sourceSql)return {rows:[]};return {rows:[{result_raw:sql===exactPlanChannelSqlV3?mode==='wrong-role'?null:'EXACT_PLAN_CHANNEL_V3':sql===exactPlanCurrentSqlV3?'source':sql===exactPlanInsertSqlV3?'stored':null}]};},async release(discard:boolean){released.push(discard);if(mode==='release-lost')throw Error();}};}};
  const store=createExactPlanPostgresStoreV3(pool,[sourceSql],client=>{source=client;return {optimize:async()=>({status:'BLOCKED',reason:'synthetic',evaluated:0,totalCandidates:0,accepted:false,canRecord:false,canActivate:false})};},()=>true);
  return {pool,store,calls,released,acquired:()=>acquired,source:()=>source!};
 }
@@ -21,10 +21,10 @@ test('disabled gate and wrong session identity deny without source access or own
 });
 test('source selector is a copied closed allowlist; cross-operation calls and injected SQL reject',async()=>{
  const f=fixture();await f.store.transaction(op,async tx=>{
-  await assert.rejects(f.source().query('DROP TABLE public.x',[]),/NOT_ALLOWLISTED/);await assert.rejects(tx.readRetainedSnapshotRaw('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),/REQUEST_MISMATCH/);
+  await assert.rejects(f.source().query('DROP TABLE public.x',[]),/NOT_ALLOWLISTED/);await assert.rejects(f.source().query(sourceSql,['bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb']),/REQUEST_MISMATCH/);await assert.rejects(tx.readRetainedSnapshotRaw('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'),/REQUEST_MISMATCH/);
   await assert.rejects(tx.insertSnapshotIfAbsentRaw(op,op,"x');DROP",'{}'),/RECORD_INVALID/);
  });
- assert.ok(f.calls.every(c=>!c.sql.includes('DROP')));
+ assert.ok(f.calls.every(c=>!c.sql.includes('DROP')));const bad=fixture('bad-source-row');await assert.rejects(bad.store.transaction(op,()=>bad.source().query(sourceSql,[op])),/ROW_INVALID/);
 });
 test('callback failure rolls back and discards, while uncertain COMMIT never retries',async()=>{
  const f=fixture();const original=Error('business');await assert.rejects(f.store.transaction(op,async()=>{throw original;}),e=>e===original);assert.equal(f.calls[f.calls.length-1].sql,'ROLLBACK');assert.deepEqual(f.released,[true]);
