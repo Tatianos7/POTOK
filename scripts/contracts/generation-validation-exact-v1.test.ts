@@ -58,7 +58,8 @@ test('actual PostgreSQL exact source -> optimizer -> atomic retention/recovery a
    denied(`SELECT potok_nutrition.read_exact_generation_source_v3('${f.operation}','POOL',NULL);`,/EXACT_PLAN_CHANNEL_REQUIRED/);
    denied(`SET ROLE potok_generation_gateway_v1;SELECT potok_nutrition.read_exact_generation_source_v3('${f.operation}','POOL',NULL);`,/EXACT_PLAN_CHANNEL_REQUIRED/);
    denied(`INSERT INTO potok_nutrition.exact_generation_sources_v3(source_ref,request_operation_id,account_id,generation_input_digest,source_kind,payload_raw) SELECT 'bad-owner',request_operation_id,'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',generation_input_digest,source_kind,payload_raw FROM potok_nutrition.exact_generation_sources_v3 WHERE source_kind='POOL';`,/EXACT_SOURCE_BINDING_INVALID/);
-   for(const sql of ['UPDATE potok_nutrition.exact_generation_sources_v3 SET payload_raw=payload_raw;','DELETE FROM potok_nutrition.exact_generation_sources_v3;','TRUNCATE potok_nutrition.exact_generation_sources_v3;'])denied(sql,/IMMUTABLE/);
+   denied('TRUNCATE potok_nutrition.exact_generation_sources_v3;',/foreign key constraint/);
+   for(const sql of ['UPDATE potok_nutrition.exact_generation_sources_v3 SET payload_raw=payload_raw;','DELETE FROM potok_nutrition.exact_generation_sources_v3;','TRUNCATE potok_nutrition.exact_generation_sources_v3,potok_nutrition.exact_generation_source_revocations_v3;'])denied(sql,/IMMUTABLE/);
    const r=(await f.owner.query("SELECT relrowsecurity,relforcerowsecurity FROM pg_class WHERE oid='potok_nutrition.exact_generation_sources_v3'::regclass")).rows[0];assert.equal(r.relrowsecurity,true);assert.equal(r.relforcerowsecurity,true);
    const stored=(await f.owner.query("SELECT payload_raw,encode(storage_sha256,'hex') AS sha FROM potok_nutrition.exact_generation_sources_v3 WHERE source_kind='POOL'")).rows[0];
    const read=(await f.rawPool.query("SELECT potok_nutrition.read_exact_generation_source_v3($1,'POOL',NULL) AS raw",[f.operation])).rows[0].raw;
@@ -72,11 +73,13 @@ test('actual PostgreSQL exact source -> optimizer -> atomic retention/recovery a
     pending=revoker.query("INSERT INTO potok_nutrition.exact_generation_source_revocations_v3(source_ref,reason_ref) VALUES('synthetic-native:pool','native-revocation-test')");
     let waiting=false;for(let i=0;i<40;i++){waiting=(await f.owner.query("SELECT wait_event_type='Lock' AS waiting FROM pg_stat_activity WHERE pid=$1",[pid])).rows[0]?.waiting===true;if(waiting)break;await new Promise(r=>setTimeout(r,25));}
     assert.equal(waiting,true);await held.query('COMMIT');await pending;pending=undefined;
-   }finally{await held.query('ROLLBACK');await pending;held.release();revoker.release();}
+   }finally{try{await held.query('ROLLBACK');await pending;}finally{held.release();revoker.release();}}
    assert.equal((await f.rawPool.query("SELECT potok_nutrition.read_exact_generation_source_v3($1,'POOL',NULL) AS raw",[f.operation])).rows[0].raw,null);
    assert.equal((await f.service.open(f.operation)).status,'BLOCKED');
    assert.equal((await f.owner.query('SELECT count(*)::int AS n FROM potok_nutrition.exact_retained_plan_proposals_v3')).rows[0].n,1);
    for(const sql of ['UPDATE potok_nutrition.exact_generation_source_revocations_v3 SET reason_ref=reason_ref;','DELETE FROM potok_nutrition.exact_generation_source_revocations_v3;','TRUNCATE potok_nutrition.exact_generation_source_revocations_v3;'])denied(sql,/IMMUTABLE/);
+   // Owner revocation is still possible after the original selection becomes stale.
+   await f.owner.query("BEGIN;UPDATE public.user_premium_plan_selections SET status='active';INSERT INTO potok_nutrition.exact_generation_source_revocations_v3(source_ref,reason_ref) SELECT source_ref,'stale-selection-revocation' FROM potok_nutrition.exact_generation_sources_v3 WHERE source_kind='GRAPH' LIMIT 1;ROLLBACK;");
   });
  }finally{await f.close();}
 });
