@@ -1,0 +1,35 @@
+name: Exact food nutrition V2 disposable PostgreSQL
+on:
+  pull_request:
+    paths:
+      - 'src/server/**'
+      - 'src/utils/exactFoodNutritionEvidenceV2.ts'
+      - 'src/utils/foodNutritionSourceBindingV2.ts'
+      - 'src/utils/exactNutritionValuesV2.ts'
+      - 'scripts/contracts/exact-food-nutrition*'
+      - 'scripts/contracts/food-evidence-disposable-db-v1.test.ts'
+      - 'supabase/migration_drafts/food_reviewed_evidence_v1_phase2b.sql'
+      - '.github/workflows/exact-food-nutrition-postgres-v2.yml'
+permissions:
+  contents: read
+jobs:
+  exact-food-native-postgresql:
+    if: github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    container:
+      image: postgres:17
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Real exact issuance and receipt/current acceptance in own Unix-only cluster
+        run: |
+          test "$(id -u)" -eq 0
+          runuser -u postgres -- env PATH="$PATH" POTOK_FOOD_EVIDENCE_REQUIRE_DB=1 node --import tsx --test --test-isolation=none scripts/contracts/exact-food-nutrition-disposable-db-v2.test.ts
