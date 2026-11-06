@@ -7,6 +7,7 @@ test('actual PostgreSQL exact source -> optimizer -> atomic retention/recovery a
  const denied=(sql:string,pattern:RegExp)=>{const r=spawnSync('psql',['-X','-w','-qAt','-v','ON_ERROR_STOP=1','-h','127.0.0.1','-p','5432','-U','postgres','-d','potok_generation_store_disposable'],{input:sql,encoding:'utf8',env:{...process.env,PGPASSWORD:'disposable-generation-only',PGCONNECT_TIMEOUT:'5'}});assert.notEqual(r.status,0);assert.match(r.stderr,pattern);};
  try{
   const selected=await f.store.transaction(f.operation,tx=>tx.optimize(f.operation));if(selected.status!=='EXACT_WEEK_SELECTED_PENDING_STORAGE_ADMISSION')assert.fail(JSON.stringify(selected));
+  assert.equal(selected.proposal.graph.evaluatedSnapshotRawSha256,f.expectedSelectedSnapshotSha256);
   await f.rawPool.query(exactPlanCurrentSqlV3,[f.operation,'']);
   const proposalRaw=f.canonical(selected.proposal);let insertQueries=0;
   await t.test('lost actual COMMIT reply plus a concurrent duplicate commits one row and replays it',async()=>{

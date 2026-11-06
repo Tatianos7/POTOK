@@ -2,7 +2,9 @@
 import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import {Pool} from 'pg';
 import {optimizationFixtureV3,graphSourceFixtureV3,raw,sha,id,q} from '../../src/server/__tests__/exactWeekOptimizationFixturesV3';
 import {canonicalJsonV1} from '../../src/utils/adaptiveNutritionWireV1';import {trustedGenerationInputDigestV1} from '../../src/utils/adaptiveNutritionGraphV2';
-import {createExactWeekOptimizationV3,exactWeekMetricsContractV3} from '../../src/server/exactWeekOptimizationV3';
+import {createExactWeekOptimizationV3} from '../../src/server/exactWeekOptimizationV3';
+import {createExactWeekMetricProducerV3,exactWeekMetricPolicyContractV3,exactWeekConvenienceContractV3} from '../../src/server/exactWeekMetricProducerV3';
+import {createExactWeekGraphPreparationV3} from '../../src/server/exactWeekGraphPreparationV3';
 import {createExactPlanPostgresStoreV3,type ExactPlanSqlSourceClientV3,type ExactPlanSqlRowV3} from '../../src/server/exactPlanPostgresV3';
 import {createExactPlanAdmissionV3} from '../../src/server/exactPlanAdmissionV3';import {adaptGenerationNodePgPoolV1} from '../../src/server/generationNodePgPoolV1';
 import type {GenerationTransactionPoolV1} from '../../src/server/generationTransactionClientV1';
@@ -19,7 +21,18 @@ export async function installExactPlanNativeFixtureV3(){
  const ordinary=update(f.source),sources=new Map<string,string>();
  for(const item of [f,f.alternative]){const source=update(item.source),g=await graphSourceFixtureV3(f.operation,item.snapshotRaw,source,{snapshotRaw:f.snapshotRaw,sourceRaw:raw(ordinary)});sources.set(sha(item.snapshotRaw),raw(g.graphSource));}
  const poolRaw=raw({...f.pool,trustedGenerationInputRaw:inputRaw});const packets=new Map([['pool',poolRaw],...sources.entries()].map(([k,v])=>[k==='pool'?k:'graph:'+k,v]));
- for(const [index,candidate] of f.pool.candidates.entries())packets.set('metrics:'+candidate.snapshotRawSha256,raw({assessmentRevision:id(190000+index),metrics:{targetFit:q(String(index)),diversity:q('0'),convenience:q('0'),shoppingReuse:q('0')}}));
+ const metricPolicy={contract:exactWeekMetricPolicyContractV3,metricPolicyRevision:id(190000),optimizationPolicyRevision:input.optimizationPolicyRevision,
+  targetFit:'MEAN_DAILY_EXACT_CALORIE_FIT_V3',diversity:'UNIQUE_RECIPE_MEAL_SHARE_V1',shoppingReuse:'CANONICAL_FOOD_MEAL_REUSE_SHARE_V1',convenience:'INDEPENDENT_EXACT_WEEK_CONVENIENCE_V3'};
+ packets.set('metric-policy',raw(metricPolicy));
+ // Only source/review events and independent convenience are synthetic. Three metrics now derive
+ // from actual freshly validated graphs through the production exact metric producer below.
+ for(const [index,candidate] of f.pool.candidates.entries()){
+  const checked=await createExactWeekGraphPreparationV3({loadForProposalRaw:async(_op,subject)=>sources.get(subject)??null},authorized).prepare(f.operation,candidate.snapshotRaw);
+  if(checked.status!=='EXACT_GRAPH_PREPARED_PENDING_OPTIMIZATION')throw Error('NATIVE_METRIC_GRAPH_FIXTURE_INVALID');
+  const graphRawSha256=sha(canonical(checked.graph));
+  packets.set('convenience:'+graphRawSha256,raw({contract:exactWeekConvenienceContractV3,requestOperationId:f.operation,graphRawSha256,generationInputDigest:inputDigest,
+   metricPolicyRevision:metricPolicy.metricPolicyRevision,sourceRevision:id(190001+index),score:q('0')}));
+ }
  const prerequisites=readFileSync(new URL('./generation-admission-prerequisites-v1.sql',import.meta.url),'utf8'),draft=readFileSync(new URL('./exact-plan-retention-v3.sql',import.meta.url),'utf8');
  await owner.query(`BEGIN;
  CREATE SCHEMA extensions;CREATE EXTENSION pgcrypto WITH SCHEMA extensions;CREATE SCHEMA potok_nutrition;CREATE SCHEMA potok_control;
@@ -59,12 +72,14 @@ export async function installExactPlanNativeFixtureV3(){
  const pool=adaptGenerationNodePgPoolV1<ExactPlanSqlRowV3>(rawPool,()=>true);
  const factory=(client:ExactPlanSqlSourceClientV3)=>{
   const packet=async(operation:string,key:string)=>(await client.query(packetSqlV3,[operation,key])).rows[0].result_raw;
-  return createExactWeekOptimizationV3({loadForOperationRaw:op=>packet(op,'pool')},{loadForProposalRaw:(op,subject)=>packet(op,'graph:'+subject)},
-   {assessGraphRaw:async(op,graphRaw,digest,policy)=>{const g=JSON.parse(graphRaw),source=await packet(op,'metrics:'+g.evaluatedSnapshotRawSha256);if(source===null)return null;const values=JSON.parse(source);
-    return raw({contract:exactWeekMetricsContractV3,requestOperationId:op,generationInputDigest:digest,graphDigest:g.digest,graphRawSha256:sha(graphRaw),evaluatedSnapshotRawSha256:g.evaluatedSnapshotRawSha256,
-     optimizationPolicyRevision:input.optimizationPolicyRevision,optimizationPolicyRawSha256:sha(policy),assessmentRevision:values.assessmentRevision,metrics:values.metrics});}},authorized);
+  const poolPort={loadForOperationRaw:(op:string)=>packet(op,'pool')},graphPort={loadForProposalRaw:(op:string,subject:string)=>packet(op,'graph:'+subject)};
+  return {async optimize(operation:string){
+   const policyRaw=await packet(operation,'metric-policy');if(policyRaw===null)throw Error('NATIVE_METRIC_POLICY_MISSING');
+   const producer=createExactWeekMetricProducerV3(poolPort,graphPort,authorized,policyRaw,{loadConvenienceRaw:(op,graphSha)=>packet(op,'convenience:'+graphSha)});
+   return createExactWeekOptimizationV3(poolPort,graphPort,producer,authorized).optimize(operation);
+  }};
  };
  const storeFor=(p:GenerationTransactionPoolV1<ExactPlanSqlRowV3>)=>createExactPlanPostgresStoreV3(p,[packetSqlV3],factory,()=>true);
  const store=storeFor(pool),service=createExactPlanAdmissionV3(store,()=>true);
- return {owner,pool,rawPool,store,storeFor,service,input,operation:f.operation,inputDigest,literal,canonical,async close(){await pool.close();await owner.end();}};
+ return {owner,pool,rawPool,store,storeFor,service,input,operation:f.operation,inputDigest,expectedSelectedSnapshotSha256:sha(f.snapshotRaw),literal,canonical,async close(){await pool.close();await owner.end();}};
 }
