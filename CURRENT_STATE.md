@@ -1,3 +1,12 @@
+## Exact week optimization and generator decision V3, inactive — 2026-11-06
+
+- Parent PR349 exact head `6f08c5591a74227d50938ae89185099c171218cf`: PR Checks run42163310754 and PostgreSQL admission run42163310749 passed; separate Edge run42163310806 failed. No source/security/test gate relaxed.
+- Connect a server-owned bounded pool of complete exact weeks to Graph V3 revalidation and independently bound exact metric assessments. Preserve the existing four weights, warning-free priority and deterministic SHA tie break. Compare rational scores without three-place rounding; no invented target/convenience metric or portion/food data.
+- Strict mode requires every metric. Explicit robust-convenience mode retains exact bounds/null score and selects only a winner proven against all same-priority competitors. Unknown evidence blocks, rejected candidates remain in the receipt, and a partial search never claims the best of the full pool or global impossibility.
+- Capture each actual graph source once, enforce identical admitted input/current context and immutable shared publication facts across candidates, and bind visited validations, assessments, scores and selected slot decision subjects into separate optimization/proposal receipts. Readback recomputes the full pool; facts stay empty.
+- Both child graph and selected proposal remain authority NONE / accepted=false / canRecord=false / canActivate=false. No real pool/metric/source issuer/store implementation, Auth/Premium admission, transaction, plan/FACT write, runtime activation, new external service, migration, merge or deploy. Next: final exact proposal admission and transactional storage/readback (stage 3), with real catalog/source/metric issuance and application acceptance still explicit dependencies.
+- See docs/architecture/exact-week-optimization-v3.md.
+
 ## Exact week Graph V3, ordinary witness, warnings and replacement preparation — 2026-11-06
 
 - Parent PR348 exact head `b5e943421c3e7cd7a588c63b60ed89aaab3877ff`: POTOK PR Checks run42161418791 and PostgreSQL admission run42161418734 passed; separate Edge compatibility run42161418687 failed. No security/test gate relaxed.
