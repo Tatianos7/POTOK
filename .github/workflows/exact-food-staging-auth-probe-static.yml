@@ -1,0 +1,28 @@
+name: Staging Nutrition V2 Auth probe static validation
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/contracts/exact-food-staging-auth-readonly-probe-v2.ts'
+      - '.github/workflows/exact-food-staging-auth-probe-static.yml'
+  workflow_dispatch:
+
+# Static-only: never access Supabase, user tokens, or project secrets.
+permissions:
+  contents: read
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - name: Strict TypeScript for Staging-only probe
+        run: node node_modules/typescript/bin/tsc --noEmit --strict --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --types node scripts/contracts/exact-food-staging-auth-readonly-probe-v2.ts
+      - name: Targeted ESLint
+        run: node node_modules/eslint/bin/eslint.js scripts/contracts/exact-food-staging-auth-readonly-probe-v2.ts --max-warnings 0
