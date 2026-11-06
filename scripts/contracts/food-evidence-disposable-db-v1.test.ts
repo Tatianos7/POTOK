@@ -111,6 +111,11 @@ test('disposable PostgreSQL: authorization, FORCE RLS, atomicity, immutability a
     }
     for (const n of [1,2]) await sql(`SELECT potok_control.grant_entitlement_v2(${quote(id(n))},'admin',NULL,'synthetic-local-test','synthetic authorization fixture')`);
     await sql(`UPDATE public.user_profiles SET is_admin=true WHERE user_id=${quote(id(3))}`);
+    if (process.env.POTOK_EXACT_FOOD_ACCEPTANCE === '1') {
+      const { runExactFoodNutritionAcceptanceV2 } = await import('./exact-food-nutrition-acceptance-v2');
+      await runExactFoodNutritionAcceptanceV2(t, { sql, asUser });
+      return; // V1's full suite still runs independently in its existing workflow.
+    }
     // Optional additive acceptance on the same isolated trusted dependency fixture.
     if (process.env.POTOK_NONFOOD_ACCEPTANCE === '1') {
       const { runNonFoodAcceptanceV1 } = await import('./nonfood-evidence-acceptance-v1');
