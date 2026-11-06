@@ -1,4 +1,5 @@
 /** Unmounted backend port. Caller-JWT database connection, never a privileged key or client-provided authority. */
+import { createClient } from '@supabase/supabase-js';
 import { adaptiveNutritionSha256HexV1, canonicalJsonV1 } from '../utils/adaptiveNutritionWireV1';
 import { decodeExactFoodNutritionRevisionRawV2, decodeExactFoodNutritionReviewEventRawV2 } from '../utils/exactFoodNutritionEvidenceV2';
 import { decodeFoodNutritionSourceBindingRawV2 } from '../utils/foodNutritionSourceBindingV2';
@@ -100,4 +101,40 @@ export async function readCurrentExactFoodNutritionV2(port: ExactFoodNutritionUs
     return await resolveExactFoodNutritionReviewedSnapshotV2(snapshot as unknown as ExactFoodNutritionReviewedSnapshotV2,
       { isAuthorizedEvent: async event => authorized.get(event.eventId) === event.digest });
   } catch { return unresolved(); }
+}
+
+/** Concrete caller-JWT transport for a later reviewed host. Construction performs no network request.
+ * SQL in this package is disposable-only: these RPCs are NOT installed/activated on Staging here. */
+export function createStagingExactFoodNutritionUserPortV2(config: {
+  supabaseUrl: string; publishableKey: string; authorization: string;
+}): ExactFoodNutritionUserPortV2 {
+  let publicKey = /^sb_publishable_[A-Za-z0-9_-]+$/.test(config.publishableKey);
+  if (!publicKey) {
+    try {
+      if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(config.publishableKey)) throw Error('KEY');
+      const segment = config.publishableKey.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+      const payload: unknown = JSON.parse(atob(segment.padEnd(Math.ceil(segment.length/4)*4,'=')));
+      publicKey = !!payload && typeof payload === 'object' && !Array.isArray(payload)
+        && (payload as Record<string, unknown>).role === 'anon';
+    } catch { publicKey = false; }
+  }
+  const bearer = /^Bearer ([^\s,]+)$/i.exec(config.authorization);
+  if (config.supabaseUrl !== 'https://ozidryfvhkcbtpnulakq.supabase.co' || !publicKey || !bearer) throw Error('STAGING_CALLER_JWT_CONFIGURATION_REQUIRED');
+  const token = bearer[1];
+  const client = createClient(config.supabaseUrl,config.publishableKey,{ global:{ headers:{ Authorization:config.authorization } },
+    auth:{ persistSession:false,autoRefreshToken:false,detectSessionInUrl:false } });
+  async function rpc(name: 'food_nutrition_review_v2' | 'food_nutrition_receipt_v2' | 'food_nutrition_current_v2', args: Record<string,string>): Promise<unknown> {
+    const { data,error } = await client.rpc(name,args);
+    if (error) throw Error('EXACT_FOOD_DATABASE_RESULT_UNCONFIRMED');
+    return data as unknown;
+  }
+  return {
+    async verifyUser() {
+      const { data,error } = await client.auth.getUser(token);
+      return error || !data.user || data.user.is_anonymous ? null : { id:data.user.id };
+    },
+    review: raw => rpc('food_nutrition_review_v2',{ p_request_text:raw }),
+    receipt: key => rpc('food_nutrition_receipt_v2',{ p_idempotency_reference:key }),
+    current: (food,state) => rpc('food_nutrition_current_v2',{ p_canonical_food_id:food,p_food_state:state }),
+  };
 }

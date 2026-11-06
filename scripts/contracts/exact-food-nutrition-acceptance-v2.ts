@@ -177,6 +177,24 @@ export async function runExactFoodNutritionAcceptanceV2(t: TestContext, db: DB):
     assert.equal(await sql('SELECT count(*) FROM potok_food_evidence.exact_events_v2'),count);
     await assert.rejects(port().receipt(id(5014)),/REQUEST_NOT_FOUND/);
   });
+  await t.test('deferred COMMIT also rejects admin entitlement expiry and leaves no event/receipt', async () => {
+    const count = await sql('SELECT count(*) FROM potok_food_evidence.exact_events_v2');
+    await sql(`SELECT potok_control.grant_entitlement_v2(${q(id(2))},'admin',clock_timestamp()+interval '1.5 seconds','synthetic-expiry','synthetic test')`);
+    const req: ExactFoodNutritionReviewRequestV2 = { contract:exactFoodNutritionRequestContractV2,kind:'REVIEW_REJECTED',
+      idempotencyReference:id(5018),sourceProposalDigest:dossier.p.digest,reason:'Synthetic expiry test' };
+    await assert.rejects(asUser(`SELECT public.food_nutrition_review_v2(${q(raw(req))}); SELECT pg_sleep(2)`,id(2)),/VERIFIED_ADMIN_REQUIRED/);
+    await sql(`SELECT potok_control.grant_entitlement_v2(${q(id(2))},'admin',NULL,'synthetic-restored','synthetic test')`);
+    assert.equal(await sql('SELECT count(*) FROM potok_food_evidence.exact_events_v2'),count);
+    await assert.rejects(port(id(2)).receipt(id(5018)),/REQUEST_NOT_FOUND/);
+  });
+  await t.test('admin revocation blocks new access but does not retroactively revoke historical source approval', async () => {
+    const r = await issue(approve(5017,dossier.p.digest,latest)); const revision = JSON.parse(r.targetRaw);
+    latest = { revisionId:revision.revisionId,digest:revision.digest };
+    await sql(`SELECT potok_control.revoke_entitlement_v2(${q(actor)},'admin','synthetic-revoke','synthetic test')`);
+    assert.equal((await readCurrentExactFoodNutritionV2(port(),foodId,'raw')).kind,'UNRESOLVED');
+    assert.equal((await readCurrentExactFoodNutritionV2(port(id(2)),foodId,'raw')).kind,'REVIEWED_EXACT_V2');
+    await sql(`SELECT potok_control.grant_entitlement_v2(${q(actor)},'admin',NULL,'synthetic-restored','synthetic test')`);
+  });
   await t.test('immutable revisions/events/requests/sources resist owner mutation and truncate', async () => {
     for (const table of ['exact_sources_v2','exact_revisions_v2','exact_events_v2','exact_requests_v2']) {
       await assert.rejects(sql(`DELETE FROM potok_food_evidence.${table}`),/IMMUTABLE_FOOD_EVIDENCE/);

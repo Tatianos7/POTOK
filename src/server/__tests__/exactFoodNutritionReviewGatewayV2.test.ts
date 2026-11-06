@@ -5,7 +5,7 @@ import { exactFoodNutritionRequestContractV2, decodeExactFoodNutritionReviewRequ
   exactFoodNutritionReviewRequestDigestRawV2 } from '../exactFoodNutritionReviewRequestV2';
 import { exactFoodNutritionEventDigestRawV2 } from '../../utils/exactFoodNutritionEvidenceV2';
 import { submitExactFoodNutritionReviewV2, recoverExactFoodNutritionReviewV2, verifyExactFoodNutritionReceiptV2,
-  readCurrentExactFoodNutritionV2, type ExactFoodNutritionUserPortV2 } from '../exactFoodNutritionReviewGatewayV2';
+  readCurrentExactFoodNutritionV2, createStagingExactFoodNutritionUserPortV2, type ExactFoodNutritionUserPortV2 } from '../exactFoodNutritionReviewGatewayV2';
 const request = () => ({ contract:exactFoodNutritionRequestContractV2,kind:'REVIEW_APPROVED' as const,
   idempotencyReference:id(11),sourceProposalDigest:'a'.repeat(64),expectedHead:null });
 async function fixture() {
@@ -39,6 +39,12 @@ test('duplicate keys, oversized/deep JSON, negative zero and unknown kinds fail 
 test('reasons reject empty, NUL, lone surrogate and excess length', () => {
   for (const reason of [' ','\u0000','\ud800','a'.repeat(1025)]) assert.throws(() => decode(raw({
     contract:exactFoodNutritionRequestContractV2,kind:'REVIEW_REJECTED',idempotencyReference:id(1),sourceProposalDigest:'a'.repeat(64),reason })));
+});
+test('concrete transport refuses non-Staging origin, privileged keys and malformed bearer without network calls', () => {
+  const config = { supabaseUrl:'https://ozidryfvhkcbtpnulakq.supabase.co',publishableKey:'sb_publishable_synthetic',authorization:'Bearer synthetic' };
+  for (const change of [{ supabaseUrl:'https://example.invalid' },{ publishableKey:'sb_secret_synthetic' },{ authorization:'' },{ authorization:'Bearer one,two' },
+    { publishableKey:'x.'+btoa(raw({ role:'service_role' }))+'.x' }]) assert.throws(() => createStagingExactFoodNutritionUserPortV2({ ...config,...change }),/STAGING_CALLER_JWT_CONFIGURATION_REQUIRED/);
+  assert.equal(typeof createStagingExactFoodNutritionUserPortV2(config).review,'function');
 });
 test('request semantic hash is canonical but raw receipt hash binds exact request bytes', async () => {
   const { req,receipt } = await fixture();

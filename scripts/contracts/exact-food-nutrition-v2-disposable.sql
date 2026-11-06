@@ -60,7 +60,7 @@ BEGIN
   PERFORM potok_food_evidence.exact_keys_v1(v->'mappedDecimalText',ARRAY['calories','protein','fat','carbs','fiber']);
   PERFORM potok_food_evidence.exact_keys_v1(v->'values',ARRAY['calories','protein','fat','carbs','fiber']);
   FOREACH field IN ARRAY ARRAY['calories','protein','fat','carbs','fiber'] LOOP
-    IF ref->'units'->>field IS DISTINCT FROM CASE WHEN field='calories' THEN 'kcal' ELSE 'g' END THEN RAISE EXCEPTION 'EXACT_UNITS'; END IF;
+    IF ref->'units'->>field IS DISTINCT FROM (CASE WHEN field='calories' THEN 'kcal' ELSE 'g' END) THEN RAISE EXCEPTION 'EXACT_UNITS'; END IF;
     decimal_text:=potok_food_evidence.text_v1(v->'mappedDecimalText'->field);
     IF decimal_text !~ '^(0|[1-9][0-9]{0,8})(\.[0-9]{1,18})?$' THEN RAISE EXCEPTION 'EXACT_DECIMAL'; END IF;
     q:=v->'values'->field;
@@ -264,7 +264,7 @@ BEGIN
     IF EXISTS(SELECT 1 FROM potok_food_evidence.current_heads_v1 h WHERE h.target_kind='NUTRITION_REVIEWED_REVISION' AND h.canonical_food_id=food_id AND h.food_state=state) THEN
       RAISE EXCEPTION 'EXPLICIT_NUTRITION_VERSION_MIGRATION_REQUIRED' USING ERRCODE='40001'; END IF;
     SELECT * INTO head FROM potok_food_evidence.exact_heads_v2 h WHERE h.canonical_food_id=food_id AND h.food_state=state;
-    IF req->'expectedHead' IS DISTINCT FROM CASE WHEN head.revision_id IS NULL THEN 'null'::jsonb ELSE jsonb_build_object('revisionId',head.revision_id,'digest',head.digest) END THEN
+    IF req->'expectedHead' IS DISTINCT FROM (CASE WHEN head.revision_id IS NULL THEN 'null'::jsonb ELSE jsonb_build_object('revisionId',head.revision_id,'digest',head.digest) END) THEN
       RAISE EXCEPTION 'CURRENT_HEAD_CONFLICT' USING ERRCODE='40001'; END IF;
     revision_id:=gen_random_uuid();
     revision:=potok_food_evidence.artifact_v1('potok-exact-food-nutrition-revision-sha256-v2',jsonb_build_object(
