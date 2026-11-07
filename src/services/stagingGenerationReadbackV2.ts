@@ -16,7 +16,7 @@ export type GenerationReadbackV2=
 type Obj=Record<string,unknown>;
 const obj=(x:unknown):x is Obj=>x!==null&&typeof x==='object'&&!Array.isArray(x);
 function exact(x:unknown,keys:readonly string[]):x is Obj {
-  return obj(x)&&Object.keys(x).length===keys.length&&keys.every(k=>Object.hasOwn(x,k));
+  return obj(x)&&Object.keys(x).length===keys.length&&keys.every(k=>Object.prototype.hasOwnProperty.call(x,k));
 }
 export function decodeGenerationStatusForReadbackV2(x:unknown,requestId:string) {
   if(!exact(x,['contract','requestOperationId','status','retryable','reasonCode'])||
