@@ -31,7 +31,7 @@ test('missing, duplicated, unreviewed or source-approved rows fail closed',()=>{
     const p=fixture();
     if(mode==='MISSING')p.groups[0].occurrenceRefs.pop();
     if(mode==='DUPLICATE')p.groups[0].occurrenceRefs[1]=p.groups[0].occurrenceRefs[0];
-    if(mode==='CANDIDATE')p.groups[0].candidates.push({disposition:'CANDIDATE_FOR_REVIEW',selected:false,sourceApplicabilityApproved:false});
+    if(mode==='CANDIDATE')p.groups[0].candidates.push({disposition:'CANDIDATE_FOR_REVIEW',selected:false,sourceApplicabilityApproved:false} as never);
     if(mode==='SELECTED')p.groups[0].selectedCanonicalFoodId='fake' as never;
     if(mode==='APPROVED')p.summary.sourceApprovals=1;
     if(mode==='FOREIGN')p.observation.projectId='production';
