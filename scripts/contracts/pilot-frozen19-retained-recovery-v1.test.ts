@@ -18,6 +18,10 @@ test('retained frozen19 review recovers seven pinned ingredient refs and three c
   assert.deepEqual(r.exactRowReferences.filter(x=>x.sourceRecord==='SR28:01174').map(x=>x.rowId).sort(),[
     'oatmeal_apple_cinnamon_ing_02','oatmeal_pear_walnut_ing_02','oatmeal_pumpkin_ing_03']);
   assert.equal(r.exactRowReferences.length+r.conditionalPositionRefs.length,10);
+  assert.equal(r.allTenSourcePositionsLocated,true);
+  assert.equal(r.retainedRowDigestsAvailable,7);
+  assert.equal(r.positionsRequiringOriginalRowRecheck,3);
+  assert.equal(r.completeTenRowMapping,false);
   assert.equal(r.pastaModelPositionRef.rowId,'whole_wheat_pasta_lentils_tomato_ing_01');
   assert.equal(r.pastaModelPositionRef.sourceRecord,'SR28:20124');
   assert.equal(r.pastaModelPositionRef.originalRowSha256,null);
