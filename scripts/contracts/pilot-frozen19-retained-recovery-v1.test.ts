@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { recoverFrozen19RetainedReferencesV1 as recover } from './pilot-frozen19-retained-recovery-v1';
-test('retained frozen19 review recovers five exact ingredient refs and two lentil recipe refs without pretending all ten are proven',()=>{
+test('retained frozen19 review recovers seven pinned ingredient refs and three conditional model positions without pretending all ten are proven',()=>{
   const r=recover();
   assert.equal(r.recipeCount,19);
-  assert.equal(r.exactRowReferences.length,5);
+  assert.equal(r.exactRowReferences.length,7);
   assert.equal(r.recipeOnlyReferences.length,2);
   assert.deepEqual(r.lentilModelPositionRefs.map(x=>x.rowId).sort(),[
     'brown_lentils_rice_carrot_ing_01',
@@ -15,11 +15,14 @@ test('retained frozen19 review recovers five exact ingredient refs and two lenti
 
   assert.equal(r.expectedUnresolvedIngredientRows,10);
   assert.equal(r.conditionalPositionRefs.length,3);
+  assert.deepEqual(r.exactRowReferences.filter(x=>x.sourceRecord==='SR28:01174').map(x=>x.rowId).sort(),[
+    'oatmeal_apple_cinnamon_ing_02','oatmeal_pear_walnut_ing_02','oatmeal_pumpkin_ing_03']);
+  assert.equal(r.exactRowReferences.length+r.conditionalPositionRefs.length,10);
   assert.equal(r.pastaModelPositionRef.rowId,'whole_wheat_pasta_lentils_tomato_ing_01');
   assert.equal(r.pastaModelPositionRef.sourceRecord,'SR28:20124');
   assert.equal(r.pastaModelPositionRef.originalRowSha256,null);
   assert.ok(r.conditionalPositionRefs.every(x=>x.requiresOriginalRowRecheck===true && x.identityStatus==='NOT_VERIFIED'));
-  assert.equal(new Set([...r.exactRowReferences,...r.conditionalPositionRefs].map(x=>x.recipeId+':'+x.rowId)).size,8);
+  assert.equal(new Set([...r.exactRowReferences,...r.conditionalPositionRefs].map(x=>x.recipeId+':'+x.rowId)).size,10);
 
   assert.equal(r.completeTenRowMapping,false);
   assert.equal(r.canApply,false);
