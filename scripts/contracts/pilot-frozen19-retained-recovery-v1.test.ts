@@ -6,6 +6,13 @@ test('retained frozen19 review recovers five exact ingredient refs and two lenti
   assert.equal(r.recipeCount,19);
   assert.equal(r.exactRowReferences.length,5);
   assert.equal(r.recipeOnlyReferences.length,2);
+  assert.deepEqual(r.lentilModelPositionRefs.map(x=>x.rowId).sort(),[
+    'brown_lentils_rice_carrot_ing_01',
+    'whole_wheat_pasta_lentils_tomato_ing_02'
+  ]);
+  assert.ok(r.lentilModelPositionRefs.every(x=>x.originalRowSha256===null && x.requiresOriginalRowRecheck===true));
+  assert.ok(r.lentilModelPositionRefs.every(x=>x.evidenceBasis==='MODEL_CONTRACT_POSITION_WITH_PINNED_RECIPE_DIGEST_ONLY'));
+
   assert.equal(r.expectedUnresolvedIngredientRows,10);
   assert.equal(r.completeTenRowMapping,false);
   assert.equal(r.canApply,false);
