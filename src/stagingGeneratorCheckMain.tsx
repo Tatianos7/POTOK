@@ -4,6 +4,7 @@ import './index.css';
 import { supabase } from './lib/supabaseClient';
 import StagingGenerationDiagnostic from './components/StagingGenerationDiagnostic';
 import StagingSyntheticWeekDemo from './components/StagingSyntheticWeekDemo';
+import StagingGenerationReadback from './components/StagingGenerationReadback';
 import { isStagingGenerationProbeEnabled } from './services/stagingGenerationProbe';
 
 function TestPage() {
@@ -34,6 +35,7 @@ function TestPage() {
           ? <>
             <StagingGenerationDiagnostic currentUserId={accountId} />
             <StagingSyntheticWeekDemo currentUserId={accountId} />
+            <StagingGenerationReadback currentUserId={accountId} />
           </>
           : <p role="status" className="mt-5 rounded-lg bg-stone-50 p-4">
             Для проверки открой POTOK по ссылке выше и войди в тестовый аккаунт на этом же сайте.
