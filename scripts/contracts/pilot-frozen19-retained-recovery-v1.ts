@@ -70,7 +70,7 @@ export function recoverFrozen19RetainedReferencesV1() {
   // Whole-wheat pasta also occurs in the lentil recipe's pinned model contract.
   // No original ingredient SHA was retained at this boundary: keep conditional.
   const pastaLentilRecipe=recipeOnly.find(r=>r.recipeId==='whole_wheat_pasta_lentils_tomato');
-  if(!pastaLentilRecipe)invalid();
+  if(pastaLentilRecipe===undefined)throw new Error('PILOT_RETAINED_RECOVERY_DRIFT');
   const pastaModelPositionRef={
     sourceRecord:'SR28:20124',recipeId:pastaLentilRecipe.recipeId,
     rowId:'whole_wheat_pasta_lentils_tomato_ing_01',
