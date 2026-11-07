@@ -67,7 +67,10 @@ export function checkGenerationAdmissionPreflightV1(
    const eligible=evidence.eligiblePublishedRecipeIdsBySlot[slot].length;
    return {slot,eligible,required,missing:Math.max(0,required-eligible)};
  });
- if(coverage.some(x=>x.missing>0))missing.push('INSUFFICIENT_ELIGIBLE_RECIPES');
+ const distinctAcrossAllSlots=new Set(requiredMealSlotsV1.flatMap(slot=>evidence.eligiblePublishedRecipeIdsBySlot[slot]));
+ // Overlapping multi-category recipes still share the same seven-day reuse limit.
+ if(coverage.some(x=>x.missing>0)||distinctAcrossAllSlots.size*maxRecipeUses<days*requiredMealSlotsV1.length)
+   missing.push('INSUFFICIENT_ELIGIBLE_RECIPES');
  return {contract:generationAdmissionPreflightContractV1,
    mayRequestGeneration:missing.length===0,mayActivate:false,missing,coverage};
 }
