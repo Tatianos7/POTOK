@@ -11,7 +11,6 @@ import {
   projectTodayNutritionWeeks,
 } from '../services/premiumTodayAdapter';
 import NutritionWeekPreview, { type NutritionWeekPreviewProps } from '../components/NutritionWeekPreview';
-import StagingGenerationDiagnostic from '../components/StagingGenerationDiagnostic';
 import AdaptiveNutritionReadOnlyEntry from '../components/AdaptiveNutritionReadOnlyEntry';
 import { getAdaptiveNutritionSmokePreview } from '../services/adaptiveNutritionSmokePreview';
 import {
@@ -1610,11 +1609,8 @@ function TodayEntry(props: TodayProps) {
       scope: { userId: props.currentUserId, planId: source.id, planVersion: 'local-demo-v1', goalVersion: 'unvalidated-demo' },
       today, sourceStartDate: nutritionWeekDates(today)[0], sourceDurationDays: source.days.length,
     });
-    return <>
-      <NutritionWeekPreview currentUserId={props.currentUserId} today={today} weeks={weeks}
-        source="demo" readOnly />
-      <StagingGenerationDiagnostic currentUserId={props.currentUserId} />
-    </>;
+    return <NutritionWeekPreview currentUserId={props.currentUserId} today={today} weeks={weeks}
+      source="demo" readOnly />;
   }
   const smokePreview = getAdaptiveNutritionSmokePreview(props.currentUserId, today);
   if (smokePreview.kind === 'blocked') {
