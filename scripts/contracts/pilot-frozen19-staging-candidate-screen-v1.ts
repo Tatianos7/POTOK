@@ -13,7 +13,7 @@ export function screenFrozen19StagingCandidateV1(sourceRecord:string,food:Observ
  if(food.is_searchable!==true||food.needs_review!==false||food.verified!==true)missing.push('REVIEW_FLAGS_NOT_COMPLETE');
  if(food.cooking_state===null||food.cooking_state==='unknown')missing.push('PREPARATION_STATE_UNKNOWN');
  for(const key of ['calories','protein','fat','carbs','fiber'] as const){
-  if(typeof food[key]!=='string'||!/^\\d+(?:\\.\\d+)?$/.test(food[key]!))missing.push('MISSING_NUMERIC_'+key.toUpperCase());
+  if(typeof food[key]!=='string'||!/^\d+(?:\.\d+)?$/.test(food[key]!))missing.push('MISSING_NUMERIC_'+key.toUpperCase());
  }
  // A spelt label is directly incompatible with the common-wheat recipe intent.
  if(sourceRecord==='SR28:20124'&&/полб|spelt/i.test(food.name))missing.push('SPELT_NOT_COMMON_WHEAT');
