@@ -19,7 +19,7 @@ export default async function handler(req:Req,res:Res):Promise<void>{
     typeof req.body!=='object'||Array.isArray(req.body)||Object.keys(req.body as object).length!==0
   )){res.status(400).json({error:'UNSUPPORTED_INPUT'});return;}
   const bearer=req.headers.authorization;
-  const auth=typeof bearer==='string'&&/^Bearer [^\\s,]+$/i.test(bearer)?bearer:null;
+  const auth=typeof bearer==='string'&&/^Bearer [^\s,]+$/i.test(bearer)?bearer:null;
   if(!auth){res.status(401).json({error:'AUTH_REQUIRED'});return;}
   const publicKey=process.env.VITE_SUPABASE_ANON_KEY;
   if(!publicKey || !(publicKey.startsWith('sb_publishable_') || publicKey.split('.').length===3)){
