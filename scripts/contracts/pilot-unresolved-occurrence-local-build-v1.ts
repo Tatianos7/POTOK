@@ -3,8 +3,9 @@
  * Inputs are owner-retained private files. Validates captured SHA-256 pins
  * against the aggregate checked into the reviewed pilot branch.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
-import { pathToFileURL } from 'node:url';
+import { readFileSync, writeFileSync, realpathSync } from 'node:fs';
+import { resolve, dirname, sep } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { runNonfishLentilAlternativesV1 } from './nonfish-lentil-alternatives-v1';
 import { preparePilotFamilyIdentityReviewV2 } from './pilot-family-identity-review-v2';
 import { buildPilotUnresolvedOccurrenceQueueV1 } from './pilot-unresolved-occurrence-queue-v1';
@@ -36,6 +37,15 @@ export async function assemblePrivatePilotUnresolvedQueueV1(
     || packet.inputBindings.freezeSha256!==manifest.inputBindings.freezeSha256) invalid();
   return buildPilotUnresolvedOccurrenceQueueV1(JSON.stringify(packet));
 }
+/** Keep the private extracted data out of any accidental Git commit. */
+export function assertPrivateQueueOutputOutsideCheckoutV1(outputPath:string):void {
+  const checkout=realpathSync(fileURLToPath(new URL('../../',import.meta.url)));
+  const parent=realpathSync(dirname(resolve(outputPath)));
+  const target=resolve(parent,outputPath.split(/[\\/]/).at(-1)!);
+  if (parent===checkout||parent.startsWith(checkout+sep)||target===checkout) {
+    throw Error('PRIVATE_QUEUE_OUTPUT_MUST_BE_OUTSIDE_CHECKOUT');
+  }
+}
 if (process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
   if(process.argv.length!==7) throw Error(
     'Usage: node --import tsx scripts/contracts/pilot-unresolved-occurrence-local-build-v1.ts '+
@@ -48,6 +58,7 @@ if (process.argv[1] && import.meta.url===pathToFileURL(process.argv[1]).href) {
     exactSnapshotRaw:readFileSync(exactPath,'utf8'),
     familySnapshotRaw:readFileSync(familyPath,'utf8')
   },readFileSync(aggregatePath,'utf8'));
+  assertPrivateQueueOutputOutsideCheckoutV1(outputPath);
   writeFileSync(outputPath,JSON.stringify(result,null,2)+'\n',{encoding:'utf8',flag:'wx',mode:0o600});
   process.stdout.write('PRIVATE_REVIEW_QUEUE_CREATED: 10 rows / 5 source groups; no contents printed\n');
 }
