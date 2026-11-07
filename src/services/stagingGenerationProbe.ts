@@ -27,6 +27,8 @@ export function classifyStagingGenerationProbe(status: number, body: unknown): S
 
 export async function probeStagingGenerationStatus(accountId: string): Promise<StagingGenerationProbeResult> {
   if (!isStagingGenerationProbeEnabled() || !supabase || !accountId) return 'not-staging';
+  const publicKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  if (!publicKey) return 'not-staging';
   try {
     // getUser verifies the signed-in account rather than trusting cached user display details.
     const user = await supabase.auth.getUser();
@@ -42,7 +44,7 @@ export async function probeStagingGenerationStatus(accountId: string): Promise<S
         cache: 'no-store',
         headers: {
           Authorization: `Bearer ${accessToken}`,
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          apikey: publicKey,
           Accept: 'application/json',
         },
       },
