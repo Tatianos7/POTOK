@@ -38,6 +38,10 @@ test('wrong input shape, duplicate IDs within pool, and inflated retry cap canno
  const duplicates=evidence();
  duplicates.eligiblePublishedRecipeIdsBySlot.snack=[id(1),id(1),id(3),id(4)];
  assert.equal(checkGenerationAdmissionPreflightV1(duplicates).mayRequestGeneration,false);
+ const overlapping=evidence();
+ for(const slot of requiredMealSlotsV1)overlapping.eligiblePublishedRecipeIdsBySlot[slot]=[id(1),id(2),id(3),id(4)];
+ assert.equal(checkGenerationAdmissionPreflightV1(overlapping).mayRequestGeneration,false);
+ assert.ok(checkGenerationAdmissionPreflightV1(overlapping).missing.includes('INSUFFICIENT_ELIGIBLE_RECIPES'));
  const extra={...evidence(),unknown:true};
  assert.equal(checkGenerationAdmissionPreflightV1(extra).mayRequestGeneration,false);
 });
