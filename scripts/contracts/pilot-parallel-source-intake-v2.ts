@@ -19,7 +19,8 @@ export function inspectPilotV2SourceCandidateRaw(raw:string){
  const v=obj(JSON.parse(raw));if(!keys(v,exact)||v.contract!=='potok-parallel-pilot-source-candidate-v2')invalid();
  const taskId=text(v.taskId),backlog=buildPilotV2ReviewBacklog();
  const task=backlog.tasks.find(t=>t.taskId===taskId);
- if(!task||v.recipeSha256!==task.priorRecipeSha256||v.sourceRecord!==task.sourceRecord)invalid();
+ if(task===undefined)throw new Error('INVALID_PILOT_V2_SOURCE_INTAKE');
+ if(v.recipeSha256!==task.priorRecipeSha256||v.sourceRecord!==task.sourceRecord)invalid();
  const docId=text(v.sourceDocumentId),revision=text(v.sourceRevision),description=text(v.productDescription);
  const state=text(v.foodState),basis=text(v.edibleBasis);
  if(!hex.test(String(v.sourceDigest))||v.carbsExcludeFiber!==true)invalid();
