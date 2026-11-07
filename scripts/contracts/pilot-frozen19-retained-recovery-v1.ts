@@ -53,11 +53,25 @@ export function recoverFrozen19RetainedReferencesV1() {
     sourceApproved:false as const
   }));
   if(lentilModelPositionRefs.length!==2 || new Set(lentilModelPositionRefs.map(x=>x.rowId)).size!==2)invalid();
+  // Whole-wheat pasta also occurs in the lentil recipe's pinned model contract.
+  // No original ingredient SHA was retained at this boundary: keep conditional.
+  const pastaLentilRecipe=recipeOnly.find(r=>r.recipeId==='whole_wheat_pasta_lentils_tomato');
+  if(!pastaLentilRecipe)invalid();
+  const pastaModelPositionRef={
+    sourceRecord:'SR28:20124',recipeId:pastaLentilRecipe.recipeId,
+    rowId:'whole_wheat_pasta_lentils_tomato_ing_01',
+    recipeSha256:pastaLentilRecipe.recipeSha256,originalRowSha256:null,
+    evidenceBasis:'MODEL_CONTRACT_POSITION_WITH_PINNED_RECIPE_DIGEST_ONLY' as const,
+    requiresOriginalRowRecheck:true as const,
+    identityStatus:'NOT_VERIFIED' as const,sourceApproved:false as const
+  };
+  const conditionalPositionRefs=[...lentilModelPositionRefs,pastaModelPositionRef];
+  if(new Set([...exact,...conditionalPositionRefs].map(r=>r.recipeId+':'+r.rowId)).size!==8)invalid();
   const sourceBindings={batchReviewSha256:digest(load('pilot-19-source-quantity-20261105/batch-review-v1.json')),
     lentilReviewSha256:digest(load('nonfish-lentil-20261105/review-bindings-v1.json')),
     expansionReviewSha256:digest(load('source-gaps-expansion-20261105/expansion-bindings-v1.json'))};
   return {contract:'potok-frozen19-retained-partial-provenance-v1',usage:'OFFLINE_PARTIAL_EVIDENCE_NOT_COMPLETE_QUEUE',
     recipeCount:19,expectedUnresolvedIngredientRows:10,exactRowReferences:exact,
-    recipeOnlyReferences:recipeOnly,lentilModelPositionRefs,sourceBindings,completeTenRowMapping:false,
+    recipeOnlyReferences:recipeOnly,lentilModelPositionRefs,pastaModelPositionRef,conditionalPositionRefs,sourceBindings,completeTenRowMapping:false,
     noClaimsForUnmappedRows:true,readyForServerSubmission:false,canApply:false,mayActivate:false};
 }
