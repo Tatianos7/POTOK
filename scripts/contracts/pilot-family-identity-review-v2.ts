@@ -86,6 +86,7 @@ export async function preparePilotFamilyIdentityReviewV2(candidateRaw:string,mod
   if (batch.observation.projectId!==s.projectId || batch.observation.environment!==s.environment) fail();
   const groups = batch.items.map(item=>{
     if (item.componentKind!=='FOOD') return { sourceRecord:item.sourceRecord,componentKind:item.componentKind,occurrences:item.occurrences.length,
+      occurrenceRefs:item.occurrences.map(o=>({recipeId:o.recipeId,rowId:o.rowId,quantityG:o.quantityG,quantityDecision:o.quantityDecision,optional:o.optional})),
       route:'EXISTING_TYPED_NONFOOD_REVIEW',candidates:[],selectedCanonicalFoodId:null };
     const candidates = s.rows.flatMap(food=>{
       const finding = screenPilotFamilyCandidateV2(item.sourceRecord,food); if (!finding) return [];
@@ -96,6 +97,7 @@ export async function preparePilotFamilyIdentityReviewV2(candidateRaw:string,mod
         proposedPatch:null,reviewEvent:null }];
     }).sort((a,b)=>a.foodId<b.foodId?-1:a.foodId>b.foodId?1:0);
     return { sourceRecord:item.sourceRecord,componentKind:item.componentKind,occurrences:item.occurrences.length,
+      occurrenceRefs:item.occurrences.map(o=>({recipeId:o.recipeId,rowId:o.rowId,quantityG:o.quantityG,quantityDecision:o.quantityDecision,optional:o.optional})),
       route:candidates.some(c=>c.disposition==='CANDIDATE_FOR_REVIEW')?'EXPLICIT_EXISTING_IDENTITY_REVIEW':'INDEPENDENT_IMPORT_PRECHECK_BEFORE_ANY_NEW_DEFINITION',
       candidates,selectedCanonicalFoodId:null };
   });
