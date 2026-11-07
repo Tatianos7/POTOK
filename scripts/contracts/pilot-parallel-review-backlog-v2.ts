@@ -11,7 +11,8 @@ export function buildPilotV2ReviewBacklog(){
     precheck.approvedBindings!==0||draft.sourceApprovals!==0||draft.canApply!==false)invalid();
  const tasks=precheck.items.map(row=>{
   const parent=draft.recipes.find(x=>x.recipeId===row.recipeId);
-  if(!parent||!parent.knownBlockedIngredients.some(x=>x.rowId===row.rowId&&
+  if(parent===undefined)throw new Error('INVALID_PILOT_V2_REVIEW_BACKLOG');
+  if(!parent.knownBlockedIngredients.some(x=>x.rowId===row.rowId&&
      x.sourceRecord===row.sourceRecord&&x.originalRowSha256===row.originalRowSha256))invalid();
   return {taskId:row.recipeId+'#'+row.rowId,recipeId:row.recipeId,rowId:row.rowId,
    sourceRecord:row.sourceRecord,priorRecipeSha256:parent.priorRecipeSha256,
