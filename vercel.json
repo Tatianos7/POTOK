@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build:staging-preview",
+  "buildCommand": "node scripts/security/staging-preview-guard.mjs && npm run build -- --mode staging-preview",
   "outputDirectory": "dist",
   "rewrites": [
     {
