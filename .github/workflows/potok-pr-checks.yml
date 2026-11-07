@@ -32,6 +32,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Staging-only web preview guard regressions (no deployment)
+        run: node --test scripts/security/staging-preview-guard.test.mjs
+
       - name: TypeScript and production build (no deployment)
         run: npm run build
         env:
