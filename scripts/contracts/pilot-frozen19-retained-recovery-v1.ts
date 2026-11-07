@@ -41,11 +41,23 @@ export function recoverFrozen19RetainedReferencesV1() {
     sourceApproved:false as const
   }));
   if(recipeOnly.length!==2||recipeOnly.some((r:any)=>!recipeIds.has(r.recipeId)))invalid();
+  // Contractual model requires the 'whole_brown_lentils' ingredient at these
+  // positions, but the retained review binds only whole-recipe digests.
+  // These are conditional position references, NOT independently pinned row hashes.
+  const lentilModelPositionRefs=recipeOnly.map(r=>({
+    sourceRecord:r.sourceRecord,recipeId:r.recipeId,
+    rowId:r.recipeId+'_ing_'+(r.recipeId==='brown_lentils_rice_carrot'?'01':'02'),
+    recipeSha256:r.recipeSha256,originalRowSha256:null,
+    evidenceBasis:'MODEL_CONTRACT_POSITION_WITH_PINNED_RECIPE_DIGEST_ONLY' as const,
+    requiresOriginalRowRecheck:true as const,identityStatus:'NOT_VERIFIED' as const,
+    sourceApproved:false as const
+  }));
+  if(lentilModelPositionRefs.length!==2 || new Set(lentilModelPositionRefs.map(x=>x.rowId)).size!==2)invalid();
   const sourceBindings={batchReviewSha256:digest(load('pilot-19-source-quantity-20261105/batch-review-v1.json')),
     lentilReviewSha256:digest(load('nonfish-lentil-20261105/review-bindings-v1.json')),
     expansionReviewSha256:digest(load('source-gaps-expansion-20261105/expansion-bindings-v1.json'))};
   return {contract:'potok-frozen19-retained-partial-provenance-v1',usage:'OFFLINE_PARTIAL_EVIDENCE_NOT_COMPLETE_QUEUE',
     recipeCount:19,expectedUnresolvedIngredientRows:10,exactRowReferences:exact,
-    recipeOnlyReferences:recipeOnly,sourceBindings,completeTenRowMapping:false,
+    recipeOnlyReferences:recipeOnly,lentilModelPositionRefs,sourceBindings,completeTenRowMapping:false,
     noClaimsForUnmappedRows:true,readyForServerSubmission:false,canApply:false,mayActivate:false};
 }
