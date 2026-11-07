@@ -41,6 +41,9 @@ jobs:
       - name: Authenticated server generation readback contract tests
         run: node --import tsx --test src/services/stagingGenerationReadbackV2.test.ts
 
+      - name: Real Staging generation readiness fail-closed contract
+        run: node --import tsx --test src/server/generationReadinessPreflightV1.test.ts
+
       - name: Verified real-catalog generation admission gate
         run: node --import tsx --test src/services/generationAdmissionPreflightV1.test.ts
 
