@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import { supabase } from './lib/supabaseClient';
 import StagingGenerationDiagnostic from './components/StagingGenerationDiagnostic';
+import StagingSyntheticWeekDemo from './components/StagingSyntheticWeekDemo';
 import { isStagingGenerationProbeEnabled } from './services/stagingGenerationProbe';
 
 function TestPage() {
@@ -30,7 +31,10 @@ function TestPage() {
       : !checked
         ? <p role="status" className="mt-5">Проверяем тестовый аккаунт…</p>
         : accountId
-          ? <StagingGenerationDiagnostic currentUserId={accountId} />
+          ? <>
+            <StagingGenerationDiagnostic currentUserId={accountId} />
+            <StagingSyntheticWeekDemo currentUserId={accountId} />
+          </>
           : <p role="status" className="mt-5 rounded-lg bg-stone-50 p-4">
             Для проверки открой POTOK по ссылке выше и войди в тестовый аккаунт на этом же сайте.
           </p>}
