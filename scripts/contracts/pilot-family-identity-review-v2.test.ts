@@ -49,6 +49,7 @@ function fixture() {
 const run = (f=fixture()) => prepare(f.candidate,f.models,JSON.stringify(f.exact),JSON.stringify(f.family),JSON.stringify(f.freeze));
 test('multiple real UUID observations remain multiple candidates with no selected ID, patch or approval', async () => {
   const r = await run(); assert.equal(r.groups[0].candidates.length,2); assert.equal(r.groups[0].selectedCanonicalFoodId,null);
+  assert.deepEqual(r.groups[0].occurrenceRefs,[{ recipeId:'synthetic',rowId:'row',quantityG:'100',quantityDecision:'DECLARED_GRAMS',optional:false }]);
   assert.equal(r.summary.foodRowsWithFamilyCandidates,1); assert.equal(r.summary.approvedBindings,0); assert.equal(r.canApply,false);
   assert.deepEqual(r.proposedFoodUpdates,[]); assert.deepEqual(r.proposedFoodCreates,[]);
 });
