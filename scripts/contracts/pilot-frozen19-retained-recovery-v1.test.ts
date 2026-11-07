@@ -14,6 +14,13 @@ test('retained frozen19 review recovers five exact ingredient refs and two lenti
   assert.ok(r.lentilModelPositionRefs.every(x=>x.evidenceBasis==='MODEL_CONTRACT_POSITION_WITH_PINNED_RECIPE_DIGEST_ONLY'));
 
   assert.equal(r.expectedUnresolvedIngredientRows,10);
+  assert.equal(r.conditionalPositionRefs.length,3);
+  assert.equal(r.pastaModelPositionRef.rowId,'whole_wheat_pasta_lentils_tomato_ing_01');
+  assert.equal(r.pastaModelPositionRef.sourceRecord,'SR28:20124');
+  assert.equal(r.pastaModelPositionRef.originalRowSha256,null);
+  assert.ok(r.conditionalPositionRefs.every(x=>x.requiresOriginalRowRecheck===true && x.identityStatus==='NOT_VERIFIED'));
+  assert.equal(new Set([...r.exactRowReferences,...r.conditionalPositionRefs].map(x=>x.recipeId+':'+x.rowId)).size,8);
+
   assert.equal(r.completeTenRowMapping,false);
   assert.equal(r.canApply,false);
   assert.equal(r.readyForServerSubmission,false);
