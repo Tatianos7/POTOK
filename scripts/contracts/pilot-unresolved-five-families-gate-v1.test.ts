@@ -60,7 +60,7 @@ test('incompatible close variants and misleading cooked aliases cannot bypass th
     assert.equal(result.disposition,disposition,name);
     assert.equal(result.selected,false);
   }
-  const alias = screen('SR28:20124',{name:'Макароны цельнозерновые варёные',aliases:['Макароны цельнозерновые'],cooking_state:'dry'});
+  const alias = screen('SR28:20124',{name:'Макароны цельнозерновые варёные',aliases:['Макароны цельнозерновые'],cooking_state:'raw'});
   assert.ok(alias);
   assert.equal(alias.disposition,'EXCLUDED_VARIANT');
   assert.equal(alias.stateFinding,'NAME_STATE_CONFLICT');
