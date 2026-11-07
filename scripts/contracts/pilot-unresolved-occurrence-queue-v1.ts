@@ -44,7 +44,7 @@ export function buildPilotUnresolvedOccurrenceQueueV1(privateReviewRaw:string) {
       || g.selectedCanonicalFoodId!==null) invalid();
     for (const o of g.occurrenceRefs) {
       if (typeof o.recipeId!=='string'||!o.recipeId||typeof o.rowId!=='string'||!o.rowId
-        || !(o.quantityG===null||(typeof o.quantityG==='string'&&/^\\d+(?:\\.\\d+)?$/.test(o.quantityG)))
+        || !(o.quantityG===null||(typeof o.quantityG==='string'&&/^\d+(?:\.\d+)?$/.test(o.quantityG)))
         || typeof o.quantityDecision!=='string'||!o.quantityDecision||typeof o.optional!=='boolean') invalid();
       occurrences.push({sourceRecord:g.sourceRecord,recipeId:o.recipeId,rowId:o.rowId,
         quantityG:o.quantityG,quantityDecision:o.quantityDecision,optional:o.optional,
