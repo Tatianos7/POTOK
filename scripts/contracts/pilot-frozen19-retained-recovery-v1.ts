@@ -35,6 +35,20 @@ export function recoverFrozen19RetainedReferencesV1() {
   exact.push({sourceRecord:'FDC_SR_LEGACY:168411:PREPARED:100G',recipeId:'lemon_shelled_edamame',
     rowId:edamame[0].ingredientRowId,originalRowSha256:edamame[0].sha256,
     identityStatus:'NOT_VERIFIED',sourceApproved:false});
+  // The selected-breakfast contract maps milk to the second apple and third
+  // pumpkin ingredient. Their original row digests survive in expansion bindings.
+  for(const [recipeId,rowId] of [
+    ['oatmeal_apple_cinnamon','oatmeal_apple_cinnamon_ing_02'],
+    ['oatmeal_pumpkin','oatmeal_pumpkin_ing_03']
+  ] as const) {
+    const matches=expansion.rows.filter((r:{recipeId:string})=>r.recipeId===recipeId);
+    if(matches.length!==1 || !recipeIds.has(recipeId))invalid();
+    const rows=matches[0].ingredientRows.filter((r:{ingredientRowId:string})=>r.ingredientRowId===rowId);
+    if(rows.length!==1||!/^[a-f0-9]{64}$/.test(rows[0].sha256))invalid();
+    exact.push({sourceRecord:'SR28:01174',recipeId,rowId,
+      originalRowSha256:rows[0].sha256,identityStatus:'NOT_VERIFIED',sourceApproved:false});
+  }
+  if(exact.length!==7 || new Set(exact.map(x=>x.recipeId+':'+x.rowId)).size!==7)invalid();
   const recipeOnly:( {sourceRecord:string;recipeId:string;recipeSha256:string;rowId:null;identityStatus:'NOT_VERIFIED';sourceApproved:false} )[]=lentils.rows.map((r:{recipeId:string;recipeSha256:string})=>({
     sourceRecord:'FDC_SR_LEGACY:172420:DRY_RAW:100G',recipeId:r.recipeId,
     recipeSha256:r.recipeSha256,rowId:null,identityStatus:'NOT_VERIFIED' as const,
@@ -66,7 +80,7 @@ export function recoverFrozen19RetainedReferencesV1() {
     identityStatus:'NOT_VERIFIED' as const,sourceApproved:false as const
   };
   const conditionalPositionRefs=[...lentilModelPositionRefs,pastaModelPositionRef];
-  if(new Set([...exact,...conditionalPositionRefs].map(r=>r.recipeId+':'+r.rowId)).size!==8)invalid();
+  if(new Set([...exact,...conditionalPositionRefs].map(r=>r.recipeId+':'+r.rowId)).size!==10)invalid();
   const sourceBindings={batchReviewSha256:digest(load('pilot-19-source-quantity-20261105/batch-review-v1.json')),
     lentilReviewSha256:digest(load('nonfish-lentil-20261105/review-bindings-v1.json')),
     expansionReviewSha256:digest(load('source-gaps-expansion-20261105/expansion-bindings-v1.json'))};
