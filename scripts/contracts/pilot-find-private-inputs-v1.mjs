@@ -6,16 +6,12 @@
 import { createHash } from 'node:crypto';
 import { readdir, lstat, readFile } from 'node:fs/promises';
 import { resolve, join, basename } from 'node:path';
-import { readFileSync } from 'node:fs';
-
-const manifest=JSON.parse(readFileSync(
-  new URL('../../docs/premium/retained-sources/pilot-staging-review-20261106/family-review-aggregate-v2.json',import.meta.url),'utf8'
-));
+// Pinned to reviewed aggregate 2026-11-06. Standalone: safe to run outside the dirty checkout.
 const sha=(bytes)=>createHash('sha256').update(bytes).digest('hex');
 const expected=new Map([
-  ['PRIVATE_CANDIDATE',manifest.inputBindings.candidateSha256],
-  ['PRIVATE_EXACT_SNAPSHOT',manifest.inputBindings.snapshotSha256],
-  ['PRIVATE_FAMILY_SNAPSHOT',manifest.inputBindings.familySnapshotSha256]
+  ['PRIVATE_CANDIDATE','485da00522a3014c7722a7443b63b45fd3ddfcf05ec8f0186fe7d1ca704d50af'],
+  ['PRIVATE_EXACT_SNAPSHOT','8ec234f6c0f1821b8dd100f3dfe4929ab34d13ff3ba38f6df1fb05db4508ef5a'],
+  ['PRIVATE_FAMILY_SNAPSHOT','f6c11e8c184f42548f5461250a47b4fa84dce0cd84b30807a831fca1befa74ee']
 ]);
 const blocked=new Set(['.git','node_modules','.next','dist','build','coverage','.cache','.npm','.pnpm-store','.yarn']);
 async function inspect(root) {
