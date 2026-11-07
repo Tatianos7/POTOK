@@ -35,6 +35,9 @@ jobs:
       - name: Staging-only web preview guard regressions (no deployment)
         run: node --test scripts/security/staging-preview-guard.test.mjs
 
+      - name: Staging generation diagnostic regression tests
+        run: node --import tsx --test src/services/stagingGenerationProbe.test.ts
+
       - name: TypeScript and production build (no deployment)
         run: npm run build
         env:
