@@ -38,6 +38,9 @@ jobs:
       - name: Staging generation diagnostic regression tests
         run: node --import tsx --test src/services/stagingGenerationProbe.test.ts
 
+      - name: Synthetic seven-day server algorithm regression
+        run: node --import tsx --test src/dev/stagingSyntheticWeekServiceV1.test.ts
+
       - name: TypeScript and production build (no deployment)
         run: npm run build
         env:
