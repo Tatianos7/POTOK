@@ -191,10 +191,26 @@ export async function runExactFoodNutritionAcceptanceV2(t: TestContext, db: DB):
     await issue(invalidate(5007,latest)); assert.equal((await readCurrentExactFoodNutritionV2(port(),foodId,'raw')).kind,'UNRESOLVED');
     assert.equal(await sql(`SELECT revision_id FROM potok_food_evidence.exact_heads_v2 WHERE canonical_food_id=${q(foodId)}`),latest.revisionId);
   });
-  await t.test('rejection creates terminal event/receipt without revision or head change', async () => {
-    const before = await sql('SELECT count(*) FROM potok_food_evidence.exact_revisions_v2');
-    await issue({ contract:exactFoodNutritionRequestContractV2,kind:'REVIEW_REJECTED',idempotencyReference:id(5008),sourceProposalDigest:dossier.p.digest,reason:'Synthetic rejected mapping' });
-    assert.equal(await sql('SELECT count(*) FROM potok_food_evidence.exact_revisions_v2'),before);
+  await t.test('rejection is receipt-recoverable, replay-safe and does not change revisions or head', async () => {
+    const revisionCount = await sql('SELECT count(*) FROM potok_food_evidence.exact_revisions_v2');
+    const beforeHead = await sql(`SELECT jsonb_agg(to_jsonb(h) ORDER BY canonical_food_id,food_state)
+      FROM potok_food_evidence.exact_heads_v2 h`);
+    const rejected: ExactFoodNutritionReviewRequestV2 = {
+      contract:exactFoodNutritionRequestContractV2,kind:'REVIEW_REJECTED',idempotencyReference:id(5008),
+      sourceProposalDigest:dossier.p.digest,reason:'Synthetic rejected mapping'
+    };
+    const firstRejection = await issue(rejected);
+    assert.equal(firstRejection.replayed,false);
+    const stored = await port().receipt(rejected.idempotencyReference);
+    await verifyExactFoodNutritionReceiptV2(raw(rejected),actor,stored);
+    const replay = await issue(rejected);
+    assert.equal(replay.replayed,true);
+    assert.equal(replay.eventRaw,firstRejection.eventRaw);
+    assert.equal(replay.targetRaw,firstRejection.targetRaw);
+    await assert.rejects(port().review(raw({ ...rejected,reason:'Different rejection reason' })),/IDEMPOTENCY_PAYLOAD_CONFLICT/);
+    assert.equal(await sql('SELECT count(*) FROM potok_food_evidence.exact_revisions_v2'),revisionCount);
+    assert.equal(await sql(`SELECT jsonb_agg(to_jsonb(h) ORDER BY canonical_food_id,food_state)
+      FROM potok_food_evidence.exact_heads_v2 h`),beforeHead);
   });
   const nutritionV1 = (c: CanonicalFoodReviewedRevisionV1): NutritionFoodReviewProposalV1 => ({
     contract:'potok-nutrition-review-proposal-v1',canonicalFoodId:c.canonicalFoodId,canonicalRevisionId:c.revisionId,canonicalRevisionDigest:c.digest,

@@ -1,0 +1,54 @@
+name: POTOK Staging web preview build (no deployment)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  staging-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Check isolated Staging configuration
+        env:
+          STAGING_ANON_KEY: ${{ secrets.POTOK_STAGING_SUPABASE_ANON_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$STAGING_ANON_KEY" || { echo "::error::Missing Staging publishable/anon key. No preview is built."; exit 1; }
+          case "$STAGING_ANON_KEY" in
+            *service_role*|*SUPABASE_SERVICE_ROLE*|*postgres*) echo "::error::Privileged key is forbidden"; exit 1 ;;
+          esac
+          echo "Staging-only project is fixed by this workflow; Production is never an input."
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Build Staging-only web assets
+        env:
+          VITE_SUPABASE_URL: https://ozidryfvhkcbtpnulakq.supabase.co
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.POTOK_STAGING_SUPABASE_ANON_KEY }}
+        run: npm run build
+      - name: Verify built environment identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -l 'dtsdnhbcwpbfrhcazqkb.supabase.co' dist; then
+            echo "::error::Production Supabase URL found in built web assets"; exit 1
+          fi
+          if ! grep -R -l 'ozidryfvhkcbtpnulakq.supabase.co' dist >/dev/null; then
+            echo "::error::Expected Staging Supabase URL absent"; exit 1
+          fi
+      - name: Upload private-review Staging build (not published)
+        uses: actions/upload-artifact@v4
+        with:
+          name: potok-staging-web-preview-no-deploy
+          path: dist/
+          retention-days: 3
+          if-no-files-found: error
