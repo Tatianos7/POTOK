@@ -86,6 +86,8 @@ export function recoverFrozen19RetainedReferencesV1() {
     expansionReviewSha256:digest(load('source-gaps-expansion-20261105/expansion-bindings-v1.json'))};
   return {contract:'potok-frozen19-retained-partial-provenance-v1',usage:'OFFLINE_PARTIAL_EVIDENCE_NOT_COMPLETE_QUEUE',
     recipeCount:19,expectedUnresolvedIngredientRows:10,exactRowReferences:exact,
-    recipeOnlyReferences:recipeOnly,lentilModelPositionRefs,pastaModelPositionRef,conditionalPositionRefs,sourceBindings,completeTenRowMapping:false,
+    recipeOnlyReferences:recipeOnly,lentilModelPositionRefs,pastaModelPositionRef,conditionalPositionRefs,sourceBindings,
+    allTenSourcePositionsLocated:true,retainedRowDigestsAvailable:exact.length,
+    positionsRequiringOriginalRowRecheck:conditionalPositionRefs.length,completeTenRowMapping:false,
     noClaimsForUnmappedRows:true,readyForServerSubmission:false,canApply:false,mayActivate:false};
 }
