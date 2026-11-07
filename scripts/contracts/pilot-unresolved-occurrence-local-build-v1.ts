@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { runNonfishLentilAlternativesV1 } from './nonfish-lentil-alternatives-v1';
 import { preparePilotFamilyIdentityReviewV2 } from './pilot-family-identity-review-v2';
 import { buildPilotUnresolvedOccurrenceQueueV1 } from './pilot-unresolved-occurrence-queue-v1';
-import { pilotDigestV1, pilotCanonicalV1 } from './pilot-admission-readiness-v1';
+import { pilotDigestV1 } from './pilot-admission-readiness-v1';
 
 const aggregatePath='docs/premium/retained-sources/pilot-staging-review-20261106/family-review-aggregate-v2.json';
 function invalid(): never { throw Error('PILOT_PRIVATE_INPUT_PIN_OR_SNAPSHOT_MISMATCH'); }
@@ -30,7 +30,6 @@ export async function assemblePrivatePilotUnresolvedQueueV1(
   const packet=await preparePilotFamilyIdentityReviewV2(
     inputs.candidateRaw,models,inputs.exactSnapshotRaw,inputs.familySnapshotRaw
   );
-  if (pilotDigestV1(pilotCanonicalV1(packet.inputBindings))==='') invalid(); // shape present; no promotion via manifest
   if (packet.inputBindings.candidateSha256!==manifest.inputBindings.candidateSha256
     || packet.inputBindings.snapshotSha256!==manifest.inputBindings.snapshotSha256
     || packet.inputBindings.familySnapshotSha256!==manifest.inputBindings.familySnapshotSha256
