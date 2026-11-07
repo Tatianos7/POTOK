@@ -25,7 +25,7 @@ export function recoverFrozen19RetainedReferencesV1() {
   ).map((r:any)=>({sourceRecord,recipeId:r.recipeId,rowId:r.ingredientRowId,
     originalRowSha256:r.sourceAuthoringRowSha256,identityStatus:'NOT_VERIFIED',sourceApproved:false as const})));
   if(exact.length!==4||new Set(exact.map(r=>r.recipeId+':'+r.rowId)).size!==4)invalid();
-  const recipeOnly=lentils.rows.map((r:{recipeId:string;recipeSha256:string})=>({
+  const recipeOnly:( {sourceRecord:string;recipeId:string;recipeSha256:string;rowId:null;identityStatus:'NOT_VERIFIED';sourceApproved:false} )[]=lentils.rows.map((r:{recipeId:string;recipeSha256:string})=>({
     sourceRecord:'FDC_SR_LEGACY:172420:DRY_RAW:100G',recipeId:r.recipeId,
     recipeSha256:r.recipeSha256,rowId:null,identityStatus:'NOT_VERIFIED' as const,
     sourceApproved:false as const
