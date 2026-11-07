@@ -27,7 +27,8 @@ export function runSyntheticWeekManualSmokeV1(){
    {label:'Перекус',sourceCategories:['SNACK'],targetSharePercent:15}],
   rankedCandidatePoolSize:12,shortlistPerSlot:4,dayPoolSize:4,
   maxDayEvaluations:256,maxWeekEvaluations:1024,maxRecipeUses:2};
- const catalog=buildRecipeAuthoringTestCatalogV1(sheets);
+ const catalog={...buildRecipeAuthoringTestCatalogV1(sheets),
+  source:{fileName:'synthetic-only-fixture.xlsx',sha256:'a'.repeat(64),bytes:1}};
  const preview=previewRecipeAuthoringWeekV1(catalog,scenario);
  const result={contract:'potok-synthetic-week-manual-smoke-v1',usage:'LOCAL_SYNTHETIC_DEMO_ONLY',
   dataset:'36 SYNTHETIC recipes; values are only arithmetic fixtures',
