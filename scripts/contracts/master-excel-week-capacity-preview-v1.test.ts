@@ -1,7 +1,7 @@
 import {strict as assert} from 'node:assert';
 import {test} from 'node:test';
 import * as XLSX from 'xlsx';
-import {readMasterExcelCapacityInputsV1,previewMasterExcelWeekCapacityV1} from './master-excel-week-capacity-preview-v1';
+import {readMasterExcelCapacityInputsV1,previewMasterExcelWeekCapacityV1,previewMasterExcelWeekTargetsV1} from './master-excel-week-capacity-preview-v1';
 
 function workbook(rows:Record<string,unknown>[]):Buffer{
  const wb=XLSX.utils.book_new();
@@ -129,4 +129,17 @@ test('low-calorie target chooses target-proximate inputs rather than highest kca
  assert.ok(result.witnessInputRecipeIds.includes('lunch_16'));
  assert.ok(result.witnessInputRecipeIds.includes('snack_08'));
  assert.equal(result.witnessSubsetSelection,'TARGET_PROXIMATE_REFERENCE_KCAL_PER_CATEGORY_WITH_STABLE_ID_TIEBREAK');
+});
+
+test('offline batch evaluates independent goals without approving or persisting plans',()=>{
+ const rows=[
+  ...Array.from({length:8},(_,i)=>recipe('breakfast_'+i,'BREAKFAST',250)),
+  ...Array.from({length:16},(_,i)=>recipe('lunch_'+i,'LUNCH',450)),
+  ...Array.from({length:8},(_,i)=>recipe('snack_'+i,'SNACK',150))
+ ];
+ const batch=previewMasterExcelWeekTargetsV1(workbook(rows),[1400,1800,2200],'2026-11-16');
+ assert.deepEqual(batch.previews.map(x=>x.scenario.dailyCalorieTarget),[1400,1800,2200]);
+ assert.ok(batch.previews.every(x=>x.weekStart==='2026-11-16'&&x.canApply===false));
+ assert.equal(batch.runtimePublishable,false);
+ assert.throws(()=>previewMasterExcelWeekTargetsV1(workbook(rows),[1400,1400]),/targets/);
 });
