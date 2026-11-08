@@ -117,3 +117,16 @@ test('authoring review statuses are visible without treating them as approved',(
  assert.equal(parsed.sourceApproved,false);
  assert.equal(parsed.runtimePublishable,false);
 });
+
+test('low-calorie target chooses target-proximate inputs rather than highest kcal',()=>{
+ const rows=[
+  ...Array.from({length:9},(_,i)=>recipe('breakfast_'+String(i).padStart(2,'0'),'BREAKFAST',i===8?350:900)),
+  ...Array.from({length:17},(_,i)=>recipe('lunch_'+String(i).padStart(2,'0'),'LUNCH',i===16?350:900)),
+  ...Array.from({length:9},(_,i)=>recipe('snack_'+String(i).padStart(2,'0'),'SNACK',i===8?350:900))
+ ];
+ const result=previewMasterExcelWeekCapacityV1(workbook(rows),1400);
+ assert.ok(result.witnessInputRecipeIds.includes('breakfast_08'));
+ assert.ok(result.witnessInputRecipeIds.includes('lunch_16'));
+ assert.ok(result.witnessInputRecipeIds.includes('snack_08'));
+ assert.equal(result.witnessSubsetSelection,'TARGET_PROXIMATE_REFERENCE_KCAL_PER_CATEGORY_WITH_STABLE_ID_TIEBREAK');
+});
