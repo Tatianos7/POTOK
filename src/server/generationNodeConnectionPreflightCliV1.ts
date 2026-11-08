@@ -5,7 +5,7 @@ import {runGenerationNodeConnectionPreflightV1,stagingNodeConnectionProbeContrac
 void(async()=>{
  try{
   const result=await runGenerationNodeConnectionPreflightV1(process.argv[2],{
-   enabled:process.env.POTOK_GENERATION_CONNECTION_PREFLIGHT_ENABLED==='true'
+   enabled:process.env.POTOK_GENERATION_CONNECTION_PREFLIGHT_ENABLED==='true',dnsMode:process.env.POTOK_GENERATION_CONNECTION_DNS_MODE
   });
   process.stdout.write(JSON.stringify(result)+'\n');
   process.exitCode=result.status==='PASS'?0:1;
