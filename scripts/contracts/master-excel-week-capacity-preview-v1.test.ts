@@ -78,3 +78,17 @@ test('explicit dinner category is respected when available',()=>{
  assert.equal(result.witnessInputRecipeIds.filter(id=>id.startsWith('dinner_')).length,8);
  assert.equal(result.dinnerFallback,'NONE_EXPLICIT_DINNER_CATEGORY');
 });
+
+test('small real dinner category does not disable bounded week witness',()=>{
+ const rows=[
+  ...Array.from({length:8},(_,i)=>recipe('breakfast_'+i,'BREAKFAST',300)),
+  ...Array.from({length:14},(_,i)=>recipe('lunch_'+i,'LUNCH',500)),
+  ...Array.from({length:2},(_,i)=>recipe('dinner_'+i,'DINNER',550)),
+  ...Array.from({length:8},(_,i)=>recipe('snack_'+i,'SNACK',200))
+ ];
+ const result=previewMasterExcelWeekCapacityV1(workbook(rows),5000);
+ assert.equal(result.witnessDinnerRecipeCount,2);
+ assert.equal(result.witnessInputRecipeIds.length,32);
+ assert.equal(result.witnessInputRecipeIds.filter(id=>id.startsWith('lunch_')).length,14);
+ assert.equal(result.witnessSkippedReason,'WEEK_CALORIE_CAPACITY_ALREADY_FAILED');
+});
