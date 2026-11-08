@@ -47,7 +47,7 @@ export function readMasterExcelCapacityInputsV1(bytes:Buffer) {
   runtimePublishable:false,canApply:false,mayActivate:false};
 }
 export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget:number,weekStart='2026-11-09'){
- if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(weekStart)||!Number.isFinite(Date.parse(weekStart+'T00:00:00Z'))
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(weekStart)||!Number.isFinite(Date.parse(weekStart+'T00:00:00Z'))
   ||new Date(weekStart+'T00:00:00Z').toISOString().slice(0,10)!==weekStart)invalid('weekStart');
  if(!Number.isInteger(dailyCalorieTarget)||dailyCalorieTarget<1||dailyCalorieTarget>10000)invalid('target');
  const catalog=readMasterExcelCapacityInputsV1(bytes);
