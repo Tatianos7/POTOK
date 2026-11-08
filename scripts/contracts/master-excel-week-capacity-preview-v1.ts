@@ -51,9 +51,12 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   ||new Date(weekStart+'T00:00:00Z').toISOString().slice(0,10)!==weekStart)invalid('weekStart');
  if(!Number.isInteger(dailyCalorieTarget)||dailyCalorieTarget<1||dailyCalorieTarget>10000)invalid('target');
  const catalog=readMasterExcelCapacityInputsV1(bytes);
- // Existing checker accepts <=128 inputs; this is an explicit source-order
- // limit for this offline diagnostic, NOT a publication or eligibility choice.
- const recipes=catalog.recipes.slice(0,128);
+ // Existing checker accepts <=128 inputs. Never silently discard the last
+ // Excel rows: keep the highest-reference-kcal candidates per category and
+ // make any negative result conditional on this bounded subset.
+ const sorted=[...catalog.recipes].sort((a,b)=>Number(b.caloriesPerDeclaredServing)-Number(a.caloriesPerDeclaredServing)
+  ||(a.recipeId<b.recipeId?-1:a.recipeId>b.recipeId?1:0));
+ const recipes=sorted.slice(0,128);
  const hasDinner=catalog.recipes.some(r=>r.sourceCategory==='DINNER');
  const scenario={dailyCalorieTarget,tolerancePercent:15,maxRecipeUses:7,
   slots:[
@@ -84,7 +87,8 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
  return {contract:'potok-master-excel-week-capacity-preview-v1',
   catalog:{authoringRecipes:catalog.authoringRecipes,usableRecipes:catalog.usableRecipes,
    excluded:catalog.excluded,consideredRecipes:recipes.length,
-   omittedByExistingCheckerLimit:catalog.recipes.length-recipes.length},
+   omittedByExistingCheckerLimit:catalog.recipes.length-recipes.length,
+   capacityBoundIsFullCatalog:catalog.recipes.length<=128},
   scenario,weekStart,capacity,offlineWeekWitness:witness,
   witnessInputRecipeIds:witnessInputs.map(r=>r.recipeId),
   witnessSubsetLimitedTo32:true,
@@ -92,6 +96,7 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   dinnerUsesLunchFallback:!hasDinner,
   witnessDinnerRecipeCount:dinnerCount,
   witnessNegativeResultDoesNotProveFullCatalogInfeasibility:true,
+  capacityNegativeResultDoesNotProveFullCatalogInfeasibility:catalog.recipes.length>128,
   witnessSkippedReason:witness===null?(witnessInputs.length!==32?'INSUFFICIENT_CATEGORY_INPUTS':'WEEK_CALORIE_CAPACITY_ALREADY_FAILED'):null,
   source:'OWNER_MASTER_EXCEL_REFERENCE_ONLY',
   dinnerFallback:hasDinner?'NONE_EXPLICIT_DINNER_CATEGORY':'LUNCH_ALLOWED_FOR_OFFLINE_PREVIEW_ONLY',
