@@ -75,11 +75,13 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   ]};
  const capacity=analyzeWeekInputCalorieCapacityV1(recipes,scenario);
  // The existing complete-week search accepts at most 32 inputs. Prefer
- // higher-kcal authoring candidates to avoid an arbitrary alphabetical
- // subset producing a misleading false negative at higher calorie targets.
+ // target-proximate authoring candidates instead of arbitrary alphabetical
+ // or always-highest-kcal choices (which can miss low-calorie target weeks).
  // This remains an incomplete subset search, NOT an eligibility decision.
+ const perSlotTarget=dailyCalorieTarget/scenario.slots.length;
  const byCategory=(category:string,count:number)=>recipes.filter(r=>r.sourceCategory===category)
-   .sort((a,b)=>Number(b.caloriesPerDeclaredServing)-Number(a.caloriesPerDeclaredServing)
+   .sort((a,b)=>Math.abs(Number(a.caloriesPerDeclaredServing)-perSlotTarget)
+     -Math.abs(Number(b.caloriesPerDeclaredServing)-perSlotTarget)
      ||(a.recipeId<b.recipeId?-1:a.recipeId>b.recipeId?1:0)).slice(0,count);
  const dinnerCount=hasDinner?Math.min(8,recipes.filter(r=>r.sourceCategory==='DINNER').length):0;
  const witnessInputs=[
@@ -100,7 +102,7 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   scenario,weekStart,capacity,offlineWeekWitness:witness,
   witnessInputRecipeIds:witnessInputs.map(r=>r.recipeId),
   witnessSubsetLimitedTo32:true,
-  witnessSubsetSelection:'HIGHEST_REFERENCE_KCAL_PER_CATEGORY_WITH_STABLE_ID_TIEBREAK',
+  witnessSubsetSelection:'TARGET_PROXIMATE_REFERENCE_KCAL_PER_CATEGORY_WITH_STABLE_ID_TIEBREAK',
   dinnerUsesLunchFallback:!hasDinner,
   witnessDinnerRecipeCount:dinnerCount,
   witnessNegativeResultDoesNotProveFullCatalogInfeasibility:true,
