@@ -71,6 +71,21 @@ export default function AuthoringWeekViewer() {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const catalogGeneration = useRef(0);
   const generation = useRef(0);
+  async function openPackagedCatalog() {
+    const request = ++catalogGeneration.current;
+    if (reportOrigin === 'selection') clearWeek();
+    setCatalog(null); setCatalogError(''); setCatalogLoading(true);
+    try {
+      const response = await fetch('./manual-test-catalog.json', {cache: 'no-store'});
+      if (!response.ok) throw new Error('CATALOG_UNAVAILABLE');
+      const raw = await response.text();
+      if (new Blob([raw]).size > MAX_AUTHORING_FILE_BYTES) throw new Error('CATALOG_TOO_LARGE');
+      const decoded = decodeAuthoringRecipeCatalog(JSON.parse(raw));
+      if (request === catalogGeneration.current) setCatalog(decoded);
+    } catch {
+      if (request === catalogGeneration.current) setCatalogError('Комплектный каталог недоступен. Выбери JSON тестового каталога вручную.');
+    } finally {if (request === catalogGeneration.current) setCatalogLoading(false);}
+  }
   function clearWeek() {
     ++generation.current;
     setReport(null); setReportOrigin(null); setSelectedDay(0); setError(''); setLoading(false);
@@ -109,8 +124,9 @@ export default function AuthoringWeekViewer() {
   return <main className="mx-auto max-w-3xl space-y-6 p-5 pb-12 text-stone-950">
     <header><p className="text-sm font-semibold tracking-widest">POTOK / ТЕСТОВЫЙ ПРОСМОТР</p><h1 className="mt-2 text-2xl font-semibold">Неделя из сборника</h1></header>
     <aside className="rounded-xl border border-stone-300 bg-stone-50 p-4 text-sm">
-      Черновые справочные данные. Порции и выход пока не проверены приготовлением. Это план, а не съеденная еда. Генератор в приложении выключен.
+      Черновые справочные данные. Порции и выход пока не проверены приготовлением. Это тестовый подбор, а не съеденная еда. Серверный генератор выключен.
     </aside>
+    <button type="button" onClick={() => {void openPackagedCatalog();}} className="rounded-lg border border-stone-300 px-4 py-3">Открыть комплектный тестовый каталог</button>
     <label className="block rounded-xl border border-stone-200 p-4">Открыть JSON тестового каталога рецептов
       <input className="mt-3 block w-full text-sm" type="file" accept=".json,application/json" onChange={e => {void loadCatalog(e.currentTarget.files?.[0]);}} />
     </label>

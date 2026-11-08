@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 dist
+dist-manual-test
+android-manual-test
 dist-ssr
 *.local
 

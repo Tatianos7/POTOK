@@ -21,4 +21,12 @@ const config: CapacitorConfig = {
   }
 };
 
+// Isolated manual-test APK: separate storage/application ID and local-only entry.
+if (process.env.POTOK_MANUAL_TEST === '1') {
+  config.appId = 'com.potok.fitness.menutest';
+  config.appName = 'POTOK Меню ТЕСТ';
+  config.webDir = 'dist-manual-test';
+  config.android = { path: 'android-manual-test' };
+}
+
 export default config;
