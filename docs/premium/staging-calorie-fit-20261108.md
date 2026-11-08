@@ -1,5 +1,8 @@
 # Уточнение калорийности тестовой недели — 8 ноября 2026
 
+Опубликовано на существующем тестовом адресе:
+`https://potok-staging-test.vercel.app/staging-generator-check.html`.
+
 Изменение предназначено для существующего справочного теста
 `/staging-generator-check.html`, а не для trusted generator или Production.
 
@@ -44,3 +47,12 @@
 дни, новые суммы, раскрытие рецептов, запоздавший ответ и отказ Auth. TypeScript,
 lint, свежесть сгенерированного API и staging Vite build проходят. Новых записей
 в Supabase, публикации рецептов, source approvals или активации trusted worker нет.
+
+Опубликованный Preview deployment: `dpl_EdJYjPDesfb7jsjcR6waDRVrU697`, READY,
+точный app commit `26c8cd25fc20b39ff0872c0a88a45b52fe6abcfb`.
+Тот же разрешённый каталог и флаг использованы только для новой Preview-ветки.
+Предыдущая версия тестового адреса для возврата: `dpl_JBmK9imuTN3ghwtA11YnWyyrunwy`.
+Hosted-проверка: HTML 200, опубликованные JS содержат карточку цель/меню,
+новый scope и объяснение ограничения; API GET 405, анонимный POST 401 AUTH_REQUIRED.
+Полная генерация с пользовательской hosted-сессией проверяется владельцем по ссылке;
+локальная Auth-фикстура не выдаётся за такой тест.
