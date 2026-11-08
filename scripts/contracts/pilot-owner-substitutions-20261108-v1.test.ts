@@ -9,6 +9,16 @@ test('owner scope excludes one edamame recipe and replaces brown lentil intent w
  assert.equal(p.ownerDecisions.greekYogurt.intendedProduct,'PLAIN_UNSWEETENED_GREEK_YOGURT_2_PERCENT');
  assert.equal(p.ownerDecisions.greekYogurt.notUniversalRetailEquivalence,true);
  assert.equal(p.ownerDecisions.lentils.intendedProduct,'GREEN_LENTILS');
+ assert.equal(p.ownerDecisions.greenBuckwheat.intendedProduct,'GREEN_BUCKWHEAT_UNROASTED');
+ assert.equal(p.ownerDecisions.greenBuckwheat.distinctFromGreenLentils,true);
+ assert.deepEqual(p.ownerDecisions.greenBuckwheat.ownerReferencePer100g,{
+  state:'DRY_UNCOOKED',caloriesKcal:343,proteinG:13.25,fatG:3.4,carbsG:71.5,
+  fiberG:10,carbsExcludeFiber:null,
+  referenceStatus:'OWNER_PROVIDED_INTERNET_TABLE_UNVERIFIED'
+ });
+ assert.equal(p.ownerDecisions.greenBuckwheat.sourceLinkProvided,false);
+ assert.equal(p.ownerDecisions.greenBuckwheat.allowCanonicalWrite,false);
+ assert.equal(p.ownerDecisions.greenBuckwheat.allowRecipeRecalculation,false);
  assert.deepEqual(p.ownerDecisions.lentils.ownerReferencePer100g,{
   state:'DRY_UNCOOKED',caloriesKcal:340,proteinG:26,fatG:2,carbsG:55,
   fiberG:null,carbsExcludeFiber:null,referenceStatus:'OWNER_PROVIDED_NOT_SOURCE_VERIFIED'
