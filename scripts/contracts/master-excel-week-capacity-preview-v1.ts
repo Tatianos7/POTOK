@@ -46,7 +46,9 @@ export function readMasterExcelCapacityInputsV1(bytes:Buffer) {
   recipes:usable,referenceNutritionOnly:true,sourceApproved:false,
   runtimePublishable:false,canApply:false,mayActivate:false};
 }
-export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget:number){
+export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget:number,weekStart='2026-11-09'){
+ if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(weekStart)||!Number.isFinite(Date.parse(weekStart+'T00:00:00Z'))
+  ||new Date(weekStart+'T00:00:00Z').toISOString().slice(0,10)!==weekStart)invalid('weekStart');
  if(!Number.isInteger(dailyCalorieTarget)||dailyCalorieTarget<1||dailyCalorieTarget>10000)invalid('target');
  const catalog=readMasterExcelCapacityInputsV1(bytes);
  // Existing checker accepts <=128 inputs; this is an explicit source-order
@@ -73,14 +75,14 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
    ...byCategory('SNACK',8)
  ];
  const witness=witnessInputs.length===32 && capacity.status==='NECESSARY_CALORIE_BOUND_PASSED_NOT_FEASIBILITY'
-   ?findCompleteInputWeekWitnessV1(witnessInputs,{...scenario,weekStart:'2026-11-09'},
+   ?findCompleteInputWeekWitnessV1(witnessInputs,{...scenario,weekStart},
       {maxDayCandidates:25000,maxWeekNodes:30000})
    :null;
  return {contract:'potok-master-excel-week-capacity-preview-v1',
   catalog:{authoringRecipes:catalog.authoringRecipes,usableRecipes:catalog.usableRecipes,
    excluded:catalog.excluded,consideredRecipes:recipes.length,
    omittedByExistingCheckerLimit:catalog.recipes.length-recipes.length},
-  scenario,capacity,offlineWeekWitness:witness,
+  scenario,weekStart,capacity,offlineWeekWitness:witness,
   witnessInputRecipeIds:witnessInputs.map(r=>r.recipeId),
   witnessSubsetLimitedTo32:true,
   witnessSubsetSelection:'HIGHEST_REFERENCE_KCAL_PER_CATEGORY_WITH_STABLE_ID_TIEBREAK',
@@ -92,7 +94,7 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   sourceApproved:false,runtimePublishable:false,canApply:false,mayActivate:false};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
- if(process.argv.length!==4)invalid('usage: XLSX_PATH DAILY_KCAL');
+ if(process.argv.length!==4&&process.argv.length!==5)invalid('usage: XLSX_PATH DAILY_KCAL [WEEK_START_YYYY-MM-DD]');
  const target=Number(process.argv[3]);
- process.stdout.write(JSON.stringify(previewMasterExcelWeekCapacityV1(readFileSync(process.argv[2]),target),null,2)+'\n');
+ process.stdout.write(JSON.stringify(previewMasterExcelWeekCapacityV1(readFileSync(process.argv[2]),target,process.argv[4]??'2026-11-09'),null,2)+'\n');
 }
