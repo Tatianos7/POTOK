@@ -109,6 +109,11 @@ export async function preparePilotFamilyIdentityReviewV2(candidateRaw:string,mod
       foodRowsWithFamilyCandidates:foods.filter(g=>g.candidates.some(c=>c.disposition==='CANDIDATE_FOR_REVIEW')).reduce((n,g)=>n+g.occurrences,0),
       foodRowsWithoutFamilyCandidates:foods.filter(g=>!g.candidates.some(c=>c.disposition==='CANDIDATE_FOR_REVIEW')).reduce((n,g)=>n+g.occurrences,0),
       sourceGroupsRequiringPrecheck:foods.filter(g=>g.route==='INDEPENDENT_IMPORT_PRECHECK_BEFORE_ANY_NEW_DEFINITION').map(g=>g.sourceRecord),
+      reviewWorklist:foods.map(g=>({sourceRecord:g.sourceRecord,occurrences:g.occurrences,
+        candidateCount:g.candidates.filter(c=>c.disposition==='CANDIDATE_FOR_REVIEW').length,
+        blockedVariantCount:g.candidates.filter(c=>c.disposition!=='CANDIDATE_FOR_REVIEW').length,
+        nextAction:g.route==='INDEPENDENT_IMPORT_PRECHECK_BEFORE_ANY_NEW_DEFINITION'
+          ?'INDEPENDENT_IDENTITY_PRECHECK':'MANUAL_CANONICAL_IDENTITY_AND_SOURCE_STATE_REVIEW'})),
       approvedBindings:0,catalogWrites:0,sourceApprovals:0 },groups,
     proposedFoodUpdates:[],proposedFoodCreates:[],sourceApprovalRequests:[],
     canApply:false,sourceApproved:false,readyForServerSubmission:false,mayActivate:false,

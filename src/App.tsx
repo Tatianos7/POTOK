@@ -35,6 +35,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import PremiumRoute from './components/PremiumRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import Today from './pages/Today';
+import TestWeekPreview from './pages/TestWeekPreview';
 import MyProgram from './pages/MyProgram';
 import Paywall from './pages/Paywall';
 import PremiumRecipes from './pages/PremiumRecipes';
@@ -393,6 +394,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <ImportExercises />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dev/test-week"
+        element={
+          <ProtectedRoute>
+            <TestWeekPreview />
           </ProtectedRoute>
         }
       />

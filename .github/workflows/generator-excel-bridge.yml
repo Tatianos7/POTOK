@@ -1,0 +1,24 @@
+name: Generator Excel bridge unit tests
+on:
+  pull_request:
+    paths:
+      - 'scripts/contracts/master-excel-week-capacity-preview-v1.ts'
+      - 'scripts/contracts/master-excel-week-capacity-preview-v1.test.ts'
+      - 'scripts/contracts/week-input-calorie-capacity-v1.ts'
+      - 'scripts/contracts/complete-input-week-witness-v1.ts'
+      - 'package.json'
+      - 'package-lock.json'
+  workflow_dispatch:
+jobs:
+  excel-bridge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run test:generator:excel
