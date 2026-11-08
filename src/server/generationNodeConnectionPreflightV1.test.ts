@@ -31,3 +31,22 @@ test('enabling probe with absent protected config never creates pools or writes'
  assert.equal(r.writes,0);
  assert.equal(r.workerEnabled,false);
 });
+
+test('DNS mode is explicit, invalid transport does not inspect secrets or connect',async()=>{
+ let calls=0;
+ const probe=await runGenerationNodeConnectionPreflightV1('/nonexistent/secret.json',{
+  enabled:true,dnsMode:'AUTO_FALLBACK',openPool:()=>{calls++;throw Error('MUST_NOT_CONNECT');}
+ });
+ assert.equal(probe.status,'FAIL');
+ assert.equal(probe.workerEnabled,false);
+ assert.equal(probe.writes,0);
+ assert.equal(calls,0);
+});
+test('explicit DNS_AAAA does not resolve or contact database without private credentials',async()=>{
+ let calls=0;
+ const probe=await runGenerationNodeConnectionPreflightV1('/nonexistent/secret.json',{
+  enabled:true,dnsMode:'DNS_AAAA',openPool:()=>{calls++;throw Error('MUST_NOT_CONNECT');}
+ });
+ assert.equal(probe.status,'FAIL');
+ assert.equal(calls,0);
+});
