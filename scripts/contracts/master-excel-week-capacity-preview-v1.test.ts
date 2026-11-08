@@ -106,3 +106,14 @@ test('capacity checker 128-input bound preserves scarce snack category and decla
  assert.equal(result.capacityNegativeResultDoesNotProveFullCatalogInfeasibility,true);
  assert.equal(result.witnessInputRecipeIds.filter(id=>id.startsWith('snack_')).length,8);
 });
+
+test('authoring review statuses are visible without treating them as approved',()=>{
+ const parsed=readMasterExcelCapacityInputsV1(workbook([
+  recipe('review_one','BREAKFAST',350),
+  {...recipe('draft_one','LUNCH',500),status:'DRAFT'},
+  {...recipe('approved_one','SNACK',150),status:'APPROVED'}
+ ]));
+ assert.deepEqual(parsed.statusCounts,{READY_FOR_REVIEW:1,DRAFT:1,APPROVED:1});
+ assert.equal(parsed.sourceApproved,false);
+ assert.equal(parsed.runtimePublishable,false);
+});
