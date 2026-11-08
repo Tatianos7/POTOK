@@ -19,7 +19,6 @@ export type StagingNodeConnectionProbeResultV1={
 };
 const roleNames={reader:'potok_generation_reader_v1',gateway:'potok_generation_gateway_v1'} as const;
 type Channel=keyof typeof roleNames;
-type ProbeRow={role:string;db:string;tls:boolean;transaction_ro:string};
 type ProbeClient=Pick<PoolClient,'query'|'release'>;
 type ProbePool={connect:()=>Promise<ProbeClient>;end:()=>Promise<void>};
 type PoolFactory=(channel:Channel,secrets:GenerationNodePgSecretsV1)=>ProbePool;
