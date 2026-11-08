@@ -9,6 +9,7 @@
 import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import * as XLSX from 'xlsx';
+import {findCompleteInputWeekWitnessV1} from './complete-input-week-witness-v1';
 import {analyzeWeekInputCalorieCapacityV1,type CapacityRecipeV1} from './week-input-calorie-capacity-v1';
 
 type RecipeRow = Record<string,unknown>;
@@ -59,11 +60,27 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
    {label:'SNACK',sourceCategories:['SNACK']}
   ]};
  const capacity=analyzeWeekInputCalorieCapacityV1(recipes,scenario);
+ // The existing complete-week search accepts at most 32 inputs. Select a
+ // deterministic, category-balanced offline subset; this is not an eligibility
+ // decision. The complete catalog still goes through the capacity check.
+ const byCategory=(category:string,count:number)=>recipes.filter(r=>r.sourceCategory===category)
+   .sort((a,b)=>a.recipeId.localeCompare(b.recipeId,'en')).slice(0,count);
+ const witnessInputs=[
+   ...byCategory('BREAKFAST',8),
+   ...byCategory('LUNCH',16),
+   ...byCategory('SNACK',8)
+ ];
+ const witness=witnessInputs.length===32
+   ?findCompleteInputWeekWitnessV1(witnessInputs,{...scenario,weekStart:'2026-11-09'})
+   :null;
  return {contract:'potok-master-excel-week-capacity-preview-v1',
   catalog:{authoringRecipes:catalog.authoringRecipes,usableRecipes:catalog.usableRecipes,
    excluded:catalog.excluded,consideredRecipes:recipes.length,
    omittedByExistingCheckerLimit:catalog.recipes.length-recipes.length},
-  scenario,capacity,source:'OWNER_MASTER_EXCEL_REFERENCE_ONLY',
+  scenario,capacity,offlineWeekWitness:witness,
+  witnessInputRecipeIds:witnessInputs.map(r=>r.recipeId),
+  witnessSubsetLimitedTo32:true,
+  source:'OWNER_MASTER_EXCEL_REFERENCE_ONLY',
   dinnerFallback:'LUNCH_ALLOWED_FOR_OFFLINE_PREVIEW_ONLY',
   personalMacrosAndAllergensChecked:false,portionScaling:false,
   sourceApproved:false,runtimePublishable:false,canApply:false,mayActivate:false};
