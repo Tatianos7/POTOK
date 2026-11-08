@@ -64,3 +64,17 @@ test('offline week date is caller-controlled and invalid dates fail closed',()=>
  assert.equal(previewMasterExcelWeekCapacityV1(bytes,1800,'2026-12-07').weekStart,'2026-12-07');
  assert.throws(()=>previewMasterExcelWeekCapacityV1(bytes,1800,'2026-02-30'),/weekStart/);
 });
+
+test('explicit dinner category is respected when available',()=>{
+ const rows=[
+  ...Array.from({length:8},(_,i)=>recipe('breakfast_'+i,'BREAKFAST',200)),
+  ...Array.from({length:8},(_,i)=>recipe('lunch_'+i,'LUNCH',400)),
+  ...Array.from({length:8},(_,i)=>recipe('dinner_'+i,'DINNER',500)),
+  ...Array.from({length:8},(_,i)=>recipe('snack_'+i,'SNACK',150))
+ ];
+ const result=previewMasterExcelWeekCapacityV1(workbook(rows),4000);
+ assert.deepEqual(result.scenario.slots[2].sourceCategories,['DINNER']);
+ assert.equal(result.dinnerUsesLunchFallback,false);
+ assert.equal(result.witnessInputRecipeIds.filter(id=>id.startsWith('dinner_')).length,8);
+ assert.equal(result.dinnerFallback,'NONE_EXPLICIT_DINNER_CATEGORY');
+});
