@@ -106,6 +106,26 @@ function authoringSearchInput(catalog) {
   };
 }
 
+// src/dev/referenceCalorieCorridorV1.ts
+function referenceCalorieCorridorV1(target) {
+  if (!Number.isInteger(target) || target <= 50 || target > 1e4) throw Error("INVALID_REFERENCE_CALORIE_TARGET");
+  return { contract: "potok-reference-calorie-corridor-v1", minimumKcal: target - 50, maximumKcal: target + 50 };
+}
+function referenceCaloriesFitCorridorV1(target, actual) {
+  const range = referenceCalorieCorridorV1(target);
+  return Number.isFinite(actual) && actual >= range.minimumKcal && actual <= range.maximumKcal;
+}
+function constrainReferenceWeekToCorridorV1(candidate) {
+  const calorieCorridor = referenceCalorieCorridorV1(candidate.scenario.dailyCalorieTarget);
+  const fits = candidate.status === "REFERENCE_WEEK_PREVIEW" && candidate.days.length === 7 && candidate.days.every((d) => referenceCaloriesFitCorridorV1(candidate.scenario.dailyCalorieTarget, Number(d.referenceNutrition.calories)));
+  return {
+    ...candidate,
+    calorieCorridor,
+    status: candidate.status === "REFERENCE_WEEK_PREVIEW" && !fits ? "NO_REFERENCE_WEEK_IN_CALORIE_CORRIDOR" : candidate.status,
+    days: fits ? candidate.days : []
+  };
+}
+
 // src/dev/authoringWeekReport.ts
 var axes = ["calories", "protein", "fat", "carbs", "fiber"];
 var failure = () => {
@@ -136,7 +156,8 @@ var statuses = /* @__PURE__ */ new Set([
   "INCOMPLETE_CATEGORY_POOL",
   "NO_REFERENCE_DAY_IN_EVALUATED_SHORTLISTS",
   "WEEK_SEARCH_LIMIT_REACHED",
-  "NO_REFERENCE_WEEK_IN_RETAINED_POOL"
+  "NO_REFERENCE_WEEK_IN_RETAINED_POOL",
+  "NO_REFERENCE_WEEK_IN_CALORIE_CORRIDOR"
 ]);
 function decodeAuthoringWeekReport(value) {
   const r = object(value);
@@ -145,6 +166,13 @@ function decodeAuthoringWeekReport(value) {
   if (!statuses.has(status)) return failure();
   const s = object(r.scenario), source = object(r.source);
   const target = numeric(s.dailyCalorieTarget);
+  let calorieCorridor;
+  if (r.calorieCorridor !== void 0) {
+    const declared = object(r.calorieCorridor), expected = referenceCalorieCorridorV1(target);
+    if (declared.contract !== expected.contract || declared.minimumKcal !== expected.minimumKcal || declared.maximumKcal !== expected.maximumKcal) return failure();
+    calorieCorridor = expected;
+  }
+  if (status === "NO_REFERENCE_WEEK_IN_CALORIE_CORRIDOR" && !calorieCorridor) return failure();
   if (!Number.isInteger(target) || target < 1 || target > 1e4 || !Number.isInteger(s.maxRecipeUses) || Number(s.maxRecipeUses) < 1 || Number(s.maxRecipeUses) > 7 || !Array.isArray(s.slots) || s.slots.length < 1 || s.slots.length > 7) return failure();
   const slots = s.slots.map((x) => label(object(x).label));
   if (new Set(slots).size !== slots.length) return failure();
@@ -183,6 +211,7 @@ function decodeAuthoringWeekReport(value) {
     });
     if (new Set(meals.map((m) => m.recipeId)).size !== meals.length) return failure();
     const total2 = nutrition(day.referenceNutrition, true);
+    if (calorieCorridor && !referenceCaloriesFitCorridorV1(target, total2.calories)) return failure();
     for (const axis of axes) {
       if (Math.round(total2[axis] * 1e3) !== meals.reduce((sum, m) => sum + Math.round(m.referenceNutrition[axis] * 1e3), 0)) return failure();
     }
@@ -199,7 +228,8 @@ function decodeAuthoringWeekReport(value) {
     scope,
     assumptions,
     notAssessed: r.notAssessed.map(label),
-    days
+    days,
+    ...calorieCorridor ? { calorieCorridor } : {}
   };
 }
 
@@ -598,7 +628,11 @@ function buildStagingReferenceWeek(packed, target, weekStart) {
     })),
     { ...settings, tolerancePercent: 0 }
   );
-  const report = previewRecipeAuthoringWeekV1(input, settings);
+  const report = constrainReferenceWeekToCorridorV1(previewRecipeAuthoringWeekV1(input, settings));
+  const requiredWeek = BigInt(report.calorieCorridor.minimumKcal) * 7000n;
+  const maximumWeek = capacity.optimisticMaximumWeekKcal === null ? null : BigInt(capacity.optimisticMaximumWeekKcal.replace(".", ""));
+  const shortfall = maximumWeek !== null && maximumWeek < requiredWeek ? requiredWeek - maximumWeek : null;
+  const fixed2 = (n) => `${n / 1000n}.${String(n % 1000n).padStart(3, "0")}`;
   const view = decodeAuthoringWeekReport(report);
   const ids = new Set(view.days.flatMap((d) => d.meals.map((m) => m.recipeId)));
   const recipes = packet.recipes.filter((r) => ids.has(r.recipeId));
@@ -612,10 +646,10 @@ function buildStagingReferenceWeek(packed, target, weekStart) {
     sourceRecipeCount: decoded.recipes.size,
     eligibleReferenceRecipes: eligible.length,
     calorieCapacity: {
-      status: capacity.status === "PROVEN_INSUFFICIENT_WEEK_CALORIES" ? "EXACT_WEEK_TARGET_PROVEN_UNREACHABLE" : "EXACT_WEEK_TARGET_NOT_PROVEN",
-      requiredWeekKcal: capacity.requiredMinimumWeekKcal,
+      status: shortfall === null ? "REQUIRED_WEEK_MINIMUM_NOT_PROVEN" : "REQUIRED_WEEK_MINIMUM_UNREACHABLE",
+      requiredWeekKcal: fixed2(requiredWeek),
       optimisticMaximumWeekKcal: capacity.optimisticMaximumWeekKcal,
-      provenWeekShortfallKcal: capacity.provenWeeklyShortfallKcal
+      provenWeekShortfallKcal: shortfall === null ? null : fixed2(shortfall)
     },
     report,
     catalog: { ...packet, recipes },

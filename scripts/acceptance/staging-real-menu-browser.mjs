@@ -61,6 +61,8 @@ try{
       await page.getByRole('button',{name:'Сгенерировать неделю из рецептов',exact:true}).click();
       try {await page.getByText('В сборнике 132 рецепта; 122 с полными справочными числами для теста.',{exact:true}).waitFor();}
       catch(error){console.log('VISIBLE_ERRORS',await page.getByRole('alert').allTextContents());throw error;}
+      const corridor=await page.getByLabel('Допустимый коридор калорийности',{exact:true}).innerText();
+      assert.ok(corridor.includes((n-50).toLocaleString('ru-RU')));assert.ok(corridor.includes((n+50).toLocaleString('ru-RU')));
       if(n===2000){await page.getByText('В проверенных списках не найден подходящий день.',{exact:false}).waitFor();assert.equal(await page.locator('article').count(),0);}
       else{
         const days=page.getByRole('navigation',{name:'Дни недели'}).getByRole('button');assert.equal(await days.count(),7);

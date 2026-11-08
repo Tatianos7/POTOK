@@ -7,6 +7,7 @@ import {authoringSearchInput, decodeAuthoringRecipeCatalog, matchAuthoringRecipe
 import AuthoringRecipeDetails from '../AuthoringRecipeDetails';
 import {selectAuthoringWeek} from '../authoringSelectionView';
 import {previewRecipeAuthoringWeekV1} from '../authoringWeekSearchV1';
+import {referenceCalorieCorridorV1} from '../referenceCalorieCorridorV1';
 import scenario from '../../../docs/premium/authoring-week-scenario-20261103.json';
 
 function fixture() {
@@ -39,6 +40,19 @@ test('calorie card distinguishes target from actual menu and states the precise 
   const html=renderToStaticMarkup(<AuthoringWeekContent report={report} selectedDay={0} onSelectDay={()=>{}} />);
   assert.ok(html.includes('Цель:'));assert.ok(html.includes('Меню:'));
   assert.ok(html.includes('Ниже цели на 129 ккал (7,17%).'));assert.ok(!html.includes('Совпадает с целью'));
+});
+
+test('report decoder independently refuses either corridor boundary violation', () => {
+  for(const kcal of [1550,1600,1650,1549.999,1650.001]){
+    const raw=fixture();raw.scenario.dailyCalorieTarget=1600;
+    for(const d of raw.days){d.meals[0].referenceNutrition.calories=kcal;d.referenceNutrition.calories=kcal.toFixed(3);}
+    const packet={...raw,calorieCorridor:referenceCalorieCorridorV1(1600)};
+    if(kcal>=1550&&kcal<=1650){const view=decodeAuthoringWeekReport(packet);assert.equal(view.days.length,7);assert.equal(view.calorieCorridor?.minimumKcal,1550);}
+    else assert.throws(()=>decodeAuthoringWeekReport(packet));
+  }
+  const raw=fixture();
+  assert.throws(()=>decodeAuthoringWeekReport({...raw,status:'NO_REFERENCE_WEEK_IN_CALORIE_CORRIDOR',days:[]}));
+  assert.throws(()=>decodeAuthoringWeekReport({...raw,calorieCorridor:{contract:'potok-reference-calorie-corridor-v1',minimumKcal:1600,maximumKcal:1700}}));
 });
 test('trusted or activatable input is rejected', () => {
   for (const change of [{runtimePublishable: true}, {mayActivate: true}, {contract: 'graph-v2'}, {usage: 'VALID'}]) {
