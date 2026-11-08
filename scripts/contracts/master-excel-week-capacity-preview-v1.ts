@@ -113,8 +113,18 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   personalMacrosAndAllergensChecked:false,portionScaling:false,
   sourceApproved:false,runtimePublishable:false,canApply:false,mayActivate:false};
 }
+/** Batch of owner test goals against the same Excel bytes, no DB or plan writes. */
+export function previewMasterExcelWeekTargetsV1(bytes:Buffer,targets:number[],weekStart='2026-11-09'){
+ if(!Array.isArray(targets)||targets.length<1||targets.length>8||new Set(targets).size!==targets.length)invalid('targets');
+ return {contract:'potok-master-excel-week-target-batch-v1',weekStart,
+  previews:targets.map(target=>previewMasterExcelWeekCapacityV1(bytes,target,weekStart)),
+  sourceApproved:false,runtimePublishable:false,canApply:false,mayActivate:false};
+}
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
  if(process.argv.length!==4&&process.argv.length!==5)invalid('usage: XLSX_PATH DAILY_KCAL [WEEK_START_YYYY-MM-DD]');
- const target=Number(process.argv[3]);
- process.stdout.write(JSON.stringify(previewMasterExcelWeekCapacityV1(readFileSync(process.argv[2]),target,process.argv[4]??'2026-11-09'),null,2)+'\n');
+ const targets=process.argv[3].split(',').map(Number);
+ const bytes=readFileSync(process.argv[2]);
+ const output=targets.length===1?previewMasterExcelWeekCapacityV1(bytes,targets[0],process.argv[4]??'2026-11-09')
+  :previewMasterExcelWeekTargetsV1(bytes,targets,process.argv[4]??'2026-11-09');
+ process.stdout.write(JSON.stringify(output,null,2)+'\n');
 }
