@@ -22,7 +22,8 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "build:mobile": "npm run build && npx cap sync",
     "android": "npx cap open android",
-    "sync": "npx cap sync"
+    "sync": "npx cap sync",
+    "test:generator:excel": "tsx --test scripts/contracts/master-excel-week-capacity-preview-v1.test.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.0.0",
