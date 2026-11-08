@@ -143,3 +143,15 @@ test('offline batch evaluates independent goals without approving or persisting 
  assert.equal(batch.runtimePublishable,false);
  assert.throws(()=>previewMasterExcelWeekTargetsV1(workbook(rows),[1400,1400]),/targets/);
 });
+
+test('128-recipe bounded capacity preserves low-kcal choices for a low target',()=>{
+ const rows=[
+  ...Array.from({length:120},(_,i)=>recipe('lunch_'+String(i).padStart(3,'0'),'LUNCH',i<112?900:200)),
+  ...Array.from({length:8},(_,i)=>recipe('breakfast_'+i,'BREAKFAST',250)),
+  ...Array.from({length:8},(_,i)=>recipe('snack_'+i,'SNACK',100))
+ ];
+ const result=previewMasterExcelWeekCapacityV1(workbook(rows),1400);
+ assert.equal(result.catalog.omittedByExistingCheckerLimit,8);
+ assert.ok(result.witnessInputRecipeIds.some(id=>id.startsWith('lunch_11')));
+ assert.equal(result.capacityNegativeResultDoesNotProveFullCatalogInfeasibility,true);
+});
