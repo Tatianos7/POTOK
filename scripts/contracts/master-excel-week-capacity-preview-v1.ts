@@ -1,0 +1,75 @@
+/**
+ * Offline bridge from the owner's Master Excel to the EXISTING weekly calorie
+ * capacity checker. Never publishes recipes, resolves food identities or writes
+ * a plan. Reference kcal are authoring estimates, not canonical nutrition.
+ *
+ * Usage: npx tsx scripts/contracts/master-excel-week-capacity-preview-v1.ts
+ *   /path/to/POTOK_recipe_master.xlsx 1800
+ */
+import {readFileSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';
+import * as XLSX from 'xlsx';
+import {analyzeWeekInputCalorieCapacityV1,type CapacityRecipeV1} from './week-input-calorie-capacity-v1';
+
+type RecipeRow = Record<string,unknown>;
+const invalid = (why:string):never => {throw Error('INVALID_MASTER_EXCEL_PREVIEW: '+why);};
+const string = (v:unknown) => typeof v==='string'?v.trim():'';
+const positive = (v:unknown) => typeof v==='number'&&Number.isFinite(v)&&v>0;
+const categories = new Set(['BREAKFAST','LUNCH','DINNER','SNACK']);
+
+export function readMasterExcelCapacityInputsV1(bytes:Buffer) {
+ if(bytes.length===0||bytes.length>10_000_000)invalid('file size');
+ const book=XLSX.read(bytes,{type:'buffer',cellDates:false,cellFormula:false});
+ const sheet=book.Sheets['01_Рецепты'];
+ if(!sheet)invalid('missing 01_Рецепты');
+ const rows=XLSX.utils.sheet_to_json<RecipeRow>(sheet,{defval:null,raw:true});
+ if(rows.length===0||rows.length>5000)invalid('recipe count');
+ const seen=new Set<string>();
+ const usable:CapacityRecipeV1[]=[];
+ const excluded:Record<string,number>={};
+ const skip=(reason:string)=>{excluded[reason]=(excluded[reason]??0)+1;};
+ for(const row of rows){
+  const id=string(row.recipe_id);
+  if(!/^[a-z][a-z0-9_]{1,127}$/.test(id)||seen.has(id))invalid('invalid or duplicate recipe_id');
+  seen.add(id);
+  if(id.startsWith('example_')){skip('DEMONSTRATION');continue;}
+  if(!['DRAFT','READY_FOR_REVIEW','APPROVED'].includes(string(row.status))){skip('UNKNOWN_STATUS');continue;}
+  const category=string(row.meal_type_primary);
+  if(!categories.has(category)){skip('UNKNOWN_CATEGORY');continue;}
+  if(!positive(row.servings)){skip('NO_DECLARED_SERVINGS');continue;}
+  if(!positive(row.ref_kcal_per_serving)){skip('NO_REFERENCE_KCAL');continue;}
+  usable.push({recipeId:id,sourceCategory:category,caloriesPerDeclaredServing:String(row.ref_kcal_per_serving)});
+ }
+ return {contract:'potok-master-excel-offline-capacity-input-v1' as const,
+  authoringRecipes:rows.length,usableRecipes:usable.length,excluded,
+  recipes:usable,referenceNutritionOnly:true,sourceApproved:false,
+  runtimePublishable:false,canApply:false,mayActivate:false};
+}
+export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget:number){
+ if(!Number.isInteger(dailyCalorieTarget)||dailyCalorieTarget<1||dailyCalorieTarget>10000)invalid('target');
+ const catalog=readMasterExcelCapacityInputsV1(bytes);
+ // Existing checker accepts <=128 inputs; this is an explicit source-order
+ // limit for this offline diagnostic, NOT a publication or eligibility choice.
+ const recipes=catalog.recipes.slice(0,128);
+ const scenario={dailyCalorieTarget,tolerancePercent:15,maxRecipeUses:7,
+  slots:[
+   {label:'BREAKFAST',sourceCategories:['BREAKFAST']},
+   {label:'LUNCH',sourceCategories:['LUNCH']},
+   {label:'DINNER',sourceCategories:['DINNER','LUNCH']},
+   {label:'SNACK',sourceCategories:['SNACK']}
+  ]};
+ const capacity=analyzeWeekInputCalorieCapacityV1(recipes,scenario);
+ return {contract:'potok-master-excel-week-capacity-preview-v1',
+  catalog:{authoringRecipes:catalog.authoringRecipes,usableRecipes:catalog.usableRecipes,
+   excluded:catalog.excluded,consideredRecipes:recipes.length,
+   omittedByExistingCheckerLimit:catalog.recipes.length-recipes.length},
+  scenario,capacity,source:'OWNER_MASTER_EXCEL_REFERENCE_ONLY',
+  dinnerFallback:'LUNCH_ALLOWED_FOR_OFFLINE_PREVIEW_ONLY',
+  personalMacrosAndAllergensChecked:false,portionScaling:false,
+  sourceApproved:false,runtimePublishable:false,canApply:false,mayActivate:false};
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
+ if(process.argv.length!==4)invalid('usage: XLSX_PATH DAILY_KCAL');
+ const target=Number(process.argv[3]);
+ process.stdout.write(JSON.stringify(previewMasterExcelWeekCapacityV1(readFileSync(process.argv[2]),target),null,2)+'\n');
+}
