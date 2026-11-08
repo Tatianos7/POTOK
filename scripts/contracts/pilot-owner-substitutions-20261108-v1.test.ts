@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {buildPilotOwnerSubstitutions20261108V1} from './pilot-owner-substitutions-20261108-v1';
+test('owner scope excludes one edamame recipe and replaces brown lentil intent without changing frozen19 evidence',()=>{
+ const p=buildPilotOwnerSubstitutions20261108V1();
+ assert.equal(p.originalFrozen19Immutable,true);
+ assert.deepEqual(p.exclusion,['lemon_shelled_edamame']);
+ assert.equal(p.ownerDecisions.milk.intendedProduct,'PLAIN_DAIRY_MILK_2_PERCENT');
+ assert.equal(p.ownerDecisions.greekYogurt.intendedProduct,'PLAIN_UNSWEETENED_GREEK_YOGURT_2_PERCENT');
+ assert.equal(p.ownerDecisions.greekYogurt.notUniversalRetailEquivalence,true);
+ assert.equal(p.ownerDecisions.lentils.intendedProduct,'GREEN_LENTILS');
+ assert.deepEqual(p.recipesRequiringNewDefinitionReview,['brown_lentils_rice_carrot','whole_wheat_pasta_lentils_tomato']);
+ assert.equal(p.productDatabaseWrites,0);
+ assert.equal(p.recipeDatabaseWrites,0);
+ assert.equal(p.noAutomaticCanonicalFoodSelection,true);
+ assert.equal(p.sourceApproved,false);
+ assert.equal(p.nutritionApproved,false);
+ assert.equal(p.runtimePublishable,false);
+ assert.equal(p.canApply,false);
+ assert.equal(p.mayActivate,false);
+});
