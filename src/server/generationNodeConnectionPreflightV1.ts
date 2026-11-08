@@ -2,6 +2,7 @@ import process from 'node:process';
 import {Pool, type PoolClient} from 'pg';
 import {readPrivateGenerationJsonV1} from './generationPrivateConfigurationV1';
 import {generationStagingPgConfigV1,type GenerationNodePgSecretsV1} from './generationNodePgPoolV1';
+import {resolveGenerationStagingIpv6V1,generationStagingIpv6ConfigV1} from './generationStagingDnsV1';
 
 /** Explicit operator-only Node.js 24 Staging connection probe.
  * No worker invocation, generation request, mutation, fallback credentials or retry.
@@ -21,7 +22,7 @@ const roleNames={reader:'potok_generation_reader_v1',gateway:'potok_generation_g
 type Channel=keyof typeof roleNames;
 type ProbeClient=Pick<PoolClient,'query'|'release'>;
 type ProbePool={connect:()=>Promise<ProbeClient>;end:()=>Promise<void>};
-type PoolFactory=(channel:Channel,secrets:GenerationNodePgSecretsV1)=>ProbePool;
+type PoolFactory=(channel:Channel,secrets:GenerationNodePgSecretsV1,ipv6Address?:string)=>ProbePool;
 const result=(readerVerified:boolean,gatewayVerified:boolean):StagingNodeConnectionProbeResultV1=>Object.freeze({
  contract:stagingNodeConnectionProbeContractV1,status:readerVerified&&gatewayVerified?'PASS':'FAIL',
  readerVerified,gatewayVerified,workerEnabled:false,writes:0,
@@ -47,15 +48,17 @@ function parseProtectedSecrets(value:unknown):GenerationNodePgSecretsV1 {
    throw Error('INVALID_CONFIGURATION');
  return {ca:secrets.ca,readerPassword:secrets.readerPassword,gatewayPassword:secrets.gatewayPassword};
 }
-const makePool:PoolFactory=(channel,secrets)=>{
+const makePool:PoolFactory=(channel,secrets,ipv6Address)=>{
  const config=generationStagingPgConfigV1(channel,secrets);
- return new Pool({...config,max:1}) as ProbePool;
+ // Explicit transport only; original hostname stays the verified TLS SNI name.
+ const selected=ipv6Address===undefined?config:generationStagingIpv6ConfigV1(config,ipv6Address);
+ return new Pool({...selected,max:1}) as ProbePool;
 };
-async function probeChannel(channel:Channel,secrets:GenerationNodePgSecretsV1,openPool:PoolFactory):Promise<boolean>{
+async function probeChannel(channel:Channel,secrets:GenerationNodePgSecretsV1,openPool:PoolFactory,ipv6Address?:string):Promise<boolean>{
  let pool:ProbePool|undefined,client:ProbeClient|undefined;
  let verified=false,cleaned=true;
  try{
-   pool=openPool(channel,secrets);
+   pool=openPool(channel,secrets,ipv6Address);
    client=await pool.connect();
    // BEGIN READ ONLY protects the probe even when inspecting gateway credentials.
    await client.query('BEGIN READ ONLY');
@@ -73,17 +76,23 @@ async function probeChannel(channel:Channel,secrets:GenerationNodePgSecretsV1,op
 }
 /** Disabled by default even if a config path is passed. Cannot activate the worker. */
 export async function runGenerationNodeConnectionPreflightV1(
-  configPath:string,{enabled=false,openPool=makePool}:{enabled?:boolean;openPool?:PoolFactory}={}
+  configPath:string,{enabled=false,openPool=makePool,dnsMode='SYSTEM'}:{enabled?:boolean;openPool?:PoolFactory;dnsMode?:string}={}
 ):Promise<StagingNodeConnectionProbeResultV1>{
- if(!enabled||'Deno' in globalThis||process.versions.node.split('.')[0]!=='24')
+ if(!enabled||'Deno' in globalThis||process.versions.node.split('.')[0]!=='24'||
+    (dnsMode!=='SYSTEM'&&dnsMode!=='DNS_AAAA'))
    return result(false,false);
  let secrets:GenerationNodePgSecretsV1;
  try{secrets=parseProtectedSecrets(await readPrivateGenerationJsonV1(configPath));
    generationStagingPgConfigV1('reader',secrets);
    generationStagingPgConfigV1('gateway',secrets);
  }catch{return result(false,false);}
- const readerVerified=await probeChannel('reader',secrets,openPool);
+ let address:string|undefined;
+ if(dnsMode==='DNS_AAAA'){
+   // Never fall back to a different transport or disable TLS if resolution fails.
+   try{address=await resolveGenerationStagingIpv6V1(new AbortController().signal);}catch{return result(false,false);}
+ }
+ const readerVerified=await probeChannel('reader',secrets,openPool,address);
  if(!readerVerified)return result(false,false);
- const gatewayVerified=await probeChannel('gateway',secrets,openPool);
+ const gatewayVerified=await probeChannel('gateway',secrets,openPool,address);
  return result(readerVerified,gatewayVerified);
 }
