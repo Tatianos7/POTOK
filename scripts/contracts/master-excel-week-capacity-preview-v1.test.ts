@@ -44,3 +44,17 @@ test('calorie shortfall is reported rather than claiming a valid weekly menu',()
  assert.equal(result.canApply,false);
  assert.equal(result.runtimePublishable,false);
 });
+
+test('bounded week subset prioritizes higher reference calories, not alphabetical IDs',()=>{
+ const rows=[
+  ...Array.from({length:9},(_,i)=>recipe('breakfast_'+String(i).padStart(2,'0'),'BREAKFAST',i===8?700:100)),
+  ...Array.from({length:17},(_,i)=>recipe('lunch_'+String(i).padStart(2,'0'),'LUNCH',i===16?900:200)),
+  ...Array.from({length:9},(_,i)=>recipe('snack_'+String(i).padStart(2,'0'),'SNACK',i===8?500:100))
+ ];
+ const result=previewMasterExcelWeekCapacityV1(workbook(rows),5000);
+ assert.ok(result.witnessInputRecipeIds.includes('breakfast_08'));
+ assert.ok(result.witnessInputRecipeIds.includes('lunch_16'));
+ assert.ok(result.witnessInputRecipeIds.includes('snack_08'));
+ assert.equal(result.witnessInputRecipeIds.length,32);
+ assert.equal(result.witnessNegativeResultDoesNotProveFullCatalogInfeasibility,true);
+});
