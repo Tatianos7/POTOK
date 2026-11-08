@@ -1,0 +1,7 @@
+{
+  "contract": "potok-staging-reference-catalog-pins-v1",
+  "originalWorkbookSha256": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+  "projectedCatalogSha256": "c59ff7ec366070e46f5d76c03d645a77381d189c6e5b3aa3633abab8555362b2",
+  "recipes": 132,
+  "usage": "AUTHENTICATED_REFERENCE_TEST_ONLY_NO_PUBLICATION"
+}
