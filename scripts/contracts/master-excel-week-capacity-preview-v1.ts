@@ -54,11 +54,12 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
  // Existing checker accepts <=128 inputs; this is an explicit source-order
  // limit for this offline diagnostic, NOT a publication or eligibility choice.
  const recipes=catalog.recipes.slice(0,128);
+ const hasDinner=catalog.recipes.some(r=>r.sourceCategory==='DINNER');
  const scenario={dailyCalorieTarget,tolerancePercent:15,maxRecipeUses:7,
   slots:[
    {label:'BREAKFAST',sourceCategories:['BREAKFAST']},
    {label:'LUNCH',sourceCategories:['LUNCH']},
-   {label:'DINNER',sourceCategories:['DINNER','LUNCH']},
+   {label:'DINNER',sourceCategories:hasDinner?['DINNER']:['LUNCH']},
    {label:'SNACK',sourceCategories:['SNACK']}
   ]};
  const capacity=analyzeWeekInputCalorieCapacityV1(recipes,scenario);
@@ -69,7 +70,6 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
  const byCategory=(category:string,count:number)=>recipes.filter(r=>r.sourceCategory===category)
    .sort((a,b)=>Number(b.caloriesPerDeclaredServing)-Number(a.caloriesPerDeclaredServing)
      ||(a.recipeId<b.recipeId?-1:a.recipeId>b.recipeId?1:0)).slice(0,count);
- const hasDinner=recipes.some(r=>r.sourceCategory==='DINNER');
  const witnessInputs=[
    ...byCategory('BREAKFAST',8),
    ...byCategory('LUNCH',hasDinner?8:16),
@@ -92,7 +92,7 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   witnessNegativeResultDoesNotProveFullCatalogInfeasibility:true,
   witnessSkippedReason:witness===null?(witnessInputs.length!==32?'INSUFFICIENT_CATEGORY_INPUTS':'WEEK_CALORIE_CAPACITY_ALREADY_FAILED'):null,
   source:'OWNER_MASTER_EXCEL_REFERENCE_ONLY',
-  dinnerFallback:'LUNCH_ALLOWED_FOR_OFFLINE_PREVIEW_ONLY',
+  dinnerFallback:hasDinner?'NONE_EXPLICIT_DINNER_CATEGORY':'LUNCH_ALLOWED_FOR_OFFLINE_PREVIEW_ONLY',
   personalMacrosAndAllergensChecked:false,portionScaling:false,
   sourceApproved:false,runtimePublishable:false,canApply:false,mayActivate:false};
 }
