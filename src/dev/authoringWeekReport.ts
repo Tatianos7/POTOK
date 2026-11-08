@@ -1,4 +1,5 @@
 /** Local authoring reports only. This is not a trusted-plan decoder. */
+import {referenceCalorieCorridorV1, referenceCaloriesFitCorridorV1, type ReferenceCalorieCorridorV1} from './referenceCalorieCorridorV1';
 const axes = ['calories', 'protein', 'fat', 'carbs', 'fiber'] as const;
 type Nutrition = Record<typeof axes[number], number>;
 export interface AuthoringMeal {
@@ -7,6 +8,7 @@ export interface AuthoringMeal {
   referenceNutrition: Nutrition; verified: false;
 }
 export interface AuthoringReport {
+  calorieCorridor?: ReferenceCalorieCorridorV1;
   status: string; target: number; sourceName: string; sourceHash: string;
   scope: string; assumptions: string[]; notAssessed: string[];
   days: {date: string; referenceNutrition: Nutrition; meals: AuthoringMeal[]}[];
@@ -34,7 +36,7 @@ function nutrition(value: unknown, decimals = false): Nutrition {
   })) as Nutrition;
 }
 const statuses = new Set(['REFERENCE_WEEK_PREVIEW', 'INCOMPLETE_CATEGORY_POOL',
-  'NO_REFERENCE_DAY_IN_EVALUATED_SHORTLISTS', 'WEEK_SEARCH_LIMIT_REACHED', 'NO_REFERENCE_WEEK_IN_RETAINED_POOL']);
+  'NO_REFERENCE_DAY_IN_EVALUATED_SHORTLISTS', 'WEEK_SEARCH_LIMIT_REACHED', 'NO_REFERENCE_WEEK_IN_RETAINED_POOL', 'NO_REFERENCE_WEEK_IN_CALORIE_CORRIDOR']);
 export function decodeAuthoringWeekReport(value: unknown): AuthoringReport {
   const r = object(value);
   if (r.contract !== 'potok-recipe-authoring-week-preview-v1' || r.runtimePublishable !== false
@@ -45,6 +47,13 @@ export function decodeAuthoringWeekReport(value: unknown): AuthoringReport {
   if (!statuses.has(status)) return failure();
   const s = object(r.scenario), source = object(r.source);
   const target = numeric(s.dailyCalorieTarget);
+  let calorieCorridor: ReferenceCalorieCorridorV1 | undefined;
+  if (r.calorieCorridor !== undefined) {
+    const declared = object(r.calorieCorridor), expected = referenceCalorieCorridorV1(target);
+    if (declared.contract !== expected.contract || declared.minimumKcal !== expected.minimumKcal || declared.maximumKcal !== expected.maximumKcal) return failure();
+    calorieCorridor = expected;
+  }
+  if (status === 'NO_REFERENCE_WEEK_IN_CALORIE_CORRIDOR' && !calorieCorridor) return failure();
   if (!Number.isInteger(target) || target < 1 || target > 10000
     || !Number.isInteger(s.maxRecipeUses) || Number(s.maxRecipeUses) < 1 || Number(s.maxRecipeUses) > 7
     || !Array.isArray(s.slots) || s.slots.length < 1 || s.slots.length > 7) return failure();
@@ -82,6 +91,7 @@ export function decodeAuthoringWeekReport(value: unknown): AuthoringReport {
     });
     if (new Set(meals.map(m => m.recipeId)).size !== meals.length) return failure();
     const total = nutrition(day.referenceNutrition, true);
+    if (calorieCorridor && !referenceCaloriesFitCorridorV1(target, total.calories)) return failure();
     for (const axis of axes) {
       if (Math.round(total[axis] * 1000) !== meals.reduce((sum, m) => sum + Math.round(m.referenceNutrition[axis] * 1000), 0)) return failure();
     }
@@ -91,5 +101,5 @@ export function decodeAuthoringWeekReport(value: unknown): AuthoringReport {
   const scope = status === 'REFERENCE_WEEK_PREVIEW' ? label(r.scope) : '';
   if (scope && !['BEST_EVALUATED_PREFIX', 'BEST_IN_RETAINED_POOL', 'CALORIE_REFINED_REFERENCE_WEEK'].includes(scope)) return failure();
   return {status, target, sourceName: label(source.fileName), sourceHash: source.sha256, scope,
-    assumptions, notAssessed: r.notAssessed.map(label), days};
+    assumptions, notAssessed: r.notAssessed.map(label), days, ...(calorieCorridor ? {calorieCorridor} : {})};
 }

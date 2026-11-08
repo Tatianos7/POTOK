@@ -21,7 +21,7 @@ test('disabled, production and wrong project reject before Auth or private input
 test('wrong method, unauthenticated callers and actor/input injection cannot generate', async () => {
   const a = req();a.method='GET';assert.equal((await invoke(env,a)).status,405);
   const b = req();b.headers.authorization='';assert.equal((await invoke(env,b)).status,401);
-  for (const body of [{...req().body,accountId:account},{...req().body,target:1700},{...req().body,weekStart:'2026-02-30'},null,[]]) {
+  for (const body of [{...req().body,accountId:account},{...req().body,calorieCorridor:{minimumKcal:1000,maximumKcal:3000}},{...req().body,target:1700},{...req().body,weekStart:'2026-02-30'},null,[]]) {
     const r = await invoke(env,{...req(),body} as ReturnType<typeof req>);assert.equal(r.status,400);assert.equal(r.calls,0);
   }
 });
@@ -48,10 +48,10 @@ test('client refuses active-plan flags, invalid packets and missing/changed acco
 });
 
 test('weekly calorie bound is tied to the selected goal and cannot invent or hide a proven shortfall', () => {
-  const proven={status:'EXACT_WEEK_TARGET_PROVEN_UNREACHABLE',requiredWeekKcal:'12600.000',optimisticMaximumWeekKcal:'12536.400',provenWeekShortfallKcal:'63.600'};
+  const proven={status:'REQUIRED_WEEK_MINIMUM_UNREACHABLE',requiredWeekKcal:'12600.000',optimisticMaximumWeekKcal:'12536.400',provenWeekShortfallKcal:'63.600'};
   assert.equal(decodeReferenceWeekCalorieCapacity(proven,1800),true);
-  assert.equal(decodeReferenceWeekCalorieCapacity({...proven,status:'EXACT_WEEK_TARGET_NOT_PROVEN',optimisticMaximumWeekKcal:'12600.000',provenWeekShortfallKcal:null},1800),false);
-  for(const invalid of [{...proven,provenWeekShortfallKcal:'0.000'},{...proven,status:'EXACT_WEEK_TARGET_NOT_PROVEN'},
+  assert.equal(decodeReferenceWeekCalorieCapacity({...proven,status:'REQUIRED_WEEK_MINIMUM_NOT_PROVEN',optimisticMaximumWeekKcal:'12600.000',provenWeekShortfallKcal:null},1800),false);
+  for(const invalid of [{...proven,provenWeekShortfallKcal:'0.000'},{...proven,status:'REQUIRED_WEEK_MINIMUM_NOT_PROVEN'},
     {...proven,optimisticMaximumWeekKcal:'12601.000'},{...proven,requiredWeekKcal:'11200.000'},{...proven,provenWeekShortfallKcal:'63.601'},null,{}]){
     assert.throws(()=>decodeReferenceWeekCalorieCapacity(invalid,1800),/INVALID_CALORIE_CAPACITY/);
   }

@@ -12,6 +12,7 @@ const emptyMessages: Record<string, string> = {
   NO_REFERENCE_DAY_IN_EVALUATED_SHORTLISTS: 'В проверенных списках не найден подходящий день.',
   WEEK_SEARCH_LIMIT_REACHED: 'Достигнут лимит поиска недели.',
   NO_REFERENCE_WEEK_IN_RETAINED_POOL: 'В сохранённых вариантах дней подходящая неделя не найдена.',
+  NO_REFERENCE_WEEK_IN_CALORIE_CORRIDOR: 'Подходящая неделя в указанном коридоре калорийности не найдена.',
 };
 
 export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog = null}: {
@@ -24,6 +25,9 @@ export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog 
   return <section aria-label="Тестовая неделя" className="space-y-5">
     <h2 className="text-xl font-semibold">Сценарий {number(report.target)} ккал в день</h2>
     <p className="text-sm">Техническая цель для проверки подбора. Не персональная рекомендация.</p>
+    {report.calorieCorridor && <p className="rounded-lg border border-emerald-200 p-3 text-sm" aria-label="Допустимый коридор калорийности">
+      Допустимый коридор: <strong>{number(report.calorieCorridor.minimumKcal)}–{number(report.calorieCorridor.maximumKcal)} ккал в день</strong>. Подбор стремится ближе к цели {number(report.target)} ккал.
+    </p>}
     {!day ? <p role="status">{emptyMessages[report.status]} Это не доказывает невозможность подбора по всему каталогу.</p> : <>
       <nav aria-label="Дни недели" className="flex flex-wrap gap-2">
         {report.days.map((d, i) => <button key={d.date} type="button" aria-pressed={selectedDay === i}
