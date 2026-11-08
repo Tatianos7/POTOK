@@ -53,19 +53,23 @@ const makePool:PoolFactory=(channel,secrets)=>{
 };
 async function probeChannel(channel:Channel,secrets:GenerationNodePgSecretsV1,openPool:PoolFactory):Promise<boolean>{
  let pool:ProbePool|undefined,client:ProbeClient|undefined;
+ let verified=false,cleaned=true;
  try{
    pool=openPool(channel,secrets);
    client=await pool.connect();
    // BEGIN READ ONLY protects the probe even when inspecting gateway credentials.
    await client.query('BEGIN READ ONLY');
    const check=await client.query('SELECT current_user AS role, current_database() AS db, ssl.ssl AS tls, current_setting(\'transaction_read_only\') AS transaction_ro FROM pg_catalog.pg_stat_ssl ssl WHERE ssl.pid = pg_catalog.pg_backend_pid()');
-   return check.rows?.length===1&&verifyGenerationConnectionProbeRowV1(check.rows[0],channel);
- }catch{return false;}
+   verified=check.rows?.length===1&&verifyGenerationConnectionProbeRowV1(check.rows[0],channel);
+ }catch{verified=false;}
  finally{
-   if(client){try{await client.query('ROLLBACK');}catch{/* never retry; closes below */}
-     try{client.release(true);}catch{/* closed below */}}
-   if(pool){try{await pool.end();}catch{/* report false via lifecycle when possible */}}
+   if(client){
+     try{await client.query('ROLLBACK');}catch{cleaned=false;}
+     try{client.release(true);}catch{cleaned=false;}
+   }
+   if(pool){try{await pool.end();}catch{cleaned=false;}}
  }
+ return verified&&cleaned;
 }
 /** Disabled by default even if a config path is passed. Cannot activate the worker. */
 export async function runGenerationNodeConnectionPreflightV1(
