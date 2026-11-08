@@ -22,6 +22,103 @@ const minor=(n:unknown):bigint=>{
 const abs=(n:bigint)=>n<0n?-n:n;
 const decimal=(n:bigint)=>`${n/1000n}.${String(n%1000n).padStart(3,'0')}`;
 const total=(recipes:Recipe[])=>Object.fromEntries(axes.map(axis=>[axis,recipes.reduce((n,r)=>n+minor(r.referenceNutrition.values[axis]),0n)])) as Record<typeof axes[number],bigint>;
+type Day={date:string;meals:Recipe[];nutrition:ReturnType<typeof total>;distance:bigint};
+
+/** Improve an already feasible reference week without scaling portions, weakening
+ * repeats or losing recipe diversity. This is bounded local improvement, not a
+ * proof of global optimality or recipe/nutrition approval. */
+function refineCalories(initial:Day[],pools:Recipe[][],s:AuthoringWeekScenarioV1,target:bigint){
+  const days=initial.map(d=>({...d,meals:[...d.meals]}));
+  const minimumDistinct=new Set(days.flatMap(d=>d.meals.map(r=>r.recipeId))).size;
+  const limits={passes:2,candidatesPerDayPerPass:8192,poolPerSlot:128,nearestSecondChoices:8,balancePasses:8,balanceCandidates:4096};
+  const bounded=pools.map(p=>p.slice(0,limits.poolPerSlot));
+  const kcal=new Map(bounded.flat().map(r=>[r.recipeId,minor(r.referenceNutrition.values.calories)]));
+  const calories=(r:Recipe)=>kcal.get(r.recipeId)??minor(r.referenceNutrition.values.calories);
+  const sorted=bounded.map(p=>[...p].sort((a,b)=>calories(a)===calories(b)?cmp(a.recipeId,b.recipeId):calories(a)<calories(b)?-1:1));
+  const shape=(meals:Recipe[])=>meals.reduce((n,r,i)=>n+abs(calories(r)*100n-target*BigInt(s.slots[i].targetSharePercent)),0n);
+  const key=(meals:Recipe[])=>meals.map(r=>r.recipeId).join('|');
+  let evaluated=0,changes=0,passes=0;
+  const evaluationsByDay=days.map(()=>0);
+  for(let pass=0;pass<limits.passes;pass++){
+    let changed=false;passes++;
+    const order=days.map((d,i)=>({i,distance:d.distance})).sort((a,b)=>a.distance===b.distance?a.i-b.i:a.distance>b.distance?-1:1);
+    for(const {i:dayIndex} of order){
+      const current=days[dayIndex];if(current.distance===0n)continue;
+      const outside=new Map<string,number>();
+      days.forEach((d,i)=>{if(i!==dayIndex)for(const r of d.meals)outside.set(r.recipeId,(outside.get(r.recipeId)??0)+1);});
+      let best=current,bestShape=shape(current.meals),attempts=0;
+      const consider=(meals:Recipe[])=>{
+        if(attempts>=limits.candidatesPerDayPerPass)return;
+        attempts++;evaluated++;evaluationsByDay[dayIndex]++;
+        if(new Set(meals.map(r=>r.recipeId)).size!==meals.length)return;
+        const distance=abs(meals.reduce((n,r)=>n+calories(r),0n)-target);
+        if(distance>=current.distance||distance>best.distance)return;
+        const uses=new Map(outside);
+        for(const r of meals){const count=(uses.get(r.recipeId)??0)+1;if(count>s.maxRecipeUses)return;uses.set(r.recipeId,count);}
+        if(uses.size<minimumDistinct)return;
+        const distribution=shape(meals);
+        if(distance===best.distance&&(distribution>bestShape||(distribution===bestShape&&cmp(key(meals),key(best.meals))>=0)))return;
+        best={date:current.date,meals,nutrition:total(meals),distance};bestShape=distribution;
+      };
+      for(let slot=0;slot<bounded.length&&best.distance!==0n;slot++)for(const recipe of bounded[slot]){
+        const meals=[...current.meals];meals[slot]=recipe;consider(meals);
+      }
+      // For each first replacement, binary-search the other slot's calorie list.
+      // Neighbour and candidate caps bound work even for large category pools.
+      for(let a=0;a<bounded.length&&best.distance!==0n&&attempts<limits.candidatesPerDayPerPass;a++){
+        for(let b=a+1;b<bounded.length&&best.distance!==0n&&attempts<limits.candidatesPerDayPerPass;b++){
+          const untouched=current.nutrition.calories-calories(current.meals[a])-calories(current.meals[b]);
+          const seconds=sorted[b];
+          for(const first of bounded[a]){
+            if(best.distance===0n||attempts>=limits.candidatesPerDayPerPass)break;
+            const needed=target-untouched-calories(first);let low=0,high=seconds.length;
+            while(low<high){const mid=(low+high)>>>1;if(calories(seconds[mid])<needed)low=mid+1;else high=mid;}
+            let left=low-1,right=low;
+            for(let n=0;n<limits.nearestSecondChoices&&(left>=0||right<seconds.length);n++){
+              const chooseLeft=left>=0&&(right>=seconds.length||abs(calories(seconds[left])-needed)<=abs(calories(seconds[right])-needed));
+              const second=seconds[chooseLeft?left--:right++];
+              if(abs(calories(second)-needed)>best.distance)break;
+              const meals=[...current.meals];meals[a]=first;meals[b]=second;consider(meals);
+            }
+          }
+        }
+      }
+      if(best.distance<current.distance){days[dayIndex]=best;changes++;changed=true;}
+    }
+    if(!changed)break;
+  }
+  // Redistribute existing source servings across days. Counts and weekly totals
+  // stay unchanged; every day remains at least as close as its initial result.
+  // Lexicographically reduce the worst daily gaps without increasing their sum.
+  const allowed=bounded.map(p=>new Set(p.map(r=>r.recipeId)));
+  const gaps=(week:Day[])=>week.map(d=>d.distance).sort((a,b)=>a===b?0:a>b?-1:1);
+  const better=(a:bigint[],b:bigint[])=>{for(let i=0;i<a.length;i++){if(a[i]!==b[i])return a[i]<b[i];}return false;};
+  let balanceEvaluated=0,balanceChanges=0;
+  for(let pass=0;pass<limits.balancePasses&&balanceEvaluated<limits.balanceCandidates&&days.some(d=>d.distance!==0n);pass++){
+    let changed=false;
+    for(let a=0;a<days.length;a++)for(let b=a+1;b<days.length;b++){
+      for(let sa=0;sa<bounded.length;sa++)for(let sb=0;sb<bounded.length;sb++){
+        if(balanceEvaluated>=limits.balanceCandidates)break;
+        const first=days[a],second=days[b],ra=first.meals[sa],rb=second.meals[sb];
+        if(ra.recipeId===rb.recipeId||!allowed[sa].has(rb.recipeId)||!allowed[sb].has(ra.recipeId))continue;
+        balanceEvaluated++;
+        const ma=[...first.meals],mb=[...second.meals];ma[sa]=rb;mb[sb]=ra;
+        if(new Set(ma.map(r=>r.recipeId)).size!==ma.length||new Set(mb.map(r=>r.recipeId)).size!==mb.length)continue;
+        const na=total(ma),nb=total(mb),da=abs(na.calories-target),db=abs(nb.calories-target);
+        if(da>initial[a].distance||db>initial[b].distance||da+db>first.distance+second.distance)continue;
+        const candidate=[...days];candidate[a]={...first,meals:ma,nutrition:na,distance:da};candidate[b]={...second,meals:mb,nutrition:nb,distance:db};
+        if(!better(gaps(candidate),gaps(days)))continue;
+        days[a]=candidate[a];days[b]=candidate[b];balanceChanges++;changed=true;
+      }
+    }
+    if(!changed)break;
+  }
+  return {days,diagnostics:{method:'BOUNDED_WHOLE_SOURCE_SERVING_REPLACEMENTS',limits,passes,evaluatedCandidates:evaluated,
+    balanceEvaluated,balanceChanges,
+    evaluationsByDay,changes,preservesMinimumDistinctRecipes:minimumDistinct,
+    beforeDailyCalories:initial.map(d=>decimal(d.nutrition.calories)),afterDailyCalories:days.map(d=>decimal(d.nutrition.calories)),
+    sourcePortionScaling:false,globalOptimumProven:false}};
+}
 function validate(s:AuthoringWeekScenarioV1){
   if(s.contract!=='potok-authoring-week-scenario-v1'||!/^\d{4}-\d{2}-\d{2}$/.test(s.weekStart)
     ||!Number.isFinite(Date.parse(s.weekStart+'T00:00:00Z'))||new Date(s.weekStart+'T00:00:00Z').toISOString().slice(0,10)!==s.weekStart
@@ -57,7 +154,6 @@ export function previewRecipeAuthoringWeekV1(catalog:Catalog,scenario:AuthoringW
     poolCounts:pools.map((p,i)=>({slot:s.slots[i].label,fullReferenceCandidates:p.length})),
     excludedNumericInputs:recipes.length-eligible.length};
   if(pools.some(p=>!p.length))return {...base,status:'INCOMPLETE_CATEGORY_POOL',days:[],diagnostics:[]};
-  type Day={date:string;meals:Recipe[];nutrition:ReturnType<typeof total>;distance:bigint};
   const dayPools:Day[][]=[],diagnostics=[];
   for(let day=0;day<7;day++){
     const date=new Date(Date.parse(s.weekStart+'T00:00:00Z')+day*86400000).toISOString().slice(0,10);
@@ -90,7 +186,9 @@ export function previewRecipeAuthoringWeekV1(catalog:Catalog,scenario:AuthoringW
     const distance=days.reduce((n,d)=>n+d.distance,0n);if(bestDistance===null||distance<bestDistance){best=days;bestDistance=distance;}
   }
   if(!best)return {...base,status:evaluated<combinations?'WEEK_SEARCH_LIMIT_REACHED':'NO_REFERENCE_WEEK_IN_RETAINED_POOL',days:[],diagnostics,evaluated,retainedWeekCombinations:combinations};
-  return {...base,status:'REFERENCE_WEEK_PREVIEW',scope:evaluated<combinations?'BEST_EVALUATED_PREFIX':'BEST_IN_RETAINED_POOL',evaluated,retainedWeekCombinations:combinations,
+  const refined=refineCalories(best,pools,s,target);best=refined.days;
+  return {...base,status:'REFERENCE_WEEK_PREVIEW',scope:refined.diagnostics.changes||refined.diagnostics.balanceChanges?'CALORIE_REFINED_REFERENCE_WEEK':evaluated<combinations?'BEST_EVALUATED_PREFIX':'BEST_IN_RETAINED_POOL',evaluated,retainedWeekCombinations:combinations,
+    calorieRefinement:refined.diagnostics,
     distinctRecipes:new Set(best.flatMap(d=>d.meals.map(r=>r.recipeId))).size,
     days:best.map(d=>({date:d.date,referenceNutrition:Object.fromEntries(axes.map(a=>[a,decimal(d.nutrition[a])])),
       calorieDistance:decimal(d.distance),meals:d.meals.map((r,i)=>({slot:s.slots[i].label,recipeId:r.recipeId,name:r.name,sourcePrimaryCategory:r.sourceRecipe.meal_type_primary,

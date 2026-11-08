@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createStagingRealWeekHandler, readStagingReferenceCatalog} from '../stagingRealWeekApiV1';
-import {decodeStagingRealWeek, requestStagingRealWeek} from '../../services/stagingRealWeek';
+import {decodeStagingRealWeek, requestStagingRealWeek, decodeReferenceWeekCalorieCapacity} from '../../services/stagingRealWeek';
 
 const env = {VERCEL_ENV: 'preview', VITE_POTOK_STAGING_PREVIEW: 'true', VITE_SUPABASE_URL: 'https://ozidryfvhkcbtpnulakq.supabase.co',
   POTOK_STAGING_REFERENCE_TEST_ENABLED: 'true', VITE_SUPABASE_ANON_KEY: 'sb_publishable_synthetic_test_only'};
@@ -45,4 +45,14 @@ test('client refuses active-plan flags, invalid packets and missing/changed acco
   assert.equal(sends,0);
   await assert.rejects(requestStagingRealWeek(account,1600,'2026-11-09',{async userId(){return account;},async token(){return null;},async send(){sends++;return new Response('{}');}}),/AUTH_REQUIRED/);
   assert.equal(sends,0);
+});
+
+test('weekly calorie bound is tied to the selected goal and cannot invent or hide a proven shortfall', () => {
+  const proven={status:'EXACT_WEEK_TARGET_PROVEN_UNREACHABLE',requiredWeekKcal:'12600.000',optimisticMaximumWeekKcal:'12536.400',provenWeekShortfallKcal:'63.600'};
+  assert.equal(decodeReferenceWeekCalorieCapacity(proven,1800),true);
+  assert.equal(decodeReferenceWeekCalorieCapacity({...proven,status:'EXACT_WEEK_TARGET_NOT_PROVEN',optimisticMaximumWeekKcal:'12600.000',provenWeekShortfallKcal:null},1800),false);
+  for(const invalid of [{...proven,provenWeekShortfallKcal:'0.000'},{...proven,status:'EXACT_WEEK_TARGET_NOT_PROVEN'},
+    {...proven,optimisticMaximumWeekKcal:'12601.000'},{...proven,requiredWeekKcal:'11200.000'},{...proven,provenWeekShortfallKcal:'63.601'},null,{}]){
+    assert.throws(()=>decodeReferenceWeekCalorieCapacity(invalid,1800),/INVALID_CALORIE_CAPACITY/);
+  }
 });
