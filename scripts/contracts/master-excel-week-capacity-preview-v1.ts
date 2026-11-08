@@ -28,21 +28,24 @@ export function readMasterExcelCapacityInputsV1(bytes:Buffer) {
  const seen=new Set<string>();
  const usable:CapacityRecipeV1[]=[];
  const excluded:Record<string,number>={};
+ const statusCounts:Record<string,number>={};
  const skip=(reason:string)=>{excluded[reason]=(excluded[reason]??0)+1;};
  for(const row of rows){
   const id=string(row.recipe_id);
   if(!/^[a-z][a-z0-9_]{1,127}$/.test(id)||seen.has(id))invalid('invalid or duplicate recipe_id');
   seen.add(id);
   if(id.startsWith('example_')){skip('DEMONSTRATION');continue;}
-  if(!['DRAFT','READY_FOR_REVIEW','APPROVED'].includes(string(row.status))){skip('UNKNOWN_STATUS');continue;}
+  const status=string(row.status);
+  if(!['DRAFT','READY_FOR_REVIEW','APPROVED'].includes(status)){skip('UNKNOWN_STATUS');continue;}
   const category=string(row.meal_type_primary);
   if(!categories.has(category)){skip('UNKNOWN_CATEGORY');continue;}
   if(!positive(row.servings)){skip('NO_DECLARED_SERVINGS');continue;}
   if(!positive(row.ref_kcal_per_serving)){skip('NO_REFERENCE_KCAL');continue;}
+  statusCounts[status]=(statusCounts[status]??0)+1;
   usable.push({recipeId:id,sourceCategory:category,caloriesPerDeclaredServing:String(row.ref_kcal_per_serving)});
  }
  return {contract:'potok-master-excel-offline-capacity-input-v1' as const,
-  authoringRecipes:rows.length,usableRecipes:usable.length,excluded,
+  authoringRecipes:rows.length,usableRecipes:usable.length,excluded,statusCounts,
   recipes:usable,referenceNutritionOnly:true,sourceApproved:false,
   runtimePublishable:false,canApply:false,mayActivate:false};
 }
@@ -91,7 +94,7 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
    :null;
  return {contract:'potok-master-excel-week-capacity-preview-v1',
   catalog:{authoringRecipes:catalog.authoringRecipes,usableRecipes:catalog.usableRecipes,
-   excluded:catalog.excluded,consideredRecipes:recipes.length,
+   excluded:catalog.excluded,statusCounts:catalog.statusCounts,consideredRecipes:recipes.length,
    omittedByExistingCheckerLimit:catalog.recipes.length-recipes.length,
    capacityBoundIsFullCatalog:catalog.recipes.length<=128},
   scenario,weekStart,capacity,offlineWeekWitness:witness,
