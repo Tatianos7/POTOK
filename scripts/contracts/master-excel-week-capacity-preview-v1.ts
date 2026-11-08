@@ -56,7 +56,12 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
  // make any negative result conditional on this bounded subset.
  const sorted=[...catalog.recipes].sort((a,b)=>Number(b.caloriesPerDeclaredServing)-Number(a.caloriesPerDeclaredServing)
   ||(a.recipeId<b.recipeId?-1:a.recipeId>b.recipeId?1:0));
- const recipes=sorted.slice(0,128);
+ const reserved=new Set<string>();
+ for(const category of categories){
+  for(const candidate of sorted.filter(r=>r.sourceCategory===category).slice(0,8))reserved.add(candidate.recipeId);
+ }
+ const recipes=[...sorted.filter(r=>reserved.has(r.recipeId)),
+  ...sorted.filter(r=>!reserved.has(r.recipeId))].slice(0,128);
  const hasDinner=catalog.recipes.some(r=>r.sourceCategory==='DINNER');
  const scenario={dailyCalorieTarget,tolerancePercent:15,maxRecipeUses:7,
   slots:[
