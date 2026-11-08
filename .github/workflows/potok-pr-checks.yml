@@ -44,6 +44,9 @@ jobs:
       - name: Real Staging generation readiness fail-closed contract
         run: node --import tsx --test src/server/generationReadinessPreflightV1.test.ts
 
+      - name: Node-only Staging connection preflight no-write regressions
+        run: node --import tsx --test src/server/generationNodeConnectionPreflightV1.test.ts
+
       - name: Owner recipe ingredient changes are isolated and fail closed
         run: node --import tsx --test scripts/contracts/pilot-owner-substitutions-20261108-v1.test.ts
 
