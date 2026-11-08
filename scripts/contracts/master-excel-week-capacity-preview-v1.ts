@@ -70,8 +70,9 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
    ...byCategory('LUNCH',16),
    ...byCategory('SNACK',8)
  ];
- const witness=witnessInputs.length===32
-   ?findCompleteInputWeekWitnessV1(witnessInputs,{...scenario,weekStart:'2026-11-09'})
+ const witness=witnessInputs.length===32 && capacity.status==='NECESSARY_CALORIE_BOUND_PASSED_NOT_FEASIBILITY'
+   ?findCompleteInputWeekWitnessV1(witnessInputs,{...scenario,weekStart:'2026-11-09'},
+      {maxDayCandidates:25000,maxWeekNodes:30000})
    :null;
  return {contract:'potok-master-excel-week-capacity-preview-v1',
   catalog:{authoringRecipes:catalog.authoringRecipes,usableRecipes:catalog.usableRecipes,
@@ -80,6 +81,7 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   scenario,capacity,offlineWeekWitness:witness,
   witnessInputRecipeIds:witnessInputs.map(r=>r.recipeId),
   witnessSubsetLimitedTo32:true,
+  witnessSkippedReason:witness===null?(witnessInputs.length!==32?'INSUFFICIENT_CATEGORY_INPUTS':'WEEK_CALORIE_CAPACITY_ALREADY_FAILED'):null,
   source:'OWNER_MASTER_EXCEL_REFERENCE_ONLY',
   dinnerFallback:'LUNCH_ALLOWED_FOR_OFFLINE_PREVIEW_ONLY',
   personalMacrosAndAllergensChecked:false,portionScaling:false,
