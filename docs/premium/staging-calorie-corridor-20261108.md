@@ -34,3 +34,17 @@
 1800 — семь дней 1753,3–1767,5, все проходят 1750–1850; 2000 — пустой результат.
 Непроверенные данные не становятся подтверждёнными; trusted Graph, Production,
 Supabase, запись плана и дневник не менялись.
+
+## Публикация и фактические проверки
+
+- Preview READY: `dpl_GoJHB2SLEvqhBVa7vGAozYo51oyj`, commit `b80e70c1408c825d6cdc069ae49f5978ac28e9f7`.
+- Существующая ссылка: https://potok-staging-test.vercel.app/staging-generator-check.html.
+- Владелец отдельно разрешил использование прежнего приватного каталога в этой сборке.
+- 30 локальных тестов: PASS, без пропусков. TypeScript, ESLint, проверка актуальности API bundle и Vite build: PASS.
+- Браузер: 12 сценариев (360/393/430 px × 1400/1600/1800/2000), семь дней и карточки рецептов; для 2000 ожидаемый пустой результат. Нет горизонтального переполнения или page errors. Устаревший ответ и отказ Auth: PASS.
+- Браузерная авторизация использовала локальную synthetic fixture; hosted вход под аккаунтом владельца заново не выполнялся.
+- Опубликованная страница: HTTP 200; актуальные JS содержат коридор и его контракт. API GET: 405 METHOD_NOT_ALLOWED; POST без Bearer: 401 AUTH_REQUIRED.
+- GitHub профильная проверка Staging real-recipe week test: success (run 42509912492).
+- Отдельный Local Supabase Edge full worker compatibility: failure (run 42509912488), UNEXPECTED_CANARY_FAILURE; ресурсная CPU canary отменена runtime. Этот Edge worker не используется тестовым Node endpoint и не активирован. Общие PR Checks на момент публикации ещё выполнялись; все CI не объявляются зелёными.
+- Предыдущая сборка для возврата тестового alias: `dpl_EdJYjPDesfb7jsjcR6waDRVrU697`.
+- Production, Supabase данные и доступность непроверенных рецептов в Production не изменялись.
