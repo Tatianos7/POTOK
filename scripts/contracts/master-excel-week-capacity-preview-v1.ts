@@ -55,13 +55,14 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
  if(!Number.isInteger(dailyCalorieTarget)||dailyCalorieTarget<1||dailyCalorieTarget>10000)invalid('target');
  const catalog=readMasterExcelCapacityInputsV1(bytes);
  // Existing checker accepts <=128 inputs. Never silently discard the last
- // Excel rows: keep the highest-reference-kcal candidates per category and
+ // Excel rows: keep both high- and low-reference-kcal candidates per category and
  // make any negative result conditional on this bounded subset.
  const sorted=[...catalog.recipes].sort((a,b)=>Number(b.caloriesPerDeclaredServing)-Number(a.caloriesPerDeclaredServing)
   ||(a.recipeId<b.recipeId?-1:a.recipeId>b.recipeId?1:0));
  const reserved=new Set<string>();
  for(const category of categories){
-  for(const candidate of sorted.filter(r=>r.sourceCategory===category).slice(0,8))reserved.add(candidate.recipeId);
+  const group=sorted.filter(r=>r.sourceCategory===category);
+  for(const candidate of [...group.slice(0,8),...group.slice(-8)])reserved.add(candidate.recipeId);
  }
  const recipes=[...sorted.filter(r=>reserved.has(r.recipeId)),
   ...sorted.filter(r=>!reserved.has(r.recipeId))].slice(0,128);
