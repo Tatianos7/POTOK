@@ -114,6 +114,32 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   personalMacrosAndAllergensChecked:false,portionScaling:false,
   sourceApproved:false,runtimePublishable:false,canApply:false,mayActivate:false};
 }
+/** A safe, display-only week packet for manual UX tests. No server/diary writes. */
+export function projectMasterExcelTestWeekV1(bytes:Buffer,dailyCalorieTarget:number,weekStart='2026-11-09'){
+ const preview=previewMasterExcelWeekCapacityV1(bytes,dailyCalorieTarget,weekStart);
+ const witness=preview.offlineWeekWitness;
+ const sheet=XLSX.read(bytes,{type:'buffer',cellDates:false,cellFormula:false}).Sheets['01_Рецепты'];
+ const rows=XLSX.utils.sheet_to_json<RecipeRow>(sheet,{defval:null,raw:true});
+ const names=new Map(rows.map(row=>[string(row.recipe_id),string(row.name_ru)]));
+ const ready=witness?.status==='CONDITIONAL_INPUT_WEEK_WITNESS';
+ return {contract:'potok-reference-test-week-display-v1',
+  status:ready?'REFERENCE_ONLY_TEST_WEEK':'NO_BOUNDED_WEEK_FOUND',
+  weekStart,dailyCalorieTarget,
+  days:ready?witness.days.map(day=>({
+   date:day.date,referenceCalories:day.calories,
+   meals:day.meals.map(meal=>({
+    slot:meal.slot,recipeId:meal.recipeId,
+    recipeName:names.get(meal.recipeId)||meal.recipeId,
+    sourceCategory:meal.sourceCategory,
+    assignedDeclaredServings:meal.assignedDeclaredServings,
+    measuredGrams:null,referenceOnly:true
+   }))
+  })):[],
+  reason:ready?null:preview.witnessSkippedReason??witness?.status??'NO_WITNESS',
+  warning:'REFERENCE_NUTRITION_NOT_VERIFIED_DO_NOT_USE_FOR_DIARY',
+  personalMacrosAndAllergensChecked:false,diaryWriteAllowed:false,
+  sourceApproved:false,runtimePublishable:false,canApply:false,mayActivate:false};
+}
 /** Batch of owner test goals against the same Excel bytes, no DB or plan writes. */
 export function previewMasterExcelWeekTargetsV1(bytes:Buffer,targets:number[],weekStart='2026-11-09'){
  if(!Array.isArray(targets)||targets.length<1||targets.length>8||new Set(targets).size!==targets.length)invalid('targets');
