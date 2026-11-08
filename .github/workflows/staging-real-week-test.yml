@@ -1,0 +1,27 @@
+name: Staging real-recipe week test (no deployment or database)
+on:
+  pull_request:
+    paths:
+      - 'src/server/stagingRealWeekApiV1.ts'
+      - 'src/server/__tests__/stagingRealWeekApiV1.test.ts'
+      - 'src/services/stagingRealWeek.ts'
+      - 'src/components/StagingRealWeekTest.tsx'
+      - 'api/staging-real-week.js'
+      - 'scripts/build-staging-real-week-api.mjs'
+      - 'docs/premium/staging-reference-catalog-20261108.json'
+      - '.github/workflows/staging-real-week-test.yml'
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: node scripts/build-staging-real-week-api.mjs --check
+      - run: node --import tsx --test src/server/__tests__/stagingRealWeekApiV1.test.ts src/dev/__tests__/authoringWeekViewer.test.tsx
+      - run: npx tsc --noEmit

@@ -5,9 +5,10 @@ import { supabase } from './lib/supabaseClient';
 import StagingGenerationDiagnostic from './components/StagingGenerationDiagnostic';
 import StagingSyntheticWeekDemo from './components/StagingSyntheticWeekDemo';
 import StagingGenerationReadback from './components/StagingGenerationReadback';
+import StagingRealWeekTest from './components/StagingRealWeekTest';
 import { isStagingGenerationProbeEnabled } from './services/stagingGenerationProbe';
 
-function TestPage() {
+export function TestPage() {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   useEffect(() => {
@@ -25,7 +26,7 @@ function TestPage() {
     <a href="/" className="text-sm font-semibold text-emerald-800">← Вернуться в POTOK</a>
     <h1 className="mt-6 text-2xl font-bold">STAGING · Генератор питания</h1>
     <p className="mt-3 text-sm text-stone-700">
-      Это отдельная безопасная проверка серверного подключения. Пока не создано настоящее персональное меню, никаких записей не производится.
+      Здесь можно собрать тестовую неделю из нашего сборника и открыть рецепты. Персональный план не включается, записей в дневник и базу нет.
     </p>
     {!isStagingGenerationProbeEnabled()
       ? <p role="alert" className="mt-5 rounded-lg bg-rose-50 p-4">Проверка недоступна вне Staging.</p>
@@ -33,9 +34,12 @@ function TestPage() {
         ? <p role="status" className="mt-5">Проверяем тестовый аккаунт…</p>
         : accountId
           ? <>
-            <StagingGenerationDiagnostic currentUserId={accountId} />
-            <StagingSyntheticWeekDemo currentUserId={accountId} />
-            <StagingGenerationReadback currentUserId={accountId} />
+            <StagingRealWeekTest currentUserId={accountId} />
+            <details className="mt-5"><summary>Технические проверки</summary>
+              <StagingGenerationDiagnostic currentUserId={accountId} />
+              <StagingSyntheticWeekDemo currentUserId={accountId} />
+              <StagingGenerationReadback currentUserId={accountId} />
+            </details>
           </>
           : <p role="status" className="mt-5 rounded-lg bg-stone-50 p-4">
             Для проверки открой POTOK по ссылке выше и войди в тестовый аккаунт на этом же сайте.
