@@ -92,3 +92,17 @@ test('small real dinner category does not disable bounded week witness',()=>{
  assert.equal(result.witnessInputRecipeIds.filter(id=>id.startsWith('lunch_')).length,14);
  assert.equal(result.witnessSkippedReason,'WEEK_CALORIE_CAPACITY_ALREADY_FAILED');
 });
+
+test('capacity checker 128-input bound preserves scarce snack category and declares incompleteness',()=>{
+ const rows=[
+  ...Array.from({length:120},(_,i)=>recipe('lunch_'+String(i).padStart(3,'0'),'LUNCH',900)),
+  ...Array.from({length:8},(_,i)=>recipe('breakfast_'+i,'BREAKFAST',600)),
+  ...Array.from({length:8},(_,i)=>recipe('snack_'+i,'SNACK',100))
+ ];
+ const result=previewMasterExcelWeekCapacityV1(workbook(rows),6000);
+ assert.equal(result.catalog.consideredRecipes,128);
+ assert.equal(result.catalog.omittedByExistingCheckerLimit,8);
+ assert.equal(result.catalog.capacityBoundIsFullCatalog,false);
+ assert.equal(result.capacityNegativeResultDoesNotProveFullCatalogInfeasibility,true);
+ assert.equal(result.witnessInputRecipeIds.filter(id=>id.startsWith('snack_')).length,8);
+});
