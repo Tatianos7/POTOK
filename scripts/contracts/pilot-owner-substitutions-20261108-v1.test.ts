@@ -11,6 +11,7 @@ test('owner scope excludes one edamame recipe and replaces brown lentil intent w
  assert.equal(p.ownerDecisions.lentils.intendedProduct,'GREEN_LENTILS');
  assert.equal(p.ownerDecisions.greenBuckwheat.intendedProduct,'GREEN_BUCKWHEAT_UNROASTED');
  assert.equal(p.ownerDecisions.greenBuckwheat.distinctFromGreenLentils,true);
+ assert.equal(p.ownerDecisions.greenBuckwheat.replaceRoastedBuckwheatInNewRecipeRevisions,true);
  assert.deepEqual(p.ownerDecisions.greenBuckwheat.ownerReferencePer100g,{
   state:'DRY_UNCOOKED',caloriesKcal:343,proteinG:13.25,fatG:3.4,carbsG:71.5,
   fiberG:10,carbsExcludeFiber:null,
