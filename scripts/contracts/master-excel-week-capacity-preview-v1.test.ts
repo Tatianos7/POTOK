@@ -58,3 +58,9 @@ test('bounded week subset prioritizes higher reference calories, not alphabetica
  assert.equal(result.witnessInputRecipeIds.length,32);
  assert.equal(result.witnessNegativeResultDoesNotProveFullCatalogInfeasibility,true);
 });
+
+test('offline week date is caller-controlled and invalid dates fail closed',()=>{
+ const bytes=workbook([recipe('one_breakfast','BREAKFAST',300)]);
+ assert.equal(previewMasterExcelWeekCapacityV1(bytes,1800,'2026-12-07').weekStart,'2026-12-07');
+ assert.throws(()=>previewMasterExcelWeekCapacityV1(bytes,1800,'2026-02-30'),/weekStart/);
+});
