@@ -69,9 +69,11 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
  const byCategory=(category:string,count:number)=>recipes.filter(r=>r.sourceCategory===category)
    .sort((a,b)=>Number(b.caloriesPerDeclaredServing)-Number(a.caloriesPerDeclaredServing)
      ||(a.recipeId<b.recipeId?-1:a.recipeId>b.recipeId?1:0)).slice(0,count);
+ const hasDinner=recipes.some(r=>r.sourceCategory==='DINNER');
  const witnessInputs=[
    ...byCategory('BREAKFAST',8),
-   ...byCategory('LUNCH',16),
+   ...byCategory('LUNCH',hasDinner?8:16),
+   ...(hasDinner?byCategory('DINNER',8):[]),
    ...byCategory('SNACK',8)
  ];
  const witness=witnessInputs.length===32 && capacity.status==='NECESSARY_CALORIE_BOUND_PASSED_NOT_FEASIBILITY'
@@ -86,6 +88,7 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   witnessInputRecipeIds:witnessInputs.map(r=>r.recipeId),
   witnessSubsetLimitedTo32:true,
   witnessSubsetSelection:'HIGHEST_REFERENCE_KCAL_PER_CATEGORY_WITH_STABLE_ID_TIEBREAK',
+  dinnerUsesLunchFallback:!hasDinner,
   witnessNegativeResultDoesNotProveFullCatalogInfeasibility:true,
   witnessSkippedReason:witness===null?(witnessInputs.length!==32?'INSUFFICIENT_CATEGORY_INPUTS':'WEEK_CALORIE_CAPACITY_ALREADY_FAILED'):null,
   source:'OWNER_MASTER_EXCEL_REFERENCE_ONLY',
