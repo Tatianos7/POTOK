@@ -50,6 +50,9 @@ jobs:
       - name: Owner recipe ingredient changes are isolated and fail closed
         run: node --import tsx --test scripts/contracts/pilot-owner-substitutions-20261108-v1.test.ts
 
+      - name: Owner-adjusted 18-recipe generation candidate intake stays unpublishable
+        run: node --import tsx --test scripts/contracts/pilot-owner-effective-candidate-draft-v1.test.ts
+
       - name: Verified real-catalog generation admission gate
         run: node --import tsx --test src/services/generationAdmissionPreflightV1.test.ts
 
