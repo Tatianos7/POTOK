@@ -60,11 +60,13 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
    {label:'SNACK',sourceCategories:['SNACK']}
   ]};
  const capacity=analyzeWeekInputCalorieCapacityV1(recipes,scenario);
- // The existing complete-week search accepts at most 32 inputs. Select a
- // deterministic, category-balanced offline subset; this is not an eligibility
- // decision. The complete catalog still goes through the capacity check.
+ // The existing complete-week search accepts at most 32 inputs. Prefer
+ // higher-kcal authoring candidates to avoid an arbitrary alphabetical
+ // subset producing a misleading false negative at higher calorie targets.
+ // This remains an incomplete subset search, NOT an eligibility decision.
  const byCategory=(category:string,count:number)=>recipes.filter(r=>r.sourceCategory===category)
-   .sort((a,b)=>a.recipeId.localeCompare(b.recipeId,'en')).slice(0,count);
+   .sort((a,b)=>Number(b.caloriesPerDeclaredServing)-Number(a.caloriesPerDeclaredServing)
+     ||(a.recipeId<b.recipeId?-1:a.recipeId>b.recipeId?1:0)).slice(0,count);
  const witnessInputs=[
    ...byCategory('BREAKFAST',8),
    ...byCategory('LUNCH',16),
@@ -81,6 +83,8 @@ export function previewMasterExcelWeekCapacityV1(bytes:Buffer,dailyCalorieTarget
   scenario,capacity,offlineWeekWitness:witness,
   witnessInputRecipeIds:witnessInputs.map(r=>r.recipeId),
   witnessSubsetLimitedTo32:true,
+  witnessSubsetSelection:'HIGHEST_REFERENCE_KCAL_PER_CATEGORY_WITH_STABLE_ID_TIEBREAK',
+  witnessNegativeResultDoesNotProveFullCatalogInfeasibility:true,
   witnessSkippedReason:witness===null?(witnessInputs.length!==32?'INSUFFICIENT_CATEGORY_INPUTS':'WEEK_CALORIE_CAPACITY_ALREADY_FAILED'):null,
   source:'OWNER_MASTER_EXCEL_REFERENCE_ONLY',
   dinnerFallback:'LUNCH_ALLOWED_FOR_OFFLINE_PREVIEW_ONLY',
