@@ -4,6 +4,7 @@ import {decodeAuthoringRecipeCatalog, authoringSearchInput} from '../dev/authori
 import {decodeAuthoringWeekReport} from '../dev/authoringWeekReport';
 import {previewRecipeAuthoringWeekV1, type AuthoringWeekScenarioV1} from '../dev/authoringWeekSearchV1';
 import pins from '../../docs/premium/staging-reference-catalog-20261108.json';
+import {analyzeWeekInputCalorieCapacityV1} from '../../scripts/contracts/week-input-calorie-capacity-v1';
 
 type Req = {method?: string; headers: Record<string, string | string[] | undefined>; body?: unknown};
 type Res = {status: (code: number) => Res; setHeader: (key: string, value: string) => Res; json: (value: unknown) => void};
@@ -38,13 +39,21 @@ export function readStagingReferenceCatalog(packed: string | undefined) {
 
 export function buildStagingReferenceWeek(packed: string | undefined, target: number, weekStart: string) {
   const {packet, decoded} = readStagingReferenceCatalog(packed);
-  const report = previewRecipeAuthoringWeekV1(authoringSearchInput(decoded), scenario(target, weekStart));
+  const input = authoringSearchInput(decoded), settings = scenario(target, weekStart);
+  const eligible = input.recipes.filter(r => r.numericReferenceTestInputAvailable && r.sourceStatus !== 'BLOCKED');
+  const capacity = analyzeWeekInputCalorieCapacityV1(eligible.map(r => ({recipeId: r.recipeId,
+    sourceCategory: String(r.sourceRecipe.meal_type_primary), caloriesPerDeclaredServing: String(r.referenceNutrition.values.calories)})),
+    {...settings, tolerancePercent: 0});
+  const report = previewRecipeAuthoringWeekV1(input, settings);
   const view = decodeAuthoringWeekReport(report);
   const ids = new Set(view.days.flatMap(d => d.meals.map(m => m.recipeId)));
   const recipes = (packet.recipes as {recipeId: string}[]).filter(r => ids.has(r.recipeId));
   return {contract: realWeekTestContract, mode: 'REFERENCE_MENU_TEST_NOT_ACTIVE_PLAN',
     noDatabaseWrites: true, verifiedNutrition: false, mayActivate: false, notPersonalized: true,
-    sourceRecipeCount: decoded.recipes.size, eligibleReferenceRecipes: authoringSearchInput(decoded).recipes.filter(r => r.numericReferenceTestInputAvailable && r.sourceStatus !== 'BLOCKED').length,
+    sourceRecipeCount: decoded.recipes.size, eligibleReferenceRecipes: eligible.length,
+    calorieCapacity: {status: capacity.status === 'PROVEN_INSUFFICIENT_WEEK_CALORIES' ? 'EXACT_WEEK_TARGET_PROVEN_UNREACHABLE' : 'EXACT_WEEK_TARGET_NOT_PROVEN',
+      requiredWeekKcal: capacity.requiredMinimumWeekKcal, optimisticMaximumWeekKcal: capacity.optimisticMaximumWeekKcal,
+      provenWeekShortfallKcal: capacity.provenWeeklyShortfallKcal},
     report, catalog: {...packet, recipes},
     omittedAuthorNotes: true};
 }

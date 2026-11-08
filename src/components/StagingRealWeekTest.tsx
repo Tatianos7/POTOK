@@ -47,6 +47,9 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm">{error}</p>}
     {view && <>
       <p role="status" className="text-sm">В сборнике {view.sourceRecipes} рецепта; {view.eligibleRecipes} с полными справочными числами для теста.</p>
+      {view.exactWeekTargetProvenUnreachable && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+        По доступным справочным данным при текущих целых порциях и ограничении повторов все семь дней ровно по {target.toLocaleString('ru-RU')} ккал собрать невозможно. Ниже показана фактическая калорийность; размеры порций автоматически не меняются.
+      </p>}
       <p className="text-sm">Показаны ингредиенты, подготовка и шаги приготовления. Дополнительные заметки автора в этот тест не включены. Ужин тестово выбирается из обедов. Поиск ограничен; допуск и порции автоматически не меняются.</p>
       <AuthoringWeekContent report={view.report} catalog={view.catalog} selectedDay={day} onSelectDay={setDay} />
     </>}

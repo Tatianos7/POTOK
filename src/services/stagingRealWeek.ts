@@ -1,7 +1,19 @@
 import {decodeAuthoringRecipeCatalog, type AuthoringRecipeCatalog} from '../dev/authoringRecipeCatalog';
 import {decodeAuthoringWeekReport, type AuthoringReport} from '../dev/authoringWeekReport';
 
-export type StagingRealWeekView = {report: AuthoringReport; catalog: AuthoringRecipeCatalog; sourceRecipes: number; eligibleRecipes: number};
+export type StagingRealWeekView = {report: AuthoringReport; catalog: AuthoringRecipeCatalog; sourceRecipes: number; eligibleRecipes: number; exactWeekTargetProvenUnreachable: boolean};
+export function decodeReferenceWeekCalorieCapacity(value: unknown, target: number): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value) || !Number.isInteger(target) || target < 1 || target > 10000) throw Error('INVALID_CALORIE_CAPACITY');
+  const capacity = value as Record<string, unknown>;
+  const amount = (v: unknown): bigint | null => typeof v === 'string' && /^(0|[1-9][0-9]{0,8})\.[0-9]{3}$/.test(v) ? BigInt(v.replace('.', '')) : null;
+  if (!['EXACT_WEEK_TARGET_PROVEN_UNREACHABLE', 'EXACT_WEEK_TARGET_NOT_PROVEN'].includes(String(capacity.status))) throw Error('INVALID_CALORIE_CAPACITY');
+  const required = amount(capacity.requiredWeekKcal), maximum = amount(capacity.optimisticMaximumWeekKcal), shortfall = amount(capacity.provenWeekShortfallKcal);
+  const unreachable = capacity.status === 'EXACT_WEEK_TARGET_PROVEN_UNREACHABLE';
+  if (required !== BigInt(target) * 7000n || (capacity.optimisticMaximumWeekKcal !== null && maximum === null)
+    || (unreachable ? maximum === null || shortfall === null || shortfall <= 0n || maximum + shortfall !== required
+      : capacity.provenWeekShortfallKcal !== null || (maximum !== null && maximum < required))) throw Error('INVALID_CALORIE_CAPACITY');
+  return unreachable;
+}
 export function decodeStagingRealWeek(value: unknown): StagingRealWeekView {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw Error('INVALID_TEST_RESPONSE');
   const r = value as Record<string, unknown>;
@@ -11,9 +23,10 @@ export function decodeStagingRealWeek(value: unknown): StagingRealWeekView {
     || !Number.isSafeInteger(r.sourceRecipeCount) || !Number.isSafeInteger(r.eligibleReferenceRecipes)
     || Number(r.sourceRecipeCount) < Number(r.eligibleReferenceRecipes) || Number(r.eligibleReferenceRecipes) < 1) throw Error('INVALID_TEST_RESPONSE');
   const report = decodeAuthoringWeekReport(r.report), catalog = decodeAuthoringRecipeCatalog(r.catalog);
+  const unreachable = decodeReferenceWeekCalorieCapacity(r.calorieCapacity, report.target);
   const ids = new Set(report.days.flatMap(d => d.meals.map(m => m.recipeId)));
   if (catalog.sourceHash !== report.sourceHash || catalog.recipes.size !== ids.size || [...ids].some(id => !catalog.recipes.has(id))) throw Error('CATALOG_RESPONSE_MISMATCH');
-  return {report, catalog, sourceRecipes: Number(r.sourceRecipeCount), eligibleRecipes: Number(r.eligibleReferenceRecipes)};
+  return {report, catalog, sourceRecipes: Number(r.sourceRecipeCount), eligibleRecipes: Number(r.eligibleReferenceRecipes), exactWeekTargetProvenUnreachable: unreachable};
 }
 
 export async function requestStagingRealWeek(accountId: string, target: number, weekStart: string, ports: {

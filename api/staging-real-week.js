@@ -190,7 +190,7 @@ function decodeAuthoringWeekReport(value) {
   });
   if ([...uses.values()].some((count) => count > Number(s.maxRecipeUses))) return failure();
   const scope = status === "REFERENCE_WEEK_PREVIEW" ? label(r.scope) : "";
-  if (scope && scope !== "BEST_EVALUATED_PREFIX" && scope !== "BEST_IN_RETAINED_POOL") return failure();
+  if (scope && !["BEST_EVALUATED_PREFIX", "BEST_IN_RETAINED_POOL", "CALORIE_REFINED_REFERENCE_WEEK"].includes(scope)) return failure();
   return {
     status,
     target,
@@ -228,6 +228,140 @@ var minor = (n) => {
 var abs = (n) => n < 0n ? -n : n;
 var decimal = (n) => `${n / 1000n}.${String(n % 1000n).padStart(3, "0")}`;
 var total = (recipes) => Object.fromEntries(axes2.map((axis) => [axis, recipes.reduce((n, r) => n + minor(r.referenceNutrition.values[axis]), 0n)]));
+function refineCalories(initial, pools, s, target) {
+  const days = initial.map((d) => ({ ...d, meals: [...d.meals] }));
+  const minimumDistinct = new Set(days.flatMap((d) => d.meals.map((r) => r.recipeId))).size;
+  const limits = { passes: 2, candidatesPerDayPerPass: 8192, poolPerSlot: 128, nearestSecondChoices: 8, balancePasses: 8, balanceCandidates: 4096 };
+  const bounded = pools.map((p) => p.slice(0, limits.poolPerSlot));
+  const kcal = new Map(bounded.flat().map((r) => [r.recipeId, minor(r.referenceNutrition.values.calories)]));
+  const calories = (r) => kcal.get(r.recipeId) ?? minor(r.referenceNutrition.values.calories);
+  const sorted2 = bounded.map((p) => [...p].sort((a, b) => calories(a) === calories(b) ? cmp(a.recipeId, b.recipeId) : calories(a) < calories(b) ? -1 : 1));
+  const shape = (meals) => meals.reduce((n, r, i) => n + abs(calories(r) * 100n - target * BigInt(s.slots[i].targetSharePercent)), 0n);
+  const key = (meals) => meals.map((r) => r.recipeId).join("|");
+  let evaluated = 0, changes = 0, passes = 0;
+  const evaluationsByDay = days.map(() => 0);
+  for (let pass = 0; pass < limits.passes; pass++) {
+    let changed = false;
+    passes++;
+    const order2 = days.map((d, i) => ({ i, distance: d.distance })).sort((a, b) => a.distance === b.distance ? a.i - b.i : a.distance > b.distance ? -1 : 1);
+    for (const { i: dayIndex } of order2) {
+      const current = days[dayIndex];
+      if (current.distance === 0n) continue;
+      const outside = /* @__PURE__ */ new Map();
+      days.forEach((d, i) => {
+        if (i !== dayIndex) for (const r of d.meals) outside.set(r.recipeId, (outside.get(r.recipeId) ?? 0) + 1);
+      });
+      let best = current, bestShape = shape(current.meals), attempts = 0;
+      const consider = (meals) => {
+        if (attempts >= limits.candidatesPerDayPerPass) return;
+        attempts++;
+        evaluated++;
+        evaluationsByDay[dayIndex]++;
+        if (new Set(meals.map((r) => r.recipeId)).size !== meals.length) return;
+        const distance = abs(meals.reduce((n, r) => n + calories(r), 0n) - target);
+        if (distance >= current.distance || distance > best.distance) return;
+        const uses = new Map(outside);
+        for (const r of meals) {
+          const count = (uses.get(r.recipeId) ?? 0) + 1;
+          if (count > s.maxRecipeUses) return;
+          uses.set(r.recipeId, count);
+        }
+        if (uses.size < minimumDistinct) return;
+        const distribution = shape(meals);
+        if (distance === best.distance && (distribution > bestShape || distribution === bestShape && cmp(key(meals), key(best.meals)) >= 0)) return;
+        best = { date: current.date, meals, nutrition: total(meals), distance };
+        bestShape = distribution;
+      };
+      for (let slot = 0; slot < bounded.length && best.distance !== 0n; slot++) for (const recipe of bounded[slot]) {
+        const meals = [...current.meals];
+        meals[slot] = recipe;
+        consider(meals);
+      }
+      for (let a = 0; a < bounded.length && best.distance !== 0n && attempts < limits.candidatesPerDayPerPass; a++) {
+        for (let b = a + 1; b < bounded.length && best.distance !== 0n && attempts < limits.candidatesPerDayPerPass; b++) {
+          const untouched = current.nutrition.calories - calories(current.meals[a]) - calories(current.meals[b]);
+          const seconds = sorted2[b];
+          for (const first of bounded[a]) {
+            if (best.distance === 0n || attempts >= limits.candidatesPerDayPerPass) break;
+            const needed = target - untouched - calories(first);
+            let low = 0, high = seconds.length;
+            while (low < high) {
+              const mid = low + high >>> 1;
+              if (calories(seconds[mid]) < needed) low = mid + 1;
+              else high = mid;
+            }
+            let left = low - 1, right = low;
+            for (let n = 0; n < limits.nearestSecondChoices && (left >= 0 || right < seconds.length); n++) {
+              const chooseLeft = left >= 0 && (right >= seconds.length || abs(calories(seconds[left]) - needed) <= abs(calories(seconds[right]) - needed));
+              const second = seconds[chooseLeft ? left-- : right++];
+              if (abs(calories(second) - needed) > best.distance) break;
+              const meals = [...current.meals];
+              meals[a] = first;
+              meals[b] = second;
+              consider(meals);
+            }
+          }
+        }
+      }
+      if (best.distance < current.distance) {
+        days[dayIndex] = best;
+        changes++;
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  const allowed = bounded.map((p) => new Set(p.map((r) => r.recipeId)));
+  const gaps = (week) => week.map((d) => d.distance).sort((a, b) => a === b ? 0 : a > b ? -1 : 1);
+  const better = (a, b) => {
+    for (let i = 0; i < a.length; i++) {
+      if (a[i] !== b[i]) return a[i] < b[i];
+    }
+    return false;
+  };
+  let balanceEvaluated = 0, balanceChanges = 0;
+  for (let pass = 0; pass < limits.balancePasses && balanceEvaluated < limits.balanceCandidates && days.some((d) => d.distance !== 0n); pass++) {
+    let changed = false;
+    for (let a = 0; a < days.length; a++) for (let b = a + 1; b < days.length; b++) {
+      for (let sa = 0; sa < bounded.length; sa++) for (let sb = 0; sb < bounded.length; sb++) {
+        if (balanceEvaluated >= limits.balanceCandidates) break;
+        const first = days[a], second = days[b], ra = first.meals[sa], rb = second.meals[sb];
+        if (ra.recipeId === rb.recipeId || !allowed[sa].has(rb.recipeId) || !allowed[sb].has(ra.recipeId)) continue;
+        balanceEvaluated++;
+        const ma = [...first.meals], mb = [...second.meals];
+        ma[sa] = rb;
+        mb[sb] = ra;
+        if (new Set(ma.map((r) => r.recipeId)).size !== ma.length || new Set(mb.map((r) => r.recipeId)).size !== mb.length) continue;
+        const na = total(ma), nb = total(mb), da = abs(na.calories - target), db = abs(nb.calories - target);
+        if (da > initial[a].distance || db > initial[b].distance || da + db > first.distance + second.distance) continue;
+        const candidate = [...days];
+        candidate[a] = { ...first, meals: ma, nutrition: na, distance: da };
+        candidate[b] = { ...second, meals: mb, nutrition: nb, distance: db };
+        if (!better(gaps(candidate), gaps(days))) continue;
+        days[a] = candidate[a];
+        days[b] = candidate[b];
+        balanceChanges++;
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return { days, diagnostics: {
+    method: "BOUNDED_WHOLE_SOURCE_SERVING_REPLACEMENTS",
+    limits,
+    passes,
+    evaluatedCandidates: evaluated,
+    balanceEvaluated,
+    balanceChanges,
+    evaluationsByDay,
+    changes,
+    preservesMinimumDistinctRecipes: minimumDistinct,
+    beforeDailyCalories: initial.map((d) => decimal(d.nutrition.calories)),
+    afterDailyCalories: days.map((d) => decimal(d.nutrition.calories)),
+    sourcePortionScaling: false,
+    globalOptimumProven: false
+  } };
+}
 function validate(s) {
   if (s.contract !== "potok-authoring-week-scenario-v1" || !/^\d{4}-\d{2}-\d{2}$/.test(s.weekStart) || !Number.isFinite(Date.parse(s.weekStart + "T00:00:00Z")) || (/* @__PURE__ */ new Date(s.weekStart + "T00:00:00Z")).toISOString().slice(0, 10) !== s.weekStart || !Number.isInteger(s.dailyCalorieTarget) || s.dailyCalorieTarget < 1 || s.dailyCalorieTarget > 1e4 || !Number.isInteger(s.tolerancePercent) || s.tolerancePercent < 0 || s.tolerancePercent > 50 || !Array.isArray(s.slots) || s.slots.length < 1 || s.slots.length > 7 || s.slots.some((x) => !x.label || !Array.isArray(x.sourceCategories) || !x.sourceCategories.length || x.sourceCategories.some((y) => typeof y !== "string" || !y) || !Number.isInteger(x.targetSharePercent) || x.targetSharePercent < 1) || new Set(s.slots.map((x) => x.label)).size !== s.slots.length || s.slots.reduce((a, b) => a + b.targetSharePercent, 0) !== 100 || !Number.isInteger(s.rankedCandidatePoolSize) || s.rankedCandidatePoolSize < 1 || s.rankedCandidatePoolSize > 128 || !Number.isInteger(s.shortlistPerSlot) || s.shortlistPerSlot < 1 || s.shortlistPerSlot > 8 || !Number.isInteger(s.dayPoolSize) || s.dayPoolSize < 1 || s.dayPoolSize > 16 || [s.maxDayEvaluations, s.maxWeekEvaluations].some((x) => !Number.isInteger(x) || x < 1 || x > 1024) || !Number.isInteger(s.maxRecipeUses) || s.maxRecipeUses < 1 || s.maxRecipeUses > 7) throw Error("INVALID_AUTHORING_WEEK_SCENARIO");
 }
@@ -316,12 +450,15 @@ function previewRecipeAuthoringWeekV1(catalog, scenario2) {
     }
   }
   if (!best) return { ...base, status: evaluated < combinations ? "WEEK_SEARCH_LIMIT_REACHED" : "NO_REFERENCE_WEEK_IN_RETAINED_POOL", days: [], diagnostics, evaluated, retainedWeekCombinations: combinations };
+  const refined = refineCalories(best, pools, s, target);
+  best = refined.days;
   return {
     ...base,
     status: "REFERENCE_WEEK_PREVIEW",
-    scope: evaluated < combinations ? "BEST_EVALUATED_PREFIX" : "BEST_IN_RETAINED_POOL",
+    scope: refined.diagnostics.changes || refined.diagnostics.balanceChanges ? "CALORIE_REFINED_REFERENCE_WEEK" : evaluated < combinations ? "BEST_EVALUATED_PREFIX" : "BEST_IN_RETAINED_POOL",
     evaluated,
     retainedWeekCombinations: combinations,
+    calorieRefinement: refined.diagnostics,
     distinctRecipes: new Set(best.flatMap((d) => d.meals.map((r) => r.recipeId))).size,
     days: best.map((d) => ({
       date: d.date,
@@ -351,6 +488,67 @@ var staging_reference_catalog_20261108_default = {
   recipes: 132,
   usage: "AUTHENTICATED_REFERENCE_TEST_ONLY_NO_PUBLICATION"
 };
+
+// scripts/contracts/week-input-calorie-capacity-v1.ts
+function invalid() {
+  throw Error("INVALID_WEEK_INPUT_CALORIE_CAPACITY");
+}
+function minor3(s) {
+  if (typeof s !== "string" || !/^(0|[1-9][0-9]{0,5})(\.[0-9]{1,8})?$/.test(s)) invalid();
+  return BigInt(Math.round(Number(s) * 1e3));
+}
+var fixed = (n) => String(n / 1000n) + "." + String(n % 1000n).padStart(3, "0");
+function analyzeWeekInputCalorieCapacityV1(recipes, s) {
+  if (!Array.isArray(recipes) || recipes.length > 128 || new Set(recipes.map((r) => r.recipeId)).size !== recipes.length || recipes.some((r) => typeof r.recipeId !== "string" || !r.recipeId || typeof r.sourceCategory !== "string" || !r.sourceCategory) || !Number.isInteger(s.dailyCalorieTarget) || s.dailyCalorieTarget < 1 || s.dailyCalorieTarget > 1e4 || !Number.isInteger(s.tolerancePercent) || s.tolerancePercent < 0 || s.tolerancePercent > 50 || !Number.isInteger(s.maxRecipeUses) || s.maxRecipeUses < 1 || s.maxRecipeUses > 7 || !Array.isArray(s.slots) || s.slots.length < 1 || s.slots.length > 7 || new Set(s.slots.map((x) => x.label)).size !== s.slots.length || s.slots.some((x) => typeof x.label !== "string" || !x.label || !Array.isArray(x.sourceCategories) || !x.sourceCategories.length || x.sourceCategories.some((c) => typeof c !== "string" || !c) || new Set(x.sourceCategories).size !== x.sourceCategories.length)) invalid();
+  const inputs = recipes.map((r) => ({ ...r, kcal: minor3(r.caloriesPerDeclaredServing) })), groups = /* @__PURE__ */ new Map();
+  for (const slot of s.slots) {
+    const categories = [...slot.sourceCategories].sort(), key = JSON.stringify(categories), g = groups.get(key);
+    if (g) g.slots++;
+    else groups.set(key, { categories, slots: 1 });
+  }
+  const certificate = [...groups.values()].map((g) => {
+    const available = inputs.filter((r) => g.categories.includes(r.sourceCategory)).sort((a, b) => a.kcal === b.kcal ? a.recipeId < b.recipeId ? -1 : a.recipeId > b.recipeId ? 1 : 0 : a.kcal > b.kcal ? -1 : 1);
+    const required = 7 * g.slots, capacity = available.length * s.maxRecipeUses;
+    let left = required, total2 = 0n;
+    const optimisticAllocation = [];
+    for (const r of available) {
+      const uses = Math.min(left, s.maxRecipeUses);
+      if (!uses) break;
+      total2 += r.kcal * BigInt(uses);
+      left -= uses;
+      optimisticAllocation.push({ recipeId: r.recipeId, uses, caloriesPerServing: fixed(r.kcal) });
+    }
+    return {
+      sourceCategories: g.categories,
+      weeklyMealSlots: required,
+      availableRepeatCapacity: capacity,
+      remainingSlots: left,
+      optimisticAllocation,
+      optimisticMaxKcal: left === 0 ? fixed(total2) : null,
+      upperBound: left === 0 ? total2 : null
+    };
+  });
+  const minDaily = BigInt(s.dailyCalorieTarget) * 1000n - BigInt(s.dailyCalorieTarget) * 1000n * BigInt(s.tolerancePercent) / 100n, minWeek = minDaily * 7n;
+  const capacityMissing = certificate.some((c) => c.remainingSlots > 0), upper = capacityMissing ? null : certificate.reduce((n, c) => n + c.upperBound, 0n);
+  return {
+    contract: "potok-week-input-calorie-capacity-v1",
+    status: capacityMissing ? "INSUFFICIENT_RECIPE_REPEAT_CAPACITY" : upper < minWeek ? "PROVEN_INSUFFICIENT_WEEK_CALORIES" : "NECESSARY_CALORIE_BOUND_PASSED_NOT_FEASIBILITY",
+    precision: "SAME_NUMBER_ROUND3_AS_EXISTING_AUTHORING_SEARCH",
+    requiredMinimumDailyKcal: fixed(minDaily),
+    requiredMinimumWeekKcal: fixed(minWeek),
+    optimisticMaximumWeekKcal: upper === null ? null : fixed(upper),
+    provenWeeklyShortfallKcal: upper !== null && upper < minWeek ? fixed(minWeek - upper) : null,
+    certificate: certificate.map(({ upperBound, ...c }) => {
+      return c;
+    }),
+    assumptions: { oneDeclaredServingPerMeal: true, dayConflictsIgnoredForUpperBound: true, crossGroupCompetitionIgnoredForUpperBound: true, portionScaling: false },
+    fullWeekFeasibilityProven: false,
+    sourceApproved: false,
+    runtimePublishable: false,
+    canApply: false,
+    mayActivate: false
+  };
+}
 
 // src/server/stagingRealWeekApiV1.ts
 var staging = "https://ozidryfvhkcbtpnulakq.supabase.co";
@@ -390,7 +588,17 @@ function readStagingReferenceCatalog(packed) {
 }
 function buildStagingReferenceWeek(packed, target, weekStart) {
   const { packet, decoded } = readStagingReferenceCatalog(packed);
-  const report = previewRecipeAuthoringWeekV1(authoringSearchInput(decoded), scenario(target, weekStart));
+  const input = authoringSearchInput(decoded), settings = scenario(target, weekStart);
+  const eligible = input.recipes.filter((r) => r.numericReferenceTestInputAvailable && r.sourceStatus !== "BLOCKED");
+  const capacity = analyzeWeekInputCalorieCapacityV1(
+    eligible.map((r) => ({
+      recipeId: r.recipeId,
+      sourceCategory: String(r.sourceRecipe.meal_type_primary),
+      caloriesPerDeclaredServing: String(r.referenceNutrition.values.calories)
+    })),
+    { ...settings, tolerancePercent: 0 }
+  );
+  const report = previewRecipeAuthoringWeekV1(input, settings);
   const view = decodeAuthoringWeekReport(report);
   const ids = new Set(view.days.flatMap((d) => d.meals.map((m) => m.recipeId)));
   const recipes = packet.recipes.filter((r) => ids.has(r.recipeId));
@@ -402,7 +610,13 @@ function buildStagingReferenceWeek(packed, target, weekStart) {
     mayActivate: false,
     notPersonalized: true,
     sourceRecipeCount: decoded.recipes.size,
-    eligibleReferenceRecipes: authoringSearchInput(decoded).recipes.filter((r) => r.numericReferenceTestInputAvailable && r.sourceStatus !== "BLOCKED").length,
+    eligibleReferenceRecipes: eligible.length,
+    calorieCapacity: {
+      status: capacity.status === "PROVEN_INSUFFICIENT_WEEK_CALORIES" ? "EXACT_WEEK_TARGET_PROVEN_UNREACHABLE" : "EXACT_WEEK_TARGET_NOT_PROVEN",
+      requiredWeekKcal: capacity.requiredMinimumWeekKcal,
+      optimisticMaximumWeekKcal: capacity.optimisticMaximumWeekKcal,
+      provenWeekShortfallKcal: capacity.provenWeeklyShortfallKcal
+    },
     report,
     catalog: { ...packet, recipes },
     omittedAuthorNotes: true

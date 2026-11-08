@@ -59,3 +59,41 @@ test('invalid scenarios, duplicate recipe IDs and unknown numeric references are
   const y=fixture();y.catalog.recipes[0].referenceNutrition.values.fiber=null;
   assert.throws(()=>previewRecipeAuthoringWeekV1(y.catalog,y.scenario),/REFERENCE_NUMBER/);
 });
+
+test('whole-serving refinement finds closer days outside initial shortlist without losing repeat/diversity limits',()=>{
+  const x=fixture(16);x.scenario.dailyCalorieTarget=1800;
+  for(const r of x.catalog.recipes){
+    const category=r.sourceRecipe.meal_type_primary;
+    r.referenceNutrition.values.calories=category==='BREAKFAST'?400:category==='SNACK'?300:500;
+    if(category==='LUNCH'&&Number(r.recipeId.split('_')[1])>=12)r.referenceNutrition.values.calories=600;
+  }
+  const before=JSON.stringify(x),r=previewRecipeAuthoringWeekV1(x.catalog,x.scenario);
+  assert.equal(r.status,'REFERENCE_WEEK_PREVIEW');assert.ok('calorieRefinement' in r);
+  const refinement=r.calorieRefinement!;assert.ok(refinement.changes>0);assert.equal(refinement.sourcePortionScaling,false);
+  assert.equal(r.scope,'CALORIE_REFINED_REFERENCE_WEEK');
+  const uses=new Map<string,number>();
+  r.days.forEach((d,i)=>{
+    assert.ok(Math.abs(Number(d.referenceNutrition.calories)-1800)<=Math.abs(Number(refinement.beforeDailyCalories[i])-1800));
+    assert.equal(new Set(d.meals.map(m=>m.recipeId)).size,4);
+    for(const m of d.meals){assert.equal(m.assignedSourceServings,1);assert.equal(m.measuredGrams,null);assert.equal(m.verified,false);uses.set(m.recipeId,(uses.get(m.recipeId)??0)+1);}
+  });
+  assert.ok(r.days.some(d=>Number(d.referenceNutrition.calories)===1800));
+  assert.ok([...uses.values()].every(n=>n<=2));assert.ok(uses.size>=refinement.preservesMinimumDistinctRecipes);
+  assert.ok(refinement.evaluatedCandidates<=7*refinement.limits.passes*refinement.limits.candidatesPerDayPerPass);
+  assert.ok(refinement.balanceEvaluated<=refinement.limits.balanceCandidates);
+  assert.equal(JSON.stringify(x),before);
+  assert.deepEqual(previewRecipeAuthoringWeekV1({...x.catalog,recipes:[...x.catalog.recipes].reverse()},x.scenario),r);
+});
+
+test('refinement never admits blocked or incomplete reference candidates to fill calories',()=>{
+  for(const blocked of [true,false]){
+    const x=fixture(16);x.scenario.dailyCalorieTarget=1800;
+    for(const r of x.catalog.recipes){
+      const category=r.sourceRecipe.meal_type_primary;r.referenceNutrition.values.calories=category==='BREAKFAST'?400:category==='SNACK'?300:500;
+      if(category==='LUNCH'&&Number(r.recipeId.split('_')[1])>=12){r.referenceNutrition.values.calories=600;if(blocked)r.sourceStatus='BLOCKED';else r.numericReferenceTestInputAvailable=false;}
+    }
+    const r=previewRecipeAuthoringWeekV1(x.catalog,x.scenario);assert.equal(r.status,'REFERENCE_WEEK_PREVIEW');
+    assert.ok(r.days.every(d=>d.referenceNutrition.calories==='1700.000'));
+    assert.equal(r.runtimePublishable,false);assert.equal(r.mayActivate,false);
+  }
+});

@@ -5,6 +5,7 @@ import AuthoringRecipeDetails from './AuthoringRecipeDetails';
 import {authoringTestTargets, defaultAuthoringWeekStart, selectAuthoringWeek} from './authoringSelectionView';
 
 const number = (n: number) => n.toLocaleString('ru-RU', {maximumFractionDigits: 1});
+const calorieNumber = (n: number) => n.toLocaleString('ru-RU', {maximumFractionDigits: 3});
 const dateLabel = (date: string) => new Date(date + 'T00:00:00Z').toLocaleDateString('ru-RU', {weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC'});
 const emptyMessages: Record<string, string> = {
   INCOMPLETE_CATEGORY_POOL: 'В исходных категориях не хватает рецептов.',
@@ -18,6 +19,8 @@ export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog 
   catalog?: AuthoringRecipeCatalog | null;
 }) {
   const day = report.days[selectedDay];
+  const delta = day ? Math.round((day.referenceNutrition.calories - report.target) * 1000) / 1000 : 0;
+  const percent = report.target > 0 ? Math.abs(delta) * 100 / report.target : 0;
   return <section aria-label="Тестовая неделя" className="space-y-5">
     <h2 className="text-xl font-semibold">Сценарий {number(report.target)} ккал в день</h2>
     <p className="text-sm">Техническая цель для проверки подбора. Не персональная рекомендация.</p>
@@ -29,6 +32,12 @@ export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog 
         </button>)}
       </nav>
       <h3 className="text-lg font-semibold">{dateLabel(day.date)}</h3>
+      <div className="space-y-1 rounded-xl border border-stone-200 p-4" aria-label="Цель и калорийность меню">
+        <p>Цель: <strong>{calorieNumber(report.target)} ккал</strong></p>
+        <p>Меню: <strong>{calorieNumber(day.referenceNutrition.calories)} ккал</strong> (справочно)</p>
+        <p className="text-sm" role="status">{delta === 0 ? 'Совпадает с целью по справочным данным.'
+          : `${delta < 0 ? 'Ниже' : 'Выше'} цели на ${calorieNumber(Math.abs(delta))} ккал (${percent < 0.01 ? '<0,01' : percent.toLocaleString('ru-RU', {maximumFractionDigits: 2})}%).`}</p>
+      </div>
       <p className="rounded-xl bg-stone-100 p-4" aria-label="Справочная сумма за день">
         Справочно: {number(day.referenceNutrition.calories)} ккал · Б {number(day.referenceNutrition.protein)} · Ж {number(day.referenceNutrition.fat)} · У исходника {number(day.referenceNutrition.carbs)} · Клетчатка {number(day.referenceNutrition.fiber)} г
       </p>
@@ -145,7 +154,7 @@ export default function AuthoringWeekViewer() {
       </label>
       <p className="text-sm">Технические сценарии, не персональные рекомендации. Четыре блюда в день, одна порция по источнику, допуск ±10%, один рецепт — максимум два раза в неделю. Для ужина в тесте используется категория обедов. Аллергены и диетические ограничения не проверены.</p>
       <button type="button" disabled={!catalog || catalogLoading || !weekStart} onClick={selectWeek} className="rounded-lg border border-stone-300 px-4 py-2 disabled:opacity-50">Подобрать тестовую неделю</button>
-      <p className="text-sm">Поиск ограничен: до 12 ближайших кандидатов на слот, 256 сочетаний на день и 1024 на неделю. Порции и допуск автоматически не меняются.</p>
+      <p className="text-sm">Первичный поиск ограничен; затем результат уточняется заменами целых порций с сохранением ограничений на повторы. Оптимальность по всему каталогу не подтверждена. Размеры порций и допуск автоматически не меняются.</p>
     </section>
     <details className="rounded-xl border border-stone-200 p-4"><summary className="cursor-pointer text-sm">Открыть ранее сохранённый отчёт</summary>
       <label className="mt-3 block">Открыть JSON тестовой недели

@@ -31,6 +31,15 @@ test('source portions are not divided again and unknown grams stay unknown', () 
   assert.equal(r.days[0].meals[0].measuredGrams, null);
   assert.equal(r.days[0].meals[0].sourceDeclaredServings, 2);
 });
+
+test('calorie card distinguishes target from actual menu and states the precise shortfall', () => {
+  const raw=fixture();raw.scenario.dailyCalorieTarget=1800;
+  raw.days[0].meals[0].referenceNutrition.calories=1671;raw.days[0].referenceNutrition.calories='1671.000';
+  const report=decodeAuthoringWeekReport(raw);
+  const html=renderToStaticMarkup(<AuthoringWeekContent report={report} selectedDay={0} onSelectDay={()=>{}} />);
+  assert.ok(html.includes('Цель:'));assert.ok(html.includes('Меню:'));
+  assert.ok(html.includes('Ниже цели на 129 ккал (7,17%).'));assert.ok(!html.includes('Совпадает с целью'));
+});
 test('trusted or activatable input is rejected', () => {
   for (const change of [{runtimePublishable: true}, {mayActivate: true}, {contract: 'graph-v2'}, {usage: 'VALID'}]) {
     assert.throws(() => decodeAuthoringWeekReport({...fixture(), ...change}));

@@ -64,7 +64,14 @@ try{
       if(n===2000){await page.getByText('В проверенных списках не найден подходящий день.',{exact:false}).waitFor();assert.equal(await page.locator('article').count(),0);}
       else{
         const days=page.getByRole('navigation',{name:'Дни недели'}).getByRole('button');assert.equal(await days.count(),7);
-        for(let i=0;i<7;i++){await days.nth(i).click();assert.equal(await page.locator('article').count(),4);await page.getByText('Открыть рецепт',{exact:true}).first().click();assert.ok((await page.locator('article').first().innerText()).includes('Ингредиенты'));}
+        for(let i=0;i<7;i++){
+          await days.nth(i).click();assert.equal(await page.locator('article').count(),4);
+          const calorieCard=await page.getByLabel('Цель и калорийность меню',{exact:true}).innerText();
+          assert.ok(calorieCard.includes('Цель:'));assert.ok(calorieCard.includes('Меню:'));
+          if(n===1800){assert.ok(calorieCard.includes('Ниже цели на'));assert.ok(!calorieCard.includes('Совпадает с целью'));}
+          else assert.ok(calorieCard.includes('Совпадает с целью по справочным данным.'));
+          await page.getByText('Открыть рецепт',{exact:true}).first().click();assert.ok((await page.locator('article').first().innerText()).includes('Ингредиенты'));
+        }
       }
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       checks.push({width,target:n,result:n===2000?'EXPECTED_BOUNDED_EMPTY':'SEVEN_DAYS_FOUR_REAL_RECIPES_DETAILS'});

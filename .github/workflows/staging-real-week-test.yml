@@ -6,6 +6,12 @@ on:
       - 'src/server/__tests__/stagingRealWeekApiV1.test.ts'
       - 'src/services/stagingRealWeek.ts'
       - 'src/components/StagingRealWeekTest.tsx'
+      - 'src/dev/authoringWeekSearchV1.ts'
+      - 'src/dev/authoringWeekReport.ts'
+      - 'src/dev/AuthoringWeekViewer.tsx'
+      - 'scripts/contracts/recipe-authoring-week-preview-v1.test.ts'
+      - 'scripts/contracts/week-input-calorie-capacity-v1.ts'
+      - 'scripts/acceptance/staging-real-menu-browser.mjs'
       - 'api/staging-real-week.js'
       - 'scripts/build-staging-real-week-api.mjs'
       - 'docs/premium/staging-reference-catalog-20261108.json'
@@ -23,5 +29,5 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/build-staging-real-week-api.mjs --check
-      - run: node --import tsx --test src/server/__tests__/stagingRealWeekApiV1.test.ts src/dev/__tests__/authoringWeekViewer.test.tsx
+      - run: node --import tsx --test src/server/__tests__/stagingRealWeekApiV1.test.ts src/dev/__tests__/authoringWeekViewer.test.tsx scripts/contracts/recipe-authoring-week-preview-v1.test.ts scripts/contracts/week-input-calorie-capacity-v1.test.ts
       - run: npx tsc --noEmit

@@ -89,7 +89,7 @@ export function decodeAuthoringWeekReport(value: unknown): AuthoringReport {
   });
   if ([...uses.values()].some(count => count > Number(s.maxRecipeUses))) return failure();
   const scope = status === 'REFERENCE_WEEK_PREVIEW' ? label(r.scope) : '';
-  if (scope && scope !== 'BEST_EVALUATED_PREFIX' && scope !== 'BEST_IN_RETAINED_POOL') return failure();
+  if (scope && !['BEST_EVALUATED_PREFIX', 'BEST_IN_RETAINED_POOL', 'CALORIE_REFINED_REFERENCE_WEEK'].includes(scope)) return failure();
   return {status, target, sourceName: label(source.fileName), sourceHash: source.sha256, scope,
     assumptions, notAssessed: r.notAssessed.map(label), days};
 }
