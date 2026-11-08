@@ -1,0 +1,55 @@
+name: POTOK Staging Node connection preflight (manual, no writes)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: potok-staging-node-connection-readonly
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check protected configuration exists
+        shell: bash
+        env:
+          HAS_STAGING_CONFIG: ${{ secrets.POTOK_STAGING_NODE_GENERATION_CONFIG_JSON != '' }}
+        run: |
+          set -euo pipefail
+          if [[ "$HAS_STAGING_CONFIG" != "true" ]]; then
+            echo "::error::Protected Staging Node config is missing. No connection attempted."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - name: Set up pinned Node runtime
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Read-only Staging connection test (reader and gateway)
+        shell: bash
+        env:
+          GENERATION_CONFIG_JSON: ${{ secrets.POTOK_STAGING_NODE_GENERATION_CONFIG_JSON }}
+          POTOK_GENERATION_CONNECTION_PREFLIGHT_ENABLED: 'true'
+          POTOK_GENERATION_CONNECTION_DNS_MODE: DNS_AAAA
+          POTOK_GENERATION_WORKER_ENABLED: 'false'
+        run: |
+          set -euo pipefail
+          umask 077
+          cfg="$RUNNER_TEMP/potok-staging-node-generation-probe-$$.json"
+          trap 'rm -f "$cfg"' EXIT
+          if [[ -z "$GENERATION_CONFIG_JSON" ]]; then
+            echo "::error::No protected config provided. No connection attempted."
+            exit 1
+          fi
+          printf '%s' "$GENERATION_CONFIG_JSON" > "$cfg"
+          chmod 600 "$cfg"
+          test "$(stat -c '%a' "$cfg")" = "600"
+          node --import tsx src/server/generationNodeConnectionPreflightCliV1.ts "$cfg"
