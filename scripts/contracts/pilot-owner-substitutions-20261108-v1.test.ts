@@ -9,6 +9,12 @@ test('owner scope excludes one edamame recipe and replaces brown lentil intent w
  assert.equal(p.ownerDecisions.greekYogurt.intendedProduct,'PLAIN_UNSWEETENED_GREEK_YOGURT_2_PERCENT');
  assert.equal(p.ownerDecisions.greekYogurt.notUniversalRetailEquivalence,true);
  assert.equal(p.ownerDecisions.lentils.intendedProduct,'GREEN_LENTILS');
+ assert.deepEqual(p.ownerDecisions.lentils.ownerReferencePer100g,{
+  state:'DRY_UNCOOKED',caloriesKcal:340,proteinG:26,fatG:2,carbsG:55,
+  fiberG:null,carbsExcludeFiber:null,referenceStatus:'OWNER_PROVIDED_NOT_SOURCE_VERIFIED'
+ });
+ assert.equal(p.ownerDecisions.lentils.requiresIndependentNutritionSource,true);
+ assert.equal(p.ownerDecisions.lentils.allowRecipeRecalculation,false);
  assert.deepEqual([...p.recipesRequiringNewDefinitionReview].sort(),['brown_lentils_rice_carrot','whole_wheat_pasta_lentils_tomato'].sort());
  assert.equal(p.productDatabaseWrites,0);
  assert.equal(p.recipeDatabaseWrites,0);
