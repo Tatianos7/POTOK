@@ -33,3 +33,14 @@ TestPage подписывается на Auth changes, скрывает стар
 5. При необходимости «Удалить сохранённый черновик». В другом браузере/телефоне эта копия не появится.
 
 Следующий сценарий: S2, качество подбора/БЖУ/ограничения и 2000 ккал; S3 подготовка рецептов идёт рядом. Непроверенные рецепты не блокируют код S1, но блокируют собственный Production admission. Новое разрешение на записи Staging для этой локальной реализации не нужно и не используется.
+
+## Checkpoint публикации
+
+- Draft PR: https://github.com/Tatianos7/POTOK/pull/368. Feature commit `2b2a4e3f5e2209d3c4075996ed8ae0b332299c7f`; CI runner correction `4eb01437947f416a337d26e56b1b134c19572d67`.
+- Дополнительно повторены 12 сценариев с настоящим private reference catalog + реальным HTTP handler на трёх ширинах: PASS (19 API calls, 18 fixture Auth GET, zero page errors; 2000 expected empty). Auth остаётся synthetic, это не hosted signed-in E2E.
+- Частный master восстановлен из сохранённого источника без изменений. Повторная проекция совпала с закреплённым SHA-256 `c59ff7ec366070e46f5d76c03d645a77381d189c6e5b3aa3633abab8555362b2`, packed 54184 bytes. Private bytes не попали в git.
+- Первый профильный CI run 42586098591 прошёл contract tests/TypeScript, но остановился на установке Playwright system deps: libasound2 отсутствует на ubuntu-latest. Runner закреплён ubuntu-22.04, как в существующей browser acceptance проекта. Повторный CI на исправлении ещё не объявлен успешным.
+- Новая source Preview сборка автоматически создана (`dpl_FqzRmRb33CZfW2c8UXmPYThqtnXM`), но её private catalog binding не подготовлен; стабильный alias на неё НЕ переключался.
+- Изменение branch-only catalog binding без value не прошло Vercel size validation для encrypted ciphertext; read API отдаёт усечённую value, она не использовалась. Повторная передача исходных неизменённых 54184 bytes в тот же Vercel project была отклонена автоматической проверкой: требуется отдельное однозначное owner permission для этого upload.
+- Флаг теста возвращён к прежней corridor preview-ветке; исходный private catalog binding сохранён. Прежний стабильный alias и рабочая сборка `dpl_GoJHB2SLEvqhBVa7vGAozYo51oyj` не менялись. Production и Supabase writes отсутствуют.
+- Блокер публикации: отдельно согласовать повторное использование прежнего private catalog в `potok-staging-test`, preview новой ветки. После разрешения: записать неизменённые параметры только этой preview-ветке → redeploy exact candidate → verify READY, HTTP 200 и API 401/405 → переключить существующий тестовый alias → ручная приёмка владельца. Перед этим проверить повторный профильный CI. Не расширять действие до Production/trusted worker.
