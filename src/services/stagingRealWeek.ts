@@ -1,3 +1,4 @@
+import {referenceDayHasDistinctStaples} from '../dev/referenceStapleVarietyV1';
 import {decodeReferenceExcludedIds, referenceExclusionScope} from '../dev/referenceRecipeExclusionsV1';
 import {decodeAuthoringRecipeCatalog, matchAuthoringRecipe, type AuthoringRecipeCatalog} from '../dev/authoringRecipeCatalog';
 import {decodeAuthoringWeekReport, type AuthoringReport} from '../dev/authoringWeekReport';
@@ -48,6 +49,7 @@ export function decodeStagingRealWeek(value: unknown): StagingRealWeekView {
   for (const day of report.days) for (const meal of day.meals) {
     if (matchAuthoringRecipe(catalog, report, meal).error) throw Error('CATALOG_RESPONSE_MISMATCH');
   }
+  if (report.dailyStapleVariety && report.days.some(day => !referenceDayHasDistinctStaples(day.meals.map(m => catalog.recipes.get(m.recipeId)!)))) throw Error('REFERENCE_DAILY_STAPLE_REPEAT');
   const capacity = r.calorieCapacity as Record<string, string | null>;
   return {snapshot: JSON.stringify(value), excludedRecipes, capacity: {required: Number(capacity.requiredWeekKcal), maximum: capacity.optimisticMaximumWeekKcal === null ? null : Number(capacity.optimisticMaximumWeekKcal), shortfall: capacity.provenWeekShortfallKcal === null ? null : Number(capacity.provenWeekShortfallKcal)}, report, catalog, sourceRecipes: Number(r.sourceRecipeCount), eligibleRecipes: Number(r.eligibleReferenceRecipes), minimumWeekCaloriesProvenUnreachable: unreachable};
 }

@@ -16,7 +16,7 @@ export const testTargets = [1400, 1600, 1800, 2000] as const;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function scenario(target: number, weekStart: string): AuthoringWeekScenarioV1 {
-  return {contract: 'potok-authoring-week-scenario-v1', weekStart, dailyCalorieTarget: target, tolerancePercent: 10,
+  return {contract: 'potok-authoring-week-scenario-v1', enforceDailyStapleVariety: true, weekStart, dailyCalorieTarget: target, tolerancePercent: 10,
     slots: [
       {label: 'Завтрак', sourceCategories: ['BREAKFAST'], targetSharePercent: 25},
       {label: 'Обед', sourceCategories: ['LUNCH'], targetSharePercent: 30},

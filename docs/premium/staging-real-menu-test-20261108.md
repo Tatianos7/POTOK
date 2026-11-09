@@ -72,7 +72,7 @@ Production POTOK и Supabase не изменены; approvals/рецепты/п�
 node scripts/prepare-staging-reference-catalog.mjs /private/catalog.json /private/catalog.br64
 node scripts/build-staging-real-week-api.mjs --check
 node --import tsx --test src/server/__tests__/stagingRealWeekApiV1.test.ts src/dev/__tests__/authoringWeekViewer.test.tsx
-node scripts/acceptance/staging-real-menu-browser.mjs /private/catalog.br64
+node --import tsx scripts/acceptance/staging-real-menu-browser.mjs /private/catalog.br64
 ```
 
 API — автоматически собранный ESM-модуль из исходных TypeScript-модулей.

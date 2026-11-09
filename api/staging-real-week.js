@@ -100,6 +100,7 @@ function authoringSearchInput(catalog) {
       sourceStatus: r.status,
       declaredServings: r.servings,
       numericReferenceTestInputAvailable: r.numericReferenceTestInputAvailable,
+      ingredients: r.ingredients.map((i) => ({ name: i.name, optional: i.optional })),
       sourceRecipe: { meal_type_primary: r.primaryCategory },
       referenceNutrition: { values: { ...r.nutrition } }
     }))
@@ -165,6 +166,7 @@ function decodeAuthoringWeekReport(value) {
   const status = label(r.status);
   if (!statuses.has(status)) return failure();
   const s = object(r.scenario), source = object(r.source);
+  if (s.enforceDailyStapleVariety !== void 0 && s.enforceDailyStapleVariety !== true) return failure();
   const target = numeric(s.dailyCalorieTarget);
   let calorieCorridor;
   if (r.calorieCorridor !== void 0) {
@@ -221,6 +223,7 @@ function decodeAuthoringWeekReport(value) {
   const scope = status === "REFERENCE_WEEK_PREVIEW" ? label(r.scope) : "";
   if (scope && !["BEST_EVALUATED_PREFIX", "BEST_IN_RETAINED_POOL", "CALORIE_REFINED_REFERENCE_WEEK"].includes(scope)) return failure();
   return {
+    dailyStapleVariety: s.enforceDailyStapleVariety,
     status,
     target,
     sourceName: label(source.fileName),
@@ -231,6 +234,31 @@ function decodeAuthoringWeekReport(value) {
     days,
     ...calorieCorridor ? { calorieCorridor } : {}
   };
+}
+
+// src/dev/referenceStapleVarietyV1.ts
+var rules = [
+  ["buckwheat", /греч(?:к|нев)/u],
+  ["rice", /(?:^|[^а-яa-z])рис(?:а|ом|овый|овая|овые)?(?:$|[^а-яa-z])/u],
+  ["oats", /овся|овес/u],
+  ["millet", /пшено|пшенн/u],
+  ["barley", /перлов/u],
+  ["quinoa", /киноа/u],
+  ["bulgur", /булгур/u],
+  ["couscous", /кус[ -]?кус/u],
+  ["pasta", /макарон|спагетти|(?:^|[^а-яa-z])паста(?:$|[^а-яa-z])|лапша|соба/u],
+  ["potato", /картоф/u],
+  ["lentils", /чечевиц/u],
+  ["beans", /фасол/u]
+];
+function referenceStapleGroups(recipe) {
+  const texts = [recipe.name, ...(recipe.ingredients ?? []).filter((i) => !i.optional).map((i) => i.name)].map((s) => s.toLocaleLowerCase("ru-RU").replace(/ё/g, "\u0435"));
+  return rules.filter(([group, pattern]) => texts.some((text2) => {
+    if (group === "rice" && /мука|крахмал|масло|молоко|напиток|уксус/u.test(text2)) return false;
+    if (group === "pasta" && /(?:томатная|арахисовая|ореховая|кунжутная) паста|паста (?:томатная|арахисовая|ореховая|кунжутная)/u.test(text2)) return false;
+    if (group === "beans" && /стручков/u.test(text2)) return false;
+    return pattern.test(text2);
+  })).map(([group]) => group);
 }
 
 // src/utils/boundedCartesianIndexesV1.ts
@@ -258,7 +286,7 @@ var minor = (n) => {
 var abs = (n) => n < 0n ? -n : n;
 var decimal = (n) => `${n / 1000n}.${String(n % 1000n).padStart(3, "0")}`;
 var total = (recipes) => Object.fromEntries(axes2.map((axis) => [axis, recipes.reduce((n, r) => n + minor(r.referenceNutrition.values[axis]), 0n)]));
-function refineCalories(initial, pools, s, target) {
+function refineCalories(initial, pools, s, target, validDay) {
   const days = initial.map((d) => ({ ...d, meals: [...d.meals] }));
   const minimumDistinct = new Set(days.flatMap((d) => d.meals.map((r) => r.recipeId))).size;
   const limits = { passes: 2, candidatesPerDayPerPass: 8192, poolPerSlot: 128, nearestSecondChoices: 8, balancePasses: 8, balanceCandidates: 4096 };
@@ -287,7 +315,7 @@ function refineCalories(initial, pools, s, target) {
         attempts++;
         evaluated++;
         evaluationsByDay[dayIndex]++;
-        if (new Set(meals.map((r) => r.recipeId)).size !== meals.length) return;
+        if (new Set(meals.map((r) => r.recipeId)).size !== meals.length || !validDay(meals)) return;
         const distance = abs(meals.reduce((n, r) => n + calories(r), 0n) - target);
         if (distance >= current.distance || distance > best.distance) return;
         const uses = new Map(outside);
@@ -361,7 +389,7 @@ function refineCalories(initial, pools, s, target) {
         const ma = [...first.meals], mb = [...second.meals];
         ma[sa] = rb;
         mb[sb] = ra;
-        if (new Set(ma.map((r) => r.recipeId)).size !== ma.length || new Set(mb.map((r) => r.recipeId)).size !== mb.length) continue;
+        if (new Set(ma.map((r) => r.recipeId)).size !== ma.length || new Set(mb.map((r) => r.recipeId)).size !== mb.length || !validDay(ma) || !validDay(mb)) continue;
         const na = total(ma), nb = total(mb), da = abs(na.calories - target), db = abs(nb.calories - target);
         if (da > initial[a].distance || db > initial[b].distance || da + db > first.distance + second.distance) continue;
         const candidate = [...days];
@@ -393,7 +421,7 @@ function refineCalories(initial, pools, s, target) {
   } };
 }
 function validate(s) {
-  if (s.contract !== "potok-authoring-week-scenario-v1" || !/^\d{4}-\d{2}-\d{2}$/.test(s.weekStart) || !Number.isFinite(Date.parse(s.weekStart + "T00:00:00Z")) || (/* @__PURE__ */ new Date(s.weekStart + "T00:00:00Z")).toISOString().slice(0, 10) !== s.weekStart || !Number.isInteger(s.dailyCalorieTarget) || s.dailyCalorieTarget < 1 || s.dailyCalorieTarget > 1e4 || !Number.isInteger(s.tolerancePercent) || s.tolerancePercent < 0 || s.tolerancePercent > 50 || !Array.isArray(s.slots) || s.slots.length < 1 || s.slots.length > 7 || s.slots.some((x) => !x.label || !Array.isArray(x.sourceCategories) || !x.sourceCategories.length || x.sourceCategories.some((y) => typeof y !== "string" || !y) || !Number.isInteger(x.targetSharePercent) || x.targetSharePercent < 1) || new Set(s.slots.map((x) => x.label)).size !== s.slots.length || s.slots.reduce((a, b) => a + b.targetSharePercent, 0) !== 100 || !Number.isInteger(s.rankedCandidatePoolSize) || s.rankedCandidatePoolSize < 1 || s.rankedCandidatePoolSize > 128 || !Number.isInteger(s.shortlistPerSlot) || s.shortlistPerSlot < 1 || s.shortlistPerSlot > 8 || !Number.isInteger(s.dayPoolSize) || s.dayPoolSize < 1 || s.dayPoolSize > 16 || [s.maxDayEvaluations, s.maxWeekEvaluations].some((x) => !Number.isInteger(x) || x < 1 || x > 1024) || !Number.isInteger(s.maxRecipeUses) || s.maxRecipeUses < 1 || s.maxRecipeUses > 7) throw Error("INVALID_AUTHORING_WEEK_SCENARIO");
+  if (s.enforceDailyStapleVariety !== void 0 && s.enforceDailyStapleVariety !== true || s.contract !== "potok-authoring-week-scenario-v1" || !/^\d{4}-\d{2}-\d{2}$/.test(s.weekStart) || !Number.isFinite(Date.parse(s.weekStart + "T00:00:00Z")) || (/* @__PURE__ */ new Date(s.weekStart + "T00:00:00Z")).toISOString().slice(0, 10) !== s.weekStart || !Number.isInteger(s.dailyCalorieTarget) || s.dailyCalorieTarget < 1 || s.dailyCalorieTarget > 1e4 || !Number.isInteger(s.tolerancePercent) || s.tolerancePercent < 0 || s.tolerancePercent > 50 || !Array.isArray(s.slots) || s.slots.length < 1 || s.slots.length > 7 || s.slots.some((x) => !x.label || !Array.isArray(x.sourceCategories) || !x.sourceCategories.length || x.sourceCategories.some((y) => typeof y !== "string" || !y) || !Number.isInteger(x.targetSharePercent) || x.targetSharePercent < 1) || new Set(s.slots.map((x) => x.label)).size !== s.slots.length || s.slots.reduce((a, b) => a + b.targetSharePercent, 0) !== 100 || !Number.isInteger(s.rankedCandidatePoolSize) || s.rankedCandidatePoolSize < 1 || s.rankedCandidatePoolSize > 128 || !Number.isInteger(s.shortlistPerSlot) || s.shortlistPerSlot < 1 || s.shortlistPerSlot > 8 || !Number.isInteger(s.dayPoolSize) || s.dayPoolSize < 1 || s.dayPoolSize > 16 || [s.maxDayEvaluations, s.maxWeekEvaluations].some((x) => !Number.isInteger(x) || x < 1 || x > 1024) || !Number.isInteger(s.maxRecipeUses) || s.maxRecipeUses < 1 || s.maxRecipeUses > 7) throw Error("INVALID_AUTHORING_WEEK_SCENARIO");
 }
 function previewRecipeAuthoringWeekV1(catalog, scenario2) {
   const s = structuredClone(scenario2);
@@ -409,6 +437,16 @@ function previewRecipeAuthoringWeekV1(catalog, scenario2) {
     axes2.forEach((a) => minor(r.referenceNutrition.values[a]));
     if (typeof r.declaredServings !== "number" || r.declaredServings <= 0) throw Error("INVALID_AUTHORING_SERVINGS");
   }
+  const groups = new Map(s.enforceDailyStapleVariety ? eligible.map((r) => [r.recipeId, referenceStapleGroups(r)]) : []);
+  const validDay = (meals) => {
+    if (!s.enforceDailyStapleVariety) return true;
+    const used = /* @__PURE__ */ new Set();
+    for (const r of meals) for (const group of groups.get(r.recipeId) ?? []) {
+      if (used.has(group)) return false;
+      used.add(group);
+    }
+    return true;
+  };
   const target = BigInt(s.dailyCalorieTarget) * 1000n, tolerance = target * BigInt(s.tolerancePercent) / 100n;
   const pools = s.slots.map((slot) => eligible.filter((r) => slot.sourceCategories.includes(String(r.sourceRecipe.meal_type_primary))).sort((a, b) => {
     const da = abs(minor(a.referenceNutrition.values.calories) * 100n - target * BigInt(slot.targetSharePercent));
@@ -444,7 +482,7 @@ function previewRecipeAuthoringWeekV1(catalog, scenario2) {
     for (const indexes of boundedCartesianIndexesV1(lists.map((x) => x.length), s.maxDayEvaluations)) {
       evaluated2++;
       const meals = lists.map((l, i) => l[indexes[i]]);
-      if (new Set(meals.map((r) => r.recipeId)).size !== meals.length) continue;
+      if (new Set(meals.map((r) => r.recipeId)).size !== meals.length || !validDay(meals)) continue;
       const nutrition2 = total(meals), distance = abs(nutrition2.calories - target);
       if (distance <= tolerance) accepted.push({ date, meals, nutrition: nutrition2, distance });
     }
@@ -468,6 +506,7 @@ function previewRecipeAuthoringWeekV1(catalog, scenario2) {
   if (dayPools.some((x) => !x.length)) return { ...base, status: "NO_REFERENCE_DAY_IN_EVALUATED_SHORTLISTS", days: [], diagnostics };
   const combinations = dayPools.reduce((n, p) => n * p.length, 1);
   let evaluated = 0, best = null, bestDistance = null;
+  const varietyCandidates = [];
   for (const indexes of boundedCartesianIndexesV1(dayPools.map((x) => x.length), s.maxWeekEvaluations)) {
     evaluated++;
     const days = dayPools.map((l, i) => l[indexes[i]]), uses = /* @__PURE__ */ new Map();
@@ -478,9 +517,23 @@ function previewRecipeAuthoringWeekV1(catalog, scenario2) {
       best = days;
       bestDistance = distance;
     }
+    if (s.enforceDailyStapleVariety) {
+      varietyCandidates.push({ days, distinct: uses.size, distance });
+      varietyCandidates.sort((a, b) => b.distinct - a.distinct || (a.distance === b.distance ? 0 : a.distance < b.distance ? -1 : 1));
+      if (varietyCandidates.length > 3) varietyCandidates.pop();
+    }
   }
   if (!best) return { ...base, status: evaluated < combinations ? "WEEK_SEARCH_LIMIT_REACHED" : "NO_REFERENCE_WEEK_IN_RETAINED_POOL", days: [], diagnostics, evaluated, retainedWeekCombinations: combinations };
-  const refined = refineCalories(best, pools, s, target);
+  let refined = refineCalories(best, pools, s, target, validDay);
+  const fits = (days) => days.every((d) => referenceCaloriesFitCorridorV1(s.dailyCalorieTarget, Number(d.nutrition.calories) / 1e3));
+  const distinct = (days) => new Set(days.flatMap((d) => d.meals.map((r) => r.recipeId))).size;
+  let refinedWeekCandidates = 1;
+  for (const candidate of varietyCandidates) {
+    if (fits(refined.days) && candidate.distinct <= distinct(refined.days)) continue;
+    const alternative = refineCalories(candidate.days, pools, s, target, validDay);
+    refinedWeekCandidates++;
+    if (fits(alternative.days) && (!fits(refined.days) || distinct(alternative.days) > distinct(refined.days))) refined = alternative;
+  }
   best = refined.days;
   return {
     ...base,
@@ -488,7 +541,7 @@ function previewRecipeAuthoringWeekV1(catalog, scenario2) {
     scope: refined.diagnostics.changes || refined.diagnostics.balanceChanges ? "CALORIE_REFINED_REFERENCE_WEEK" : evaluated < combinations ? "BEST_EVALUATED_PREFIX" : "BEST_IN_RETAINED_POOL",
     evaluated,
     retainedWeekCombinations: combinations,
-    calorieRefinement: refined.diagnostics,
+    calorieRefinement: { ...refined.diagnostics, refinedWeekCandidates, maxRefinedWeekCandidates: 4 },
     distinctRecipes: new Set(best.flatMap((d) => d.meals.map((r) => r.recipeId))).size,
     days: best.map((d) => ({
       date: d.date,
@@ -601,6 +654,7 @@ var uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]
 function scenario(target, weekStart) {
   return {
     contract: "potok-authoring-week-scenario-v1",
+    enforceDailyStapleVariety: true,
     weekStart,
     dailyCalorieTarget: target,
     tolerancePercent: 10,

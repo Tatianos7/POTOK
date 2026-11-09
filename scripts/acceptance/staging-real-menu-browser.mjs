@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {readFileSync} from 'node:fs';
 import {resolve, extname} from 'node:path';
+import {referenceDayHasDistinctStaples} from '../../src/dev/referenceStapleVarietyV1.ts';
 import {chromium} from 'playwright';
 import {createStagingRealWeekHandler} from '../../api/staging-real-week.js';
 
@@ -71,8 +72,10 @@ try{
           await days.nth(i).click();assert.equal(await page.locator('article').count(),4);
           const calorieCard=await page.getByLabel('Цель и калорийность меню',{exact:true}).innerText();
           assert.ok(calorieCard.includes('Цель:'));assert.ok(calorieCard.includes('Меню:'));
-          if(n===1800){assert.ok(calorieCard.includes('Ниже цели на'));assert.ok(!calorieCard.includes('Совпадает с целью'));}
-          else assert.ok(calorieCard.includes('Совпадает с целью по справочным данным.'));
+          const kcal=Number(lastBody.report.days[i].referenceNutrition.calories);assert.ok(Math.abs(kcal-n)<=50);
+          assert.equal(lastBody.report.scenario.enforceDailyStapleVariety,true);
+          const lookup=new Map(lastBody.catalog.recipes.map(r=>[r.recipeId,{name:r.name,ingredients:r.ingredients.map(ingredient=>({name:ingredient.ingredient_name_ru,optional:ingredient.optional}))}]));
+          assert.ok(referenceDayHasDistinctStaples(lastBody.report.days[i].meals.map(m=>lookup.get(m.recipeId))));
           await page.getByText('Открыть рецепт',{exact:true}).first().click();assert.ok((await page.locator('article').first().innerText()).includes('Ингредиенты'));
         }
       }
@@ -95,6 +98,8 @@ try{
     const filtered=await (await responsePromise).json();
     assert.equal(filtered.report.days.length,7);assert.deepEqual(filtered.exclusions.recipes.map(r=>r.id),[unwanted.recipeId]);
     assert.ok(!filtered.report.days.some(d=>d.meals.some(m=>m.recipeId===unwanted.recipeId)));
+    const lookup=new Map(filtered.catalog.recipes.map(r=>[r.recipeId,{name:r.name,ingredients:r.ingredients.map(i=>({name:i.ingredient_name_ru,optional:i.optional}))}]));
+    assert.ok(filtered.report.days.every(d=>referenceDayHasDistinctStaples(d.meals.map(m=>lookup.get(m.recipeId)))));
     await page.locator('article').first().waitFor();
     await page.getByRole('button',{name:'Сохранить неделю на устройстве',exact:true}).click();
     await page.getByText('Тестовая неделя сохранена на этом устройстве.',{exact:true}).waitFor();

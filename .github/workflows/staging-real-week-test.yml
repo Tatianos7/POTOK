@@ -6,6 +6,8 @@ on:
       - 'src/server/__tests__/stagingRealWeekApiV1.test.ts'
       - 'src/services/stagingRealWeek.ts'
       - 'src/dev/referenceRecipeExclusionsV1.ts'
+      - 'src/dev/referenceStapleVarietyV1.ts'
+      - 'src/dev/authoringRecipeCatalog.ts'
       - 'src/services/__tests__/stagingMenuQuality.test.ts'
       - 'src/services/stagingWeekDraft.ts'
       - 'src/services/__tests__/stagingWeekDraft*'

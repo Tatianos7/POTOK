@@ -1,3 +1,4 @@
+import {referenceStapleGroups, referenceDayHasDistinctStaples} from '../../dev/referenceStapleVarietyV1';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {decodeReferenceExcludedIds, excludeReferenceRecipes, referenceExclusionScope} from '../../dev/referenceRecipeExclusionsV1';
@@ -51,4 +52,43 @@ test('exclusion scope survives draft roundtrip and old snapshots without it rema
   saveStagingWeekDraft(store,account,JSON.stringify(packet),'Europe/Moscow');assert.deepEqual(loadStagingWeekDraft(store,account)!.view.excludedRecipes,[]);
   const next={...packet,exclusions:{scope:referenceExclusionScope,recipes:[{id:'unselected',name:'Исключённое блюдо'}]}};
   saveStagingWeekDraft(store,account,JSON.stringify(next),'Europe/Moscow');assert.deepEqual(loadStagingWeekDraft(store,account)!.view.excludedRecipes,next.exclusions.recipes);
+});
+
+
+test('culinary groups use literal source ingredients, ignore optional sides and do not confuse Greek yogurt, flour or tomato paste with garnishes',()=>{
+  const recipe=(name: string, ingredients: string[]=[])=>({name,ingredients:ingredients.map(name=>({name,optional:false}))});
+  assert.deepEqual(referenceStapleGroups(recipe('Гречневая каша')),['buckwheat']);
+  assert.deepEqual(referenceStapleGroups(recipe('Йогурт греческий 2%', ['рисовая мука','томатная паста','фасоль стручковая зелёная'])),[]);
+  assert.deepEqual(referenceStapleGroups(recipe('Рагу',['рис бурый длиннозёрный','картофель'])),['rice','potato']);
+  assert.equal(referenceDayHasDistinctStaples([recipe('Гречка с грибами'),recipe('Курица',['крупа гречневая'])]),false);
+  assert.equal(referenceDayHasDistinctStaples([recipe('Каша',['рис белый']),recipe('Плов',['рис бурый'])]),false);
+  assert.equal(referenceDayHasDistinctStaples([recipe('Гречка'),recipe('Рис'),recipe('Салат')]),true);
+  assert.deepEqual(referenceStapleGroups({name:'Омлет',ingredients:[{name:'картофель',optional:true}]}),[]);
+});
+test('daily staple constraint survives calorie refinement; impossible input returns empty without relaxing it',()=>{
+  const input=authoringSearchInput(decodeAuthoringRecipeCatalog(referenceWeekFixture().catalog));
+  const settings={contract:'potok-authoring-week-scenario-v1' as const,enforceDailyStapleVariety:true as const,
+    weekStart:'2026-11-09',dailyCalorieTarget:1600,tolerancePercent:10,
+    slots:['Завтрак','Обед','Ужин','Перекус'].map(label=>({label,sourceCategories:['LUNCH'],targetSharePercent:25})),
+    rankedCandidatePoolSize:28,shortlistPerSlot:4,dayPoolSize:4,maxDayEvaluations:256,maxWeekEvaluations:1024,maxRecipeUses:2};
+  input.recipes.forEach((r,i)=>{r.ingredients=[{name:['крупа гречневая','рис белый','картофель','чечевица'][i%4],optional:false}];});
+  const before=JSON.stringify(input),report=previewRecipeAuthoringWeekV1(input,settings);
+  assert.equal(report.days.length,7);
+  const lookup=new Map(input.recipes.map(r=>[r.recipeId,r]));
+  assert.ok(report.days.every(d=>referenceDayHasDistinctStaples(d.meals.map(m=>lookup.get(m.recipeId)!))));
+  assert.equal(JSON.stringify(input),before);
+  const impossible=structuredClone(input);impossible.recipes.forEach(r=>{r.ingredients=[{name:'крупа гречневая',optional:false}];});
+  assert.equal(previewRecipeAuthoringWeekV1(impossible,settings).days.length,0);
+});
+test('client rechecks daily staple diversity and retains the rule through draft restore; old drafts are not silently upgraded',()=>{
+  const raw=referenceWeekFixture() as ReturnType<typeof referenceWeekFixture> & {report: {scenario: {enforceDailyStapleVariety?: true}}};
+  assert.equal(decodeStagingRealWeek(raw).report.dailyStapleVariety,undefined);
+  raw.report.scenario.enforceDailyStapleVariety=true;
+  const view=decodeStagingRealWeek(raw);assert.equal(view.report.dailyStapleVariety,true);
+  const map=new Map<string,string>(),storage={getItem:(k:string)=>map.get(k)??null,setItem:(k:string,v:string)=>{map.set(k,v);},removeItem:(k:string)=>{map.delete(k);}};
+  const account='11111111-1111-4111-8111-111111111111';
+  saveStagingWeekDraft(storage,account,JSON.stringify(raw),'Europe/Moscow');assert.equal(loadStagingWeekDraft(storage,account)!.view.report.dailyStapleVariety,true);
+  // Source ingredient text is unchanged by numerical report-link checks; the independent rule must still reject it.
+  for(const r of raw.catalog.recipes.slice(0,2))r.ingredients[0].ingredient_name_ru='крупа гречневая';
+  assert.throws(()=>decodeStagingRealWeek(raw),/REFERENCE_DAILY_STAPLE_REPEAT/);
 });

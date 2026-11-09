@@ -111,6 +111,8 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       {view.report.days.length === 7 && <div className="rounded-lg border p-3 text-sm" aria-label="Проверки тестового меню">
         <p className="font-semibold">Что проверено в этом меню</p>
         <p>Все семь дней в коридоре ±50 ккал. Разных блюд: {view.catalog.recipes.size}. Одно блюдо встречается не больше двух раз за неделю, внутри дня не повторяется.</p>
+        {view.report.dailyStapleVariety ? <p className="mt-2">Распознанные крупы, картофель, макароны и бобовые не повторяются в течение дня. Правило учитывает названия и состав исходных рецептов.</p>
+          : <p className="mt-2">Эта сохранённая неделя создана до проверки разнообразия гарниров. Сгенерируй новую неделю, чтобы применить правило.</p>}
         <p className="mt-2">БЖУ показаны по источнику. Соответствие персональным целям БЖУ, аллергиям и диетам пока не проверяется.</p>
         <details className="mt-2"><summary>Диапазон БЖУ по дням</summary>
           {([['protein','Белки'],['fat','Жиры'],['carbs','Углеводы исходника'],['fiber','Клетчатка']] as const).map(([axis,label]) => {
