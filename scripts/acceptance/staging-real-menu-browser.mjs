@@ -84,9 +84,12 @@ try{
     await page.getByRole('button',{name:'Сгенерировать неделю из рецептов',exact:true}).click();
     await page.locator('article').first().waitFor();
     const unwanted=lastBody.report.days[0].meals[0];
-    await page.getByText('Есть блюдо, которое не хочется?',{exact:true}).click();
-    await page.getByRole('button',{name:'Не предлагать: '+unwanted.name,exact:true}).click();
+    if(width===393 && process.env.POTOK_MEAL_ACTION_SCREENSHOT)await page.locator('article').first().screenshot({path:process.env.POTOK_MEAL_ACTION_SCREENSHOT});
+    assert.equal(await page.locator('article').getByRole('button',{name:/^Не предлагать это блюдо:/}).count(),4);
+    await page.getByRole('button',{name:'Не предлагать это блюдо: '+unwanted.name,exact:true}).click();
     assert.equal(await page.locator('article').count(),0);
+    await page.getByText('Сохранённая неделя пока не изменена.',{exact:false}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Сгенерировать неделю из рецептов',exact:true}).evaluate(el=>el===document.activeElement),true);
     const responsePromise=page.waitForResponse(r=>r.url().endsWith('/api/staging-real-week'));
     await page.getByRole('button',{name:'Сгенерировать неделю из рецептов',exact:true}).click();
     const filtered=await (await responsePromise).json();

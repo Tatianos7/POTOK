@@ -12,6 +12,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   const [saved, setSaved] = useState<StagingWeekDraft | null>(null), [notice, setNotice] = useState('');
   const [excluded, setExcluded] = useState<{id: string; name: string}[]>([]);
   const epoch = useRef(0);
+  const generateButton = useRef<HTMLButtonElement>(null);
   function clear() {++epoch.current; setView(null); setDay(0); setError(''); setNotice(''); setBusy(false);}
   const reopen = useCallback(async () => {
     const request = ++epoch.current;
@@ -80,7 +81,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     <label className="block text-sm">Начало недели
       <input aria-label="Начало тестовой недели" type="date" value={weekStart} onChange={e => {clear(); setWeekStart(e.target.value);}} className="mt-2 block w-full rounded-lg border p-3" />
     </label>
-    <button type="button" disabled={busy || !weekStart} onClick={() => {void generate();}} className="w-full rounded-lg bg-emerald-800 px-4 py-3 font-semibold text-white disabled:opacity-50">
+    <button ref={generateButton} type="button" disabled={busy || !weekStart} onClick={() => {void generate();}} className="w-full rounded-lg bg-emerald-800 px-4 py-3 font-semibold text-white disabled:opacity-50">
       {busy ? 'Подожди…' : 'Сгенерировать неделю из рецептов'}
     </button>
     <div className="space-y-2" aria-label="Сохранение тестовой недели">
@@ -118,14 +119,15 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
           })}
         </details>
       </div>}
-      {view.catalog.recipes.size > 0 && <details className="rounded-lg border p-3" aria-label="Исключить блюдо">
-        <summary>Есть блюдо, которое не хочется?</summary>
-        <p className="my-2 text-sm">Выбери блюдо и запусти новый подбор. Сохранённая неделя останется прежней, пока ты явно не заменишь её.</p>
-        <div className="space-y-2">{[...view.catalog.recipes.values()].map(r => <button type="button" key={r.id} disabled={busy || excluded.length >= 28}
-          onClick={() => {clear(); setExcluded(previous => [...previous, {id: r.id, name: r.name}].sort((a,b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0));}}
-          className="block w-full rounded-lg border p-2 text-left text-sm">Не предлагать: {r.name}</button>)}</div>
-      </details>}
-      <AuthoringWeekContent emptyReason={view.minimumWeekCaloriesProvenUnreachable ? 'В этом режиме собрать неделю в выбранном коридоре нельзя: не хватает калорий при нынешних порциях и повторах.' : undefined} report={view.report} catalog={view.catalog} selectedDay={day} onSelectDay={setDay} />
+      <AuthoringWeekContent emptyReason={view.minimumWeekCaloriesProvenUnreachable ? 'В этом режиме собрать неделю в выбранном коридоре нельзя: не хватает калорий при нынешних порциях и повторах.' : undefined} report={view.report} catalog={view.catalog} selectedDay={day} onSelectDay={setDay}
+        actionsDisabled={busy || excluded.length >= 28} onExcludeRecipe={meal => {
+          if (busy || excluded.length >= 28 || excluded.some(r => r.id === meal.recipeId)) return;
+          clear();
+          setExcluded(previous => [...previous, {id: meal.recipeId, name: meal.name}].sort((a,b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+          setNotice(`«${meal.name}» исключено. Нажми «Сгенерировать неделю из рецептов». Сохранённая неделя пока не изменена.`);
+          generateButton.current?.focus();
+          generateButton.current?.scrollIntoView({block: 'center'});
+        }} />
     </>}
   </section>;
 }
