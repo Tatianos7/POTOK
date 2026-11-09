@@ -44,3 +44,16 @@ TestPage подписывается на Auth changes, скрывает стар
 - Изменение branch-only catalog binding без value не прошло Vercel size validation для encrypted ciphertext; read API отдаёт усечённую value, она не использовалась. Повторная передача исходных неизменённых 54184 bytes в тот же Vercel project была отклонена автоматической проверкой: требуется отдельное однозначное owner permission для этого upload.
 - Флаг теста возвращён к прежней corridor preview-ветке; исходный private catalog binding сохранён. Прежний стабильный alias и рабочая сборка `dpl_GoJHB2SLEvqhBVa7vGAozYo51oyj` не менялись. Production и Supabase writes отсутствуют.
 - Блокер публикации: отдельно согласовать повторное использование прежнего private catalog в `potok-staging-test`, preview новой ветки. После разрешения: записать неизменённые параметры только этой preview-ветке → redeploy exact candidate → verify READY, HTTP 200 и API 401/405 → переключить существующий тестовый alias → ручная приёмка владельца. Перед этим проверить повторный профильный CI. Не расширять действие до Production/trusted worker.
+
+## Публикация завершена после нового разрешения владельца
+
+Владелец отдельно ответил «Да разрешаю» на повторную передачу прежнего приватного каталога именно в Vercel `potok-staging-test` для новой тестовой сборки и обновление прежней ссылки. Согласованные неизменённые bytes и enable flag привязаны только к preview-ветке `codex/staging-week-draft-reopen-20261109`. Production target не добавлен.
+
+- READY deployment: `dpl_F2w4bNphkCWvKBAqDwxzmBWNJ195`, source commit `99ce0bad600add5a992af47927660d4e4953ae78` (feature bytes идентичны `2b2a4e3f5e2209d3c4075996ed8ae0b332299c7f`, последующие commits меняли CI/docs).
+- Стабильная ссылка обновлена: https://potok-staging-test.vercel.app/staging-generator-check.html. Возврат тестового alias: `dpl_GoJHB2SLEvqhBVa7vGAozYo51oyj`.
+- Hosted HTTP 200; актуальный JS содержит Save/Open и `potok-browser-reference-week-draft-v1`; API GET 405 METHOD_NOT_ALLOWED, anonymous POST 401 AUTH_REQUIRED. Hosted вход/сохранение под реальным аккаунтом владельца остаётся ручной приёмкой; не заявлен автоматический signed-in E2E.
+- Профильный CI после runner fix: 42586563095 и повторный 42586666979 success, включая browser draft flow. PostgreSQL 42586666973 success.
+- Общие POTOK PR Checks 42586666989 failure на immutable historical-runtime allowlist: текущий `src/App.tsx` отличается от pinned исходника, не входящего в сохранённый overlay. `src/App.tsx` не менялся в S1 (проверен diff с base PR367); broad historical fixture не исправлялась путём ослабления allowlist. Это остаётся отдельным CI/integration blocker перед merge/release, а не отказом профильного S1 browser test. Все CI зелёными не объявляются; Production rollout не разрешён.
+- Блокер передачи private catalog снят явным новым разрешением; source Preview без параметров не использован как результат. Ни Supabase schema/data/RPC, ни Production не изменены. Локальное сохранение черновика не стало серверным планом или FACT.
+
+Состояние S1: IMPLEMENTED_AND_TESTED_BROWSER_DRAFT / TEST_PREVIEW_PUBLISHED; OWNER_MANUAL_ACCEPTANCE_PENDING. Следующий кодовый сценарий S2 остаётся тем же. Для текущей ручной проверки можно перейти в обычный чат; для дальнейшего кода нужен режим Работа.
