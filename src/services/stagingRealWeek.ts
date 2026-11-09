@@ -1,7 +1,7 @@
-import {decodeAuthoringRecipeCatalog, type AuthoringRecipeCatalog} from '../dev/authoringRecipeCatalog';
+import {decodeAuthoringRecipeCatalog, matchAuthoringRecipe, type AuthoringRecipeCatalog} from '../dev/authoringRecipeCatalog';
 import {decodeAuthoringWeekReport, type AuthoringReport} from '../dev/authoringWeekReport';
 
-export type StagingRealWeekView = {report: AuthoringReport; catalog: AuthoringRecipeCatalog; sourceRecipes: number; eligibleRecipes: number; minimumWeekCaloriesProvenUnreachable: boolean};
+export type StagingRealWeekView = {snapshot: string; report: AuthoringReport; catalog: AuthoringRecipeCatalog; sourceRecipes: number; eligibleRecipes: number; minimumWeekCaloriesProvenUnreachable: boolean};
 export function decodeReferenceWeekCalorieCapacity(value: unknown, target: number): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value) || !Number.isInteger(target) || target < 1 || target > 10000) throw Error('INVALID_CALORIE_CAPACITY');
   const capacity = value as Record<string, unknown>;
@@ -27,7 +27,10 @@ export function decodeStagingRealWeek(value: unknown): StagingRealWeekView {
   const unreachable = decodeReferenceWeekCalorieCapacity(r.calorieCapacity, report.calorieCorridor.minimumKcal);
   const ids = new Set(report.days.flatMap(d => d.meals.map(m => m.recipeId)));
   if (catalog.sourceHash !== report.sourceHash || catalog.recipes.size !== ids.size || [...ids].some(id => !catalog.recipes.has(id))) throw Error('CATALOG_RESPONSE_MISMATCH');
-  return {report, catalog, sourceRecipes: Number(r.sourceRecipeCount), eligibleRecipes: Number(r.eligibleReferenceRecipes), minimumWeekCaloriesProvenUnreachable: unreachable};
+  for (const day of report.days) for (const meal of day.meals) {
+    if (matchAuthoringRecipe(catalog, report, meal).error) throw Error('CATALOG_RESPONSE_MISMATCH');
+  }
+  return {snapshot: JSON.stringify(value), report, catalog, sourceRecipes: Number(r.sourceRecipeCount), eligibleRecipes: Number(r.eligibleReferenceRecipes), minimumWeekCaloriesProvenUnreachable: unreachable};
 }
 
 export async function requestStagingRealWeek(accountId: string, target: number, weekStart: string, ports: {
