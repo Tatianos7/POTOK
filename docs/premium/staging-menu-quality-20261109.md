@@ -30,3 +30,17 @@ API принимает прежние target/weekStart и optional excludedRecip
 - Общий CI blocker исторического runtime исправлен отдельно: добавлен только exact public App.tsx из original commit `455deef591456222e08eced30d3a7ba7bf9e242a`, SHA-256 `b76db533a7baffecb1a66eb9af37e88d8ff914ccb7ab629dd38c580d3bcc6de0`, в retained overlay. Manifest и его hashes неизменны; текущий App.tsx не откатывается. Негативная проверка нового unlisted drift использует src/index.css; отдельный tampered App snapshot тест отклоняет замену. 8 historical/private-runtime tests PASS. Свежий общий CI должен быть проверен отдельно, успех всего CI не выводится из локальных тестов.
 
 Только тестовый Preview. Без Supabase schema/data/RPC writes, source approval, Production, trusted generator/Edge activation. Частный каталог сохраняет прежние pins. Точный deployment и результаты hosted checks записываются после публикации.
+
+## Публикация и текущий checkpoint
+
+- Draft PR #369: https://github.com/Tatianos7/POTOK/pull/369. Base PR368 head `56cfeef029118f53654d2811befac8851e8e3c8a`; source commit `fd4dacc9b8f42aa0e8e9e0619098617caef5efa0`.
+- READY Preview `dpl_A2ojUpeQ6UMGFjAVzGjibyCxXjyf`; существующий alias обновлён: https://potok-staging-test.vercel.app/staging-generator-check.html. Возврат тестового alias: `dpl_F2w4bNphkCWvKBAqDwxzmBWNJ195`.
+- Прежний разрешённый неизменённый приватный каталог и флаг перенесены только на preview-ветку этого изменения, без Production-target. Новый частный контент не публиковался.
+- Hosted check: HTTP200; актуальный JS содержит exclusion UI/quality summary/scope; GET API405; anonymous POST с exclusions401. Hosted signed-in генерацию/сохранение проверяет владелец; локальные Auth fixtures не выдаются за такую приёмку.
+- Профильный CI 42600081542 success. Общие PR Checks42600081652 на момент записи ещё выполняются; все CI зелёными не объявляются. Исправление historical overlay локально проверено отдельными восемью тестами.
+- Воспроизводимая baseline матрица: 1400 - семь дней, 26 разных recipes,1400/день;1600 - семь дней,26 разных,1600/день;1800 - семь дней,22 разных,1753.3–1767.5/день;2000 - нет недели,нехватка до необходимого недельного минимума1113.6 ккал. БЖУ1600: Б114.9–160.3,Ж29.7–52.4,У исходника137.1–206.9,клетчатка15.5–34.2 г/день. Это исходные reference факты, не оценка персональной сбалансированности.
+- Состояние: RECIPE_EXCLUSION_ROUNDTRIP_IMPLEMENTED_TESTED_AND_PREVIEW_PUBLISHED; FULL_S2_PERSONAL_MACRO_AND_REVIEWED_SAFETY_INPUTS_PENDING. Остаток S2 и зависимости перечислены выше. Новые Supabase writes/Production/trusted activation не выполнялись.
+
+Ручной тест: обновить ссылку → сгенерировать неделю → открыть «Есть блюдо, которое не хочется?» → нажать «Не предлагать: ...» → снова сгенерировать → проверить отсутствие блюда во всех днях → сохранить и повторно открыть. Старую сохранённую неделю новый подбор не переписывает без явного Save. Для ручной проверки достаточно обычного чата; кодовые задачи требуют Работа.
+
+Эта последующая запись меняет только документацию, не app/source bytes; CI/Preview результатов следует искать по точному source commit выше, не выдавать docs-only head за новую проверенную сборку.
