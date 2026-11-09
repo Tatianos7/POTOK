@@ -1,3 +1,7 @@
+# S1 browser reference week draft — 2026-11-09
+
+Branch `codex/staging-week-draft-reopen-20261109`, based on PR367 head `fb46e3a69dc041d8ec0db4aebf6d52c26c08ce9d`. Implements account-scoped local reference snapshot save/reopen on the existing Staging test screen, not trusted server persistence. 34 tests, TypeScript/lint/build/API freshness and three-width real-browser storage flows pass with synthetic Auth/API. Reopen preserves seven days and selected recipe details without generation; quota/network/corruption/account/logout cases covered. No Supabase writes/Production/activation. See `docs/premium/staging-week-draft-reopen-20261109.md` for exact scope, checks and phone instructions. Deployment/readiness must be recorded separately; no hosted signed-in E2E inferred. Next S2 menu quality, with S3 recipe review alongside; S4 trusted persistence still requires admitted inputs and scoped Staging approval.
+
 ## Stage 3: evidence foundation integration and actual Staging baseline — 2026-11-06
 
 - PR355 head `e0a8d843e602917ad241262d2677822b31be3d1a` passed main42188741036, all15 PostgreSQL suites42188740813 (exact job127795240205: seven tests, zero skipped), and Node TLS42188740923. Edge42188740828/job127795238692 retains the verified raw-DER/pg TypeError capability failure.

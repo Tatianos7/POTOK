@@ -12,21 +12,31 @@ export function TestPage() {
   const [accountId, setAccountId] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   useEffect(() => {
-    let cancelled = false;
-    if (!isStagingGenerationProbeEnabled() || !supabase) { setChecked(true); return; }
-    void supabase.auth.getUser().then(({ data, error }) => {
-      if (!cancelled) {
-        setAccountId(error ? null : (data.user?.id ?? null));
-        setChecked(true);
-      }
-    }).catch(() => { if (!cancelled) setChecked(true); });
-    return () => { cancelled = true; };
+    let cancelled = false, epoch = 0;
+    const client = supabase;
+    if (!isStagingGenerationProbeEnabled() || !client) {setChecked(true); return;}
+    async function verify() {
+      const request = ++epoch;
+      setAccountId(null); setChecked(false);
+      try {
+        const {data, error} = await client!.auth.getUser();
+        if (!cancelled && request === epoch) {setAccountId(error ? null : data.user?.id ?? null); setChecked(true);}
+      } catch {if (!cancelled && request === epoch) setChecked(true);}
+    }
+    void verify();
+    // Never await another Auth call inside the synchronous Auth event callback.
+    const {data: {subscription}} = client.auth.onAuthStateChange((event) => {
+      if (event === 'INITIAL_SESSION') return;
+      ++epoch; setAccountId(null); setChecked(event === 'SIGNED_OUT');
+      if (event !== 'SIGNED_OUT') window.setTimeout(() => {if (!cancelled) void verify();}, 0);
+    });
+    return () => {cancelled = true; ++epoch; subscription.unsubscribe();};
   }, []);
   return <main className="mx-auto min-h-screen w-full max-w-[560px] bg-white px-5 py-8 text-stone-900">
     <a href="/" className="text-sm font-semibold text-emerald-800">← Вернуться в POTOK</a>
     <h1 className="mt-6 text-2xl font-bold">STAGING · Генератор питания</h1>
     <p className="mt-3 text-sm text-stone-700">
-      Здесь можно собрать тестовую неделю из нашего сборника и открыть рецепты. Персональный план не включается, записей в дневник и базу нет.
+      Здесь можно собрать тестовую неделю из нашего сборника, открыть рецепты и сохранить черновик на устройстве. Персональный план не включается, записей в дневник и базу нет.
     </p>
     {!isStagingGenerationProbeEnabled()
       ? <p role="alert" className="mt-5 rounded-lg bg-rose-50 p-4">Проверка недоступна вне Staging.</p>
@@ -34,7 +44,7 @@ export function TestPage() {
         ? <p role="status" className="mt-5">Проверяем тестовый аккаунт…</p>
         : accountId
           ? <>
-            <StagingRealWeekTest currentUserId={accountId} />
+            <StagingRealWeekTest key={accountId} currentUserId={accountId} />
             <details className="mt-5"><summary>Технические проверки</summary>
               <StagingGenerationDiagnostic currentUserId={accountId} />
               <StagingSyntheticWeekDemo currentUserId={accountId} />
