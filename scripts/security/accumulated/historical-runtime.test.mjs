@@ -12,12 +12,14 @@ const relative='scripts/security/accumulated';
 const manifestBytes=await readFile(path.join(root,relative,'private-browser-runtime-inputs.json'));
 const manifest=JSON.parse(manifestBytes);
 test('historical recovery preserves every original manifest hash and current source bytes',async()=>{
+ const appBefore=hash(await readFile(path.join(root,'src/App.tsx')));
  const before=hash(await readFile(path.join(root,'package.json'))),parent=await mkdtemp(path.join(os.tmpdir(),'potok-history-verify-'));
  try{
   const r=await materializeHistoricalRuntime(root,parent);assert(r.changed>=2);
   assert.equal(hash(await readFile(path.join(r.directory,relative,'private-browser-runtime-inputs.json'))),'42905c3493a09729229f51aa89e1eccca47c0ca15c993af4462f882256d4de9e');
   for(const e of manifest)assert.equal(hash(await readFile(path.join(r.directory,e.path))),e.sha256,e.path);
   assert.equal(hash(await readFile(path.join(root,'package.json'))),before);
+  assert.equal(hash(await readFile(path.join(root,'src/App.tsx'))),appBefore);
  }finally{await rm(parent,{recursive:true,force:true});}
 });
 async function fixture(){
@@ -37,8 +39,16 @@ test('tampered retained historical bytes reject and remove the incomplete output
 });
 test('new unreviewed source drift rejects rather than expanding the historical allowlist',async()=>{
  const f=await fixture();try{
-  const entry=manifest.find(e=>e.path==='src/App.tsx');assert(entry);
+  const entry=manifest.find(e=>e.path==='src/index.css');assert(entry);
   const target=path.join(f.copy,entry.path);await writeFile(target,(await readFile(target,'utf8'))+'\n');
   await assert.rejects(f.materialize(),/Unexpected source drift/);assert.deepEqual(await readdir(f.out),[]);
+ }finally{await rm(f.parent,{recursive:true,force:true});}
+});
+
+test('newly retained App input stays pinned to the unchanged original manifest',async()=>{
+ const f=await fixture();try{
+  const retained=path.join(f.copy,relative,'runtime-history/input-snapshots/src/App.tsx.source');
+  await writeFile(retained,(await readFile(retained,'utf8'))+'\n');
+  await assert.rejects(f.materialize());assert.deepEqual(await readdir(f.out),[]);
  }finally{await rm(f.parent,{recursive:true,force:true});}
 });

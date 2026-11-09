@@ -1,0 +1,451 @@
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
+import EditProfile from './pages/EditProfile';
+import CoachHistory from './pages/CoachHistory';
+import ForgotPassword from './pages/ForgotPassword';
+import AdminPanel from './pages/AdminPanel';
+import SearchAnalyticsAdminReview from './pages/SearchAnalyticsAdminReview';
+import MissingFoodReviewQueue from './pages/MissingFoodReviewQueue';
+import Notifications from './pages/Notifications';
+import Goal from './pages/Goal';
+import GoalResult from './pages/GoalResult';
+import Measurements from './pages/Measurements';
+import FoodDiary from './pages/FoodDiary';
+import FoodSearch from './pages/FoodSearch';
+import FavoritesProductsPage from './pages/FavoritesProductsPage';
+import RecipeAnalyzer from './pages/RecipeAnalyzer';
+import Recipes from './pages/Recipes';
+import RecipeDetails from './pages/RecipeDetails';
+import CreateCustomProductPage from './pages/CreateCustomProductPage';
+import CreateBrandProductPage from './pages/CreateBrandProductPage';
+import Workouts from './pages/Workouts';
+import WorkoutHistory from './pages/WorkoutHistory';
+import Progress from './pages/Progress';
+import ProgressMeasurements from './pages/ProgressMeasurements';
+import ProgressNutrition from './pages/ProgressNutrition';
+import ProgressWorkouts from './pages/ProgressWorkouts';
+import ProgressWorkoutExercise from './pages/ProgressWorkoutExercise';
+import ImportExercises from './pages/ImportExercises';
+import PoseCoach from './pages/PoseCoach';
+import ProtectedRoute from './components/ProtectedRoute';
+import PremiumRoute from './components/PremiumRoute';
+import ErrorBoundary from './components/ErrorBoundary';
+import Today from './pages/Today';
+import MyProgram from './pages/MyProgram';
+import Paywall from './pages/Paywall';
+import PremiumRecipes from './pages/PremiumRecipes';
+import AuthCallback from './pages/AuthCallback';
+import PinSetup from './pages/PinSetup';
+import PinUnlock from './pages/PinUnlock';
+import PinOffer from './pages/PinOffer';
+import MuscleMapDemo from './pages/MuscleMapDemo';
+import { shouldShowBottomNavigation } from './components/AppBottomNavigation';
+import AppBottomDock from './components/AppBottomDock';
+import { hasEffectivePremiumAccess } from './utils/premiumAccess';
+import { getPostLoginRoute, isPinLockEnabled, isPinOfferSkipped, isPinSessionUnlocked } from './services/pinLockService';
+
+function AppRoutes() {
+  const { authStatus, user } = useAuth();
+  const location = useLocation();
+
+  if (authStatus === 'booting') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-gray-500">Загрузка...</div>
+      </div>
+    );
+  }
+
+  const pinEnabled = isPinLockEnabled();
+  const pinUnlocked = isPinSessionUnlocked();
+  const isPinUnlockRoute = location.pathname === '/pin/unlock';
+  const isPinOfferRoute = location.pathname === '/pin/offer';
+  const isPinSetupRoute = location.pathname === '/pin/setup';
+  const isAuthCallbackRoute = location.pathname === '/auth/callback';
+  const shouldShowPinOffer = !pinEnabled && !isPinOfferSkipped();
+
+  if (authStatus === 'authenticated' && pinEnabled && !pinUnlocked && !isPinUnlockRoute) {
+    return <Navigate to="/pin/unlock" replace />;
+  }
+
+  if (
+    authStatus === 'authenticated' &&
+    shouldShowPinOffer &&
+    !isPinOfferRoute &&
+    !isPinSetupRoute &&
+    !isAuthCallbackRoute
+  ) {
+    return <Navigate to={getPostLoginRoute()} replace />;
+  }
+
+  return (
+    <Routes>
+      <Route
+        path="/auth"
+        element={authStatus === 'authenticated' ? <Navigate to="/" replace /> : <Login />}
+      />
+      <Route
+        path="/auth/callback"
+        element={<AuthCallback />}
+      />
+      <Route
+        path="/pin/unlock"
+        element={<PinUnlock />}
+      />
+      <Route
+        path="/pin/offer"
+        element={
+          <ProtectedRoute>
+            <PinOffer />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/login"
+        element={<Navigate to="/auth" replace />}
+      />
+      <Route
+        path="/register"
+        element={authStatus === 'authenticated' ? <Navigate to="/" replace /> : <Register />}
+      />
+      <Route
+        path="/forgot-password"
+        element={authStatus === 'authenticated' ? <Navigate to="/" replace /> : <ForgotPassword />}
+      />
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <Profile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/profile/edit"
+        element={
+          <ProtectedRoute>
+            <EditProfile />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/coach-history"
+        element={
+          <ProtectedRoute>
+            <CoachHistory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <AdminPanel />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/search-review"
+        element={
+          <ProtectedRoute>
+            <SearchAnalyticsAdminReview />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/missing-food-review"
+        element={
+          <ProtectedRoute>
+            <MissingFoodReviewQueue />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/notifications"
+        element={
+          <ProtectedRoute>
+            <Notifications />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/goals"
+        element={
+          <ProtectedRoute>
+            <Goal />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/goal"
+        element={
+          <ProtectedRoute>
+            <Goal />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/goal/result"
+        element={
+          <ProtectedRoute>
+            <GoalResult />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/measurements"
+        element={
+          <ProtectedRoute>
+            <Measurements />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition"
+        element={
+          <ProtectedRoute>
+            <FoodDiary />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/search"
+        element={
+          <ProtectedRoute>
+            <FoodSearch />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/recipe-analyzer"
+        element={
+          <ProtectedRoute>
+            <RecipeAnalyzer />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/create-custom-product"
+        element={
+          <ProtectedRoute>
+            <CreateCustomProductPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/create-brand-product"
+        element={
+          <ProtectedRoute>
+            <CreateBrandProductPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/recipes"
+        element={
+          <ProtectedRoute>
+            <Recipes />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/recipes/:id"
+        element={
+          <ProtectedRoute>
+            <RecipeDetails />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/nutrition/favorites"
+        element={
+          <ProtectedRoute>
+            <FavoritesProductsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/habits"
+        element={<Navigate to="/" replace />}
+      />
+      <Route
+        path="/workouts"
+        element={
+          <ProtectedRoute>
+            <Workouts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/workouts/history"
+        element={
+          <ProtectedRoute>
+            <WorkoutHistory />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress"
+        element={
+          <ProtectedRoute>
+            <Progress />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress/measurements"
+        element={
+          <ProtectedRoute>
+            <ProgressMeasurements />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress/nutrition"
+        element={
+          <ProtectedRoute>
+            <ProgressNutrition />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress/workouts"
+        element={
+          <ProtectedRoute>
+            <ProgressWorkouts />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress/workouts/:exerciseGroupKey"
+        element={
+          <ProtectedRoute>
+            <ProgressWorkoutExercise />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/progress/habits"
+        element={<Navigate to="/progress" replace />}
+      />
+      <Route
+        path="/today"
+        element={
+          <PremiumRoute>
+            <Today
+              currentUserId={user?.id}
+              verifiedPremium={user?.hasPremium === true && user?.premiumAccessVerified === true}
+              demoPremiumAccess={
+                user?.hasPremium !== true || user?.premiumAccessVerified !== true
+                  ? hasEffectivePremiumAccess(user)
+                  : false
+              }
+            />
+          </PremiumRoute>
+        }
+      />
+      <Route
+        path="/premium-recipes"
+        element={
+          <PremiumRoute>
+            <PremiumRecipes />
+          </PremiumRoute>
+        }
+      />
+      <Route
+        path="/my-program"
+        element={
+          <ProtectedRoute>
+            <MyProgram />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/paywall"
+        element={
+          <ProtectedRoute>
+            <Paywall />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pose"
+        element={
+          <ProtectedRoute>
+            <PoseCoach />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/import-exercises"
+        element={
+          <ProtectedRoute>
+            <ImportExercises />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dev/muscle-map"
+        element={
+          <ProtectedRoute>
+            <MuscleMapDemo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pin/setup"
+        element={
+          <ProtectedRoute>
+            <PinSetup />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+function AppShell() {
+  const { authStatus, user } = useAuth();
+  const location = useLocation();
+  const showBottomNavigation = shouldShowBottomNavigation(authStatus, location.pathname);
+  const hasPremiumAccess = hasEffectivePremiumAccess(user);
+
+  return (
+    <AppBottomDock showNavigation={showBottomNavigation} hasPremiumAccess={hasPremiumAccess}>
+      <AppRoutes />
+    </AppBottomDock>
+  );
+}
+
+function App() {
+  return (
+    <Router
+      basename={import.meta.env.BASE_URL}
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
+      <div className="app-container">
+        <ErrorBoundary>
+          <AppShell />
+        </ErrorBoundary>
+      </div>
+    </Router>
+  );
+}
+
+export default App;

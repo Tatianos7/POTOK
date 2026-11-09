@@ -10,6 +10,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   const [view, setView] = useState<StagingRealWeekView | null>(null), [day, setDay] = useState(0);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [saved, setSaved] = useState<StagingWeekDraft | null>(null), [notice, setNotice] = useState('');
+  const [excluded, setExcluded] = useState<{id: string; name: string}[]>([]);
   const epoch = useRef(0);
   function clear() {++epoch.current; setView(null); setDay(0); setError(''); setNotice(''); setBusy(false);}
   const reopen = useCallback(async () => {
@@ -23,7 +24,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       if (user.error || user.data.user?.id !== currentUserId) throw Error('SESSION_CHANGED');
       const draft = loadStagingWeekDraft(window.localStorage, currentUserId);
       if (draft) {
-        setSaved(draft); setTarget(draft.target); setWeekStart(draft.weekStart); setView(draft.view);
+        setSaved(draft); setExcluded(draft.view.excludedRecipes); setTarget(draft.target); setWeekStart(draft.weekStart); setView(draft.view);
         setNotice('Открыта сохранённая тестовая неделя. Повторный подбор не выполнялся.');
       } else setNotice('На этом устройстве нет сохранённой тестовой недели.');
     } catch {
@@ -60,7 +61,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
         async userId() {const r = await client.auth.getUser(); return r.error ? null : r.data.user?.id ?? null;},
         async token() {const r = await client.auth.getSession(); return r.error ? null : r.data.session?.access_token ?? null;},
         send: (input, init) => fetch(input, init),
-      });
+      }, excluded.map(r => r.id));
       if (request === epoch.current) setView(result);
     } catch (err) {
       if (request === epoch.current) setError(err instanceof Error && ['AUTH_REQUIRED', 'SESSION_CHANGED'].includes(err.message)
@@ -93,14 +94,38 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     </div>
     {busy && <p role="status">Выполняем действие с тестовой неделей…</p>}
     {notice && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm">{notice}</p>}
+    {excluded.length > 0 && <div aria-label="Исключённые блюда" className="rounded-lg border p-3 text-sm">
+      <p className="font-semibold">Не предлагать в новом подборе:</p>
+      <ul className="list-inside list-disc">{excluded.map(r => <li key={r.id}>{r.name}</li>)}</ul>
+      <button type="button" disabled={busy} onClick={() => {clear(); setExcluded([]);}} className="mt-2 rounded border p-2">Снять исключения</button>
+      <p className="mt-2">Исключены только эти блюда. Это не проверка ингредиентов, аллергии или диеты.</p>
+    </div>}
     {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm">{error}</p>}
     {view && <>
       <p role="status" className="text-sm">В сборнике {view.sourceRecipes} рецепта; {view.eligibleRecipes} с полными справочными числами для теста.</p>
       {view.minimumWeekCaloriesProvenUnreachable && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
-        По доступным справочным данным при текущих целых порциях и ограничении повторов не хватает калорий для недельного минимума выбранного коридора. Размеры порций автоматически не меняются.
+        При текущих целых порциях и ограничении повторов не хватает калорий на неделю. Нужно не меньше {view.capacity.required.toLocaleString('ru-RU')} ккал; даже верхняя оценка доступных сочетаний — {view.capacity.maximum?.toLocaleString('ru-RU')} ккал. Порции и ограничения автоматически не меняются.
       </p>}
       <p className="text-sm">Показаны ингредиенты, подготовка и шаги приготовления. Дополнительные заметки автора в этот тест не включены. Ужин тестово выбирается из обедов. Поиск ограничен; допуск и порции автоматически не меняются.</p>
-      <AuthoringWeekContent report={view.report} catalog={view.catalog} selectedDay={day} onSelectDay={setDay} />
+      {view.report.days.length === 7 && <div className="rounded-lg border p-3 text-sm" aria-label="Проверки тестового меню">
+        <p className="font-semibold">Что проверено в этом меню</p>
+        <p>Все семь дней в коридоре ±50 ккал. Разных блюд: {view.catalog.recipes.size}. Одно блюдо встречается не больше двух раз за неделю, внутри дня не повторяется.</p>
+        <p className="mt-2">БЖУ показаны по источнику. Соответствие персональным целям БЖУ, аллергиям и диетам пока не проверяется.</p>
+        <details className="mt-2"><summary>Диапазон БЖУ по дням</summary>
+          {([['protein','Белки'],['fat','Жиры'],['carbs','Углеводы исходника'],['fiber','Клетчатка']] as const).map(([axis,label]) => {
+            const values = view.report.days.map(d => d.referenceNutrition[axis]);
+            return <p key={axis}>{label}: {Math.min(...values).toLocaleString('ru-RU')}–{Math.max(...values).toLocaleString('ru-RU')} г в день.</p>;
+          })}
+        </details>
+      </div>}
+      {view.catalog.recipes.size > 0 && <details className="rounded-lg border p-3" aria-label="Исключить блюдо">
+        <summary>Есть блюдо, которое не хочется?</summary>
+        <p className="my-2 text-sm">Выбери блюдо и запусти новый подбор. Сохранённая неделя останется прежней, пока ты явно не заменишь её.</p>
+        <div className="space-y-2">{[...view.catalog.recipes.values()].map(r => <button type="button" key={r.id} disabled={busy || excluded.length >= 28}
+          onClick={() => {clear(); setExcluded(previous => [...previous, {id: r.id, name: r.name}].sort((a,b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0));}}
+          className="block w-full rounded-lg border p-2 text-left text-sm">Не предлагать: {r.name}</button>)}</div>
+      </details>}
+      <AuthoringWeekContent emptyReason={view.minimumWeekCaloriesProvenUnreachable ? 'В этом режиме собрать неделю в выбранном коридоре нельзя: не хватает калорий при нынешних порциях и повторах.' : undefined} report={view.report} catalog={view.catalog} selectedDay={day} onSelectDay={setDay} />
     </>}
   </section>;
 }

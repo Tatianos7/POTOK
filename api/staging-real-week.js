@@ -580,6 +580,19 @@ function analyzeWeekInputCalorieCapacityV1(recipes, s) {
   };
 }
 
+// src/dev/referenceRecipeExclusionsV1.ts
+var referenceExclusionScope = "EXPLICIT_RECIPE_IDS_ONLY_NOT_ALLERGEN_SCREENING";
+function decodeReferenceExcludedIds(value) {
+  if (value === void 0) return [];
+  if (!Array.isArray(value) || value.length > 28 || value.some((x) => typeof x !== "string" || !/^[a-z0-9][a-z0-9_-]{0,199}$/.test(x)) || new Set(value).size !== value.length) throw Error("INVALID_REFERENCE_EXCLUSIONS");
+  return [...value].sort();
+}
+function excludeReferenceRecipes(input, ids) {
+  const excluded = decodeReferenceExcludedIds(ids);
+  if (excluded.some((id) => !input.recipes.some((r) => r.recipeId === id))) throw Error("UNKNOWN_REFERENCE_RECIPE");
+  return { ...input, recipes: input.recipes.filter((r) => !excluded.includes(r.recipeId)) };
+}
+
 // src/server/stagingRealWeekApiV1.ts
 var staging = "https://ozidryfvhkcbtpnulakq.supabase.co";
 var realWeekTestContract = "potok-staging-real-reference-week-v1";
@@ -616,9 +629,11 @@ function readStagingReferenceCatalog(packed) {
   if (decoded.sourceHash !== staging_reference_catalog_20261108_default.originalWorkbookSha256 || decoded.recipes.size !== staging_reference_catalog_20261108_default.recipes) throw Error("CATALOG_SOURCE_MISMATCH");
   return { packet, decoded };
 }
-function buildStagingReferenceWeek(packed, target, weekStart) {
+function buildStagingReferenceWeek(packed, target, weekStart, excludedRecipeIds = []) {
   const { packet, decoded } = readStagingReferenceCatalog(packed);
-  const input = authoringSearchInput(decoded), settings = scenario(target, weekStart);
+  const excluded = decodeReferenceExcludedIds(excludedRecipeIds);
+  const input = excludeReferenceRecipes(authoringSearchInput(decoded), excluded);
+  const settings = scenario(target, weekStart);
   const eligible = input.recipes.filter((r) => r.numericReferenceTestInputAvailable && r.sourceStatus !== "BLOCKED");
   const capacity = analyzeWeekInputCalorieCapacityV1(
     eligible.map((r) => ({
@@ -643,6 +658,7 @@ function buildStagingReferenceWeek(packed, target, weekStart) {
     verifiedNutrition: false,
     mayActivate: false,
     notPersonalized: true,
+    exclusions: { scope: referenceExclusionScope, recipes: excluded.map((id) => ({ id, name: decoded.recipes.get(id).name })) },
     sourceRecipeCount: decoded.recipes.size,
     eligibleReferenceRecipes: eligible.length,
     calorieCapacity: {
@@ -671,8 +687,15 @@ function createStagingRealWeekHandler(env, authFetch = fetch) {
       return;
     }
     const input = req.body;
-    if (!input || typeof input !== "object" || Array.isArray(input) || Object.keys(input).sort().join(",") !== "target,weekStart" || !testTargets.includes(input.target) || typeof input.weekStart !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(input.weekStart) || !Number.isFinite(Date.parse(input.weekStart + "T00:00:00Z")) || (/* @__PURE__ */ new Date(input.weekStart + "T00:00:00Z")).toISOString().slice(0, 10) !== input.weekStart) {
+    if (!input || typeof input !== "object" || Array.isArray(input) || !["target,weekStart", "excludedRecipeIds,target,weekStart"].includes(Object.keys(input).sort().join(",")) || !testTargets.includes(input.target) || typeof input.weekStart !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(input.weekStart) || !Number.isFinite(Date.parse(input.weekStart + "T00:00:00Z")) || (/* @__PURE__ */ new Date(input.weekStart + "T00:00:00Z")).toISOString().slice(0, 10) !== input.weekStart) {
       res.status(400).json({ error: "INVALID_TEST_SCENARIO" });
+      return;
+    }
+    let excluded;
+    try {
+      excluded = decodeReferenceExcludedIds(input.excludedRecipeIds);
+    } catch {
+      res.status(400).json({ error: "INVALID_REFERENCE_EXCLUSIONS" });
       return;
     }
     const auth = req.headers.authorization;
@@ -717,9 +740,10 @@ function createStagingRealWeekHandler(env, authFetch = fetch) {
         res.status(401).json({ error: "AUTH_INVALID_USER" });
         return;
       }
-      res.status(200).json(buildStagingReferenceWeek(env.POTOK_STAGING_REFERENCE_CATALOG_BR64, input.target, input.weekStart));
-    } catch {
-      res.status(503).json({ error: "REFERENCE_MENU_TEMPORARILY_UNAVAILABLE" });
+      res.status(200).json(buildStagingReferenceWeek(env.POTOK_STAGING_REFERENCE_CATALOG_BR64, input.target, input.weekStart, excluded));
+    } catch (error) {
+      if (error instanceof Error && error.message === "UNKNOWN_REFERENCE_RECIPE") res.status(400).json({ error: "UNKNOWN_REFERENCE_RECIPE" });
+      else res.status(503).json({ error: "REFERENCE_MENU_TEMPORARILY_UNAVAILABLE" });
     }
   };
 }
