@@ -26,7 +26,8 @@ permissions:
   contents: read
 jobs:
   contracts:
-    runs-on: ubuntu-latest
+    # Playwright 1.40 in this lockfile uses the Ubuntu 22.04 system package names.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
