@@ -123,6 +123,9 @@ try{
     await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();
     if(process.env.POTOK_SAVED_GOAL_SCREENSHOT)await page.getByLabel('Сохранённая цель и меню',{exact:true}).screenshot({path:process.env.POTOK_SAVED_GOAL_SCREENSHOT});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    await page.getByLabel('Подбор по белкам и жирам',{exact:true}).waitFor();
+    assert.equal(lastBody.report.macroRefinement.carbsAssessed,false);
+    for(const d of lastBody.report.macroRefinement.days){for(const axis of ['protein','fat'])assert.ok(Math.abs(d.after[axis]-savedGoalRow[axis])<=Math.abs(d.before[axis]-savedGoalRow[axis]));}
     assert.equal(lastBody.savedGoal.calories,1500);assert.equal(lastBody.report.scenario.dailyCalorieTarget,1500);
     const goalDays=page.getByRole('navigation',{name:'Дни недели'}).getByRole('button');
     for(let i=0;i<7;i++){
@@ -133,7 +136,7 @@ try{
     await page.getByRole('button',{name:'Сохранить неделю на устройстве',exact:true}).click();
     await page.getByText('Тестовая неделя сохранена на этом устройстве.',{exact:true}).waitFor();
     const callsBeforeRestore=apiCalls,goalReadsBeforeRestore=goalReads;await page.reload();
-    await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();assert.equal(apiCalls,callsBeforeRestore);assert.equal(goalReads,goalReadsBeforeRestore);
+    await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();await page.getByLabel('Подбор по белкам и жирам',{exact:true}).waitFor();assert.equal(apiCalls,callsBeforeRestore);assert.equal(goalReads,goalReadsBeforeRestore);
     savedGoalMissing=true;await page.getByRole('button',{name:'Собрать по моей сохранённой цели',exact:true}).click();
     await page.getByRole('alert').filter({hasText:'В этом тестовом аккаунте не сохранена цель'}).waitFor();assert.equal(await page.locator('article').count(),0);savedGoalMissing=false;
     await page.getByRole('button',{name:'Открыть сохранённую неделю',exact:true}).click();await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();

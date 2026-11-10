@@ -6,6 +6,7 @@ on:
       - 'src/server/referenceSavedGoalReaderV1.ts'
       - 'src/server/__tests__/referenceSavedGoalReaderV1.test.ts'
       - 'src/dev/referenceSavedGoalV1.ts'
+      - 'src/dev/referenceMacroFitV1.ts'
       - 'src/server/__tests__/stagingRealWeekApiV1.test.ts'
       - 'src/services/stagingRealWeek.ts'
       - 'src/dev/referenceRecipeExclusionsV1.ts'

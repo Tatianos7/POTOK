@@ -1,3 +1,4 @@
+import type {ReferenceSavedGoal} from '../dev/referenceSavedGoalV1';
 import {readReferenceSavedGoal} from './referenceSavedGoalReaderV1';
 import {brotliDecompressSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
@@ -40,7 +41,8 @@ export function readStagingReferenceCatalog(packed: string | undefined) {
   return {packet, decoded};
 }
 
-export function buildStagingReferenceWeek(packed: string | undefined, target: number, weekStart: string, excludedRecipeIds: string[] = []) {
+export function buildStagingReferenceWeek(packed: string | undefined, target: number, weekStart: string, excludedRecipeIds: string[] = [], savedGoal?: ReferenceSavedGoal) {
+  if (savedGoal && savedGoal.calories !== target) throw Error('INVALID_SAVED_GOAL');
   const {packet, decoded} = readStagingReferenceCatalog(packed);
   const excluded = decodeReferenceExcludedIds(excludedRecipeIds);
   const input = excludeReferenceRecipes(authoringSearchInput(decoded), excluded);
@@ -49,7 +51,7 @@ export function buildStagingReferenceWeek(packed: string | undefined, target: nu
   const capacity = analyzeWeekInputCalorieCapacityV1(eligible.map(r => ({recipeId: r.recipeId,
     sourceCategory: String(r.sourceRecipe.meal_type_primary), caloriesPerDeclaredServing: String(r.referenceNutrition.values.calories)})),
     {...settings, tolerancePercent: 0});
-  const report = constrainReferenceWeekToCorridorV1(previewRecipeAuthoringWeekV1(input, settings));
+  const report = constrainReferenceWeekToCorridorV1(previewRecipeAuthoringWeekV1(input, settings, savedGoal ? {protein: savedGoal.protein, fat: savedGoal.fat} : undefined));
   const requiredWeek = BigInt(report.calorieCorridor.minimumKcal) * 7000n;
   const maximumWeek = capacity.optimisticMaximumWeekKcal === null ? null : BigInt(capacity.optimisticMaximumWeekKcal.replace('.', ''));
   const shortfall = maximumWeek !== null && maximumWeek < requiredWeek ? requiredWeek - maximumWeek : null;
@@ -110,7 +112,7 @@ export function createStagingRealWeekHandler(env: Record<string, string | undefi
       const user = await remote.json() as {id?: unknown};
       if (typeof user.id !== 'string' || !uuid.test(user.id)) {res.status(401).json({error: 'AUTH_INVALID_USER'}); return;}
       const savedGoal = savedGoalMode ? await readReferenceSavedGoal(user.id, auth, key, authFetch) : null;
-      const result = buildStagingReferenceWeek(env.POTOK_STAGING_REFERENCE_CATALOG_BR64, savedGoal?.calories ?? input.target as number, input.weekStart, excluded);
+      const result = buildStagingReferenceWeek(env.POTOK_STAGING_REFERENCE_CATALOG_BR64, savedGoal?.calories ?? input.target as number, input.weekStart, excluded, savedGoal ?? undefined);
       if (savedGoal) {
         const current = await readReferenceSavedGoal(user.id, auth, key, authFetch);
         if (JSON.stringify(current) !== JSON.stringify(savedGoal)) {res.status(409).json({error: 'SAVED_GOAL_CHANGED'}); return;}

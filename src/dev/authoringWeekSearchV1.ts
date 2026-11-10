@@ -122,6 +122,52 @@ function refineCalories(initial:Day[],pools:Recipe[][],s:AuthoringWeekScenarioV1
     beforeDailyCalories:initial.map(d=>decimal(d.nutrition.calories)),afterDailyCalories:days.map(d=>decimal(d.nutrition.calories)),
     sourcePortionScaling:false,globalOptimumProven:false}};
 }
+/** Pareto improvement of saved P/F point targets only: no weights, invented
+ * tolerances, carb inference, portion scaling or weakening of reference rules. */
+function refineProteinFat(initial:Day[],pools:Recipe[][],s:AuthoringWeekScenarioV1,goal:{protein:number;fat:number},validDay:(meals:Recipe[])=>boolean){
+  const days=initial.map(d=>({...d,meals:[...d.meals]}));
+  const minimumDistinct=new Set(initial.flatMap(d=>d.meals.map(r=>r.recipeId))).size;
+  const target={protein:minor(goal.protein),fat:minor(goal.fat)};
+  const limits={passes:2,poolPerSlot:64,candidatesPerDayPerPass:8192};
+  const bounded=pools.map(p=>p.slice(0,limits.poolPerSlot));
+  let evaluatedCandidates=0,changes=0;
+  for(let pass=0;pass<limits.passes;pass++){
+    let changed=false;
+    for(let dayIndex=0;dayIndex<days.length;dayIndex++){
+      let best=days[dayIndex],attempts=0;
+      const outside=new Map<string,number>();
+      days.forEach((d,i)=>{if(i!==dayIndex)for(const r of d.meals)outside.set(r.recipeId,(outside.get(r.recipeId)??0)+1);});
+      const consider=(meals:Recipe[])=>{
+        if(attempts>=limits.candidatesPerDayPerPass)return;
+        attempts++;evaluatedCandidates++;
+        if(new Set(meals.map(r=>r.recipeId)).size!==meals.length||!validDay(meals))return;
+        const nutrition=total(meals);
+        if(!referenceCaloriesFitCorridorV1(s.dailyCalorieTarget,Number(nutrition.calories)/1000))return;
+        const p=abs(nutrition.protein-target.protein),f=abs(nutrition.fat-target.fat);
+        const bp=abs(best.nutrition.protein-target.protein),bf=abs(best.nutrition.fat-target.fat);
+        if(p>bp||f>bf||(p===bp&&f===bf))return;
+        const uses=new Map(outside);
+        for(const r of meals){const n=(uses.get(r.recipeId)??0)+1;if(n>s.maxRecipeUses)return;uses.set(r.recipeId,n);}
+        if(uses.size<minimumDistinct)return;
+        best={...best,meals,nutrition,distance:abs(nutrition.calories-BigInt(s.dailyCalorieTarget)*1000n)};
+      };
+      const original=days[dayIndex];
+      for(let slot=0;slot<bounded.length;slot++)for(const recipe of bounded[slot]){const meals=[...original.meals];meals[slot]=recipe;consider(meals);}
+      const pairs:number[][]=[];for(let a=0;a<bounded.length;a++)for(let b=a+1;b<bounded.length;b++)pairs.push([a,b]);
+      // Give every slot pair an equal bounded budget.
+      const rounds=Math.min(1024,Math.floor((limits.candidatesPerDayPerPass-attempts)/Math.max(1,pairs.length)));
+      for(const [a,b] of pairs)for(let n=0;n<Math.min(rounds,bounded[a].length*bounded[b].length);n++){
+        const meals=[...original.meals];meals[a]=bounded[a][Math.floor(n/bounded[b].length)];meals[b]=bounded[b][n%bounded[b].length];consider(meals);
+      }
+      if(best!==original){days[dayIndex]=best;changes++;changed=true;}
+    }
+    if(!changed)break;
+  }
+  return {days,diagnostics:{scope:'REFERENCE_PROTEIN_FAT_PARETO_ONLY',carbsAssessed:false,hardMacroBoundsAssessed:false,
+    targetProtein:goal.protein,targetFat:goal.fat,limits,evaluatedCandidates,changes,minimumDistinctRecipes:minimumDistinct,
+    days:initial.map((before,i)=>({date:before.date,before:{protein:Number(before.nutrition.protein)/1000,fat:Number(before.nutrition.fat)/1000},
+      after:{protein:Number(days[i].nutrition.protein)/1000,fat:Number(days[i].nutrition.fat)/1000}}))}};
+}
 function validate(s:AuthoringWeekScenarioV1){
   if((s.enforceDailyStapleVariety!==undefined&&s.enforceDailyStapleVariety!==true)||s.contract!=='potok-authoring-week-scenario-v1'||!/^\d{4}-\d{2}-\d{2}$/.test(s.weekStart)
     ||!Number.isFinite(Date.parse(s.weekStart+'T00:00:00Z'))||new Date(s.weekStart+'T00:00:00Z').toISOString().slice(0,10)!==s.weekStart
@@ -138,8 +184,9 @@ function validate(s:AuthoringWeekScenarioV1){
     ||!Number.isInteger(s.maxRecipeUses)||s.maxRecipeUses<1||s.maxRecipeUses>7)throw Error('INVALID_AUTHORING_WEEK_SCENARIO');
 }
 /** Offline reference experiment; shares enumeration with strict search, never its validation status. */
-export function previewRecipeAuthoringWeekV1(catalog:Catalog,scenario:AuthoringWeekScenarioV1){
+export function previewRecipeAuthoringWeekV1(catalog:Catalog,scenario:AuthoringWeekScenarioV1,referenceMacroTargets?:{protein:number;fat:number}){
   const s=structuredClone(scenario);validate(s);
+  if(referenceMacroTargets){minor(referenceMacroTargets.protein);minor(referenceMacroTargets.fat);}
   if(catalog.contract!=='potok-recipe-authoring-test-catalog-v1'||catalog.runtimePublishable!==false)throw Error('AUTHORING_CATALOG_REQUIRED');
   const recipes=structuredClone(catalog.recipes),ids=new Set<string>();
   for(const r of recipes){if(ids.has(r.recipeId))throw Error('DUPLICATE_AUTHORING_RECIPE');ids.add(r.recipeId);}
@@ -213,8 +260,10 @@ export function previewRecipeAuthoringWeekV1(catalog:Catalog,scenario:AuthoringW
     const alternative=refineCalories(candidate.days,pools,s,target,validDay);refinedWeekCandidates++;
     if(fits(alternative.days)&&(!fits(refined.days)||distinct(alternative.days)>distinct(refined.days)))refined=alternative;
   }
-  best=refined.days;
+  const macroRefined=referenceMacroTargets&&fits(refined.days)?refineProteinFat(refined.days,pools,s,referenceMacroTargets,validDay):null;
+  best=macroRefined?.days??refined.days;
   return {...base,status:'REFERENCE_WEEK_PREVIEW',scope:refined.diagnostics.changes||refined.diagnostics.balanceChanges?'CALORIE_REFINED_REFERENCE_WEEK':evaluated<combinations?'BEST_EVALUATED_PREFIX':'BEST_IN_RETAINED_POOL',evaluated,retainedWeekCombinations:combinations,
+    macroRefinement:macroRefined?.diagnostics,
     calorieRefinement:{...refined.diagnostics,refinedWeekCandidates,maxRefinedWeekCandidates:4},
     distinctRecipes:new Set(best.flatMap(d=>d.meals.map(r=>r.recipeId))).size,
     days:best.map(d=>({date:d.date,referenceNutrition:Object.fromEntries(axes.map(a=>[a,decimal(d.nutrition[a])])),

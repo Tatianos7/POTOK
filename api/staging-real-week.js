@@ -485,12 +485,90 @@ function refineCalories(initial, pools, s, target, validDay) {
     globalOptimumProven: false
   } };
 }
+function refineProteinFat(initial, pools, s, goal, validDay) {
+  const days = initial.map((d) => ({ ...d, meals: [...d.meals] }));
+  const minimumDistinct = new Set(initial.flatMap((d) => d.meals.map((r) => r.recipeId))).size;
+  const target = { protein: minor(goal.protein), fat: minor(goal.fat) };
+  const limits = { passes: 2, poolPerSlot: 64, candidatesPerDayPerPass: 8192 };
+  const bounded = pools.map((p) => p.slice(0, limits.poolPerSlot));
+  let evaluatedCandidates = 0, changes = 0;
+  for (let pass = 0; pass < limits.passes; pass++) {
+    let changed = false;
+    for (let dayIndex = 0; dayIndex < days.length; dayIndex++) {
+      let best = days[dayIndex], attempts = 0;
+      const outside = /* @__PURE__ */ new Map();
+      days.forEach((d, i) => {
+        if (i !== dayIndex) for (const r of d.meals) outside.set(r.recipeId, (outside.get(r.recipeId) ?? 0) + 1);
+      });
+      const consider = (meals) => {
+        if (attempts >= limits.candidatesPerDayPerPass) return;
+        attempts++;
+        evaluatedCandidates++;
+        if (new Set(meals.map((r) => r.recipeId)).size !== meals.length || !validDay(meals)) return;
+        const nutrition2 = total(meals);
+        if (!referenceCaloriesFitCorridorV1(s.dailyCalorieTarget, Number(nutrition2.calories) / 1e3)) return;
+        const p = abs(nutrition2.protein - target.protein), f = abs(nutrition2.fat - target.fat);
+        const bp = abs(best.nutrition.protein - target.protein), bf = abs(best.nutrition.fat - target.fat);
+        if (p > bp || f > bf || p === bp && f === bf) return;
+        const uses = new Map(outside);
+        for (const r of meals) {
+          const n = (uses.get(r.recipeId) ?? 0) + 1;
+          if (n > s.maxRecipeUses) return;
+          uses.set(r.recipeId, n);
+        }
+        if (uses.size < minimumDistinct) return;
+        best = { ...best, meals, nutrition: nutrition2, distance: abs(nutrition2.calories - BigInt(s.dailyCalorieTarget) * 1000n) };
+      };
+      const original = days[dayIndex];
+      for (let slot = 0; slot < bounded.length; slot++) for (const recipe of bounded[slot]) {
+        const meals = [...original.meals];
+        meals[slot] = recipe;
+        consider(meals);
+      }
+      const pairs = [];
+      for (let a = 0; a < bounded.length; a++) for (let b = a + 1; b < bounded.length; b++) pairs.push([a, b]);
+      const rounds = Math.min(1024, Math.floor((limits.candidatesPerDayPerPass - attempts) / Math.max(1, pairs.length)));
+      for (const [a, b] of pairs) for (let n = 0; n < Math.min(rounds, bounded[a].length * bounded[b].length); n++) {
+        const meals = [...original.meals];
+        meals[a] = bounded[a][Math.floor(n / bounded[b].length)];
+        meals[b] = bounded[b][n % bounded[b].length];
+        consider(meals);
+      }
+      if (best !== original) {
+        days[dayIndex] = best;
+        changes++;
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+  return { days, diagnostics: {
+    scope: "REFERENCE_PROTEIN_FAT_PARETO_ONLY",
+    carbsAssessed: false,
+    hardMacroBoundsAssessed: false,
+    targetProtein: goal.protein,
+    targetFat: goal.fat,
+    limits,
+    evaluatedCandidates,
+    changes,
+    minimumDistinctRecipes: minimumDistinct,
+    days: initial.map((before, i) => ({
+      date: before.date,
+      before: { protein: Number(before.nutrition.protein) / 1e3, fat: Number(before.nutrition.fat) / 1e3 },
+      after: { protein: Number(days[i].nutrition.protein) / 1e3, fat: Number(days[i].nutrition.fat) / 1e3 }
+    }))
+  } };
+}
 function validate(s) {
   if (s.enforceDailyStapleVariety !== void 0 && s.enforceDailyStapleVariety !== true || s.contract !== "potok-authoring-week-scenario-v1" || !/^\d{4}-\d{2}-\d{2}$/.test(s.weekStart) || !Number.isFinite(Date.parse(s.weekStart + "T00:00:00Z")) || (/* @__PURE__ */ new Date(s.weekStart + "T00:00:00Z")).toISOString().slice(0, 10) !== s.weekStart || !Number.isInteger(s.dailyCalorieTarget) || s.dailyCalorieTarget < 1 || s.dailyCalorieTarget > 1e4 || !Number.isInteger(s.tolerancePercent) || s.tolerancePercent < 0 || s.tolerancePercent > 50 || !Array.isArray(s.slots) || s.slots.length < 1 || s.slots.length > 7 || s.slots.some((x) => !x.label || !Array.isArray(x.sourceCategories) || !x.sourceCategories.length || x.sourceCategories.some((y) => typeof y !== "string" || !y) || !Number.isInteger(x.targetSharePercent) || x.targetSharePercent < 1) || new Set(s.slots.map((x) => x.label)).size !== s.slots.length || s.slots.reduce((a, b) => a + b.targetSharePercent, 0) !== 100 || !Number.isInteger(s.rankedCandidatePoolSize) || s.rankedCandidatePoolSize < 1 || s.rankedCandidatePoolSize > 128 || !Number.isInteger(s.shortlistPerSlot) || s.shortlistPerSlot < 1 || s.shortlistPerSlot > 8 || !Number.isInteger(s.dayPoolSize) || s.dayPoolSize < 1 || s.dayPoolSize > 16 || [s.maxDayEvaluations, s.maxWeekEvaluations].some((x) => !Number.isInteger(x) || x < 1 || x > 1024) || !Number.isInteger(s.maxRecipeUses) || s.maxRecipeUses < 1 || s.maxRecipeUses > 7) throw Error("INVALID_AUTHORING_WEEK_SCENARIO");
 }
-function previewRecipeAuthoringWeekV1(catalog, scenario2) {
+function previewRecipeAuthoringWeekV1(catalog, scenario2, referenceMacroTargets) {
   const s = structuredClone(scenario2);
   validate(s);
+  if (referenceMacroTargets) {
+    minor(referenceMacroTargets.protein);
+    minor(referenceMacroTargets.fat);
+  }
   if (catalog.contract !== "potok-recipe-authoring-test-catalog-v1" || catalog.runtimePublishable !== false) throw Error("AUTHORING_CATALOG_REQUIRED");
   const recipes = structuredClone(catalog.recipes), ids = /* @__PURE__ */ new Set();
   for (const r of recipes) {
@@ -599,13 +677,15 @@ function previewRecipeAuthoringWeekV1(catalog, scenario2) {
     refinedWeekCandidates++;
     if (fits(alternative.days) && (!fits(refined.days) || distinct(alternative.days) > distinct(refined.days))) refined = alternative;
   }
-  best = refined.days;
+  const macroRefined = referenceMacroTargets && fits(refined.days) ? refineProteinFat(refined.days, pools, s, referenceMacroTargets, validDay) : null;
+  best = macroRefined?.days ?? refined.days;
   return {
     ...base,
     status: "REFERENCE_WEEK_PREVIEW",
     scope: refined.diagnostics.changes || refined.diagnostics.balanceChanges ? "CALORIE_REFINED_REFERENCE_WEEK" : evaluated < combinations ? "BEST_EVALUATED_PREFIX" : "BEST_IN_RETAINED_POOL",
     evaluated,
     retainedWeekCombinations: combinations,
+    macroRefinement: macroRefined?.diagnostics,
     calorieRefinement: { ...refined.diagnostics, refinedWeekCandidates, maxRefinedWeekCandidates: 4 },
     distinctRecipes: new Set(best.flatMap((d) => d.meals.map((r) => r.recipeId))).size,
     days: best.map((d) => ({
@@ -748,7 +828,8 @@ function readStagingReferenceCatalog(packed) {
   if (decoded.sourceHash !== staging_reference_catalog_20261108_default.originalWorkbookSha256 || decoded.recipes.size !== staging_reference_catalog_20261108_default.recipes) throw Error("CATALOG_SOURCE_MISMATCH");
   return { packet, decoded };
 }
-function buildStagingReferenceWeek(packed, target, weekStart, excludedRecipeIds = []) {
+function buildStagingReferenceWeek(packed, target, weekStart, excludedRecipeIds = [], savedGoal) {
+  if (savedGoal && savedGoal.calories !== target) throw Error("INVALID_SAVED_GOAL");
   const { packet, decoded } = readStagingReferenceCatalog(packed);
   const excluded = decodeReferenceExcludedIds(excludedRecipeIds);
   const input = excludeReferenceRecipes(authoringSearchInput(decoded), excluded);
@@ -762,7 +843,7 @@ function buildStagingReferenceWeek(packed, target, weekStart, excludedRecipeIds 
     })),
     { ...settings, tolerancePercent: 0 }
   );
-  const report = constrainReferenceWeekToCorridorV1(previewRecipeAuthoringWeekV1(input, settings));
+  const report = constrainReferenceWeekToCorridorV1(previewRecipeAuthoringWeekV1(input, settings, savedGoal ? { protein: savedGoal.protein, fat: savedGoal.fat } : void 0));
   const requiredWeek = BigInt(report.calorieCorridor.minimumKcal) * 7000n;
   const maximumWeek = capacity.optimisticMaximumWeekKcal === null ? null : BigInt(capacity.optimisticMaximumWeekKcal.replace(".", ""));
   const shortfall = maximumWeek !== null && maximumWeek < requiredWeek ? requiredWeek - maximumWeek : null;
@@ -862,7 +943,7 @@ function createStagingRealWeekHandler(env, authFetch = fetch) {
         return;
       }
       const savedGoal = savedGoalMode ? await readReferenceSavedGoal(user.id, auth, key, authFetch) : null;
-      const result = buildStagingReferenceWeek(env.POTOK_STAGING_REFERENCE_CATALOG_BR64, savedGoal?.calories ?? input.target, input.weekStart, excluded);
+      const result = buildStagingReferenceWeek(env.POTOK_STAGING_REFERENCE_CATALOG_BR64, savedGoal?.calories ?? input.target, input.weekStart, excluded, savedGoal ?? void 0);
       if (savedGoal) {
         const current = await readReferenceSavedGoal(user.id, auth, key, authFetch);
         if (JSON.stringify(current) !== JSON.stringify(savedGoal)) {

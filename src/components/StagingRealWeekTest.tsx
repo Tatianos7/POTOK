@@ -113,7 +113,12 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
         <p className="font-semibold">Цель из тестового аккаунта: {view.savedGoal.calories.toLocaleString('ru-RU')} ккал</p>
         <p>Б {view.savedGoal.protein.toLocaleString('ru-RU')} · Ж {view.savedGoal.fat.toLocaleString('ru-RU')} · У {view.savedGoal.carbs.toLocaleString('ru-RU')} г</p>
         <p className="mt-2">Цель на момент подбора, обновлена {new Date(view.savedGoal.updatedAt).toLocaleString('ru-RU')}. При повторном открытии черновика она не обновляется.</p>
-        <p className="mt-2">По сохранённой цели подбираются калории. Ниже — справочное сравнение БЖУ; допуски для них ещё не утверждены. Углеводы исходника могут иметь другую семантику.</p>
+        <p className="mt-2">{view.macroFit ? 'Подбор учитывает калории и стремится ближе к целям белков и жиров. Ниже — справочное сравнение БЖУ;' : 'По сохранённой цели подбираются калории. Ниже — справочное сравнение БЖУ;'} допуски для них ещё не утверждены. Углеводы исходника могут иметь другую семантику.</p>
+        {view.macroFit && <div className="mt-2" aria-label="Подбор по белкам и жирам">
+          <p>Белки и жиры удалось приблизить к цели в {view.macroFit.improvedDays} из 7 дней. Отклонение ни по одному из этих двух показателей не увеличилось по сравнению с исходным подбором. Калории остаются в ±50 ккал.</p>
+          <p className="mt-2">Углеводы пока не участвуют в подборе. Это не проверка полного соответствия БЖУ.</p>
+          {view.macroFit.days[day] && view.macroFit.days[day].before.protein === view.macroFit.days[day].after.protein && view.macroFit.days[day].before.fat === view.macroFit.days[day].after.fat && <p className="mt-2">Для этого дня в пределах поиска улучшение не найдено. Нужны другие сочетания или подтверждённые правила порций и допусков.</p>}
+        </div>}
         {view.report.days[day] && <div className="mt-2" aria-label="Сравнение БЖУ выбранного дня">{(['protein','fat','carbs'] as const).map(axis => {
           const actual = view.report.days[day].referenceNutrition[axis], goal = view.savedGoal![axis], delta = Math.round((actual-goal)*1000)/1000;
           return <p key={axis}>{({protein:'Белки',fat:'Жиры',carbs:'Углеводы исходника'})[axis]}: цель {goal.toLocaleString('ru-RU')} г · меню {actual.toLocaleString('ru-RU')} г · разница {delta>0?'+':''}{delta.toLocaleString('ru-RU')} г</p>;
