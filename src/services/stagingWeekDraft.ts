@@ -14,9 +14,11 @@ function decode(raw: string, accountId: string): StagingWeekDraft {
   if (!r || r.contract !== contract || r.accountId !== accountId || r.scope !== 'BROWSER_TEST_DRAFT_ONLY'
     || typeof r.savedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(r.savedAt) || !Number.isFinite(Date.parse(r.savedAt))
     || typeof r.timeZone !== 'string' || r.timeZone.length > 100 || typeof r.payload !== 'string'
-    || ![1400,1600,1800,2000].includes(r.target)) throw Error('INVALID_DRAFT');
+    || !Number.isInteger(r.target) || r.target <= 50 || r.target > 10000) throw Error('INVALID_DRAFT');
   new Intl.DateTimeFormat('ru-RU', {timeZone: r.timeZone});
   const view = decodeStagingRealWeek(JSON.parse(r.payload));
+  if (view.savedGoal && view.savedGoal.accountId !== accountId) throw Error('INVALID_DRAFT_ACCOUNT');
+  if (!view.savedGoal && ![1400,1600,1800,2000].includes(r.target)) throw Error('INVALID_DRAFT');
   if (view.report.days.length !== 7 || view.report.target !== r.target || view.report.days[0].date !== r.weekStart) throw Error('INVALID_DRAFT');
   return {view, savedAt: r.savedAt, timeZone: r.timeZone, weekStart: r.weekStart, target: r.target};
 }

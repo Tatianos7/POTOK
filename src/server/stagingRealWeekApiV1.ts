@@ -1,3 +1,4 @@
+import {readReferenceSavedGoal} from './referenceSavedGoalReaderV1';
 import {brotliDecompressSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import {decodeAuthoringRecipeCatalog, authoringSearchInput} from '../dev/authoringRecipeCatalog';
@@ -67,7 +68,7 @@ export function buildStagingReferenceWeek(packed: string | undefined, target: nu
     omittedAuthorNotes: true};
 }
 
-/** POST-only preview: the only remote operation is GET /auth/v1/user. */
+/** POST-only reference test. Remote operations are Auth GET and own-goal RLS GET only. */
 export function createStagingRealWeekHandler(env: Record<string, string | undefined>, authFetch: typeof fetch = fetch) {
   return async (req: Req, res: Res): Promise<void> => {
     res.setHeader('Cache-Control', 'private, no-store'); res.setHeader('Vary', 'Authorization');
@@ -78,8 +79,10 @@ export function createStagingRealWeekHandler(env: Record<string, string | undefi
     }
     if (req.method !== 'POST') {res.setHeader('Allow', 'POST'); res.status(405).json({error: 'METHOD_NOT_ALLOWED'}); return;}
     const input = req.body as Record<string, unknown> | null;
-    if (!input || typeof input !== 'object' || Array.isArray(input) || !['target,weekStart', 'excludedRecipeIds,target,weekStart'].includes(Object.keys(input).sort().join(','))
-      || !(testTargets as readonly unknown[]).includes(input.target) || typeof input.weekStart !== 'string'
+    const savedGoalMode = input?.goalSource === 'SAVED_GOAL';
+    const allowedFields = savedGoalMode ? ['goalSource,weekStart', 'excludedRecipeIds,goalSource,weekStart'] : ['target,weekStart', 'excludedRecipeIds,target,weekStart'];
+    if (!input || typeof input !== 'object' || Array.isArray(input) || !allowedFields.includes(Object.keys(input).sort().join(','))
+      || (!savedGoalMode && !(testTargets as readonly unknown[]).includes(input.target)) || typeof input.weekStart !== 'string'
       || !/^\d{4}-\d{2}-\d{2}$/.test(input.weekStart)
       || !Number.isFinite(Date.parse(input.weekStart + 'T00:00:00Z'))
       || new Date(input.weekStart + 'T00:00:00Z').toISOString().slice(0, 10) !== input.weekStart) {
@@ -106,9 +109,16 @@ export function createStagingRealWeekHandler(env: Record<string, string | undefi
       if (!remote.ok) {res.status(remote.status === 401 || remote.status === 403 ? 401 : 503).json({error: 'AUTH_UNAVAILABLE_OR_DENIED'}); return;}
       const user = await remote.json() as {id?: unknown};
       if (typeof user.id !== 'string' || !uuid.test(user.id)) {res.status(401).json({error: 'AUTH_INVALID_USER'}); return;}
-      res.status(200).json(buildStagingReferenceWeek(env.POTOK_STAGING_REFERENCE_CATALOG_BR64, input.target as number, input.weekStart, excluded));
+      const savedGoal = savedGoalMode ? await readReferenceSavedGoal(user.id, auth, key, authFetch) : null;
+      const result = buildStagingReferenceWeek(env.POTOK_STAGING_REFERENCE_CATALOG_BR64, savedGoal?.calories ?? input.target as number, input.weekStart, excluded);
+      if (savedGoal) {
+        const current = await readReferenceSavedGoal(user.id, auth, key, authFetch);
+        if (JSON.stringify(current) !== JSON.stringify(savedGoal)) {res.status(409).json({error: 'SAVED_GOAL_CHANGED'}); return;}
+      }
+      res.status(200).json(savedGoal ? {...result, savedGoal} : result);
     } catch (error) {
-      if (error instanceof Error && error.message === 'UNKNOWN_REFERENCE_RECIPE') res.status(400).json({error: 'UNKNOWN_REFERENCE_RECIPE'});
+      if (error instanceof Error && ['SAVED_GOAL_MISSING', 'SAVED_GOAL_UNAVAILABLE', 'INVALID_SAVED_GOAL'].includes(error.message)) {res.status(error.message === 'SAVED_GOAL_MISSING' ? 422 : 503).json({error: error.message});}
+      else if (error instanceof Error && error.message === 'UNKNOWN_REFERENCE_RECIPE') res.status(400).json({error: 'UNKNOWN_REFERENCE_RECIPE'});
       else res.status(503).json({error: 'REFERENCE_MENU_TEMPORARILY_UNAVAILABLE'});
     }
   };

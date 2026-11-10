@@ -10,13 +10,14 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   const [view, setView] = useState<StagingRealWeekView | null>(null), [day, setDay] = useState(0);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [saved, setSaved] = useState<StagingWeekDraft | null>(null), [notice, setNotice] = useState('');
+  const [goalSource, setGoalSource] = useState<'SAVED_GOAL' | undefined>();
   const [excluded, setExcluded] = useState<{id: string; name: string}[]>([]);
   const epoch = useRef(0);
   const generateButton = useRef<HTMLButtonElement>(null);
   function clear() {++epoch.current; setView(null); setDay(0); setError(''); setNotice(''); setBusy(false);}
   const reopen = useCallback(async () => {
     const request = ++epoch.current;
-    setView(null); setSaved(null); setDay(0); setError(''); setNotice('');
+    setView(null); setSaved(null); setGoalSource(undefined); setDay(0); setError(''); setNotice('');
     if (!isStagingGenerationProbeEnabled() || !supabase) return;
     setBusy(true);
     try {
@@ -25,7 +26,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       if (user.error || user.data.user?.id !== currentUserId) throw Error('SESSION_CHANGED');
       const draft = loadStagingWeekDraft(window.localStorage, currentUserId);
       if (draft) {
-        setSaved(draft); setExcluded(draft.view.excludedRecipes); setTarget(draft.target); setWeekStart(draft.weekStart); setView(draft.view);
+        setSaved(draft); setGoalSource(draft.view.savedGoal ? 'SAVED_GOAL' : undefined); setExcluded(draft.view.excludedRecipes); setTarget(draft.target); setWeekStart(draft.weekStart); setView(draft.view);
         setNotice('Открыта сохранённая тестовая неделя. Повторный подбор не выполнялся.');
       } else setNotice('На этом устройстве нет сохранённой тестовой недели.');
     } catch {
@@ -53,7 +54,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     } finally {if (request === epoch.current) setBusy(false);}
   }
   if (!isStagingGenerationProbeEnabled()) return null;
-  async function generate() {
+  async function generate(source = goalSource) {
     if (busy || !supabase) return;
     const client = supabase, request = ++epoch.current;
     setView(null); setDay(0); setError(''); setNotice(''); setBusy(true);
@@ -62,10 +63,11 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
         async userId() {const r = await client.auth.getUser(); return r.error ? null : r.data.user?.id ?? null;},
         async token() {const r = await client.auth.getSession(); return r.error ? null : r.data.session?.access_token ?? null;},
         send: (input, init) => fetch(input, init),
-      }, excluded.map(r => r.id));
-      if (request === epoch.current) setView(result);
+      }, excluded.map(r => r.id), source);
+      if (request === epoch.current) {setView(result); setGoalSource(source); if (result.savedGoal) setTarget(result.report.target);}
     } catch (err) {
-      if (request === epoch.current) setError(err instanceof Error && ['AUTH_REQUIRED', 'SESSION_CHANGED'].includes(err.message)
+      const messages: Record<string, string> = {SAVED_GOAL_MISSING: 'В этом тестовом аккаунте не сохранена цель питания. Можно продолжить с тестовой калорийностью.', SAVED_GOAL_UNAVAILABLE: 'Не удалось прочитать цель. Проверь подключение и повтори. Локальная копия цели не используется.', INVALID_SAVED_GOAL: 'Сохранённая цель неполная или некорректная. Подбор по ней не выполнен.', SAVED_GOAL_CHANGED: 'Цель изменилась во время подбора. Нажми генерацию по сохранённой цели ещё раз.'};
+      if (request === epoch.current) setError(err instanceof Error && messages[err.message] ? messages[err.message] : err instanceof Error && ['AUTH_REQUIRED', 'SESSION_CHANGED'].includes(err.message)
         ? 'Тестовый вход изменился. Войди снова и повтори подбор.'
         : 'Не удалось получить тестовую неделю. Старое меню скрыто. Попробуй ещё раз.');
     } finally {if (request === epoch.current) setBusy(false);}
@@ -74,7 +76,8 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     <h2 className="text-xl font-semibold">Собрать неделю из реальных рецептов</h2>
     <p className="text-sm">Тест по нашему сборнику. КБЖУ справочные, фактический выход и порции ещё не проверены. Аллергены и личные ограничения не проверяются. В дневник и базу ничего не записывается. Можно сохранить одну тестовую неделю в этом браузере на этом устройстве. Она не синхронизируется; очистка данных браузера удалит её.</p>
     <label className="block text-sm">Тестовая калорийность
-      <select aria-label="Калорийность тестовой недели" value={target} onChange={e => {clear(); setTarget(Number(e.target.value));}} className="mt-2 block w-full rounded-lg border p-3">
+      <select aria-label="Калорийность тестовой недели" value={target} onChange={e => {clear(); setTarget(Number(e.target.value)); setGoalSource(undefined);}} className="mt-2 block w-full rounded-lg border p-3">
+        {![1400, 1600, 1800, 2000].includes(target) && <option disabled value={target}>{target} ккал — сохранённая цель</option>}
         {[1400, 1600, 1800, 2000].map(n => <option key={n} value={n}>{n} ккал в день</option>)}
       </select>
     </label>
@@ -84,6 +87,9 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     <button ref={generateButton} type="button" disabled={busy || !weekStart} onClick={() => {void generate();}} className="w-full rounded-lg bg-emerald-800 px-4 py-3 font-semibold text-white disabled:opacity-50">
       {busy ? 'Подожди…' : 'Сгенерировать неделю из рецептов'}
     </button>
+    <button type="button" disabled={busy || !weekStart} onClick={() => {void generate('SAVED_GOAL');}}
+      className="w-full rounded-lg border border-emerald-800 px-4 py-3 font-semibold text-emerald-900 disabled:opacity-50">Собрать по моей сохранённой цели</button>
+    {goalSource === 'SAVED_GOAL' && <p className="text-sm">Для нового подбора цель будет прочитана из тестового аккаунта заново. Чтобы выбрать тестовый сценарий, измени калорийность.</p>}
     <div className="space-y-2" aria-label="Сохранение тестовой недели">
       <button type="button" disabled={busy || view?.report.days.length !== 7} onClick={() => {void changeDraft('save');}}
         className="w-full rounded-lg border border-emerald-800 p-3 font-semibold text-emerald-900 disabled:opacity-50">
@@ -103,6 +109,16 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     </div>}
     {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm">{error}</p>}
     {view && <>
+      {view.savedGoal && <div className="rounded-lg border border-emerald-200 p-3 text-sm" aria-label="Сохранённая цель и меню">
+        <p className="font-semibold">Цель из тестового аккаунта: {view.savedGoal.calories.toLocaleString('ru-RU')} ккал</p>
+        <p>Б {view.savedGoal.protein.toLocaleString('ru-RU')} · Ж {view.savedGoal.fat.toLocaleString('ru-RU')} · У {view.savedGoal.carbs.toLocaleString('ru-RU')} г</p>
+        <p className="mt-2">Цель на момент подбора, обновлена {new Date(view.savedGoal.updatedAt).toLocaleString('ru-RU')}. При повторном открытии черновика она не обновляется.</p>
+        <p className="mt-2">По сохранённой цели подбираются калории. Ниже — справочное сравнение БЖУ; допуски для них ещё не утверждены. Углеводы исходника могут иметь другую семантику.</p>
+        {view.report.days[day] && <div className="mt-2" aria-label="Сравнение БЖУ выбранного дня">{(['protein','fat','carbs'] as const).map(axis => {
+          const actual = view.report.days[day].referenceNutrition[axis], goal = view.savedGoal![axis], delta = Math.round((actual-goal)*1000)/1000;
+          return <p key={axis}>{({protein:'Белки',fat:'Жиры',carbs:'Углеводы исходника'})[axis]}: цель {goal.toLocaleString('ru-RU')} г · меню {actual.toLocaleString('ru-RU')} г · разница {delta>0?'+':''}{delta.toLocaleString('ru-RU')} г</p>;
+        })}</div>}
+      </div>}
       <p role="status" className="text-sm">В сборнике {view.sourceRecipes} рецепта; {view.eligibleRecipes} с полными справочными числами для теста.</p>
       {view.minimumWeekCaloriesProvenUnreachable && <p role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
         При текущих целых порциях и ограничении повторов не хватает калорий на неделю. Нужно не меньше {view.capacity.required.toLocaleString('ru-RU')} ккал; даже верхняя оценка доступных сочетаний — {view.capacity.maximum?.toLocaleString('ru-RU')} ккал. Порции и ограничения автоматически не меняются.

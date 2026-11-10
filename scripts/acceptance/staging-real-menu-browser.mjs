@@ -15,8 +15,14 @@ const env = {VERCEL_ENV:'preview', VITE_POTOK_STAGING_PREVIEW:'true', VITE_SUPAB
   VITE_SUPABASE_ANON_KEY:'sb_publishable_synthetic_test_only', POTOK_STAGING_REFERENCE_TEST_ENABLED:'true',
   POTOK_STAGING_REFERENCE_CATALOG_BR64:readFileSync(process.argv[2],'utf8')};
 let lastBody = null;
+let goalReads=0, savedGoalMissing=false, savedGoalChanged=false;
+const savedGoalRow={user_id:account,goal_revision:null,updated_at:'2026-11-10T10:00:00Z',calories:1500,protein:100,fat:50,carbs:160};
 let apiCalls = 0, authCalls = 0, delayResponse = false, denyAuth = false;
 const handler = createStagingRealWeekHandler(env, async (url, options) => {
+  if(String(url).startsWith(env.VITE_SUPABASE_URL+'/rest/v1/user_goals?')){
+    assert.equal(options.method,'GET');const u=new URL(url);assert.equal(u.searchParams.get('user_id'),'eq.'+account);goalReads++;
+    return new Response(JSON.stringify(savedGoalMissing?[]:[{...savedGoalRow,...(savedGoalChanged&&goalReads%2===0?{protein:101}:{})}]));
+  }
   assert.equal(url,env.VITE_SUPABASE_URL+'/auth/v1/user');assert.equal(options.method,'GET');authCalls++;
   return new Response(JSON.stringify(user),{status:denyAuth?401:200});
 });
@@ -112,6 +118,30 @@ try{
     await page.getByRole('button',{name:'Удалить сохранённый черновик',exact:true}).click();
     await page.getByText('Сохранённый черновик удалён с этого устройства.',{exact:true}).waitFor();
     checks.push({width,result:'EXCLUDE_REAL_RECIPE_REGENERATE_SAVE_REOPEN'});
+    // Authenticated saved-goal source → real 1500-kcal selection → all days → snapshot restore.
+    await page.getByRole('button',{name:'Собрать по моей сохранённой цели',exact:true}).click();
+    await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();
+    if(process.env.POTOK_SAVED_GOAL_SCREENSHOT)await page.getByLabel('Сохранённая цель и меню',{exact:true}).screenshot({path:process.env.POTOK_SAVED_GOAL_SCREENSHOT});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    assert.equal(lastBody.savedGoal.calories,1500);assert.equal(lastBody.report.scenario.dailyCalorieTarget,1500);
+    const goalDays=page.getByRole('navigation',{name:'Дни недели'}).getByRole('button');
+    for(let i=0;i<7;i++){
+      await goalDays.nth(i).click();assert.equal(await page.locator('article').count(),4);
+      assert.ok((await page.getByLabel('Сравнение БЖУ выбранного дня',{exact:true}).innerText()).includes('цель 100 г'));
+      assert.ok(Math.abs(Number(lastBody.report.days[i].referenceNutrition.calories)-1500)<=50);
+    }
+    await page.getByRole('button',{name:'Сохранить неделю на устройстве',exact:true}).click();
+    await page.getByText('Тестовая неделя сохранена на этом устройстве.',{exact:true}).waitFor();
+    const callsBeforeRestore=apiCalls,goalReadsBeforeRestore=goalReads;await page.reload();
+    await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();assert.equal(apiCalls,callsBeforeRestore);assert.equal(goalReads,goalReadsBeforeRestore);
+    savedGoalMissing=true;await page.getByRole('button',{name:'Собрать по моей сохранённой цели',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'В этом тестовом аккаунте не сохранена цель'}).waitFor();assert.equal(await page.locator('article').count(),0);savedGoalMissing=false;
+    await page.getByRole('button',{name:'Открыть сохранённую неделю',exact:true}).click();await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();
+    savedGoalChanged=true;goalReads=0;await page.getByRole('button',{name:'Собрать по моей сохранённой цели',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'Цель изменилась во время подбора'}).waitFor();assert.equal(await page.locator('article').count(),0);savedGoalChanged=false;
+    await page.getByRole('button',{name:'Открыть сохранённую неделю',exact:true}).click();await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Удалить сохранённый черновик',exact:true}).click();await page.getByText('Сохранённый черновик удалён с этого устройства.',{exact:true}).waitFor();
+    checks.push({width,result:'SAVED_GOAL_1500_MACRO_COMPARISON_SAVE_RESTORE_MISSING_CHANGED'});
     // A response from a previous scenario must never reappear after a change.
     await target.selectOption('1600');delayResponse=true;
     await page.getByRole('button',{name:'Сгенерировать неделю из рецептов',exact:true}).click();await target.selectOption('1400');

@@ -1,9 +1,10 @@
+import {decodeReferenceSavedGoal, type ReferenceSavedGoal} from '../dev/referenceSavedGoalV1';
 import {referenceDayHasDistinctStaples} from '../dev/referenceStapleVarietyV1';
 import {decodeReferenceExcludedIds, referenceExclusionScope} from '../dev/referenceRecipeExclusionsV1';
 import {decodeAuthoringRecipeCatalog, matchAuthoringRecipe, type AuthoringRecipeCatalog} from '../dev/authoringRecipeCatalog';
 import {decodeAuthoringWeekReport, type AuthoringReport} from '../dev/authoringWeekReport';
 
-export type StagingRealWeekView = {snapshot: string; excludedRecipes: {id: string; name: string}[]; capacity: {required: number; maximum: number | null; shortfall: number | null}; report: AuthoringReport; catalog: AuthoringRecipeCatalog; sourceRecipes: number; eligibleRecipes: number; minimumWeekCaloriesProvenUnreachable: boolean};
+export type StagingRealWeekView = {savedGoal: ReferenceSavedGoal | null; snapshot: string; excludedRecipes: {id: string; name: string}[]; capacity: {required: number; maximum: number | null; shortfall: number | null}; report: AuthoringReport; catalog: AuthoringRecipeCatalog; sourceRecipes: number; eligibleRecipes: number; minimumWeekCaloriesProvenUnreachable: boolean};
 export function decodeReferenceWeekCalorieCapacity(value: unknown, target: number): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value) || !Number.isInteger(target) || target < 1 || target > 10000) throw Error('INVALID_CALORIE_CAPACITY');
   const capacity = value as Record<string, unknown>;
@@ -50,13 +51,15 @@ export function decodeStagingRealWeek(value: unknown): StagingRealWeekView {
     if (matchAuthoringRecipe(catalog, report, meal).error) throw Error('CATALOG_RESPONSE_MISMATCH');
   }
   if (report.dailyStapleVariety && report.days.some(day => !referenceDayHasDistinctStaples(day.meals.map(m => catalog.recipes.get(m.recipeId)!)))) throw Error('REFERENCE_DAILY_STAPLE_REPEAT');
+  const savedGoal = r.savedGoal === undefined ? null : decodeReferenceSavedGoal(r.savedGoal);
+  if (savedGoal && savedGoal.calories !== report.target) throw Error('SAVED_GOAL_TARGET_MISMATCH');
   const capacity = r.calorieCapacity as Record<string, string | null>;
-  return {snapshot: JSON.stringify(value), excludedRecipes, capacity: {required: Number(capacity.requiredWeekKcal), maximum: capacity.optimisticMaximumWeekKcal === null ? null : Number(capacity.optimisticMaximumWeekKcal), shortfall: capacity.provenWeekShortfallKcal === null ? null : Number(capacity.provenWeekShortfallKcal)}, report, catalog, sourceRecipes: Number(r.sourceRecipeCount), eligibleRecipes: Number(r.eligibleReferenceRecipes), minimumWeekCaloriesProvenUnreachable: unreachable};
+  return {savedGoal, snapshot: JSON.stringify(value), excludedRecipes, capacity: {required: Number(capacity.requiredWeekKcal), maximum: capacity.optimisticMaximumWeekKcal === null ? null : Number(capacity.optimisticMaximumWeekKcal), shortfall: capacity.provenWeekShortfallKcal === null ? null : Number(capacity.provenWeekShortfallKcal)}, report, catalog, sourceRecipes: Number(r.sourceRecipeCount), eligibleRecipes: Number(r.eligibleReferenceRecipes), minimumWeekCaloriesProvenUnreachable: unreachable};
 }
 
 export async function requestStagingRealWeek(accountId: string, target: number, weekStart: string, ports: {
   userId: () => Promise<string | null>; token: () => Promise<string | null>; send: typeof fetch;
-}, excludedRecipeIds: string[] = []): Promise<StagingRealWeekView> {
+}, excludedRecipeIds: string[] = [], goalSource?: 'SAVED_GOAL'): Promise<StagingRealWeekView> {
   const excluded = decodeReferenceExcludedIds(excludedRecipeIds);
   if (await ports.userId() !== accountId) throw Error('SESSION_CHANGED');
   const token = await ports.token();
@@ -65,13 +68,18 @@ export async function requestStagingRealWeek(accountId: string, target: number, 
   let response: Response, raw: string;
   try {
     response = await ports.send('/api/staging-real-week', {method: 'POST', cache: 'no-store', signal: controller.signal,
-      headers: {Authorization: 'Bearer ' + token, 'Content-Type': 'application/json'}, body: JSON.stringify({target, weekStart, ...(excluded.length ? {excludedRecipeIds: excluded} : {})})});
+      headers: {Authorization: 'Bearer ' + token, 'Content-Type': 'application/json'}, body: JSON.stringify({... (goalSource === 'SAVED_GOAL' ? {goalSource} : {target}), weekStart, ...(excluded.length ? {excludedRecipeIds: excluded} : {})})});
     raw = await response.text();
   } finally {clearTimeout(timeout);}
-  if (!response.ok) throw Error(response.status === 401 ? 'AUTH_REQUIRED' : 'TEST_UNAVAILABLE');
+  if (!response.ok) {
+    let code: unknown;try {code = JSON.parse(raw).error;} catch {code = undefined;}
+    if (['SAVED_GOAL_MISSING', 'SAVED_GOAL_UNAVAILABLE', 'INVALID_SAVED_GOAL', 'SAVED_GOAL_CHANGED'].includes(String(code))) throw Error(String(code));
+    throw Error(response.status === 401 ? 'AUTH_REQUIRED' : 'TEST_UNAVAILABLE');
+  }
   if (new Blob([raw]).size > 2_000_000) throw Error('RESPONSE_TOO_LARGE');
   const result = decodeStagingRealWeek(JSON.parse(raw));
-  if (result.report.target !== target || (result.report.days.length && result.report.days[0].date !== weekStart)) throw Error('SCENARIO_CHANGED');
+  if (goalSource === 'SAVED_GOAL' ? !result.savedGoal || result.savedGoal.accountId !== accountId : Boolean(result.savedGoal) || result.report.target !== target) throw Error('SAVED_GOAL_SOURCE_CHANGED');
+  if ((goalSource !== 'SAVED_GOAL' && result.report.target !== target) || (result.report.days.length && result.report.days[0].date !== weekStart)) throw Error('SCENARIO_CHANGED');
   if (result.excludedRecipes.map(r => r.id).join('|') !== excluded.join('|')) throw Error('EXCLUSION_SCOPE_CHANGED');
   if (await ports.userId() !== accountId) throw Error('SESSION_CHANGED');
   return result;
