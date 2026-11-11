@@ -27,6 +27,23 @@ const decimal=(n:bigint)=>`${n/1000n}.${String(n%1000n).padStart(3,'0')}`;
 const total=(recipes:Recipe[])=>Object.fromEntries(axes.map(axis=>[axis,recipes.reduce((n,r)=>n+minor(r.referenceNutrition.values[axis]),0n)])) as Record<typeof axes[number],bigint>;
 type Day={date:string;meals:Recipe[];nutrition:ReturnType<typeof total>;distance:bigint};
 
+/** Deterministically spread a bounded pair search over the whole candidate grid.
+ * A prefix-only scan over row-major pairs can miss every candidate after the
+ * first few recipes in the first slot. */
+export function evenlySpacedPairIndexesV1(firstCount:number,secondCount:number,budget:number):number[][]{
+  if(!Number.isSafeInteger(firstCount)||firstCount<1||firstCount>128
+    ||!Number.isSafeInteger(secondCount)||secondCount<1||secondCount>128
+    ||!Number.isSafeInteger(budget)||budget<1||budget>8192)throw Error('INVALID_PAIR_SEARCH_BOUNDS');
+  const total=firstCount*secondCount,limit=Math.min(total,budget);
+  const gcd=(left:number,right:number):number=>right===0?left:gcd(right,left%right);
+  let stride=Math.max(1,Math.ceil(Math.sqrt(total)));
+  while(gcd(stride,total)!==1)stride++;
+  return Array.from({length:limit},(_,index)=>{
+    const flat=(index*stride)%total;
+    return [Math.floor(flat/secondCount),flat%secondCount];
+  });
+}
+
 /** Improve an already feasible reference week without scaling portions, weakening
  * repeats or losing recipe diversity. This is bounded local improvement, not a
  * proof of global optimality or recipe/nutrition approval. */
@@ -156,8 +173,9 @@ function refineProteinFat(initial:Day[],pools:Recipe[][],s:AuthoringWeekScenario
       const pairs:number[][]=[];for(let a=0;a<bounded.length;a++)for(let b=a+1;b<bounded.length;b++)pairs.push([a,b]);
       // Give every slot pair an equal bounded budget.
       const rounds=Math.min(1024,Math.floor((limits.candidatesPerDayPerPass-attempts)/Math.max(1,pairs.length)));
-      for(const [a,b] of pairs)for(let n=0;n<Math.min(rounds,bounded[a].length*bounded[b].length);n++){
-        const meals=[...original.meals];meals[a]=bounded[a][Math.floor(n/bounded[b].length)];meals[b]=bounded[b][n%bounded[b].length];consider(meals);
+      for(const [a,b] of pairs)for(const [firstIndex,secondIndex] of evenlySpacedPairIndexesV1(
+        bounded[a].length,bounded[b].length,rounds)){
+        const meals=[...original.meals];meals[a]=bounded[a][firstIndex];meals[b]=bounded[b][secondIndex];consider(meals);
       }
       if(best!==original){days[dayIndex]=best;changes++;changed=true;}
     }

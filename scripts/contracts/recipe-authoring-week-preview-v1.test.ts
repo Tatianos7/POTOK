@@ -3,6 +3,7 @@ import test from 'node:test';
 import {boundedCartesianIndexesV1} from '../../src/utils/boundedCartesianIndexesV1';
 import {recipeMasterSheetsV1} from './recipe-master-readiness-v1';
 import {buildRecipeAuthoringTestCatalogV1} from './recipe-authoring-test-catalog-v1';
+import {evenlySpacedPairIndexesV1} from '../../src/dev/authoringWeekSearchV1';
 import {previewRecipeAuthoringWeekV1,type AuthoringWeekScenarioV1} from './recipe-authoring-week-preview-v1';
 function fixture(count=12){
   const sheets:Record<string,Record<string,unknown>[]>=Object.fromEntries(recipeMasterSheetsV1.map(n=>[n,[]]));
@@ -25,6 +26,16 @@ test('shared bounded Cartesian traversal visits exact order and budget without s
   assert.deepEqual([...boundedCartesianIndexesV1([2,2],3)],[[0,0],[0,1],[1,0]]);
   for(const [counts,budget] of [[[],1],[[0],1],[[17],1],[[1],0],[[1],1025]] as [number[],number][])
     assert.throws(()=>[...boundedCartesianIndexesV1(counts,budget)],/BOUNDS/);
+});
+test('bounded macro pair search samples across the full candidate grid without duplicates',()=>{
+  const sample=evenlySpacedPairIndexesV1(64,64,1024);
+  assert.equal(sample.length,1024);assert.deepEqual(sample,evenlySpacedPairIndexesV1(64,64,1024));
+  assert.equal(new Set(sample.map(([a,b])=>`${a}:${b}`)).size,sample.length);
+  assert.deepEqual([...new Set(sample.map(([a])=>a))],[...Array(64).keys()]);
+  assert.deepEqual([...new Set(sample.map(([,b])=>b))],[...Array(64).keys()]);
+  assert.deepEqual(evenlySpacedPairIndexesV1(3,2,99).map(([a,b])=>`${a}:${b}`).sort(),['0:0','0:1','1:0','1:1','2:0','2:1']);
+  for(const [a,b,limit] of [[0,1,1],[1,129,1],[1,1,0],[1,1,8193]])
+    assert.throws(()=>evenlySpacedPairIndexesV1(a,b,limit),/PAIR_SEARCH_BOUNDS/);
 });
 test('offline seven-day experiment preserves whole reference portions, arithmetic, repeat caps and unknown grams',()=>{
   const x=fixture(),before=JSON.stringify(x),r=previewRecipeAuthoringWeekV1(x.catalog,x.scenario);

@@ -351,6 +351,17 @@ var minor = (n) => {
 var abs = (n) => n < 0n ? -n : n;
 var decimal = (n) => `${n / 1000n}.${String(n % 1000n).padStart(3, "0")}`;
 var total = (recipes) => Object.fromEntries(axes2.map((axis) => [axis, recipes.reduce((n, r) => n + minor(r.referenceNutrition.values[axis]), 0n)]));
+function evenlySpacedPairIndexesV1(firstCount, secondCount, budget) {
+  if (!Number.isSafeInteger(firstCount) || firstCount < 1 || firstCount > 128 || !Number.isSafeInteger(secondCount) || secondCount < 1 || secondCount > 128 || !Number.isSafeInteger(budget) || budget < 1 || budget > 8192) throw Error("INVALID_PAIR_SEARCH_BOUNDS");
+  const total2 = firstCount * secondCount, limit = Math.min(total2, budget);
+  const gcd = (left, right) => right === 0 ? left : gcd(right, left % right);
+  let stride = Math.max(1, Math.ceil(Math.sqrt(total2)));
+  while (gcd(stride, total2) !== 1) stride++;
+  return Array.from({ length: limit }, (_, index) => {
+    const flat = index * stride % total2;
+    return [Math.floor(flat / secondCount), flat % secondCount];
+  });
+}
 function refineCalories(initial, pools, s, target, validDay) {
   const days = initial.map((d) => ({ ...d, meals: [...d.meals] }));
   const minimumDistinct = new Set(days.flatMap((d) => d.meals.map((r) => r.recipeId))).size;
@@ -528,10 +539,14 @@ function refineProteinFat(initial, pools, s, goal, validDay) {
       const pairs = [];
       for (let a = 0; a < bounded.length; a++) for (let b = a + 1; b < bounded.length; b++) pairs.push([a, b]);
       const rounds = Math.min(1024, Math.floor((limits.candidatesPerDayPerPass - attempts) / Math.max(1, pairs.length)));
-      for (const [a, b] of pairs) for (let n = 0; n < Math.min(rounds, bounded[a].length * bounded[b].length); n++) {
+      for (const [a, b] of pairs) for (const [firstIndex, secondIndex] of evenlySpacedPairIndexesV1(
+        bounded[a].length,
+        bounded[b].length,
+        rounds
+      )) {
         const meals = [...original.meals];
-        meals[a] = bounded[a][Math.floor(n / bounded[b].length)];
-        meals[b] = bounded[b][n % bounded[b].length];
+        meals[a] = bounded[a][firstIndex];
+        meals[b] = bounded[b][secondIndex];
         consider(meals);
       }
       if (best !== original) {
