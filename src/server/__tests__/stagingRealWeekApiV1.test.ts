@@ -21,7 +21,7 @@ test('disabled, production and wrong project reject before Auth or private input
 test('wrong method, unauthenticated callers and actor/input injection cannot generate', async () => {
   const a = req();a.method='GET';assert.equal((await invoke(env,a)).status,405);
   const b = req();b.headers.authorization='';assert.equal((await invoke(env,b)).status,401);
-  for (const body of [{...req().body,accountId:account},{...req().body,calorieCorridor:{minimumKcal:1000,maximumKcal:3000}},{...req().body,target:1700},{...req().body,weekStart:'2026-02-30'},null,[]]) {
+  for (const body of [{...req().body,accountId:account},{...req().body,calorieCorridor:{minimumKcal:1000,maximumKcal:3000}},{...req().body,excludedRecipeIds:['same','same']},{...req().body,excludedRecipeIds:['bad name']},{...req().body,target:1700},{...req().body,weekStart:'2026-02-30'},null,[]]) {
     const r = await invoke(env,{...req(),body} as ReturnType<typeof req>);assert.equal(r.status,400);assert.equal(r.calls,0);
   }
 });

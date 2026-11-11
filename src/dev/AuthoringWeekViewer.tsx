@@ -1,5 +1,5 @@
 import {useRef, useState} from 'react';
-import {decodeAuthoringWeekReport, MAX_AUTHORING_FILE_BYTES, type AuthoringReport} from './authoringWeekReport';
+import {decodeAuthoringWeekReport, MAX_AUTHORING_FILE_BYTES, type AuthoringReport, type AuthoringMeal} from './authoringWeekReport';
 import {decodeAuthoringRecipeCatalog, matchAuthoringRecipe, type AuthoringRecipeCatalog} from './authoringRecipeCatalog';
 import AuthoringRecipeDetails from './AuthoringRecipeDetails';
 import {authoringTestTargets, defaultAuthoringWeekStart, selectAuthoringWeek} from './authoringSelectionView';
@@ -15,9 +15,10 @@ const emptyMessages: Record<string, string> = {
   NO_REFERENCE_WEEK_IN_CALORIE_CORRIDOR: 'Подходящая неделя в указанном коридоре калорийности не найдена.',
 };
 
-export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog = null}: {
+export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog = null, emptyReason, onExcludeRecipe, actionsDisabled = false}: {
   report: AuthoringReport; selectedDay: number; onSelectDay: (day: number) => void;
-  catalog?: AuthoringRecipeCatalog | null;
+  catalog?: AuthoringRecipeCatalog | null; emptyReason?: string;
+  onExcludeRecipe?: (meal: AuthoringMeal) => void; actionsDisabled?: boolean;
 }) {
   const day = report.days[selectedDay];
   const delta = day ? Math.round((day.referenceNutrition.calories - report.target) * 1000) / 1000 : 0;
@@ -28,7 +29,7 @@ export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog 
     {report.calorieCorridor && <p className="rounded-lg border border-emerald-200 p-3 text-sm" aria-label="Допустимый коридор калорийности">
       Допустимый коридор: <strong>{number(report.calorieCorridor.minimumKcal)}–{number(report.calorieCorridor.maximumKcal)} ккал в день</strong>. Подбор стремится ближе к цели {number(report.target)} ккал.
     </p>}
-    {!day ? <p role="status">{emptyMessages[report.status]} Это не доказывает невозможность подбора по всему каталогу.</p> : <>
+    {!day ? <p role="status">{emptyReason ?? `${emptyMessages[report.status]} Это не доказывает невозможность подбора по всему каталогу.`}</p> : <>
       <nav aria-label="Дни недели" className="flex flex-wrap gap-2">
         {report.days.map((d, i) => <button key={d.date} type="button" aria-pressed={selectedDay === i}
           onClick={() => onSelectDay(i)} className="rounded-lg border border-stone-300 px-3 py-2 aria-pressed:bg-stone-100">
@@ -50,6 +51,12 @@ export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog 
         return <article key={`${day.date}:${meal.slot}:${meal.recipeId}`} className="min-w-0 rounded-xl border border-stone-200 p-4">
         <p className="text-sm text-stone-600">{meal.slot}</p>
         <h4 className="mt-1 font-semibold">{meal.name}</h4>
+        {onExcludeRecipe && <div className="mt-3">
+          <button type="button" disabled={actionsDisabled} aria-label={`Не предлагать это блюдо: ${meal.name}`}
+            onClick={() => onExcludeRecipe(meal)}
+            className="w-full rounded-lg border border-emerald-800 px-3 py-3 text-sm font-semibold text-emerald-900 disabled:opacity-50">Не предлагать это блюдо</button>
+          <p className="mt-2 text-sm text-stone-600">Исключит блюдо из следующего подбора всей недели.</p>
+        </div>}
         <p className="mt-3 text-sm">1 порция по источнику · граммы не подтверждены</p>
         <p className="mt-2 text-sm">Справочно: {number(meal.referenceNutrition.calories)} ккал · Б {number(meal.referenceNutrition.protein)} · Ж {number(meal.referenceNutrition.fat)} · У исходника {number(meal.referenceNutrition.carbs)} · Клетчатка {number(meal.referenceNutrition.fiber)} г</p>
         <details className="mt-3 text-sm"><summary className="cursor-pointer">Данные исходника</summary>

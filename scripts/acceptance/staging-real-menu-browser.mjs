@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {readFileSync} from 'node:fs';
 import {resolve, extname} from 'node:path';
+import {referenceDayHasDistinctStaples} from '../../src/dev/referenceStapleVarietyV1.ts';
 import {chromium} from 'playwright';
 import {createStagingRealWeekHandler} from '../../api/staging-real-week.js';
 
@@ -13,8 +14,15 @@ const user = {id:account, aud:'authenticated', role:'authenticated', email:'synt
 const env = {VERCEL_ENV:'preview', VITE_POTOK_STAGING_PREVIEW:'true', VITE_SUPABASE_URL:'https://ozidryfvhkcbtpnulakq.supabase.co',
   VITE_SUPABASE_ANON_KEY:'sb_publishable_synthetic_test_only', POTOK_STAGING_REFERENCE_TEST_ENABLED:'true',
   POTOK_STAGING_REFERENCE_CATALOG_BR64:readFileSync(process.argv[2],'utf8')};
+let lastBody = null;
+let goalReads=0, savedGoalMissing=false, savedGoalChanged=false;
+const savedGoalRow={user_id:account,goal_revision:null,updated_at:'2026-11-10T10:00:00Z',calories:1500,protein:100,fat:50,carbs:160};
 let apiCalls = 0, authCalls = 0, delayResponse = false, denyAuth = false;
 const handler = createStagingRealWeekHandler(env, async (url, options) => {
+  if(String(url).startsWith(env.VITE_SUPABASE_URL+'/rest/v1/user_goals?')){
+    assert.equal(options.method,'GET');const u=new URL(url);assert.equal(u.searchParams.get('user_id'),'eq.'+account);goalReads++;
+    return new Response(JSON.stringify(savedGoalMissing?[]:[{...savedGoalRow,...(savedGoalChanged&&goalReads%2===0?{protein:101}:{})}]));
+  }
   assert.equal(url,env.VITE_SUPABASE_URL+'/auth/v1/user');assert.equal(options.method,'GET');authCalls++;
   return new Response(JSON.stringify(user),{status:denyAuth?401:200});
 });
@@ -25,7 +33,7 @@ const server = createServer(async (req,res) => {
     const chunks=[];for await (const chunk of req) chunks.push(chunk);
     let body;try{body=JSON.parse(Buffer.concat(chunks).toString('utf8'));}catch{body=null;}
     if(delayResponse)await new Promise(r=>setTimeout(r,300));
-    const response={status(n){res.statusCode=n;return this;},setHeader(k,v){res.setHeader(k,v);return this;},json(v){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(v));}};
+    const response={status(n){res.statusCode=n;return this;},setHeader(k,v){res.setHeader(k,v);return this;},json(v){lastBody=v;res.setHeader('Content-Type','application/json');res.end(JSON.stringify(v));}};
     await handler({method:req.method,headers:req.headers,body},response);return;
   }
   const file=resolve(root,'.'+new URL(req.url,'http://localhost').pathname);
@@ -40,7 +48,7 @@ const checks=[];
 try{
   const unauthorized=await fetch(origin+'/api/staging-real-week',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target:1600,weekStart:'2026-11-09'})});
   assert.equal(unauthorized.status,401);
-  for(const width of [360,393,430]){
+  for(const width of (process.env.POTOK_QUALITY_SCREENSHOT ? [393] : [360,393,430])){
     const context=await browser.newContext({viewport:{width,height:852}}),page=await context.newPage(),errors=[],unexpected=[];
     page.on('pageerror',e=>errors.push(e.message));
     page.on('response',async r=>{if(r.url().endsWith('/api/staging-real-week'))console.log('API_RESPONSE',r.status(),r.ok()?'OK':(await r.json()).error);});
@@ -63,21 +71,80 @@ try{
       catch(error){console.log('VISIBLE_ERRORS',await page.getByRole('alert').allTextContents());throw error;}
       const corridor=await page.getByLabel('Допустимый коридор калорийности',{exact:true}).innerText();
       assert.ok(corridor.includes((n-50).toLocaleString('ru-RU')));assert.ok(corridor.includes((n+50).toLocaleString('ru-RU')));
-      if(n===2000){await page.getByText('В проверенных списках не найден подходящий день.',{exact:false}).waitFor();assert.equal(await page.locator('article').count(),0);}
+      if(n===2000){await page.getByText('В этом режиме собрать неделю в выбранном коридоре нельзя:',{exact:false}).waitFor();assert.equal(await page.locator('article').count(),0);}
       else{
         const days=page.getByRole('navigation',{name:'Дни недели'}).getByRole('button');assert.equal(await days.count(),7);
         for(let i=0;i<7;i++){
           await days.nth(i).click();assert.equal(await page.locator('article').count(),4);
           const calorieCard=await page.getByLabel('Цель и калорийность меню',{exact:true}).innerText();
           assert.ok(calorieCard.includes('Цель:'));assert.ok(calorieCard.includes('Меню:'));
-          if(n===1800){assert.ok(calorieCard.includes('Ниже цели на'));assert.ok(!calorieCard.includes('Совпадает с целью'));}
-          else assert.ok(calorieCard.includes('Совпадает с целью по справочным данным.'));
+          const kcal=Number(lastBody.report.days[i].referenceNutrition.calories);assert.ok(Math.abs(kcal-n)<=50);
+          assert.equal(lastBody.report.scenario.enforceDailyStapleVariety,true);
+          const lookup=new Map(lastBody.catalog.recipes.map(r=>[r.recipeId,{name:r.name,ingredients:r.ingredients.map(ingredient=>({name:ingredient.ingredient_name_ru,optional:ingredient.optional}))}]));
+          assert.ok(referenceDayHasDistinctStaples(lastBody.report.days[i].meals.map(m=>lookup.get(m.recipeId))));
           await page.getByText('Открыть рецепт',{exact:true}).first().click();assert.ok((await page.locator('article').first().innerText()).includes('Ингредиенты'));
         }
       }
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       checks.push({width,target:n,result:n===2000?'EXPECTED_BOUNDED_EMPTY':'SEVEN_DAYS_FOUR_REAL_RECIPES_DETAILS'});
     }
+    // Real private catalog → explicit exclusion → real bounded selector → save → reopen.
+    await target.selectOption('1600');
+    await page.getByRole('button',{name:'Сгенерировать неделю из рецептов',exact:true}).click();
+    await page.locator('article').first().waitFor();
+    const unwanted=lastBody.report.days[0].meals[0];
+    if(width===393 && process.env.POTOK_MEAL_ACTION_SCREENSHOT)await page.locator('article').first().screenshot({path:process.env.POTOK_MEAL_ACTION_SCREENSHOT});
+    assert.equal(await page.locator('article').getByRole('button',{name:/^Не предлагать это блюдо:/}).count(),4);
+    await page.getByRole('button',{name:'Не предлагать это блюдо: '+unwanted.name,exact:true}).click();
+    assert.equal(await page.locator('article').count(),0);
+    await page.getByText('Сохранённая неделя пока не изменена.',{exact:false}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Сгенерировать неделю из рецептов',exact:true}).evaluate(el=>el===document.activeElement),true);
+    const responsePromise=page.waitForResponse(r=>r.url().endsWith('/api/staging-real-week'));
+    await page.getByRole('button',{name:'Сгенерировать неделю из рецептов',exact:true}).click();
+    const filtered=await (await responsePromise).json();
+    assert.equal(filtered.report.days.length,7);assert.deepEqual(filtered.exclusions.recipes.map(r=>r.id),[unwanted.recipeId]);
+    assert.ok(!filtered.report.days.some(d=>d.meals.some(m=>m.recipeId===unwanted.recipeId)));
+    const lookup=new Map(filtered.catalog.recipes.map(r=>[r.recipeId,{name:r.name,ingredients:r.ingredients.map(i=>({name:i.ingredient_name_ru,optional:i.optional}))}]));
+    assert.ok(filtered.report.days.every(d=>referenceDayHasDistinctStaples(d.meals.map(m=>lookup.get(m.recipeId)))));
+    await page.locator('article').first().waitFor();
+    await page.getByRole('button',{name:'Сохранить неделю на устройстве',exact:true}).click();
+    await page.getByText('Тестовая неделя сохранена на этом устройстве.',{exact:true}).waitFor();
+    const countBefore=apiCalls;await page.reload();
+    await page.getByText('Открыта сохранённая тестовая неделя. Повторный подбор не выполнялся.',{exact:true}).waitFor();
+    if(process.env.POTOK_QUALITY_SCREENSHOT)await page.screenshot({path:process.env.POTOK_QUALITY_SCREENSHOT,fullPage:true});
+    assert.equal(apiCalls,countBefore);assert.ok((await page.getByLabel('Исключённые блюда',{exact:true}).innerText()).includes(unwanted.name));
+    await page.getByRole('button',{name:'Снять исключения',exact:true}).click();assert.equal(await page.locator('article').count(),0);
+    // Clear this test's own draft before the existing denied/stale checks.
+    await page.getByRole('button',{name:'Удалить сохранённый черновик',exact:true}).click();
+    await page.getByText('Сохранённый черновик удалён с этого устройства.',{exact:true}).waitFor();
+    checks.push({width,result:'EXCLUDE_REAL_RECIPE_REGENERATE_SAVE_REOPEN'});
+    // Authenticated saved-goal source → real 1500-kcal selection → all days → snapshot restore.
+    await page.getByRole('button',{name:'Собрать по моей сохранённой цели',exact:true}).click();
+    await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();
+    if(process.env.POTOK_SAVED_GOAL_SCREENSHOT)await page.getByLabel('Сохранённая цель и меню',{exact:true}).screenshot({path:process.env.POTOK_SAVED_GOAL_SCREENSHOT});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+    await page.getByLabel('Подбор по белкам и жирам',{exact:true}).waitFor();
+    assert.equal(lastBody.report.macroRefinement.carbsAssessed,false);
+    for(const d of lastBody.report.macroRefinement.days){for(const axis of ['protein','fat'])assert.ok(Math.abs(d.after[axis]-savedGoalRow[axis])<=Math.abs(d.before[axis]-savedGoalRow[axis]));}
+    assert.equal(lastBody.savedGoal.calories,1500);assert.equal(lastBody.report.scenario.dailyCalorieTarget,1500);
+    const goalDays=page.getByRole('navigation',{name:'Дни недели'}).getByRole('button');
+    for(let i=0;i<7;i++){
+      await goalDays.nth(i).click();assert.equal(await page.locator('article').count(),4);
+      assert.ok((await page.getByLabel('Сравнение БЖУ выбранного дня',{exact:true}).innerText()).includes('цель 100 г'));
+      assert.ok(Math.abs(Number(lastBody.report.days[i].referenceNutrition.calories)-1500)<=50);
+    }
+    await page.getByRole('button',{name:'Сохранить неделю на устройстве',exact:true}).click();
+    await page.getByText('Тестовая неделя сохранена на этом устройстве.',{exact:true}).waitFor();
+    const callsBeforeRestore=apiCalls,goalReadsBeforeRestore=goalReads;await page.reload();
+    await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();await page.getByLabel('Подбор по белкам и жирам',{exact:true}).waitFor();assert.equal(apiCalls,callsBeforeRestore);assert.equal(goalReads,goalReadsBeforeRestore);
+    savedGoalMissing=true;await page.getByRole('button',{name:'Собрать по моей сохранённой цели',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'В этом тестовом аккаунте не сохранена цель'}).waitFor();assert.equal(await page.locator('article').count(),0);savedGoalMissing=false;
+    await page.getByRole('button',{name:'Открыть сохранённую неделю',exact:true}).click();await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();
+    savedGoalChanged=true;goalReads=0;await page.getByRole('button',{name:'Собрать по моей сохранённой цели',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'Цель изменилась во время подбора'}).waitFor();assert.equal(await page.locator('article').count(),0);savedGoalChanged=false;
+    await page.getByRole('button',{name:'Открыть сохранённую неделю',exact:true}).click();await page.getByLabel('Сохранённая цель и меню',{exact:true}).waitFor();
+    await page.getByRole('button',{name:'Удалить сохранённый черновик',exact:true}).click();await page.getByText('Сохранённый черновик удалён с этого устройства.',{exact:true}).waitFor();
+    checks.push({width,result:'SAVED_GOAL_1500_MACRO_COMPARISON_SAVE_RESTORE_MISSING_CHANGED'});
     // A response from a previous scenario must never reappear after a change.
     await target.selectOption('1600');delayResponse=true;
     await page.getByRole('button',{name:'Сгенерировать неделю из рецептов',exact:true}).click();await target.selectOption('1400');

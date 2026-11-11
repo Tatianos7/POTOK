@@ -87,6 +87,7 @@ export function authoringSearchInput(catalog: AuthoringRecipeCatalog): Authoring
   return {contract: 'potok-recipe-authoring-test-catalog-v1', runtimePublishable: false, source: {...catalog.source},
     recipes: [...catalog.recipes.values()].map(r => ({recipeId: r.id, name: r.name, sourceStatus: r.status,
       declaredServings: r.servings, numericReferenceTestInputAvailable: r.numericReferenceTestInputAvailable,
+      ingredients: r.ingredients.map(i => ({name: i.name, optional: i.optional})),
       sourceRecipe: {meal_type_primary: r.primaryCategory}, referenceNutrition: {values: {...r.nutrition}}}))};
 }
 

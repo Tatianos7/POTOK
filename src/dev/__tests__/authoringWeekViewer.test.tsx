@@ -204,3 +204,16 @@ test('no-week result remains empty and scenario bounds never relax silently', ()
   for (const recipe of c.recipes.values()) recipe.numericReferenceTestInputAvailable = false;
   assert.equal(selectAuthoringWeek(c, 1600, '2026-11-02').status, 'INCOMPLETE_CATEGORY_POOL');
 });
+
+test('meal exclusion is visible in its card only when the host enables the action', () => {
+  const report=decodeAuthoringWeekReport(fixture());
+  const render=(enabled: boolean, disabled=false)=>renderToStaticMarkup(<AuthoringWeekContent
+    report={report} selectedDay={0} onSelectDay={()=>{}}
+    onExcludeRecipe={enabled ? ()=>{} : undefined} actionsDisabled={disabled} />);
+  assert.doesNotMatch(render(false), /Не предлагать это блюдо/);
+  const html=render(true);
+  assert.match(html, /aria-label="Не предлагать это блюдо: Тестовое блюдо 0"/);
+  assert.match(html, />Не предлагать это блюдо<\/button>/);
+  assert.match(html, /Исключит блюдо из следующего подбора всей недели/);
+  assert.match(render(true,true), /disabled="" aria-label="Не предлагать это блюдо:/);
+});

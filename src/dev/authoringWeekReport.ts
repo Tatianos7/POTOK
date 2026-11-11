@@ -8,6 +8,7 @@ export interface AuthoringMeal {
   referenceNutrition: Nutrition; verified: false;
 }
 export interface AuthoringReport {
+  dailyStapleVariety?: true;
   calorieCorridor?: ReferenceCalorieCorridorV1;
   status: string; target: number; sourceName: string; sourceHash: string;
   scope: string; assumptions: string[]; notAssessed: string[];
@@ -46,6 +47,7 @@ export function decodeAuthoringWeekReport(value: unknown): AuthoringReport {
   const status = label(r.status);
   if (!statuses.has(status)) return failure();
   const s = object(r.scenario), source = object(r.source);
+  if (s.enforceDailyStapleVariety !== undefined && s.enforceDailyStapleVariety !== true) return failure();
   const target = numeric(s.dailyCalorieTarget);
   let calorieCorridor: ReferenceCalorieCorridorV1 | undefined;
   if (r.calorieCorridor !== undefined) {
@@ -100,6 +102,6 @@ export function decodeAuthoringWeekReport(value: unknown): AuthoringReport {
   if ([...uses.values()].some(count => count > Number(s.maxRecipeUses))) return failure();
   const scope = status === 'REFERENCE_WEEK_PREVIEW' ? label(r.scope) : '';
   if (scope && !['BEST_EVALUATED_PREFIX', 'BEST_IN_RETAINED_POOL', 'CALORIE_REFINED_REFERENCE_WEEK'].includes(scope)) return failure();
-  return {status, target, sourceName: label(source.fileName), sourceHash: source.sha256, scope,
+  return {dailyStapleVariety: s.enforceDailyStapleVariety as true | undefined, status, target, sourceName: label(source.fileName), sourceHash: source.sha256, scope,
     assumptions, notAssessed: r.notAssessed.map(label), days, ...(calorieCorridor ? {calorieCorridor} : {})};
 }
