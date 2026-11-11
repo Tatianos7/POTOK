@@ -6,6 +6,7 @@ import {pathToFileURL} from 'node:url';
 import {buildRecipeAuthoringTestCatalogV1} from './recipe-authoring-test-catalog-v1';
 import {recipeMasterSheetsV1} from './recipe-master-readiness-v1';
 import {previewRecipeAuthoringWeekV1, type AuthoringWeekScenarioV1} from './recipe-authoring-week-preview-v1';
+import {authoringSearchInput, decodeAuthoringRecipeCatalog} from '../../src/dev/authoringRecipeCatalog';
 
 export function runSyntheticWeekManualSmokeV1(){
  const sheets:Record<string,Record<string,unknown>[]>=Object.fromEntries(recipeMasterSheetsV1.map(k=>[k,[]]));
@@ -16,7 +17,8 @@ export function runSyntheticWeekManualSmokeV1(){
     status:'READY_FOR_REVIEW',servings:2,total_weight_g:null,meal_type_primary:category,
     ref_kcal_per_serving:kcal,ref_protein_g:10,ref_fat_g:5,ref_carbs_g:30,ref_fiber_g:2});
    sheets['02_Ингредиенты'].push({recipe_id:id,ingredient_row_id:id+'_ING_01',
-    ingredient_name_ru:'SYNTHETIC — NOT REAL FOOD',weight_g:20,canonical_status:'UNRESOLVED'});
+    sort_order:1,ingredient_name_ru:'SYNTHETIC — NOT REAL FOOD',amount:20,unit:'г',weight_g:20,
+    optional:false,preparation_note:null,notes:null,canonical_status:'UNRESOLVED'});
   }
  }
  const scenario:AuthoringWeekScenarioV1={contract:'potok-authoring-week-scenario-v1',
@@ -29,7 +31,7 @@ export function runSyntheticWeekManualSmokeV1(){
   maxDayEvaluations:256,maxWeekEvaluations:1024,maxRecipeUses:2};
  const catalog={...buildRecipeAuthoringTestCatalogV1(sheets),
   source:{fileName:'synthetic-only-fixture.xlsx',sha256:'a'.repeat(64),bytes:1}};
- const preview=previewRecipeAuthoringWeekV1(catalog,scenario);
+ const preview=previewRecipeAuthoringWeekV1(authoringSearchInput(decodeAuthoringRecipeCatalog(catalog)),scenario);
  const result={contract:'potok-synthetic-week-manual-smoke-v1',usage:'LOCAL_SYNTHETIC_DEMO_ONLY',
   dataset:'36 SYNTHETIC recipes; values are only arithmetic fixtures',
   status:preview.status,days:preview.days,
