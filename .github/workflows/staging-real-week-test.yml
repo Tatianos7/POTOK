@@ -7,6 +7,8 @@ on:
       - 'src/server/__tests__/referenceSavedGoalReaderV1.test.ts'
       - 'src/dev/referenceSavedGoalV1.ts'
       - 'src/dev/referenceMacroFitV1.ts'
+      - 'src/dev/referenceDailyTargetFitV1.ts'
+      - 'src/dev/__tests__/referenceDailyTargetFitV1.test.ts'
       - 'src/server/__tests__/stagingRealWeekApiV1.test.ts'
       - 'src/services/stagingRealWeek.ts'
       - 'src/dev/referenceRecipeExclusionsV1.ts'
@@ -44,7 +46,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: node scripts/build-staging-real-week-api.mjs --check
-      - run: node --import tsx --test src/server/__tests__/referenceSavedGoalReaderV1.test.ts src/server/__tests__/stagingRealWeekApiV1.test.ts src/dev/__tests__/authoringWeekViewer.test.tsx src/dev/__tests__/referenceCalorieCorridorV1.test.ts scripts/contracts/recipe-authoring-week-preview-v1.test.ts scripts/contracts/week-input-calorie-capacity-v1.test.ts src/services/__tests__/stagingWeekDraft.test.ts src/services/__tests__/stagingMenuQuality.test.ts
+      - run: node --import tsx --test src/server/__tests__/referenceSavedGoalReaderV1.test.ts src/server/__tests__/stagingRealWeekApiV1.test.ts src/dev/__tests__/authoringWeekViewer.test.tsx src/dev/__tests__/referenceCalorieCorridorV1.test.ts src/dev/__tests__/referenceDailyTargetFitV1.test.ts scripts/contracts/recipe-authoring-week-preview-v1.test.ts scripts/contracts/week-input-calorie-capacity-v1.test.ts src/services/__tests__/stagingWeekDraft.test.ts src/services/__tests__/stagingMenuQuality.test.ts
       - run: npx tsc --noEmit
       - run: npx playwright install --with-deps chromium
       - run: npm run build -- --mode staging-preview

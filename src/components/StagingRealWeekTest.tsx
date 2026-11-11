@@ -4,6 +4,7 @@ import {isStagingGenerationProbeEnabled} from '../services/stagingGenerationProb
 import {requestStagingRealWeek, type StagingRealWeekView} from '../services/stagingRealWeek';
 import {loadStagingWeekDraft, saveStagingWeekDraft, removeStagingWeekDraft, type StagingWeekDraft} from '../services/stagingWeekDraft';
 import {AuthoringWeekContent} from '../dev/AuthoringWeekViewer';
+import {assessReferenceDailyTargetFitV1} from '../dev/referenceDailyTargetFitV1';
 
 export default function StagingRealWeekTest({currentUserId}: {currentUserId: string}) {
   const [target, setTarget] = useState(1600), [weekStart, setWeekStart] = useState('2026-11-09');
@@ -14,6 +15,9 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   const [excluded, setExcluded] = useState<{id: string; name: string}[]>([]);
   const epoch = useRef(0);
   const generateButton = useRef<HTMLButtonElement>(null);
+  const targetFit = view?.savedGoal && view.report.days.length === 7
+    ? assessReferenceDailyTargetFitV1(view.report, view.savedGoal)
+    : null;
   function clear() {++epoch.current; setView(null); setDay(0); setError(''); setNotice(''); setBusy(false);}
   const reopen = useCallback(async () => {
     const request = ++epoch.current;
@@ -112,21 +116,22 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       {view.savedGoal && <div className="rounded-lg border border-emerald-200 p-3 text-sm" aria-label="Сохранённая цель и меню">
         <p className="font-semibold">Цель из тестового аккаунта: {view.savedGoal.calories.toLocaleString('ru-RU')} ккал</p>
         <p>Б {view.savedGoal.protein.toLocaleString('ru-RU')} · Ж {view.savedGoal.fat.toLocaleString('ru-RU')} · У {view.savedGoal.carbs.toLocaleString('ru-RU')} г</p>
+        {targetFit && <p className="mt-2" role="status">Совместные допуски по справочным значениям соблюдены в {targetFit.filter(d => d.passed).length} из 7 дней: калории ±50 ккал, белки и жиры ±10%, углеводы ±15%. Это только числовое сравнение; рецепты и порции остаются непроверенными.</p>}
         {view.macroFit && <div className="mt-2" aria-label="Подбор по белкам и жирам">
-          <p>Калорийность в нужном диапазоне все 7 дней. Белки и жиры стали ближе к цели в {view.macroFit.improvedDays} из 7 дней.</p>
+          <p>Поиск только приближал белки и жиры к цели; ошибка уменьшилась в {view.macroFit.improvedDays} из 7 дней. Это не означает, что дневные допуски по БЖУ соблюдены.</p>
           {view.macroFit.days[day] && <p className="mt-2">{view.macroFit.days[day].before.protein === view.macroFit.days[day].after.protein && view.macroFit.days[day].before.fat === view.macroFit.days[day].after.fat
             ? 'Для выбранного дня подбор не нашёл замену, которая приблизила бы белок или жир к цели.'
             : 'В выбранном дне замены приблизили белок или жир к цели.'}</p>}
         </div>}
-        {view.report.days[day] && <div className="mt-2" aria-label="Сравнение БЖУ выбранного дня">{(['protein','fat','carbs'] as const).map(axis => {
-          const actual = view.report.days[day].referenceNutrition[axis], goal = view.savedGoal![axis], delta = Math.round((actual-goal)*1000)/1000;
-          return <p key={axis}>{({protein:'Белок',fat:'Жир',carbs:'Углеводы по рецептам'})[axis]}: цель {goal.toLocaleString('ru-RU')} г · меню {actual.toLocaleString('ru-RU')} г · {delta === 0 ? 'совпадает с целью' : `${delta > 0 ? 'выше' : 'ниже'} на ${Math.abs(delta).toLocaleString('ru-RU')} г`}</p>;
+        {view.report.days[day] && targetFit?.[day] && <div className="mt-2" aria-label="Сравнение БЖУ выбранного дня">{(['protein','fat','carbs'] as const).map(axis => {
+          const fit = targetFit[day].axes[axis];
+          return <p key={axis}>{({protein:'Белок',fat:'Жир',carbs:'Углеводы по рецептам'})[axis]}: цель {fit.target.toLocaleString('ru-RU')} г · допустимо {fit.minimum.toLocaleString('ru-RU')}–{fit.maximum.toLocaleString('ru-RU')} г · меню {fit.actual.toLocaleString('ru-RU')} г · {fit.passed ? 'в пределах допуска' : 'за пределами допуска'}.</p>;
         })}</div>}
         <details className="mt-3">
           <summary>Что ещё важно знать об этом сравнении</summary>
           <div className="mt-2 space-y-2">
-            <p>Это тестовый подбор, а не готовая персональная рекомендация. Допустимые диапазоны белков, жиров и углеводов ещё не утверждены.</p>
-            <p>Углеводы пока не участвуют в подборе. Их значения взяты из рецептов и могут считаться иначе, чем углеводы в сохранённой цели. Поэтому полное совпадение БЖУ не проверено.</p>
+            <p>Цифры диапазонов утверждены для проверки подбора, но расчёт здесь остаётся справочным: рецепты и порции ещё не прошли проверку владельца. Попадание в эти окна само по себе не означает допуска недели в продукт.</p>
+            <p>Углеводы проверяются по числу, указанному в рецептах. Их семантика может отличаться от сохранённой цели, поэтому этот результат не подтверждает корректность источниковых КБЖУ.</p>
             <p>Использована цель, сохранённая в аккаунте на момент подбора: {new Date(view.savedGoal.updatedAt).toLocaleString('ru-RU')}. При открытии черновика цель не перечитывается.</p>
           </div>
         </details>
@@ -139,11 +144,12 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       {view.report.days.length === 7 && <div className="rounded-lg border p-3 text-sm" aria-label="Проверки тестового меню">
         <p className="font-semibold">Коротко о неделе</p>
         <p>Калорийность в нужном диапазоне все 7 дней. Разных блюд: {view.catalog.recipes.size}; одно блюдо встречается не больше двух раз за неделю и не повторяется в течение дня.</p>
+        {targetFit && <p className="mt-2">Дневные допуски калорий и БЖУ по справочным значениям соблюдены в {targetFit.filter(d => d.passed).length} из 7 дней. Проверка проводится совместно для каждого дня и не подтверждает точность рецептов или порций.</p>}
         {view.report.dailyStapleVariety ? <p className="mt-2">Гарниры из круп, картофеля, макарон и бобовых чередуются в течение дня.</p>
           : <p className="mt-2">Эта сохранённая неделя создана до проверки разнообразия гарниров. Сгенерируй новую неделю, чтобы применить правило.</p>}
         <details className="mt-2"><summary>Подробности проверки и справочные значения</summary>
           <div className="mt-2 space-y-2">
-            <p>КБЖУ взяты из рецептов. Проверки личных целей по БЖУ, аллергий и диет здесь пока нет.</p>
+            <p>КБЖУ взяты из рецептов. Аллергии, диеты и личные ограничения здесь не проверяются.</p>
             {([['protein','Белок'],['fat','Жир'],['carbs','Углеводы по рецептам'],['fiber','Клетчатка']] as const).map(([axis,label]) => {
               const values = view.report.days.map(d => d.referenceNutrition[axis]);
               return <p key={axis}>{label}: {Math.min(...values).toLocaleString('ru-RU')}–{Math.max(...values).toLocaleString('ru-RU')} г в день.</p>;
