@@ -139,36 +139,49 @@ function refineCalories(initial:Day[],pools:Recipe[][],s:AuthoringWeekScenarioV1
     beforeDailyCalories:initial.map(d=>decimal(d.nutrition.calories)),afterDailyCalories:days.map(d=>decimal(d.nutrition.calories)),
     sourcePortionScaling:false,globalOptimumProven:false}};
 }
-/** Pareto improvement of saved P/F point targets only: no weights, invented
- * tolerances, carb inference, portion scaling or weakening of reference rules. */
-function refineProteinFat(initial:Day[],pools:Recipe[][],s:AuthoringWeekScenarioV1,goal:{protein:number;fat:number},validDay:(meals:Recipe[])=>boolean){
+/** Bounded joint search over the owner's numeric P/F/C windows for unverified
+ * reference values. Never changes portions or weakens the other test rules. */
+function refineDailyMacroWindows(initial:Day[],pools:Recipe[][],s:AuthoringWeekScenarioV1,goal:{protein:number;fat:number;carbs:number},validDay:(meals:Recipe[])=>boolean){
   const days=initial.map(d=>({...d,meals:[...d.meals]}));
   const minimumDistinct=new Set(initial.flatMap(d=>d.meals.map(r=>r.recipeId))).size;
-  const target={protein:minor(goal.protein),fat:minor(goal.fat)};
+  const axes=['protein','fat','carbs'] as const;
+  const target={protein:minor(goal.protein),fat:minor(goal.fat),carbs:minor(goal.carbs)};
   const limits={passes:2,poolPerSlot:64,candidatesPerDayPerPass:8192};
   const bounded=pools.map(p=>p.slice(0,limits.poolPerSlot));
   let evaluatedCandidates=0,changes=0;
+  const violation=(actual:bigint,axis:typeof axes[number]):bigint=>{
+    const percent=axis==='carbs'?15n:10n,low=target[axis]*(100n-percent),high=target[axis]*(100n+percent);
+    if(actual*100n<low)return low-actual*100n;
+    if(actual*100n>high)return actual*100n-high;
+    return 0n;
+  };
+  const violations=(nutrition:ReturnType<typeof total>)=>axes.map(axis=>violation(nutrition[axis],axis));
+  const improves=(candidate:bigint[],current:bigint[])=>candidate.every((value,i)=>value<=current[i])&&candidate.some((value,i)=>value<current[i]);
+  const rendered=(value:bigint)=>Number(value)/1000;
+  const before=initial.map(day=>({date:day.date,protein:rendered(day.nutrition.protein),fat:rendered(day.nutrition.fat),carbs:rendered(day.nutrition.carbs)}));
+  const evaluationsByDay=days.map(()=>0), exhaustedDays=new Set<number>();
   for(let pass=0;pass<limits.passes;pass++){
     let changed=false;
     for(let dayIndex=0;dayIndex<days.length;dayIndex++){
       let best=days[dayIndex],attempts=0;
+      const original=days[dayIndex];let bestViolations=violations(best.nutrition);
+      if(bestViolations.every(value=>value===0n))continue;
       const outside=new Map<string,number>();
       days.forEach((d,i)=>{if(i!==dayIndex)for(const r of d.meals)outside.set(r.recipeId,(outside.get(r.recipeId)??0)+1);});
       const consider=(meals:Recipe[])=>{
-        if(attempts>=limits.candidatesPerDayPerPass)return;
-        attempts++;evaluatedCandidates++;
+        if(attempts>=limits.candidatesPerDayPerPass){exhaustedDays.add(dayIndex);return;}
+        attempts++;evaluatedCandidates++;evaluationsByDay[dayIndex]++;
         if(new Set(meals.map(r=>r.recipeId)).size!==meals.length||!validDay(meals))return;
         const nutrition=total(meals);
         if(!referenceCaloriesFitCorridorV1(s.dailyCalorieTarget,Number(nutrition.calories)/1000))return;
-        const p=abs(nutrition.protein-target.protein),f=abs(nutrition.fat-target.fat);
-        const bp=abs(best.nutrition.protein-target.protein),bf=abs(best.nutrition.fat-target.fat);
-        if(p>bp||f>bf||(p===bp&&f===bf))return;
+        const candidateViolations=violations(nutrition);
+        if(!improves(candidateViolations,bestViolations))return;
         const uses=new Map(outside);
         for(const r of meals){const n=(uses.get(r.recipeId)??0)+1;if(n>s.maxRecipeUses)return;uses.set(r.recipeId,n);}
         if(uses.size<minimumDistinct)return;
         best={...best,meals,nutrition,distance:abs(nutrition.calories-BigInt(s.dailyCalorieTarget)*1000n)};
+        bestViolations=candidateViolations;
       };
-      const original=days[dayIndex];
       for(let slot=0;slot<bounded.length;slot++)for(const recipe of bounded[slot]){const meals=[...original.meals];meals[slot]=recipe;consider(meals);}
       const pairs:number[][]=[];for(let a=0;a<bounded.length;a++)for(let b=a+1;b<bounded.length;b++)pairs.push([a,b]);
       // Give every slot pair an equal bounded budget.
@@ -177,14 +190,17 @@ function refineProteinFat(initial:Day[],pools:Recipe[][],s:AuthoringWeekScenario
         bounded[a].length,bounded[b].length,rounds)){
         const meals=[...original.meals];meals[a]=bounded[a][firstIndex];meals[b]=bounded[b][secondIndex];consider(meals);
       }
+      if(attempts>=limits.candidatesPerDayPerPass)exhaustedDays.add(dayIndex);
       if(best!==original){days[dayIndex]=best;changes++;changed=true;}
     }
     if(!changed)break;
   }
-  return {days,diagnostics:{scope:'REFERENCE_PROTEIN_FAT_PARETO_ONLY',carbsAssessed:false,hardMacroBoundsAssessed:false,
-    targetProtein:goal.protein,targetFat:goal.fat,limits,evaluatedCandidates,changes,minimumDistinctRecipes:minimumDistinct,
-    days:initial.map((before,i)=>({date:before.date,before:{protein:Number(before.nutrition.protein)/1000,fat:Number(before.nutrition.fat)/1000},
-      after:{protein:Number(days[i].nutrition.protein)/1000,fat:Number(days[i].nutrition.fat)/1000}}))}};
+  return {days,diagnostics:{scope:'REFERENCE_JOINT_DAILY_MACRO_WINDOWS',targets:goal,
+    windows:{proteinPercent:10,fatPercent:10,carbsPercent:15},limits,evaluatedCandidates,changes,minimumDistinctRecipes:minimumDistinct,
+    exhaustedDays:[...exhaustedDays].sort((a,b)=>a-b),evaluationsByDay,
+    days:initial.map((day,i)=>({date:day.date,before:{protein:before[i].protein,fat:before[i].fat,carbs:before[i].carbs},
+      after:{protein:rendered(days[i].nutrition.protein),fat:rendered(days[i].nutrition.fat),carbs:rendered(days[i].nutrition.carbs)}})),
+    sourcePortionScaling:false,recipeDataVerified:false,globalOptimumProven:false}};
 }
 function validate(s:AuthoringWeekScenarioV1){
   if((s.enforceDailyStapleVariety!==undefined&&s.enforceDailyStapleVariety!==true)||s.contract!=='potok-authoring-week-scenario-v1'||!/^\d{4}-\d{2}-\d{2}$/.test(s.weekStart)
@@ -202,9 +218,9 @@ function validate(s:AuthoringWeekScenarioV1){
     ||!Number.isInteger(s.maxRecipeUses)||s.maxRecipeUses<1||s.maxRecipeUses>7)throw Error('INVALID_AUTHORING_WEEK_SCENARIO');
 }
 /** Offline reference experiment; shares enumeration with strict search, never its validation status. */
-export function previewRecipeAuthoringWeekV1(catalog:Catalog,scenario:AuthoringWeekScenarioV1,referenceMacroTargets?:{protein:number;fat:number}){
+export function previewRecipeAuthoringWeekV1(catalog:Catalog,scenario:AuthoringWeekScenarioV1,referenceMacroTargets?:{protein:number;fat:number;carbs:number}){
   const s=structuredClone(scenario);validate(s);
-  if(referenceMacroTargets){minor(referenceMacroTargets.protein);minor(referenceMacroTargets.fat);}
+  if(referenceMacroTargets){minor(referenceMacroTargets.protein);minor(referenceMacroTargets.fat);minor(referenceMacroTargets.carbs);}
   if(catalog.contract!=='potok-recipe-authoring-test-catalog-v1'||catalog.runtimePublishable!==false)throw Error('AUTHORING_CATALOG_REQUIRED');
   const recipes=structuredClone(catalog.recipes),ids=new Set<string>();
   for(const r of recipes){if(ids.has(r.recipeId))throw Error('DUPLICATE_AUTHORING_RECIPE');ids.add(r.recipeId);}
@@ -278,10 +294,10 @@ export function previewRecipeAuthoringWeekV1(catalog:Catalog,scenario:AuthoringW
     const alternative=refineCalories(candidate.days,pools,s,target,validDay);refinedWeekCandidates++;
     if(fits(alternative.days)&&(!fits(refined.days)||distinct(alternative.days)>distinct(refined.days)))refined=alternative;
   }
-  const macroRefined=referenceMacroTargets&&fits(refined.days)?refineProteinFat(refined.days,pools,s,referenceMacroTargets,validDay):null;
-  best=macroRefined?.days??refined.days;
+  const jointMacroRefined=referenceMacroTargets&&fits(refined.days)?refineDailyMacroWindows(refined.days,pools,s,referenceMacroTargets,validDay):null;
+  best=jointMacroRefined?.days??refined.days;
   return {...base,status:'REFERENCE_WEEK_PREVIEW',scope:refined.diagnostics.changes||refined.diagnostics.balanceChanges?'CALORIE_REFINED_REFERENCE_WEEK':evaluated<combinations?'BEST_EVALUATED_PREFIX':'BEST_IN_RETAINED_POOL',evaluated,retainedWeekCombinations:combinations,
-    macroRefinement:macroRefined?.diagnostics,
+    jointMacroSearch:jointMacroRefined?.diagnostics,
     calorieRefinement:{...refined.diagnostics,refinedWeekCandidates,maxRefinedWeekCandidates:4},
     distinctRecipes:new Set(best.flatMap(d=>d.meals.map(r=>r.recipeId))).size,
     days:best.map(d=>({date:d.date,referenceNutrition:Object.fromEntries(axes.map(a=>[a,decimal(d.nutrition[a])])),

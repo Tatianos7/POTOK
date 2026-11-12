@@ -117,11 +117,11 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
         <p className="font-semibold">Цель из тестового аккаунта: {view.savedGoal.calories.toLocaleString('ru-RU')} ккал</p>
         <p>Б {view.savedGoal.protein.toLocaleString('ru-RU')} · Ж {view.savedGoal.fat.toLocaleString('ru-RU')} · У {view.savedGoal.carbs.toLocaleString('ru-RU')} г</p>
         {targetFit && <p className="mt-2" role="status">Совместные допуски по справочным значениям соблюдены в {targetFit.filter(d => d.passed).length} из 7 дней: калории ±50 ккал, белки и жиры ±10%, углеводы ±15%. Это только числовое сравнение; рецепты и порции остаются непроверенными.</p>}
-        {view.macroFit && <div className="mt-2" aria-label="Подбор по белкам и жирам">
-          <p>Поиск только приближал белки и жиры к цели; ошибка уменьшилась в {view.macroFit.improvedDays} из 7 дней. Это не означает, что дневные допуски по БЖУ соблюдены.</p>
-          {view.macroFit.days[day] && <p className="mt-2">{view.macroFit.days[day].before.protein === view.macroFit.days[day].after.protein && view.macroFit.days[day].before.fat === view.macroFit.days[day].after.fat
-            ? 'Для выбранного дня подбор не нашёл замену, которая приблизила бы белок или жир к цели.'
-            : 'В выбранном дне замены приблизили белок или жир к цели.'}</p>}
+        {view.savedGoal && !view.jointTargetSearch && view.report.days.length===7 && <p className="mt-2">Эта сохранённая неделя создана до совместного поиска по диапазонам всех трёх показателей БЖУ. Создай новую тестовую неделю, чтобы проверить обновлённый подбор.</p>}
+        {view.jointTargetSearch && <div className="mt-2" aria-label="Ограниченный совместный поиск БЖУ">
+          <p>Ограниченный поиск оценивал замены по трём диапазонам БЖУ одновременно; изменения порций не выполнялись. Проверено вариантов блюд: {view.jointTargetSearch.evaluatedCandidates.toLocaleString('ru-RU')}.</p>
+          {targetFit && targetFit.filter(d=>d.passed).length<7 && <p className="mt-2">В пределах поиска полная неделя не найдена. Это не доказывает, что подходящей недели нет в полном каталоге: поиск ограничен по числу вариантов и размеру списка блюд.</p>}
+          {view.jointTargetSearch.exhaustedDays.includes(day) && <p className="mt-2">Для выбранного дня достигнут лимит проверки вариантов. Результат не доказывает, что подходящей замены нет.</p>}
         </div>}
         {view.report.days[day] && targetFit?.[day] && <div className="mt-2" aria-label="Сравнение БЖУ выбранного дня">{(['protein','fat','carbs'] as const).map(axis => {
           const fit = targetFit[day].axes[axis];

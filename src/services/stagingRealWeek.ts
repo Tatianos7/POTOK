@@ -1,11 +1,12 @@
 import {decodeReferenceMacroFit, type ReferenceMacroFit} from '../dev/referenceMacroFitV1';
+import {decodeReferenceJointTargetSearchV1, type ReferenceJointTargetSearchV1} from '../dev/referenceJointTargetSearchV1';
 import {decodeReferenceSavedGoal, type ReferenceSavedGoal} from '../dev/referenceSavedGoalV1';
 import {referenceDayHasDistinctStaples} from '../dev/referenceStapleVarietyV1';
 import {decodeReferenceExcludedIds, referenceExclusionScope} from '../dev/referenceRecipeExclusionsV1';
 import {decodeAuthoringRecipeCatalog, matchAuthoringRecipe, type AuthoringRecipeCatalog} from '../dev/authoringRecipeCatalog';
 import {decodeAuthoringWeekReport, type AuthoringReport} from '../dev/authoringWeekReport';
 
-export type StagingRealWeekView = {macroFit: ReferenceMacroFit | null; savedGoal: ReferenceSavedGoal | null; snapshot: string; excludedRecipes: {id: string; name: string}[]; capacity: {required: number; maximum: number | null; shortfall: number | null}; report: AuthoringReport; catalog: AuthoringRecipeCatalog; sourceRecipes: number; eligibleRecipes: number; minimumWeekCaloriesProvenUnreachable: boolean};
+export type StagingRealWeekView = {macroFit: ReferenceMacroFit | null; jointTargetSearch: ReferenceJointTargetSearchV1 | null; savedGoal: ReferenceSavedGoal | null; snapshot: string; excludedRecipes: {id: string; name: string}[]; capacity: {required: number; maximum: number | null; shortfall: number | null}; report: AuthoringReport; catalog: AuthoringRecipeCatalog; sourceRecipes: number; eligibleRecipes: number; minimumWeekCaloriesProvenUnreachable: boolean};
 export function decodeReferenceWeekCalorieCapacity(value: unknown, target: number): boolean {
   if (!value || typeof value !== 'object' || Array.isArray(value) || !Number.isInteger(target) || target < 1 || target > 10000) throw Error('INVALID_CALORIE_CAPACITY');
   const capacity = value as Record<string, unknown>;
@@ -55,8 +56,9 @@ export function decodeStagingRealWeek(value: unknown): StagingRealWeekView {
   const savedGoal = r.savedGoal === undefined ? null : decodeReferenceSavedGoal(r.savedGoal);
   if (savedGoal && savedGoal.calories !== report.target) throw Error('SAVED_GOAL_TARGET_MISMATCH');
   const macroFit = decodeReferenceMacroFit((r.report as Record<string, unknown>).macroRefinement, report, savedGoal, catalog.recipes.size);
+  const jointTargetSearch = decodeReferenceJointTargetSearchV1(r.jointMacroSearch, report, savedGoal, catalog.recipes.size);
   const capacity = r.calorieCapacity as Record<string, string | null>;
-  return {macroFit, savedGoal, snapshot: JSON.stringify(value), excludedRecipes, capacity: {required: Number(capacity.requiredWeekKcal), maximum: capacity.optimisticMaximumWeekKcal === null ? null : Number(capacity.optimisticMaximumWeekKcal), shortfall: capacity.provenWeekShortfallKcal === null ? null : Number(capacity.provenWeekShortfallKcal)}, report, catalog, sourceRecipes: Number(r.sourceRecipeCount), eligibleRecipes: Number(r.eligibleReferenceRecipes), minimumWeekCaloriesProvenUnreachable: unreachable};
+  return {macroFit, jointTargetSearch, savedGoal, snapshot: JSON.stringify(value), excludedRecipes, capacity: {required: Number(capacity.requiredWeekKcal), maximum: capacity.optimisticMaximumWeekKcal === null ? null : Number(capacity.optimisticMaximumWeekKcal), shortfall: capacity.provenWeekShortfallKcal === null ? null : Number(capacity.provenWeekShortfallKcal)}, report, catalog, sourceRecipes: Number(r.sourceRecipeCount), eligibleRecipes: Number(r.eligibleReferenceRecipes), minimumWeekCaloriesProvenUnreachable: unreachable};
 }
 
 export async function requestStagingRealWeek(accountId: string, target: number, weekStart: string, ports: {
