@@ -4,6 +4,7 @@ import type {ReferenceSavedGoal} from './referenceSavedGoalV1';
 export interface ReferenceJointTargetSearchV1 {
   evaluatedCandidates: number;
   changes: number;
+  wholeWeekRebuilt?: true;
   exhaustedDays: number[];
   days: {date: string; before: {protein:number;fat:number;carbs:number}; after: {protein:number;fat:number;carbs:number}}[];
 }
@@ -49,6 +50,7 @@ export function decodeReferenceJointTargetSearchV1(
     || !Array.isArray(r.exhaustedDays) || r.exhaustedDays.length>7
     || r.exhaustedDays.some(n=>!Number.isInteger(n)||Number(n)<0||Number(n)>6)
     || new Set(r.exhaustedDays).size!==r.exhaustedDays.length
+    || (r.wholeWeekRebuilt !== undefined && r.wholeWeekRebuilt !== true)
     || r.sourcePortionScaling!==false || r.recipeDataVerified!==false || r.globalOptimumProven!==false
     || !Array.isArray(r.days) || r.days.length!==7) throw Error('INVALID_REFERENCE_JOINT_TARGET_SEARCH');
 
@@ -67,8 +69,9 @@ export function decodeReferenceJointTargetSearchV1(
     }
     const beforeViolation=axes.map(axis=>violation(before[axis],goal[axis],axis==='carbs'?15:10));
     const afterViolation=axes.map(axis=>violation(after[axis],goal[axis],axis==='carbs'?15:10));
+    if(r.wholeWeekRebuilt === true && afterViolation.some(amount=>amount!==0)) throw Error('INVALID_REFERENCE_JOINT_TARGET_SEARCH');
     if(afterViolation.some((amount,i)=>amount>beforeViolation[i])) throw Error('INVALID_REFERENCE_JOINT_TARGET_SEARCH');
     return {date:String(d.date),before,after};
   });
-  return {evaluatedCandidates:Number(r.evaluatedCandidates),changes:Number(r.changes),exhaustedDays:(r.exhaustedDays as number[]).map(Number),days};
+  return {evaluatedCandidates:Number(r.evaluatedCandidates),changes:Number(r.changes),...(r.wholeWeekRebuilt===true ? {wholeWeekRebuilt:true as const} : {}),exhaustedDays:(r.exhaustedDays as number[]).map(Number),days};
 }

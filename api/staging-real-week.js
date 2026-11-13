@@ -496,6 +496,87 @@ function refineCalories(initial, pools, s, target, validDay) {
     globalOptimumProven: false
   } };
 }
+function rebuildReferenceWeek(dates, pools, scenario2, goal, validDay) {
+  if (pools.length !== 4) return;
+  const target = scenario2.dailyCalorieTarget * 1e3;
+  const macroAxes = ["protein", "fat", "carbs"];
+  const windows = macroAxes.map((axis) => {
+    const value = Number(minor(goal[axis]));
+    const percent = axis === "carbs" ? 15 : 10;
+    return [value * (100 - percent), value * (100 + percent)];
+  });
+  const values = new Map(pools.flat().map((r) => [
+    r.recipeId,
+    axes2.slice(0, 4).map((axis) => Number(minor(r.referenceNutrition.values[axis])))
+  ]));
+  const candidates = [];
+  const identicalMainPools = pools[1].length === pools[2].length && pools[1].every((r, i) => r.recipeId === pools[2][i].recipeId);
+  let evaluated = 0;
+  scan: for (const breakfast of pools[0]) for (const [i, lunch] of pools[1].entries())
+    for (const dinner of pools[2].slice(identicalMainPools ? i + 1 : 0)) for (const snack of pools[3]) {
+      if (++evaluated > 2e6 || candidates.length >= 1024) break scan;
+      const meals = [breakfast, lunch, dinner, snack];
+      const numbers = meals.map((r) => values.get(r.recipeId));
+      const sum = (axis) => numbers.reduce((n, v) => n + v[axis], 0);
+      if (Math.abs(sum(0) - target) > 5e4 || windows.some(([low, high], i2) => {
+        const actual = sum(i2 + 1) * 100;
+        return actual < low || actual > high;
+      })) continue;
+      if (new Set(meals.map((r) => r.recipeId)).size !== 4 || !validDay(meals)) continue;
+      candidates.push({ date: "", meals, nutrition: total(meals), distance: BigInt(Math.abs(sum(0) - target)) });
+    }
+  const ids = candidates.map((day) => day.meals.map((r) => r.recipeId));
+  const frequency = /* @__PURE__ */ new Map();
+  for (const mealIds of ids) for (const id of mealIds) frequency.set(id, (frequency.get(id) ?? 0) + 1);
+  let beam = [{ picks: [], uses: /* @__PURE__ */ new Map(), score: 0 }];
+  for (const date of dates) {
+    const next = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const partial of beam) for (const [index, mealIds] of ids.entries()) {
+      if (partial.picks.includes(index) || mealIds.some((id) => (partial.uses.get(id) ?? 0) >= scenario2.maxRecipeUses)) continue;
+      const picks = [...partial.picks, index].sort((a, b) => a - b);
+      const key = picks.join(",");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const fresh = mealIds.filter((id) => !partial.uses.has(id));
+      const rarity = date === dates[dates.length - 1] ? 0 : fresh.reduce((sum, id) => sum + 1 / frequency.get(id), 0);
+      const uses = new Map(partial.uses);
+      for (const id of mealIds) uses.set(id, (uses.get(id) ?? 0) + 1);
+      next.push({ picks, uses, score: partial.score + rarity });
+    }
+    next.sort((a, b) => b.uses.size - a.uses.size || b.score - a.score);
+    beam = next.slice(0, 96);
+    if (!beam.length) return;
+  }
+  const best = [...beam[0].picks];
+  let distinct = beam[0].uses.size;
+  const bit = new Map([...frequency.keys()].map((id, i) => [id, 1n << BigInt(i)]));
+  const masks = ids.map((meals) => meals.reduce((mask, id) => mask | bit.get(id), 0n));
+  let budget = 3e5;
+  for (let a = 0; a < best.length && budget > 0; a++) for (let b = a + 1; b < best.length && budget > 0; b++) {
+    const fixed2 = best.filter((_, i) => i !== a && i !== b);
+    const uses = /* @__PURE__ */ new Map();
+    for (const index of fixed2) for (const id of ids[index]) uses.set(id, (uses.get(id) ?? 0) + 1);
+    const existing = fixed2.reduce((mask, index) => mask | masks[index], 0n);
+    const viable = ids.flatMap((meals, index) => fixed2.includes(index) || meals.some((id) => (uses.get(id) ?? 0) >= scenario2.maxRecipeUses) ? [] : [index]);
+    pair: for (const i of viable) {
+      const first = ids[i].filter((id) => !uses.has(id)).length;
+      if (uses.size + first + 4 <= distinct) continue;
+      for (const j of viable) {
+        if (--budget < 0) break pair;
+        if (i === j || ids[j].some((id) => (uses.get(id) ?? 0) + Number(ids[i].includes(id)) >= scenario2.maxRecipeUses)) continue;
+        const covered = existing | masks[i];
+        const diversity = uses.size + first + ids[j].filter((id) => (covered & bit.get(id)) === 0n).length;
+        if (diversity <= distinct) continue;
+        best[a] = i;
+        best[b] = j;
+        distinct = diversity;
+        break pair;
+      }
+    }
+  }
+  return best.map((index, i) => ({ ...candidates[index], date: dates[i] }));
+}
 function refineDailyMacroWindows(initial, pools, s, goal, validDay) {
   const days = initial.map((d) => ({ ...d, meals: [...d.meals] }));
   const minimumDistinct = new Set(initial.flatMap((d) => d.meals.map((r) => r.recipeId))).size;
@@ -576,20 +657,24 @@ function refineDailyMacroWindows(initial, pools, s, goal, validDay) {
     }
     if (!changed) break;
   }
-  return { days, diagnostics: {
+  const rebuilt = days.some((day) => violations(day.nutrition).some((value) => value !== 0n)) ? rebuildReferenceWeek(days.map((day) => day.date), pools, s, goal, validDay) : void 0;
+  const result = rebuilt ?? days;
+  const diversityFloor = rebuilt ? new Set(rebuilt.flatMap((day) => day.meals.map((r) => r.recipeId))).size : minimumDistinct;
+  return { days: result, diagnostics: {
     scope: "REFERENCE_JOINT_DAILY_MACRO_WINDOWS",
     targets: goal,
     windows: { proteinPercent: 10, fatPercent: 10, carbsPercent: 15 },
     limits,
     evaluatedCandidates,
     changes,
-    minimumDistinctRecipes: minimumDistinct,
+    minimumDistinctRecipes: diversityFloor,
+    ...rebuilt ? { wholeWeekRebuilt: true } : {},
     exhaustedDays: [...exhaustedDays].sort((a, b) => a - b),
     evaluationsByDay,
     days: initial.map((day, i) => ({
       date: day.date,
       before: { protein: before[i].protein, fat: before[i].fat, carbs: before[i].carbs },
-      after: { protein: rendered(days[i].nutrition.protein), fat: rendered(days[i].nutrition.fat), carbs: rendered(days[i].nutrition.carbs) }
+      after: { protein: rendered(result[i].nutrition.protein), fat: rendered(result[i].nutrition.fat), carbs: rendered(result[i].nutrition.carbs) }
     })),
     sourcePortionScaling: false,
     recipeDataVerified: false,

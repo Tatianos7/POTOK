@@ -139,6 +139,94 @@ function refineCalories(initial:Day[],pools:Recipe[][],s:AuthoringWeekScenarioV1
     beforeDailyCalories:initial.map(d=>decimal(d.nutrition.calories)),afterDailyCalories:days.map(d=>decimal(d.nutrition.calories)),
     sourcePortionScaling:false,globalOptimumProven:false}};
 }
+/** Try complete weeks from days that already meet every nutrition window. */
+function rebuildReferenceWeek(
+  dates: string[], pools: Recipe[][], scenario: AuthoringWeekScenarioV1,
+  goal: {protein:number;fat:number;carbs:number}, validDay: (meals:Recipe[])=>boolean,
+): Day[] | undefined {
+  if (pools.length !== 4) return;
+  const target = scenario.dailyCalorieTarget * 1000;
+  const macroAxes = ['protein','fat','carbs'] as const;
+  const windows = macroAxes.map(axis => {
+    const value = Number(minor(goal[axis]));
+    const percent = axis === 'carbs' ? 15 : 10;
+    return [value * (100-percent), value * (100+percent)];
+  });
+  const values = new Map(pools.flat().map(r => [r.recipeId,
+    axes.slice(0,4).map(axis => Number(minor(r.referenceNutrition.values[axis])))]));
+  const candidates: Day[] = [];
+  const identicalMainPools = pools[1].length === pools[2].length
+    && pools[1].every((r,i) => r.recipeId === pools[2][i].recipeId);
+  let evaluated = 0;
+  scan: for (const breakfast of pools[0]) for (const [i,lunch] of pools[1].entries())
+    for (const dinner of pools[2].slice(identicalMainPools ? i+1 : 0)) for (const snack of pools[3]) {
+      if (++evaluated > 2_000_000 || candidates.length >= 1024) break scan;
+      const meals = [breakfast,lunch,dinner,snack];
+      const numbers = meals.map(r => values.get(r.recipeId)!);
+      const sum = (axis:number) => numbers.reduce((n,v)=>n+v[axis],0);
+      if (Math.abs(sum(0)-target)>50_000 || windows.some(([low,high],i)=>{
+        const actual = sum(i+1)*100;
+        return actual<low || actual>high;
+      })) continue;
+      if (new Set(meals.map(r=>r.recipeId)).size!==4 || !validDay(meals)) continue;
+      candidates.push({date:'',meals,nutrition:total(meals),distance:BigInt(Math.abs(sum(0)-target))});
+    }
+
+  const ids = candidates.map(day=>day.meals.map(r=>r.recipeId));
+  const frequency = new Map<string,number>();
+  for (const mealIds of ids) for (const id of mealIds) frequency.set(id,(frequency.get(id)??0)+1);
+  type Partial = { picks:number[]; uses:Map<string,number>; score:number };
+  let beam: Partial[] = [{picks:[],uses:new Map(),score:0}];
+  for (const date of dates) {
+    const next: Partial[] = [];
+    const seen = new Set<string>();
+    for (const partial of beam) for (const [index,mealIds] of ids.entries()) {
+      if (partial.picks.includes(index) || mealIds.some(id=>(partial.uses.get(id)??0)>=scenario.maxRecipeUses)) continue;
+      const picks = [...partial.picks,index].sort((a,b)=>a-b);
+      const key = picks.join(',');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const fresh = mealIds.filter(id=>!partial.uses.has(id));
+      const rarity = date===dates[dates.length-1] ? 0 : fresh.reduce((sum,id)=>sum+1/frequency.get(id)!,0);
+      const uses = new Map(partial.uses);
+      for (const id of mealIds) uses.set(id,(uses.get(id)??0)+1);
+      next.push({picks,uses,score:partial.score+rarity});
+    }
+    next.sort((a,b)=>b.uses.size-a.uses.size || b.score-a.score);
+    beam = next.slice(0,96);
+    if (!beam.length) return;
+  }
+  const best = [...beam[0].picks];
+  let distinct = beam[0].uses.size;
+  const bit = new Map([...frequency.keys()].map((id,i)=>[id,1n<<BigInt(i)]));
+  const masks = ids.map(meals=>meals.reduce((mask,id)=>mask|bit.get(id)!,0n));
+  // Improve the best complete week with two coordinated replacements.
+  let budget = 300_000;
+  for (let a=0;a<best.length && budget>0;a++) for (let b=a+1;b<best.length && budget>0;b++) {
+    const fixed = best.filter((_,i)=>i!==a && i!==b);
+    const uses = new Map<string,number>();
+    for (const index of fixed) for (const id of ids[index]) uses.set(id,(uses.get(id)??0)+1);
+    const existing = fixed.reduce((mask,index)=>mask|masks[index],0n);
+    const viable = ids.flatMap((meals,index)=>fixed.includes(index)
+      || meals.some(id=>(uses.get(id)??0)>=scenario.maxRecipeUses) ? [] : [index]);
+    pair: for (const i of viable) {
+      const first = ids[i].filter(id=>!uses.has(id)).length;
+      if (uses.size+first+4<=distinct) continue;
+      for (const j of viable) {
+        if (--budget<0) break pair;
+        if (i===j || ids[j].some(id=>(uses.get(id)??0)+Number(ids[i].includes(id))>=scenario.maxRecipeUses)) continue;
+        const covered = existing|masks[i];
+        const diversity = uses.size+first+ids[j].filter(id=>(covered&bit.get(id)!)===0n).length;
+        if (diversity<=distinct) continue;
+        best[a]=i;
+        best[b]=j;
+        distinct=diversity;
+        break pair;
+      }
+    }
+  }
+  return best.map((index,i)=>({...candidates[index],date:dates[i]}));
+}
 /** Bounded joint search over the owner's numeric P/F/C windows for unverified
  * reference values. Never changes portions or weakens the other test rules. */
 function refineDailyMacroWindows(initial:Day[],pools:Recipe[][],s:AuthoringWeekScenarioV1,goal:{protein:number;fat:number;carbs:number},validDay:(meals:Recipe[])=>boolean){
@@ -195,11 +283,17 @@ function refineDailyMacroWindows(initial:Day[],pools:Recipe[][],s:AuthoringWeekS
     }
     if(!changed)break;
   }
-  return {days,diagnostics:{scope:'REFERENCE_JOINT_DAILY_MACRO_WINDOWS',targets:goal,
-    windows:{proteinPercent:10,fatPercent:10,carbsPercent:15},limits,evaluatedCandidates,changes,minimumDistinctRecipes:minimumDistinct,
+  const rebuilt = days.some(day=>violations(day.nutrition).some(value=>value!==0n))
+    ? rebuildReferenceWeek(days.map(day=>day.date),pools,s,goal,validDay)
+    : undefined;
+  const result = rebuilt ?? days;
+  const diversityFloor = rebuilt ? new Set(rebuilt.flatMap(day=>day.meals.map(r=>r.recipeId))).size : minimumDistinct;
+  return {days:result,diagnostics:{scope:'REFERENCE_JOINT_DAILY_MACRO_WINDOWS',targets:goal,
+    windows:{proteinPercent:10,fatPercent:10,carbsPercent:15},limits,evaluatedCandidates,changes,minimumDistinctRecipes:diversityFloor,
+    ...(rebuilt ? {wholeWeekRebuilt:true} : {}),
     exhaustedDays:[...exhaustedDays].sort((a,b)=>a-b),evaluationsByDay,
     days:initial.map((day,i)=>({date:day.date,before:{protein:before[i].protein,fat:before[i].fat,carbs:before[i].carbs},
-      after:{protein:rendered(days[i].nutrition.protein),fat:rendered(days[i].nutrition.fat),carbs:rendered(days[i].nutrition.carbs)}})),
+      after:{protein:rendered(result[i].nutrition.protein),fat:rendered(result[i].nutrition.fat),carbs:rendered(result[i].nutrition.carbs)}})),
     sourcePortionScaling:false,recipeDataVerified:false,globalOptimumProven:false}};
 }
 function validate(s:AuthoringWeekScenarioV1){
