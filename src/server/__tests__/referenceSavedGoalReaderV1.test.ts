@@ -54,26 +54,32 @@ test('saved-goal request rejects supplied actor, target, macros and unknown sour
 });
 
 
-test('bounded source-serving refinement improves P/F without worsening either axis, losing diversity, changing portions or optimizing carbs',()=>{
+test('bounded source-serving refinement optimizes all three macro windows jointly without weakening other limits',()=>{
   const input=authoringSearchInput(decodeAuthoringRecipeCatalog(referenceWeekFixture().catalog));
   input.recipes[27].referenceNutrition.values.protein=40;input.recipes[27].referenceNutrition.values.fat=20;
+  input.recipes[27].referenceNutrition.values.carbs=5;
   const settings={contract:'potok-authoring-week-scenario-v1' as const,enforceDailyStapleVariety:true as const,
     weekStart:'2026-11-09',dailyCalorieTarget:1600,tolerancePercent:10,
     slots:['Завтрак','Обед','Ужин','Перекус'].map(label=>({label,sourceCategories:['LUNCH'],targetSharePercent:25})),
     rankedCandidatePoolSize:28,shortlistPerSlot:4,dayPoolSize:4,maxDayEvaluations:256,maxWeekEvaluations:1024,maxRecipeUses:2};
   const before=JSON.stringify(input),plain=previewRecipeAuthoringWeekV1(input,settings);
-  const targets={protein:100,fat:50,carbs:1},r=previewRecipeAuthoringWeekV1(input,settings,targets);
-  assert.equal(r.days.length,7);assert.ok('macroRefinement' in r);assert.ok(r.macroRefinement);assert.ok('distinctRecipes' in plain);assert.ok(r.distinctRecipes>=plain.distinctRecipes);
-  assert.ok(r.macroRefinement.evaluatedCandidates<=114688);
-  assert.equal(r.macroRefinement.carbsAssessed,false);assert.equal(r.macroRefinement.hardMacroBoundsAssessed,false);
-  let improved=0;
-  for(const day of r.macroRefinement.days){
-    for(const axis of ['protein','fat'] as const)assert.ok(Math.abs(day.after[axis]-targets[axis])<=Math.abs(day.before[axis]-targets[axis]));
-    if(day.before.protein!==day.after.protein||day.before.fat!==day.after.fat)improved++;
+  const targets={protein:100,fat:50,carbs:140},r=previewRecipeAuthoringWeekV1(input,settings,targets);
+  assert.equal(r.days.length,7);assert.ok('jointMacroSearch' in r);assert.ok(r.jointMacroSearch);assert.ok('distinctRecipes' in plain);assert.ok(r.distinctRecipes>=plain.distinctRecipes);
+  assert.ok(r.jointMacroSearch.evaluatedCandidates<=114688);
+  assert.deepEqual(r.jointMacroSearch.windows,{proteinPercent:10,fatPercent:10,carbsPercent:15});
+  let changed=0;
+  const violation=(actual:number,target:number,percent:number)=>Math.max(0,(Math.abs(actual-target)*100-target*percent));
+  for(const day of r.jointMacroSearch.days){
+    for(const axis of ['protein','fat','carbs'] as const){
+      const percent=axis==='carbs'?15:10;
+      assert.ok(violation(day.after[axis],targets[axis],percent)<=violation(day.before[axis],targets[axis],percent));
+    }
+    if(JSON.stringify(day.before)!==JSON.stringify(day.after))changed++;
   }
-  assert.ok(improved>0);assert.equal(JSON.stringify(input),before);
+  assert.ok(changed>0);assert.equal(JSON.stringify(input),before);
+  assert.ok(r.jointMacroSearch.days.some(day=>day.before.carbs>targets.carbs*1.15&&day.after.carbs<=targets.carbs*1.15));
   assert.ok(r.days.every(d=>Math.abs(Number(d.referenceNutrition.calories)-1600)<=50&&d.meals.every(m=>m.assignedSourceServings===1&&m.measuredGrams===null)));
-  assert.deepEqual(r,previewRecipeAuthoringWeekV1(input,settings,{...targets,carbs:999} as typeof targets));
+  assert.deepEqual(r,previewRecipeAuthoringWeekV1(input,settings,targets));
 });
 test('client independently rejects worsened or mismatched P/F receipts and preserves old comparison-only snapshots',()=>{
   const packet={...referenceWeekFixture(1500),savedGoal:goal()};
@@ -87,4 +93,21 @@ test('client independently rejects worsened or mismatched P/F receipts and prese
   assert.throws(()=>decodeStagingRealWeek(bad),/INVALID_REFERENCE_MACRO_FIT/);
   for(const change of [{carbsAssessed:true},{targetProtein:101},{minimumDistinctRecipes:29},{evaluatedCandidates:114689}])assert.throws(()=>decodeStagingRealWeek({...withFit,report:{...withFit.report,macroRefinement:{...receipt,...change}}}),/INVALID_REFERENCE_MACRO_FIT/);
   const noGoal={...withFit,savedGoal:undefined};assert.throws(()=>decodeStagingRealWeek(noGoal),/INVALID_REFERENCE_MACRO_FIT/);
+});
+
+test('client validates the joint macro-search receipt against saved targets and displayed reference totals',()=>{
+  const saved={...goal(),protein:80,fat:40,carbs:200};
+  const packet={...referenceWeekFixture(1500),savedGoal:saved};
+  const receipt={scope:'REFERENCE_JOINT_DAILY_MACRO_WINDOWS',targets:{protein:80,fat:40,carbs:200},
+    windows:{proteinPercent:10,fatPercent:10,carbsPercent:15},limits:{passes:2,poolPerSlot:64,candidatesPerDayPerPass:8192},
+    evaluatedCandidates:0,changes:0,minimumDistinctRecipes:28,evaluationsByDay:[0,0,0,0,0,0,0],exhaustedDays:[],
+    days:packet.report.days.map(d=>({date:d.date,before:{protein:80,fat:40,carbs:200},after:{protein:80,fat:40,carbs:200}})),
+    sourcePortionScaling:false,recipeDataVerified:false,globalOptimumProven:false};
+  const withSearch={...packet,jointMacroSearch:receipt};
+  assert.equal(decodeStagingRealWeek(withSearch).jointTargetSearch?.evaluatedCandidates,0);
+  const bad=structuredClone(withSearch);bad.jointMacroSearch.days[0].after.carbs=199;
+  assert.throws(()=>decodeStagingRealWeek(bad),/INVALID_REFERENCE_JOINT_TARGET_SEARCH/);
+  for(const change of [{targets:{...receipt.targets,carbs:201}},{recipeDataVerified:true},{evaluatedCandidates:114689}]){
+    assert.throws(()=>decodeStagingRealWeek({...packet,jointMacroSearch:{...receipt,...change}}),/INVALID_REFERENCE_JOINT_TARGET_SEARCH/);
+  }
 });

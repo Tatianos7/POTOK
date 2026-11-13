@@ -51,7 +51,7 @@ export function buildStagingReferenceWeek(packed: string | undefined, target: nu
   const capacity = analyzeWeekInputCalorieCapacityV1(eligible.map(r => ({recipeId: r.recipeId,
     sourceCategory: String(r.sourceRecipe.meal_type_primary), caloriesPerDeclaredServing: String(r.referenceNutrition.values.calories)})),
     {...settings, tolerancePercent: 0});
-  const report = constrainReferenceWeekToCorridorV1(previewRecipeAuthoringWeekV1(input, settings, savedGoal ? {protein: savedGoal.protein, fat: savedGoal.fat} : undefined));
+  const report = constrainReferenceWeekToCorridorV1(previewRecipeAuthoringWeekV1(input, settings, savedGoal ? {protein: savedGoal.protein, fat: savedGoal.fat, carbs: savedGoal.carbs} : undefined));
   const requiredWeek = BigInt(report.calorieCorridor.minimumKcal) * 7000n;
   const maximumWeek = capacity.optimisticMaximumWeekKcal === null ? null : BigInt(capacity.optimisticMaximumWeekKcal.replace('.', ''));
   const shortfall = maximumWeek !== null && maximumWeek < requiredWeek ? requiredWeek - maximumWeek : null;
@@ -66,7 +66,7 @@ export function buildStagingReferenceWeek(packed: string | undefined, target: nu
     calorieCapacity: {status: shortfall === null ? 'REQUIRED_WEEK_MINIMUM_NOT_PROVEN' : 'REQUIRED_WEEK_MINIMUM_UNREACHABLE',
       requiredWeekKcal: fixed(requiredWeek), optimisticMaximumWeekKcal: capacity.optimisticMaximumWeekKcal,
       provenWeekShortfallKcal: shortfall === null ? null : fixed(shortfall)},
-    report, catalog: {...packet, recipes},
+    report, ...('jointMacroSearch' in report && report.jointMacroSearch ? {jointMacroSearch: report.jointMacroSearch} : {}), catalog: {...packet, recipes},
     omittedAuthorNotes: true};
 }
 
