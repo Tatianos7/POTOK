@@ -159,17 +159,22 @@ function rebuildReferenceWeek(
     && pools[1].every((r,i) => r.recipeId === pools[2][i].recipeId);
   let evaluated = 0;
   scan: for (const breakfast of pools[0]) for (const [i,lunch] of pools[1].entries())
-    for (const dinner of pools[2].slice(identicalMainPools ? i+1 : 0)) for (const snack of pools[3]) {
-      if (++evaluated > 2_000_000 || candidates.length >= 1024) break scan;
-      const meals = [breakfast,lunch,dinner,snack];
-      const numbers = meals.map(r => values.get(r.recipeId)!);
-      const sum = (axis:number) => numbers.reduce((n,v)=>n+v[axis],0);
-      if (Math.abs(sum(0)-target)>50_000 || windows.some(([low,high],i)=>{
-        const actual = sum(i+1)*100;
-        return actual<low || actual>high;
-      })) continue;
-      if (new Set(meals.map(r=>r.recipeId)).size!==4 || !validDay(meals)) continue;
-      candidates.push({date:'',meals,nutrition:total(meals),distance:BigInt(Math.abs(sum(0)-target))});
+    for (let j = identicalMainPools ? i+1 : 0; j < pools[2].length; j++) {
+      const dinner = pools[2][j];
+      const partial = values.get(breakfast.recipeId)!.map((value,axis) =>
+        value + values.get(lunch.recipeId)![axis] + values.get(dinner.recipeId)![axis]);
+      for (const snack of pools[3]) {
+        if (++evaluated > 2_000_000 || candidates.length >= 1024) break scan;
+        const snackValues = values.get(snack.recipeId)!;
+        const distance = Math.abs(partial[0]+snackValues[0]-target);
+        if (distance>50_000 || windows.some(([low,high],i)=>{
+          const actual = (partial[i+1]+snackValues[i+1])*100;
+          return actual<low || actual>high;
+        })) continue;
+        const meals = [breakfast,lunch,dinner,snack];
+        if (new Set(meals.map(r=>r.recipeId)).size!==4 || !validDay(meals)) continue;
+        candidates.push({date:'',meals,nutrition:total(meals),distance:BigInt(distance)});
+      }
     }
 
   const ids = candidates.map(day=>day.meals.map(r=>r.recipeId));
@@ -198,6 +203,33 @@ function rebuildReferenceWeek(
   }
   const best = [...beam[0].picks];
   let distinct = beam[0].uses.size;
+  // Try rotated starting orders before the paired swaps. The beam can prune a
+  // partial week that uses common recipes early but leaves more variety later.
+  for (let start = 0; start < 128 && distinct < dates.length * 4; start++) {
+    const picks: number[] = [];
+    const uses = new Map<string,number>();
+    for (let day = 0; day < dates.length; day++) {
+      let choice = -1, mostFresh = -1;
+      const offset = (start * 137 + day * 31) % ids.length;
+      for (let i = 0; i < ids.length; i++) {
+        const index = (offset + i) % ids.length;
+        const meals = ids[index];
+        if (picks.includes(index) || meals.some(id=>(uses.get(id)??0)>=scenario.maxRecipeUses)) continue;
+        const fresh = meals.filter(id=>!uses.has(id)).length;
+        if (fresh <= mostFresh) continue;
+        choice = index;
+        mostFresh = fresh;
+        if (fresh === 4) break;
+      }
+      if (choice < 0) break;
+      picks.push(choice);
+      for (const id of ids[choice]) uses.set(id,(uses.get(id)??0)+1);
+    }
+    if (picks.length === dates.length && uses.size > distinct) {
+      best.splice(0,best.length,...picks);
+      distinct = uses.size;
+    }
+  }
   const bit = new Map([...frequency.keys()].map((id,i)=>[id,1n<<BigInt(i)]));
   const masks = ids.map(meals=>meals.reduce((mask,id)=>mask|bit.get(id)!,0n));
   // Improve the best complete week with two coordinated replacements.
