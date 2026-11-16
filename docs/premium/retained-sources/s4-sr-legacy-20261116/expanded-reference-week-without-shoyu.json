@@ -1,0 +1,116 @@
+{
+  "scope": "offline authoring-reference replay; not reviewed publication evidence",
+  "target": [
+    1703,
+    145,
+    65,
+    134
+  ],
+  "axes": [
+    "kcal",
+    "protein_g",
+    "fat_g",
+    "available_carbohydrate_g"
+  ],
+  "totalsScale": 1000,
+  "days": [
+    {
+      "ids": [
+        "eggs_wholegrain_toast_cucumber",
+        "salmon_brown_rice",
+        "lean_beef_quinoa_vegetables",
+        "firm_tofu_cucumber_herbs"
+      ],
+      "totals": [
+        1670350,
+        132317,
+        63280,
+        129086
+      ]
+    },
+    {
+      "ids": [
+        "eggs_wholegrain_toast_cucumber",
+        "tofu_buckwheat_soba_pepper",
+        "salmon_frozen_spinach",
+        "wholegrain_turkey_cucumber_sandwich"
+      ],
+      "totals": [
+        1653600,
+        137417,
+        60927,
+        123207
+      ]
+    },
+    {
+      "ids": [
+        "wholegrain_toast_tvorog_tomato",
+        "tofu_rice_broccoli",
+        "beef_patties_roasted_carrot",
+        "tvorog_fresh_apricot"
+      ],
+      "totals": [
+        1665000,
+        140363,
+        60816,
+        124303
+      ]
+    },
+    {
+      "ids": [
+        "wholegrain_toast_tvorog_tomato",
+        "tofu_buckwheat_soba_pepper",
+        "salmon_frozen_spinach",
+        "wholegrain_turkey_cucumber_sandwich"
+      ],
+      "totals": [
+        1696600,
+        151002,
+        59052,
+        124527
+      ]
+    },
+    {
+      "ids": [
+        "wholegrain_toast_egg_avocado",
+        "salmon_brown_rice",
+        "lean_beef_quinoa_vegetables",
+        "tvorog_fresh_apricot"
+      ],
+      "totals": [
+        1663600,
+        130931,
+        64499,
+        123034
+      ]
+    },
+    {
+      "ids": [
+        "tofu_tomato_wholegrain_toast",
+        "chicken_bulgur_zucchini",
+        "rabbit_potatoes_carrots",
+        "firm_tofu_cucumber_herbs"
+      ],
+      "totals": [
+        1679050,
+        144104,
+        58624,
+        127901
+      ]
+    },
+    {
+      "ids": [
+        "tofu_tomato_wholegrain_toast",
+        "turkey_meatballs_rice",
+        "beef_patties_roasted_carrot",
+        "tvorog_blueberries"
+      ],
+      "totals": [
+        1690850,
+        148638,
+        60344,
+        121057
+      ]
+    }
+  ]
+}

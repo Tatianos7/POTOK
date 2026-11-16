@@ -1,0 +1,117 @@
+{
+  "status": "BLOCKED_RUNTIME_SOURCE_ADMISSION",
+  "recovery": "Reconstructed from retained workspace tool output, not verified byte-for-byte against the lost local commit.",
+  "referenceWeek": "expanded-reference-week-without-shoyu.json",
+  "referenceWeekSha256": "f63e02b34c388aafa74cf475f35a9306a5d06a4845e7a856d55064f4d97290e2",
+  "scope": {
+    "environment": "staging",
+    "accounts": 1,
+    "logicalRequests": 1,
+    "expectedDays": 7
+  },
+  "candidateRecipes": [
+    {
+      "authoringRecipeId": "beef_patties_roasted_carrot",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "chicken_bulgur_zucchini",
+      "referenceUses": 1,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "eggs_wholegrain_toast_cucumber",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "firm_tofu_cucumber_herbs",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "lean_beef_quinoa_vegetables",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "rabbit_potatoes_carrots",
+      "referenceUses": 1,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "salmon_brown_rice",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "salmon_frozen_spinach",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "tofu_buckwheat_soba_pepper",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "tofu_rice_broccoli",
+      "referenceUses": 1,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "tofu_tomato_wholegrain_toast",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "turkey_meatballs_rice",
+      "referenceUses": 1,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "tvorog_blueberries",
+      "referenceUses": 1,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "tvorog_fresh_apricot",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "wholegrain_toast_egg_avocado",
+      "referenceUses": 1,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "wholegrain_toast_tvorog_tomato",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    },
+    {
+      "authoringRecipeId": "wholegrain_turkey_cucumber_sandwich",
+      "referenceUses": 2,
+      "publicationEvidence": null
+    }
+  ],
+  "dailyAcceptance": {
+    "sourceSha256": "9a8e148a0b25aba2360d5b19df0fa6764ebe9ba99e935b73df036fc34951abe8",
+    "section": 4,
+    "calorieDeltaKcal": 50,
+    "proteinDeltaPercent": 10,
+    "fatDeltaPercent": 10,
+    "carbohydrateDeltaPercent": 15,
+    "allBoundsInclusive": true
+  },
+  "requiredBindings": {
+    "testAccountAndPremium": null,
+    "goalPreferencesAndSafety": null,
+    "candidateManifest": null,
+    "policyHead": null,
+    "requestPreparation": null,
+    "validationInputs": null,
+    "warningSource": null
+  }
+}
