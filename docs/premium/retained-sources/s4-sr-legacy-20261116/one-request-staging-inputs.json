@@ -13,87 +13,189 @@
     {
       "authoringRecipeId": "beef_patties_roasted_carrot",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 86,
+        "guidePage": 185,
+        "declaredServings": 2,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "chicken_bulgur_zucchini",
       "referenceUses": 1,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 49,
+        "guidePage": 111,
+        "declaredServings": 2,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "eggs_wholegrain_toast_cucumber",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 27,
+        "guidePage": 70,
+        "declaredServings": 1,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "firm_tofu_cucumber_herbs",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 132,
+        "guidePage": 274,
+        "declaredServings": 1,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "lean_beef_quinoa_vegetables",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 69,
+        "guidePage": 151,
+        "declaredServings": 2,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "rabbit_potatoes_carrots",
       "referenceUses": 1,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 52,
+        "guidePage": 117,
+        "declaredServings": 2,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "salmon_brown_rice",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 53,
+        "guidePage": 119,
+        "declaredServings": 2,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "salmon_frozen_spinach",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 79,
+        "guidePage": 171,
+        "declaredServings": 2,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "tofu_buckwheat_soba_pepper",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 77,
+        "guidePage": 167,
+        "declaredServings": 2,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "tofu_rice_broccoli",
       "referenceUses": 1,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 63,
+        "guidePage": 139,
+        "declaredServings": 2,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "tofu_tomato_wholegrain_toast",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 39,
+        "guidePage": 91,
+        "declaredServings": 1,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "turkey_meatballs_rice",
       "referenceUses": 1,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 84,
+        "guidePage": 181,
+        "declaredServings": 2,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "tvorog_blueberries",
       "referenceUses": 1,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 108,
+        "guidePage": 228,
+        "declaredServings": 1,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "tvorog_fresh_apricot",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 110,
+        "guidePage": 232,
+        "declaredServings": 1,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "wholegrain_toast_egg_avocado",
       "referenceUses": 1,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 34,
+        "guidePage": 81,
+        "declaredServings": 1,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "wholegrain_toast_tvorog_tomato",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 33,
+        "guidePage": 79,
+        "declaredServings": 1,
+        "portionEvidence": null
+      }
     },
     {
       "authoringRecipeId": "wholegrain_turkey_cucumber_sandwich",
       "referenceUses": 2,
-      "publicationEvidence": null
+      "publicationEvidence": null,
+      "portionReference": {
+        "recipeNumber": 121,
+        "guidePage": 253,
+        "declaredServings": 1,
+        "portionEvidence": null
+      }
     }
   ],
   "dailyAcceptance": {
@@ -113,5 +215,6 @@
     "requestPreparation": null,
     "validationInputs": null,
     "warningSource": null
-  }
+  },
+  "portionReferenceSource": "POTOK_132_recipes_and_weighing_guide(2).pdf"
 }
