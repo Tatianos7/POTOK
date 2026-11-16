@@ -81,6 +81,7 @@ export async function runGenerationRequestRoundtripV1(t:TestContext,gateway:Gene
       VALUES(${literal(account)},${literal(input.goalNutritionTarget.goalRevision)},${literal(input.goalNutritionTarget.targetPolicyRevision)},
       ${binary(hex(canonical(input.goalNutritionTarget)))},${literal(canonical(input.goalNutritionTarget))}::jsonb,${binary(hash(canonical(input.goalNutritionTarget)))},'synthetic-only:request-target');
     COMMIT;`);
+  ok(read('generation_missing_catalog_response_v2.sql'));
   const pool=new Pool({host:'127.0.0.1',port:5432,database:'potok_generation_store_disposable',user:'potok_generation_client_fixture_v1',
     password:'client-disposable-only',ssl:false,connectionTimeoutMillis:3000,statement_timeout:5000,max:2});
   let actor:string|null=account,dropInitialReply=true;
@@ -102,7 +103,11 @@ export async function runGenerationRequestRoundtripV1(t:TestContext,gateway:Gene
       await lease.query('COMMIT');
       if(name==='adaptive_nutrition_request_generation_v2'&&dropInitialReply){dropInitialReply=false;return {data:null,error:{code:'SYNTHETIC_COMMITTED_REPLY_LOST'}};}
       return {data:result.rows[0].result,error:null};
-    }catch{await lease.query('ROLLBACK');return {data:null,error:{code:'FIXTURE_RPC_DENIED'}};}
+    } catch (error) {
+      await lease.query('ROLLBACK');
+      const failure = error as {code?: string; message?: string};
+      return {data:null,error:{code:failure.code,message:failure.message}};
+    }
     finally{lease.release();}
   }};
   const flow=new GenerationRequestFlowV2(client,()=>true,()=>key);
@@ -110,6 +115,23 @@ export async function runGenerationRequestRoundtripV1(t:TestContext,gateway:Gene
   let request='';let prepared:Awaited<ReturnType<typeof fullFixture>>;
   flow.attach(account,week,'UTC');
   try{
+    await t.test('missing published catalog gives a dedicated state without persisting a request', async () => {
+      const revision = input.candidateManifestRevision;
+      ok('DELETE FROM potok_nutrition.adaptive_nutrition_candidate_manifest_head_v2 WHERE singleton');
+      try {
+        await flow.start();
+        assert.equal(flow.snapshot().phase, 'catalog-unavailable');
+        assert.equal(countRequests(), '0');
+        const html = renderToStaticMarkup(GenerationFlowViewV2({
+          state: flow.snapshot(), onStart: () => undefined, onRefresh: () => undefined,
+        }));
+        assert.match(html, /Пока нет доступных рецептов/);
+        assert.doesNotMatch(html, /Проверить результат/);
+        assert.equal(flow.recovery()?.idempotencyKey, key);
+      } finally {
+        ok(`INSERT INTO potok_nutrition.adaptive_nutrition_candidate_manifest_head_v2 VALUES (true,${literal(revision)})`);
+      }
+    });
     await t.test('actual public request COMMIT with lost reply recovers the same SQL-issued request and key',async()=>{
       assert.equal(countRequests(),'0');await flow.start();assert.equal(flow.snapshot().phase,'unknown');assert.equal(countRequests(),'1');
       assert.equal(flow.recovery()?.idempotencyKey,key);

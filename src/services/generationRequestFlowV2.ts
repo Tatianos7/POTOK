@@ -3,7 +3,7 @@ import {GenerationPlanReadbackServiceV2,type GenerationPlanReadClientV2} from '.
 import {GenerationPlanEntryControllerV2,type GenerationPlanEntryStateV2} from './generationPlanEntryV2';
 
 export type GenerationFlowPhaseV2 = 'idle' | 'requesting' | 'pending' | 'checking' | 'opening'
-  | 'ready' | 'unknown' | 'rejected' | 'conflict' | 'denied' | 'unavailable';
+  | 'ready' | 'catalog-unavailable' | 'unknown' | 'rejected' | 'conflict' | 'denied' | 'unavailable';
 export interface GenerationFlowStateV2 {
   readonly phase: GenerationFlowPhaseV2;
   readonly requestOperationId: string | null;
@@ -112,6 +112,12 @@ export class GenerationRequestFlowV2 {
       const status:GenerationRequestResponseV2|null=error?null:decodeGenerationResponseV2(data);
       if (!await this.authenticated(token,scope)||!this.current(token,scope)) {
         if(token===this.epoch)this.publish('denied');return;
+      }
+      if (pinned.requestOperationId === null && error && typeof error === 'object'
+        && 'code' in error && error.code === 'PT503'
+        && 'message' in error && error.message === 'GENERATION_CATALOG_UNAVAILABLE') {
+        this.publish('catalog-unavailable');
+        return;
       }
       if(!status)throw new Error('GENERATION_REQUEST_UNKNOWN');
       if(pinned.requestOperationId && status.requestOperationId!==pinned.requestOperationId)throw new Error('GENERATION_REQUEST_MISMATCH');

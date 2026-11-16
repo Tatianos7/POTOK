@@ -12,6 +12,7 @@ export function GenerationFlowViewV2({state,onStart,onRefresh}:{
     :state.phase==='pending'?'Меню готовится. Можно проверить результат чуть позже.'
     :state.phase==='checking'?'Проверяем состояние запроса…'
     :state.phase==='opening'?'Загружаем подтверждённое меню…'
+    :state.phase==='catalog-unavailable'?'Пока нет доступных рецептов для составления меню.'
     :state.phase==='unknown'?'Не удалось подтвердить состояние запроса. Можно проверить тот же запрос позже.'
     :state.phase==='rejected'?'Сервер не смог подготовить меню по текущим данным.'
     :state.phase==='conflict'?'Исходные данные изменились. Это меню не было включено.'
