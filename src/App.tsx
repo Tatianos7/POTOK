@@ -33,6 +33,7 @@ import ImportExercises from './pages/ImportExercises';
 import PoseCoach from './pages/PoseCoach';
 import ProtectedRoute from './components/ProtectedRoute';
 import PremiumRoute from './components/PremiumRoute';
+import { canOpenStagingGenerationCheck, StagingGenerationCheck } from './components/StagingGenerationCheck';
 import ErrorBoundary from './components/ErrorBoundary';
 import Today from './pages/Today';
 import MyProgram from './pages/MyProgram';
@@ -84,6 +85,11 @@ function AppRoutes() {
 
   return (
     <Routes>
+      {user && canOpenStagingGenerationCheck(user.id) && (
+        <Route path="/staging/generation-check" element={
+          <ProtectedRoute><StagingGenerationCheck accountId={user.id} /></ProtectedRoute>
+        } />
+      )}
       <Route
         path="/auth"
         element={authStatus === 'authenticated' ? <Navigate to="/" replace /> : <Login />}
