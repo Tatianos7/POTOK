@@ -10,7 +10,7 @@ import {generationPlanReadbackContractV2,type GenerationPlanReadClientV2} from '
 async function harness(options:Parameters<typeof generationWorkerFixtureV1>[0]={}) {
   const worker=await generationWorkerFixtureV1({initialStatus:'REQUESTED',...options});
   const account=worker.f.context.input.accountId,request=worker.input.requestOperationId,key=id(920);
-  let user:string|null=account,gate=true,requestLost=false,readMissing=false,created=false;
+  let user:string|null=account,gate=true,requestLost=false,requestError=false,readMissing=false,created=false;
   let hook:((name:string)=>Promise<void>)|null=null;
   const calls:{name:string;args:Record<string,unknown>}[]=[];
   const counts={keys:0,created:0};
@@ -22,6 +22,7 @@ async function harness(options:Parameters<typeof generationWorkerFixtureV1>[0]={
       if(hook)await hook(name);
       if(name==='adaptive_nutrition_request_generation_v2'){
         assert.equal(args.p_protocol_version,'potok-adaptive-generation-request-v2');assert.equal(args.p_idempotency_key,key);
+        if(requestError)return {data:null,error:{code:'P0002'}};
         if(!created){created=true;counts.created++;}
         if(requestLost){requestLost=false;return {data:null,error:{lost:true}};}
         return {data:status(),error:null};
@@ -38,7 +39,7 @@ async function harness(options:Parameters<typeof generationWorkerFixtureV1>[0]={
   const make=()=>new GenerationRequestFlowV2(client,()=>gate,()=>{counts.keys++;return key;});
   const flow=make();flow.attach(account,worker.f.plan.weekStartLocal,worker.f.plan.timezone);
   return {worker,account,request,key,flow,calls,counts,make,
-    loseRequest:()=>{requestLost=true;},missRead:()=>{readMissing=true;},setUser:(v:string|null)=>{user=v;},
+    setRequestError:(value:boolean)=>{requestError=value;},loseRequest:()=>{requestLost=true;},missRead:()=>{readMissing=true;},setUser:(v:string|null)=>{user=v;},
     setGate:(v:boolean)=>{gate=v;},setHook:(v:(name:string)=>Promise<void>)=>{hook=v;}};
 }
 test('one request -> real catalog/day/week/projection/independent validation/worker -> exact menu and seven-day view',async()=>{
@@ -61,6 +62,25 @@ test('lost initial reply restores the same key and resolves the same request wit
   assert.equal(resumed.snapshot().phase,'pending');assert.equal(resumed.snapshot().requestOperationId,h.request);
   assert.equal(h.counts.created,1);assert.equal(h.counts.keys,1);
   await h.worker.run();await resumed.refresh();assert.equal(resumed.snapshot().phase,'ready');
+});
+test('an unclassified server error offers recovery of the original request', async () => {
+  const h = await harness();
+  h.setRequestError(true);
+  await h.flow.start();
+  const state = h.flow.snapshot();
+  assert.equal(state.phase, 'unknown');
+  const html = renderToStaticMarkup(GenerationFlowViewV2({
+    state, onStart: () => undefined, onRefresh: () => undefined,
+  }));
+  assert.match(html, /Не удалось подтвердить состояние запроса/);
+  assert.match(html, /Проверить результат/);
+  assert.doesNotMatch(html, /Составить меню/);
+  assert.equal(h.counts.created, 0);
+  h.setRequestError(false);
+  await h.flow.refresh();
+  assert.equal(h.flow.snapshot().phase, 'pending');
+  assert.equal(h.counts.keys, 1);
+  assert.deepEqual(h.calls[0].args, h.calls[1].args);
 });
 test('lost record reply resumes worker persistence once, then opens only after activation',async()=>{
   const h=await harness({recordLostReply:true});await h.flow.start();await assert.rejects(h.worker.run(),/RPC_FAILED/);

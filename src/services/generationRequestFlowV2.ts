@@ -3,7 +3,7 @@ import {GenerationPlanReadbackServiceV2,type GenerationPlanReadClientV2} from '.
 import {GenerationPlanEntryControllerV2,type GenerationPlanEntryStateV2} from './generationPlanEntryV2';
 
 export type GenerationFlowPhaseV2 = 'idle' | 'requesting' | 'pending' | 'checking' | 'opening'
-  | 'ready' | 'unknown' | 'rejected' | 'conflict' | 'denied' | 'unavailable';
+  | 'ready' | 'catalog-unavailable' | 'unknown' | 'rejected' | 'conflict' | 'denied' | 'unavailable';
 export interface GenerationFlowStateV2 {
   readonly phase: GenerationFlowPhaseV2;
   readonly requestOperationId: string | null;
@@ -24,7 +24,11 @@ function validScope(scope:Scope):boolean {
 }
 const sameScope = (a:Scope,b:Scope):boolean => a.accountId===b.accountId && a.today===b.today && a.timeZone===b.timeZone;
 
-/** Explicit user action only. No timers, privileged worker client, disk cache or automatic generation on mount. */
+function recoveryKey(scope: Scope): string {
+  return 'potok:generation-recovery:v2:' + JSON.stringify([scope.accountId, scope.today, scope.timeZone]);
+}
+
+/** Explicit user action only. Optional storage holds request identifiers, never the plan. */
 export class GenerationRequestFlowV2 {
   private epoch = 0;
   private busy = false;
@@ -37,7 +41,8 @@ export class GenerationRequestFlowV2 {
   private listeners = new Set<(state:GenerationFlowStateV2)=>void>();
   constructor(private readonly client:GenerationPlanReadClientV2|null = null,
     private readonly enabled:()=>boolean = ()=>false,
-    private readonly newKey:()=>string = ()=>globalThis.crypto.randomUUID()) {
+    private readonly newKey:()=>string = ()=>globalThis.crypto.randomUUID(),
+    private readonly recoveryStorage?: () => Pick<Storage, 'getItem' | 'setItem'>) {
     this.entry = new GenerationPlanEntryControllerV2(new GenerationPlanReadbackServiceV2(client,enabled));
   }
   snapshot():GenerationFlowStateV2 {return this.state;}
@@ -58,7 +63,28 @@ export class GenerationRequestFlowV2 {
       if(!this.settled.has(identity)) {this.publish('unavailable');return;}
       this.attempts.delete(accountId);this.settled.delete(identity);attempt=undefined;
     }
-    this.publish(this.enabled()&&this.client ? attempt ? 'unknown' : 'idle' : 'unavailable',attempt?.requestOperationId??null);
+    if (!this.enabled() || !this.client) {this.publish('unavailable');return;}
+    attempt ??= this.readStoredAttempt(scope);
+    if (attempt) this.attempts.set(accountId, attempt);
+    this.publish(attempt ? 'unknown' : 'idle', attempt?.requestOperationId ?? null);
+  }
+  private readStoredAttempt(scope: Scope): Readonly<Attempt> | undefined {
+    try {
+      const raw = this.recoveryStorage?.().getItem(recoveryKey(scope));
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Attempt;
+      if (!saved || !sameScope(saved, scope) || typeof saved.idempotencyKey !== 'string'
+        || !uuid.test(saved.idempotencyKey) || (saved.requestOperationId !== null
+          && (typeof saved.requestOperationId !== 'string' || !uuid.test(saved.requestOperationId)))) return;
+      return Object.freeze({ ...scope, idempotencyKey: saved.idempotencyKey,
+        requestOperationId: saved.requestOperationId });
+    } catch { return; }
+  }
+  private rememberAttempt(attempt: Readonly<Attempt>): void {
+    this.attempts.set(attempt.accountId, attempt);
+    try {
+      this.recoveryStorage?.().setItem(recoveryKey(attempt), JSON.stringify(attempt));
+    } catch { /* A blocked browser store leaves the in-memory recovery available. */ }
   }
   /** Caller may explicitly retain this non-secret handle; no implicit persistence is installed here. */
   recovery():Readonly<GenerationRecoveryV2>|null {
@@ -99,7 +125,7 @@ export class GenerationRequestFlowV2 {
       if (!attempt) {
         const key=this.newKey();if(!uuid.test(key))throw new Error('INVALID_GENERATION_KEY');
         attempt=Object.freeze({...scope,idempotencyKey:key,requestOperationId:null});
-        this.attempts.set(scope.accountId,attempt);
+        this.rememberAttempt(attempt);
       }
       const pinned=attempt;
       this.publish(pinned.requestOperationId ? 'checking' : 'requesting',pinned.requestOperationId);
@@ -113,12 +139,18 @@ export class GenerationRequestFlowV2 {
       if (!await this.authenticated(token,scope)||!this.current(token,scope)) {
         if(token===this.epoch)this.publish('denied');return;
       }
+      if (pinned.requestOperationId === null && error && typeof error === 'object'
+        && 'code' in error && error.code === 'PT503'
+        && 'message' in error && error.message === 'GENERATION_CATALOG_UNAVAILABLE') {
+        this.publish('catalog-unavailable');
+        return;
+      }
       if(!status)throw new Error('GENERATION_REQUEST_UNKNOWN');
       if(pinned.requestOperationId && status.requestOperationId!==pinned.requestOperationId)throw new Error('GENERATION_REQUEST_MISMATCH');
       const terminal=['ACTIVE','REJECTED','CONFLICT'].includes(status.status);
       if(status.retryable===terminal)throw new Error('GENERATION_STATUS_MISMATCH');
       attempt=Object.freeze({...pinned,requestOperationId:status.requestOperationId});
-      this.attempts.set(scope.accountId,attempt);
+      this.rememberAttempt(attempt);
       if(terminal)this.settled.add(scope.accountId+':'+attempt.idempotencyKey);
       if(status.status==='REJECTED'||status.status==='CONFLICT') {
         this.publish(status.status==='REJECTED'?'rejected':'conflict',status.requestOperationId);return;
