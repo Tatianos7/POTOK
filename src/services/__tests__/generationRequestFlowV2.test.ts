@@ -85,3 +85,36 @@ test('a confirmed terminal request does not block a new local-day scope forever'
   h.flow.attach(account,'2026-11-02',zone);assert.equal(h.flow.snapshot().phase,'idle');
   await h.flow.start();assert.equal(h.keys(),2);assert.equal(h.calls.length,2);
 });
+
+test('tab recovery reopens the same request after a new controller mounts', async () => {
+  for (const lostReply of [false, true]) {
+    const h = harness();
+    const records = new Map<string, string>();
+    const storage = () => ({
+      getItem: (name: string) => records.get(name) ?? null,
+      setItem: (name: string, value: string) => { records.set(name, value); },
+    });
+    const original = new GenerationRequestFlowV2(h.client, () => true, () => key, storage);
+    original.attach(account, today, zone);
+    h.setFailure(lostReply);
+    await original.start();
+    original.stop();
+
+    const reopened = new GenerationRequestFlowV2(h.client, () => true, () => id(99), storage);
+    reopened.attach(id(98), today, zone);
+    assert.equal(reopened.snapshot().phase, 'idle');
+    reopened.attach(account, today, zone);
+    assert.equal(reopened.snapshot().phase, 'unknown');
+    assert.equal(h.calls.length, 1);
+    h.setFailure(false);
+    await reopened.refresh();
+
+    assert.equal(reopened.snapshot().phase, 'pending');
+    assert.equal(reopened.recovery()?.idempotencyKey, key);
+    assert.equal(reopened.recovery()?.requestOperationId, request);
+    assert.deepEqual(h.calls[1], lostReply ? h.calls[0] : {
+      name: 'adaptive_nutrition_generation_status_v2',
+      args: { p_request_operation_id: request },
+    });
+  }
+});
