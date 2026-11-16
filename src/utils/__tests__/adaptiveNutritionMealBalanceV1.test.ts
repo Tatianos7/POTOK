@@ -911,6 +911,41 @@ test('49: calories below the hard minimum are invalid', async () => {
   assert.ok(result.reasons.some((item) => item.code === 'DAY_TARGET_MISMATCH'));
 });
 
+test('approved 1703 kcal scenario enforces all four daily limits together', async () => {
+  const target = {
+    ...goalTarget({ min: '1653.000', target: '1703.000', max: '1753.000' }),
+    protein: { min: '130.500', target: '145.000', max: '159.500' },
+    fat: { min: '58.500', target: '65.000', max: '71.500' },
+    carbs: { min: '113.900', target: '134.000', max: '154.100' },
+    fiber: null,
+  };
+  const minimum = { ...n('1653.000'), protein: '130.500', fat: '58.500', carbs: '113.900' };
+  const maximum = { ...n('1753.000'), protein: '159.500', fat: '71.500', carbs: '154.100' };
+  const cases = [
+    { nutrition: minimum, valid: true },
+    { nutrition: maximum, valid: true },
+    { nutrition: { ...minimum, calories: '1652.999' }, valid: false },
+    { nutrition: { ...maximum, calories: '1753.001' }, valid: false },
+    { nutrition: { ...minimum, protein: '130.499' }, valid: false },
+    { nutrition: { ...maximum, protein: '159.501' }, valid: false },
+    { nutrition: { ...minimum, fat: '58.499' }, valid: false },
+    { nutrition: { ...maximum, fat: '71.501' }, valid: false },
+    { nutrition: { ...minimum, carbs: '113.899' }, valid: false },
+    { nutrition: { ...maximum, carbs: '154.101' }, valid: false },
+  ];
+
+  for (const { nutrition, valid } of cases) {
+    const item = candidate({ nutrition });
+    const meal = await mealFrom([item], ['MAIN_COMPONENT'], 'dinner');
+    const result = await validateDaySnapshotV1(dayInput('2026-09-28', [
+      mealInput(meal, [item], ['MAIN_COMPONENT']),
+    ], target));
+
+    assert.equal(result.status, valid ? 'VALID' : 'INVALID', JSON.stringify(result.reasons));
+    assert.equal(result.reasons.some(({ code }) => code === 'DAY_TARGET_MISMATCH'), !valid);
+  }
+});
+
 test('50: 1648 ranks closer to 1650 than 1675 with the same hard corridor', async () => {
   const closer = await calculateGoalTargetFitV1(targetFitInput('1648.000'));
   const farther = await calculateGoalTargetFitV1(targetFitInput('1675.000'));
