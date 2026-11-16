@@ -14,7 +14,7 @@ export function canOpenStagingGenerationCheck(accountId?: string): boolean {
 
 export function StagingGenerationCheck({ accountId }: { accountId: string }) {
   const controller = useMemo(() => new GenerationRequestFlowV2(
-    supabase, () => canOpenStagingGenerationCheck(accountId),
+    supabase, () => canOpenStagingGenerationCheck(accountId), undefined, () => window.sessionStorage,
   ), [accountId]);
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const parts = new Intl.DateTimeFormat('en', {
