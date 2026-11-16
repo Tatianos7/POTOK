@@ -193,6 +193,14 @@ export async function runGenerationRequestRoundtripV1(t:TestContext,gateway:Gene
       assert.equal(ok(`SELECT count(*) FROM public.adaptive_nutrition_operations WHERE user_id=${literal(account)};`),'4');
       assert.equal(ok('SELECT count(*) FROM public.adaptive_nutrition_events;'),'0');
     });
+    if (process.env.GITHUB_ACTIONS === 'true') {
+      await t.test('mobile Chromium reopens the same SQL-backed menu after reload', async () => {
+        const { checkReload } = await import('./generation-request-browser-reload-v1.mjs');
+        await checkReload(account, key, client.rpc.bind(client));
+        assert.equal(countRequests(), '1');
+        assert.equal(ok('SELECT count(*) FROM public.adaptive_nutrition_events;'), '0');
+      });
+    }
     await t.test('active replay creates no duplicate and account switch cannot read another account menu',async()=>{
       const replay=await client.rpc('adaptive_nutrition_request_generation_v2',{p_protocol_version:'potok-adaptive-generation-request-v2',p_idempotency_key:key});
       assert.equal((replay.data as {status:string}).status,'ACTIVE');assert.equal(countRequests(),'1');
