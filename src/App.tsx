@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './lib/supabaseClient';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
@@ -51,8 +51,18 @@ import AppBottomDock from './components/AppBottomDock';
 import { hasEffectivePremiumAccess } from './utils/premiumAccess';
 import { getPostLoginRoute, isPinLockEnabled, isPinOfferSkipped, isPinSessionUnlocked } from './services/pinLockService';
 
-function StagingOliveReview() {
+const oliveReviewPath = '/staging/olive-review';
+const oliveReviewReturnKey = 'potok.staging.olive-review-return';
+const oliveReviewEnabled = import.meta.env.MODE === 'staging-preview' &&
+  import.meta.env.VITE_SUPABASE_URL === 'https://ozidryfvhkcbtpnulakq.supabase.co';
+
+function StagingOliveReview({ onEntered }: { onEntered: () => void }) {
   const [status, setStatus] = useState<'idle' | 'sending' | 'saved' | 'closed' | 'error'>('idle');
+
+  useEffect(() => {
+    sessionStorage.removeItem(oliveReviewReturnKey);
+    onEntered();
+  }, [onEntered]);
 
   async function confirm() {
     if (!supabase || status === 'sending' || status === 'saved' || status === 'closed') return;
@@ -86,6 +96,19 @@ function StagingOliveReview() {
 function AppRoutes() {
   const { authStatus, user } = useAuth();
   const location = useLocation();
+  const onOliveReview = oliveReviewEnabled && location.pathname === oliveReviewPath;
+  const [returnToOliveReview, setReturnToOliveReview] = useState(
+    () => oliveReviewEnabled && sessionStorage.getItem(oliveReviewReturnKey) === '1',
+  );
+
+  const clearOliveReviewReturn = useCallback(() => setReturnToOliveReview(false), []);
+
+  useEffect(() => {
+    const pinReady = isPinLockEnabled() ? isPinSessionUnlocked() : isPinOfferSkipped();
+    if (!onOliveReview || (authStatus === 'authenticated' && pinReady)) return;
+    sessionStorage.setItem(oliveReviewReturnKey, '1');
+    setReturnToOliveReview(true);
+  }, [onOliveReview, authStatus]);
 
   if (authStatus === 'booting') {
     return (
@@ -117,14 +140,18 @@ function AppRoutes() {
     return <Navigate to={getPostLoginRoute()} replace />;
   }
 
+  if (oliveReviewEnabled && returnToOliveReview && authStatus === 'authenticated' &&
+      !onOliveReview && !isPinUnlockRoute && !isPinOfferRoute && !isPinSetupRoute && !isAuthCallbackRoute) {
+    return <Navigate to={oliveReviewPath} replace />;
+  }
+
   return (
     <Routes>
-      {import.meta.env.MODE === 'staging-preview' &&
-        import.meta.env.VITE_SUPABASE_URL === 'https://ozidryfvhkcbtpnulakq.supabase.co' && (
-          <Route path="/staging/olive-review" element={
-            <ProtectedRoute><StagingOliveReview /></ProtectedRoute>
-          } />
-        )}
+      {oliveReviewEnabled && (
+        <Route path={oliveReviewPath} element={
+          <ProtectedRoute><StagingOliveReview onEntered={clearOliveReviewReturn} /></ProtectedRoute>
+        } />
+      )}
       {user && canOpenStagingGenerationCheck(user.id) && (
         <Route path="/staging/generation-check" element={
           <ProtectedRoute><StagingGenerationCheck accountId={user.id} /></ProtectedRoute>
