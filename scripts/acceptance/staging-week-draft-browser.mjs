@@ -27,10 +27,14 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin='http://127.0.
 const browser=await chromium.launch({headless:true,args:['--no-sandbox']});const checks=[];
 try{
   for(const width of [360,393,430]){
-    const context=await browser.newContext({viewport:{width,height:852}});let actor=a;const errors=[],unexpected=[];
+    const context=await browser.newContext({viewport:{width,height:852}});let actor=a, signOutCalls=0;const errors=[],unexpected=[];
     context.on('page',page=>page.on('pageerror',e=>errors.push(e.message)));
     await context.route('https://ozidryfvhkcbtpnulakq.supabase.co/**',route=>{
       if(route.request().method()==='GET'&&route.request().url().endsWith('/auth/v1/user'))return route.fulfill({json:user(actor)});
+      if(route.request().method()==='POST'&&route.request().url().endsWith('/auth/v1/logout?scope=local')){
+        signOutCalls++;
+        return route.fulfill({status:204});
+      }
       unexpected.push(route.request().method()+' '+route.request().url());return route.abort();
     });
     await context.addInitScript(s=>{
@@ -82,7 +86,13 @@ try{
     // Restore A, then sign out in a second tab; currently open recipes must disappear.
     actor=a;await page.evaluate(s=>localStorage.setItem('sb-ozidryfvhkcbtpnulakq-auth-token',JSON.stringify(s)),session(a));await page.reload();
     await page.locator('article').first().waitFor();const other=await context.newPage();await other.goto(origin+'/staging-generator-check.html');
-    await other.evaluate(()=>localStorage.removeItem('sb-ozidryfvhkcbtpnulakq-auth-token'));
+    await other.addScriptTag({path:resolve('node_modules/@supabase/supabase-js/dist/umd/supabase.js')});
+    await other.evaluate(async ()=>{
+      const client=window.supabase.createClient('https://ozidryfvhkcbtpnulakq.supabase.co','sb_publishable_synthetic_test_only');
+      const {error}=await client.auth.signOut({scope:'local'});
+      if(error)throw error;
+    });
+    assert.equal(signOutCalls,1);
     await page.getByText('Для проверки открой POTOK по ссылке выше и войди в тестовый аккаунт на этом же сайте.',{exact:true}).waitFor();
     assert.equal(await page.locator('article').count(),0);await other.close();
     // Corruption is visible and cannot become an active plan or fallback menu.
