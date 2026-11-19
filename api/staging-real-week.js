@@ -878,8 +878,8 @@ function previewRecipeAuthoringWeekV1(catalog, scenario2, referenceMacroTargets)
 var staging_reference_catalog_20261108_default = {
   contract: "potok-staging-reference-catalog-pins-v1",
   originalWorkbookSha256: "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
-  projectedCatalogSha256: "c59ff7ec366070e46f5d76c03d645a77381d189c6e5b3aa3633abab8555362b2",
-  recipes: 132,
+  projectedCatalogSha256: "bd5d4e1dc753bdb9444760c5c2a9a5bd7bd37556c1e68ea4fd90ca0383c2d93c",
+  recipes: 141,
   usage: "AUTHENTICATED_REFERENCE_TEST_ONLY_NO_PUBLICATION"
 };
 
