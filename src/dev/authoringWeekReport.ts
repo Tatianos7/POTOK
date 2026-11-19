@@ -101,7 +101,7 @@ export function decodeAuthoringWeekReport(value: unknown): AuthoringReport {
   });
   if ([...uses.values()].some(count => count > Number(s.maxRecipeUses))) return failure();
   const scope = status === 'REFERENCE_WEEK_PREVIEW' ? label(r.scope) : '';
-  if (scope && !['BEST_EVALUATED_PREFIX', 'BEST_IN_RETAINED_POOL', 'CALORIE_REFINED_REFERENCE_WEEK'].includes(scope)) return failure();
+  if (scope && !['BEST_EVALUATED_PREFIX', 'BEST_IN_RETAINED_POOL', 'CALORIE_REFINED_REFERENCE_WEEK', 'JOINT_NUTRITION_REFERENCE_WEEK', 'CALORIE_FIT_REFERENCE_WEEK'].includes(scope)) return failure();
   return {dailyStapleVariety: s.enforceDailyStapleVariety as true | undefined, status, target, sourceName: label(source.fileName), sourceHash: source.sha256, scope,
     assumptions, notAssessed: r.notAssessed.map(label), days, ...(calorieCorridor ? {calorieCorridor} : {})};
 }

@@ -11,13 +11,14 @@ const rules = [
   ['pasta', /макарон|спагетти|(?:^|[^а-яa-z])паста(?:$|[^а-яa-z])|лапша|соба/u],
   ['potato', /картоф/u], ['lentils', /чечевиц/u], ['beans', /фасол/u],
 ] as const;
+const condimentPaste = /(?:томатн|арахисов|миндальн|орехов|кунжутн|ванильн)\p{L}*[^а-яa-z]+паст\p{L}*|паст\p{L}*[^а-яa-z]+(?:томатн|арахисов|миндальн|орехов|кунжутн|ванильн)\p{L}*/gu;
 export function referenceStapleGroups(recipe: ReferenceStapleRecipe): string[] {
   const texts = [recipe.name, ...(recipe.ingredients ?? []).filter(i => !i.optional).map(i => i.name)]
     .map(s => s.toLocaleLowerCase('ru-RU').replace(/ё/g, 'е'));
   return rules.filter(([group, pattern]) => texts.some(text => {
     // These are not grain side dishes. Green beans are vegetables, not dry beans.
     if (group === 'rice' && /мука|крахмал|масло|молоко|напиток|уксус/u.test(text)) return false;
-    if (group === 'pasta' && /(?:томатная|арахисовая|ореховая|кунжутная) паста|паста (?:томатная|арахисовая|ореховая|кунжутная)/u.test(text)) return false;
+    if (group === 'pasta') return pattern.test(text.replace(condimentPaste,' '));
     if (group === 'beans' && /стручков/u.test(text)) return false;
     return pattern.test(text);
   })).map(([group]) => group);
