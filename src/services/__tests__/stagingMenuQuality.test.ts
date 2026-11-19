@@ -59,6 +59,9 @@ test('culinary groups use literal source ingredients, ignore optional sides and 
   const recipe=(name: string, ingredients: string[]=[])=>({name,ingredients:ingredients.map(name=>({name,optional:false}))});
   assert.deepEqual(referenceStapleGroups(recipe('Гречневая каша')),['buckwheat']);
   assert.deepEqual(referenceStapleGroups(recipe('Йогурт греческий 2%', ['рисовая мука','томатная паста','фасоль стручковая зелёная'])),[]);
+  assert.deepEqual(referenceStapleGroups(recipe('Овсянка с ореховой пастой', ['Арахисовая или миндальная паста'])),['oats']);
+  assert.deepEqual(referenceStapleGroups(recipe('Рисовый пудинг', ['Ванильная паста'])),['rice']);
+  assert.deepEqual(referenceStapleGroups(recipe('Макароны из красной чечевицы')),['pasta','lentils']);
   assert.deepEqual(referenceStapleGroups(recipe('Рагу',['рис бурый длиннозёрный','картофель'])),['rice','potato']);
   assert.equal(referenceDayHasDistinctStaples([recipe('Гречка с грибами'),recipe('Курица',['крупа гречневая'])]),false);
   assert.equal(referenceDayHasDistinctStaples([recipe('Каша',['рис белый']),recipe('Плов',['рис бурый'])]),false);
@@ -91,4 +94,38 @@ test('client rechecks daily staple diversity and retains the rule through draft 
   // Source ingredient text is unchanged by numerical report-link checks; the independent rule must still reject it.
   for(const r of raw.catalog.recipes.slice(0,2))r.ingredients[0].ingredient_name_ru='крупа гречневая';
   assert.throws(()=>decodeStagingRealWeek(raw),/REFERENCE_DAILY_STAPLE_REPEAT/);
+});
+
+test('manual and saved-goal searches can build a week when the calorie shortlist has no valid day',()=>{
+  const input=authoringSearchInput(decodeAuthoringRecipeCatalog(referenceWeekFixture(2000).catalog));
+  const settings={contract:'potok-authoring-week-scenario-v1' as const,enforceDailyStapleVariety:true as const,
+    weekStart:'2026-11-09',dailyCalorieTarget:2000,tolerancePercent:10,
+    slots:['Завтрак','Обед','Ужин','Перекус'].map(label=>({label,sourceCategories:['LUNCH'],targetSharePercent:25})),
+    rankedCandidatePoolSize:1,shortlistPerSlot:1,dayPoolSize:4,maxDayEvaluations:256,maxWeekEvaluations:1024,maxRecipeUses:2};
+  const categoryNames=['BREAKFAST','LUNCH','LUNCH','SNACK'];
+  input.recipes=input.recipes.slice(0,15);
+  input.recipes.forEach((recipe,index)=>{
+    recipe.sourceRecipe.meal_type_primary=index<4?'BREAKFAST':index<11?'LUNCH':'SNACK';
+  });
+  settings.slots.forEach((slot,index)=>{slot.sourceCategories=[categoryNames[index]];});
+  const manual=decodeAuthoringWeekReport(constrainReferenceWeekToCorridorV1(previewRecipeAuthoringWeekV1(input,settings)));
+  assert.equal(manual.scope,'CALORIE_FIT_REFERENCE_WEEK');
+  assert.equal(manual.days.length,7);
+  assert.ok(manual.days.every(day=>day.referenceNutrition.calories===2000));
+  const goal={protein:80,fat:40,carbs:200};
+  const raw=previewRecipeAuthoringWeekV1(input,settings,goal);
+  const report=decodeAuthoringWeekReport(constrainReferenceWeekToCorridorV1(raw));
+  assert.equal(report.scope,'JOINT_NUTRITION_REFERENCE_WEEK');
+  assert.ok('jointMacroSearch' in raw && raw.jointMacroSearch?.wholeWeekRebuilt);
+  assert.equal(report.days.length,7);
+  const uses=new Map<string,number>();
+  for(const day of report.days){
+    assert.deepEqual(day.referenceNutrition,{calories:2000,protein:80,fat:40,carbs:200,fiber:16});
+    for(const meal of day.meals){
+      assert.equal(meal.assignedSourceServings,1);
+      uses.set(meal.recipeId,(uses.get(meal.recipeId)??0)+1);
+    }
+  }
+  assert.ok([...uses.values()].every(count=>count<=2));
+  assert.equal(previewRecipeAuthoringWeekV1(input,settings,{...goal,protein:100}).days.length,0);
 });

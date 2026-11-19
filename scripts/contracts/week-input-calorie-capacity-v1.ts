@@ -7,7 +7,7 @@ function invalid():never{throw Error('INVALID_WEEK_INPUT_CALORIE_CAPACITY');}
 function minor3(s:unknown){if(typeof s!=='string'||!/^(0|[1-9][0-9]{0,5})(\.[0-9]{1,8})?$/.test(s))invalid();return BigInt(Math.round(Number(s)*1000));}
 const fixed=(n:bigint)=>String(n/1000n)+'.'+String(n%1000n).padStart(3,'0');
 export function analyzeWeekInputCalorieCapacityV1(recipes:CapacityRecipeV1[],s:CapacityScenarioV1){
- if(!Array.isArray(recipes)||recipes.length>128||new Set(recipes.map(r=>r.recipeId)).size!==recipes.length
+ if(!Array.isArray(recipes)||recipes.length>160||new Set(recipes.map(r=>r.recipeId)).size!==recipes.length
  ||recipes.some(r=>typeof r.recipeId!=='string'||!r.recipeId||typeof r.sourceCategory!=='string'||!r.sourceCategory)
  ||!Number.isInteger(s.dailyCalorieTarget)||s.dailyCalorieTarget<1||s.dailyCalorieTarget>10000||!Number.isInteger(s.tolerancePercent)||s.tolerancePercent<0||s.tolerancePercent>50
  ||!Number.isInteger(s.maxRecipeUses)||s.maxRecipeUses<1||s.maxRecipeUses>7||!Array.isArray(s.slots)||s.slots.length<1||s.slots.length>7
