@@ -1,7 +1,7 @@
 import {
   createStagingFoodEvidenceReviewGatewayV1,
   foodEvidenceStagingOriginV1,
-} from '../src/server/foodEvidenceReviewGatewayV1';
+} from '../src/server/foodEvidenceReviewGatewayV1.js';
 
 function unavailable(): Response {
   return Response.json({ error: 'FOOD_EVIDENCE_REVIEW_UNAVAILABLE' }, {

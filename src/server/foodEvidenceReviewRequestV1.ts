@@ -1,7 +1,7 @@
-import { assertRawJsonWithoutDuplicateKeysV1, canonicalJsonV1, adaptiveNutritionSha256HexV1 } from '../utils/adaptiveNutritionWireV1';
+import { assertRawJsonWithoutDuplicateKeysV1, canonicalJsonV1, adaptiveNutritionSha256HexV1 } from '../utils/adaptiveNutritionWireV1.js';
 import { assertFoodEvidenceDecimalV1, decodeRetainedFoodSourceSnapshotRawV1,
   type FoodApplicabilityV1, type FoodEvidenceTargetV1, type RetainedFoodSourceSnapshotV1,
-  type ReviewedFoodIdentitySnapshotV1, type ReviewedFoodNutritionV1 } from '../utils/foodReviewedEvidenceV1';
+  type ReviewedFoodIdentitySnapshotV1, type ReviewedFoodNutritionV1 } from '../utils/foodReviewedEvidenceV1.js';
 
 // New server INPUT domains. The three Phase 1 artifact domains remain unchanged.
 export const foodEvidenceRequestContractV1 = 'potok-food-evidence-review-request-v1' as const;
