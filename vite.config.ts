@@ -12,7 +12,10 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       input: {
         main: './index.html',
-        ...(mode === 'staging-preview' ? { stagingGenerationCheck: './staging-generator-check.html' } : {}),
+        ...(mode === 'staging-preview' ? {
+          stagingGenerationCheck: './staging-generator-check.html',
+          stagingCatalogAccessCheck: './staging-catalog-access-check.html',
+        } : {}),
       },
     },
   },

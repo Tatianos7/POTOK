@@ -1,0 +1,464 @@
+[
+  {
+    "request": {
+      "contract": "potok-food-evidence-review-request-v1",
+      "kind": "REVIEW_APPROVED",
+      "idempotencyReference": "9651918e-eec0-47af-a7d3-f525aac5ff74",
+      "expectedHead": null,
+      "proposal": {
+        "contract": "potok-canonical-food-review-proposal-v1",
+        "canonicalFoodId": "a7a2fb25-c504-4c8a-8dd2-d63aaf609a48",
+        "foodStableId": "egg_hard_boiled_chicken",
+        "source": "core",
+        "foodState": "cooked",
+        "applicability": {
+          "kind": "EXACT_FOOD_STATE",
+          "foodState": "cooked"
+        },
+        "sharedCatalogAccessible": true,
+        "identitySnapshot": {
+          "name": "Яйцо куриное вареное вкрутую",
+          "brand": null,
+          "aliases": [],
+          "barcode": null,
+          "nameOriginal": null,
+          "normalizedName": "яйцо куриное вареное вкрутую",
+          "normalizedBrand": null
+        }
+      },
+      "proposalDigest": "dd12aecf9e91663b250968faa7cb9c90a80d5171e330117fc39497060c15c1a2",
+      "retainedSource": {
+        "sourceArtifactId": "4ff748f4-12df-4556-b778-dda4de0562fc",
+        "providerIdentity": "USDA Agricultural Research Service",
+        "documentIdentity": "SR28 NDB 01129, edible boiled weight",
+        "sourceRevision": "SR28 (2015)",
+        "locator": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/reports/sr28fg01.pdf#page=384",
+        "capturedAt": "2026-11-21T14:13:19.842Z",
+        "mediaType": "text/plain; charset=utf-8",
+        "byteLength": 844,
+        "sourceBytesSha256": "8673cd171fc09fb70b1324f085c54eae0b145ad4c0067afa96a6568ad6fbec06",
+        "mappings": [
+          {
+            "field": "identitySnapshot",
+            "sourceField": "SR28 NDB 01129, edible boiled weight",
+            "applicability": {
+              "kind": "EXACT_FOOD_STATE",
+              "foodState": "cooked"
+            }
+          }
+        ],
+        "text": "Official source: USDA National Nutrient Database for Standard Reference, Release 28 (2015).\nURL: https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/reports/sr28fg01.pdf\nBasis for both records: 100 grams edible portion, excluding shell.\nPDF page 402 (one-based): NDB 01123, Egg, whole, raw, fresh.\nEnergy kcal: 143; protein g: 12.56; fat g: 9.51; carbohydrate by difference g: 0.72; fiber g: 0.0.\nPDF page 384 (one-based): NDB 01129, Egg, whole, cooked, hard-boiled.\nEnergy kcal: 155; protein g: 12.58; fat g: 10.61; carbohydrate by difference g: 1.12; fiber g: 0.0.\nChecked directly against official PDF Mean columns on 2026-10-31.\nDifferent raw/cooked reference vectors are not interchangeable. These are source facts, not a cooking conversion factor, measured mass for two eggs, retail-product approval or recipe nutrition revision.\n"
+      }
+    },
+    "numericInput": {
+      "contract": "potok-exact-nutrition-numeric-input-v2",
+      "encoding": "potok-exact-nutrition-canonical-json-v2",
+      "reference": {
+        "sourceRecord": "SR28 NDB 01129, edible boiled weight",
+        "declaredRetainedArtifactSha256": "8673cd171fc09fb70b1324f085c54eae0b145ad4c0067afa96a6568ad6fbec06",
+        "basis": "PER_100_G_EDIBLE",
+        "units": {
+          "calories": "kcal",
+          "protein": "g",
+          "fat": "g",
+          "carbs": "g",
+          "fiber": "g"
+        },
+        "carbohydrateSemantics": "AVAILABLE_EXCLUDING_FIBER",
+        "mappingPolicyRef": "Same-record total carbohydrate minus dietary fiber"
+      },
+      "mappedDecimalText": {
+        "calories": "155",
+        "protein": "12.58",
+        "fat": "10.61",
+        "carbs": "1.12",
+        "fiber": "0.0"
+      },
+      "values": {
+        "calories": {
+          "numerator": "155",
+          "denominator": "1"
+        },
+        "protein": {
+          "numerator": "629",
+          "denominator": "50"
+        },
+        "fat": {
+          "numerator": "1061",
+          "denominator": "100"
+        },
+        "carbs": {
+          "numerator": "28",
+          "denominator": "25"
+        },
+        "fiber": {
+          "numerator": "0",
+          "denominator": "1"
+        }
+      }
+    },
+    "nutritionOperationId": "3284f44b-4b49-4884-8906-bd4ed03e377c",
+    "nutritionSource": {
+      "sourceArtifactId": "6bdaf74c-b39c-43cb-a65f-601529b08e8f",
+      "providerIdentity": "USDA Agricultural Research Service",
+      "documentIdentity": "SR28 NDB 01129, edible boiled weight",
+      "sourceRevision": "SR28 (2015)",
+      "locator": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/reports/sr28fg01.pdf#page=384",
+      "capturedAt": "2026-11-21T14:13:19.842Z",
+      "mediaType": "text/plain; charset=utf-8",
+      "byteLength": 844,
+      "sourceBytesSha256": "8673cd171fc09fb70b1324f085c54eae0b145ad4c0067afa96a6568ad6fbec06",
+      "mappings": [
+        {
+          "field": "calories",
+          "sourceField": "Energy (kcal)",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "cooked"
+          }
+        },
+        {
+          "field": "protein",
+          "sourceField": "Protein",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "cooked"
+          }
+        },
+        {
+          "field": "fat",
+          "sourceField": "Total lipid (fat)",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "cooked"
+          }
+        },
+        {
+          "field": "carbs",
+          "sourceField": "Carbohydrate by difference less dietary fiber",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "cooked"
+          }
+        },
+        {
+          "field": "fiber",
+          "sourceField": "Total dietary fiber",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "cooked"
+          }
+        }
+      ],
+      "text": "Official source: USDA National Nutrient Database for Standard Reference, Release 28 (2015).\nURL: https://www.ars.usda.gov/ARSUserFiles/80400525/Data/SR/SR28/reports/sr28fg01.pdf\nBasis for both records: 100 grams edible portion, excluding shell.\nPDF page 402 (one-based): NDB 01123, Egg, whole, raw, fresh.\nEnergy kcal: 143; protein g: 12.56; fat g: 9.51; carbohydrate by difference g: 0.72; fiber g: 0.0.\nPDF page 384 (one-based): NDB 01129, Egg, whole, cooked, hard-boiled.\nEnergy kcal: 155; protein g: 12.58; fat g: 10.61; carbohydrate by difference g: 1.12; fiber g: 0.0.\nChecked directly against official PDF Mean columns on 2026-10-31.\nDifferent raw/cooked reference vectors are not interchangeable. These are source facts, not a cooking conversion factor, measured mass for two eggs, retail-product approval or recipe nutrition revision.\n"
+    }
+  },
+  {
+    "request": {
+      "contract": "potok-food-evidence-review-request-v1",
+      "kind": "REVIEW_APPROVED",
+      "idempotencyReference": "2157fdac-f7e8-4380-9fd4-b2361dcf45bb",
+      "expectedHead": null,
+      "proposal": {
+        "contract": "potok-canonical-food-review-proposal-v1",
+        "canonicalFoodId": "95faacb7-645c-4416-b258-1527e83bf2a5",
+        "foodStableId": "s4_generic_whole_wheat_bread",
+        "source": "core",
+        "foodState": "as-sold",
+        "applicability": {
+          "kind": "EXACT_FOOD_STATE",
+          "foodState": "as-sold"
+        },
+        "sharedCatalogAccessible": true,
+        "identitySnapshot": {
+          "name": "Хлеб пшеничный цельнозерновой",
+          "brand": null,
+          "aliases": [],
+          "barcode": null,
+          "nameOriginal": null,
+          "normalizedName": "хлеб пшеничный цельнозерновой",
+          "normalizedBrand": null
+        }
+      },
+      "proposalDigest": "7e5da938800913570305fcf561dea91d4fe821b573aa5eac4eaff767cf739dca",
+      "retainedSource": {
+        "sourceArtifactId": "db43ff76-e872-4028-840a-b2654a9e3561",
+        "providerIdentity": "USDA Agricultural Research Service",
+        "documentIdentity": "FDC 172688",
+        "sourceRevision": "SR Legacy",
+        "locator": "https://fdc.nal.usda.gov/food-details/172688/nutrients",
+        "capturedAt": "2026-11-21T14:13:19.847Z",
+        "mediaType": "text/plain; charset=utf-8",
+        "byteLength": 183,
+        "sourceBytesSha256": "59e69e75522b7e39345b8da1b3e1270470bcb9d9449f5c5b63d3f24819f39e11",
+        "mappings": [
+          {
+            "field": "identitySnapshot",
+            "sourceField": "FDC 172688",
+            "applicability": {
+              "kind": "EXACT_FOOD_STATE",
+              "foodState": "as-sold"
+            }
+          }
+        ],
+        "text": "USDA FDC SR Legacy 172688, Bread, whole-wheat, commercially prepared. Per 100 g: energy 252 kcal, protein 12.45 g, fat 3.50 g, carbohydrate by difference 42.71 g, dietary fiber 6.0 g."
+      }
+    },
+    "numericInput": {
+      "contract": "potok-exact-nutrition-numeric-input-v2",
+      "encoding": "potok-exact-nutrition-canonical-json-v2",
+      "reference": {
+        "sourceRecord": "FDC 172688",
+        "declaredRetainedArtifactSha256": "59e69e75522b7e39345b8da1b3e1270470bcb9d9449f5c5b63d3f24819f39e11",
+        "basis": "PER_100_G_EDIBLE",
+        "units": {
+          "calories": "kcal",
+          "protein": "g",
+          "fat": "g",
+          "carbs": "g",
+          "fiber": "g"
+        },
+        "carbohydrateSemantics": "AVAILABLE_EXCLUDING_FIBER",
+        "mappingPolicyRef": "Same-record total carbohydrate minus dietary fiber"
+      },
+      "mappedDecimalText": {
+        "calories": "252",
+        "protein": "12.45",
+        "fat": "3.50",
+        "carbs": "36.71",
+        "fiber": "6.0"
+      },
+      "values": {
+        "calories": {
+          "numerator": "252",
+          "denominator": "1"
+        },
+        "protein": {
+          "numerator": "249",
+          "denominator": "20"
+        },
+        "fat": {
+          "numerator": "7",
+          "denominator": "2"
+        },
+        "carbs": {
+          "numerator": "3671",
+          "denominator": "100"
+        },
+        "fiber": {
+          "numerator": "6",
+          "denominator": "1"
+        }
+      }
+    },
+    "nutritionOperationId": "a6b3cd6e-81a4-4c99-afcf-27745fd881cf",
+    "nutritionSource": {
+      "sourceArtifactId": "a4bdeb47-4233-4c3e-b317-01a4dcfb577f",
+      "providerIdentity": "USDA Agricultural Research Service",
+      "documentIdentity": "FDC 172688",
+      "sourceRevision": "SR Legacy",
+      "locator": "https://fdc.nal.usda.gov/food-details/172688/nutrients",
+      "capturedAt": "2026-11-21T14:13:19.847Z",
+      "mediaType": "text/plain; charset=utf-8",
+      "byteLength": 183,
+      "sourceBytesSha256": "59e69e75522b7e39345b8da1b3e1270470bcb9d9449f5c5b63d3f24819f39e11",
+      "mappings": [
+        {
+          "field": "calories",
+          "sourceField": "Energy (kcal)",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "as-sold"
+          }
+        },
+        {
+          "field": "protein",
+          "sourceField": "Protein",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "as-sold"
+          }
+        },
+        {
+          "field": "fat",
+          "sourceField": "Total lipid (fat)",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "as-sold"
+          }
+        },
+        {
+          "field": "carbs",
+          "sourceField": "Carbohydrate by difference less dietary fiber",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "as-sold"
+          }
+        },
+        {
+          "field": "fiber",
+          "sourceField": "Total dietary fiber",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "as-sold"
+          }
+        }
+      ],
+      "text": "USDA FDC SR Legacy 172688, Bread, whole-wheat, commercially prepared. Per 100 g: energy 252 kcal, protein 12.45 g, fat 3.50 g, carbohydrate by difference 42.71 g, dietary fiber 6.0 g."
+    }
+  },
+  {
+    "request": {
+      "contract": "potok-food-evidence-review-request-v1",
+      "kind": "REVIEW_APPROVED",
+      "idempotencyReference": "a8115d6f-9195-4e43-aa92-68ed1c1c5eec",
+      "expectedHead": null,
+      "proposal": {
+        "contract": "potok-canonical-food-review-proposal-v1",
+        "canonicalFoodId": "816857b4-d831-4be6-8ff3-7f8468355d04",
+        "foodStableId": "cucumber",
+        "source": "core",
+        "foodState": "raw",
+        "applicability": {
+          "kind": "EXACT_FOOD_STATE",
+          "foodState": "raw"
+        },
+        "sharedCatalogAccessible": true,
+        "identitySnapshot": {
+          "name": "Огурец",
+          "brand": null,
+          "aliases": [],
+          "barcode": null,
+          "nameOriginal": null,
+          "normalizedName": "огурец",
+          "normalizedBrand": null
+        }
+      },
+      "proposalDigest": "1c5e7453fa2585ce379caff0493b81ddbbed982117d8ff57452b59f6cdc0eee2",
+      "retainedSource": {
+        "sourceArtifactId": "3e4471a6-4866-4757-b3b4-e71c0ae7a6f0",
+        "providerIdentity": "USDA Agricultural Research Service",
+        "documentIdentity": "SR28 NDB 11205, cucumber with peel, raw",
+        "sourceRevision": "SR28 (2015)",
+        "locator": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf#page=713",
+        "capturedAt": "2026-11-21T14:13:19.848Z",
+        "mediaType": "text/plain; charset=utf-8",
+        "byteLength": 698,
+        "sourceBytesSha256": "aa9e50e0b0d285327c6c7be21bf0b8357c740291e3474d8fbff64a6792025ad6",
+        "mappings": [
+          {
+            "field": "identitySnapshot",
+            "sourceField": "SR28 NDB 11205, cucumber with peel, raw",
+            "applicability": {
+              "kind": "EXACT_FOOD_STATE",
+              "foodState": "raw"
+            }
+          }
+        ],
+        "text": "USDA ARS, Standard Reference Release 28 (2015). NDB 11205: Cucumber, with peel, raw.\nPDF page 713, Mean column, per 100 g edible source portion.\nEnergy 15 kcal; protein 0.65 g; fat 0.11 g; carbohydrate by difference 3.63 g; total dietary fiber 0.5 g.\nThese are source edible-portion facts; refuse percentages must not be deducted again from recipe edible input grams.\nURL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf\nRetrieved and visually checked 2026-11-04. Upstream SHA-256: ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161.\nFactual source capture only; not POTOK approval, FDC-ID crosswalk, retail-product binding or cooked recipe evidence.\n"
+      }
+    },
+    "numericInput": {
+      "contract": "potok-exact-nutrition-numeric-input-v2",
+      "encoding": "potok-exact-nutrition-canonical-json-v2",
+      "reference": {
+        "sourceRecord": "SR28 NDB 11205, cucumber with peel, raw",
+        "declaredRetainedArtifactSha256": "aa9e50e0b0d285327c6c7be21bf0b8357c740291e3474d8fbff64a6792025ad6",
+        "basis": "PER_100_G_EDIBLE",
+        "units": {
+          "calories": "kcal",
+          "protein": "g",
+          "fat": "g",
+          "carbs": "g",
+          "fiber": "g"
+        },
+        "carbohydrateSemantics": "AVAILABLE_EXCLUDING_FIBER",
+        "mappingPolicyRef": "Same-record carbohydrate by difference minus dietary fiber"
+      },
+      "mappedDecimalText": {
+        "calories": "15",
+        "protein": "0.65",
+        "fat": "0.11",
+        "carbs": "3.13",
+        "fiber": "0.5"
+      },
+      "values": {
+        "calories": {
+          "numerator": "15",
+          "denominator": "1"
+        },
+        "protein": {
+          "numerator": "13",
+          "denominator": "20"
+        },
+        "fat": {
+          "numerator": "11",
+          "denominator": "100"
+        },
+        "carbs": {
+          "numerator": "313",
+          "denominator": "100"
+        },
+        "fiber": {
+          "numerator": "1",
+          "denominator": "2"
+        }
+      }
+    },
+    "nutritionOperationId": "e0c57495-1ea1-4a64-ae25-6f12475f5c28",
+    "nutritionSource": {
+      "sourceArtifactId": "256c8621-d8fd-48a0-962b-87fb5e82f4d9",
+      "providerIdentity": "USDA Agricultural Research Service",
+      "documentIdentity": "SR28 NDB 11205, cucumber with peel, raw",
+      "sourceRevision": "SR28 (2015)",
+      "locator": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf#page=713",
+      "capturedAt": "2026-11-21T14:13:19.848Z",
+      "mediaType": "text/plain; charset=utf-8",
+      "byteLength": 698,
+      "sourceBytesSha256": "aa9e50e0b0d285327c6c7be21bf0b8357c740291e3474d8fbff64a6792025ad6",
+      "mappings": [
+        {
+          "field": "calories",
+          "sourceField": "Energy (kcal)",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "raw"
+          }
+        },
+        {
+          "field": "protein",
+          "sourceField": "Protein",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "raw"
+          }
+        },
+        {
+          "field": "fat",
+          "sourceField": "Total lipid (fat)",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "raw"
+          }
+        },
+        {
+          "field": "carbs",
+          "sourceField": "Carbohydrate by difference less dietary fiber",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "raw"
+          }
+        },
+        {
+          "field": "fiber",
+          "sourceField": "Total dietary fiber",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "raw"
+          }
+        }
+      ],
+      "text": "USDA ARS, Standard Reference Release 28 (2015). NDB 11205: Cucumber, with peel, raw.\nPDF page 713, Mean column, per 100 g edible source portion.\nEnergy 15 kcal; protein 0.65 g; fat 0.11 g; carbohydrate by difference 3.63 g; total dietary fiber 0.5 g.\nThese are source edible-portion facts; refuse percentages must not be deducted again from recipe edible input grams.\nURL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf\nRetrieved and visually checked 2026-11-04. Upstream SHA-256: ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161.\nFactual source capture only; not POTOK approval, FDC-ID crosswalk, retail-product binding or cooked recipe evidence.\n"
+    }
+  }
+]

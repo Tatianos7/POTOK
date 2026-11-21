@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>POTOK · Проверка прав в Staging</title>
+    <style>
+      body { font: 1.05rem/1.5 system-ui, sans-serif; color: #17312a; background: #f4faf7; }
+      main { max-width: 34rem; margin: 8vh auto; padding: 1rem; }
+      button, a { display: inline-block; margin: .4rem .8rem .4rem 0; padding: .7rem 1rem; font: inherit; }
+      button { background: #125943; color: white; border: 0; border-radius: .6rem; }
+      button:disabled { opacity: .55; }
+      a { color: #125943; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Проверка прав в Staging</h1>
+      <p>Войди в тестовый POTOK в этом браузере, затем вернись на эту страницу.</p>
+      <a href="/" target="_blank" rel="noopener">Открыть тестовый POTOK</a>
+      <button id="check" type="button" disabled>Проверить права</button>
+      <p id="result" role="status"></p>
+      <section id="recipe-review" hidden>
+        <h2>Рецепт №27</h2>
+        <p>Варёное яйцо, цельнозерновой хлеб и сырой огурец с кожурой.</p>
+        <button id="approve-cards" type="button">Утвердить три карточки</button>
+        <button id="approve-nutrition" type="button" disabled>Сохранить КБЖУ трёх продуктов</button>
+        <p id="recipe-review-result" role="status"></p>
+      </section>
+    </main>
+    <script type="module" src="/src/stagingCatalogAccessCheckMain.ts"></script>
+  </body>
+</html>

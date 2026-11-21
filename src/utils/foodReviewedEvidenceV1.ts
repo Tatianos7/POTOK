@@ -1,4 +1,4 @@
-import { assertRawJsonWithoutDuplicateKeysV1, canonicalJsonV1, adaptiveNutritionSha256HexV1 } from './adaptiveNutritionWireV1';
+import { assertRawJsonWithoutDuplicateKeysV1, canonicalJsonV1, adaptiveNutritionSha256HexV1 } from './adaptiveNutritionWireV1.js';
 import type { GraphFoodStateV1 } from './adaptiveNutritionGraphV1';
 
 export const canonicalFoodReviewedRevisionContractV1 = 'potok-canonical-food-reviewed-revision-v1' as const;

@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { canonicalJsonV1 } from '../utils/adaptiveNutritionWireV1';
+import { canonicalJsonV1 } from '../utils/adaptiveNutritionWireV1.js';
 import { decodeCanonicalFoodReviewedRevisionRawV1, decodeNutritionReviewedRevisionRawV1,
-  decodeFoodEvidenceReviewEventRawV1, type CanonicalFoodReviewedRevisionV1, type NutritionReviewedRevisionV1 } from '../utils/foodReviewedEvidenceV1';
+  decodeFoodEvidenceReviewEventRawV1, type CanonicalFoodReviewedRevisionV1, type NutritionReviewedRevisionV1 } from '../utils/foodReviewedEvidenceV1.js';
 import { decodeFoodEvidenceReviewRequestRawV1, foodEvidenceRequestDigestRawV1,
-  foodEvidenceRequestMaxBytesV1, type FoodEvidenceReviewRequestV1 } from './foodEvidenceReviewRequestV1';
+  foodEvidenceRequestMaxBytesV1, type FoodEvidenceReviewRequestV1 } from './foodEvidenceReviewRequestV1.js';
 
 export const foodEvidenceStagingOriginV1 = 'https://ozidryfvhkcbtpnulakq.supabase.co';
 export interface FoodEvidenceUserClientV1 {
