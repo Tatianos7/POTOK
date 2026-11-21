@@ -1,5 +1,6 @@
 import { supabase } from './lib/supabaseClient';
-import saltReviewRequest from './stagingSaltReviewRequest.json';
+import { verifyExactFoodNutritionReceiptV2 } from './server/exactFoodNutritionReviewGatewayV2';
+import saltNutritionRequest from './stagingSaltNutritionRequest.json';
 
 const button = document.querySelector<HTMLButtonElement>('#check');
 const result = document.querySelector<HTMLParagraphElement>('#result');
@@ -57,25 +58,15 @@ if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
           return;
         }
 
-        const response = await fetch('/api/staging-food-evidence-review', {
-          method: 'POST',
-          credentials: 'same-origin',
-          redirect: 'error',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(saltReviewRequest),
-        });
-        const receipt = await response.json().catch(() => null);
-        if (response.ok && receipt?.contract === 'potok-food-evidence-review-receipt-v1'
-          && receipt.event?.idempotencyReference === saltReviewRequest.idempotencyReference
-          && receipt.revision?.canonicalFoodId === saltReviewRequest.proposal.canonicalFoodId) {
-          saltResult.textContent = 'Сервер подтвердил утверждение поваренной соли.';
+        const raw = JSON.stringify(saltNutritionRequest);
+        const { data, error } = await client.rpc('food_nutrition_review_v2', { p_request_text: raw });
+        if (!error) {
+          await verifyExactFoodNutritionReceiptV2(raw, session.user.id, data);
+          saltResult.textContent = 'Сервер подтвердил сохранение КБЖУ поваренной соли.';
           return;
         }
 
-        saltResult.textContent = response.status === 401 || response.status === 403
+        saltResult.textContent = error.code === '42501' || error.code === 'PGRST301'
           ? 'Сервер отказал. Проверь, что вход выполнен под действующим администратором Staging.'
           : 'Сервер не подтвердил запись. Сообщи этот результат для проверки журнала.';
       } catch {
