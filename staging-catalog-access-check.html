@@ -21,11 +21,12 @@
       <a href="/" target="_blank" rel="noopener">Открыть тестовый POTOK</a>
       <button id="check" type="button" disabled>Проверить права</button>
       <p id="result" role="status"></p>
-      <section id="salt-review" hidden>
-        <h2>КБЖУ поваренной соли</h2>
-        <p>Сохраняем в Staging данные на 100 г из USDA SR28 №02047. Калорийность, белки, жиры, углеводы и клетчатка равны нулю.</p>
-        <button id="approve-salt" type="button">Сохранить КБЖУ в Staging</button>
-        <p id="salt-review-result" role="status"></p>
+      <section id="recipe-review" hidden>
+        <h2>Рецепт №27</h2>
+        <p>Варёное яйцо, цельнозерновой хлеб и сырой огурец с кожурой.</p>
+        <button id="approve-cards" type="button">Утвердить три карточки</button>
+        <button id="approve-nutrition" type="button" disabled>Сохранить КБЖУ трёх продуктов</button>
+        <p id="recipe-review-result" role="status"></p>
       </section>
     </main>
     <script type="module" src="/src/stagingCatalogAccessCheckMain.ts"></script>

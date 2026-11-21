@@ -1,12 +1,16 @@
 import { supabase } from './lib/supabaseClient';
+import { verifyFoodEvidenceReceiptV1 } from './server/foodEvidenceReviewGatewayV1';
+import { decodeFoodEvidenceReviewRequestRawV1 } from './server/foodEvidenceReviewRequestV1';
 import { verifyExactFoodNutritionReceiptV2 } from './server/exactFoodNutritionReviewGatewayV2';
-import saltNutritionRequest from './stagingSaltNutritionRequest.json';
+import { exactFoodNutritionRequestContractV2 } from './server/exactFoodNutritionReviewRequestV2';
+import { prepareStagingRecipe27Nutrition, stagingRecipe27ReviewBatch } from './server/stagingRecipe27ReviewBatch';
 
 const button = document.querySelector<HTMLButtonElement>('#check');
 const result = document.querySelector<HTMLParagraphElement>('#result');
-const saltReview = document.querySelector<HTMLElement>('#salt-review');
-const approveSalt = document.querySelector<HTMLButtonElement>('#approve-salt');
-const saltResult = document.querySelector<HTMLParagraphElement>('#salt-review-result');
+const recipeReview = document.querySelector<HTMLElement>('#recipe-review');
+const approveCards = document.querySelector<HTMLButtonElement>('#approve-cards');
+const approveNutrition = document.querySelector<HTMLButtonElement>('#approve-nutrition');
+const recipeResult = document.querySelector<HTMLParagraphElement>('#recipe-review-result');
 const stagingUrl = 'https://ozidryfvhkcbtpnulakq.supabase.co';
 
 if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
@@ -16,7 +20,7 @@ if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
   button.disabled = false;
   button.addEventListener('click', async () => {
     button.disabled = true;
-    if (saltReview) saltReview.hidden = true;
+    if (recipeReview) recipeReview.hidden = true;
     result.textContent = 'Проверяем…';
 
     try {
@@ -30,7 +34,7 @@ if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
       const { error } = await client.rpc('food_evidence_review_v1', { p_request_text: '{}' });
       if (error?.code === '22023' && error.message === 'EVENT_VARIANT_INVALID') {
         result.textContent = 'Право администратора подтверждено. Данные каталога не менялись.';
-        if (saltReview) saltReview.hidden = false;
+        if (recipeReview) recipeReview.hidden = false;
       } else if (error?.code === '42501' && error.message === 'VERIFIED_ADMIN_REQUIRED') {
         result.textContent = 'Обычный аккаунт. Сервер отказал в утверждении продуктов.';
       } else if (error?.code === 'PGRST301' || (error?.code === '42501'
@@ -46,31 +50,56 @@ if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
     }
   });
 
-  if (approveSalt && saltResult) {
-    approveSalt.addEventListener('click', async () => {
-      approveSalt.disabled = true;
-      saltResult.textContent = 'Отправляем запрос…';
-
+  if (approveCards && approveNutrition && recipeResult) {
+    let canonicalRows: Array<{ canonicalFoodId: string; digest: string }> = [];
+    approveCards.addEventListener('click', async () => {
+      approveCards.disabled = true;
+      approveNutrition.disabled = true;
+      canonicalRows = [];
+      recipeResult.textContent = 'Утверждаем карточки…';
       try {
         const { data: { session } } = await client.auth.getSession();
-        if (!session) {
-          saltResult.textContent = 'Войди в тестовый POTOK и проверь права ещё раз.';
-          return;
+        if (!session) throw Error('AUTH_REQUIRED');
+        for (const item of stagingRecipe27ReviewBatch) {
+          const raw = JSON.stringify(item.request);
+          const { data, error } = await client.rpc('food_evidence_review_v1', { p_request_text: raw });
+          if (error) throw error;
+          await verifyFoodEvidenceReceiptV1(await decodeFoodEvidenceReviewRequestRawV1(raw), session.user.id, data);
+          canonicalRows.push(data.revision);
         }
-
-        const raw = JSON.stringify(saltNutritionRequest);
-        const { data, error } = await client.rpc('food_nutrition_review_v2', { p_request_text: raw });
-        if (!error) {
-          await verifyExactFoodNutritionReceiptV2(raw, session.user.id, data);
-          saltResult.textContent = 'Сервер подтвердил сохранение КБЖУ поваренной соли.';
-          return;
-        }
-
-        saltResult.textContent = error.code === '42501' || error.code === 'PGRST301'
-          ? 'Сервер отказал. Проверь, что вход выполнен под действующим администратором Staging.'
-          : 'Сервер не подтвердил запись. Сообщи этот результат для проверки журнала.';
+        recipeResult.textContent = 'Три карточки утверждены. Сообщи об этом, чтобы подготовить сохранение КБЖУ.';
+        approveNutrition.disabled = false;
       } catch {
-        saltResult.textContent = 'Ответ сервера не получен. Сообщи этот результат для проверки журнала.';
+        recipeResult.textContent = `Сервер подтвердил ${canonicalRows.length} из трёх карточек. Сообщи результат для сверки.`;
+        approveCards.disabled = false;
+      }
+    });
+
+    approveNutrition.addEventListener('click', async () => {
+      approveNutrition.disabled = true;
+      recipeResult.textContent = 'Сохраняем КБЖУ…';
+      let saved = 0;
+      try {
+        const { data: { session } } = await client.auth.getSession();
+        if (!session || canonicalRows.length !== stagingRecipe27ReviewBatch.length) throw Error('RECIPE_27_CARDS_REQUIRED');
+        for (const [index, item] of stagingRecipe27ReviewBatch.entries()) {
+          const { proposal } = await prepareStagingRecipe27Nutrition(item, canonicalRows[index]);
+          const raw = JSON.stringify({
+            contract: exactFoodNutritionRequestContractV2,
+            kind: 'REVIEW_APPROVED',
+            idempotencyReference: item.nutritionOperationId,
+            sourceProposalDigest: proposal.digest,
+            expectedHead: null,
+          });
+          const { data, error } = await client.rpc('food_nutrition_review_v2', { p_request_text: raw });
+          if (error) throw error;
+          await verifyExactFoodNutritionReceiptV2(raw, session.user.id, data);
+          saved++;
+        }
+        recipeResult.textContent = 'КБЖУ трёх продуктов сохранены в Staging.';
+      } catch {
+        recipeResult.textContent = `Сервер подтвердил КБЖУ ${saved} из трёх продуктов. Сообщи результат для сверки.`;
+        approveNutrition.disabled = false;
       }
     });
   }

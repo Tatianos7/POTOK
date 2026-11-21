@@ -1,7 +1,0 @@
-{
-  "contract": "potok-exact-food-nutrition-review-request-v2",
-  "kind": "REVIEW_APPROVED",
-  "idempotencyReference": "bc37d189-2ada-4214-90ec-6c9f233aa414",
-  "sourceProposalDigest": "6e7aa43ccde98657eb35c349e78ae47691d0c8f5b1f0ec8370ad3bb5c8724753",
-  "expectedHead": null
-}
