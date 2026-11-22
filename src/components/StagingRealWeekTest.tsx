@@ -16,10 +16,10 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   const [view, setView] = useState<StagingRealWeekView | null>(null), [day, setDay] = useState(0);
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [saved, setSaved] = useState<StagingWeekDraft | null>(null), [notice, setNotice] = useState('');
-  const [goalSource, setGoalSource] = useState<'SAVED_GOAL' | undefined>();
   const [excluded, setExcluded] = useState<{id: string; name: string}[]>([]);
   const epoch = useRef(0);
   const generateButton = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLDivElement>(null);
   const currentDraft = saved && saved.view.snapshot === view?.snapshot ? saved : null;
   const report = view && currentDraft?.sideDishes.length ? projectStagingSideDishes(view, currentDraft.sideDishes) : view?.report;
   const targetFit = view?.nutritionGoal && report?.days.length === 7
@@ -28,7 +28,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   function clear() {++epoch.current; setView(null); setDay(0); setError(''); setNotice(''); setBusy(false);}
   const reopen = useCallback(async () => {
     const request = ++epoch.current;
-    setView(null); setSaved(null); setGoalSource(undefined); setDay(0); setError(''); setNotice('');
+    setView(null); setSaved(null); setDay(0); setError(''); setNotice('');
     if (!isStagingGenerationProbeEnabled() || !supabase) return;
     setBusy(true);
     try {
@@ -38,9 +38,10 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       const draft = loadStagingWeekDraft(window.localStorage, currentUserId);
       if (draft) {
         setSaved(draft);
-        setGoalSource(draft.view.savedGoal ? 'SAVED_GOAL' : undefined);
         if (!draft.view.testScenario) setExcluded(draft.view.excludedRecipes);
-        setTarget(draft.target); setWeekStart(draft.weekStart); setView(draft.view);
+        if (!draft.view.testScenario && !draft.view.savedGoal) setTarget(draft.target);
+        if (!draft.view.testScenario) setWeekStart(draft.weekStart);
+        setView(draft.view);
         setNotice('Открыта сохранённая тестовая неделя. Повторный подбор не выполнялся.');
       } else setNotice('На этом устройстве нет сохранённой тестовой недели.');
     } catch {
@@ -87,8 +88,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     } finally {if (request === epoch.current) setBusy(false);}
   }
   if (!isStagingGenerationProbeEnabled()) return null;
-  async function generate(source = goalSource, test = false) {
-    if (!test && source === undefined && ![1400, 1600, 1800, 2000].includes(target)) return;
+  async function generate(source?: 'SAVED_GOAL' | typeof stagingSideDishTest.id) {
     if (busy || !supabase) return;
     const client = supabase, request = ++epoch.current;
     setView(null); setDay(0); setError(''); setNotice(''); setBusy(true);
@@ -97,10 +97,9 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
         async userId() {const r = await client.auth.getUser(); return r.error ? null : r.data.user?.id ?? null;},
         async token() {const r = await client.auth.getSession(); return r.error ? null : r.data.session?.access_token ?? null;},
         send: (input, init) => fetch(input, init),
-      }, excluded.map(r => r.id), test ? stagingSideDishTest.id : source);
+      }, excluded.map(r => r.id), source);
       if (request !== epoch.current) return;
-      if (test) setWeekStart(stagingSideDishTest.weekStart);
-      setView(result); setGoalSource(test ? undefined : source); if (result.nutritionGoal) setTarget(result.report.target);
+      setView(result);
     } catch (err) {
       const messages: Record<string, string> = {SAVED_GOAL_MISSING: 'В этом тестовом аккаунте не сохранена цель питания. Можно продолжить с тестовой калорийностью.', SAVED_GOAL_UNAVAILABLE: 'Не удалось прочитать цель. Проверь подключение и повтори. Локальная копия цели не используется.', INVALID_SAVED_GOAL: 'Сохранённая цель неполная или некорректная. Подбор по ней не выполнен.', SAVED_GOAL_CHANGED: 'Цель изменилась во время подбора. Нажми генерацию по сохранённой цели ещё раз.'};
       if (request === epoch.current) setError(err instanceof Error && messages[err.message] ? messages[err.message] : err instanceof Error && ['AUTH_REQUIRED', 'SESSION_CHANGED'].includes(err.message)
@@ -111,33 +110,41 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   return <section className="mt-5 space-y-4 rounded-xl border border-emerald-200 bg-white p-4" aria-label="Тест реальных рецептов">
     <h2 className="text-xl font-semibold">Собрать неделю из реальных рецептов</h2>
     <p className="text-sm">Тест по нашему сборнику. КБЖУ справочные, фактический выход и порции ещё не проверены. Аллергены и личные ограничения не проверяются. В дневник и базу ничего не записывается. Можно сохранить одну тестовую неделю в этом браузере на этом устройстве. Она не синхронизируется; очистка данных браузера удалит её.</p>
-    <label className="block text-sm">Тестовая калорийность
-      <select aria-label="Калорийность тестовой недели" value={target} onChange={e => {clear(); setTarget(Number(e.target.value)); setGoalSource(undefined);}} className="mt-2 block w-full rounded-lg border p-3">
-        {![1400, 1600, 1800, 2000].includes(target) && <option disabled value={target}>{target} ккал — {view?.testScenario ? 'сценарий замены' : 'сохранённая цель'}</option>}
-        {[1400, 1600, 1800, 2000].map(n => <option key={n} value={n}>{n} ккал в день</option>)}
-      </select>
-    </label>
-    <label className="block text-sm">Начало недели
-      <input aria-label="Начало тестовой недели" type="date" value={weekStart} onChange={e => {clear(); setWeekStart(e.target.value);}} className="mt-2 block w-full rounded-lg border p-3" />
-    </label>
-    <button ref={generateButton} type="button" disabled={busy || !weekStart || (!goalSource && ![1400, 1600, 1800, 2000].includes(target))} onClick={() => {void generate();}} className="w-full rounded-lg bg-emerald-800 px-4 py-3 font-semibold text-white disabled:opacity-50">
-      {busy ? 'Подожди…' : 'Сгенерировать неделю из рецептов'}
-    </button>
-    <button type="button" disabled={busy || !weekStart} onClick={() => {void generate('SAVED_GOAL');}}
-      className="w-full rounded-lg border border-emerald-800 px-4 py-3 font-semibold text-emerald-900 disabled:opacity-50">Собрать по моей сохранённой цели</button>
-    <button type="button" disabled={busy} onClick={() => {void generate(undefined, true);}}
-      className="w-full rounded-lg border border-emerald-800 px-4 py-3 font-semibold text-emerald-900 disabled:opacity-50">Собрать неделю для проверки замены гарнира</button>
-    <p className="text-sm">Для проверки замены используется отдельная тестовая цель 1703 ккал. Настройки аккаунта не меняются.</p>
-    {goalSource === 'SAVED_GOAL' && <p className="text-sm">Для нового подбора цель будет прочитана из тестового аккаунта заново. Чтобы выбрать тестовый сценарий, измени калорийность.</p>}
+    <div id="side-dish-test" className="space-y-2 rounded-lg border border-emerald-200 p-3">
+      <h3 className="font-semibold">Проверка замены гарнира</h3>
+      <button type="button" disabled={busy} onClick={() => {void generate(stagingSideDishTest.id);}}
+        className="w-full rounded-lg bg-emerald-800 px-4 py-3 font-semibold text-white disabled:opacity-50">Собрать тестовую неделю на 1703 ккал</button>
+      <p className="text-sm">Сценарий на 23–29 ноября. Цель аккаунта при этом не меняется.</p>
+    </div>
     <div className="space-y-2" aria-label="Сохранение тестовой недели">
       <button type="button" disabled={busy || view?.report.days.length !== 7} onClick={() => {void changeDraft('save');}}
         className="w-full rounded-lg border border-emerald-800 p-3 font-semibold text-emerald-900 disabled:opacity-50">
-        {saved ? 'Заменить сохранённую неделю' : 'Сохранить неделю на устройстве'}
+        {view?.testScenario ? (saved && !currentDraft ? 'Заменить черновик неделей на 1703 ккал' : 'Сохранить тестовую неделю на 1703 ккал')
+          : saved ? 'Заменить сохранённую неделю' : 'Сохранить неделю на устройстве'}
       </button>
       <button type="button" disabled={busy} onClick={() => {void reopen();}} className="w-full rounded-lg border p-3">Открыть сохранённую неделю</button>
       <button type="button" disabled={busy} onClick={() => {void changeDraft('remove');}} className="w-full rounded-lg border p-3">Удалить сохранённый черновик</button>
       {saved && <p className="text-sm">На устройстве сохранён тестовый черновик: {saved.target.toLocaleString('ru-RU')} ккал, начало {saved.weekStart}. Сохранён {new Date(saved.savedAt).toLocaleString('ru-RU')} ({saved.timeZone}).</p>}
     </div>
+    {view?.testScenario && report?.days.length === 7 && <button type="button" disabled={busy} onClick={() => {
+      setDay(4);
+      menu.current?.scrollIntoView({block:'start'});
+    }} className="w-full rounded-lg border border-emerald-800 px-4 py-3 font-semibold text-emerald-900 disabled:opacity-50">Открыть пятницу, 27 ноября</button>}
+    <section aria-label="Другие сценарии подбора" className="space-y-3 rounded-lg border p-3">
+      <h3 className="font-semibold">Другие сценарии подбора</h3>
+      <label className="block text-sm">Калорийность для ручного подбора
+        <select aria-label="Калорийность тестовой недели" value={target} onChange={e => {clear(); setTarget(Number(e.target.value));}} className="mt-2 block w-full rounded-lg border p-3">
+          {[1400, 1600, 1800, 2000].map(n => <option key={n} value={n}>{n} ккал в день</option>)}
+        </select>
+      </label>
+      <label className="block text-sm">Начало недели
+        <input aria-label="Начало тестовой недели" type="date" value={weekStart} onChange={e => {clear(); setWeekStart(e.target.value);}} className="mt-2 block w-full rounded-lg border p-3" />
+      </label>
+      <button ref={generateButton} type="button" disabled={busy || !weekStart} onClick={() => {void generate();}}
+        className="w-full rounded-lg border p-3">{busy ? 'Подожди…' : 'Сгенерировать неделю из рецептов'}</button>
+      <button type="button" disabled={busy || !weekStart} onClick={() => {void generate('SAVED_GOAL');}}
+        className="w-full rounded-lg border p-3">Собрать по моей сохранённой цели</button>
+    </section>
     {busy && <p role="status">Выполняем действие с тестовой неделей…</p>}
     {notice && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm">{notice}</p>}
     {excluded.length > 0 && <div aria-label="Исключённые блюда" className="rounded-lg border p-3 text-sm">
@@ -196,6 +203,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
           </div>
         </details>
       </div>}
+      <div ref={menu}>
       <AuthoringWeekContent emptyReason={view.minimumWeekCaloriesProvenUnreachable ? 'В этом режиме собрать неделю в выбранном коридоре нельзя: не хватает калорий при нынешних порциях и повторах.' : undefined} report={report} catalog={view.catalog} selectedDay={day} onSelectDay={setDay}
         renderSideDish={meal => {
           const sourceDay = view.report.days[day];
@@ -224,6 +232,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
           generateButton.current?.focus();
           generateButton.current?.scrollIntoView({block: 'center'});
         }} />
+      </div>
     </>}
   </section>;
 }
