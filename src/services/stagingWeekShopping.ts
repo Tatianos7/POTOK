@@ -36,7 +36,7 @@ export function deriveStagingWeekShopping(view: StagingRealWeekView, edits: read
     const key = JSON.stringify([normalizeName(item.name), item.unit, item.optional, measuredCooked]);
     const previous = items.get(key);
     if (!previous) {
-      items.set(key, item);
+      items.set(key, {...item, recipes: [...item.recipes]});
       return;
     }
     if (previous.amount !== null && item.amount !== null) previous.amount += item.amount;

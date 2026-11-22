@@ -132,6 +132,8 @@ test('shopping sums matching ingredients across recipes without adding different
   const fixture = referenceWeekFixture();
   const ingredients = fixture.catalog.recipes.map(recipe => recipe.ingredients[0]);
   Object.assign(ingredients[0], {ingredient_name_ru: 'Морковь', amount: 150, unit: 'G'});
+  fixture.catalog.recipes[0].ingredients.push({...ingredients[0], ingredient_row_id: 'potato',
+    sort_order: 2, ingredient_name_ru: 'Картофель'});
   Object.assign(ingredients[1], {ingredient_name_ru: 'морковь', amount: 500, unit: 'г'});
   Object.assign(ingredients[2], {ingredient_name_ru: 'Морковь', amount: 2, unit: 'PCS'});
   Object.assign(ingredients[3], {ingredient_name_ru: 'Морковь', amount: 100, unit: 'G', preparation_note: 'вес после приготовления'});
@@ -142,4 +144,10 @@ test('shopping sums matching ingredients across recipes without adding different
     .filter(item => item.name.toLowerCase() === 'морковь').map(({amount, unit, optional, recipes}) => [amount, unit, optional, recipes.length]);
   assert.deepEqual(quantities(draft.weekStart), [[325, 'г', false, 2], [1, 'шт.', false, 1], [50, 'г', false, 1]]);
   assert.deepEqual(quantities(), [[475, 'г', false, 3], [1, 'шт.', false, 1], [50, 'г', false, 1], [null, null, true, 1]]);
+  for (const date of [draft.weekStart, undefined]) {
+    const shopping = deriveStagingWeekShopping(draft.view, [], date)!;
+    assert.deepEqual(shopping.find(item => item.name === 'Картофель')?.recipes, [fixture.catalog.recipes[0].name]);
+    assert.deepEqual(shopping.find(item => item.name === 'Морковь' && item.amount === (date ? 325 : 475))?.recipes,
+      (date ? [0, 1] : [0, 1, 4]).map(index => fixture.catalog.recipes[index].name));
+  }
 });
