@@ -8,6 +8,7 @@ import {assessReferenceDailyTargetFitV1} from '../dev/referenceDailyTargetFitV1'
 import {referenceSideDishes} from '../dev/referenceSideDishScenario';
 import {projectStagingSideDishes, stagingSideDishRecipe, type StagingSideDishEdit} from '../services/stagingWeekSideDishes';
 import StagingSideDishEditor from './StagingSideDishEditor';
+import StagingWeekShopping from './StagingWeekShopping';
 
 import {stagingSideDishTest} from '../dev/stagingSideDishTest';
 
@@ -205,6 +206,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       </div>}
       <div ref={menu}>
       <AuthoringWeekContent emptyReason={view.minimumWeekCaloriesProvenUnreachable ? 'В этом режиме собрать неделю в выбранном коридоре нельзя: не хватает калорий при нынешних порциях и повторах.' : undefined} report={report} catalog={view.catalog} selectedDay={day} onSelectDay={setDay}
+        dayTools={currentDraft && <StagingWeekShopping draft={currentDraft} selectedDay={day} />}
         renderSideDish={meal => {
           const sourceDay = view.report.days[day];
           const original = sourceDay?.meals.find(m => m.recipeId === meal.recipeId);

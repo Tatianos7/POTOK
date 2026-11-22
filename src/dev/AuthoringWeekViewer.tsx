@@ -16,11 +16,12 @@ const emptyMessages: Record<string, string> = {
   NO_REFERENCE_WEEK_IN_CALORIE_CORRIDOR: 'Подходящая неделя в указанном коридоре калорийности не найдена.',
 };
 
-export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog = null, emptyReason, onExcludeRecipe, actionsDisabled = false, renderSideDish}: {
+export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog = null, emptyReason, onExcludeRecipe, actionsDisabled = false, renderSideDish, dayTools}: {
   report: AuthoringReport; selectedDay: number; onSelectDay: (day: number) => void;
   catalog?: AuthoringRecipeCatalog | null; emptyReason?: string;
   onExcludeRecipe?: (meal: AuthoringMeal) => void; actionsDisabled?: boolean;
   renderSideDish?: (meal: AuthoringMeal) => {title?: string; composition?: ReactNode; editor: ReactNode} | null;
+  dayTools?: ReactNode;
 }) {
   const day = report.days[selectedDay];
   const delta = day ? Math.round((day.referenceNutrition.calories - report.target) * 1000) / 1000 : 0;
@@ -39,6 +40,7 @@ export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog 
         </button>)}
       </nav>
       <h3 className="text-lg font-semibold">{dateLabel(day.date)}</h3>
+      {dayTools}
       <div className="space-y-1 rounded-xl border border-stone-200 p-4" aria-label="Цель и калорийность меню">
         <p>Цель: <strong>{calorieNumber(report.target)} ккал</strong></p>
         <p>Меню: <strong>{calorieNumber(day.referenceNutrition.calories)} ккал</strong> (справочно)</p>
