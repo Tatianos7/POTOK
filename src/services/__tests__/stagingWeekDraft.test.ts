@@ -63,6 +63,9 @@ test('a reviewed side-dish replacement is scoped to its account, week and day on
   fixture.report.days[6].meals[0] = {...fixture.report.days[5].meals[0]};
   fixture.catalog.recipes = fixture.catalog.recipes.filter(recipe => recipe.recipeId !== 'synthetic-24');
   Object.assign(repeated.ingredients[0], {amount: 300, unit: 'ML'});
+  Object.assign(fixture.catalog.recipes[4].ingredients[0], {
+    ingredient_name_ru: 'Киноа белая', amount: 120, unit: 'G', preparation_note: 'сухой вес белой киноа; промыть',
+  });
   const original = {calories: 489.1, protein: 44.168, fat: 10.341, carbs: 57.774, fiber: 10.25};
   const rest = {calories: 389.266667, protein: 28.866667, fat: 17.466667, carbs: 31.633333, fiber: 6.2};
   const withMeal = {...base, recipeId, name: 'Курица с булгуром и кабачком',
@@ -112,9 +115,9 @@ test('a reviewed side-dish replacement is scoped to its account, week and day on
   assert.deepEqual(deriveStagingWeekShopping(opened.view, opened.sideDishes, fixture.report.days[1].date),
     deriveStagingWeekShopping(saved.view, saved.sideDishes, fixture.report.days[1].date));
   const weekly = deriveStagingWeekShopping(opened.view, opened.sideDishes)!;
-  assert.equal(weekly.find(item => item.recipe === repeated.name)?.amount, 300);
-  assert.equal(weekly.find(item => item.recipe === repeated.name)?.unit, 'мл');
-  assert.equal(weekly.find(item => item.name === 'Белая киноа (сухой вес)')?.amount, 65);
+  assert.equal(weekly.find(item => item.recipes.includes(repeated.name))?.amount, 300);
+  assert.equal(weekly.find(item => item.recipes.includes(repeated.name))?.unit, 'мл');
+  assert.deepEqual(weekly.filter(item => item.name === 'Белая киноа (сухой вес)').map(item => item.amount), [125]);
   assert.ok(weekly.every(item => item.name !== 'Булгур medium/coarse'));
   assert.equal(loadStagingWeekDraft(s, b), null);
   assert.throws(() => saveStagingWeekSideDishes(s, a, saved, []), /STAGING_DRAFT_CHANGED/);
@@ -123,4 +126,20 @@ test('a reviewed side-dish replacement is scoped to its account, week and day on
   assert.deepEqual(saveStagingWeekDraft(s,a,payload,'Europe/Moscow',now).sideDishes, [edit]);
   assert.deepEqual(saveStagingWeekDraft(s,a,raw(),'Europe/Moscow',now).sideDishes, []);
   assert.equal(s.data.size, 1);
+});
+
+test('shopping sums matching ingredients across recipes without adding different measures or cooked weights', () => {
+  const fixture = referenceWeekFixture();
+  const ingredients = fixture.catalog.recipes.map(recipe => recipe.ingredients[0]);
+  Object.assign(ingredients[0], {ingredient_name_ru: 'Морковь', amount: 150, unit: 'G'});
+  Object.assign(ingredients[1], {ingredient_name_ru: 'морковь', amount: 500, unit: 'г'});
+  Object.assign(ingredients[2], {ingredient_name_ru: 'Морковь', amount: 2, unit: 'PCS'});
+  Object.assign(ingredients[3], {ingredient_name_ru: 'Морковь', amount: 100, unit: 'G', preparation_note: 'вес после приготовления'});
+  Object.assign(ingredients[4], {ingredient_name_ru: 'Морковь', amount: 300, unit: 'G'});
+  Object.assign(ingredients[5], {ingredient_name_ru: 'Морковь', optional: true});
+  const draft = saveStagingWeekDraft(store(), a, JSON.stringify(fixture), 'UTC', now);
+  const quantities = (date?: string) => deriveStagingWeekShopping(draft.view, [], date)!
+    .filter(item => item.name.toLowerCase() === 'морковь').map(({amount, unit, optional, recipes}) => [amount, unit, optional, recipes.length]);
+  assert.deepEqual(quantities(draft.weekStart), [[325, 'г', false, 2], [1, 'шт.', false, 1], [50, 'г', false, 1]]);
+  assert.deepEqual(quantities(), [[475, 'г', false, 3], [1, 'шт.', false, 1], [50, 'г', false, 1], [null, null, true, 1]]);
 });

@@ -20,14 +20,18 @@ export default function StagingWeekShopping({draft, selectedDay}: {draft: Stagin
           <option value="week">Вся неделя</option>
         </select>
       </label>
-      <p>Количество рассчитано по порциям из сборника. Похожие продукты из разных рецептов могут идти отдельными строками.</p>
+      <p>Одинаковые продукты в одной единице измерения суммируются за выбранный период.</p>
       {!items ? <p>Не удалось собрать список по составу сохранённой недели.</p>
         : items.length === 0 ? <p>На этот период нет продуктов для покупки.</p>
         : <ul className="divide-y">
           {items.map(item => <li key={item.key} className="py-2">
             <div>{item.name} · {item.amount === null ? 'количество нужно уточнить' : `${formatAmount.format(item.amount)} ${item.unit}`}
               {item.optional && ' · по желанию'}</div>
-            {item.recipe && <div className="text-neutral-600">{item.recipe}</div>}
+            {item.recipes.length === 1 ? <div className="text-neutral-600">{item.recipes[0]}</div> :
+              <details className="text-neutral-600">
+                <summary className="cursor-pointer">В каких блюдах</summary>
+                <ul className="list-disc pl-5">{item.recipes.map(recipe => <li key={recipe}>{recipe}</li>)}</ul>
+              </details>}
           </li>)}
         </ul>}
     </div>}
