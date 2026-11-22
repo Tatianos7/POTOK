@@ -13,9 +13,9 @@ export default function StagingSideDishEditor({view, date, meal, edits, busy, on
   const [pending, setPending] = useState<SideDishPortion | null>(null);
   const binding = stagingSideDishRecipe(view, meal);
   const day = view.report.days.find(d => d.date === date);
-  if (!binding || !day || !view.savedGoal) return null;
+  if (!binding || !day || !view.nutritionGoal) return null;
   const current = edits.find(e => e.date === date && e.recipeId === meal.recipeId);
-  const originalFit = assessReferenceDayTargetFitV1(date, day.referenceNutrition, view.savedGoal);
+  const originalFit = assessReferenceDayTargetFitV1(date, day.referenceNutrition, view.nutritionGoal);
   const before = checkStagingSideDishes(view, edits).find(d => d.date === date)?.fit ?? originalFit;
   const next = edits.filter(e => !(e.date === date && e.recipeId === meal.recipeId));
   if (pending && pending.id !== binding.original) next.push({date, recipeId: meal.recipeId, ...pending});

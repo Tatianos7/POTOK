@@ -18,7 +18,7 @@ type Nutrition = AuthoringMeal['referenceNutrition'];
 export type StagingSideDishEdit = SideDishPortion & {date: string; recipeId: string};
 
 export function stagingSideDishRecipe(view: StagingRealWeekView, meal: AuthoringMeal) {
-  if (!view.savedGoal || !view.report.dailyStapleVariety || view.report.sourceHash !== reviewedSource
+  if (!view.nutritionGoal || !view.report.dailyStapleVariety || view.report.sourceHash !== reviewedSource
     || !Object.prototype.hasOwnProperty.call(reviewedRecipes, meal.recipeId)) return null;
   const binding = reviewedRecipes[meal.recipeId as keyof typeof reviewedRecipes];
   const recipe = view.catalog.recipes.get(meal.recipeId);
@@ -56,8 +56,8 @@ export function checkStagingSideDishes(view: StagingRealWeekView, edits: readonl
   const report = projectStagingSideDishes(view, edits);
   return report.days.flatMap((day, index) => {
     const dayEdits = edits.filter(edit => edit.date === day.date);
-    if (!dayEdits.length || !view.savedGoal) return [];
-    const fit = assessReferenceDayTargetFitV1(day.date, day.referenceNutrition, view.savedGoal);
+    if (!dayEdits.length || !view.nutritionGoal) return [];
+    const fit = assessReferenceDayTargetFitV1(day.date, day.referenceNutrition, view.nutritionGoal);
     const variety = referenceDayHasDistinctStaples(view.report.days[index].meals.map(meal => {
       const edit = dayEdits.find(e => e.recipeId === meal.recipeId);
       if (!edit) return view.catalog.recipes.get(meal.recipeId)!;

@@ -1,5 +1,4 @@
 import type {AuthoringReport} from './authoringWeekReport';
-import type {ReferenceSavedGoal} from './referenceSavedGoalV1';
 
 export type ReferenceTargetAxisV1 = 'calories' | 'protein' | 'fat' | 'carbs';
 export type ReferenceTargetValuesV1 = Record<ReferenceTargetAxisV1, number>;
@@ -34,7 +33,7 @@ const display = (value: number): number => Math.round(value * SCALE) / SCALE;
  */
 export function assessReferenceDailyTargetFitV1(
   report: AuthoringReport,
-  goal: ReferenceSavedGoal,
+  goal: ReferenceTargetValuesV1,
 ): ReferenceDailyTargetFitV1[] {
   if (report.days.length !== 7 || report.target !== goal.calories) throw Error('INVALID_REFERENCE_TARGET_FIT');
   return report.days.map(day => assessReferenceDayTargetFitV1(day.date, day.referenceNutrition, goal));

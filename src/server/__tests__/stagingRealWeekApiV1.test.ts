@@ -7,7 +7,7 @@ const env = {VERCEL_ENV: 'preview', VITE_POTOK_STAGING_PREVIEW: 'true', VITE_SUP
   POTOK_STAGING_REFERENCE_TEST_ENABLED: 'true', VITE_SUPABASE_ANON_KEY: 'sb_publishable_synthetic_test_only'};
 const account = '11111111-1111-4111-8111-111111111111';
 const req = () => ({method: 'POST', headers: {authorization: 'Bearer synthetic-test-token'}, body: {target: 1600, weekStart: '2026-11-09'}});
-async function invoke(config = env, request = req(), remote: typeof fetch = async () => new Response(JSON.stringify({id: account}))) {
+async function invoke(config = env, request: Parameters<ReturnType<typeof createStagingRealWeekHandler>>[0] = req(), remote: typeof fetch = async () => new Response(JSON.stringify({id: account}))) {
   let status = 0, body: unknown, calls = 0; const headers: Record<string,string> = {};
   const response = {status(n: number) {status = n; return this;}, setHeader(k: string,v: string) {headers[k] = v; return this;}, json(v: unknown) {body = v;}};
   await createStagingRealWeekHandler(config, async (...args) => {calls++; return remote(...args);})(request, response);
@@ -55,4 +55,25 @@ test('weekly calorie bound is tied to the selected goal and cannot invent or hid
     {...proven,optimisticMaximumWeekKcal:'12601.000'},{...proven,requiredWeekKcal:'11200.000'},{...proven,provenWeekShortfallKcal:'63.601'},null,{}]){
     assert.throws(()=>decodeReferenceWeekCalorieCapacity(invalid,1800),/INVALID_CALORIE_CAPACITY/);
   }
+});
+
+test('the fixed side-dish scenario keeps Auth and never reads the account goal', async () => {
+  const body = {testScenario:'SIDE_DISH_REPLACEMENT_V1'};
+  const request = {...req(), body};
+  const anonymous = await invoke(env, {...request, headers: {authorization: ''}});
+  assert.equal(anonymous.status, 401);
+  assert.equal(anonymous.calls, 0);
+  for (const extra of [{weekStart:'2026-11-23'}, {target:1703}, {goalSource:'SAVED_GOAL'}, {accountId:account}]) {
+    const rejected = await invoke(env, {...request, body:{...body,...extra}});
+    assert.equal(rejected.status, 400);
+    assert.equal(rejected.calls, 0);
+  }
+  const calls: string[] = [];
+  const missingCatalog = await invoke(env, request, async (url, options) => {
+    calls.push(String(url));
+    assert.equal(options?.method,'GET');
+    return new Response(JSON.stringify({id:account}));
+  });
+  assert.deepEqual(calls,[env.VITE_SUPABASE_URL+'/auth/v1/user']);
+  assert.deepEqual(missingCatalog.body,{error:'REFERENCE_MENU_TEMPORARILY_UNAVAILABLE'});
 });

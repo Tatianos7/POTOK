@@ -1,11 +1,11 @@
 import type {AuthoringReport} from './authoringWeekReport';
-import type {ReferenceSavedGoal} from './referenceSavedGoalV1';
+import type {ReferenceTargetValuesV1} from './referenceDailyTargetFitV1';
 export interface ReferenceMacroFit {
   improvedDays: number;
   days: {date: string; before: {protein: number; fat: number}; after: {protein: number; fat: number}}[];
 }
 /** Independent reference receipt check; never admits a nutrition policy or source. */
-export function decodeReferenceMacroFit(value: unknown, report: AuthoringReport, goal: ReferenceSavedGoal | null, distinctRecipes: number): ReferenceMacroFit | null {
+export function decodeReferenceMacroFit(value: unknown, report: AuthoringReport, goal: ReferenceTargetValuesV1 | null, distinctRecipes: number): ReferenceMacroFit | null {
   if (value === undefined) return null;
   const r = value as Record<string, unknown>;
   if (!r || Array.isArray(r) || !goal || report.days.length !== 7

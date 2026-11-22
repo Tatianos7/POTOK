@@ -9,13 +9,7 @@ import {referenceSideDishes} from '../dev/referenceSideDishScenario';
 import {projectStagingSideDishes, stagingSideDishRecipe, type StagingSideDishEdit} from '../services/stagingWeekSideDishes';
 import StagingSideDishEditor from './StagingSideDishEditor';
 
-const sideDishTest = {
-  weekStart: '2026-11-23',
-  excludedIds: ['eggs_wholegrain_toast_cucumber', 'lemon_shelled_edamame', 'rabbit_potatoes_carrots',
-    'ref_2000_gnocchi_lemon_chive_pesto', 'ref_2000_healthy_gnocchi', 'salmon_brown_rice',
-    'salmon_frozen_spinach', 'shrimp_rice_vegetables', 'shrimp_zucchini', 'squid_mixed_vegetables',
-    'trout_broccoli', 'trout_green_beans'],
-};
+import {stagingSideDishTest} from '../dev/stagingSideDishTest';
 
 export default function StagingRealWeekTest({currentUserId}: {currentUserId: string}) {
   const [target, setTarget] = useState(1600), [weekStart, setWeekStart] = useState('2026-11-09');
@@ -28,8 +22,8 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   const generateButton = useRef<HTMLButtonElement>(null);
   const currentDraft = saved && saved.view.snapshot === view?.snapshot ? saved : null;
   const report = view && currentDraft?.sideDishes.length ? projectStagingSideDishes(view, currentDraft.sideDishes) : view?.report;
-  const targetFit = view?.savedGoal && report?.days.length === 7
-    ? assessReferenceDailyTargetFitV1(report, view.savedGoal)
+  const targetFit = view?.nutritionGoal && report?.days.length === 7
+    ? assessReferenceDailyTargetFitV1(report, view.nutritionGoal)
     : null;
   function clear() {++epoch.current; setView(null); setDay(0); setError(''); setNotice(''); setBusy(false);}
   const reopen = useCallback(async () => {
@@ -90,29 +84,25 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     } finally {if (request === epoch.current) setBusy(false);}
   }
   if (!isStagingGenerationProbeEnabled()) return null;
-  async function generate(source = goalSource, test?: typeof sideDishTest) {
+  async function generate(source = goalSource, test = false) {
+    if (!test && source === undefined && ![1400, 1600, 1800, 2000].includes(target)) return;
     if (busy || !supabase) return;
     const client = supabase, request = ++epoch.current;
     setView(null); setDay(0); setError(''); setNotice(''); setBusy(true);
     try {
-      const result = await requestStagingRealWeek(currentUserId, target, test?.weekStart ?? weekStart, {
+      const result = await requestStagingRealWeek(currentUserId, target, weekStart, {
         async userId() {const r = await client.auth.getUser(); return r.error ? null : r.data.user?.id ?? null;},
         async token() {const r = await client.auth.getSession(); return r.error ? null : r.data.session?.access_token ?? null;},
         send: (input, init) => fetch(input, init),
-      }, test?.excludedIds ?? excluded.map(r => r.id), source);
+      }, excluded.map(r => r.id), test ? stagingSideDishTest.id : source);
       if (request !== epoch.current) return;
       if (test) {
-        const goal = result.savedGoal;
-        if (!goal || goal.calories !== 1703 || goal.protein !== 145 || goal.fat !== 65 || goal.carbs !== 134) {
-          throw Error('SIDE_DISH_TEST_GOAL_MISMATCH');
-        }
-        setWeekStart(test.weekStart);
+        setWeekStart(stagingSideDishTest.weekStart);
         setExcluded(result.excludedRecipes);
       }
-      setView(result); setGoalSource(source); if (result.savedGoal) setTarget(result.report.target);
+      setView(result); setGoalSource(test ? undefined : source); if (result.nutritionGoal) setTarget(result.report.target);
     } catch (err) {
       const messages: Record<string, string> = {SAVED_GOAL_MISSING: 'В этом тестовом аккаунте не сохранена цель питания. Можно продолжить с тестовой калорийностью.', SAVED_GOAL_UNAVAILABLE: 'Не удалось прочитать цель. Проверь подключение и повтори. Локальная копия цели не используется.', INVALID_SAVED_GOAL: 'Сохранённая цель неполная или некорректная. Подбор по ней не выполнен.', SAVED_GOAL_CHANGED: 'Цель изменилась во время подбора. Нажми генерацию по сохранённой цели ещё раз.'};
-      messages.SIDE_DISH_TEST_GOAL_MISMATCH = 'Для этого сценария в тестовом аккаунте нужна сохранённая цель 1703 ккал, Б 145 г, Ж 65 г, У 134 г.';
       if (request === epoch.current) setError(err instanceof Error && messages[err.message] ? messages[err.message] : err instanceof Error && ['AUTH_REQUIRED', 'SESSION_CHANGED'].includes(err.message)
         ? 'Тестовый вход изменился. Войди снова и повтори подбор.'
         : 'Не удалось получить тестовую неделю. Старое меню скрыто. Попробуй ещё раз.');
@@ -123,21 +113,21 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     <p className="text-sm">Тест по нашему сборнику. КБЖУ справочные, фактический выход и порции ещё не проверены. Аллергены и личные ограничения не проверяются. В дневник и базу ничего не записывается. Можно сохранить одну тестовую неделю в этом браузере на этом устройстве. Она не синхронизируется; очистка данных браузера удалит её.</p>
     <label className="block text-sm">Тестовая калорийность
       <select aria-label="Калорийность тестовой недели" value={target} onChange={e => {clear(); setTarget(Number(e.target.value)); setGoalSource(undefined);}} className="mt-2 block w-full rounded-lg border p-3">
-        {![1400, 1600, 1800, 2000].includes(target) && <option disabled value={target}>{target} ккал — сохранённая цель</option>}
+        {![1400, 1600, 1800, 2000].includes(target) && <option disabled value={target}>{target} ккал — {view?.testScenario ? 'сценарий замены' : 'сохранённая цель'}</option>}
         {[1400, 1600, 1800, 2000].map(n => <option key={n} value={n}>{n} ккал в день</option>)}
       </select>
     </label>
     <label className="block text-sm">Начало недели
       <input aria-label="Начало тестовой недели" type="date" value={weekStart} onChange={e => {clear(); setWeekStart(e.target.value);}} className="mt-2 block w-full rounded-lg border p-3" />
     </label>
-    <button ref={generateButton} type="button" disabled={busy || !weekStart} onClick={() => {void generate();}} className="w-full rounded-lg bg-emerald-800 px-4 py-3 font-semibold text-white disabled:opacity-50">
+    <button ref={generateButton} type="button" disabled={busy || !weekStart || (!goalSource && ![1400, 1600, 1800, 2000].includes(target))} onClick={() => {void generate();}} className="w-full rounded-lg bg-emerald-800 px-4 py-3 font-semibold text-white disabled:opacity-50">
       {busy ? 'Подожди…' : 'Сгенерировать неделю из рецептов'}
     </button>
     <button type="button" disabled={busy || !weekStart} onClick={() => {void generate('SAVED_GOAL');}}
       className="w-full rounded-lg border border-emerald-800 px-4 py-3 font-semibold text-emerald-900 disabled:opacity-50">Собрать по моей сохранённой цели</button>
-    <button type="button" disabled={busy} onClick={() => {void generate('SAVED_GOAL', sideDishTest);}}
+    <button type="button" disabled={busy} onClick={() => {void generate(undefined, true);}}
       className="w-full rounded-lg border border-emerald-800 px-4 py-3 font-semibold text-emerald-900 disabled:opacity-50">Собрать неделю для проверки замены гарнира</button>
-    <p className="text-sm">Сценарий замены использует сохранённую тестовую цель 1703 ккал и подборку привычных блюд.</p>
+    <p className="text-sm">Для проверки замены используется отдельная тестовая цель 1703 ккал. Настройки аккаунта не меняются.</p>
     {goalSource === 'SAVED_GOAL' && <p className="text-sm">Для нового подбора цель будет прочитана из тестового аккаунта заново. Чтобы выбрать тестовый сценарий, измени калорийность.</p>}
     <div className="space-y-2" aria-label="Сохранение тестовой недели">
       <button type="button" disabled={busy || view?.report.days.length !== 7} onClick={() => {void changeDraft('save');}}
@@ -158,9 +148,9 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     </div>}
     {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm">{error}</p>}
     {view && report && <>
-      {view.savedGoal && <div className="rounded-lg border border-emerald-200 p-3 text-sm" aria-label="Сохранённая цель и меню">
-        <p className="font-semibold">Цель из тестового аккаунта: {view.savedGoal.calories.toLocaleString('ru-RU')} ккал</p>
-        <p>Б {view.savedGoal.protein.toLocaleString('ru-RU')} · Ж {view.savedGoal.fat.toLocaleString('ru-RU')} · У {view.savedGoal.carbs.toLocaleString('ru-RU')} г</p>
+      {view.nutritionGoal && <div className="rounded-lg border border-emerald-200 p-3 text-sm" aria-label="Цель и тестовое меню">
+        <p className="font-semibold">{view.testScenario ? 'Тестовая цель для замены гарнира' : 'Цель из тестового аккаунта'}: {view.nutritionGoal.calories.toLocaleString('ru-RU')} ккал</p>
+        <p>Б {view.nutritionGoal.protein.toLocaleString('ru-RU')} · Ж {view.nutritionGoal.fat.toLocaleString('ru-RU')} · У {view.nutritionGoal.carbs.toLocaleString('ru-RU')} г</p>
         {targetFit && <p className="mt-2" role="status">Совместные допуски по справочным значениям соблюдены в {targetFit.filter(d => d.passed).length} из 7 дней: калории ±50 ккал, белки и жиры ±10%, углеводы ±15%. Это только числовое сравнение; рецепты и порции остаются непроверенными.</p>}
         {view.savedGoal && !view.jointTargetSearch && view.report.days.length===7 && <p className="mt-2">Эта сохранённая неделя создана до совместного поиска по диапазонам всех трёх показателей БЖУ. Создай новую тестовую неделю, чтобы проверить обновлённый подбор.</p>}
         {view.jointTargetSearch && <div className="mt-2" aria-label="Ограниченный совместный поиск БЖУ">
@@ -177,7 +167,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
           <div className="mt-2 space-y-2">
             <p>Цифры диапазонов утверждены для проверки подбора, но расчёт здесь остаётся справочным: рецепты и порции ещё не прошли проверку владельца. Попадание в эти окна само по себе не означает допуска недели в продукт.</p>
             <p>Углеводы проверяются по числу, указанному в рецептах. Их семантика может отличаться от сохранённой цели, поэтому этот результат не подтверждает корректность источниковых КБЖУ.</p>
-            <p>Использована цель, сохранённая в аккаунте на момент подбора: {new Date(view.savedGoal.updatedAt).toLocaleString('ru-RU')}. При открытии черновика цель не перечитывается.</p>
+            {view.savedGoal && <p>Использована цель, сохранённая в аккаунте на момент подбора: {new Date(view.savedGoal.updatedAt).toLocaleString('ru-RU')}. При открытии черновика цель не перечитывается.</p>}
           </div>
         </details>
       </div>}

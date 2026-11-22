@@ -19,7 +19,7 @@ function decode(raw: string, accountId: string): StagingWeekDraft {
   new Intl.DateTimeFormat('ru-RU', {timeZone: r.timeZone});
   const view = decodeStagingRealWeek(JSON.parse(r.payload));
   if (view.savedGoal && view.savedGoal.accountId !== accountId) throw Error('INVALID_DRAFT_ACCOUNT');
-  if (!view.savedGoal && ![1400,1600,1800,2000].includes(r.target)) throw Error('INVALID_DRAFT');
+  if (!view.savedGoal && !view.testScenario && ![1400,1600,1800,2000].includes(r.target)) throw Error('INVALID_DRAFT');
   if (view.report.days.length !== 7 || view.report.target !== r.target || view.report.days[0].date !== r.weekStart) throw Error('INVALID_DRAFT');
   return {view, savedAt: r.savedAt, timeZone: r.timeZone, weekStart: r.weekStart, target: r.target,
     sideDishes: decodeStagingSideDishes(view, r.sideDishes)};
