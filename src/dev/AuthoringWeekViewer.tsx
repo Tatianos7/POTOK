@@ -1,4 +1,5 @@
 import {useRef, useState} from 'react';
+import type {ReactNode} from 'react';
 import {decodeAuthoringWeekReport, MAX_AUTHORING_FILE_BYTES, type AuthoringReport, type AuthoringMeal} from './authoringWeekReport';
 import {decodeAuthoringRecipeCatalog, matchAuthoringRecipe, type AuthoringRecipeCatalog} from './authoringRecipeCatalog';
 import AuthoringRecipeDetails from './AuthoringRecipeDetails';
@@ -15,10 +16,11 @@ const emptyMessages: Record<string, string> = {
   NO_REFERENCE_WEEK_IN_CALORIE_CORRIDOR: 'Подходящая неделя в указанном коридоре калорийности не найдена.',
 };
 
-export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog = null, emptyReason, onExcludeRecipe, actionsDisabled = false}: {
+export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog = null, emptyReason, onExcludeRecipe, actionsDisabled = false, renderSideDish}: {
   report: AuthoringReport; selectedDay: number; onSelectDay: (day: number) => void;
   catalog?: AuthoringRecipeCatalog | null; emptyReason?: string;
   onExcludeRecipe?: (meal: AuthoringMeal) => void; actionsDisabled?: boolean;
+  renderSideDish?: (meal: AuthoringMeal) => {title?: string; composition?: ReactNode; editor: ReactNode} | null;
 }) {
   const day = report.days[selectedDay];
   const delta = day ? Math.round((day.referenceNutrition.calories - report.target) * 1000) / 1000 : 0;
@@ -47,24 +49,26 @@ export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog 
         Справочно: {number(day.referenceNutrition.calories)} ккал · Б {number(day.referenceNutrition.protein)} · Ж {number(day.referenceNutrition.fat)} · У исходника {number(day.referenceNutrition.carbs)} · Клетчатка {number(day.referenceNutrition.fiber)} г
       </p>
       <div className="grid gap-3 sm:grid-cols-2">{day.meals.map(meal => {
-        const match = matchAuthoringRecipe(catalog, report, meal);
+        const sideDish = renderSideDish?.(meal);
+        const match = !sideDish?.composition && matchAuthoringRecipe(catalog, report, meal);
         return <article key={`${day.date}:${meal.slot}:${meal.recipeId}`} className="min-w-0 rounded-xl border border-stone-200 p-4">
         <p className="text-sm text-stone-600">{meal.slot}</p>
-        <h4 className="mt-1 font-semibold">{meal.name}</h4>
+        <h4 className="mt-1 font-semibold">{sideDish?.title ?? meal.name}</h4>
         {onExcludeRecipe && <div className="mt-3">
           <button type="button" disabled={actionsDisabled} aria-label={`Не предлагать это блюдо: ${meal.name}`}
             onClick={() => onExcludeRecipe(meal)}
             className="w-full rounded-lg border border-emerald-800 px-3 py-3 text-sm font-semibold text-emerald-900 disabled:opacity-50">Не предлагать это блюдо</button>
           <p className="mt-2 text-sm text-stone-600">Исключит блюдо из следующего подбора всей недели.</p>
         </div>}
-        <p className="mt-3 text-sm">1 порция по источнику · граммы не подтверждены</p>
+        <p className="mt-3 text-sm">{sideDish?.composition ? 'Тестовая порция с заменённым гарниром' : '1 порция по источнику · граммы не подтверждены'}</p>
         <p className="mt-2 text-sm">Справочно: {number(meal.referenceNutrition.calories)} ккал · Б {number(meal.referenceNutrition.protein)} · Ж {number(meal.referenceNutrition.fat)} · У исходника {number(meal.referenceNutrition.carbs)} · Клетчатка {number(meal.referenceNutrition.fiber)} г</p>
         <details className="mt-3 text-sm"><summary className="cursor-pointer">Данные исходника</summary>
           <p className="break-all">ID: {meal.recipeId}</p><p>В рецепте заявлено порций: {number(meal.sourceDeclaredServings)}. В меню назначена одна; справочные значения уже на порцию.</p>
         </details>
-        {match.recipe ? <details className="mt-3"><summary className="cursor-pointer text-sm font-semibold">Открыть рецепт</summary>
+        {sideDish?.composition ?? (match && (match.recipe ? <details className="mt-3"><summary className="cursor-pointer text-sm font-semibold">Открыть рецепт</summary>
           <AuthoringRecipeDetails recipe={match.recipe} />
-        </details> : <p className="mt-3 text-sm" role="status">{match.error}</p>}
+        </details> : <p className="mt-3 text-sm" role="status">{match.error}</p>))}
+        {sideDish?.editor}
       </article>;})}</div>
     </>}
     <details className="rounded-xl border border-stone-200 p-4 text-sm"><summary className="cursor-pointer">Источник и ограничения проверки</summary>

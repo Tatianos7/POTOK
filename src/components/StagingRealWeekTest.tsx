@@ -2,9 +2,20 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {supabase} from '../lib/supabaseClient';
 import {isStagingGenerationProbeEnabled} from '../services/stagingGenerationProbe';
 import {requestStagingRealWeek, type StagingRealWeekView} from '../services/stagingRealWeek';
-import {loadStagingWeekDraft, saveStagingWeekDraft, removeStagingWeekDraft, type StagingWeekDraft} from '../services/stagingWeekDraft';
+import {loadStagingWeekDraft, saveStagingWeekDraft, saveStagingWeekSideDishes, removeStagingWeekDraft, type StagingWeekDraft} from '../services/stagingWeekDraft';
 import {AuthoringWeekContent} from '../dev/AuthoringWeekViewer';
 import {assessReferenceDailyTargetFitV1} from '../dev/referenceDailyTargetFitV1';
+import {referenceSideDishes} from '../dev/referenceSideDishScenario';
+import {projectStagingSideDishes, stagingSideDishRecipe, type StagingSideDishEdit} from '../services/stagingWeekSideDishes';
+import StagingSideDishEditor from './StagingSideDishEditor';
+
+const sideDishTest = {
+  weekStart: '2026-11-23',
+  excludedIds: ['eggs_wholegrain_toast_cucumber', 'lemon_shelled_edamame', 'rabbit_potatoes_carrots',
+    'ref_2000_gnocchi_lemon_chive_pesto', 'ref_2000_healthy_gnocchi', 'salmon_brown_rice',
+    'salmon_frozen_spinach', 'shrimp_rice_vegetables', 'shrimp_zucchini', 'squid_mixed_vegetables',
+    'trout_broccoli', 'trout_green_beans'],
+};
 
 export default function StagingRealWeekTest({currentUserId}: {currentUserId: string}) {
   const [target, setTarget] = useState(1600), [weekStart, setWeekStart] = useState('2026-11-09');
@@ -15,8 +26,10 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   const [excluded, setExcluded] = useState<{id: string; name: string}[]>([]);
   const epoch = useRef(0);
   const generateButton = useRef<HTMLButtonElement>(null);
-  const targetFit = view?.savedGoal && view.report.days.length === 7
-    ? assessReferenceDailyTargetFitV1(view.report, view.savedGoal)
+  const currentDraft = saved && saved.view.snapshot === view?.snapshot ? saved : null;
+  const report = view && currentDraft?.sideDishes.length ? projectStagingSideDishes(view, currentDraft.sideDishes) : view?.report;
+  const targetFit = view?.savedGoal && report?.days.length === 7
+    ? assessReferenceDailyTargetFitV1(report, view.savedGoal)
     : null;
   function clear() {++epoch.current; setView(null); setDay(0); setError(''); setNotice(''); setBusy(false);}
   const reopen = useCallback(async () => {
@@ -57,20 +70,49 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       if (request === epoch.current) setError('Не удалось изменить черновик. Проверь вход и доступность хранилища браузера. Ранее сохранённая неделя не перезаписана.');
     } finally {if (request === epoch.current) setBusy(false);}
   }
+  async function confirmSideDishes(edits: StagingSideDishEdit[]): Promise<boolean> {
+    if (busy || !supabase || !currentDraft) return false;
+    const request = ++epoch.current;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      const user = await supabase.auth.getUser();
+      if (request !== epoch.current) return false;
+      if (user.error || user.data.user?.id !== currentUserId) {setView(null); setSaved(null); throw Error('SESSION_CHANGED');}
+      const draft = saveStagingWeekSideDishes(window.localStorage, currentUserId, currentDraft, edits);
+      setSaved(draft);
+      setNotice('Гарнир обновлён в сохранённой тестовой неделе на этом устройстве.');
+      return true;
+    } catch (err) {
+      if (request === epoch.current) setError(err instanceof Error && err.message === 'STAGING_DRAFT_CHANGED'
+        ? 'Сохранённая неделя изменилась. Открой её заново перед заменой.'
+        : 'Не удалось сохранить замену гарнира. Проверь вход и доступность хранилища браузера.');
+      return false;
+    } finally {if (request === epoch.current) setBusy(false);}
+  }
   if (!isStagingGenerationProbeEnabled()) return null;
-  async function generate(source = goalSource) {
+  async function generate(source = goalSource, test?: typeof sideDishTest) {
     if (busy || !supabase) return;
     const client = supabase, request = ++epoch.current;
     setView(null); setDay(0); setError(''); setNotice(''); setBusy(true);
     try {
-      const result = await requestStagingRealWeek(currentUserId, target, weekStart, {
+      const result = await requestStagingRealWeek(currentUserId, target, test?.weekStart ?? weekStart, {
         async userId() {const r = await client.auth.getUser(); return r.error ? null : r.data.user?.id ?? null;},
         async token() {const r = await client.auth.getSession(); return r.error ? null : r.data.session?.access_token ?? null;},
         send: (input, init) => fetch(input, init),
-      }, excluded.map(r => r.id), source);
-      if (request === epoch.current) {setView(result); setGoalSource(source); if (result.savedGoal) setTarget(result.report.target);}
+      }, test?.excludedIds ?? excluded.map(r => r.id), source);
+      if (request !== epoch.current) return;
+      if (test) {
+        const goal = result.savedGoal;
+        if (!goal || goal.calories !== 1703 || goal.protein !== 145 || goal.fat !== 65 || goal.carbs !== 134) {
+          throw Error('SIDE_DISH_TEST_GOAL_MISMATCH');
+        }
+        setWeekStart(test.weekStart);
+        setExcluded(result.excludedRecipes);
+      }
+      setView(result); setGoalSource(source); if (result.savedGoal) setTarget(result.report.target);
     } catch (err) {
       const messages: Record<string, string> = {SAVED_GOAL_MISSING: 'В этом тестовом аккаунте не сохранена цель питания. Можно продолжить с тестовой калорийностью.', SAVED_GOAL_UNAVAILABLE: 'Не удалось прочитать цель. Проверь подключение и повтори. Локальная копия цели не используется.', INVALID_SAVED_GOAL: 'Сохранённая цель неполная или некорректная. Подбор по ней не выполнен.', SAVED_GOAL_CHANGED: 'Цель изменилась во время подбора. Нажми генерацию по сохранённой цели ещё раз.'};
+      messages.SIDE_DISH_TEST_GOAL_MISMATCH = 'Для этого сценария в тестовом аккаунте нужна сохранённая цель 1703 ккал, Б 145 г, Ж 65 г, У 134 г.';
       if (request === epoch.current) setError(err instanceof Error && messages[err.message] ? messages[err.message] : err instanceof Error && ['AUTH_REQUIRED', 'SESSION_CHANGED'].includes(err.message)
         ? 'Тестовый вход изменился. Войди снова и повтори подбор.'
         : 'Не удалось получить тестовую неделю. Старое меню скрыто. Попробуй ещё раз.');
@@ -93,6 +135,9 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     </button>
     <button type="button" disabled={busy || !weekStart} onClick={() => {void generate('SAVED_GOAL');}}
       className="w-full rounded-lg border border-emerald-800 px-4 py-3 font-semibold text-emerald-900 disabled:opacity-50">Собрать по моей сохранённой цели</button>
+    <button type="button" disabled={busy} onClick={() => {void generate('SAVED_GOAL', sideDishTest);}}
+      className="w-full rounded-lg border border-emerald-800 px-4 py-3 font-semibold text-emerald-900 disabled:opacity-50">Собрать неделю для проверки замены гарнира</button>
+    <p className="text-sm">Сценарий замены использует сохранённую тестовую цель 1703 ккал и подборку привычных блюд.</p>
     {goalSource === 'SAVED_GOAL' && <p className="text-sm">Для нового подбора цель будет прочитана из тестового аккаунта заново. Чтобы выбрать тестовый сценарий, измени калорийность.</p>}
     <div className="space-y-2" aria-label="Сохранение тестовой недели">
       <button type="button" disabled={busy || view?.report.days.length !== 7} onClick={() => {void changeDraft('save');}}
@@ -112,14 +157,14 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       <p className="mt-2">Исключены только эти блюда. Это не проверка ингредиентов, аллергии или диеты.</p>
     </div>}
     {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm">{error}</p>}
-    {view && <>
+    {view && report && <>
       {view.savedGoal && <div className="rounded-lg border border-emerald-200 p-3 text-sm" aria-label="Сохранённая цель и меню">
         <p className="font-semibold">Цель из тестового аккаунта: {view.savedGoal.calories.toLocaleString('ru-RU')} ккал</p>
         <p>Б {view.savedGoal.protein.toLocaleString('ru-RU')} · Ж {view.savedGoal.fat.toLocaleString('ru-RU')} · У {view.savedGoal.carbs.toLocaleString('ru-RU')} г</p>
         {targetFit && <p className="mt-2" role="status">Совместные допуски по справочным значениям соблюдены в {targetFit.filter(d => d.passed).length} из 7 дней: калории ±50 ккал, белки и жиры ±10%, углеводы ±15%. Это только числовое сравнение; рецепты и порции остаются непроверенными.</p>}
         {view.savedGoal && !view.jointTargetSearch && view.report.days.length===7 && <p className="mt-2">Эта сохранённая неделя создана до совместного поиска по диапазонам всех трёх показателей БЖУ. Создай новую тестовую неделю, чтобы проверить обновлённый подбор.</p>}
         {view.jointTargetSearch && <div className="mt-2" aria-label="Ограниченный совместный поиск БЖУ">
-          {view.jointTargetSearch.wholeWeekRebuilt ? <p>Меню пересобрано целиком, чтобы все семь дней уложились в допуски. Порции сохранены.</p> : <p>Ограниченный поиск оценивал замены по трём диапазонам БЖУ одновременно; изменения порций не выполнялись. Проверено вариантов блюд: {view.jointTargetSearch.evaluatedCandidates.toLocaleString('ru-RU')}.</p>}
+          {view.jointTargetSearch.wholeWeekRebuilt ? <p>При генерации меню пересобрано целиком, чтобы все семь дней уложились в допуски.</p> : <p>При генерации поиск оценивал замены по трём диапазонам БЖУ одновременно. Проверено вариантов блюд: {view.jointTargetSearch.evaluatedCandidates.toLocaleString('ru-RU')}.</p>}
           {targetFit && targetFit.filter(d=>d.passed).length<7 && <p className="mt-2">В пределах поиска полная неделя не найдена. Это не доказывает, что подходящей недели нет в полном каталоге: поиск ограничен по числу вариантов и размеру списка блюд.</p>}
           {!view.jointTargetSearch.wholeWeekRebuilt && view.jointTargetSearch.exhaustedDays.includes(day) && <p className="mt-2">Для выбранного дня достигнут лимит проверки вариантов. Результат не доказывает, что подходящей замены нет.</p>}
         </div>}
@@ -151,13 +196,32 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
           <div className="mt-2 space-y-2">
             <p>КБЖУ взяты из рецептов. Аллергии, диеты и личные ограничения здесь не проверяются.</p>
             {([['protein','Белок'],['fat','Жир'],['carbs','Углеводы по рецептам'],['fiber','Клетчатка']] as const).map(([axis,label]) => {
-              const values = view.report.days.map(d => d.referenceNutrition[axis]);
+              const values = report.days.map(d => d.referenceNutrition[axis]);
               return <p key={axis}>{label}: {Math.min(...values).toLocaleString('ru-RU')}–{Math.max(...values).toLocaleString('ru-RU')} г в день.</p>;
             })}
           </div>
         </details>
       </div>}
-      <AuthoringWeekContent emptyReason={view.minimumWeekCaloriesProvenUnreachable ? 'В этом режиме собрать неделю в выбранном коридоре нельзя: не хватает калорий при нынешних порциях и повторах.' : undefined} report={view.report} catalog={view.catalog} selectedDay={day} onSelectDay={setDay}
+      <AuthoringWeekContent emptyReason={view.minimumWeekCaloriesProvenUnreachable ? 'В этом режиме собрать неделю в выбранном коридоре нельзя: не хватает калорий при нынешних порциях и повторах.' : undefined} report={report} catalog={view.catalog} selectedDay={day} onSelectDay={setDay}
+        renderSideDish={meal => {
+          const sourceDay = view.report.days[day];
+          const original = sourceDay?.meals.find(m => m.recipeId === meal.recipeId);
+          const binding = original && stagingSideDishRecipe(view, original);
+          if (!original || !binding) return null;
+          if (!currentDraft) return {editor: <p className="mt-3 text-sm">Сохрани неделю на устройстве, чтобы заменить гарнир.</p>};
+          const edit = currentDraft.sideDishes.find(e => e.date === sourceDay.date && e.recipeId === meal.recipeId);
+          return {
+            title: edit ? binding.main : undefined,
+            composition: edit && <div className="mt-3 text-sm">
+              <p>Текущий гарнир: {referenceSideDishes[edit.id].name}, {edit.dryGrams} г в сухом виде.</p>
+              <details className="mt-2"><summary>Состав основной части по исходнику</summary>
+                <ul className="ml-4 list-disc">{binding.ingredients.map(i => <li key={i.id}>{i.name}</li>)}</ul>
+              </details>
+            </div>,
+            editor: <StagingSideDishEditor key={sourceDay.date + ':' + meal.recipeId} view={view}
+              date={sourceDay.date} meal={original} edits={currentDraft.sideDishes} busy={busy} onSave={confirmSideDishes} />,
+          };
+        }}
         actionsDisabled={busy || excluded.length >= 28} onExcludeRecipe={meal => {
           if (busy || excluded.length >= 28 || excluded.some(r => r.id === meal.recipeId)) return;
           clear();
