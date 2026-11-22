@@ -62,13 +62,13 @@ export function AuthoringWeekContent({report, selectedDay, onSelectDay, catalog 
         </div>}
         <p className="mt-3 text-sm">{sideDish?.composition ? 'Тестовая порция с заменённым гарниром' : '1 порция по источнику · граммы не подтверждены'}</p>
         <p className="mt-2 text-sm">Справочно: {number(meal.referenceNutrition.calories)} ккал · Б {number(meal.referenceNutrition.protein)} · Ж {number(meal.referenceNutrition.fat)} · У исходника {number(meal.referenceNutrition.carbs)} · Клетчатка {number(meal.referenceNutrition.fiber)} г</p>
+        {sideDish?.editor}
         <details className="mt-3 text-sm"><summary className="cursor-pointer">Данные исходника</summary>
           <p className="break-all">ID: {meal.recipeId}</p><p>В рецепте заявлено порций: {number(meal.sourceDeclaredServings)}. В меню назначена одна; справочные значения уже на порцию.</p>
         </details>
         {sideDish?.composition ?? (match && (match.recipe ? <details className="mt-3"><summary className="cursor-pointer text-sm font-semibold">Открыть рецепт</summary>
           <AuthoringRecipeDetails recipe={match.recipe} />
         </details> : <p className="mt-3 text-sm" role="status">{match.error}</p>))}
-        {sideDish?.editor}
       </article>;})}</div>
     </>}
     <details className="rounded-xl border border-stone-200 p-4 text-sm"><summary className="cursor-pointer">Источник и ограничения проверки</summary>

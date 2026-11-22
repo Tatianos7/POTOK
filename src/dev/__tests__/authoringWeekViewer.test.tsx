@@ -217,3 +217,13 @@ test('meal exclusion is visible in its card only when the host enables the actio
   assert.match(html, /Исключит блюдо из следующего подбора всей недели/);
   assert.match(render(true,true), /disabled="" aria-label="Не предлагать это блюдо:/);
 });
+
+test('the side dish editor appears before the original recipe ingredients', () => {
+  const report = decodeAuthoringWeekReport(fixture());
+  const catalog = decodeAuthoringRecipeCatalog(catalogFixture());
+  const html = renderToStaticMarkup(<AuthoringWeekContent report={report} catalog={catalog}
+    selectedDay={0} onSelectDay={() => {}} renderSideDish={meal =>
+      meal.recipeId === report.days[0].meals[0].recipeId ? {editor: <p>Новый гарнир</p>} : null} />);
+  assert.match(html, /Новый гарнир[\s\S]*Открыть рецепт/);
+  assert.ok(html.indexOf('Новый гарнир') < html.indexOf('Открыть рецепт'));
+});

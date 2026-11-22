@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {stagingSideDishTest} from '../../dev/stagingSideDishTest';
 import {createStagingRealWeekHandler, readStagingReferenceCatalog} from '../stagingRealWeekApiV1';
 import {decodeStagingRealWeek, requestStagingRealWeek, decodeReferenceWeekCalorieCapacity} from '../../services/stagingRealWeek';
 
@@ -58,7 +59,7 @@ test('weekly calorie bound is tied to the selected goal and cannot invent or hid
 });
 
 test('the fixed side-dish scenario keeps Auth and never reads the account goal', async () => {
-  const body = {testScenario:'SIDE_DISH_REPLACEMENT_V1'};
+  const body = {testScenario:stagingSideDishTest.id};
   const request = {...req(), body};
   const anonymous = await invoke(env, {...request, headers: {authorization: ''}});
   assert.equal(anonymous.status, 401);

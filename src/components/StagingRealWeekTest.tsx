@@ -37,7 +37,10 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       if (user.error || user.data.user?.id !== currentUserId) throw Error('SESSION_CHANGED');
       const draft = loadStagingWeekDraft(window.localStorage, currentUserId);
       if (draft) {
-        setSaved(draft); setGoalSource(draft.view.savedGoal ? 'SAVED_GOAL' : undefined); setExcluded(draft.view.excludedRecipes); setTarget(draft.target); setWeekStart(draft.weekStart); setView(draft.view);
+        setSaved(draft);
+        setGoalSource(draft.view.savedGoal ? 'SAVED_GOAL' : undefined);
+        if (!draft.view.testScenario) setExcluded(draft.view.excludedRecipes);
+        setTarget(draft.target); setWeekStart(draft.weekStart); setView(draft.view);
         setNotice('Открыта сохранённая тестовая неделя. Повторный подбор не выполнялся.');
       } else setNotice('На этом устройстве нет сохранённой тестовой недели.');
     } catch {
@@ -96,10 +99,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
         send: (input, init) => fetch(input, init),
       }, excluded.map(r => r.id), test ? stagingSideDishTest.id : source);
       if (request !== epoch.current) return;
-      if (test) {
-        setWeekStart(stagingSideDishTest.weekStart);
-        setExcluded(result.excludedRecipes);
-      }
+      if (test) setWeekStart(stagingSideDishTest.weekStart);
       setView(result); setGoalSource(test ? undefined : source); if (result.nutritionGoal) setTarget(result.report.target);
     } catch (err) {
       const messages: Record<string, string> = {SAVED_GOAL_MISSING: 'В этом тестовом аккаунте не сохранена цель питания. Можно продолжить с тестовой калорийностью.', SAVED_GOAL_UNAVAILABLE: 'Не удалось прочитать цель. Проверь подключение и повтори. Локальная копия цели не используется.', INVALID_SAVED_GOAL: 'Сохранённая цель неполная или некорректная. Подбор по ней не выполнен.', SAVED_GOAL_CHANGED: 'Цель изменилась во время подбора. Нажми генерацию по сохранённой цели ещё раз.'};
@@ -148,6 +148,10 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     </div>}
     {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm">{error}</p>}
     {view && report && <>
+      {view.testScenario && view.excludedRecipes.length > 0 && <details className="rounded-lg border p-3 text-sm">
+        <summary>Фильтр этой тестовой недели</summary>
+        <ul className="mt-2 list-inside list-disc">{view.excludedRecipes.map(r => <li key={r.id}>{r.name}</li>)}</ul>
+      </details>}
       {view.nutritionGoal && <div className="rounded-lg border border-emerald-200 p-3 text-sm" aria-label="Цель и тестовое меню">
         <p className="font-semibold">{view.testScenario ? 'Тестовая цель для замены гарнира' : 'Цель из тестового аккаунта'}: {view.nutritionGoal.calories.toLocaleString('ru-RU')} ккал</p>
         <p>Б {view.nutritionGoal.protein.toLocaleString('ru-RU')} · Ж {view.nutritionGoal.fat.toLocaleString('ru-RU')} · У {view.nutritionGoal.carbs.toLocaleString('ru-RU')} г</p>
