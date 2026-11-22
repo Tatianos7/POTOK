@@ -13,6 +13,15 @@ export interface AuthoringRecipe {
 export interface AuthoringRecipeCatalog {
   sourceHash: string; source: AuthoringSearchCatalogV1['source']; recipes: ReadonlyMap<string, AuthoringRecipe>;
 }
+
+const unitLabels = new Map([
+  ['G', 'г'], ['ML', 'мл'], ['PCS', 'шт.'], ['PIECE', 'шт.'], ['TSP', 'ч. л.'], ['TBSP', 'ст. л.'],
+]);
+
+export function authoringUnitLabel(unit: string): string {
+  return unitLabels.get(unit) ?? unit;
+}
+
 const fail = (): never => {throw new Error('Файл не соответствует формату тестового каталога. Рецепты не открыты.');};
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return fail();

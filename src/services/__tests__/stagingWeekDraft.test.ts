@@ -62,7 +62,7 @@ test('a reviewed side-dish replacement is scoped to its account, week and day on
   const repeated = fixture.catalog.recipes.find(recipe => recipe.recipeId === 'synthetic-20')!;
   fixture.report.days[6].meals[0] = {...fixture.report.days[5].meals[0]};
   fixture.catalog.recipes = fixture.catalog.recipes.filter(recipe => recipe.recipeId !== 'synthetic-24');
-  Object.assign(repeated.ingredients[0], {weight_g: 300});
+  Object.assign(repeated.ingredients[0], {amount: 300, unit: 'ML'});
   const original = {calories: 489.1, protein: 44.168, fat: 10.341, carbs: 57.774, fiber: 10.25};
   const rest = {calories: 389.266667, protein: 28.866667, fat: 17.466667, carbs: 31.633333, fiber: 6.2};
   const withMeal = {...base, recipeId, name: 'Курица с булгуром и кабачком',
@@ -71,7 +71,7 @@ test('a reviewed side-dish replacement is scoped to its account, week and day on
     ingredients: [
       {...base.ingredients[0], recipe_id: recipeId, ingredient_row_id: recipeId + '_ing_02', ingredient_name_ru: 'Булгур medium/coarse', weight_g: 140},
       {...base.ingredients[0], recipe_id: recipeId, ingredient_row_id: recipeId + '_ing_05', ingredient_name_ru: 'Вода', weight_g: 280, sort_order: 2},
-      {...base.ingredients[0], recipe_id: recipeId, ingredient_row_id: recipeId + '_ing_01', ingredient_name_ru: 'Куриная грудка', weight_g: 300, sort_order: 3},
+      {...base.ingredients[0], recipe_id: recipeId, ingredient_row_id: recipeId + '_ing_01', ingredient_name_ru: 'Куриная грудка', amount: 300, unit: 'G', weight_g: 300, sort_order: 3},
     ],
     steps: []};
   day.meals[0] = {...day.meals[0], recipeId, name: withMeal.name, referenceNutrition: original};
@@ -106,12 +106,16 @@ test('a reviewed side-dish replacement is scoped to its account, week and day on
   const after = deriveStagingWeekShopping(opened.view, opened.sideDishes, day.date)!;
   assert.equal(after.find(item => item.name === 'Белая киноа (сухой вес)')?.amount, 65);
   assert.equal(after.find(item => item.name === 'Куриная грудка')?.amount, 150);
+  assert.equal(after.find(item => item.name === 'Куриная грудка')?.unit, 'г');
   assert.ok(after.every(item => item.name !== 'Булгур medium/coarse'));
   assert.ok(after.some(item => item.amount === null));
   assert.deepEqual(deriveStagingWeekShopping(opened.view, opened.sideDishes, fixture.report.days[1].date),
     deriveStagingWeekShopping(saved.view, saved.sideDishes, fixture.report.days[1].date));
   const weekly = deriveStagingWeekShopping(opened.view, opened.sideDishes)!;
   assert.equal(weekly.find(item => item.recipe === repeated.name)?.amount, 300);
+  assert.equal(weekly.find(item => item.recipe === repeated.name)?.unit, 'мл');
+  assert.equal(weekly.find(item => item.name === 'Белая киноа (сухой вес)')?.amount, 65);
+  assert.ok(weekly.every(item => item.name !== 'Булгур medium/coarse'));
   assert.equal(loadStagingWeekDraft(s, b), null);
   assert.throws(() => saveStagingWeekSideDishes(s, a, saved, []), /STAGING_DRAFT_CHANGED/);
   assert.deepEqual(saveStagingWeekSideDishes(s, a, applied, [edit]), applied);
