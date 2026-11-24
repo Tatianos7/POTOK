@@ -1,0 +1,152 @@
+[
+  {
+    "contract": "potok-food-evidence-review-request-v1",
+    "kind": "REVIEW_APPROVED",
+    "idempotencyReference": "fb811c39-6761-442e-883e-a5e8aa4be2e6",
+    "expectedHead": null,
+    "proposal": {
+      "contract": "potok-canonical-food-review-proposal-v1",
+      "canonicalFoodId": "1240cfc5-c62d-45e8-be39-ded36c005ed1",
+      "foodStableId": "bulgur",
+      "source": "core",
+      "foodState": "dry",
+      "applicability": {
+        "kind": "EXACT_FOOD_STATE",
+        "foodState": "dry"
+      },
+      "sharedCatalogAccessible": true,
+      "identitySnapshot": {
+        "name": "Булгур",
+        "brand": null,
+        "aliases": [],
+        "barcode": null,
+        "nameOriginal": null,
+        "normalizedName": "булгур",
+        "normalizedBrand": null
+      }
+    },
+    "proposalDigest": "6fc4514ef0b9d4516b1c06519a6e40cbae96dde2ba614c916ff9403eaaa44ce1",
+    "retainedSource": {
+      "sourceArtifactId": "5f3b5a10-ab3e-41aa-b1ac-01fad9bdd346",
+      "providerIdentity": "USDA Agricultural Research Service",
+      "documentIdentity": "USDA ARS, Standard Reference Release 28 (2015). NDB 20012: Bulgur, dry.",
+      "sourceRevision": "SR28 (2015)",
+      "locator": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf#page=39",
+      "capturedAt": "2026-11-04T00:00:00.000Z",
+      "mediaType": "text/plain; charset=utf-8",
+      "byteLength": 659,
+      "sourceBytesSha256": "12c09b9b8613392f321d796a1449d6db83018646a5322c36244ec98afde0f241",
+      "mappings": [
+        {
+          "field": "identitySnapshot",
+          "sourceField": "SR28 NDB 20012",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "dry"
+          }
+        }
+      ],
+      "text": "USDA ARS, Standard Reference Release 28 (2015). NDB 20012: Bulgur, dry.\nPDF page 39, Mean column, per 100 g edible source portion.\nEnergy 342 kcal; protein 12.29 g; fat 1.33 g; carbohydrate by difference 75.87 g; total dietary fiber 12.5 g.\nURL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg20.pdf\nRetrieved source bytes and visually checked exact page 2026-11-04. Upstream SHA-256: 3b71f757854a58af57256864f144e4215a2f56da52fdc90bbd57360bfc234b05.\nFactual source capture only; no FDC crosswalk, source approval, identity binding or cooked-yield evidence. Blank nutrient values are not zero or transferable from a related record.\n"
+    }
+  },
+  {
+    "contract": "potok-food-evidence-review-request-v1",
+    "kind": "REVIEW_APPROVED",
+    "idempotencyReference": "4d76461b-39af-48eb-8b27-ce33fcb99055",
+    "expectedHead": null,
+    "proposal": {
+      "contract": "potok-canonical-food-review-proposal-v1",
+      "canonicalFoodId": "02f0b241-ab4a-4f8f-86f5-fbbcf24a729d",
+      "foodStableId": "carrot",
+      "source": "core",
+      "foodState": "raw",
+      "applicability": {
+        "kind": "EXACT_FOOD_STATE",
+        "foodState": "raw"
+      },
+      "sharedCatalogAccessible": true,
+      "identitySnapshot": {
+        "name": "Морковь",
+        "brand": null,
+        "aliases": [],
+        "barcode": null,
+        "nameOriginal": null,
+        "normalizedName": "морковь",
+        "normalizedBrand": null
+      }
+    },
+    "proposalDigest": "3feec6ddcf1983533b318a7ff8699a4b2df202be8248a659ab653aef40216914",
+    "retainedSource": {
+      "sourceArtifactId": "2337e74f-32db-4dda-87cd-b49bb1094ccf",
+      "providerIdentity": "USDA Agricultural Research Service",
+      "documentIdentity": "USDA ARS, Standard Reference Release 28 (2015). NDB 11124: Carrots, raw.",
+      "sourceRevision": "SR28 (2015)",
+      "locator": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf#page=448",
+      "capturedAt": "2026-11-03T00:00:00.000Z",
+      "mediaType": "text/plain; charset=utf-8",
+      "byteLength": 538,
+      "sourceBytesSha256": "4f43260e0210bc4d7b79db75f37c85df0ee2fe41186ecc7e7ce17d87bf03e4fc",
+      "mappings": [
+        {
+          "field": "identitySnapshot",
+          "sourceField": "SR28 NDB 11124",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "raw"
+          }
+        }
+      ],
+      "text": "USDA ARS, Standard Reference Release 28 (2015). NDB 11124: Carrots, raw.\nPDF page 448, Mean column, per 100 g edible raw portion.\nEnergy 41 kcal; protein 0.93 g; fat 0.24 g; carbohydrate by difference 9.58 g; total dietary fiber 2.8 g.\nURL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf\nRetrieved and visually checked 2026-11-03. Upstream SHA-256: ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161.\nFactual source capture only; not POTOK approval or a cooked-food/retail-product binding.\n"
+    }
+  },
+  {
+    "contract": "potok-food-evidence-review-request-v1",
+    "kind": "REVIEW_APPROVED",
+    "idempotencyReference": "cb8841ef-ae50-4d44-a70c-bbe388ce202f",
+    "expectedHead": null,
+    "proposal": {
+      "contract": "potok-canonical-food-review-proposal-v1",
+      "canonicalFoodId": "4a5abfb0-8c91-4457-a598-b3a7863fd63f",
+      "foodStableId": "zucchini",
+      "source": "core",
+      "foodState": "raw",
+      "applicability": {
+        "kind": "EXACT_FOOD_STATE",
+        "foodState": "raw"
+      },
+      "sharedCatalogAccessible": true,
+      "identitySnapshot": {
+        "name": "Кабачок",
+        "brand": null,
+        "aliases": [],
+        "barcode": null,
+        "nameOriginal": null,
+        "normalizedName": "кабачок",
+        "normalizedBrand": null
+      }
+    },
+    "proposalDigest": "04a53942e4cebe991c0edbac4b0bdc875afbd5f2eb81b13f23560ba0238dd3d4",
+    "retainedSource": {
+      "sourceArtifactId": "30e0fb25-31ae-4c7f-8e19-7afffa3e3280",
+      "providerIdentity": "USDA Agricultural Research Service",
+      "documentIdentity": "USDA ARS, Standard Reference Release 28 (2015). NDB 11477: Squash, summer, zucchini, includes skin, raw.",
+      "sourceRevision": "SR28 (2015)",
+      "locator": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf#page=1876",
+      "capturedAt": "2026-11-04T00:00:00.000Z",
+      "mediaType": "text/plain; charset=utf-8",
+      "byteLength": 719,
+      "sourceBytesSha256": "9f72f691b4e939870c8407a3d22da2f384b05ff59f4610b49521e90423bacc14",
+      "mappings": [
+        {
+          "field": "identitySnapshot",
+          "sourceField": "SR28 NDB 11477",
+          "applicability": {
+            "kind": "EXACT_FOOD_STATE",
+            "foodState": "raw"
+          }
+        }
+      ],
+      "text": "USDA ARS, Standard Reference Release 28 (2015). NDB 11477: Squash, summer, zucchini, includes skin, raw.\nPDF page 1876, Mean column, per 100 g edible source portion.\nEnergy 17 kcal; protein 1.21 g; fat 0.32 g; carbohydrate by difference 3.11 g; total dietary fiber 1.0 g.\nThese are source edible-portion facts; refuse percentages must not be deducted again from recipe edible input grams.\nURL: https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf\nRetrieved and visually checked 2026-11-04. Upstream SHA-256: ecb7fc1f7c0613225fc381042454fe29e17a702ae96cfc3e51f5b756a7adb161.\nFactual source capture only; not POTOK approval, FDC-ID crosswalk, retail-product binding or cooked recipe evidence.\n"
+    }
+  }
+]

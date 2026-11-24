@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => ({
           stagingGenerationCheck: './staging-generator-check.html',
           stagingCatalogAccessCheck: './staging-catalog-access-check.html',
           stagingFourFoodReview: './staging-four-food-review.html',
+          stagingVegetableIdentity: './staging-vegetable-identity.html',
         } : {}),
       },
     },
