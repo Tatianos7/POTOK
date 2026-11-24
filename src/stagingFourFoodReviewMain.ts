@@ -8,6 +8,20 @@ const result = document.querySelector<HTMLParagraphElement>('#result');
 const recipeReview = document.querySelector<HTMLElement>('#recipe-review');
 const approveCards = document.querySelector<HTMLButtonElement>('#approve-cards');
 const recipeResult = document.querySelector<HTMLParagraphElement>('#recipe-review-result');
+async function withDeadline<T>(work: PromiseLike<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(Error('REQUEST_TIMEOUT')), 12000);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const stagingUrl = 'https://ozidryfvhkcbtpnulakq.supabase.co';
 
 if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
@@ -21,14 +35,15 @@ if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
     result.textContent = 'Проверяем…';
 
     try {
-      const { data: { session } } = await client.auth.getSession();
+      const { data: { session } } = await withDeadline(client.auth.getSession());
       if (!session) {
         result.textContent = 'В этом браузере нужна действующая сессия тестового POTOK.';
         return;
       }
 
       // The database checks authority before parsing. The empty object cannot create a review.
-      const { error } = await client.rpc('food_evidence_review_v1', { p_request_text: '{}' });
+      const { error } = await withDeadline(client.rpc('food_evidence_review_v1', { p_request_text: '{}' })
+        .abortSignal(AbortSignal.timeout(12000)));
       if (error?.code === '22023' && error.message === 'EVENT_VARIANT_INVALID') {
         result.textContent = 'Право администратора подтверждено. Данные каталога не менялись.';
         if (recipeReview) recipeReview.hidden = false;
@@ -41,7 +56,7 @@ if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
         result.textContent = 'Сервер вернул неожиданный ответ. Проверка не завершена.';
       }
     } catch {
-      result.textContent = 'Не удалось связаться с тестовым сервером.';
+      result.textContent = 'Проверка не получила ответ вовремя. Кнопка снова доступна.';
     } finally {
       button.disabled = false;
     }
@@ -54,7 +69,7 @@ if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
       recipeResult.textContent = 'Подтверждаем карточки…';
       let confirmed = 0;
       try {
-        const { data: { session } } = await client.auth.getSession();
+        const { data: { session } } = await withDeadline(client.auth.getSession());
         if (!session) throw Error('AUTH_REQUIRED');
         for (const item of requests) {
           const raw = JSON.stringify(item);
