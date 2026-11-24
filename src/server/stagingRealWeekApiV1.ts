@@ -1,4 +1,5 @@
-import type {ReferenceSavedGoal} from '../dev/referenceSavedGoalV1';
+import type {ReferenceTargetValuesV1} from '../dev/referenceDailyTargetFitV1';
+import {stagingSideDishTest} from '../dev/stagingSideDishTest';
 import {readReferenceSavedGoal} from './referenceSavedGoalReaderV1';
 import {brotliDecompressSync} from 'node:zlib';
 import {createHash} from 'node:crypto';
@@ -41,17 +42,20 @@ export function readStagingReferenceCatalog(packed: string | undefined) {
   return {packet, decoded};
 }
 
-export function buildStagingReferenceWeek(packed: string | undefined, target: number, weekStart: string, excludedRecipeIds: string[] = [], savedGoal?: ReferenceSavedGoal) {
-  if (savedGoal && savedGoal.calories !== target) throw Error('INVALID_SAVED_GOAL');
+export function buildStagingReferenceWeek(packed: string | undefined, target: number, weekStart: string, excludedRecipeIds: string[] = [], goal?: ReferenceTargetValuesV1) {
+  if (goal && goal.calories !== target) throw Error('INVALID_SAVED_GOAL');
   const {packet, decoded} = readStagingReferenceCatalog(packed);
   const excluded = decodeReferenceExcludedIds(excludedRecipeIds);
   const input = excludeReferenceRecipes(authoringSearchInput(decoded), excluded);
   const settings = scenario(target, weekStart);
   const eligible = input.recipes.filter(r => r.numericReferenceTestInputAvailable && r.sourceStatus !== 'BLOCKED');
+  if (new Set(eligible.map(r => decoded.recipes.get(r.recipeId)?.carbohydrateSemantics)).size > 1) {
+    throw Error('MIXED_REFERENCE_CARBOHYDRATE_SEMANTICS');
+  }
   const capacity = analyzeWeekInputCalorieCapacityV1(eligible.map(r => ({recipeId: r.recipeId,
     sourceCategory: String(r.sourceRecipe.meal_type_primary), caloriesPerDeclaredServing: String(r.referenceNutrition.values.calories)})),
     {...settings, tolerancePercent: 0});
-  const report = constrainReferenceWeekToCorridorV1(previewRecipeAuthoringWeekV1(input, settings, savedGoal ? {protein: savedGoal.protein, fat: savedGoal.fat, carbs: savedGoal.carbs} : undefined));
+  const report = constrainReferenceWeekToCorridorV1(previewRecipeAuthoringWeekV1(input, settings, goal ? {protein: goal.protein, fat: goal.fat, carbs: goal.carbs} : undefined));
   const requiredWeek = BigInt(report.calorieCorridor.minimumKcal) * 7000n;
   const maximumWeek = capacity.optimisticMaximumWeekKcal === null ? null : BigInt(capacity.optimisticMaximumWeekKcal.replace('.', ''));
   const shortfall = maximumWeek !== null && maximumWeek < requiredWeek ? requiredWeek - maximumWeek : null;
@@ -81,17 +85,18 @@ export function createStagingRealWeekHandler(env: Record<string, string | undefi
     }
     if (req.method !== 'POST') {res.setHeader('Allow', 'POST'); res.status(405).json({error: 'METHOD_NOT_ALLOWED'}); return;}
     const input = req.body as Record<string, unknown> | null;
+    const preset = input?.testScenario === stagingSideDishTest.id ? stagingSideDishTest : null;
     const savedGoalMode = input?.goalSource === 'SAVED_GOAL';
-    const allowedFields = savedGoalMode ? ['goalSource,weekStart', 'excludedRecipeIds,goalSource,weekStart'] : ['target,weekStart', 'excludedRecipeIds,target,weekStart'];
+    const allowedFields = preset ? ['testScenario'] : savedGoalMode ? ['goalSource,weekStart', 'excludedRecipeIds,goalSource,weekStart'] : ['target,weekStart', 'excludedRecipeIds,target,weekStart'];
     if (!input || typeof input !== 'object' || Array.isArray(input) || !allowedFields.includes(Object.keys(input).sort().join(','))
-      || (!savedGoalMode && !(testTargets as readonly unknown[]).includes(input.target)) || typeof input.weekStart !== 'string'
+      || (!preset && ((!savedGoalMode && !(testTargets as readonly unknown[]).includes(input.target)) || typeof input.weekStart !== 'string'
       || !/^\d{4}-\d{2}-\d{2}$/.test(input.weekStart)
       || !Number.isFinite(Date.parse(input.weekStart + 'T00:00:00Z'))
-      || new Date(input.weekStart + 'T00:00:00Z').toISOString().slice(0, 10) !== input.weekStart) {
+      || new Date(input.weekStart + 'T00:00:00Z').toISOString().slice(0, 10) !== input.weekStart))) {
       res.status(400).json({error: 'INVALID_TEST_SCENARIO'}); return;
     }
     let excluded: string[];
-    try {excluded = decodeReferenceExcludedIds(input.excludedRecipeIds);} catch {res.status(400).json({error: 'INVALID_REFERENCE_EXCLUSIONS'}); return;}
+    try {excluded = decodeReferenceExcludedIds(preset ? [...preset.excludedIds] : input.excludedRecipeIds);} catch {res.status(400).json({error: 'INVALID_REFERENCE_EXCLUSIONS'}); return;}
     const auth = req.headers.authorization;
     if (typeof auth !== 'string' || auth.length > 8192 || !/^Bearer [^\s,]+$/i.test(auth)) {
       res.status(401).json({error: 'AUTH_REQUIRED'}); return;
@@ -112,12 +117,13 @@ export function createStagingRealWeekHandler(env: Record<string, string | undefi
       const user = await remote.json() as {id?: unknown};
       if (typeof user.id !== 'string' || !uuid.test(user.id)) {res.status(401).json({error: 'AUTH_INVALID_USER'}); return;}
       const savedGoal = savedGoalMode ? await readReferenceSavedGoal(user.id, auth, key, authFetch) : null;
-      const result = buildStagingReferenceWeek(env.POTOK_STAGING_REFERENCE_CATALOG_BR64, savedGoal?.calories ?? input.target as number, input.weekStart, excluded, savedGoal ?? undefined);
+      const result = buildStagingReferenceWeek(env.POTOK_STAGING_REFERENCE_CATALOG_BR64, preset?.goal.calories ?? savedGoal?.calories ?? input.target as number,
+        preset?.weekStart ?? input.weekStart as string, excluded, preset?.goal ?? savedGoal ?? undefined);
       if (savedGoal) {
         const current = await readReferenceSavedGoal(user.id, auth, key, authFetch);
         if (JSON.stringify(current) !== JSON.stringify(savedGoal)) {res.status(409).json({error: 'SAVED_GOAL_CHANGED'}); return;}
       }
-      res.status(200).json(savedGoal ? {...result, savedGoal} : result);
+      res.status(200).json(preset ? {...result, testScenario: preset.id} : savedGoal ? {...result, savedGoal} : result);
     } catch (error) {
       if (error instanceof Error && ['SAVED_GOAL_MISSING', 'SAVED_GOAL_UNAVAILABLE', 'INVALID_SAVED_GOAL'].includes(error.message)) {res.status(error.message === 'SAVED_GOAL_MISSING' ? 422 : 503).json({error: error.message});}
       else if (error instanceof Error && error.message === 'UNKNOWN_REFERENCE_RECIPE') res.status(400).json({error: 'UNKNOWN_REFERENCE_RECIPE'});

@@ -1,5 +1,5 @@
 import type {AuthoringReport} from './authoringWeekReport';
-import type {ReferenceSavedGoal} from './referenceSavedGoalV1';
+import type {ReferenceTargetValuesV1} from './referenceDailyTargetFitV1';
 
 export interface ReferenceJointTargetSearchV1 {
   evaluatedCandidates: number;
@@ -21,7 +21,7 @@ const violation = (actual:number,target:number,percent:number) => {
 export function decodeReferenceJointTargetSearchV1(
   value: unknown,
   report: AuthoringReport,
-  goal: ReferenceSavedGoal | null,
+  goal: ReferenceTargetValuesV1 | null,
   distinctRecipes: number,
 ): ReferenceJointTargetSearchV1 | null {
   if (value === undefined) return null;

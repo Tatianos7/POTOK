@@ -1,7 +1,6 @@
-import type {AuthoringRecipe} from './authoringRecipeCatalog';
+import {authoringUnitLabel, type AuthoringRecipe} from './authoringRecipeCatalog';
 
 const number = (n: number) => n.toLocaleString('ru-RU', {maximumFractionDigits: 3});
-const units: Record<string, string> = {G: 'г', ML: 'мл', PCS: 'шт.', PIECE: 'шт.', TSP: 'ч. л.', TBSP: 'ст. л.'};
 export default function AuthoringRecipeDetails({recipe}: {recipe: AuthoringRecipe}) {
   return <section aria-label={`Рецепт: ${recipe.name}`} className="mt-3 space-y-3 text-sm">
     <p>Черновик из сборника · статус исходника: {recipe.status}. Данные ещё не подтверждены.</p>
@@ -12,7 +11,7 @@ export default function AuthoringRecipeDetails({recipe}: {recipe: AuthoringRecip
     {!recipe.ingredients.length ? <p>Ингредиенты в исходнике отсутствуют.</p> : <ul className="list-disc space-y-2 pl-5">
       {recipe.ingredients.map(i => <li key={i.id}>
         <strong>{i.name}</strong>{i.optional ? ' · по желанию' : ''}
-        <p>Количество: {i.amount === null ? 'не указано' : number(i.amount)}{i.unit ? ` ${units[i.unit] ?? i.unit}` : ' · единица не указана'}.
+        <p>Количество: {i.amount === null ? 'не указано' : number(i.amount)}{i.unit ? ` ${authoringUnitLabel(i.unit)}` : ' · единица не указана'}.
           {' '}Масса по источнику: {i.weightG === null ? 'не указана' : `${number(i.weightG)} г`}.</p>
         <p>Подготовка по источнику: {i.preparation ?? 'не уточнена'}.</p>
         {i.notes && <p className="whitespace-pre-wrap break-words">Примечание исходника: {i.notes}</p>}
