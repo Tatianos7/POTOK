@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
         ...(mode === 'staging-preview' ? {
           stagingGenerationCheck: './staging-generator-check.html',
           stagingCatalogAccessCheck: './staging-catalog-access-check.html',
+          stagingFourFoodReview: './staging-four-food-review.html',
         } : {}),
       },
     },
