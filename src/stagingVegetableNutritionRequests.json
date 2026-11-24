@@ -1,0 +1,23 @@
+[
+  {
+    "contract": "potok-exact-food-nutrition-review-request-v2",
+    "kind": "REVIEW_APPROVED",
+    "idempotencyReference": "a04f6a58-c371-5945-b619-0fa5ec7b7496",
+    "sourceProposalDigest": "a5e64a8470ff91f0207ec585a88114e78e69f2f32938bad0e4d11b53fbcdaee0",
+    "expectedHead": null
+  },
+  {
+    "contract": "potok-exact-food-nutrition-review-request-v2",
+    "kind": "REVIEW_APPROVED",
+    "idempotencyReference": "907b6183-214f-5d12-b508-4d329851a6cc",
+    "sourceProposalDigest": "0b7a0cad67eda6f2509d3f56cf25f8240af4ac69eb7b3823caac6ab9ed314d98",
+    "expectedHead": null
+  },
+  {
+    "contract": "potok-exact-food-nutrition-review-request-v2",
+    "kind": "REVIEW_APPROVED",
+    "idempotencyReference": "c947bfe9-d590-5bd4-a5cf-841daedd28d1",
+    "sourceProposalDigest": "465d4ba146dd45462cc0350c204a553aab9fa20ce1470958ea7bc84c026eea9e",
+    "expectedHead": null
+  }
+]

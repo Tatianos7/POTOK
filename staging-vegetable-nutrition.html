@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>POTOK · Подтверждение КБЖУ трёх продуктов</title>
+    <style>
+      body { font: 1.05rem/1.5 system-ui, sans-serif; color: #17312a; background: #f4faf7; }
+      main { max-width: 34rem; margin: 8vh auto; padding: 1rem; }
+      button, a { display: inline-block; margin: .4rem .8rem .4rem 0; padding: .7rem 1rem; font: inherit; }
+      button { background: #125943; color: white; border: 0; border-radius: .6rem; }
+      button:disabled { opacity: .55; }
+      a { color: #125943; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Подтверждение КБЖУ трёх продуктов</h1>
+      <p>Войди в тестовый POTOK в этом браузере, затем вернись на эту страницу.</p>
+      <a href="/" target="_blank" rel="noopener">Открыть тестовый POTOK</a>
+      <button id="check" type="button" disabled>Проверить права</button>
+      <p id="result" role="status"></p>
+      <section id="recipe-review" hidden>
+        <h2>Продукты</h2>
+        <p>Значения на 100 г. Углеводы указаны без клетчатки.</p>
+        <ul>
+          <li>Сырая морковь — 41 ккал, Б 0,93 г, Ж 0,24 г, У 6,78 г, клетчатка 2,8 г.</li>
+          <li>Сухой булгур — 342 ккал, Б 12,29 г, Ж 1,33 г, У 63,37 г, клетчатка 12,5 г.</li>
+          <li>Сырой кабачок с кожицей — 17 ккал, Б 1,21 г, Ж 0,32 г, У 2,11 г, клетчатка 1 г.</li>
+        </ul>
+        <button id="approve-cards" type="button">Подтвердить КБЖУ трёх продуктов</button>
+        <p id="recipe-review-result" role="status"></p>
+      </section>
+    </main>
+    <script type="module" src="/src/stagingVegetableNutritionMain.ts"></script>
+  </body>
+</html>
