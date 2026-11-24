@@ -1,7 +1,7 @@
-import requests from './stagingFourFoodReviewRequests.json';
+import requests from './stagingThreeFoodNutritionRequests.json';
 import { supabase } from './lib/supabaseClient';
-import { verifyFoodEvidenceReceiptV1 } from './server/foodEvidenceReviewGatewayV1';
-import { decodeFoodEvidenceReviewRequestRawV1 } from './server/foodEvidenceReviewRequestV1';
+import { verifyExactFoodNutritionReceiptV2 } from './server/exactFoodNutritionReviewGatewayV2';
+
 
 const button = document.querySelector<HTMLButtonElement>('#check');
 const result = document.querySelector<HTMLParagraphElement>('#result');
@@ -66,22 +66,22 @@ if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
     approveCards.addEventListener('click', async () => {
       approveCards.disabled = true;
       button.disabled = true;
-      recipeResult.textContent = 'Подтверждаем карточки…';
+      recipeResult.textContent = 'Подтверждаем КБЖУ…';
       let confirmed = 0;
       try {
         const { data: { session } } = await withDeadline(client.auth.getSession());
         if (!session) throw Error('AUTH_REQUIRED');
         for (const item of requests) {
           const raw = JSON.stringify(item);
-          const request = await decodeFoodEvidenceReviewRequestRawV1(raw);
-          const { data, error } = await client.rpc('food_evidence_review_v1', { p_request_text: raw });
+          const { data, error } = await withDeadline(client.rpc('food_nutrition_review_v2', { p_request_text: raw })
+            .abortSignal(AbortSignal.timeout(12000)));
           if (error) throw error;
-          await verifyFoodEvidenceReceiptV1(request, session.user.id, data);
+          await verifyExactFoodNutritionReceiptV2(raw, session.user.id, data);
           confirmed++;
         }
-        recipeResult.textContent = 'Сервер подтвердил все три карточки.';
+        recipeResult.textContent = 'Сервер подтвердил КБЖУ всех трёх продуктов.';
       } catch {
-        recipeResult.textContent = `Сервер подтвердил ${confirmed} из трёх карточек. Можно повторить запрос с тем же пакетом.`;
+        recipeResult.textContent = `Сервер подтвердил ${confirmed} из трёх наборов КБЖУ. Можно повторить запрос с тем же пакетом.`;
         approveCards.disabled = false;
       } finally {
         button.disabled = false;
