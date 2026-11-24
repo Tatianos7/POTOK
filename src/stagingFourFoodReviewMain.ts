@@ -64,9 +64,9 @@ if (button && result && supabase && import.meta.env.MODE === 'staging-preview'
           await verifyFoodEvidenceReceiptV1(request, session.user.id, data);
           confirmed++;
         }
-        recipeResult.textContent = 'Сервер подтвердил все четыре карточки.';
+        recipeResult.textContent = 'Сервер подтвердил все три карточки.';
       } catch {
-        recipeResult.textContent = `Сервер подтвердил ${confirmed} из четырёх карточек. Можно повторить запрос с тем же пакетом.`;
+        recipeResult.textContent = `Сервер подтвердил ${confirmed} из трёх карточек. Можно повторить запрос с тем же пакетом.`;
         approveCards.disabled = false;
       } finally {
         button.disabled = false;
