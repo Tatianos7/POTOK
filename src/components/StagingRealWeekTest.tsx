@@ -1,12 +1,13 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {supabase} from '../lib/supabaseClient';
 import {isStagingGenerationProbeEnabled} from '../services/stagingGenerationProbe';
-import {requestStagingRealWeek, type StagingRealWeekView} from '../services/stagingRealWeek';
+import {decodeStagingRealWeek, requestStagingRealWeek, type StagingRealWeekView} from '../services/stagingRealWeek';
 import {loadStagingWeekDraft, saveStagingWeekDraft, saveStagingWeekSideDishes, removeStagingWeekDraft, type StagingWeekDraft} from '../services/stagingWeekDraft';
 import {AuthoringWeekContent} from '../dev/AuthoringWeekViewer';
 import {assessReferenceDailyTargetFitV1} from '../dev/referenceDailyTargetFitV1';
 import {referenceSideDishes} from '../dev/referenceSideDishScenario';
 import {projectStagingSideDishes, stagingChickenPrepPair, stagingSideDishRecipe, type StagingSideDishEdit} from '../services/stagingWeekSideDishes';
+import StagingChickenPrepCard from './StagingChickenPrepCard';
 import StagingSideDishEditor from './StagingSideDishEditor';
 import StagingWeekShopping from './StagingWeekShopping';
 
@@ -18,6 +19,18 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   const [busy, setBusy] = useState(false), [error, setError] = useState('');
   const [saved, setSaved] = useState<StagingWeekDraft | null>(null), [notice, setNotice] = useState('');
   const [excluded, setExcluded] = useState<{id: string; name: string}[]>([]);
+  const prepPreview = import.meta.env.MODE === 'staging-preview'
+    && new URLSearchParams(window.location.search).get('scenario') === 'two-day-prep';
+  const draftStorage = useCallback(() => {
+    const storage = window.localStorage;
+    if (!prepPreview) return storage;
+    const keyFor = (key: string) => 'potok-two-day-prep-preview:' + key;
+    return {
+      getItem: (key: string) => storage.getItem(keyFor(key)),
+      setItem: (key: string, value: string) => storage.setItem(keyFor(key), value),
+      removeItem: (key: string) => storage.removeItem(keyFor(key)),
+    };
+  }, [prepPreview]);
   const epoch = useRef(0);
   const generateButton = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLDivElement>(null);
@@ -36,7 +49,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       const user = await supabase.auth.getUser();
       if (request !== epoch.current) return;
       if (user.error || user.data.user?.id !== currentUserId) throw Error('SESSION_CHANGED');
-      const draft = loadStagingWeekDraft(window.localStorage, currentUserId);
+      const draft = loadStagingWeekDraft(draftStorage(), currentUserId);
       if (draft) {
         setSaved(draft);
         if (!draft.view.testScenario) setExcluded(draft.view.excludedRecipes);
@@ -48,7 +61,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     } catch {
       if (request === epoch.current) setError('Не удалось открыть черновик или подтвердить вход. Сохранённые данные не изменены. Проверь подключение; можно повторить открытие или собрать новую неделю.');
     } finally {if (request === epoch.current) setBusy(false);}
-  }, [currentUserId]);
+  }, [currentUserId, draftStorage]);
   useEffect(() => {void reopen(); const scope = epoch; return () => {++scope.current;};}, [reopen]);
   async function changeDraft(action: 'save' | 'remove') {
     if (busy || !supabase) return;
@@ -59,10 +72,10 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       if (request !== epoch.current) return;
       if (user.error || user.data.user?.id !== currentUserId) {setView(null); setSaved(null); throw Error('SESSION_CHANGED');}
       if (action === 'remove') {
-        removeStagingWeekDraft(window.localStorage, currentUserId); setSaved(null);
+        removeStagingWeekDraft(draftStorage(), currentUserId); setSaved(null);
         setNotice('Сохранённый черновик удалён с этого устройства.');
       } else if (view?.report.days.length === 7) {
-        const draft = saveStagingWeekDraft(window.localStorage, currentUserId, view.snapshot, Intl.DateTimeFormat().resolvedOptions().timeZone);
+        const draft = saveStagingWeekDraft(draftStorage(), currentUserId, view.snapshot, Intl.DateTimeFormat().resolvedOptions().timeZone);
         setSaved(draft); setNotice('Тестовая неделя сохранена на этом устройстве.');
       }
     } catch {
@@ -77,7 +90,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       const user = await supabase.auth.getUser();
       if (request !== epoch.current) return false;
       if (user.error || user.data.user?.id !== currentUserId) {setView(null); setSaved(null); throw Error('SESSION_CHANGED');}
-      const draft = saveStagingWeekSideDishes(window.localStorage, currentUserId, currentDraft, edits);
+      const draft = saveStagingWeekSideDishes(draftStorage(), currentUserId, currentDraft, edits);
       setSaved(draft);
       setNotice('Гарнир обновлён в сохранённой тестовой неделе на этом устройстве.');
       return true;
@@ -94,6 +107,14 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
     const client = supabase, request = ++epoch.current;
     setView(null); setDay(0); setError(''); setNotice(''); setBusy(true);
     try {
+      if (prepPreview) {
+        const {stagingChickenPrepPreviewFixture} = await import('../dev/stagingChickenPrepPreviewFixture');
+        const user = await client.auth.getUser();
+        if (request !== epoch.current) return;
+        if (user.error || user.data.user?.id !== currentUserId) throw Error('SESSION_CHANGED');
+        setView(decodeStagingRealWeek(stagingChickenPrepPreviewFixture(currentUserId)));
+        return;
+      }
       const result = await requestStagingRealWeek(currentUserId, target, weekStart, {
         async userId() {const r = await client.auth.getUser(); return r.error ? null : r.data.user?.id ?? null;},
         async token() {const r = await client.auth.getSession(); return r.error ? null : r.data.session?.access_token ?? null;},
@@ -111,11 +132,12 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
   return <section className="mt-5 space-y-4 rounded-xl border border-emerald-200 bg-white p-4" aria-label="Тест реальных рецептов">
     <h2 className="text-xl font-semibold">Собрать неделю из реальных рецептов</h2>
     <p className="text-sm">Тест по нашему сборнику. КБЖУ справочные, фактический выход и порции ещё не проверены. Аллергены и личные ограничения не проверяются. В дневник и базу ничего не записывается. Можно сохранить одну тестовую неделю в этом браузере на этом устройстве. Она не синхронизируется; очистка данных браузера удалит её.</p>
+    {prepPreview && <p role="status" className="text-sm">Контрольный черновик заготовки. Остальные блюда учебные. Черновик сохраняется отдельно.</p>}
     <div id="side-dish-test" className="space-y-2 rounded-lg border border-emerald-200 p-3">
       <h3 className="font-semibold">Проверка замены гарнира</h3>
       <button type="button" disabled={busy} onClick={() => {void generate(stagingSideDishTest.id);}}
-        className="w-full rounded-lg bg-emerald-800 px-4 py-3 font-semibold text-white disabled:opacity-50">Собрать тестовую неделю на 1703 ккал</button>
-      <p className="text-sm">Сценарий на 23–29 ноября. Цель аккаунта при этом не меняется.</p>
+        className="w-full rounded-lg bg-emerald-800 px-4 py-3 font-semibold text-white disabled:opacity-50">{prepPreview ? 'Открыть контрольный черновик' : 'Собрать тестовую неделю на 1703 ккал'}</button>
+      {!prepPreview && <p className="text-sm">Сценарий на 23–29 ноября. Цель аккаунта при этом не меняется.</p>}
     </div>
     <div className="space-y-2" aria-label="Сохранение тестовой недели">
       <button type="button" disabled={busy || view?.report.days.length !== 7} onClick={() => {void changeDraft('save');}}
@@ -131,7 +153,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
       setDay(4);
       menu.current?.scrollIntoView({block:'start'});
     }} className="w-full rounded-lg border border-emerald-800 px-4 py-3 font-semibold text-emerald-900 disabled:opacity-50">Открыть пятницу, 27 ноября</button>}
-    <section aria-label="Другие сценарии подбора" className="space-y-3 rounded-lg border p-3">
+    {!prepPreview && <section aria-label="Другие сценарии подбора" className="space-y-3 rounded-lg border p-3">
       <h3 className="font-semibold">Другие сценарии подбора</h3>
       <label className="block text-sm">Калорийность для ручного подбора
         <select aria-label="Калорийность тестовой недели" value={target} onChange={e => {clear(); setTarget(Number(e.target.value));}} className="mt-2 block w-full rounded-lg border p-3">
@@ -145,7 +167,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
         className="w-full rounded-lg border p-3">{busy ? 'Подожди…' : 'Сгенерировать неделю из рецептов'}</button>
       <button type="button" disabled={busy || !weekStart} onClick={() => {void generate('SAVED_GOAL');}}
         className="w-full rounded-lg border p-3">Собрать по моей сохранённой цели</button>
-    </section>
+    </section>}
     {busy && <p role="status">Выполняем действие с тестовой неделей…</p>}
     {notice && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm">{notice}</p>}
     {excluded.length > 0 && <div aria-label="Исключённые блюда" className="rounded-lg border p-3 text-sm">
@@ -179,7 +201,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
           <div className="mt-2 space-y-2">
             <p>Цифры диапазонов утверждены для проверки подбора, но расчёт здесь остаётся справочным: рецепты и порции ещё не прошли проверку владельца. Попадание в эти окна само по себе не означает допуска недели в продукт.</p>
             <p>Углеводы проверяются по числу, указанному в рецептах. Их семантика может отличаться от сохранённой цели, поэтому этот результат не подтверждает корректность источниковых КБЖУ.</p>
-            {view.savedGoal && <p>Использована цель, сохранённая в аккаунте на момент подбора: {new Date(view.savedGoal.updatedAt).toLocaleString('ru-RU')}. При открытии черновика цель не перечитывается.</p>}
+            {view.savedGoal && !prepPreview && <p>Использована цель, сохранённая в аккаунте на момент подбора: {new Date(view.savedGoal.updatedAt).toLocaleString('ru-RU')}. При открытии черновика цель не перечитывается.</p>}
           </div>
         </details>
       </div>}
@@ -224,25 +246,13 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
               </details>
             </div>,
             editor: <>
-              {prep && <section className="mt-3 space-y-1 rounded-lg border p-3 text-sm" aria-label="Заготовка на два дня">
-                <p className="font-semibold">Заготовка на два дня · тестовый расчёт</p>
-                <p>{prep.preparesBase
-                  ? 'На два обеда запланированы 2 порции основы: 1 сегодня и 1 на следующий день.'
-                  : 'На сегодня запланирована 1 порция основы из общей заготовки.'}</p>
-                {prep.preparesBase && <ul className="ml-4 list-disc">{prep.ingredients.map(ingredient =>
-                  <li key={ingredient.id}>{ingredient.name}{ingredient.weightG === null ? '' : ` — ${ingredient.weightG} г`}</li>
-                )}</ul>}
-                <p>Гарнир на сегодня — {prep.sideName}, {prep.sideDryGrams} г в сухом виде.</p>
-                {prep.preparesBase
-                  ? <p>Порцию на завтра убери в холодильник при 4 °C или ниже в неглубоком закрытом контейнере. Сделай это в течение 2 часов после приготовления, а при жаре выше 32 °C — в течение часа.</p>
-                  : <p>Перед подачей разогрей основу до 74 °C по всей порции.</p>}
-              </section>}
+              {prep && <StagingChickenPrepCard prep={prep} />}
               <StagingSideDishEditor key={sourceDay.date + ':' + meal.recipeId} view={view}
               date={sourceDay.date} meal={original} edits={currentDraft.sideDishes} busy={busy} onSave={confirmSideDishes} />
             </>,
           };
         }}
-        actionsDisabled={busy || excluded.length >= 28} onExcludeRecipe={meal => {
+        actionsDisabled={prepPreview || busy || excluded.length >= 28} onExcludeRecipe={meal => {
           if (busy || excluded.length >= 28 || excluded.some(r => r.id === meal.recipeId)) return;
           clear();
           setExcluded(previous => [...previous, {id: meal.recipeId, name: meal.name}].sort((a,b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0));

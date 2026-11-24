@@ -1,3 +1,6 @@
+import {createElement} from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import StagingChickenPrepCard from '../../components/StagingChickenPrepCard';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {loadStagingWeekDraft, saveStagingWeekDraft, saveStagingWeekSideDishes, removeStagingWeekDraft} from '../stagingWeekDraft';
@@ -129,6 +132,17 @@ for (const availableCarbs of [false, true]) {
       assert.equal(firstPrep?.ingredients.find(item => item.name === 'Куриная грудка')?.weightG, 300);
       assert.equal(secondPrep?.preparesBase, false);
       assert.equal(secondPrep?.sideDryGrams, 65);
+      assert.ok(firstPrep && secondPrep);
+      const firstScreen = renderToStaticMarkup(createElement(StagingChickenPrepCard, {prep: firstPrep}));
+      const secondScreen = renderToStaticMarkup(createElement(StagingChickenPrepCard, {prep: secondPrep}));
+      assert.match(firstScreen, /2 порции основы/);
+      assert.match(firstScreen, /Куриная грудка — 300 г/);
+      assert.match(firstScreen, /Булгур, 70 г/);
+      assert.match(firstScreen, /4 °C/);
+      assert.match(secondScreen, /1 порция основы/);
+      assert.match(secondScreen, /киноа, 65 г/);
+      assert.match(secondScreen, /74 °C/);
+      assert.doesNotMatch(secondScreen, /300 г/);
       const changed = projectStagingSideDishes(reopened.view, reopened.sideDishes);
       assert.deepEqual(changed.days[0], pair.view.report.days[0]);
       assert.equal(changed.days[1].meals[0].referenceNutrition.carbs, 40.319);
@@ -198,4 +212,20 @@ test('shopping sums matching ingredients across recipes without adding different
     assert.deepEqual(shopping.find(item => item.name === 'Морковь' && item.amount === (date ? 325 : 475))?.recipes,
       (date ? [0, 1] : [0, 1, 4]).map(index => fixture.catalog.recipes[index].name));
   }
+});
+
+test('Staging control draft reopens with quinoa only on the second day', async () => {
+  const {stagingChickenPrepPreviewFixture} = await import('../../dev/stagingChickenPrepPreviewFixture');
+  const storage = store();
+  const draft = saveStagingWeekDraft(storage, a, JSON.stringify(stagingChickenPrepPreviewFixture(a)), 'UTC', now);
+  const [first, second] = draft.view.report.days;
+  const recipeId = first.meals[1].recipeId;
+  saveStagingWeekSideDishes(storage, a, draft, [{date: second.date, recipeId, id: 'quinoa', dryGrams: 65}], now);
+  const reopened = loadStagingWeekDraft(storage, a)!;
+  const [openedFirst, openedSecond] = reopened.view.report.days;
+  assert.equal(stagingChickenPrepPair(reopened.view, 0, openedFirst.meals[1], reopened.sideDishes)?.sideDryGrams, 70);
+  assert.equal(stagingChickenPrepPair(reopened.view, 1, openedSecond.meals[1], reopened.sideDishes)?.sideDryGrams, 65);
+  assert.deepEqual(projectStagingSideDishes(reopened.view, reopened.sideDishes).days[0], first);
+  const shopping = deriveStagingWeekShopping(reopened.view, reopened.sideDishes)!;
+  assert.equal(shopping.find(item => item.name === 'Куриная грудка')?.amount, 300);
 });
