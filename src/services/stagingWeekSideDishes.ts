@@ -24,11 +24,43 @@ export function stagingSideDishRecipe(view: StagingRealWeekView, meal: Authoring
   const recipe = view.catalog.recipes.get(meal.recipeId);
   const side = recipe?.ingredients.find(i => i.id === meal.recipeId + '_ing_02');
   const water = recipe?.ingredients.find(i => i.id === meal.recipeId + '_ing_05');
+  const availableCarbs = recipe?.carbohydrateSemantics === 'AVAILABLE_EXCLUDING_FIBER';
+  const expected = availableCarbs && meal.recipeId === 'chicken_bulgur_zucchini'
+    ? {...binding.nutrition, carbs: 47.524}
+    : binding.nutrition;
+  const day = view.report.days.find(day => day.meals.includes(meal));
+  if (availableCarbs && (meal.recipeId !== 'chicken_bulgur_zucchini' || !day)) return null;
+  if (day?.meals.some(item => view.catalog.recipes.get(item.recipeId)?.carbohydrateSemantics !== recipe?.carbohydrateSemantics)) return null;
   if (recipe?.servings !== 2 || meal.assignedSourceServings !== 1
     || side?.name !== binding.sideName || side.optional || side.weightG !== 2 * referenceSideDishes[binding.original].dryGrams
     || water?.name !== 'Вода' || water.optional
-    || axes.some(axis => meal.referenceNutrition[axis] !== binding.nutrition[axis])) return null;
-  return {...binding, ingredients: recipe.ingredients.filter(i => i !== side && i !== water)};
+    || axes.some(axis => meal.referenceNutrition[axis] !== expected[axis])) return null;
+  return {...binding, availableCarbs, ingredients: recipe.ingredients.filter(i => i !== side && i !== water)};
+}
+
+/** A draft-only preview for the reviewed chicken recipe on adjacent dates. */
+export function stagingChickenPrepPair(view: StagingRealWeekView, dayIndex: number,
+  meal: AuthoringMeal, edits: readonly StagingSideDishEdit[]) {
+  if (meal.recipeId !== 'chicken_bulgur_zucchini') return null;
+  const day = view.report.days[dayIndex];
+  const binding = stagingSideDishRecipe(view, meal);
+  if (!day?.meals.includes(meal) || !binding?.availableCarbs) return null;
+
+  for (const offset of [1, -1]) {
+    const otherDay = view.report.days[dayIndex + offset];
+    if (!otherDay || Math.abs(Date.parse(day.date) - Date.parse(otherDay.date)) !== 86_400_000) continue;
+    const other = otherDay.meals.find(item => item.recipeId === meal.recipeId && item.slot === meal.slot);
+    if (!other || !stagingSideDishRecipe(view, other)?.availableCarbs) continue;
+    const edit = edits.find(item => item.date === day.date && item.recipeId === meal.recipeId);
+    return {
+      preparesBase: offset === 1,
+      otherDate: otherDay.date,
+      ingredients: binding.ingredients,
+      sideName: referenceSideDishes[edit?.id ?? binding.original].name,
+      sideDryGrams: edit?.dryGrams ?? referenceSideDishes[binding.original].dryGrams,
+    };
+  }
+  return null;
 }
 
 export function projectStagingSideDishes(view: StagingRealWeekView, edits: readonly StagingSideDishEdit[]) {
@@ -40,9 +72,12 @@ export function projectStagingSideDishes(view: StagingRealWeekView, edits: reado
       if (!edit) return meal;
       const binding = stagingSideDishRecipe(view, meal);
       if (!binding) throw Error('INVALID_STAGING_SIDE_DISH_RECIPE');
-      const referenceNutrition = Object.fromEntries(axes.map(axis => [axis, Math.round(
-        (meal.referenceNutrition[axis] + referenceSideDishDelta(binding.original, edit, axis)) * 1000
-      ) / 1000])) as Nutrition;
+      const referenceNutrition = Object.fromEntries(axes.map(axis => {
+        const delta = referenceSideDishDelta(binding.original, edit, axis);
+        const fiberDelta = axis === 'carbs' && binding.availableCarbs
+          ? referenceSideDishDelta(binding.original, edit, 'fiber') : 0;
+        return [axis, Math.round((meal.referenceNutrition[axis] + delta - fiberDelta) * 1000) / 1000];
+      })) as Nutrition;
       return {...meal, referenceNutrition};
     });
     const referenceNutrition = Object.fromEntries(axes.map(axis => [axis, meals.reduce(

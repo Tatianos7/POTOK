@@ -136,7 +136,7 @@ function decodeAuthoringRecipeCatalog(value) {
   const recipes = /* @__PURE__ */ new Map();
   for (const r of rows(c.recipes)) {
     const id = text(r.recipeId), raw = record(r.sourceRecipe), ref = record(r.referenceNutrition), values = record(ref.values);
-    if (recipes.has(id) || raw.recipe_id !== id || r.runtimePublishable !== false || r.measuredYieldG !== null || r.confirmedServings !== null || r.physicalReview !== "DEFERRED_UNTIL_OWNER_PRELAUNCH_TESTING" || ref.verified !== false || ref.basis !== "SOURCE_DECLARED_PER_SERVING" || ref.carbohydrateSemantics !== "UNVERIFIED_SOURCE_REFERENCE" || r.sourceTagsAreVerifiedRestrictions !== false) return fail();
+    if (recipes.has(id) || raw.recipe_id !== id || r.runtimePublishable !== false || r.measuredYieldG !== null || r.confirmedServings !== null || r.physicalReview !== "DEFERRED_UNTIL_OWNER_PRELAUNCH_TESTING" || ref.verified !== false || ref.basis !== "SOURCE_DECLARED_PER_SERVING" || ref.carbohydrateSemantics !== "UNVERIFIED_SOURCE_REFERENCE" && ref.carbohydrateSemantics !== "AVAILABLE_EXCLUDING_FIBER" || r.sourceTagsAreVerifiedRestrictions !== false) return fail();
     const status = text(r.sourceStatus);
     if (!["DRAFT", "READY_FOR_REVIEW", "APPROVED", "BLOCKED"].includes(status)) return fail();
     const servings = optionalNumber(r.declaredServings);
@@ -150,6 +150,7 @@ function decodeAuthoringRecipeCatalog(value) {
       primaryCategory: optionalText(raw.meal_type_primary ?? null),
       numericReferenceTestInputAvailable: r.numericReferenceTestInputAvailable,
       notes: optionalText(raw.owner_notes ?? null),
+      ...ref.carbohydrateSemantics === "AVAILABLE_EXCLUDING_FIBER" ? { carbohydrateSemantics: ref.carbohydrateSemantics } : {},
       nutrition: Object.fromEntries(["calories", "protein", "fat", "carbs", "fiber"].map((axis) => [axis, optionalNumber(values[axis])])),
       ingredients: sorted(rows(r.ingredients).map((i) => {
         if (i.recipe_id !== id || typeof i.optional !== "boolean") return fail();
@@ -1029,6 +1030,9 @@ function buildStagingReferenceWeek(packed, target, weekStart, excludedRecipeIds 
   const input = excludeReferenceRecipes(authoringSearchInput(decoded), excluded);
   const settings = scenario(target, weekStart);
   const eligible = input.recipes.filter((r) => r.numericReferenceTestInputAvailable && r.sourceStatus !== "BLOCKED");
+  if (new Set(eligible.map((r) => decoded.recipes.get(r.recipeId)?.carbohydrateSemantics)).size > 1) {
+    throw Error("MIXED_REFERENCE_CARBOHYDRATE_SEMANTICS");
+  }
   const capacity = analyzeWeekInputCalorieCapacityV1(
     eligible.map((r) => ({
       recipeId: r.recipeId,

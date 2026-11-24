@@ -6,7 +6,7 @@ import {loadStagingWeekDraft, saveStagingWeekDraft, saveStagingWeekSideDishes, r
 import {AuthoringWeekContent} from '../dev/AuthoringWeekViewer';
 import {assessReferenceDailyTargetFitV1} from '../dev/referenceDailyTargetFitV1';
 import {referenceSideDishes} from '../dev/referenceSideDishScenario';
-import {projectStagingSideDishes, stagingSideDishRecipe, type StagingSideDishEdit} from '../services/stagingWeekSideDishes';
+import {projectStagingSideDishes, stagingChickenPrepPair, stagingSideDishRecipe, type StagingSideDishEdit} from '../services/stagingWeekSideDishes';
 import StagingSideDishEditor from './StagingSideDishEditor';
 import StagingWeekShopping from './StagingWeekShopping';
 
@@ -214,6 +214,7 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
           if (!original || !binding) return null;
           if (!currentDraft) return {editor: <p className="mt-3 text-sm">Сохрани неделю на устройстве, чтобы заменить гарнир.</p>};
           const edit = currentDraft.sideDishes.find(e => e.date === sourceDay.date && e.recipeId === meal.recipeId);
+          const prep = stagingChickenPrepPair(view, day, original, currentDraft.sideDishes);
           return {
             title: edit ? binding.main : undefined,
             composition: edit && <div className="mt-3 text-sm">
@@ -222,8 +223,23 @@ export default function StagingRealWeekTest({currentUserId}: {currentUserId: str
                 <ul className="ml-4 list-disc">{binding.ingredients.map(i => <li key={i.id}>{i.name}</li>)}</ul>
               </details>
             </div>,
-            editor: <StagingSideDishEditor key={sourceDay.date + ':' + meal.recipeId} view={view}
-              date={sourceDay.date} meal={original} edits={currentDraft.sideDishes} busy={busy} onSave={confirmSideDishes} />,
+            editor: <>
+              {prep && <section className="mt-3 space-y-1 rounded-lg border p-3 text-sm" aria-label="Заготовка на два дня">
+                <p className="font-semibold">Заготовка на два дня · тестовый расчёт</p>
+                <p>{prep.preparesBase
+                  ? 'На два обеда запланированы 2 порции основы: 1 сегодня и 1 на следующий день.'
+                  : 'На сегодня запланирована 1 порция основы из общей заготовки.'}</p>
+                {prep.preparesBase && <ul className="ml-4 list-disc">{prep.ingredients.map(ingredient =>
+                  <li key={ingredient.id}>{ingredient.name}{ingredient.weightG === null ? '' : ` — ${ingredient.weightG} г`}</li>
+                )}</ul>}
+                <p>Гарнир на сегодня — {prep.sideName}, {prep.sideDryGrams} г в сухом виде.</p>
+                {prep.preparesBase
+                  ? <p>Порцию на завтра убери в холодильник при 4 °C или ниже в неглубоком закрытом контейнере. Сделай это в течение 2 часов после приготовления, а при жаре выше 32 °C — в течение часа.</p>
+                  : <p>Перед подачей разогрей основу до 74 °C по всей порции.</p>}
+              </section>}
+              <StagingSideDishEditor key={sourceDay.date + ':' + meal.recipeId} view={view}
+              date={sourceDay.date} meal={original} edits={currentDraft.sideDishes} busy={busy} onSave={confirmSideDishes} />
+            </>,
           };
         }}
         actionsDisabled={busy || excluded.length >= 28} onExcludeRecipe={meal => {

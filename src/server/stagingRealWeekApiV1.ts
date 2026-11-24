@@ -49,6 +49,9 @@ export function buildStagingReferenceWeek(packed: string | undefined, target: nu
   const input = excludeReferenceRecipes(authoringSearchInput(decoded), excluded);
   const settings = scenario(target, weekStart);
   const eligible = input.recipes.filter(r => r.numericReferenceTestInputAvailable && r.sourceStatus !== 'BLOCKED');
+  if (new Set(eligible.map(r => decoded.recipes.get(r.recipeId)?.carbohydrateSemantics)).size > 1) {
+    throw Error('MIXED_REFERENCE_CARBOHYDRATE_SEMANTICS');
+  }
   const capacity = analyzeWeekInputCalorieCapacityV1(eligible.map(r => ({recipeId: r.recipeId,
     sourceCategory: String(r.sourceRecipe.meal_type_primary), caloriesPerDeclaredServing: String(r.referenceNutrition.values.calories)})),
     {...settings, tolerancePercent: 0});
