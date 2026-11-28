@@ -1,0 +1,93 @@
+{
+  "status": "DRAFT",
+  "sourceEdition": "USDA SR28",
+  "basis": "100 g edible portion",
+  "carbohydrateMapping": "total carbohydrate minus total dietary fiber from the same record",
+  "stagingReconciliation": {
+    "checkedOn": "2026-11-28",
+    "project": "ozidryfvhkcbtpnulakq",
+    "ownerDecisions": {
+      "cottageCheese5PercentFiberGPer100g": "0",
+      "raspberryState": "Treat fresh and frozen unsweetened raspberries as the same ingredient for these recipes"
+    },
+    "cottage_cheese_pear": "Use the complete raw-pear source record NDB 09252 for this recipe. Do not combine the 42 kcal core row with fiber from another record; reviewed nutrient binding remains to be issued",
+    "tvorog_raspberries": "Owner resolved cottage cheese fiber and fresh/frozen unsweetened equivalence; reviewed nutrient bindings remain to be issued",
+    "publication": "Use the recorded owner decisions in reviewed nutrient revisions; preserve the source-value discrepancy for pear until reconciled"
+  },
+  "provisionalRecipeTotals": {
+    "basis": "One serving; core cottage cheese 5% per 100 g: 121 kcal, protein 17.2 g, fat 5 g, carbs 1.8 g, owner-approved fiber 0 g. Fruit values use the source candidates below, pending reviewed binding.",
+    "cottage_cheese_pear": {"calories": "344.600", "protein": "35.048", "fat": "10.252", "carbs": "25.434", "fiber": "5.580"},
+    "tvorog_raspberries": {"calories": "294.000", "protein": "35.600", "fat": "10.650", "carbs": "9.040", "fiber": "6.500"}
+  },
+  "records": [
+    {
+      "ingredientRowId": "cottage_cheese_pear_ing_02",
+      "sourceName": "Pears, raw",
+      "ndbCode": "09252",
+      "sourceUrl": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg09.pdf",
+      "ingredientState": "raw",
+      "stagingCoreIdCandidate": "32d207d4-435f-40cb-969d-06687059ee6c",
+      "sourceValuesPer100g": {
+        "kcal": "57",
+        "proteinG": "0.36",
+        "fatG": "0.14",
+        "totalCarbohydratesG": "15.23",
+        "fiberG": "3.1"
+      },
+      "edibleGrams": "180",
+      "calculatedIngredientContribution": {
+        "kcal": "102.6",
+        "proteinG": "0.648",
+        "fatG": "0.252",
+        "availableCarbohydratesG": "21.834",
+        "fiberG": "5.58"
+      }
+    },
+    {
+      "ingredientRowId": "tvorog_raspberries_ing_02",
+      "sourceName": "Raspberries, raw",
+      "ndbCode": "09302",
+      "sourceUrl": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg09.pdf",
+      "ingredientState": "raw",
+      "stagingCoreIdCandidate": "d5e29d9c-4ef9-4447-8ac8-9238e9509a59",
+      "sourceValuesPer100g": {
+        "kcal": "52",
+        "proteinG": "1.20",
+        "fatG": "0.65",
+        "totalCarbohydratesG": "11.94",
+        "fiberG": "6.5"
+      },
+      "edibleGrams": "100",
+      "calculatedIngredientContribution": {
+        "kcal": "52",
+        "proteinG": "1.20",
+        "fatG": "0.65",
+        "availableCarbohydratesG": "5.44",
+        "fiberG": "6.5"
+      }
+    },
+    {
+      "ingredientRowId": "trout_broccoli_ing_02",
+      "sourceName": "Broccoli, raw",
+      "ndbCode": "11090",
+      "sourceUrl": "https://www.ars.usda.gov/ARSUserFiles/80400535/Data/SR/SR28/reports/sr28fg11.pdf",
+      "ingredientState": "raw",
+      "stagingCoreIdCandidate": "88630cc2-7318-4742-abc7-fa81b1be7d33",
+      "sourceValuesPer100g": {
+        "kcal": "34",
+        "proteinG": "2.82",
+        "fatG": "0.37",
+        "totalCarbohydratesG": "6.64",
+        "fiberG": "2.6"
+      },
+      "edibleGrams": "400",
+      "calculatedIngredientContribution": {
+        "kcal": "136",
+        "proteinG": "11.28",
+        "fatG": "1.48",
+        "availableCarbohydratesG": "16.16",
+        "fiberG": "10.4"
+      }
+    }
+  ]
+}

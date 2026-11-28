@@ -1,0 +1,858 @@
+{
+  "environment": "staging",
+  "status": "DRAFT",
+  "workbookSha256": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+  "recipes": [
+    {
+      "recipeId": "cottage_cheese_pear",
+      "name": "Творог с грушей",
+      "servings": 1,
+      "sourceCategory": "BREAKFAST",
+      "referenceSlots": [
+        "Завтрак"
+      ],
+      "ingredients": [
+        {
+          "id": "cottage_cheese_pear_ing_01",
+          "name": "Творог 5%",
+          "amount": 200,
+          "unit": "G",
+          "weightG": 200,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "cottage_cheese_pear_ing_02",
+          "name": "Груша",
+          "amount": 180,
+          "unit": "G",
+          "weightG": 180,
+          "foodNutritionRevision": null
+        }
+      ]
+    },
+    {
+      "recipeId": "cottage_cheese_apple_cinnamon",
+      "name": "Творог с яблоком и корицей",
+      "servings": 1,
+      "sourceCategory": "BREAKFAST",
+      "referenceSlots": [
+        "Завтрак"
+      ],
+      "ingredients": [
+        {
+          "id": "cottage_cheese_apple_cinnamon_ing_01",
+          "name": "Творог 5%",
+          "amount": 200,
+          "unit": "G",
+          "weightG": 200,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "cottage_cheese_apple_cinnamon_ing_02",
+          "name": "Яблоко",
+          "amount": 180,
+          "unit": "G",
+          "weightG": 180,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "cottage_cheese_apple_cinnamon_ing_03",
+          "name": "Корица молотая",
+          "amount": 2,
+          "unit": "G",
+          "weightG": 2,
+          "foodNutritionRevision": null
+        }
+      ]
+    },
+    {
+      "recipeId": "chicken_bulgur_zucchini",
+      "name": "Курица с булгуром и кабачком",
+      "servings": 2,
+      "sourceCategory": "LUNCH",
+      "referenceSlots": [
+        "Обед"
+      ],
+      "ingredients": [
+        {
+          "id": "chicken_bulgur_zucchini_ing_01",
+          "name": "Грудка куриная без кожи",
+          "amount": 300,
+          "unit": "G",
+          "weightG": 300,
+          "foodNutritionRevision": "91e10d7e-6fa7-47f6-9861-e4ec0912c513"
+        },
+        {
+          "id": "chicken_bulgur_zucchini_ing_02",
+          "name": "Булгур medium/coarse",
+          "amount": 140,
+          "unit": "G",
+          "weightG": 140,
+          "foodNutritionRevision": "defc8167-9007-4458-9041-212be7e16a8d"
+        },
+        {
+          "id": "chicken_bulgur_zucchini_ing_03",
+          "name": "Кабачок с кожицей",
+          "amount": 300,
+          "unit": "G",
+          "weightG": 300,
+          "foodNutritionRevision": "dbfcf184-7455-4ccb-a5d2-f133f6133119"
+        },
+        {
+          "id": "chicken_bulgur_zucchini_ing_04",
+          "name": "Масло оливковое",
+          "amount": 10,
+          "unit": "G",
+          "weightG": 10,
+          "foodNutritionRevision": "e2ea4db1-d580-4091-957e-8f031f3cfd4a"
+        },
+        {
+          "id": "chicken_bulgur_zucchini_ing_05",
+          "name": "Вода",
+          "amount": 280,
+          "unit": "ML",
+          "weightG": 280,
+          "foodNutritionRevision": "89edf89b-3751-4997-85f7-a0fcd7aa07a5"
+        }
+      ]
+    },
+    {
+      "recipeId": "salmon_brown_rice",
+      "name": "Лосось с бурым рисом",
+      "servings": 2,
+      "sourceCategory": "LUNCH",
+      "referenceSlots": [
+        "Обед"
+      ],
+      "ingredients": [
+        {
+          "id": "salmon_brown_rice_ing_01",
+          "name": "Лосось атлантический выращенный, филе",
+          "amount": 300,
+          "unit": "G",
+          "weightG": 300,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "salmon_brown_rice_ing_02",
+          "name": "Рис бурый длиннозёрный",
+          "amount": 120,
+          "unit": "G",
+          "weightG": 120,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "salmon_brown_rice_ing_03",
+          "name": "Масло оливковое",
+          "amount": 5,
+          "unit": "G",
+          "weightG": 5,
+          "foodNutritionRevision": "e2ea4db1-d580-4091-957e-8f031f3cfd4a"
+        },
+        {
+          "id": "salmon_brown_rice_ing_04",
+          "name": "Вода",
+          "amount": 300,
+          "unit": "ML",
+          "weightG": 300,
+          "foodNutritionRevision": "89edf89b-3751-4997-85f7-a0fcd7aa07a5"
+        }
+      ]
+    },
+    {
+      "recipeId": "buckwheat_chicken_liver",
+      "name": "Гречка с куриной печенью",
+      "servings": 2,
+      "sourceCategory": "LUNCH",
+      "referenceSlots": [
+        "Ужин"
+      ],
+      "ingredients": [
+        {
+          "id": "buckwheat_chicken_liver_ing_01",
+          "name": "Печень куриная",
+          "amount": 300,
+          "unit": "G",
+          "weightG": 300,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "buckwheat_chicken_liver_ing_02",
+          "name": "Крупа гречневая",
+          "amount": 120,
+          "unit": "G",
+          "weightG": 120,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "buckwheat_chicken_liver_ing_03",
+          "name": "Лук репчатый",
+          "amount": 100,
+          "unit": "G",
+          "weightG": 100,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "buckwheat_chicken_liver_ing_04",
+          "name": "Масло оливковое",
+          "amount": 20,
+          "unit": "G",
+          "weightG": 20,
+          "foodNutritionRevision": "e2ea4db1-d580-4091-957e-8f031f3cfd4a"
+        },
+        {
+          "id": "buckwheat_chicken_liver_ing_05",
+          "name": "Вода",
+          "amount": 240,
+          "unit": "ML",
+          "weightG": 240,
+          "foodNutritionRevision": "89edf89b-3751-4997-85f7-a0fcd7aa07a5"
+        },
+        {
+          "id": "buckwheat_chicken_liver_ing_06",
+          "name": "Соль",
+          "amount": 2,
+          "unit": "G",
+          "weightG": 2,
+          "foodNutritionRevision": "bad490ad-05da-4b3a-921d-330c3116bc91"
+        }
+      ]
+    },
+    {
+      "recipeId": "lean_beef_quinoa_vegetables",
+      "name": "Говядина с киноа и овощами",
+      "servings": 2,
+      "sourceCategory": "LUNCH",
+      "referenceSlots": [
+        "Обед"
+      ],
+      "ingredients": [
+        {
+          "id": "lean_beef_quinoa_vegetables_ing_01",
+          "name": "Говядина постная",
+          "amount": 300,
+          "unit": "G",
+          "weightG": 300,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "lean_beef_quinoa_vegetables_ing_02",
+          "name": "Киноа белая",
+          "amount": 120,
+          "unit": "G",
+          "weightG": 120,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "lean_beef_quinoa_vegetables_ing_03",
+          "name": "Кабачок",
+          "amount": 250,
+          "unit": "G",
+          "weightG": 250,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "lean_beef_quinoa_vegetables_ing_04",
+          "name": "Морковь",
+          "amount": 150,
+          "unit": "G",
+          "weightG": 150,
+          "foodNutritionRevision": "20a8a4e1-4f6c-4bbe-9e02-2e2074803336"
+        },
+        {
+          "id": "lean_beef_quinoa_vegetables_ing_05",
+          "name": "Лук репчатый",
+          "amount": 100,
+          "unit": "G",
+          "weightG": 100,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "lean_beef_quinoa_vegetables_ing_06",
+          "name": "Масло оливковое",
+          "amount": 10,
+          "unit": "G",
+          "weightG": 10,
+          "foodNutritionRevision": "e2ea4db1-d580-4091-957e-8f031f3cfd4a"
+        },
+        {
+          "id": "lean_beef_quinoa_vegetables_ing_07",
+          "name": "Вода",
+          "amount": 240,
+          "unit": "ML",
+          "weightG": 240,
+          "foodNutritionRevision": "89edf89b-3751-4997-85f7-a0fcd7aa07a5"
+        },
+        {
+          "id": "lean_beef_quinoa_vegetables_ing_08",
+          "name": "Соль",
+          "amount": 2,
+          "unit": "G",
+          "weightG": 2,
+          "foodNutritionRevision": "bad490ad-05da-4b3a-921d-330c3116bc91"
+        }
+      ]
+    },
+    {
+      "recipeId": "trout_broccoli",
+      "name": "Форель с брокколи",
+      "servings": 2,
+      "sourceCategory": "LUNCH",
+      "referenceSlots": [
+        "Ужин"
+      ],
+      "ingredients": [
+        {
+          "id": "trout_broccoli_ing_01",
+          "name": "Филе радужной форели",
+          "amount": 300,
+          "unit": "G",
+          "weightG": 300,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "trout_broccoli_ing_02",
+          "name": "Брокколи",
+          "amount": 400,
+          "unit": "G",
+          "weightG": 400,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "trout_broccoli_ing_03",
+          "name": "Масло оливковое",
+          "amount": 10,
+          "unit": "G",
+          "weightG": 10,
+          "foodNutritionRevision": "e2ea4db1-d580-4091-957e-8f031f3cfd4a"
+        },
+        {
+          "id": "trout_broccoli_ing_04",
+          "name": "Соль",
+          "amount": 2,
+          "unit": "G",
+          "weightG": 2,
+          "foodNutritionRevision": "bad490ad-05da-4b3a-921d-330c3116bc91"
+        }
+      ]
+    },
+    {
+      "recipeId": "salmon_frozen_spinach",
+      "name": "Лосось со шпинатом",
+      "servings": 2,
+      "sourceCategory": "LUNCH",
+      "referenceSlots": [
+        "Ужин"
+      ],
+      "ingredients": [
+        {
+          "id": "salmon_frozen_spinach_ing_01",
+          "name": "Филе лосося",
+          "amount": 300,
+          "unit": "G",
+          "weightG": 300,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "salmon_frozen_spinach_ing_02",
+          "name": "Шпинат рубленый замороженный",
+          "amount": 400,
+          "unit": "G",
+          "weightG": 400,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "salmon_frozen_spinach_ing_03",
+          "name": "Лук репчатый",
+          "amount": 100,
+          "unit": "G",
+          "weightG": 100,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "salmon_frozen_spinach_ing_04",
+          "name": "Масло оливковое",
+          "amount": 5,
+          "unit": "G",
+          "weightG": 5,
+          "foodNutritionRevision": "e2ea4db1-d580-4091-957e-8f031f3cfd4a"
+        },
+        {
+          "id": "salmon_frozen_spinach_ing_05",
+          "name": "Соль",
+          "amount": 2,
+          "unit": "G",
+          "weightG": 2,
+          "foodNutritionRevision": "bad490ad-05da-4b3a-921d-330c3116bc91"
+        }
+      ]
+    },
+    {
+      "recipeId": "beef_patties_roasted_carrot",
+      "name": "Говяжьи котлеты с запечённой морковью",
+      "servings": 2,
+      "sourceCategory": "LUNCH",
+      "referenceSlots": [
+        "Обед",
+        "Ужин"
+      ],
+      "ingredients": [
+        {
+          "id": "beef_patties_roasted_carrot_ing_01",
+          "name": "Говяжий фарш 15%",
+          "amount": 300,
+          "unit": "G",
+          "weightG": 300,
+          "foodNutritionRevision": "cd0eb88d-5706-4620-a798-46edbe093a2f"
+        },
+        {
+          "id": "beef_patties_roasted_carrot_ing_02",
+          "name": "Морковь",
+          "amount": 500,
+          "unit": "G",
+          "weightG": 500,
+          "foodNutritionRevision": "20a8a4e1-4f6c-4bbe-9e02-2e2074803336"
+        },
+        {
+          "id": "beef_patties_roasted_carrot_ing_03",
+          "name": "Масло оливковое",
+          "amount": 10,
+          "unit": "G",
+          "weightG": 10,
+          "foodNutritionRevision": "e2ea4db1-d580-4091-957e-8f031f3cfd4a"
+        },
+        {
+          "id": "beef_patties_roasted_carrot_ing_04",
+          "name": "Соль",
+          "amount": 2,
+          "unit": "G",
+          "weightG": 2,
+          "foodNutritionRevision": "bad490ad-05da-4b3a-921d-330c3116bc91"
+        }
+      ]
+    },
+    {
+      "recipeId": "tvorog_blueberries",
+      "name": "Творог с черникой",
+      "servings": 1,
+      "sourceCategory": "SNACK",
+      "referenceSlots": [
+        "Перекус"
+      ],
+      "ingredients": [
+        {
+          "id": "tvorog_blueberries_ing_01",
+          "name": "Творог 5% сухой консистенции",
+          "amount": 200,
+          "unit": "G",
+          "weightG": 200,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "tvorog_blueberries_ing_02",
+          "name": "Черника замороженная без сахара",
+          "amount": 100,
+          "unit": "G",
+          "weightG": 100,
+          "foodNutritionRevision": null
+        }
+      ]
+    },
+    {
+      "recipeId": "tvorog_raspberries",
+      "name": "Творог с малиной",
+      "servings": 1,
+      "sourceCategory": "SNACK",
+      "referenceSlots": [
+        "Перекус"
+      ],
+      "ingredients": [
+        {
+          "id": "tvorog_raspberries_ing_01",
+          "name": "Творог 5% сухой консистенции",
+          "amount": 200,
+          "unit": "G",
+          "weightG": 200,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "tvorog_raspberries_ing_02",
+          "name": "Малина замороженная без сахара",
+          "amount": 100,
+          "unit": "G",
+          "weightG": 100,
+          "foodNutritionRevision": null
+        }
+      ]
+    },
+    {
+      "recipeId": "tvorog_fresh_apricot",
+      "name": "Творог с абрикосом",
+      "servings": 1,
+      "sourceCategory": "SNACK",
+      "referenceSlots": [
+        "Перекус"
+      ],
+      "ingredients": [
+        {
+          "id": "tvorog_fresh_apricot_ing_01",
+          "name": "Творог 5% сухой консистенции",
+          "amount": 200,
+          "unit": "G",
+          "weightG": 200,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "tvorog_fresh_apricot_ing_02",
+          "name": "Абрикос свежий",
+          "amount": 150,
+          "unit": "G",
+          "weightG": 150,
+          "foodNutritionRevision": null
+        }
+      ]
+    },
+    {
+      "recipeId": "tvorog_cucumber_dill",
+      "name": "Творог с огурцом и укропом",
+      "servings": 1,
+      "sourceCategory": "SNACK",
+      "referenceSlots": [
+        "Перекус"
+      ],
+      "ingredients": [
+        {
+          "id": "tvorog_cucumber_dill_ing_01",
+          "name": "Творог 5% сухой консистенции",
+          "amount": 200,
+          "unit": "G",
+          "weightG": 200,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "tvorog_cucumber_dill_ing_02",
+          "name": "Огурец с кожицей",
+          "amount": 150,
+          "unit": "G",
+          "weightG": 150,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "tvorog_cucumber_dill_ing_03",
+          "name": "Укроп свежий",
+          "amount": 10,
+          "unit": "G",
+          "weightG": 10,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "tvorog_cucumber_dill_ing_04",
+          "name": "Соль",
+          "amount": 1,
+          "unit": "G",
+          "weightG": 1,
+          "foodNutritionRevision": "bad490ad-05da-4b3a-921d-330c3116bc91"
+        }
+      ]
+    },
+    {
+      "recipeId": "wholegrain_turkey_cucumber_sandwich",
+      "name": "Бутерброд с индейкой",
+      "servings": 1,
+      "sourceCategory": "SNACK",
+      "referenceSlots": [
+        "Перекус"
+      ],
+      "ingredients": [
+        {
+          "id": "wholegrain_turkey_cucumber_sandwich_ing_01",
+          "name": "Хлеб цельнозерновой",
+          "amount": 80,
+          "unit": "G",
+          "weightG": 80,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "wholegrain_turkey_cucumber_sandwich_ing_02",
+          "name": "Грудка индейки без кожи и костей",
+          "amount": 120,
+          "unit": "G",
+          "weightG": 120,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "wholegrain_turkey_cucumber_sandwich_ing_03",
+          "name": "Огурец свежий с кожурой",
+          "amount": 60,
+          "unit": "G",
+          "weightG": 60,
+          "foodNutritionRevision": null
+        }
+      ]
+    },
+    {
+      "recipeId": "ref_2000_banana_overnight_oats",
+      "name": "Овсянка с бананом и арахисовой пастой",
+      "servings": 2,
+      "sourceCategory": "BREAKFAST",
+      "referenceSlots": [
+        "Завтрак"
+      ],
+      "ingredients": [
+        {
+          "id": "ref_2000_banana_overnight_oats_i0",
+          "name": "Овсяные хлопья",
+          "amount": 120,
+          "unit": "г",
+          "weightG": 120,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_banana_overnight_oats_i1",
+          "name": "Банан без кожуры",
+          "amount": 240,
+          "unit": "г",
+          "weightG": 240,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_banana_overnight_oats_i2",
+          "name": "Корица",
+          "amount": 0.65,
+          "unit": "г",
+          "weightG": 0.65,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_banana_overnight_oats_i3",
+          "name": "Кленовый сироп",
+          "amount": 20,
+          "unit": "г",
+          "weightG": 20,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_banana_overnight_oats_i4",
+          "name": "Молоко 2%",
+          "amount": 309.3,
+          "unit": "г",
+          "weightG": 309.3,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_banana_overnight_oats_i5",
+          "name": "Арахисовая паста",
+          "amount": 32,
+          "unit": "г",
+          "weightG": 32,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_banana_overnight_oats_i6",
+          "name": "Миндаль, измельчённый",
+          "amount": 18,
+          "unit": "г",
+          "weightG": 18,
+          "foodNutritionRevision": null
+        }
+      ]
+    },
+    {
+      "recipeId": "ref_2000_lemon_poppy_seed_overnight_oats",
+      "name": "Овсянка с лимоном и маком",
+      "servings": 1,
+      "sourceCategory": "BREAKFAST",
+      "referenceSlots": [
+        "Завтрак"
+      ],
+      "ingredients": [
+        {
+          "id": "ref_2000_lemon_poppy_seed_overnight_oats_i0",
+          "name": "Овсяные хлопья",
+          "amount": 60,
+          "unit": "г",
+          "weightG": 60,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_lemon_poppy_seed_overnight_oats_i1",
+          "name": "Мак",
+          "amount": 8.8,
+          "unit": "г",
+          "weightG": 8.8,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_lemon_poppy_seed_overnight_oats_i2",
+          "name": "Семена чиа",
+          "amount": 6,
+          "unit": "г",
+          "weightG": 6,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_lemon_poppy_seed_overnight_oats_i3",
+          "name": "Молоко 2%",
+          "amount": 103.1,
+          "unit": "г",
+          "weightG": 103.1,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_lemon_poppy_seed_overnight_oats_i4",
+          "name": "Натуральный йогурт",
+          "amount": 30,
+          "unit": "г",
+          "weightG": 30,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_lemon_poppy_seed_overnight_oats_i5",
+          "name": "Лимонный курд",
+          "amount": 15,
+          "unit": "г",
+          "weightG": 15,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_lemon_poppy_seed_overnight_oats_i6",
+          "name": "Натуральный йогурт",
+          "amount": 30,
+          "unit": "г",
+          "weightG": 30,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_lemon_poppy_seed_overnight_oats_i7",
+          "name": "Лимонный курд",
+          "amount": 15,
+          "unit": "г",
+          "weightG": 15,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_lemon_poppy_seed_overnight_oats_i8",
+          "name": "Мак",
+          "amount": 1.4,
+          "unit": "г",
+          "weightG": 1.4,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "ref_2000_lemon_poppy_seed_overnight_oats_i9",
+          "name": "Фисташки",
+          "amount": 10,
+          "unit": "г",
+          "weightG": 10,
+          "foodNutritionRevision": null
+        }
+      ]
+    },
+    {
+      "recipeId": "wholegrain_toast_egg_avocado",
+      "name": "Тост с яйцом и авокадо",
+      "servings": 1,
+      "sourceCategory": "BREAKFAST",
+      "referenceSlots": [],
+      "ingredients": [
+        {
+          "id": "wholegrain_toast_egg_avocado_ing_01",
+          "name": "Хлеб цельнозерновой",
+          "amount": 1,
+          "unit": "PCS",
+          "weightG": 40,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "wholegrain_toast_egg_avocado_ing_02",
+          "name": "Яйцо куриное",
+          "amount": 1,
+          "unit": "PCS",
+          "weightG": 50,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "wholegrain_toast_egg_avocado_ing_03",
+          "name": "Авокадо",
+          "amount": 70,
+          "unit": "G",
+          "weightG": 70,
+          "foodNutritionRevision": null
+        }
+      ]
+    },
+    {
+      "recipeId": "turkey_meatballs_rice",
+      "name": "Тефтели из индейки с рисом",
+      "servings": 2,
+      "sourceCategory": "LUNCH",
+      "referenceSlots": [],
+      "ingredients": [
+        {
+          "id": "turkey_meatballs_rice_ing_01",
+          "name": "Филе грудки индейки",
+          "amount": 300,
+          "unit": "G",
+          "weightG": 300,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "turkey_meatballs_rice_ing_02",
+          "name": "Лук репчатый",
+          "amount": 80,
+          "unit": "G",
+          "weightG": 80,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "turkey_meatballs_rice_ing_03",
+          "name": "Яйцо куриное",
+          "amount": 1,
+          "unit": "PIECE",
+          "weightG": 50,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "turkey_meatballs_rice_ing_04",
+          "name": "Сухари панировочные без добавок",
+          "amount": 20,
+          "unit": "G",
+          "weightG": 20,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "turkey_meatballs_rice_ing_05",
+          "name": "Масло оливковое",
+          "amount": 5,
+          "unit": "G",
+          "weightG": 5,
+          "foodNutritionRevision": "e2ea4db1-d580-4091-957e-8f031f3cfd4a"
+        },
+        {
+          "id": "turkey_meatballs_rice_ing_06",
+          "name": "Соль",
+          "amount": 2,
+          "unit": "G",
+          "weightG": 2,
+          "foodNutritionRevision": "bad490ad-05da-4b3a-921d-330c3116bc91"
+        },
+        {
+          "id": "turkey_meatballs_rice_ing_07",
+          "name": "Рис белый длиннозёрный",
+          "amount": 120,
+          "unit": "G",
+          "weightG": 120,
+          "foodNutritionRevision": null
+        },
+        {
+          "id": "turkey_meatballs_rice_ing_08",
+          "name": "Вода",
+          "amount": 240,
+          "unit": "ML",
+          "weightG": 240,
+          "foodNutritionRevision": "89edf89b-3751-4997-85f7-a0fcd7aa07a5"
+        }
+      ]
+    }
+  ]
+}

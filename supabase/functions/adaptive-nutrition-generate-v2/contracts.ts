@@ -43,6 +43,7 @@ export interface GenerationRpcClientV2 {
 
 export interface GenerationProposalProviderV2 {
   generate(input: {
+    requestOperationId: string;
     generationInputCanonicalHex: string;
     candidateManifestCanonicalHex: string;
   }): Promise<GeneratedProposalV2>;
@@ -50,6 +51,7 @@ export interface GenerationProposalProviderV2 {
 
 export interface TrustedGenerationValidatorV2 {
   validate(input: {
+    requestOperationId: string;
     generationInputCanonicalHex: string;
     candidateManifestCanonicalHex: string;
     generatedWeekPlanCanonicalHex: string;
@@ -244,9 +246,26 @@ export async function lookupGenerationStatusV2(
   userClient: GenerationRpcClientV2,
   input: GenerationRequestStatusInputV2,
 ): Promise<GenerationRequestResponseV2> {
-  return decodeGenerationResponseV2(await rpc(userClient, 'adaptive_nutrition_generation_status_v2', {
-    p_request_operation_id: input.requestOperationId,
-  }));
+  const requestOperationId = uuid(input.requestOperationId, 'request_operation_id');
+  return boundGenerationResponseV2(await rpc(userClient, 'adaptive_nutrition_generation_status_v2', {
+    p_request_operation_id: requestOperationId,
+  }), requestOperationId);
+}
+
+function boundGenerationResponseV2(value: unknown, requestOperationId: string): GenerationRequestResponseV2 {
+  const response = decodeGenerationResponseV2(value);
+  if (response.requestOperationId !== requestOperationId) {
+    throw new GenerationEdgeErrorV2('REQUEST_BINDING_MISMATCH', 502);
+  }
+  return response;
+}
+
+function proposalHexV2(value: unknown): string {
+  const row = exactRecord(value, ['generatedWeekPlanCanonicalHex'], 'generated_proposal');
+  if (typeof row.generatedWeekPlanCanonicalHex !== 'string' || !hexPattern.test(row.generatedWeekPlanCanonicalHex)) {
+    throw new GenerationEdgeErrorV2('INVALID_PROPOSAL_CANONICAL_BYTES', 502);
+  }
+  return row.generatedWeekPlanCanonicalHex;
 }
 
 export async function continueGenerationV2(input: {
@@ -255,43 +274,56 @@ export async function continueGenerationV2(input: {
   generator: GenerationProposalProviderV2;
   validator: TrustedGenerationValidatorV2;
 }): Promise<GenerationRequestResponseV2> {
+  // Pin the request and dependencies before any await. A caller-owned input object
+  // must not redirect later record/activation calls to another request.
+  const requestOperationId = uuid(input.requestOperationId, 'request_operation_id');
+  const { gatewayClient, generator, validator } = input;
   const loaded = decodeLoadedRequestV2(await rpc(
-    input.gatewayClient,
+    gatewayClient,
     'load_generation_request_v2',
-    { p_request_operation_id: input.requestOperationId },
+    { p_request_operation_id: requestOperationId },
   ));
+  if (loaded.requestOperationId !== requestOperationId) {
+    throw new GenerationEdgeErrorV2('REQUEST_BINDING_MISMATCH', 502);
+  }
   if (loaded.status === 'ACTIVE' || loaded.status === 'REJECTED' || loaded.status === 'CONFLICT') return loaded;
   if (loaded.status === 'GENERATED' || loaded.status === 'ACTIVATING') {
-    return decodeGenerationResponseV2(await rpc(
-      input.gatewayClient,
+    return boundGenerationResponseV2(await rpc(
+      gatewayClient,
       'activate_generated_week_gateway_v2',
-      { p_request_operation_id: input.requestOperationId },
-    ));
+      { p_request_operation_id: requestOperationId },
+    ), requestOperationId);
   }
   if (!loaded.generationInputCanonicalHex || !loaded.candidateManifestCanonicalHex) {
     throw new GenerationEdgeErrorV2('GENERATION_INPUT_UNAVAILABLE', 409);
   }
-  const proposal = await input.generator.generate({
+  const proposal = proposalHexV2(await generator.generate(Object.freeze({
+    requestOperationId,
     generationInputCanonicalHex: loaded.generationInputCanonicalHex,
     candidateManifestCanonicalHex: loaded.candidateManifestCanonicalHex,
-  });
-  const validated = await input.validator.validate({
+  })));
+  const validated = proposalHexV2(await validator.validate(Object.freeze({
+    requestOperationId,
     generationInputCanonicalHex: loaded.generationInputCanonicalHex,
     candidateManifestCanonicalHex: loaded.candidateManifestCanonicalHex,
-    generatedWeekPlanCanonicalHex: proposal.generatedWeekPlanCanonicalHex,
-  });
-  const recorded = decodeGenerationResponseV2(await rpc(
-    input.gatewayClient,
+    generatedWeekPlanCanonicalHex: proposal,
+  })));
+  // Validation may accept/reject, but must not silently rewrite the proposal.
+  // This transport check complements the independent validator and DB gateways;
+  // it does not itself authenticate validation authority or prove a commit.
+  if (validated !== proposal) throw new GenerationEdgeErrorV2('VALIDATED_PROPOSAL_MISMATCH', 502);
+  const recorded = boundGenerationResponseV2(await rpc(
+    gatewayClient,
     'record_generated_week_gateway_v2',
     {
-      p_request_operation_id: input.requestOperationId,
-      p_generated_week_plan_canonical: `\\x${validated.generatedWeekPlanCanonicalHex}`,
+      p_request_operation_id: requestOperationId,
+      p_generated_week_plan_canonical: `\\x${validated}`,
     },
-  ));
-  if (recorded.status !== 'GENERATED' && recorded.status !== 'ACTIVE') return recorded;
-  return decodeGenerationResponseV2(await rpc(
-    input.gatewayClient,
+  ), requestOperationId);
+  if (recorded.status !== 'GENERATED') return recorded;
+  return boundGenerationResponseV2(await rpc(
+    gatewayClient,
     'activate_generated_week_gateway_v2',
-    { p_request_operation_id: input.requestOperationId },
-  ));
+    { p_request_operation_id: requestOperationId },
+  ), requestOperationId);
 }

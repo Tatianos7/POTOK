@@ -154,6 +154,17 @@ test('complete authoring compiles immutable recipe, HYBRID portion, eligibility 
   }).recipes[0], result.manifestTuple);
 });
 
+test('declared servings support nutrition per serving while cooked yield is unknown', () => {
+  const authoring = validAuthoring();
+  authoring.baseYield = { ...authoring.baseYield, totalWeightG: null, servingWeightG: null };
+  const result = compileCuratedRecipePublicationV1(authoring, identities());
+  assert.equal(result.readiness.status, 'READY_FOR_PUBLICATION');
+  const recipe = result.recipeRevision!.recipeSnapshot;
+  assert.equal(recipe.baseYield.totalYieldGrams, null);
+  assert.equal(recipe.baseYield.servings, '4.000');
+  assert.equal(scalePremiumRecipeCollectionV1(recipe, '1.000').nutrition.calories, '100.000');
+});
+
 test('Collection exact scaling permits a fractional piece and preserves immutable identities', () => {
   const compiled = compileCuratedRecipePublicationV1(validAuthoring(), identities());
   const preview = scalePremiumRecipeCollectionV1(compiled.recipeRevision!.recipeSnapshot, '1.000');

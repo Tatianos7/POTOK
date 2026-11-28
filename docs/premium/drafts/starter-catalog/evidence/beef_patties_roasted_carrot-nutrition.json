@@ -1,0 +1,52 @@
+{
+  "recipe": "beef_patties_roasted_carrot",
+  "workbookRevision": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+  "stagingProject": "ozidryfvhkcbtpnulakq",
+  "checkedOn": "2026-11-27",
+  "verificationQuery": "scripts/contracts/starter-catalog-nutrition-check.sql",
+  "ingredients": [
+    {
+      "row": "beef_patties_roasted_carrot_ing_01",
+      "state": "raw",
+      "grams": "300.000",
+      "revision": "cd0eb88d-5706-4620-a798-46edbe093a2f",
+      "digest": "ab85e5719c61476e4c0dabe2fb4c0be2e8d0326c43aba250ee0a63ceab87384a"
+    },
+    {
+      "row": "beef_patties_roasted_carrot_ing_02",
+      "state": "raw",
+      "grams": "500.000",
+      "revision": "20a8a4e1-4f6c-4bbe-9e02-2e2074803336",
+      "digest": "193bfd1ae2a560359f7e6b06f7f6a801de8f0c935895edead8f805ac93eb5a79"
+    },
+    {
+      "row": "beef_patties_roasted_carrot_ing_03",
+      "state": "as-sold",
+      "grams": "10.000",
+      "revision": "e2ea4db1-d580-4091-957e-8f031f3cfd4a",
+      "digest": "8d60234d20f4a7f1d683a715985bed76918791974ca4dd0fc7f325d318481ce6"
+    },
+    {
+      "row": "beef_patties_roasted_carrot_ing_04",
+      "state": "as-sold",
+      "grams": "2.000",
+      "revision": "bad490ad-05da-4b3a-921d-330c3116bc91",
+      "digest": "55280b9327d545c5fa4985fde4bc4b851e309fb2a4a6ddb60ffc873ca33e1a8c"
+    }
+  ],
+  "fullRecipe": {
+    "calories": "938.400",
+    "protein": "60.420",
+    "fat": "56.200",
+    "carbs": "33.900",
+    "fiber": "14.000"
+  },
+  "servings": "2.000",
+  "perServing": {
+    "calories": "469.2",
+    "protein": "30.21",
+    "fat": "28.1",
+    "carbs": "16.95",
+    "fiber": "7"
+  }
+}

@@ -4,6 +4,8 @@ import {
 import { decodeTrustedValidationEvidenceV1 } from './trustedValidationEvidenceV1';
 import { decodeGeneratedWeekPlanV1 } from './adaptiveNutritionGraphV2';
 import { assertRawJsonWithoutDuplicateKeysV1, adaptiveNutritionSha256HexV1 } from './adaptiveNutritionWireV1';
+import { decodeMealSnapshotV1 } from './adaptiveNutritionMealCompositionV1';
+import { decodeTrustedGenerationInputV1 } from './adaptiveNutritionGraphV2';
 
 export const mealWarningEvidenceContractV1 = 'potok-meal-warning-evidence-v1' as const;
 export const mealWarningEvidenceEncodingV1 = 'potok-meal-warning-evidence-canonical-json-v1' as const;
@@ -176,6 +178,44 @@ export async function decodeMealWarningEvidenceRawV1(raw: string, policiesRaw: s
   const authority = await authoritiesOwned(policiesRaw, trustedContextRaw, evaluatedPlanRaw);
   return entryOwned(owned, authority);
 }
+
+/** Preparation-only boundary: validates an independently sourced entry for one actual meal.
+ * It does not admit a generated plan or replace the final full-plan/set V1 checks.
+ */
+export async function decodePreparedMealWarningEvidenceRawV2(raw: string, policiesRaw: string, trustedContextRaw: string,
+  mealSnapshotRaw: string): Promise<MealWarningEvidenceV1> {
+  if ([raw, policiesRaw, trustedContextRaw, mealSnapshotRaw].some(v => typeof v !== 'string')) {
+    throw new Error('RAW_JSON_STRING_REQUIRED');
+  }
+  return (await createPreparedMealWarningDecoderRawV2(policiesRaw, trustedContextRaw)).decode(raw, mealSnapshotRaw);
+}
+
+/** One immutable raw context per preparation attempt. No cross-request cache or
+ * publication authority: final plan/set validation still reads fresh sources.
+ * Only parser-owned snapshots are retained; each entry and meal is admitted anew.
+ */
+export async function createPreparedMealWarningDecoderRawV2(policiesRaw: string, trustedContextRaw: string) {
+  if (typeof policiesRaw !== 'string' || typeof trustedContextRaw !== 'string') throw new Error('RAW_JSON_STRING_REQUIRED');
+  const row = record(parseRaw(trustedContextRaw), contextKeys);
+  if (row.contract !== trustedValidationPoliciesRawBoundaryContractV2) throw new Error('INVALID_RAW_BOUNDARY_CONTRACT');
+  const owned = { input: parseRaw(row.trustedGenerationInputRaw), manifest: parseRaw(row.candidateManifestRaw),
+    preference: parseRaw(row.preferenceSnapshotRaw), safety: parseRaw(row.safetySnapshotRaw) };
+  const evidenceOwned = parseRaw(row.trustedValidationEvidenceRaw);
+  const input = decodeTrustedGenerationInputV1(owned.input);
+  const policies = await decodeTrustedValidationPoliciesRawV2(policiesRaw, trustedContextRaw);
+  const evidence = await decodeTrustedValidationEvidenceV1(evidenceOwned, owned);
+  const slots = new Map(evidence.distributionPolicy.days.flatMap(day => day.requiredSlots).map(slot => [slot.slotId, slot]));
+  return Object.freeze({async decode(raw: string, mealSnapshotRaw: string): Promise<MealWarningEvidenceV1> {
+    const entry = parseRaw(raw), mealOwned = parseRaw(mealSnapshotRaw);
+    const meal = await decodeMealSnapshotV1(mealOwned);
+    const slot = slots.get(meal.mealSlotId);
+    if (!slot || slot.mealType !== meal.mealType || meal.goalRevision !== input.goalNutritionTarget.goalRevision
+        || meal.compositionPolicyRevision !== input.compositionPolicyRevision) throw new Error('WARNING_PREPARED_MEAL_BINDING_MISMATCH');
+    return entryOwned(entry, { evidence, policies, slots: new Set([meal.mealSlotId]),
+      meals: new Map([[meal.mealSlotId, meal.digest]]) });
+  }});
+}
+
 export async function decodeTrustedMealWarningEvidenceSetRawV1(raw: string, policiesRaw: string,
   trustedContextRaw: string, evaluatedPlanRaw: string): Promise<TrustedMealWarningEvidenceSetV1> {
   const owned = parseRaw(raw);

@@ -357,3 +357,26 @@ test('22 authoring-only recipes absent from the published manifest remain inelig
     safety: await safety(), manifest: await manifest([]),
   }), { status: 'BLOCKED', reason: 'MANIFEST_COMPONENT_MISSING' });
 });
+
+test('scoped Staging entry excludes any hard restriction, including unrelated exclusions', async () => {
+  const entry = await manifestEntry();
+  entry.audience = 'STAGING_UNRESTRICTED_ONLY';
+  const active = {accountId: accountA, candidate: candidate(entry), manifest: await manifest([entry]),
+    preference: await preference(), safety: await safety()};
+  assert.equal(validateCandidateAuthoritiesV1(active).status, 'ELIGIBLE');
+  for (const patch of [
+    {preference: await preference({dietaryPattern:'VEGAN'})},
+    {preference: await preference({excludedMealTypes:['snack']})},
+    {preference: await preference({excludedRecipeIds:[uuid(399)]})},
+    {preference: await preference({excludedIngredientIds:[uuid(398)]})},
+    {safety: await safety({declaredAllergenCodes:['peanut']})},
+    {safety: await safety({declaredIntoleranceCodes:['lactose']})},
+    {safety: await safety({dietaryHardExclusionCodes:['pork']})},
+  ]) {
+    assert.deepEqual(validateCandidateAuthoritiesV1({...active,...patch}),
+      {status:'BLOCKED', reason:'STAGING_PROFILE_RESTRICTED'});
+  }
+  const altered = structuredClone(active.manifest);
+  delete altered.entries[0].audience;
+  await assert.rejects(decodeAdaptiveNutritionCandidateManifestV2(altered), /digest_mismatch/);
+});

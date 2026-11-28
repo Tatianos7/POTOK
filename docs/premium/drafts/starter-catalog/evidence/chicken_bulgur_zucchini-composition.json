@@ -1,0 +1,27 @@
+{
+  "recipe": "chicken_bulgur_zucchini",
+  "reviewScope": "declared ingredients and preparation of this exact draft",
+  "workbookRevision": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+  "ingredientRows": [
+    "chicken_bulgur_zucchini_ing_01",
+    "chicken_bulgur_zucchini_ing_02",
+    "chicken_bulgur_zucchini_ing_03",
+    "chicken_bulgur_zucchini_ing_04",
+    "chicken_bulgur_zucchini_ing_05"
+  ],
+  "compositionSha256": "4569a3034f5ff11fd40105a25224e3577a7cc03d9965d7b20850ccb56b376311",
+  "allergens": {
+    "declaredWheatIngredient": "булгур",
+    "basis": "ingredient list and preparation",
+    "crossContact": "unknown",
+    "freeFromClaims": []
+  },
+  "dietary": {
+    "meat": "птица",
+    "vegetarian": false,
+    "vegan": false,
+    "medicalDietClaims": []
+  },
+  "audience": "Staging profiles without saved dietary restrictions only",
+  "bulgurSource": "https://www.usaid.gov/sites/default/files/2023-02/FoodAidProduct_InfoGuide_2020.pdf"
+}

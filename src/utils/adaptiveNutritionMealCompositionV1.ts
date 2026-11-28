@@ -303,7 +303,7 @@ function normalizeCandidate(value: unknown): MealComponentCandidateV1 {
       throw new Error('meal_component_discrete_increment_violation');
     }
   }
-  if (JSON.stringify(row.ingredients) !== JSON.stringify(expected.ingredients)) {
+  if (canonicalJson(row.ingredients) !== canonicalJson(expected.ingredients)) {
     throw new Error('meal_component_ingredients_mismatch');
   }
   const nutrition = requireNutrition(row.nutrition, 'meal_component_nutrition');

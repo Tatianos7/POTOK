@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
+import { GenerationRequestFlowEntryV2 } from './GenerationRequestFlowV2';
+import { GenerationRequestFlowV2 } from '../services/generationRequestFlowV2';
+import { isGenerationEnabled } from '../services/generationAvailabilityV2';
+import { GenerationProvisionEntryV1 } from './GenerationProvisionEntryV1';
+import { supabase } from '../lib/supabaseClient';
 import { AdaptiveNutritionRuntimeWeekView } from './AdaptiveNutritionRuntimeWeekPreview';
 import {
   AdaptiveNutritionReadOnlyEntryController,
@@ -112,6 +117,10 @@ export default function AdaptiveNutritionReadOnlyEntry({
     () => suppliedController ?? new AdaptiveNutritionReadOnlyEntryController(),
     [suppliedController],
   );
+  const generation = useMemo(
+    () => new GenerationRequestFlowV2(supabase, isGenerationEnabled, undefined, () => window.sessionStorage),
+    [],
+  );
   const [state, setState] = useState(() => controller.snapshot());
   const [selectedDate, setSelectedDate] = useState(today);
   useEffect(() => controller.subscribe(setState), [controller]);
@@ -120,5 +129,15 @@ export default function AdaptiveNutritionReadOnlyEntry({
     void controller.start(currentUserId, today, timeZone);
     return () => controller.stop();
   }, [controller, currentUserId, timeZone, today]);
+  if (isGenerationEnabled() && state.phase === 'no_active_plan'
+      && state.accountId === currentUserId && state.today === today && state.timeZone === timeZone) {
+    return <GenerationProvisionEntryV1 accountId={currentUserId} today={today}
+      timeZone={timeZone} controller={controller} />;
+  }
+  if (isGenerationEnabled() && state.phase === 'pending_generation'
+      && state.accountId === currentUserId && state.today === today && state.timeZone === timeZone) {
+    return <GenerationRequestFlowEntryV2 accountId={currentUserId} today={today}
+      timeZone={timeZone} controller={generation} />;
+  }
   return <AdaptiveNutritionReadOnlyEntryView state={state} selectedDate={selectedDate} onSelectDate={setSelectedDate} />;
 }

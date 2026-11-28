@@ -1,3 +1,4 @@
+import { stagingUnrestrictedAudience } from './adaptiveNutritionAuthoritiesV1';
 import type { CuratedRecipeTag } from '../types/adaptiveNutrition';
 import type { AdaptiveCatalogManifestRecipeV1 } from './adaptiveNutritionActivationV1';
 import {
@@ -131,7 +132,7 @@ export interface CuratedRecipeAuthoringV1 {
     allowedMealTypes: Array<GraphMealTypeV1 | string>;
   };
   safety: {
-    allergenReview: 'reviewed' | 'blocked';
+    allergenReview: 'reviewed' | 'blocked' | 'declared_ingredients_only';
     allergenEvidenceRef: string | null;
     dietaryReview: 'reviewed' | 'blocked';
     dietaryEvidenceRef: string | null;
@@ -187,6 +188,7 @@ export interface ImmutablePortionRevisionCandidateV1 {
 }
 
 export interface RecipeEligibilityRevisionCandidateV1 {
+  audience?: typeof stagingUnrestrictedAudience;
   contract: typeof curatedRecipePublicationContractV1;
   eligibilityRevisionId: string;
   recipeRevisionId: string;
@@ -329,6 +331,7 @@ function auditCanonicalIngredient(
 
 export function auditCuratedRecipePublicationV1(
   authoring: CuratedRecipeAuthoringV1,
+  audience?: typeof stagingUnrestrictedAudience,
 ): CuratedRecipePublicationReadinessV1 {
   const blockers: CuratedRecipePublicationBlockerV1[] = [];
   if (!authoring.nameRu.trim() || !authoring.baseYield.servingLabel.trim()) {
@@ -447,7 +450,10 @@ export function auditCuratedRecipePublicationV1(
   if (!authoring.eligibility.planEligible) {
     pushBlocker(blockers, 'SOURCE_CONFLICT', 'eligibility.planEligible', 'adaptive_plan');
   }
-  if (authoring.safety.allergenReview !== 'reviewed' || !authoring.safety.allergenEvidenceRef) {
+  const scopedReview = audience === stagingUnrestrictedAudience
+    && authoring.safety.allergenReview === 'declared_ingredients_only'
+    && !authoring.eligibility.collectionVisible;
+  if ((!scopedReview && authoring.safety.allergenReview !== 'reviewed') || !authoring.safety.allergenEvidenceRef) {
     pushBlocker(blockers, 'ALLERGEN_CONTRACT_BLOCKED', 'safety.allergenReview');
   }
   if (authoring.safety.dietaryReview !== 'reviewed' || !authoring.safety.dietaryEvidenceRef) {
@@ -510,8 +516,9 @@ function validatePublicationIdentities(
 export function compileCuratedRecipePublicationV1(
   authoring: CuratedRecipeAuthoringV1,
   identities: CuratedRecipePublicationIdentityBoundaryV1,
+  audience?: typeof stagingUnrestrictedAudience,
 ): CuratedRecipePublicationCandidatesV1 {
-  const readiness = auditCuratedRecipePublicationV1(authoring);
+  const readiness = auditCuratedRecipePublicationV1(authoring, audience);
   const identityBlockers = validatePublicationIdentities(authoring, identities);
   if (identityBlockers.length > 0 || readiness.status === 'BLOCKED') {
     return {
@@ -594,6 +601,7 @@ export function compileCuratedRecipePublicationV1(
     },
   };
   const eligibilityRevision: RecipeEligibilityRevisionCandidateV1 = {
+    ...(audience ? { audience } : {}),
     contract: curatedRecipePublicationContractV1,
     eligibilityRevisionId: identities.eligibilityRevisionId,
     recipeRevisionId: identities.recipeRevisionId,
@@ -608,6 +616,7 @@ export function compileCuratedRecipePublicationV1(
       dietaryEvidenceRef: authoring.safety.dietaryEvidenceRef!,
     },
   };
+  if (audience) return { readiness, recipeRevision, portionRevision, eligibilityRevision, manifestTuple: null };
   const manifestTuple: AdaptiveCatalogManifestRecipeV1 = {
     recipeId: identities.recipeId,
     recipeRevisionId: identities.recipeRevisionId,

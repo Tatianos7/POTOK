@@ -1,0 +1,266 @@
+{
+  "contract": "potok-curated-recipe-publication-v1",
+  "authoringRecipeId": "chicken_bulgur_zucchini",
+  "nameRu": "Курица с булгуром и кабачком",
+  "nameEn": "chicken_with_bulgur_and_zucchini",
+  "description": "Кусочки куриной грудки с булгуром и кабачком; крупа готовится в отмеренной воде, без соуса.",
+  "status": "DRAFT",
+  "baseYield": {
+    "servings": "2.000",
+    "servingLabel": "порция",
+    "totalWeightG": null,
+    "servingWeightG": null
+  },
+  "nutrition": {
+    "calories": "978.200",
+    "protein": "88.336",
+    "fat": "20.682",
+    "carbs": "95.048",
+    "fiber": "20.500",
+    "basis": "full_recipe",
+    "authority": "reviewed",
+    "evidenceRef": "docs/premium/drafts/starter-catalog/evidence/chicken_bulgur_zucchini-nutrition.json",
+    "evidenceDigest": "89fc7e9c146e1aee1d2a48a8280b599d2ba8dc2292475b50b48e4d44b22dfeb9"
+  },
+  "ingredients": [
+    {
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_01",
+      "sortOrder": 0,
+      "nameRu": "Грудка куриная без кожи",
+      "nameEn": null,
+      "amount": "300.000",
+      "unit": "g",
+      "weightG": "300.000",
+      "optional": false,
+      "preparationNote": "сырой съедобный вес; boneless skinless; нарезать 2–3 см",
+      "state": "raw",
+      "componentKind": "food",
+      "foodStableId": "chicken_breast",
+      "canonicalStatus": "RESOLVED",
+      "canonical": {
+        "foodStableId": "chicken_breast",
+        "canonicalFoodId": "b2a26e9d-8c1c-476b-971f-36d9bdd92187",
+        "source": "core",
+        "sharedCatalogAccessible": true,
+        "evidenceRevision": "a43d6244-20c9-4023-8bc5-883b03c149ed",
+        "evidenceDigest": "810c07526e1e61900ea1465a032ea148f5c3dccfd896e19774f12639d0d6bf65"
+      },
+      "approvedNonFoodEvidenceRef": null,
+      "normalizationEvidenceRef": null,
+      "nutrition": {
+        "fat": "7.860",
+        "carbs": "0.000",
+        "fiber": "0.000",
+        "protein": "67.500",
+        "calories": "360.000",
+        "basis": "full_recipe",
+        "authority": "reviewed",
+        "evidenceRef": "91e10d7e-6fa7-47f6-9861-e4ec0912c513",
+        "evidenceDigest": "e731f7a4689459af5a88a910d43c5ed2a98ae36a0c1ba9c9cd6e532b54f49377"
+      },
+      "scalingMode": "continuous",
+      "discreteIncrement": null
+    },
+    {
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_02",
+      "sortOrder": 1,
+      "nameRu": "Булгур medium/coarse",
+      "nameEn": null,
+      "amount": "140.000",
+      "unit": "g",
+      "weightG": "140.000",
+      "optional": false,
+      "preparationNote": "сухой medium/coarse bulgur; промыть; hydration 2:1",
+      "state": "dry",
+      "componentKind": "food",
+      "foodStableId": "bulgur",
+      "canonicalStatus": "RESOLVED",
+      "canonical": {
+        "foodStableId": "bulgur",
+        "canonicalFoodId": "1240cfc5-c62d-45e8-be39-ded36c005ed1",
+        "source": "core",
+        "sharedCatalogAccessible": true,
+        "evidenceRevision": "bb69f048-1923-42bd-a661-657ebf7d1fca",
+        "evidenceDigest": "ef9ed8a8b896eff076d646a2f870145866f9f731fe9c08ec10a5500eba592e6b"
+      },
+      "approvedNonFoodEvidenceRef": null,
+      "normalizationEvidenceRef": null,
+      "nutrition": {
+        "fat": "1.862",
+        "carbs": "88.718",
+        "fiber": "17.500",
+        "protein": "17.206",
+        "calories": "478.800",
+        "basis": "full_recipe",
+        "authority": "reviewed",
+        "evidenceRef": "defc8167-9007-4458-9041-212be7e16a8d",
+        "evidenceDigest": "a095b49132e1ae7e4cf2c78d918d61c039633b1fcac5362a212731937c4c70e1"
+      },
+      "scalingMode": "continuous",
+      "discreteIncrement": null
+    },
+    {
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_03",
+      "sortOrder": 2,
+      "nameRu": "Кабачок с кожицей",
+      "nameEn": null,
+      "amount": "300.000",
+      "unit": "g",
+      "weightG": "300.000",
+      "optional": false,
+      "preparationNote": "сырой съедобный вес с кожицей; кубик 1.5 см",
+      "state": "raw",
+      "componentKind": "food",
+      "foodStableId": "zucchini",
+      "canonicalStatus": "RESOLVED",
+      "canonical": {
+        "foodStableId": "zucchini",
+        "canonicalFoodId": "4a5abfb0-8c91-4457-a598-b3a7863fd63f",
+        "source": "core",
+        "sharedCatalogAccessible": true,
+        "evidenceRevision": "9bc71cec-e966-4361-b53f-640ba0762aa0",
+        "evidenceDigest": "38c0c58890c24a0ca09a279e7357656474807814d3bc1f73f973b575427c4985"
+      },
+      "approvedNonFoodEvidenceRef": null,
+      "normalizationEvidenceRef": null,
+      "nutrition": {
+        "fat": "0.960",
+        "carbs": "6.330",
+        "fiber": "3.000",
+        "protein": "3.630",
+        "calories": "51.000",
+        "basis": "full_recipe",
+        "authority": "reviewed",
+        "evidenceRef": "dbfcf184-7455-4ccb-a5d2-f133f6133119",
+        "evidenceDigest": "2cbdd251eabc17d867e6398cd95af1bd36c4ac73a7e7c522304d6deaea0acaad"
+      },
+      "scalingMode": "continuous",
+      "discreteIncrement": null
+    },
+    {
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_04",
+      "sortOrder": 3,
+      "nameRu": "Масло оливковое",
+      "nameEn": null,
+      "amount": "10.000",
+      "unit": "g",
+      "weightG": "10.000",
+      "optional": false,
+      "preparationNote": "точный total; разделить 5 г + 5 г",
+      "state": "as-sold",
+      "componentKind": "food",
+      "foodStableId": "olive_oil",
+      "canonicalStatus": "RESOLVED",
+      "canonical": {
+        "foodStableId": "olive_oil",
+        "canonicalFoodId": "0c76c008-21ea-468f-bc90-ca24af50609f",
+        "source": "core",
+        "sharedCatalogAccessible": true,
+        "evidenceRevision": "585e13c9-f3f5-4b97-8c06-0e844d373ab3",
+        "evidenceDigest": "d4e7a0cd9f43e5ecbe8365969699c108c6215ddc5f623afe56bf76fdfb005c63"
+      },
+      "approvedNonFoodEvidenceRef": null,
+      "normalizationEvidenceRef": null,
+      "nutrition": {
+        "fat": "10.000",
+        "carbs": "0.000",
+        "fiber": "0.000",
+        "protein": "0.000",
+        "calories": "88.400",
+        "basis": "full_recipe",
+        "authority": "reviewed",
+        "evidenceRef": "e2ea4db1-d580-4091-957e-8f031f3cfd4a",
+        "evidenceDigest": "8d60234d20f4a7f1d683a715985bed76918791974ca4dd0fc7f325d318481ce6"
+      },
+      "scalingMode": "continuous",
+      "discreteIncrement": null
+    },
+    {
+      "ingredientRowId": "chicken_bulgur_zucchini_ing_05",
+      "sortOrder": 4,
+      "nameRu": "Вода",
+      "nameEn": null,
+      "amount": "280.000",
+      "unit": "ml",
+      "weightG": "280.000",
+      "optional": false,
+      "preparationNote": "точная absorption liquid для булгура; не сливать",
+      "state": "as-sold",
+      "componentKind": "approved_non_food",
+      "foodStableId": null,
+      "canonicalStatus": "NOT_APPLICABLE",
+      "canonical": null,
+      "approvedNonFoodEvidenceRef": "f910ceba-23f0-4775-9be5-4f0be3703387",
+      "normalizationEvidenceRef": "workbook:9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5:chicken_bulgur_zucchini_ing_05:weight_g",
+      "nutrition": {
+        "calories": "0.000",
+        "protein": "0.000",
+        "fat": "0.000",
+        "carbs": "0.000",
+        "fiber": "0.000",
+        "basis": "full_recipe",
+        "authority": "reviewed",
+        "evidenceRef": "89edf89b-3751-4997-85f7-a0fcd7aa07a5",
+        "evidenceDigest": "fabd6bdc41144f74d13fb364366eabaf2af8db6ae549c3a70959fbf0cc06de82"
+      },
+      "scalingMode": "continuous",
+      "discreteIncrement": null
+    }
+  ],
+  "steps": [
+    {
+      "stepRowId": "chicken_bulgur_zucchini_step_01",
+      "stepOrder": 1,
+      "instruction": "Промыть 140 г сухого medium/coarse булгура, добавить ровно 280 мл воды, довести до кипения и готовить под крышкой 12–15 минут до впитывания; оставить на 5 минут.",
+      "durationMinutes": 20,
+      "temperatureCelsius": null
+    },
+    {
+      "stepRowId": "chicken_bulgur_zucchini_step_02",
+      "stepOrder": 2,
+      "instruction": "Обсушить и взвесить 300 г сырой куриной грудки без кожи; нарезать 2–3 см. Нарезать 300 г сырого кабачка кубиком 1.5 см.",
+      "durationMinutes": null,
+      "temperatureCelsius": null
+    },
+    {
+      "stepRowId": "chicken_bulgur_zucchini_step_03",
+      "stepOrder": 3,
+      "instruction": "Разогреть 5 г масла, готовить курицу 5–7 минут, затем переложить на чистую тарелку до финального соединения.",
+      "durationMinutes": 7,
+      "temperatureCelsius": null
+    },
+    {
+      "stepRowId": "chicken_bulgur_zucchini_step_04",
+      "stepOrder": 4,
+      "instruction": "Добавить оставшиеся 5 г масла и кабачок; готовить без крышки 6–8 минут до мягкости и испарения поверхностной жидкости.",
+      "durationMinutes": 8,
+      "temperatureCelsius": null
+    },
+    {
+      "stepRowId": "chicken_bulgur_zucchini_step_05",
+      "stepOrder": 5,
+      "instruction": "Вернуть курицу, довести до безопасной готовности, смешать с булгуром и прогреть 1–2 минуты. Не добавлять бульон или соус.",
+      "durationMinutes": 2,
+      "temperatureCelsius": null
+    }
+  ],
+  "tags": [],
+  "eligibility": {
+    "collectionVisible": false,
+    "planEligible": false,
+    "allowedMealTypes": [
+      "lunch",
+      "dinner"
+    ]
+  },
+  "safety": {
+    "allergenReview": "blocked",
+    "allergenEvidenceRef": "docs/premium/drafts/starter-catalog/evidence/chicken_bulgur_zucchini-composition.json#/allergens",
+    "dietaryReview": "reviewed",
+    "dietaryEvidenceRef": "docs/premium/drafts/starter-catalog/evidence/chicken_bulgur_zucchini-composition.json#/dietary"
+  },
+  "source": {
+    "workbookRevision": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+    "recipeEvidenceRef": "01_Рецепты:chicken_bulgur_zucchini"
+  }
+}

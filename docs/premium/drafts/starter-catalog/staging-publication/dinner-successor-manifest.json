@@ -1,0 +1,396 @@
+{
+  "contract": "potok-adaptive-candidate-manifest-v2",
+  "encoding": "potok-adaptive-candidate-manifest-v2-canonical-json-v1",
+  "manifestRevision": "558b963b-6bc2-48c2-8b8a-188026eec60d",
+  "supersedesManifestRevision": "86e15bc5-b3ce-4df9-8497-9c61c0ed1fb0",
+  "publicationState": "PUBLISHED",
+  "publishedAt": "2026-11-28T14:01:33.137Z",
+  "entries": [
+    {
+      "audience": "STAGING_UNRESTRICTED_ONLY",
+      "recipeId": "33c07197-3cc7-40dd-90eb-68c048c6b5f8",
+      "recipeRevisionId": "827dbbbf-980e-435d-803a-fec2378fac35",
+      "portionRevisionId": "635e134b-4bfc-4c24-9063-215eae4d42de",
+      "eligibilityRevisionId": "2498f0bb-c5b8-470f-94ac-4c9edfbd4b50",
+      "publicationRevision": "72bddc1a-5594-4bbd-8801-2d099de6604c",
+      "publicationStatus": "PUBLISHED",
+      "canonicalEvidenceRevision": "7ff82553-da6b-4d72-b9cf-57cd933f0c5f",
+      "canonicalEvidenceDigest": "46fa3accf632b384d3a08a1203495d832c4d78e03f6b3060b3e45f0e6a2024cc",
+      "nutritionEvidenceRevision": "0ab6fbbd-3f92-421a-900f-a832f30f5442",
+      "nutritionEvidenceDigest": "89fc7e9c146e1aee1d2a48a8280b599d2ba8dc2292475b50b48e4d44b22dfeb9",
+      "allergenEvidenceRevision": "c69d50bb-f317-4f60-b5a9-037df6e9a1de",
+      "dietaryEvidenceRevision": "b72aa849-0913-4a08-8124-c6f945974d99",
+      "ingredientIds": [
+        "0c76c008-21ea-468f-bc90-ca24af50609f",
+        "1240cfc5-c62d-45e8-be39-ded36c005ed1",
+        "4a5abfb0-8c91-4457-a598-b3a7863fd63f",
+        "b2a26e9d-8c1c-476b-971f-36d9bdd92187"
+      ],
+      "allergenCodes": [
+        "wheat"
+      ],
+      "intoleranceCodes": [
+        "gluten"
+      ],
+      "dietaryCodes": [
+        "poultry"
+      ],
+      "allowedMealTypes": [
+        "lunch",
+        "dinner"
+      ],
+      "role": "MAIN_COMPONENT",
+      "anchorKind": "COMPLETE",
+      "requiredCompanionRoleSets": [],
+      "pairingTags": [],
+      "incompatiblePairingTags": [],
+      "repeatFamily": "chicken_bulgur_zucchini",
+      "energyClass": "BALANCED",
+      "beverageClass": "NOT_BEVERAGE",
+      "dominantIngredientFamily": "poultry",
+      "accessibility": "COMMON_RU_RETAIL",
+      "specialty": false,
+      "expensive": false,
+      "portionRules": {
+        "mode": "HYBRID",
+        "assignedServingsMinimum": "1.000",
+        "assignedServingsMaximum": "1.000",
+        "assignedServingsIncrement": "1.000",
+        "componentIncrements": []
+      },
+      "recipeSnapshot": {
+        "recipeId": "33c07197-3cc7-40dd-90eb-68c048c6b5f8",
+        "recipeRevisionId": "827dbbbf-980e-435d-803a-fec2378fac35",
+        "displayNameSnapshot": "Курица с булгуром и кабачком",
+        "baseYield": {
+          "servings": "2.000",
+          "servingLabel": "порция",
+          "totalYieldGrams": null
+        },
+        "fullRecipeNutrition": {
+          "calories": "978.200",
+          "protein": "88.336",
+          "fat": "20.682",
+          "carbs": "95.048",
+          "fiber": "20.500"
+        },
+        "ingredients": [
+          {
+            "componentId": "ab516629-9e41-4fc1-9c36-6fc9e597f636",
+            "recipeRevisionId": "827dbbbf-980e-435d-803a-fec2378fac35",
+            "identity": {
+              "kind": "canonical_food",
+              "canonicalFoodId": "b2a26e9d-8c1c-476b-971f-36d9bdd92187"
+            },
+            "displayNameSnapshot": "Грудка куриная без кожи",
+            "state": "raw",
+            "quantity": {
+              "amount": "300.000",
+              "unit": "g"
+            },
+            "normalizedGrams": "300.000",
+            "normalizationEvidenceRef": null,
+            "scaling": {
+              "mode": "continuous"
+            },
+            "nutrition": {
+              "calories": "360.000",
+              "protein": "67.500",
+              "fat": "7.860",
+              "carbs": "0.000",
+              "fiber": "0.000"
+            },
+            "sortOrder": 0
+          },
+          {
+            "componentId": "98ddf8a5-bd90-4558-9431-c81552c49c2c",
+            "recipeRevisionId": "827dbbbf-980e-435d-803a-fec2378fac35",
+            "identity": {
+              "kind": "canonical_food",
+              "canonicalFoodId": "1240cfc5-c62d-45e8-be39-ded36c005ed1"
+            },
+            "displayNameSnapshot": "Булгур medium/coarse",
+            "state": "dry",
+            "quantity": {
+              "amount": "140.000",
+              "unit": "g"
+            },
+            "normalizedGrams": "140.000",
+            "normalizationEvidenceRef": null,
+            "scaling": {
+              "mode": "continuous"
+            },
+            "nutrition": {
+              "calories": "478.800",
+              "protein": "17.206",
+              "fat": "1.862",
+              "carbs": "88.718",
+              "fiber": "17.500"
+            },
+            "sortOrder": 1
+          },
+          {
+            "componentId": "c8ccd898-2bb4-4b1d-a43d-a79088ac9ee5",
+            "recipeRevisionId": "827dbbbf-980e-435d-803a-fec2378fac35",
+            "identity": {
+              "kind": "canonical_food",
+              "canonicalFoodId": "4a5abfb0-8c91-4457-a598-b3a7863fd63f"
+            },
+            "displayNameSnapshot": "Кабачок с кожицей",
+            "state": "raw",
+            "quantity": {
+              "amount": "300.000",
+              "unit": "g"
+            },
+            "normalizedGrams": "300.000",
+            "normalizationEvidenceRef": null,
+            "scaling": {
+              "mode": "continuous"
+            },
+            "nutrition": {
+              "calories": "51.000",
+              "protein": "3.630",
+              "fat": "0.960",
+              "carbs": "6.330",
+              "fiber": "3.000"
+            },
+            "sortOrder": 2
+          },
+          {
+            "componentId": "3bf96b73-4cb2-4ff1-99a9-6513ea14e454",
+            "recipeRevisionId": "827dbbbf-980e-435d-803a-fec2378fac35",
+            "identity": {
+              "kind": "canonical_food",
+              "canonicalFoodId": "0c76c008-21ea-468f-bc90-ca24af50609f"
+            },
+            "displayNameSnapshot": "Масло оливковое",
+            "state": "as-sold",
+            "quantity": {
+              "amount": "10.000",
+              "unit": "g"
+            },
+            "normalizedGrams": "10.000",
+            "normalizationEvidenceRef": null,
+            "scaling": {
+              "mode": "continuous"
+            },
+            "nutrition": {
+              "calories": "88.400",
+              "protein": "0.000",
+              "fat": "10.000",
+              "carbs": "0.000",
+              "fiber": "0.000"
+            },
+            "sortOrder": 3
+          },
+          {
+            "componentId": "9aedf48c-39d7-413b-8ee8-4dcb70a955bf",
+            "recipeRevisionId": "827dbbbf-980e-435d-803a-fec2378fac35",
+            "identity": {
+              "kind": "approved_non_food",
+              "componentDefinitionId": "35ff5028-1446-4066-a3e1-80363b627a70"
+            },
+            "displayNameSnapshot": "Вода",
+            "state": "as-sold",
+            "quantity": {
+              "amount": "280.000",
+              "unit": "ml"
+            },
+            "normalizedGrams": "280.000",
+            "normalizationEvidenceRef": "9eccf4b1-faaa-4f5d-a66b-1fe102cf590b",
+            "scaling": {
+              "mode": "continuous"
+            },
+            "nutrition": {
+              "calories": "0.000",
+              "protein": "0.000",
+              "fat": "0.000",
+              "carbs": "0.000",
+              "fiber": "0.000"
+            },
+            "sortOrder": 4
+          }
+        ]
+      },
+      "recipeSnapshotDigest": "49132143986c043ed94ea89473530eed4b4752b5c1bcfedc4d8c120f8e53afac"
+    },
+    {
+      "audience": "STAGING_UNRESTRICTED_ONLY",
+      "recipeId": "8491c837-264e-484b-9079-0355847f4596",
+      "recipeRevisionId": "0b2c9ce7-c5e5-4b5e-b89f-67acfbfc2f32",
+      "portionRevisionId": "86fef016-540f-478a-b465-14d924eeadf1",
+      "eligibilityRevisionId": "62f6732c-dc82-4264-a610-243c26767442",
+      "publicationRevision": "3bf9ce76-b66f-4782-9896-319a6b5b975f",
+      "publicationStatus": "PUBLISHED",
+      "canonicalEvidenceRevision": "87e402b4-f29e-4675-aabb-c7044262def3",
+      "canonicalEvidenceDigest": "fc312816a564f7e3d6d5aa9219598e4f22675831775f40aa95837ced40639c7f",
+      "nutritionEvidenceRevision": "87859966-0d57-49c3-85f0-d4a6425d4d18",
+      "nutritionEvidenceDigest": "c9914360f66660be5e0a542b12c1b3971818d4a153bfaa97160e92a5bc9467e6",
+      "allergenEvidenceRevision": "3cd3642b-143d-46c4-b761-5837d32d4048",
+      "dietaryEvidenceRevision": "8130e01f-9584-47b3-81d3-ac08711be654",
+      "ingredientIds": [
+        "02f0b241-ab4a-4f8f-86f5-fbbcf24a729d",
+        "0c76c008-21ea-468f-bc90-ca24af50609f",
+        "6f03327c-2356-4384-b510-9b520b78252d",
+        "e3e34c6e-2c8a-4aba-8055-f3573f40dabe"
+      ],
+      "allergenCodes": [],
+      "intoleranceCodes": [],
+      "dietaryCodes": [
+        "beef"
+      ],
+      "allowedMealTypes": [
+        "lunch",
+        "dinner"
+      ],
+      "role": "MAIN_COMPONENT",
+      "anchorKind": "COMPLETE",
+      "requiredCompanionRoleSets": [],
+      "pairingTags": [],
+      "incompatiblePairingTags": [],
+      "repeatFamily": "beef_patties_roasted_carrot",
+      "energyClass": "BALANCED",
+      "beverageClass": "NOT_BEVERAGE",
+      "dominantIngredientFamily": "beef",
+      "accessibility": "COMMON_RU_RETAIL",
+      "specialty": false,
+      "expensive": false,
+      "portionRules": {
+        "mode": "HYBRID",
+        "assignedServingsMinimum": "1.000",
+        "assignedServingsMaximum": "1.000",
+        "assignedServingsIncrement": "1.000",
+        "componentIncrements": []
+      },
+      "recipeSnapshot": {
+        "recipeId": "8491c837-264e-484b-9079-0355847f4596",
+        "recipeRevisionId": "0b2c9ce7-c5e5-4b5e-b89f-67acfbfc2f32",
+        "displayNameSnapshot": "Говяжьи котлеты с запечённой морковью",
+        "baseYield": {
+          "servings": "2.000",
+          "servingLabel": "порция",
+          "totalYieldGrams": null
+        },
+        "fullRecipeNutrition": {
+          "calories": "938.400",
+          "protein": "60.420",
+          "fat": "56.200",
+          "carbs": "33.900",
+          "fiber": "14.000"
+        },
+        "ingredients": [
+          {
+            "componentId": "0ae3afb1-1aed-472d-8ddc-607c4dcb67d9",
+            "recipeRevisionId": "0b2c9ce7-c5e5-4b5e-b89f-67acfbfc2f32",
+            "identity": {
+              "kind": "canonical_food",
+              "canonicalFoodId": "e3e34c6e-2c8a-4aba-8055-f3573f40dabe"
+            },
+            "displayNameSnapshot": "Говяжий фарш 15%",
+            "state": "raw",
+            "quantity": {
+              "amount": "300.000",
+              "unit": "g"
+            },
+            "normalizedGrams": "300.000",
+            "normalizationEvidenceRef": null,
+            "scaling": {
+              "mode": "continuous"
+            },
+            "nutrition": {
+              "calories": "645.000",
+              "protein": "55.770",
+              "fat": "45.000",
+              "carbs": "0.000",
+              "fiber": "0.000"
+            },
+            "sortOrder": 0
+          },
+          {
+            "componentId": "9e4f72eb-66dd-42fa-9ce5-e72261465d91",
+            "recipeRevisionId": "0b2c9ce7-c5e5-4b5e-b89f-67acfbfc2f32",
+            "identity": {
+              "kind": "canonical_food",
+              "canonicalFoodId": "02f0b241-ab4a-4f8f-86f5-fbbcf24a729d"
+            },
+            "displayNameSnapshot": "Морковь",
+            "state": "raw",
+            "quantity": {
+              "amount": "500.000",
+              "unit": "g"
+            },
+            "normalizedGrams": "500.000",
+            "normalizationEvidenceRef": null,
+            "scaling": {
+              "mode": "continuous"
+            },
+            "nutrition": {
+              "calories": "205.000",
+              "protein": "4.650",
+              "fat": "1.200",
+              "carbs": "33.900",
+              "fiber": "14.000"
+            },
+            "sortOrder": 1
+          },
+          {
+            "componentId": "b1efe823-579e-4cd0-b435-0695b85e2b81",
+            "recipeRevisionId": "0b2c9ce7-c5e5-4b5e-b89f-67acfbfc2f32",
+            "identity": {
+              "kind": "canonical_food",
+              "canonicalFoodId": "0c76c008-21ea-468f-bc90-ca24af50609f"
+            },
+            "displayNameSnapshot": "Масло оливковое",
+            "state": "as-sold",
+            "quantity": {
+              "amount": "10.000",
+              "unit": "g"
+            },
+            "normalizedGrams": "10.000",
+            "normalizationEvidenceRef": null,
+            "scaling": {
+              "mode": "continuous"
+            },
+            "nutrition": {
+              "calories": "88.400",
+              "protein": "0.000",
+              "fat": "10.000",
+              "carbs": "0.000",
+              "fiber": "0.000"
+            },
+            "sortOrder": 2
+          },
+          {
+            "componentId": "482d2f42-e3c5-4476-bd3d-0455b5a68a70",
+            "recipeRevisionId": "0b2c9ce7-c5e5-4b5e-b89f-67acfbfc2f32",
+            "identity": {
+              "kind": "canonical_food",
+              "canonicalFoodId": "6f03327c-2356-4384-b510-9b520b78252d"
+            },
+            "displayNameSnapshot": "Соль",
+            "state": "as-sold",
+            "quantity": {
+              "amount": "2.000",
+              "unit": "g"
+            },
+            "normalizedGrams": "2.000",
+            "normalizationEvidenceRef": null,
+            "scaling": {
+              "mode": "continuous"
+            },
+            "nutrition": {
+              "calories": "0.000",
+              "protein": "0.000",
+              "fat": "0.000",
+              "carbs": "0.000",
+              "fiber": "0.000"
+            },
+            "sortOrder": 3
+          }
+        ]
+      },
+      "recipeSnapshotDigest": "522d187d7d49730940a134360971faf4db8e50e496c1823755b62f00c3984ef1"
+    }
+  ],
+  "digest": "72858ea9238a037df61600e9e5064f14d52c80f693ea110cdac17702399cd2f4"
+}
