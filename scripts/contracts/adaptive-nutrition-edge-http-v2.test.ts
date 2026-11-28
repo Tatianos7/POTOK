@@ -101,6 +101,13 @@ test('GET status accepts exactly one opaque request identity', async () => {
   assert.equal(f.calls.length, 1);
 });
 
+test('GET rejects the status of a different generation request', async () => {
+  const response = await fixture({ ...status, requestOperationId: key })
+    .handler(request('', 'GET', '?requestOperationId=' + requestId));
+  assert.equal(response.status, 502);
+  assert.deepEqual(await response.json(), { error: 'INVALID_SERVER_RESPONSE', retryable: true });
+});
+
 test('disabled path never generates, validates, creates privileged client, records or activates', async () => {
   const counts = { privileged: 0, generate: 0, validate: 0, record: 0, activate: 0 };
   const forbidden = {

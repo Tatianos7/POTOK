@@ -67,7 +67,10 @@ export interface CandidateManifestComponentIncrementV2 {
   increment: string;
 }
 
+export const stagingUnrestrictedAudience = 'STAGING_UNRESTRICTED_ONLY' as const;
+
 export interface AdaptiveNutritionCandidateManifestEntryV2 {
+  audience?: typeof stagingUnrestrictedAudience;
   recipeId: string;
   recipeRevisionId: string;
   portionRevisionId: string;
@@ -146,7 +149,7 @@ export type CandidateAuthorityResultV1 =
   | { status: 'BLOCKED'; reason: 'MISSING_SAFETY_AUTHORITY' | 'MISSING_PREFERENCE_AUTHORITY'
     | 'ACCOUNT_AUTHORITY_MISMATCH' | 'MANIFEST_NOT_PUBLISHED' | 'MANIFEST_COMPONENT_MISSING'
     | 'MEAL_TYPE_EXCLUDED' | 'INGREDIENT_EXCLUDED' | 'RECIPE_EXCLUDED' | 'DIETARY_PATTERN_CONFLICT'
-    | 'ALLERGEN_CONFLICT' | 'INTOLERANCE_CONFLICT' | 'DIETARY_HARD_EXCLUSION' };
+    | 'STAGING_PROFILE_RESTRICTED' | 'ALLERGEN_CONFLICT' | 'INTOLERANCE_CONFLICT' | 'DIETARY_HARD_EXCLUSION' };
 
 export interface AccountGateLockV1 {
   kind: 'SHARED_ACCOUNT_GATE';
@@ -390,7 +393,8 @@ function decodeIncrement(value: unknown): CandidateManifestComponentIncrementV2 
 }
 
 async function decodeManifestEntry(value: unknown): Promise<AdaptiveNutritionCandidateManifestEntryV2> {
-  const row = record(value, ['recipeId', 'recipeRevisionId', 'portionRevisionId', 'eligibilityRevisionId',
+  const scoped = value !== null && typeof value === 'object' && Object.prototype.hasOwnProperty.call(value, 'audience');
+  const row = record(value, [...(scoped ? ['audience'] : []), 'recipeId', 'recipeRevisionId', 'portionRevisionId', 'eligibilityRevisionId',
     'publicationRevision', 'publicationStatus', 'canonicalEvidenceRevision', 'canonicalEvidenceDigest',
     'nutritionEvidenceRevision', 'nutritionEvidenceDigest', 'allergenEvidenceRevision',
     'dietaryEvidenceRevision', 'ingredientIds', 'allergenCodes', 'intoleranceCodes', 'dietaryCodes',
@@ -398,6 +402,7 @@ async function decodeManifestEntry(value: unknown): Promise<AdaptiveNutritionCan
     'pairingTags', 'incompatiblePairingTags', 'repeatFamily', 'energyClass', 'beverageClass',
     'dominantIngredientFamily', 'accessibility', 'specialty', 'expensive', 'portionRules',
     'recipeSnapshot', 'recipeSnapshotDigest'], 'candidate_manifest_entry');
+  if (scoped && row.audience !== stagingUnrestrictedAudience) throw new Error('manifest_invalid_audience');
   if (row.publicationStatus !== 'PUBLISHED') throw new Error('manifest_entry_not_published');
   const recipeSnapshot = decodeGraphRecipeSnapshotV1(row.recipeSnapshot);
   const recipeId = uuid(row.recipeId, 'manifest_recipe');
@@ -456,6 +461,7 @@ async function decodeManifestEntry(value: unknown): Promise<AdaptiveNutritionCan
     throw new Error('manifest_accessibility_axes_inconsistent');
   }
   return {
+    ...(scoped ? { audience: stagingUnrestrictedAudience } : {}),
     recipeId, recipeRevisionId,
     portionRevisionId: uuid(row.portionRevisionId, 'manifest_portion_revision'),
     eligibilityRevisionId: uuid(row.eligibilityRevisionId, 'manifest_eligibility_revision'),
@@ -589,6 +595,16 @@ export function validateCandidateAuthoritiesV1(value: {
   const entry = value.manifest.entries.find((item) => manifestIdentity(item) === identity);
   if (!entry || !entry.allowedMealTypes.includes(value.candidate.mealType)) {
     return { status: 'BLOCKED', reason: 'MANIFEST_COMPONENT_MISSING' };
+  }
+  if (entry.audience === stagingUnrestrictedAudience) {
+    const hard = value.preference.hard;
+    const safety = value.safety;
+    if (hard.dietaryPattern !== 'UNSPECIFIED' || hard.excludedMealTypes.length
+        || hard.excludedRecipeIds.length || hard.excludedIngredientIds.length
+        || safety.declaredAllergenCodes.length || safety.declaredIntoleranceCodes.length
+        || safety.dietaryHardExclusionCodes.length) {
+      return { status: 'BLOCKED', reason: 'STAGING_PROFILE_RESTRICTED' };
+    }
   }
   if (value.preference.hard.excludedMealTypes.includes(value.candidate.mealType)) {
     return { status: 'BLOCKED', reason: 'MEAL_TYPE_EXCLUDED' };

@@ -1,0 +1,26 @@
+{
+  "recipe": "beef_patties_roasted_carrot",
+  "reviewScope": "declared ingredients and preparation of this exact draft",
+  "workbookRevision": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+  "ingredientRows": [
+    "beef_patties_roasted_carrot_ing_01",
+    "beef_patties_roasted_carrot_ing_02",
+    "beef_patties_roasted_carrot_ing_03",
+    "beef_patties_roasted_carrot_ing_04"
+  ],
+  "compositionSha256": "5ea31a4508dfc64261f3a8d3e60605b50ad486c78b0f1d371363ac6f4ff7794b",
+  "allergens": {
+    "declaredWheatIngredient": null,
+    "basis": "ingredient list and preparation",
+    "crossContact": "unknown",
+    "freeFromClaims": []
+  },
+  "dietary": {
+    "meat": "говядина",
+    "vegetarian": false,
+    "vegan": false,
+    "medicalDietClaims": []
+  },
+  "audience": "Staging profiles without saved dietary restrictions only",
+  "bulgurSource": null
+}

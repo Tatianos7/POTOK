@@ -1,0 +1,235 @@
+{
+  "contract": "potok-curated-recipe-publication-v1",
+  "authoringRecipeId": "beef_patties_roasted_carrot",
+  "nameRu": "Говяжьи котлеты с запечённой морковью",
+  "nameEn": "beef_patties_with_roasted_carrots",
+  "description": "Две простые котлеты из нежирного говяжьего фарша с запечённой морковью; без яйца, хлеба и соуса.",
+  "status": "DRAFT",
+  "baseYield": {
+    "servings": "2.000",
+    "servingLabel": "порция",
+    "totalWeightG": null,
+    "servingWeightG": null
+  },
+  "nutrition": {
+    "calories": "938.400",
+    "protein": "60.420",
+    "fat": "56.200",
+    "carbs": "33.900",
+    "fiber": "14.000",
+    "basis": "full_recipe",
+    "authority": "reviewed",
+    "evidenceRef": "docs/premium/drafts/starter-catalog/evidence/beef_patties_roasted_carrot-nutrition.json",
+    "evidenceDigest": "c9914360f66660be5e0a542b12c1b3971818d4a153bfaa97160e92a5bc9467e6"
+  },
+  "ingredients": [
+    {
+      "ingredientRowId": "beef_patties_roasted_carrot_ing_01",
+      "sortOrder": 0,
+      "nameRu": "Говяжий фарш 15%",
+      "nameEn": null,
+      "amount": "300.000",
+      "unit": "g",
+      "weightG": "300.000",
+      "optional": false,
+      "preparationNote": "сырой нежирный говяжий фарш; generic recipe-facing name",
+      "state": "raw",
+      "componentKind": "food",
+      "foodStableId": "lean_ground_beef",
+      "canonicalStatus": "RESOLVED",
+      "canonical": {
+        "foodStableId": "lean_ground_beef",
+        "canonicalFoodId": "e3e34c6e-2c8a-4aba-8055-f3573f40dabe",
+        "source": "core",
+        "sharedCatalogAccessible": true,
+        "evidenceRevision": "996466d1-3f39-496e-8cfe-f9c9c417342b",
+        "evidenceDigest": "b8f4b7e6780cd8e2de1d1ea779b4a8a4a6fb63a0f65f2659648fde91c500b948"
+      },
+      "approvedNonFoodEvidenceRef": null,
+      "normalizationEvidenceRef": null,
+      "nutrition": {
+        "fat": "45.000",
+        "carbs": "0.000",
+        "fiber": "0.000",
+        "protein": "55.770",
+        "calories": "645.000",
+        "basis": "full_recipe",
+        "authority": "reviewed",
+        "evidenceRef": "cd0eb88d-5706-4620-a798-46edbe093a2f",
+        "evidenceDigest": "ab85e5719c61476e4c0dabe2fb4c0be2e8d0326c43aba250ee0a63ceab87384a"
+      },
+      "scalingMode": "continuous",
+      "discreteIncrement": null
+    },
+    {
+      "ingredientRowId": "beef_patties_roasted_carrot_ing_02",
+      "sortOrder": 1,
+      "nameRu": "Морковь",
+      "nameEn": null,
+      "amount": "500.000",
+      "unit": "g",
+      "weightG": "500.000",
+      "optional": false,
+      "preparationNote": "сырой съедобный вес; одинаковые брусочки",
+      "state": "raw",
+      "componentKind": "food",
+      "foodStableId": "carrot",
+      "canonicalStatus": "RESOLVED",
+      "canonical": {
+        "foodStableId": "carrot",
+        "canonicalFoodId": "02f0b241-ab4a-4f8f-86f5-fbbcf24a729d",
+        "source": "core",
+        "sharedCatalogAccessible": true,
+        "evidenceRevision": "8153f31f-be0c-4ba6-aca6-0181a9319b0e",
+        "evidenceDigest": "90713a47b7a90474281da7f948b2dabde12f2852f820a2454d504de11fe4af94"
+      },
+      "approvedNonFoodEvidenceRef": null,
+      "normalizationEvidenceRef": null,
+      "nutrition": {
+        "fat": "1.200",
+        "carbs": "33.900",
+        "fiber": "14.000",
+        "protein": "4.650",
+        "calories": "205.000",
+        "basis": "full_recipe",
+        "authority": "reviewed",
+        "evidenceRef": "20a8a4e1-4f6c-4bbe-9e02-2e2074803336",
+        "evidenceDigest": "193bfd1ae2a560359f7e6b06f7f6a801de8f0c935895edead8f805ac93eb5a79"
+      },
+      "scalingMode": "continuous",
+      "discreteIncrement": null
+    },
+    {
+      "ingredientRowId": "beef_patties_roasted_carrot_ing_03",
+      "sortOrder": 2,
+      "nameRu": "Масло оливковое",
+      "nameEn": null,
+      "amount": "10.000",
+      "unit": "g",
+      "weightG": "10.000",
+      "optional": false,
+      "preparationNote": "точный total: 7 г морковь + 3 г котлеты",
+      "state": "as-sold",
+      "componentKind": "food",
+      "foodStableId": "olive_oil",
+      "canonicalStatus": "RESOLVED",
+      "canonical": {
+        "foodStableId": "olive_oil",
+        "canonicalFoodId": "0c76c008-21ea-468f-bc90-ca24af50609f",
+        "source": "core",
+        "sharedCatalogAccessible": true,
+        "evidenceRevision": "585e13c9-f3f5-4b97-8c06-0e844d373ab3",
+        "evidenceDigest": "d4e7a0cd9f43e5ecbe8365969699c108c6215ddc5f623afe56bf76fdfb005c63"
+      },
+      "approvedNonFoodEvidenceRef": null,
+      "normalizationEvidenceRef": null,
+      "nutrition": {
+        "fat": "10.000",
+        "carbs": "0.000",
+        "fiber": "0.000",
+        "protein": "0.000",
+        "calories": "88.400",
+        "basis": "full_recipe",
+        "authority": "reviewed",
+        "evidenceRef": "e2ea4db1-d580-4091-957e-8f031f3cfd4a",
+        "evidenceDigest": "8d60234d20f4a7f1d683a715985bed76918791974ca4dd0fc7f325d318481ce6"
+      },
+      "scalingMode": "continuous",
+      "discreteIncrement": null
+    },
+    {
+      "ingredientRowId": "beef_patties_roasted_carrot_ing_04",
+      "sortOrder": 3,
+      "nameRu": "Соль",
+      "nameEn": null,
+      "amount": "2.000",
+      "unit": "g",
+      "weightG": "2.000",
+      "optional": false,
+      "preparationNote": "точный total",
+      "state": "as-sold",
+      "componentKind": "food",
+      "foodStableId": "salt",
+      "canonicalStatus": "RESOLVED",
+      "canonical": {
+        "foodStableId": "salt",
+        "canonicalFoodId": "6f03327c-2356-4384-b510-9b520b78252d",
+        "source": "core",
+        "sharedCatalogAccessible": true,
+        "evidenceRevision": "cb743b80-eae8-4f09-adf4-7d116cff4242",
+        "evidenceDigest": "8b876447cf50778f10c045e30d8d415d8d963f9b89c0dc3864ffc434db31e611"
+      },
+      "approvedNonFoodEvidenceRef": null,
+      "normalizationEvidenceRef": null,
+      "nutrition": {
+        "fat": "0.000",
+        "carbs": "0.000",
+        "fiber": "0.000",
+        "protein": "0.000",
+        "calories": "0.000",
+        "basis": "full_recipe",
+        "authority": "reviewed",
+        "evidenceRef": "bad490ad-05da-4b3a-921d-330c3116bc91",
+        "evidenceDigest": "55280b9327d545c5fa4985fde4bc4b851e309fb2a4a6ddb60ffc873ca33e1a8c"
+      },
+      "scalingMode": "continuous",
+      "discreteIncrement": null
+    }
+  ],
+  "steps": [
+    {
+      "stepRowId": "beef_patties_roasted_carrot_step_01",
+      "stepOrder": 1,
+      "instruction": "Разогреть духовку до 210°C. Нарезать 500 г моркови одинаковыми брусочками, смешать с ровно 7 г масла и 1 г соли; запекать около 25–30 минут, один раз перевернуть.",
+      "durationMinutes": null,
+      "temperatureCelsius": null
+    },
+    {
+      "stepRowId": "beef_patties_roasted_carrot_step_02",
+      "stepOrder": 2,
+      "instruction": "Осторожно смешать 300 г нежирного говяжьего фарша только с 1 г соли. Сырая смесь котлет — 301 г; не добавлять лук, яйцо, сухари, молоко или жидкость.",
+      "durationMinutes": null,
+      "temperatureCelsius": null
+    },
+    {
+      "stepRowId": "beef_patties_roasted_carrot_step_03",
+      "stepOrder": 3,
+      "instruction": "Сформовать ровно 2 котлеты, ориентир 150,5 г каждая. Использовать оставшиеся 3 г масла на антипригарной сковороде.",
+      "durationMinutes": null,
+      "temperatureCelsius": null
+    },
+    {
+      "stepRowId": "beef_patties_roasted_carrot_step_04",
+      "stepOrder": 4,
+      "instruction": "Готовить котлеты с двух сторон до температуры в центре минимум 71°C; кратко дать отдохнуть. Не добавлять соус или масло.",
+      "durationMinutes": null,
+      "temperatureCelsius": null
+    },
+    {
+      "stepRowId": "beef_patties_roasted_carrot_step_05",
+      "stepOrder": 5,
+      "instruction": "Взвесить отдельно две готовые котлеты и морковь; одна котлета и половина моркови образуют порцию.",
+      "durationMinutes": null,
+      "temperatureCelsius": null
+    }
+  ],
+  "tags": [],
+  "eligibility": {
+    "collectionVisible": false,
+    "planEligible": false,
+    "allowedMealTypes": [
+      "lunch",
+      "dinner"
+    ]
+  },
+  "safety": {
+    "allergenReview": "blocked",
+    "allergenEvidenceRef": "docs/premium/drafts/starter-catalog/evidence/beef_patties_roasted_carrot-composition.json#/allergens",
+    "dietaryReview": "reviewed",
+    "dietaryEvidenceRef": "docs/premium/drafts/starter-catalog/evidence/beef_patties_roasted_carrot-composition.json#/dietary"
+  },
+  "source": {
+    "workbookRevision": "9986a8212872acd9c55849cdc8b6a8904ae508e3a815f85531b5ad16a59ec8f5",
+    "recipeEvidenceRef": "01_Рецепты:beef_patties_roasted_carrot"
+  }
+}
